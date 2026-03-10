@@ -6,95 +6,196 @@
     <title>Демо · Вход</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
+    
     <style>
-        .demo-choose-container {
+        :root {
+            --bg-color: #0a0a0c;
+            --surface-color: #121216;
+            --text-primary: #ffffff;
+            --text-secondary: #8a8a93;
+            --accent-color: #00e0ff;
+            --accent-glow: rgba(0, 224, 255, 0.2);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.2);
+            --danger-color: #ff4757;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 2rem;
+            background-image: radial-gradient(circle at top center, rgba(0, 224, 255, 0.03), transparent 50%);
         }
-        .demo-choose-card {
+
+        .demo-choose-container {
             width: 100%;
-            max-width: 420px;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            box-sizing: border-box;
         }
+
+        .demo-choose-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 3rem 2.5rem;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Легкий неоновый блик сверху карточки */
+        .demo-choose-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+            opacity: 0.5;
+        }
+
         .demo-choose-header {
             text-align: center;
-            margin-bottom: 1.75rem;
+            margin-bottom: 2.5rem;
         }
+
+        .hero-eyebrow {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.75rem;
+        }
+
+        .hero-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin: 0 0 0.5rem;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .hero-subtitle {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin: 0;
+            line-height: 1.5;
+        }
+
         .demo-code-form {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.5rem;
         }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
         .demo-code-label {
-            display: block;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.35rem;
+            color: var(--text-secondary);
+            margin-left: 0.25rem;
         }
+
         .demo-code-input {
             width: 100%;
-            padding: 0.85rem 1rem;
+            padding: 1rem 1.25rem;
             border-radius: var(--radius-md);
-            border: 1px solid var(--stroke-1);
-            background: var(--surface-1);
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.02);
             color: var(--text-primary);
             font-size: 1rem;
+            font-family: inherit;
             box-sizing: border-box;
+            transition: var(--transition);
         }
+
+        .demo-code-input::placeholder {
+            color: rgba(255, 255, 255, 0.2);
+        }
+
         .demo-code-input:focus {
             outline: none;
-            border-color: var(--accent-1);
-            box-shadow: 0 0 0 2px rgba(0, 255, 213, 0.15);
+            border-color: var(--accent-color);
+            background: rgba(0, 224, 255, 0.02);
+            box-shadow: 0 0 0 3px var(--accent-glow);
         }
+
         .demo-code-input.error {
-            border-color: var(--danger, #e53935);
+            border-color: var(--danger-color);
+            box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.15);
         }
+
         .demo-code-hint {
             font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-top: -0.25rem;
+            color: var(--text-secondary);
+            margin: 0 0 0 0.25rem;
         }
-        .demo-submit-btn {
-            width: 100%;
-            padding: 0.85rem 1.25rem;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-2);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-        }
-        .demo-submit-btn:hover {
-            background: var(--surface-3);
-            border-color: var(--accent-1);
-            box-shadow: 0 0 16px rgba(0, 255, 213, 0.12);
-        }
+
         .demo-error-msg {
             font-size: 0.85rem;
-            color: var(--danger, #e53935);
-            margin-top: 0.5rem;
+            color: var(--danger-color);
+            margin: 0 0 0 0.25rem;
             display: none;
+            font-weight: 500;
         }
+
         .demo-error-msg.visible {
             display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .demo-submit-btn {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #000;
+            background: var(--accent-color);
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 0.5rem;
+        }
+
+        .demo-submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--accent-glow);
+            filter: brightness(1.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
+
     <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
         document.addEventListener('DOMContentLoaded', function() {
             var form = document.getElementById('demo-code-form');
             var input = document.getElementById('demo-code');
@@ -120,9 +221,14 @@
                         if (errEl) { errEl.textContent = 'Введите код для входа в демо.'; errEl.classList.add('visible'); }
                         return;
                     }
-                    // Передаём введённый код на сервер, он сам решает: это реферальный или общий код.
                     var url = startUrl + (startUrl.indexOf('?') !== -1 ? '&' : '?') + 'code=' + encodeURIComponent(code);
                     window.location.href = url;
+                });
+                
+                // Убираем ошибку при начале ввода
+                input.addEventListener('input', function() {
+                    input.classList.remove('error');
+                    if (errEl) errEl.classList.remove('visible');
                 });
             }
         });
@@ -131,22 +237,21 @@
 <body>
     <div class="demo-choose-container">
         <div class="demo-choose-card">
-            <section class="glass-panel">
-                <div class="demo-choose-header">
-                    <p class="hero-eyebrow">демонстрация</p>
-                    <h1 class="hero-title">Вход в демо-тур</h1>
-                    <p class="hero-subtitle">Введите код для запуска короткого тура по платформе</p>
+            <div class="demo-choose-header">
+                <span class="hero-eyebrow">Демонстрация</span>
+                <h1 class="hero-title">Вход в демо-тур</h1>
+                <p class="hero-subtitle">Введите код для запуска интерактивной экскурсии по платформе</p>
+            </div>
+            
+            <form id="demo-code-form" class="demo-code-form" action="{{ url_for('auth.demo_start', exam='ege') }}" method="get">
+                <div class="input-group">
+                    <label for="demo-code" class="demo-code-label">Код доступа</label>
+                    <input type="text" id="demo-code" name="code" placeholder="Например: DEMO-2026" autocomplete="off" class="demo-code-input">
+                    <p id="demo-code-error" class="demo-error-msg" role="alert"></p>
+                    <p class="demo-code-hint">Обязательное поле. Без правильного кода демо не запустится.</p>
                 </div>
-                <form id="demo-code-form" class="demo-code-form" action="{{ url_for('auth.demo_start', exam='ege') }}" method="get">
-                    <div>
-                        <label for="demo-code" class="demo-code-label">Код доступа</label>
-                        <input type="text" id="demo-code" name="code" placeholder="Введите код" autocomplete="off" required class="demo-code-input">
-                        <p class="demo-code-hint">Обязательное поле. Без правильного кода демо не запустится.</p>
-                        <p id="demo-code-error" class="demo-error-msg" role="alert"></p>
-                    </div>
-                    <button type="submit" class="demo-submit-btn">Начать демо</button>
-                </form>
-            </section>
+                <button type="submit" class="demo-submit-btn">Начать демо</button>
+            </form>
         </div>
     </div>
 </body>
