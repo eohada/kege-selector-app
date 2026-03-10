@@ -1290,6 +1290,10 @@
     document.documentElement.classList.remove('cinema-freeze');
     var isProfilePage = (window.location.pathname || '').indexOf('/user/') !== -1;
     if (isProfilePage) {
+      try {
+        // Чуть сдвигаем страницу вниз, чтобы профиль и кнопка были полностью в зоне фокуса.
+        window.scrollBy({ top: 80, behavior: 'smooth' });
+      } catch (e) {}
       var wrap = addEl('div', 'cinema-typewriter-wrap cinema-typewriter-wrap-creator cinema-creator-float-btn-only');
       var btn = addEl('button', 'cinema-continue-btn', wrap);
       btn.textContent = 'Далее';
