@@ -10,23 +10,23 @@ import sys
 # sys.path.insert(0, '/path/to/app')
 
 from app import create_app
-from app.models import db, UserNotification, BotAdmin
+from app.models import db, User, UserNotification
 
 def create_test_notification():
-    """Создает тестовое уведомление для первого активного BotAdmin'а."""
+    """Создает тестовое уведомление для первого админа системы."""
     app = create_app()
     with app.app_context():
-        # Найдем первого активного BotAdmin'а
-        admin = BotAdmin.query.filter_by(is_active=True).first()
+        # Найдем первого админа системы (creator, chief_admin или admin)
+        admin = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin'])).first()
         if not admin:
-            print("❌ Нет активных BotAdmin'ов!")
+            print("❌ Нет админов в системе!")
             return False
 
-        print(f"📤 Создаю тестовое уведомление для admin user_id={admin.user_id}")
+        print(f"📤 Создаю тестовое уведомление для админа: {admin.username} (ID {admin.id})")
 
         # Создаем тестовое уведомление
         notif = UserNotification(
-            user_id=admin.user_id,
+            user_id=admin.id,
             kind='referral_used',
             title='🧪 Тестовое уведомление о реферале',
             body='Это тестовое уведомление для проверки работы системы уведомлений.',
