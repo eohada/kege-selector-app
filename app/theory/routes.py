@@ -156,7 +156,10 @@ def theory_view(task_number):
         candidate = os.path.join(theory_root, filename)
         if os.path.exists(candidate):
             with open(candidate, 'r', encoding='utf-8') as f:
-                custom_html = f.read()
+                raw = f.read()
+            # allow the file to contain Jinja placeholders (e.g. {{ task_number }})
+            from flask import render_template_string
+            custom_html = render_template_string(raw, task_number=task_number)
     except Exception:
         logger.exception("Failed to load custom theory HTML for task_number=%s", task_number)
 
