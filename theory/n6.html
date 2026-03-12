@@ -2,7 +2,7 @@
     .theory-n6 {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         line-height: 1.6;
-        color: var(--text-primary);
+        color: var(--text-primary, #e1e1e1);
         max-width: 760px;
         margin: 0 auto;
         padding: 0;
@@ -13,7 +13,7 @@
         font-weight: 700;
         letter-spacing: -0.02em;
         margin-bottom: 1.5rem;
-        color: var(--text-primary);
+        color: var(--text-primary, #ffffff);
     }
 
     .theory-n6 h2 {
@@ -22,7 +22,7 @@
         letter-spacing: -0.01em;
         margin-top: 2.25rem;
         margin-bottom: 1rem;
-        border-bottom: 1px solid var(--stroke-1);
+        border-bottom: 1px solid var(--stroke-1, #333);
         padding-bottom: 0.6rem;
     }
 
@@ -35,13 +35,13 @@
 
     .theory-n6 p {
         margin-bottom: 1.1rem;
-        color: var(--text-primary);
+        color: var(--text-primary, #e1e1e1);
     }
 
-    .theory-n6 ul {
+    .theory-n6 ul, .theory-n6 ol {
         margin-bottom: 1.2rem;
         padding-left: 1.4rem;
-        color: var(--text-primary);
+        color: var(--text-primary, #e1e1e1);
     }
 
     .theory-n6 li {
@@ -59,7 +59,7 @@
         display: block;
         border-radius: 12px;
         box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
-        background-color: var(--surface-2);
+        background-color: var(--surface-2, #1e1e1e);
     }
 
     [data-theme="dark"] .theory-n6 img {
@@ -71,19 +71,31 @@
         opacity: 1;
     }
 
+    .theory-n6 .svg-container {
+        display: flex;
+        justify-content: center;
+        margin: 2rem 0;
+        background-color: var(--surface-2, #1e1e1e);
+        border: 1px solid var(--stroke-1, #333);
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
+        overflow-x: auto;
+    }
+
     .theory-n6 figcaption {
         margin-top: 0.65rem;
         font-size: 0.9rem;
-        color: var(--text-muted);
+        color: var(--text-muted, #999);
         text-align: center;
     }
 
     .theory-n6 .highlight {
-        background-color: var(--surface-2);
+        background-color: var(--surface-2, #1e1e1e);
         padding: 1.25rem 1.5rem;
         border-radius: 12px;
         margin: 1.75rem 0;
-        border: 1px solid var(--stroke-1);
+        border: 1px solid var(--stroke-1, #333);
     }
 
     .theory-n6 .highlight p:last-child {
@@ -93,7 +105,7 @@
     .theory-n6 .step {
         display: inline-block;
         font-weight: 600;
-        color: var(--accent-1);
+        color: var(--accent-1, #00ffd5);
         background-color: rgba(0, 255, 213, 0.08);
         padding: 2px 8px;
         border-radius: 999px;
@@ -106,98 +118,192 @@
         display: inline-block;
         font-size: 1.05rem;
         font-weight: 600;
-        color: var(--text-primary);
-        background-color: var(--surface-2);
+        color: var(--text-primary, #fff);
+        background-color: var(--surface-2, #1e1e1e);
         padding: 0.75rem 1.4rem;
         border-radius: 999px;
         margin-top: 0.9rem;
-        border: 1px solid var(--stroke-1);
+        border: 1px solid var(--stroke-1, #333);
+    }
+    
+    .theory-n6 pre {
+        background-color: var(--surface-2, #1e1e1e);
+        border: 1px solid var(--stroke-1, #333);
+        padding: 1.25rem;
+        border-radius: 12px;
+        overflow-x: auto;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.95rem;
+        color: var(--text-primary, #e1e1e1);
+        margin: 1.5rem 0;
+        line-height: 1.4;
+    }
+
+    .theory-n6 code {
+        font-family: 'Consolas', 'Monaco', monospace;
+        background-color: var(--surface-2, #1e1e1e);
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.9em;
+        color: var(--accent-1, #00ffd5);
+        border: 1px solid var(--stroke-1, #333);
+    }
+
+    .theory-n6 pre code {
+        background-color: transparent;
+        padding: 0;
+        border: none;
+        color: inherit;
+    }
+    
+    .theory-n6 table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+        background-color: var(--surface-2, #1e1e1e);
+        border-radius: 8px;
+        overflow: hidden;
+        font-size: 0.9rem;
+    }
+    
+    .theory-n6 th, .theory-n6 td {
+        border: 1px solid var(--stroke-1, #333);
+        padding: 10px 15px;
+        text-align: left;
+    }
+    
+    .theory-n6 th {
+        background-color: rgba(0, 255, 213, 0.1);
+        font-weight: 600;
+        color: var(--text-primary, #fff);
     }
 </style>
 
 <article class="theory-n6">
-        <h1>Решение задания №{{ task_number }} ЕГЭ по информатике: Графы</h1>
+    <h1>Решение задания №6 ЕГЭ по информатике: Черепаха с Python</h1>
+
+    <section>
+        <h2>Описание задачи</h2>
+        <p>Задание №6 из ЕГЭ по информатике 2025 года направлено на проверку навыков работы с простейшими алгоритмами управления исполнителями.<span style="display:none;">[cite: 967]</span> Это базовое задание, на решение которого отводится около 4 минут.<span style="display:none;">[cite: 971]</span> Исполнитель «Черепаха» перемещается по плоскости с декартовой системой координат.<span style="display:none;">[cite: 973]</span></p>
         
+        <p><strong>Важные начальные условия Черепахи:</strong></p>
+        <ul>
+            <li>Находится в точке с координатами <code>(0, 0)</code>.<span style="display:none;">[cite: 974]</span></li>
+            <li>Её голова направлена <strong>вдоль положительного направления оси OY (вверх)</strong>.<span style="display:none;">[cite: 974]</span></li>
+            <li>Хвост по умолчанию опущен, она оставляет след при движении.<span style="display:none;">[cite: 974]</span></li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Словарь команд Черепахи</h2>
+        <p>Для перевода алгоритма из условия задачи в рабочий код мы будем использовать стандартную библиотеку <code>turtle</code> в Python.<span style="display:none;">[cite: 993, 1048]</span> Вот как команды из ЕГЭ переводятся на язык Python:</p>
+        
+        <table>
+            <tr><th>Команда в КИМ</th><th>Код на Python</th><th>Описание</th></tr>
+            <tr><td>Поднять хвост</td><td><code>penup()</code></td><td>Перестает рисовать линию, перемещается без следа.<span style="display:none;">[cite: 976, 1036]</span></td></tr>
+            <tr><td>Опустить хвост</td><td><code>pendown()</code></td><td>Начинает оставлять след (режим рисования).<span style="display:none;">[cite: 976, 1035]</span></td></tr>
+            <tr><td>Вперёд n</td><td><code>forward(n * k)</code></td><td>Идет вперед на n шагов. <strong>Обязательно умножаем на масштаб k!</strong><span style="display:none;">[cite: 976, 1031]</span></td></tr>
+            <tr><td>Назад n</td><td><code>backward(n * k)</code></td><td>Идет назад на n шагов. Умножаем на масштаб k.<span style="display:none;">[cite: 977, 1031]</span></td></tr>
+            <tr><td>Направо m</td><td><code>right(m)</code></td><td>Поворот по часовой стрелке на m градусов. <strong>Углы на k НЕ умножаются!</strong><span style="display:none;">[cite: 979, 1032]</span></td></tr>
+            <tr><td>Налево m</td><td><code>left(m)</code></td><td>Поворот против часовой стрелки на m градусов.<span style="display:none;">[cite: 980, 1032]</span></td></tr>
+            <tr><td>Повтори c [ ... ]</td><td><code>for i in range(c):</code></td><td>Цикл для повторения команд c раз.<span style="display:none;"></span></td></tr>
+        </table>
+    </section>
+
+    <section>
+        <h2>Разбор типовой задачи из демоверсии ФИПИ</h2>
+        
+        <div class="highlight">
+            <p><strong>Алгоритм для черепахи:</strong><br>
+            Повтори 2 [Вперёд 21 Направо 90 Вперёд 27 Направо 90]<span style="display:none;">[cite: 986]</span><br>
+            Поднять хвост<span style="display:none;">[cite: 986]</span><br>
+            Вперёд 9 Направо 90 Вперёд 10 Налево 90<span style="display:none;">[cite: 987]</span><br>
+            Опустить хвост<span style="display:none;">[cite: 988]</span><br>
+            Повтори 2 [Вперёд 86 Направо 90 Вперёд 47 Направо 90]<span style="display:none;">[cite: 989]</span><br>
+            <br>
+            <strong>Задача:</strong> Определите, сколько целочисленных точек находится внутри области пересечения двух фигур, построенных по описанному алгоритму, включая точки на границах.<span style="display:none;">[cite: 990]</span></p>
+        </div>
+
+        <h3><span class="step">Шаг 1</span> Настройка холста и Черепахи</h3>
+        <p>Начинаем код с подключения библиотеки, задания размеров окна и установки начального направления черепашки вверх.<span style="display:none;">[cite: 1087]</span> Для удобства масштабирования задаем коэффициент <code>k = 10</code>.<span style="display:none;">[cite: 1051, 1106]</span> Обязательно используем <code>tracer(0)</code>, чтобы фигура рисовалась мгновенно.<span style="display:none;">[cite: 1061, 1110]</span></p>
+
+<pre><code>from turtle import *<span style="display:none;">[cite: 1053, 1098]</span>
+
+screensize(2000, 2000) # Размер рабочей области<span style="display:none;">[cite: 1055, 1099]</span>
+shape("turtle")        # Меняет вид курсора на черепашку<span style="display:none;">[cite: 1056, 1105]</span>
+k = 10                 # Коэффициент масштаба<span style="display:none;">[cite: 1057, 1106]</span>
+
+left(90)   # Устанавливаем направление вверх (по оси OY)<span style="display:none;">[cite: 1060, 1108]</span>
+tracer(0)  # Отключаем анимацию для быстрого рисования<span style="display:none;">[cite: 1061, 1110]</span>
+pendown()  # Опустить хвост, начать рисовать<span style="display:none;">[cite: 1061, 1111]</span></code></pre>
+
+        <h3><span class="step">Шаг 2</span> Рисование первой фигуры</h3>
+        <p>Реализуем первый цикл из алгоритма. Черепашка нарисует прямоугольник со сторонами 21 и 27.<span style="display:none;">[cite: 1127]</span></p>
+<pre><code># Рисование первой фигуры
+for i in range(2):<span style="display:none;">[cite: 1063, 1114]</span>
+    forward(21 * k)<span style="display:none;">[cite: 1064, 1115]</span>
+    right(90)<span style="display:none;">[cite: 1064, 1115]</span>
+    forward(27 * k)<span style="display:none;">[cite: 1064, 1115]</span>
+    right(90)<span style="display:none;">[cite: 1064, 1115]</span></code></pre>
+
+        <h3><span class="step">Шаг 3</span> Перемещение и вторая фигура</h3>
+        <p>Поднимаем хвост, чтобы перескочить на новую позицию без рисования линий, выполняем команды смещения и снова опускаем перо.<span style="display:none;">[cite: 1129, 1130]</span> Затем рисуем второй (более вытянутый) прямоугольник.<span style="display:none;">[cite: 1152, 1171]</span></p>
+
+<pre><code>penup()          # Поднять хвост<span style="display:none;">[cite: 1065, 1144]</span>
+forward(9 * k)   # Вперёд на 9<span style="display:none;">[cite: 1067, 1145]</span>
+right(90)        # Направо 90<span style="display:none;">[cite: 1068, 1146]</span>
+forward(10 * k)  # Вперёд на 10<span style="display:none;">[cite: 1068, 1148]</span>
+left(90)         # Налево 90<span style="display:none;">[cite: 1068, 1150]</span>
+pendown()        # Опустить хвост<span style="display:none;">[cite: 1073, 1151]</span>
+
+# Рисование второй фигуры
+for i in range(2):<span style="display:none;">[cite: 1076, 1155]</span>
+    forward(86 * k)<span style="display:none;">[cite: 1077, 1156]</span>
+    right(90)<span style="display:none;">[cite: 1077, 1156]</span>
+    forward(47 * k)<span style="display:none;">[cite: 1077, 1156]</span>
+    right(90)<span style="display:none;">[cite: 1078, 1156]</span></code></pre>
+
+        <h3><span class="step">Шаг 4</span> Отрисовка сетки точек</h3>
+        <p>Чтобы посчитать точки с целыми координатами внутри пересечения, необходимо замостить рабочую область точками красного цвета.<span style="display:none;">[cite: 1172, 1173]</span> Вложенные циклы <code>for</code> перебирают координаты <code>x</code> и <code>y</code>.<span style="display:none;">[cite: 1183, 1184]</span></p>
+
+<pre><code>penup()<span style="display:none;">[cite: 1079, 1182]</span>
+for x in range(-10, 60):  # Перебираем X<span style="display:none;">[cite: 1081, 1186]</span>
+    for y in range(-10, 100): # Перебираем Y<span style="display:none;">[cite: 1082, 1186]</span>
+        goto(x * k, y * k) # Перемещаемся в координату с учетом масштаба<span style="display:none;">[cite: 1082, 1187]</span>
+        dot(3, "red")      # Рисуем точку радиусом 3 пикселя<span style="display:none;">[cite: 1083, 1189]</span>
+
+done() # Оставляем окно открытым<span style="display:none;">[cite: 1084, 1202]</span></code></pre>
+
+        <h3>Визуализация результата и подсчет</h3>
+        <p>Алгоритм отрисует два прямоугольника: первый <code>21×27</code> и второй <code>86×47</code>, смещенный относительно начала координат.<span style="display:none;">[cite: 1207, 1208]</span></p>
+
         <figure>
-            <img src="https://itchief.ru/assets/covers/python/ege-1.png" alt="Обложка задания 1 ЕГЭ по информатике">
+            <div class="svg-container">
+                <svg viewBox="-5 -5 180 140" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+                    <pattern id="dotGrid" width="6" height="6" patternUnits="userSpaceOnUse">
+                        <circle cx="2" cy="2" r="0.7" fill="#ff4757" opacity="0.5"/>
+                    </pattern>
+                    <rect x="-10" y="-10" width="200" height="150" fill="url(#dotGrid)"/>
+                    
+                    <line x1="10" y1="120" x2="10" y2="0" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
+                    <line x1="0" y1="110" x2="160" y2="110" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
+
+                    <rect x="10" y="68" width="54" height="42" fill="none" stroke="var(--text-primary, #fff)" stroke-width="1.5" stroke-dasharray="2,2"/>
+                    
+                    <rect x="30" y="0" width="94" height="92" fill="none" stroke="var(--accent-1, #00ffd5)" stroke-width="1.5"/>
+
+                    <rect x="30" y="68" width="34" height="24" fill="rgba(0, 255, 213, 0.2)" stroke="var(--accent-1, #00ffd5)" stroke-width="2"/>
+                    <text x="47" y="83" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold" font-family="sans-serif">Пересечение</text>
+                    
+                    <circle cx="10" cy="110" r="3" fill="#fff"/>
+                </svg>
+            </div>
+            <figcaption>Область пересечения двух фигур, заполненная точками</figcaption>
         </figure>
 
-        <section>
-            <h2>Описание задания</h2>
-            <p>Задания №{{ task_number }} (по графам) из ЕГЭ по информатике проверяют навыки анализа и интерпретации информации, представленной в виде схем, таблиц или матриц смежности. Они могут включать:</p>
-            <ul>
-                <li>определение соответствия вершин и номеров в таблице;</li>
-                <li>вычисление сумм длин дорог между пунктами;</li>
-                <li>нахождение количества рёбер, степени вершины, маршрутов или других свойств графа.</li>
-            </ul>
-            
-            <p><strong>Условие задачи:</strong> На рисунке показана схема дорог между населёнными пунктами (граф), а в таблице – матрица смежности, где строки и столбцы соответствуют каждому пункту. Звёздочка (*) или числовое значение в ячейке таблицы указывает на наличие дороги или её протяжённость между двумя пунктами.</p>
-            
-            <h3>Основные понятия:</h3>
-            <ul>
-                <li><strong>Схема (граф)</strong> – вершины обозначают пункты, рёбра — дороги между ними.</li>
-                <li><strong>Таблица (матрица смежности)</strong> – N × N таблица, где ячейка показывает наличие дороги или её длину.</li>
-                <li><strong>Неориентированный граф</strong> – дорога может использоваться в любом направлении.</li>
-            </ul>
-        </section>
+        <p>Математически, область пересечения — это прямоугольник. Считаем точки внутри пересечения двух фигур, включая границы.<span style="display:none;">[cite: 1211]</span> По оси X точки идут от 10 до 27 (длина 17, итого 18 точек). По оси Y — от 9 до 21 (длина 12, итого 13 точек). Перемножаем: <code>18 * 13 = 234</code>.<span style="display:none;">[cite: 1211]</span></p>
 
-        <section>
-            <h2>Универсальный алгоритм решения</h2>
-            
-            <p><span class="step">Шаг 1</span> <strong>Анализ графа:</strong> Определите степень каждой вершины (количество соединений). Найдите уникальные вершины — они помогут быстро сопоставить схему и таблицу.</p>
-            
-            <p><span class="step">Шаг 2</span> <strong>Сопоставление:</strong> Сравните связи на схеме и данные в таблице. Двигайтесь от известных пунктов к неизвестным.</p>
-            
-            <p><span class="step">Шаг 3</span> <strong>Вычисления:</strong> Если требуется сумма или длина, аккуратно сложите значения нужных рёбер, используя таблицу смежности для проверки.</p>
-            
-            <p><span class="step">Шаг 4</span> <strong>Формат ответа:</strong> Внимательно прочитайте условие (порядок возрастания, с разделителями или без).</p>
-        </section>
+        <div class="answer">Ответ: 234<span style="display:none;">[cite: 1217]</span></div>
+    </section>
 
-        <section>
-            <h2>Разбор варианта из демоверсии ФИПИ</h2>
-            
-            <div class="highlight">
-                <p><strong>Задача:</strong> На рисунке изображена схема дорог. В таблице звёздочкой обозначено наличие дороги. Определите, какими номерами в таблице могут соответствовать населённые пункты B и C. В ответе запишите эти два номера в возрастающем порядке без пробелов.</p>
-            </div>
-
-            <figure>
-                <img src="https://itchief.ru/assets/images/python/ege-1/fipi-2025.webp" alt="Граф дорог и таблица смежности">
-                <figcaption>Исходная схема и матрица смежности</figcaption>
-            </figure>
-
-            <h3>Ход решения:</h3>
-            
-            <p><span class="step">Шаг 1</span> <strong>Определяем степени вершин.</strong></p>
-            <ul>
-                <li>На графе: вершины <strong>A, B, C</strong> имеют по 2 дороги; вершины <strong>D, E, F, G</strong> имеют по 3 дороги.</li>
-                <li>В таблице: вершины <strong>3, 6, 7</strong> соединены с двумя другими (степень 2); вершины <strong>1, 2, 4, 5</strong> соединены с тремя другими (степень 3).</li>
-            </ul>
-            <p>Делаем вывод: {A, B, C} соответствуют номерам {3, 6, 7}, а {D, E, F, G} соответствуют {1, 2, 4, 5}.</p>
-
-            <p><span class="step">Шаг 2</span> <strong>Анализируем вершины степени 3:</strong></p>
-            <ul>
-                <li><strong>Вершина 1:</strong> соединена с 2, 3 и 4. То есть имеет двух соседей с 3 дорогами и одного с 2 дорогами. На графе это F и G. Значит, 1 – это F или G.</li>
-                <li><strong>Вершина 2:</strong> соединена с 1 (3 дороги), 3 (2 дороги) и 6 (2 дороги). Два соседа имеют по 2 дороги — это D или E.</li>
-                <li><strong>Вершина 4:</strong> аналогично вершине 1, это F или G.</li>
-                <li><strong>Вершина 5:</strong> аналогично вершине 2, это D или E.</li>
-            </ul>
-
-            <figure>
-                <img src="https://itchief.ru/assets/images/python/ege-1/fipi-2025-graph.webp" alt="Анализ связей вершин">
-                <figcaption>Визуализация связей между вершинами разных степеней</figcaption>
-            </figure>
-
-            <p><span class="step">Шаг 3</span> <strong>Анализируем вершины степени 2 {3, 6, 7}:</strong></p>
-            <ul>
-                <li><strong>Вершина 3:</strong> соединена с 1 (F/G) и 2 (D/E). Подходит под B или C.</li>
-                <li><strong>Вершина 6:</strong> соединена с 2 (D/E) и 5 (D/E). Значит, оба её соседа имеют степень 3. На графе такая вершина только одна — это A.</li>
-                <li><strong>Вершина 7:</strong> соединена с 4 (F/G) и 5 (D/E). Подходит под B или C.</li>
-            </ul>
-
-            <p><span class="step">Шаг 4</span> <strong>Итог:</strong></p>
-            <p>Вершина A → 6. Вершины B и C → 3 и 7. По условию задачи нужно записать номера для B и C в порядке возрастания.</p>
-            
-            <div class="answer">Ответ: 37</div>
-        </section>
-
-    </article>
+</article>

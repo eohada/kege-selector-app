@@ -143,10 +143,6 @@
         border: none;
         color: inherit;
     }
-
-    .cite-hidden {
-        display: none !important;
-    }
 </style>
 
 <article class="theory-n5">
@@ -158,26 +154,26 @@
 
     <section>
         <h2>Описание задачи</h2>
-        <p>Задание №5 из ЕГЭ по информатике направлено на проверку навыков выполнения простейших алгоритмов.<span class="cite-hidden">[cite: 628]</span> Это базовое задание, на решение которого отводится 4 минуты.<span class="cite-hidden">[cite: 629, 634]</span> Суть задачи обычно сводится к тому, что некий алгоритм принимает натуральное число <code>N</code>, преобразует его в новую систему счисления (чаще всего в двоичную), производит манипуляции со строкой и переводит результат обратно в десятичное число <code>R</code>.<span class="cite-hidden">[cite: 635, 636, 640]</span></p>
+        <p>Задание №5 из ЕГЭ по информатике направлено на проверку навыков выполнения простейших алгоритмов.<span style="display:none;">[cite: 628]</span> Это базовое задание, на решение которого отводится 4 минуты.<span style="display:none;">[cite: 629, 634]</span> Суть задачи обычно сводится к тому, что некий алгоритм принимает натуральное число <code>N</code>, преобразует его в новую систему счисления (чаще всего в двоичную), производит манипуляции со строкой и переводит результат обратно в десятичное число <code>R</code>.<span style="display:none;">[cite: 635, 636, 640]</span></p>
     </section>
 
     <section>
         <h2>Базовые операции в Python для 5 задания</h2>
         
         <h3>1. Перевод в двоичную запись и обратно</h3>
-        <p>Для перевода числа в двоичную систему используется встроенная функция <code>bin()</code>.<span class="cite-hidden">[cite: 747]</span> Она возвращает строку вида <code>'0b101'</code>, где <code>'0b'</code> — технический префикс.<span class="cite-hidden">[cite: 747]</span> Чтобы избавиться от него, мы применяем срез <code>[2:]</code>.<span class="cite-hidden">[cite: 748]</span></p>
+        <p>Для перевода числа в двоичную систему используется встроенная функция <code>bin()</code>.<span style="display:none;">[cite: 747]</span> Она возвращает строку вида <code>'0b101'</code>, где <code>'0b'</code> — технический префикс.<span style="display:none;">[cite: 747]</span> Чтобы избавиться от него, мы применяем срез <code>[2:]</code>.<span style="display:none;">[cite: 748]</span></p>
         <pre><code>n = 5
 s = bin(n)[2:] # Результат: '101'</code></pre>
         
-        <p>Для обратного преобразования строки с двоичной записью в десятичное число используется функция <code>int(строка, основание)</code>.<span class="cite-hidden">[cite: 763, 764]</span></p>
+        <p>Для обратного преобразования строки с двоичной записью в десятичное число используется функция <code>int(строка, основание)</code>.<span style="display:none;">[cite: 763, 764]</span></p>
         <pre><code>r = int('101', 2) # Результат: 5</code></pre>
 
         <h3>2. Проверка на четность</h3>
-        <p>Для проверки четности используется остаток от деления на 2 (<code>% 2</code>).<span class="cite-hidden">[cite: 782]</span></p>
+        <p>Для проверки четности используется остаток от деления на 2 (<code>% 2</code>).<span style="display:none;">[cite: 782]</span></p>
         <pre><code>if n % 2 == 0:
-    # Действия для четных чисел<span class="cite-hidden">[cite: 819, 820]</span>
+    # Действия для четных чисел<span style="display:none;">[cite: 819, 820]</span>
 else:
-    # Действия для нечетных чисел<span class="cite-hidden">[cite: 821, 822]</span></code></pre>
+    # Действия для нечетных чисел<span style="display:none;">[cite: 821, 822]</span></code></pre>
     </section>
 
     <section>
@@ -219,36 +215,36 @@ c = sum(map(int, N2)) # Результат: 5</code></pre>
         <h2>Разбор типовой задачи</h2>
         
         <div class="highlight">
-            <p><strong>Условие:</strong> Алгоритм принимает натуральное число N. Сначала определяется его двоичная запись.<span class="cite-hidden">[cite: 635, 636]</span> Затем:<br>
-            • Если N чётное, в начало записи добавляется "10".<span class="cite-hidden">[cite: 638]</span><br>
-            • Если N нечётное, в начало добавляется "1", а в конец "01".<span class="cite-hidden">[cite: 639]</span><br>
-            Найдите минимальное натуральное число N, для которого результат R больше 516.<span class="cite-hidden">[cite: 642]</span></p>
+            <p><strong>Условие:</strong> Алгоритм принимает натуральное число N. Сначала определяется его двоичная запись.<span style="display:none;">[cite: 635, 636]</span> Затем:<br>
+            • Если N чётное, в начало записи добавляется "10".<span style="display:none;">[cite: 638]</span><br>
+            • Если N нечётное, в начало добавляется "1", а в конец "01".<span style="display:none;">[cite: 639]</span><br>
+            Найдите минимальное натуральное число N, для которого результат R больше 516.<span style="display:none;">[cite: 642]</span></p>
         </div>
 
         <h3>Решение на Python:</h3>
-        <p>Код выполняет последовательный перебор чисел, применяя алгоритм и проверяя выполнение условия R > 516.<span class="cite-hidden">[cite: 735]</span> Такой подход гарантирует нахождение минимального значения.<span class="cite-hidden">[cite: 736]</span></p>
+        <p>Код выполняет последовательный перебор чисел, применяя алгоритм и проверяя выполнение условия R > 516.<span style="display:none;">[cite: 735]</span> Такой подход гарантирует нахождение минимального значения.<span style="display:none;">[cite: 736]</span></p>
 
-        <pre><code>def transform(num):<span class="cite-hidden">[cite: 660]</span>
-    binary = bin(num)[2:]<span class="cite-hidden">[cite: 662]</span>
+        <pre><code>def transform(num):<span style="display:none;">[cite: 660]</span>
+    binary = bin(num)[2:]<span style="display:none;">[cite: 662]</span>
     
-    if num % 2 == 0:<span class="cite-hidden">[cite: 663]</span>
-        result = "10" + binary<span class="cite-hidden">[cite: 664, 666]</span>
-    else:<span class="cite-hidden">[cite: 665]</span>
-        result = "1" + binary + "01"<span class="cite-hidden">[cite: 667]</span>
+    if num % 2 == 0:<span style="display:none;">[cite: 663]</span>
+        result = "10" + binary<span style="display:none;">[cite: 664, 666]</span>
+    else:<span style="display:none;">[cite: 665]</span>
+        result = "1" + binary + "01"<span style="display:none;">[cite: 667]</span>
         
-    return int(result, 2)<span class="cite-hidden">[cite: 668]</span>
+    return int(result, 2)<span style="display:none;">[cite: 668]</span>
 
-n = 1<span class="cite-hidden">[cite: 670]</span>
-while True:<span class="cite-hidden">[cite: 671]</span>
-    r = transform(n)<span class="cite-hidden">[cite: 672]</span>
-    if r > 516:<span class="cite-hidden">[cite: 673]</span>
-        print("Минимальное число n:", n)<span class="cite-hidden">[cite: 675]</span>
-        break<span class="cite-hidden">[cite: 676]</span>
-    n += 1<span class="cite-hidden">[cite: 677]</span></code></pre>
+n = 1<span style="display:none;">[cite: 670]</span>
+while True:<span style="display:none;">[cite: 671]</span>
+    r = transform(n)<span style="display:none;">[cite: 672]</span>
+    if r > 516:<span style="display:none;">[cite: 673]</span>
+        print("Минимальное число n:", n)<span style="display:none;">[cite: 675]</span>
+        break<span style="display:none;">[cite: 676]</span>
+    n += 1<span style="display:none;">[cite: 677]</span></code></pre>
 
-        <p>После запуска программы вычисляется минимальное значение N, для которого R > 516. Результат: N = 65.<span class="cite-hidden">[cite: 737]</span></p>
+        <p>После запуска программы вычисляется минимальное значение N, для которого R > 516. Результат: N = 65.<span style="display:none;">[cite: 737]</span></p>
 
-        <div class="answer">Ответ: 65<span class="cite-hidden">[cite: 738]</span></div>
+        <div class="answer">Ответ: 65<span style="display:none;">[cite: 738]</span></div>
     </section>
 
 </article>
