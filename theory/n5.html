@@ -38,7 +38,7 @@
         color: var(--text-primary);
     }
 
-    .theory-n5 ul {
+    .theory-n5 ul, .theory-n5 ol {
         margin-bottom: 1.2rem;
         padding-left: 1.4rem;
         color: var(--text-primary);
@@ -113,91 +113,142 @@
         margin-top: 0.9rem;
         border: 1px solid var(--stroke-1);
     }
+    
+    .theory-n5 pre {
+        background-color: var(--surface-2);
+        border: 1px solid var(--stroke-1);
+        padding: 1.25rem;
+        border-radius: 12px;
+        overflow-x: auto;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.95rem;
+        color: var(--text-primary);
+        margin: 1.5rem 0;
+        line-height: 1.4;
+    }
+
+    .theory-n5 code {
+        font-family: 'Consolas', 'Monaco', monospace;
+        background-color: var(--surface-2);
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.9em;
+        color: var(--accent-1);
+        border: 1px solid var(--stroke-1);
+    }
+
+    .theory-n5 pre code {
+        background-color: transparent;
+        padding: 0;
+        border: none;
+        color: inherit;
+    }
+
+    .cite-hidden {
+        display: none !important;
+    }
 </style>
 
 <article class="theory-n5">
-        <h1>Решение задания №{{ task_number }} ЕГЭ по информатике: Графы</h1>
+    <h1>Задание №5 ЕГЭ по информатике: Исполнение алгоритмов</h1>
+    
+    <figure>
+        <img src="https://itchief.ru/assets/images/python/ege-5/cover.webp" alt="Обложка задания 5 ЕГЭ по информатике" onerror="this.src='https://placehold.co/760x400/1e1e1e/00ffd5?text=Задание+5+ЕГЭ'">
+    </figure>
+
+    <section>
+        <h2>Описание задачи</h2>
+        <p>Задание №5 из ЕГЭ по информатике направлено на проверку навыков выполнения простейших алгоритмов.<span class="cite-hidden">[cite: 628]</span> Это базовое задание, на решение которого отводится 4 минуты.<span class="cite-hidden">[cite: 629, 634]</span> Суть задачи обычно сводится к тому, что некий алгоритм принимает натуральное число <code>N</code>, преобразует его в новую систему счисления (чаще всего в двоичную), производит манипуляции со строкой и переводит результат обратно в десятичное число <code>R</code>.<span class="cite-hidden">[cite: 635, 636, 640]</span></p>
+    </section>
+
+    <section>
+        <h2>Базовые операции в Python для 5 задания</h2>
         
-        <figure>
-            <img src="https://itchief.ru/assets/covers/python/ege-1.png" alt="Обложка задания 1 ЕГЭ по информатике">
-        </figure>
+        <h3>1. Перевод в двоичную запись и обратно</h3>
+        <p>Для перевода числа в двоичную систему используется встроенная функция <code>bin()</code>.<span class="cite-hidden">[cite: 747]</span> Она возвращает строку вида <code>'0b101'</code>, где <code>'0b'</code> — технический префикс.<span class="cite-hidden">[cite: 747]</span> Чтобы избавиться от него, мы применяем срез <code>[2:]</code>.<span class="cite-hidden">[cite: 748]</span></p>
+        <pre><code>n = 5
+s = bin(n)[2:] # Результат: '101'</code></pre>
+        
+        <p>Для обратного преобразования строки с двоичной записью в десятичное число используется функция <code>int(строка, основание)</code>.<span class="cite-hidden">[cite: 763, 764]</span></p>
+        <pre><code>r = int('101', 2) # Результат: 5</code></pre>
 
-        <section>
-            <h2>Описание задания</h2>
-            <p>Задания №{{ task_number }} (по графам) из ЕГЭ по информатике проверяют навыки анализа и интерпретации информации, представленной в виде схем, таблиц или матриц смежности. Они могут включать:</p>
-            <ul>
-                <li>определение соответствия вершин и номеров в таблице;</li>
-                <li>вычисление сумм длин дорог между пунктами;</li>
-                <li>нахождение количества рёбер, степени вершины, маршрутов или других свойств графа.</li>
-            </ul>
-            
-            <p><strong>Условие задачи:</strong> На рисунке показана схема дорог между населёнными пунктами (граф), а в таблице – матрица смежности, где строки и столбцы соответствуют каждому пункту. Звёздочка (*) или числовое значение в ячейке таблицы указывает на наличие дороги или её протяжённость между двумя пунктами.</p>
-            
-            <h3>Основные понятия:</h3>
-            <ul>
-                <li><strong>Схема (граф)</strong> – вершины обозначают пункты, рёбра — дороги между ними.</li>
-                <li><strong>Таблица (матрица смежности)</strong> – N × N таблица, где ячейка показывает наличие дороги или её длину.</li>
-                <li><strong>Неориентированный граф</strong> – дорога может использоваться в любом направлении.</li>
-            </ul>
-        </section>
+        <h3>2. Проверка на четность</h3>
+        <p>Для проверки четности используется остаток от деления на 2 (<code>% 2</code>).<span class="cite-hidden">[cite: 782]</span></p>
+        <pre><code>if n % 2 == 0:
+    # Действия для четных чисел<span class="cite-hidden">[cite: 819, 820]</span>
+else:
+    # Действия для нечетных чисел<span class="cite-hidden">[cite: 821, 822]</span></code></pre>
+    </section>
 
-        <section>
-            <h2>Универсальный алгоритм решения</h2>
-            
-            <p><span class="step">Шаг 1</span> <strong>Анализ графа:</strong> Определите степень каждой вершины (количество соединений). Найдите уникальные вершины — они помогут быстро сопоставить схему и таблицу.</p>
-            
-            <p><span class="step">Шаг 2</span> <strong>Сопоставление:</strong> Сравните связи на схеме и данные в таблице. Двигайтесь от известных пунктов к неизвестным.</p>
-            
-            <p><span class="step">Шаг 3</span> <strong>Вычисления:</strong> Если требуется сумма или длина, аккуратно сложите значения нужных рёбер, используя таблицу смежности для проверки.</p>
-            
-            <p><span class="step">Шаг 4</span> <strong>Формат ответа:</strong> Внимательно прочитайте условие (порядок возрастания, с разделителями или без).</p>
-        </section>
+    <section>
+        <h2>Продвинутые техники (Мастхэв для ЕГЭ)</h2>
 
-        <section>
-            <h2>Разбор варианта из демоверсии ФИПИ</h2>
-            
-            <div class="highlight">
-                <p><strong>Задача:</strong> На рисунке изображена схема дорог. В таблице звёздочкой обозначено наличие дороги. Определите, какими номерами в таблице могут соответствовать населённые пункты B и C. В ответе запишите эти два номера в возрастающем порядке без пробелов.</p>
-            </div>
+        <h3>Гайд по срезам (Slices)</h3>
+        <p>Срезы в Python — это мощный инструмент для извлечения части строки (или списка). Общий синтаксис среза выглядит так: <code>строка[start:stop:step]</code>.</p>
+        <ul>
+            <li><code>start</code> — индекс, с которого начинается срез (включительно).</li>
+            <li><code>stop</code> — индекс, на котором срез заканчивается (<strong>не включительно</strong>).</li>
+            <li><code>step</code> — шаг, с которым извлекаются элементы.</li>
+        </ul>
+        <p><strong>Примеры использования:</strong></p>
+        <pre><code>s = "0123456789"
+print(s[2:])    # "23456789" (от индекса 2 до конца)
+print(s[:4])    # "0123" (от начала до индекса 4, не включая 4)
+print(s[-2:])   # "89" (два последних символа)
+print(s[:-1])   # "012345678" (вся строка кроме последнего символа)
+print(s[::-1])  # "9876543210" (строка задом наперед, шаг -1)</code></pre>
 
-            <figure>
-                <img src="https://itchief.ru/assets/images/python/ege-1/fipi-2025.webp" alt="Граф дорог и таблица смежности">
-                <figcaption>Исходная схема и матрица смежности</figcaption>
-            </figure>
+        <h3>Перевод в любую систему счисления (Кастомная функция)</h3>
+        <p>Если в задании просят перевести число не в двоичную, а, например, в 7-ичную, 3-ичную или 5-ичную систему, функция <code>bin()</code> уже не поможет. Нужно написать свою функцию на основе алгоритма деления "уголком".</p>
+        <pre><code>def perevod(n):
+    t = ''
+    while n > 0:
+        t += str(n % 7)  # Получаем остаток (младшую цифру)
+        n //= 7          # Отсекаем обработанный разряд
+    return t[::-1]       # Разворачиваем строку с помощью среза</code></pre>
+        <p><em>Объяснение:</em> Мы в цикле делим число <code>n</code> на основание системы (в данном случае 7). Остаток от деления — это очередная цифра нового числа. Но так как при делении столбиком мы получаем цифры с конца (от младших к старшим), итоговую строку <code>t</code> перед возвратом обязательно нужно <strong>перевернуть задом наперед</strong> с помощью среза <code>[::-1]</code>.</p>
 
-            <h3>Ход решения:</h3>
-            
-            <p><span class="step">Шаг 1</span> <strong>Определяем степени вершин.</strong></p>
-            <ul>
-                <li>На графе: вершины <strong>A, B, C</strong> имеют по 2 дороги; вершины <strong>D, E, F, G</strong> имеют по 3 дороги.</li>
-                <li>В таблице: вершины <strong>3, 6, 7</strong> соединены с двумя другими (степень 2); вершины <strong>1, 2, 4, 5</strong> соединены с тремя другими (степень 3).</li>
-            </ul>
-            <p>Делаем вывод: {A, B, C} соответствуют номерам {3, 6, 7}, а {D, E, F, G} соответствуют {1, 2, 4, 5}.</p>
+        <h3>Подсчет суммы цифр в строке: sum(map(int, s))</h3>
+        <p>Иногда по условию задачи требуется найти сумму цифр в получившемся числе или строке. Чтобы не писать громоздкие циклы, используется элегантная конструкция <code>sum(map(int, s))</code>.</p>
+        <pre><code>N2 = "101102"
+c = sum(map(int, N2)) # Результат: 5</code></pre>
+        <p><em>Как это работает:</em> Функция <code>map(int, N2)</code> берёт строку <code>N2</code>, разбивает её на отдельные символы ('1', '0', '1'...) и к каждому применяет функцию <code>int()</code>, превращая их в числа. Затем функция <code>sum()</code> просто складывает получившийся набор чисел.</p>
+    </section>
 
-            <p><span class="step">Шаг 2</span> <strong>Анализируем вершины степени 3:</strong></p>
-            <ul>
-                <li><strong>Вершина 1:</strong> соединена с 2, 3 и 4. То есть имеет двух соседей с 3 дорогами и одного с 2 дорогами. На графе это F и G. Значит, 1 – это F или G.</li>
-                <li><strong>Вершина 2:</strong> соединена с 1 (3 дороги), 3 (2 дороги) и 6 (2 дороги). Два соседа имеют по 2 дороги — это D или E.</li>
-                <li><strong>Вершина 4:</strong> аналогично вершине 1, это F или G.</li>
-                <li><strong>Вершина 5:</strong> аналогично вершине 2, это D или E.</li>
-            </ul>
+    <section>
+        <h2>Разбор типовой задачи</h2>
+        
+        <div class="highlight">
+            <p><strong>Условие:</strong> Алгоритм принимает натуральное число N. Сначала определяется его двоичная запись.<span class="cite-hidden">[cite: 635, 636]</span> Затем:<br>
+            • Если N чётное, в начало записи добавляется "10".<span class="cite-hidden">[cite: 638]</span><br>
+            • Если N нечётное, в начало добавляется "1", а в конец "01".<span class="cite-hidden">[cite: 639]</span><br>
+            Найдите минимальное натуральное число N, для которого результат R больше 516.<span class="cite-hidden">[cite: 642]</span></p>
+        </div>
 
-            <figure>
-                <img src="https://itchief.ru/assets/images/python/ege-1/fipi-2025-graph.webp" alt="Анализ связей вершин">
-                <figcaption>Визуализация связей между вершинами разных степеней</figcaption>
-            </figure>
+        <h3>Решение на Python:</h3>
+        <p>Код выполняет последовательный перебор чисел, применяя алгоритм и проверяя выполнение условия R > 516.<span class="cite-hidden">[cite: 735]</span> Такой подход гарантирует нахождение минимального значения.<span class="cite-hidden">[cite: 736]</span></p>
 
-            <p><span class="step">Шаг 3</span> <strong>Анализируем вершины степени 2 {3, 6, 7}:</strong></p>
-            <ul>
-                <li><strong>Вершина 3:</strong> соединена с 1 (F/G) и 2 (D/E). Подходит под B или C.</li>
-                <li><strong>Вершина 6:</strong> соединена с 2 (D/E) и 5 (D/E). Значит, оба её соседа имеют степень 3. На графе такая вершина только одна — это A.</li>
-                <li><strong>Вершина 7:</strong> соединена с 4 (F/G) и 5 (D/E). Подходит под B или C.</li>
-            </ul>
+        <pre><code>def transform(num):<span class="cite-hidden">[cite: 660]</span>
+    binary = bin(num)[2:]<span class="cite-hidden">[cite: 662]</span>
+    
+    if num % 2 == 0:<span class="cite-hidden">[cite: 663]</span>
+        result = "10" + binary<span class="cite-hidden">[cite: 664, 666]</span>
+    else:<span class="cite-hidden">[cite: 665]</span>
+        result = "1" + binary + "01"<span class="cite-hidden">[cite: 667]</span>
+        
+    return int(result, 2)<span class="cite-hidden">[cite: 668]</span>
 
-            <p><span class="step">Шаг 4</span> <strong>Итог:</strong></p>
-            <p>Вершина A → 6. Вершины B и C → 3 и 7. По условию задачи нужно записать номера для B и C в порядке возрастания.</p>
-            
-            <div class="answer">Ответ: 37</div>
-        </section>
+n = 1<span class="cite-hidden">[cite: 670]</span>
+while True:<span class="cite-hidden">[cite: 671]</span>
+    r = transform(n)<span class="cite-hidden">[cite: 672]</span>
+    if r > 516:<span class="cite-hidden">[cite: 673]</span>
+        print("Минимальное число n:", n)<span class="cite-hidden">[cite: 675]</span>
+        break<span class="cite-hidden">[cite: 676]</span>
+    n += 1<span class="cite-hidden">[cite: 677]</span></code></pre>
 
-    </article>
+        <p>После запуска программы вычисляется минимальное значение N, для которого R > 516. Результат: N = 65.<span class="cite-hidden">[cite: 737]</span></p>
+
+        <div class="answer">Ответ: 65<span class="cite-hidden">[cite: 738]</span></div>
+    </section>
+
+</article>
