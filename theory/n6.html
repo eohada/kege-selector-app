@@ -60,7 +60,7 @@
         background-color: var(--surface-2, #1e1e1e);
         border: 1px solid var(--stroke-1, #333);
         border-radius: 12px;
-        padding: 25px;
+        padding: 40px 25px;
         box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
         overflow-x: auto;
     }
@@ -118,7 +118,7 @@
         font-size: 0.95rem;
         color: var(--text-primary, #e1e1e1);
         margin: 1.5rem 0;
-        line-height: 1.4;
+        line-height: 1.5;
     }
 
     .theory-n6 code {
@@ -209,65 +209,82 @@
         <h3><span class="step">Шаг 1</span> Настройка холста и Черепахи</h3>
         <p>Начинаем код с подключения библиотеки, задания размеров окна и установки начального направления черепашки вверх. Для удобства масштабирования задаем коэффициент <code>k = 10</code>. Обязательно используем <code>tracer(0)</code>, чтобы фигура рисовалась мгновенно. </p>
 
-<pre><code>from turtle import * screensize(2000, 2000) # Размер рабочей области shape("turtle")        # Меняет вид курсора на черепашку k = 10                 # Коэффициент масштаба left(90)   # Устанавливаем направление вверх (по оси OY) tracer(0)  # Отключаем анимацию для быстрого рисования pendown()  # Опустить хвост, начать рисовать </code></pre>
+<pre><code>from turtle import *
+
+screensize(2000, 2000)
+shape("turtle")
+k = 10
+
+left(90)
+tracer(0)
+pendown()</code></pre>
 
         <h3><span class="step">Шаг 2</span> Рисование первой фигуры</h3>
         <p>Реализуем первый цикл из алгоритма. Черепашка нарисует прямоугольник со сторонами 21 и 27. </p>
-<pre><code># Рисование первой фигуры
-for i in range(2): forward(21 * k) right(90) forward(27 * k) right(90) </code></pre>
+
+<pre><code>for i in range(2):
+    forward(21 * k)
+    right(90)
+    forward(27 * k)
+    right(90)</code></pre>
 
         <h3><span class="step">Шаг 3</span> Перемещение и вторая фигура</h3>
         <p>Поднимаем хвост, чтобы перескочить на новую позицию без рисования линий, выполняем команды смещения и снова опускаем перо. Затем рисуем второй (более вытянутый) прямоугольник. </p>
 
-<pre><code>penup()          # Поднять хвост forward(9 * k)   # Вперёд на 9 right(90)        # Направо 90 forward(10 * k)  # Вперёд на 10 left(90)         # Налево 90 pendown()        # Опустить хвост # Рисование второй фигуры
-for i in range(2): forward(86 * k) right(90) forward(47 * k) right(90) </code></pre>
+<pre><code>penup()
+forward(9 * k)
+right(90)
+forward(10 * k)
+left(90)
+pendown()
+
+for i in range(2):
+    forward(86 * k)
+    right(90)
+    forward(47 * k)
+    right(90)</code></pre>
 
         <h3><span class="step">Шаг 4</span> Отрисовка сетки точек</h3>
         <p>Чтобы посчитать точки с целыми координатами внутри пересечения, необходимо замостить рабочую область точками. Вложенные циклы <code>for</code> перебирают координаты <code>x</code> и <code>y</code>. </p>
 
-<pre><code>penup() for x in range(-10, 60):  # Перебираем X for y in range(-10, 100): # Перебираем Y goto(x * k, y * k) # Перемещаемся в координату с учетом масштаба dot(3, "red")      # Рисуем точку радиусом 3 пикселя done() # Оставляем окно открытым </code></pre>
+<pre><code>penup()
+for x in range(-10, 60):
+    for y in range(-10, 100):
+        goto(x * k, y * k)
+        dot(3, "red")
+
+done()</code></pre>
 
         <h3>Визуализация результата и подсчет</h3>
-        <p>Алгоритм отрисует два прямоугольника: первый <code>21×27</code> и второй <code>86×47</code>, смещенный относительно начала координат. </p>
+        <p>Математически, область пересечения двух отрисованных фигур — это прямоугольник. Считаем точки внутри пересечения двух фигур, включая границы. </p>
 
         <figure>
             <div class="svg-container">
-                <svg viewBox="-5 -5 75 115" width="100%" height="450px" xmlns="http://www.w3.org/2000/svg">
-                    <g transform="translate(0, 105) scale(1, -1)">
-                        <pattern id="mathGrid" width="1" height="1" patternUnits="userSpaceOnUse">
-                            <circle cx="0" cy="0" r="0.2" fill="#ff4757" opacity="0.8"/>
+                <svg viewBox="0 0 320 260" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <pattern id="dotGrid" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+                            <circle cx="5" cy="5" r="1.5" fill="#ff4757" opacity="0.8"/>
                         </pattern>
-                        <rect x="-5" y="-5" width="75" height="115" fill="url(#mathGrid)"/>
+                    </defs>
 
-                        <line x1="-5" y1="0" x2="65" y2="0" stroke="rgba(255,255,255,0.4)" stroke-width="0.3"/>
-                        <line x1="0" y1="-5" x2="0" y2="105" stroke="rgba(255,255,255,0.4)" stroke-width="0.3"/>
+                    <rect x="0" y="0" width="320" height="260" fill="url(#dotGrid)"/>
 
-                        <path d="M 0,0 L 0,21 L 27,21 L 27,0 Z" fill="rgba(255,255,255,0.05)" stroke="var(--text-primary, #fff)" stroke-width="0.6" stroke-dasharray="1,1"/>
+                    <line x1="65" y1="0" x2="65" y2="260" stroke="var(--text-primary, #fff)" stroke-width="1.5" opacity="0.4"/>
+                    <line x1="0" y1="165" x2="320" y2="165" stroke="var(--text-primary, #fff)" stroke-width="1.5" opacity="0.4"/>
 
-                        <path d="M 10,9 L 10,95 L 57,95 L 57,9 Z" fill="none" stroke="var(--accent-1, #00ffd5)" stroke-width="0.6"/>
+                    <rect x="65" y="45" width="170" height="120" fill="transparent" stroke="var(--text-primary, #fff)" stroke-width="2"/>
 
-                        <path d="M 10,9 L 10,21 L 27,21 L 27,9 Z" fill="rgba(0, 255, 213, 0.4)" stroke="var(--accent-1, #00ffd5)" stroke-width="0.8"/>
+                    <path d="M 65,175 Q 65,190 80,190 L 140,190 Q 150,190 150,200 Q 150,190 160,190 L 220,190 Q 235,190 235,175" fill="none" stroke="var(--text-primary, #fff)" stroke-width="2.5"/>
+                    <text x="150" y="230" text-anchor="middle" font-size="22" font-weight="bold" fill="var(--text-primary, #fff)">18</text>
 
-                        <circle cx="0" cy="0" r="0.6" fill="#fff"/>
-                    </g>
-
-                    <text x="-2" y="109" fill="#aaa" font-size="3" font-family="sans-serif">0</text>
-                    
-                    <text x="18.5" y="89" text-anchor="middle" fill="#fff" font-size="3" font-weight="bold" font-family="sans-serif">234 точки</text>
-                    
-                    <text x="10" y="109" text-anchor="middle" fill="#aaa" font-size="2.5" font-family="sans-serif">10</text>
-                    <text x="27" y="109" text-anchor="middle" fill="#aaa" font-size="2.5" font-family="sans-serif">27</text>
-                    <text x="57" y="109" text-anchor="middle" fill="#aaa" font-size="2.5" font-family="sans-serif">57</text>
-                    
-                    <text x="-2" y="96.5" text-anchor="end" fill="#aaa" font-size="2.5" font-family="sans-serif">9</text>
-                    <text x="-2" y="84.5" text-anchor="end" fill="#aaa" font-size="2.5" font-family="sans-serif">21</text>
-                    <text x="-2" y="10.5" text-anchor="end" fill="#aaa" font-size="2.5" font-family="sans-serif">95</text>
+                    <path d="M 245,45 Q 260,45 260,60 L 260,95 Q 260,105 270,105 Q 260,105 260,115 L 260,150 Q 260,165 245,165" fill="none" stroke="var(--text-primary, #fff)" stroke-width="2.5"/>
+                    <text x="285" y="112" text-anchor="start" font-size="22" font-weight="bold" fill="var(--text-primary, #fff)">13</text>
                 </svg>
             </div>
             <figcaption>Математически точная модель: в области пересечения ровно матрица точек 18x13.</figcaption>
         </figure>
 
-        <p>Математически, область пересечения — это прямоугольник. Считаем точки внутри пересечения двух фигур, включая границы. По оси X точки идут от 10 до 27 (длина отрезка 17, итого 18 точек). По оси Y точки идут от 9 до 21 (длина отрезка 12, итого 13 точек). Перемножаем: <code>18 * 13 = 234</code>. </p>
+        <p>По оси X точки идут от 10 до 27 (длина отрезка 17, итого 18 точек). По оси Y точки идут от 9 до 21 (длина отрезка 12, итого 13 точек). Перемножаем: <code>18 * 13 = 234</code>. </p>
 
         <div class="answer">Ответ: 234 </div>
     </section>
