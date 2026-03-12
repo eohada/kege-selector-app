@@ -53,24 +53,6 @@
         padding: 0;
     }
 
-    .theory-n6 img {
-        max-width: 100%;
-        height: auto;
-        display: block;
-        border-radius: 12px;
-        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
-        background-color: var(--surface-2, #1e1e1e);
-    }
-
-    [data-theme="dark"] .theory-n6 img {
-        opacity: 0.9;
-        transition: opacity 0.25s ease;
-    }
-
-    [data-theme="dark"] .theory-n6 img:hover {
-        opacity: 1;
-    }
-
     .theory-n6 .svg-container {
         display: flex;
         justify-content: center;
@@ -175,7 +157,7 @@
     .theory-n6 th {
         background-color: rgba(0, 255, 213, 0.1);
         font-weight: 600;
-        color: var(--text-primary, #fff);
+        color: var(--accent-1, #00ffd5);
     }
 </style>
 
@@ -184,29 +166,29 @@
 
     <section>
         <h2>Описание задачи</h2>
-        <p>Задание №6 из ЕГЭ по информатике 2025 года направлено на проверку навыков работы с простейшими алгоритмами управления исполнителями.<span style="display:none;">[cite: 967]</span> Это базовое задание, на решение которого отводится около 4 минут.<span style="display:none;">[cite: 971]</span> Исполнитель «Черепаха» перемещается по плоскости с декартовой системой координат.<span style="display:none;">[cite: 973]</span></p>
+        <p>Задание №6 из ЕГЭ по информатике направлено на проверку навыков работы с простейшими алгоритмами управления исполнителями. Это базовое задание, на решение которого отводится около 4 минут. Исполнитель «Черепаха» перемещается по плоскости с декартовой системой координат. </p>
         
         <p><strong>Важные начальные условия Черепахи:</strong></p>
         <ul>
-            <li>Находится в точке с координатами <code>(0, 0)</code>.<span style="display:none;">[cite: 974]</span></li>
-            <li>Её голова направлена <strong>вдоль положительного направления оси OY (вверх)</strong>.<span style="display:none;">[cite: 974]</span></li>
-            <li>Хвост по умолчанию опущен, она оставляет след при движении.<span style="display:none;">[cite: 974]</span></li>
+            <li>Находится в точке с координатами <code>(0, 0)</code>. </li>
+            <li>Её голова направлена <strong>вдоль положительного направления оси OY (вверх)</strong>. </li>
+            <li>Хвост по умолчанию опущен, она оставляет след при движении. </li>
         </ul>
     </section>
 
     <section>
         <h2>Словарь команд Черепахи</h2>
-        <p>Для перевода алгоритма из условия задачи в рабочий код мы будем использовать стандартную библиотеку <code>turtle</code> в Python.<span style="display:none;">[cite: 993, 1048]</span> Вот как команды из ЕГЭ переводятся на язык Python:</p>
+        <p>Для перевода алгоритма из условия задачи в рабочий код мы будем использовать стандартную библиотеку <code>turtle</code> в Python. Вот как команды из ЕГЭ переводятся на язык Python:</p>
         
         <table>
             <tr><th>Команда в КИМ</th><th>Код на Python</th><th>Описание</th></tr>
-            <tr><td>Поднять хвост</td><td><code>penup()</code></td><td>Перестает рисовать линию, перемещается без следа.<span style="display:none;">[cite: 976, 1036]</span></td></tr>
-            <tr><td>Опустить хвост</td><td><code>pendown()</code></td><td>Начинает оставлять след (режим рисования).<span style="display:none;">[cite: 976, 1035]</span></td></tr>
-            <tr><td>Вперёд n</td><td><code>forward(n * k)</code></td><td>Идет вперед на n шагов. <strong>Обязательно умножаем на масштаб k!</strong><span style="display:none;">[cite: 976, 1031]</span></td></tr>
-            <tr><td>Назад n</td><td><code>backward(n * k)</code></td><td>Идет назад на n шагов. Умножаем на масштаб k.<span style="display:none;">[cite: 977, 1031]</span></td></tr>
-            <tr><td>Направо m</td><td><code>right(m)</code></td><td>Поворот по часовой стрелке на m градусов. <strong>Углы на k НЕ умножаются!</strong><span style="display:none;">[cite: 979, 1032]</span></td></tr>
-            <tr><td>Налево m</td><td><code>left(m)</code></td><td>Поворот против часовой стрелки на m градусов.<span style="display:none;">[cite: 980, 1032]</span></td></tr>
-            <tr><td>Повтори c [ ... ]</td><td><code>for i in range(c):</code></td><td>Цикл для повторения команд c раз.<span style="display:none;"></span></td></tr>
+            <tr><td>Поднять хвост</td><td><code>penup()</code></td><td>Перестает рисовать линию, перемещается без следа. </td></tr>
+            <tr><td>Опустить хвост</td><td><code>pendown()</code></td><td>Начинает оставлять след (режим рисования). </td></tr>
+            <tr><td>Вперёд n</td><td><code>forward(n * k)</code></td><td>Идет вперед на n шагов. <strong>Обязательно умножаем на масштаб k!</strong> </td></tr>
+            <tr><td>Назад n</td><td><code>backward(n * k)</code></td><td>Идет назад на n шагов. Умножаем на масштаб k. </td></tr>
+            <tr><td>Направо m</td><td><code>right(m)</code></td><td>Поворот по часовой стрелке на m градусов. <strong>Углы на k НЕ умножаются!</strong> </td></tr>
+            <tr><td>Налево m</td><td><code>left(m)</code></td><td>Поворот против часовой стрелки на m градусов. </td></tr>
+            <tr><td>Повтори c [ ... ]</td><td><code>for i in range(c):</code></td><td>Цикл для повторения команд c раз. </td></tr>
         </table>
     </section>
 
@@ -215,95 +197,79 @@
         
         <div class="highlight">
             <p><strong>Алгоритм для черепахи:</strong><br>
-            Повтори 2 [Вперёд 21 Направо 90 Вперёд 27 Направо 90]<span style="display:none;">[cite: 986]</span><br>
-            Поднять хвост<span style="display:none;">[cite: 986]</span><br>
-            Вперёд 9 Направо 90 Вперёд 10 Налево 90<span style="display:none;">[cite: 987]</span><br>
-            Опустить хвост<span style="display:none;">[cite: 988]</span><br>
-            Повтори 2 [Вперёд 86 Направо 90 Вперёд 47 Направо 90]<span style="display:none;">[cite: 989]</span><br>
+            Повтори 2 [Вперёд 21 Направо 90 Вперёд 27 Направо 90] <br>
+            Поднять хвост <br>
+            Вперёд 9 Направо 90 Вперёд 10 Налево 90 <br>
+            Опустить хвост <br>
+            Повтори 2 [Вперёд 86 Направо 90 Вперёд 47 Направо 90] <br>
             <br>
-            <strong>Задача:</strong> Определите, сколько целочисленных точек находится внутри области пересечения двух фигур, построенных по описанному алгоритму, включая точки на границах.<span style="display:none;">[cite: 990]</span></p>
+            <strong>Задача:</strong> Определите, сколько целочисленных точек находится внутри области пересечения двух фигур, построенных по описанному алгоритму, включая точки на границах. </p>
         </div>
 
         <h3><span class="step">Шаг 1</span> Настройка холста и Черепахи</h3>
-        <p>Начинаем код с подключения библиотеки, задания размеров окна и установки начального направления черепашки вверх.<span style="display:none;">[cite: 1087]</span> Для удобства масштабирования задаем коэффициент <code>k = 10</code>.<span style="display:none;">[cite: 1051, 1106]</span> Обязательно используем <code>tracer(0)</code>, чтобы фигура рисовалась мгновенно.<span style="display:none;">[cite: 1061, 1110]</span></p>
+        <p>Начинаем код с подключения библиотеки, задания размеров окна и установки начального направления черепашки вверх. Для удобства масштабирования задаем коэффициент <code>k = 10</code>. Обязательно используем <code>tracer(0)</code>, чтобы фигура рисовалась мгновенно. </p>
 
-<pre><code>from turtle import *<span style="display:none;">[cite: 1053, 1098]</span>
-
-screensize(2000, 2000) # Размер рабочей области<span style="display:none;">[cite: 1055, 1099]</span>
-shape("turtle")        # Меняет вид курсора на черепашку<span style="display:none;">[cite: 1056, 1105]</span>
-k = 10                 # Коэффициент масштаба<span style="display:none;">[cite: 1057, 1106]</span>
-
-left(90)   # Устанавливаем направление вверх (по оси OY)<span style="display:none;">[cite: 1060, 1108]</span>
-tracer(0)  # Отключаем анимацию для быстрого рисования<span style="display:none;">[cite: 1061, 1110]</span>
-pendown()  # Опустить хвост, начать рисовать<span style="display:none;">[cite: 1061, 1111]</span></code></pre>
+<pre><code>from turtle import * screensize(2000, 2000) # Размер рабочей области shape("turtle")        # Меняет вид курсора на черепашку k = 10                 # Коэффициент масштаба left(90)   # Устанавливаем направление вверх (по оси OY) tracer(0)  # Отключаем анимацию для быстрого рисования pendown()  # Опустить хвост, начать рисовать </code></pre>
 
         <h3><span class="step">Шаг 2</span> Рисование первой фигуры</h3>
-        <p>Реализуем первый цикл из алгоритма. Черепашка нарисует прямоугольник со сторонами 21 и 27.<span style="display:none;">[cite: 1127]</span></p>
+        <p>Реализуем первый цикл из алгоритма. Черепашка нарисует прямоугольник со сторонами 21 и 27. </p>
 <pre><code># Рисование первой фигуры
-for i in range(2):<span style="display:none;">[cite: 1063, 1114]</span>
-    forward(21 * k)<span style="display:none;">[cite: 1064, 1115]</span>
-    right(90)<span style="display:none;">[cite: 1064, 1115]</span>
-    forward(27 * k)<span style="display:none;">[cite: 1064, 1115]</span>
-    right(90)<span style="display:none;">[cite: 1064, 1115]</span></code></pre>
+for i in range(2): forward(21 * k) right(90) forward(27 * k) right(90) </code></pre>
 
         <h3><span class="step">Шаг 3</span> Перемещение и вторая фигура</h3>
-        <p>Поднимаем хвост, чтобы перескочить на новую позицию без рисования линий, выполняем команды смещения и снова опускаем перо.<span style="display:none;">[cite: 1129, 1130]</span> Затем рисуем второй (более вытянутый) прямоугольник.<span style="display:none;">[cite: 1152, 1171]</span></p>
+        <p>Поднимаем хвост, чтобы перескочить на новую позицию без рисования линий, выполняем команды смещения и снова опускаем перо. Затем рисуем второй (более вытянутый) прямоугольник. </p>
 
-<pre><code>penup()          # Поднять хвост<span style="display:none;">[cite: 1065, 1144]</span>
-forward(9 * k)   # Вперёд на 9<span style="display:none;">[cite: 1067, 1145]</span>
-right(90)        # Направо 90<span style="display:none;">[cite: 1068, 1146]</span>
-forward(10 * k)  # Вперёд на 10<span style="display:none;">[cite: 1068, 1148]</span>
-left(90)         # Налево 90<span style="display:none;">[cite: 1068, 1150]</span>
-pendown()        # Опустить хвост<span style="display:none;">[cite: 1073, 1151]</span>
-
-# Рисование второй фигуры
-for i in range(2):<span style="display:none;">[cite: 1076, 1155]</span>
-    forward(86 * k)<span style="display:none;">[cite: 1077, 1156]</span>
-    right(90)<span style="display:none;">[cite: 1077, 1156]</span>
-    forward(47 * k)<span style="display:none;">[cite: 1077, 1156]</span>
-    right(90)<span style="display:none;">[cite: 1078, 1156]</span></code></pre>
+<pre><code>penup()          # Поднять хвост forward(9 * k)   # Вперёд на 9 right(90)        # Направо 90 forward(10 * k)  # Вперёд на 10 left(90)         # Налево 90 pendown()        # Опустить хвост # Рисование второй фигуры
+for i in range(2): forward(86 * k) right(90) forward(47 * k) right(90) </code></pre>
 
         <h3><span class="step">Шаг 4</span> Отрисовка сетки точек</h3>
-        <p>Чтобы посчитать точки с целыми координатами внутри пересечения, необходимо замостить рабочую область точками красного цвета.<span style="display:none;">[cite: 1172, 1173]</span> Вложенные циклы <code>for</code> перебирают координаты <code>x</code> и <code>y</code>.<span style="display:none;">[cite: 1183, 1184]</span></p>
+        <p>Чтобы посчитать точки с целыми координатами внутри пересечения, необходимо замостить рабочую область точками. Вложенные циклы <code>for</code> перебирают координаты <code>x</code> и <code>y</code>. </p>
 
-<pre><code>penup()<span style="display:none;">[cite: 1079, 1182]</span>
-for x in range(-10, 60):  # Перебираем X<span style="display:none;">[cite: 1081, 1186]</span>
-    for y in range(-10, 100): # Перебираем Y<span style="display:none;">[cite: 1082, 1186]</span>
-        goto(x * k, y * k) # Перемещаемся в координату с учетом масштаба<span style="display:none;">[cite: 1082, 1187]</span>
-        dot(3, "red")      # Рисуем точку радиусом 3 пикселя<span style="display:none;">[cite: 1083, 1189]</span>
-
-done() # Оставляем окно открытым<span style="display:none;">[cite: 1084, 1202]</span></code></pre>
+<pre><code>penup() for x in range(-10, 60):  # Перебираем X for y in range(-10, 100): # Перебираем Y goto(x * k, y * k) # Перемещаемся в координату с учетом масштаба dot(3, "red")      # Рисуем точку радиусом 3 пикселя done() # Оставляем окно открытым </code></pre>
 
         <h3>Визуализация результата и подсчет</h3>
-        <p>Алгоритм отрисует два прямоугольника: первый <code>21×27</code> и второй <code>86×47</code>, смещенный относительно начала координат.<span style="display:none;">[cite: 1207, 1208]</span></p>
+        <p>Алгоритм отрисует два прямоугольника: первый <code>21×27</code> и второй <code>86×47</code>, смещенный относительно начала координат. </p>
 
         <figure>
             <div class="svg-container">
-                <svg viewBox="-5 -5 180 140" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
-                    <pattern id="dotGrid" width="6" height="6" patternUnits="userSpaceOnUse">
-                        <circle cx="2" cy="2" r="0.7" fill="#ff4757" opacity="0.5"/>
-                    </pattern>
-                    <rect x="-10" y="-10" width="200" height="150" fill="url(#dotGrid)"/>
-                    
-                    <line x1="10" y1="120" x2="10" y2="0" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
-                    <line x1="0" y1="110" x2="160" y2="110" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
+                <svg viewBox="-5 -5 75 115" width="100%" height="450px" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(0, 105) scale(1, -1)">
+                        <pattern id="mathGrid" width="1" height="1" patternUnits="userSpaceOnUse">
+                            <circle cx="0" cy="0" r="0.2" fill="#ff4757" opacity="0.8"/>
+                        </pattern>
+                        <rect x="-5" y="-5" width="75" height="115" fill="url(#mathGrid)"/>
 
-                    <rect x="10" y="68" width="54" height="42" fill="none" stroke="var(--text-primary, #fff)" stroke-width="1.5" stroke-dasharray="2,2"/>
-                    
-                    <rect x="30" y="0" width="94" height="92" fill="none" stroke="var(--accent-1, #00ffd5)" stroke-width="1.5"/>
+                        <line x1="-5" y1="0" x2="65" y2="0" stroke="rgba(255,255,255,0.4)" stroke-width="0.3"/>
+                        <line x1="0" y1="-5" x2="0" y2="105" stroke="rgba(255,255,255,0.4)" stroke-width="0.3"/>
 
-                    <rect x="30" y="68" width="34" height="24" fill="rgba(0, 255, 213, 0.2)" stroke="var(--accent-1, #00ffd5)" stroke-width="2"/>
-                    <text x="47" y="83" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold" font-family="sans-serif">Пересечение</text>
+                        <path d="M 0,0 L 0,21 L 27,21 L 27,0 Z" fill="rgba(255,255,255,0.05)" stroke="var(--text-primary, #fff)" stroke-width="0.6" stroke-dasharray="1,1"/>
+
+                        <path d="M 10,9 L 10,95 L 57,95 L 57,9 Z" fill="none" stroke="var(--accent-1, #00ffd5)" stroke-width="0.6"/>
+
+                        <path d="M 10,9 L 10,21 L 27,21 L 27,9 Z" fill="rgba(0, 255, 213, 0.4)" stroke="var(--accent-1, #00ffd5)" stroke-width="0.8"/>
+
+                        <circle cx="0" cy="0" r="0.6" fill="#fff"/>
+                    </g>
+
+                    <text x="-2" y="109" fill="#aaa" font-size="3" font-family="sans-serif">0</text>
                     
-                    <circle cx="10" cy="110" r="3" fill="#fff"/>
+                    <text x="18.5" y="89" text-anchor="middle" fill="#fff" font-size="3" font-weight="bold" font-family="sans-serif">234 точки</text>
+                    
+                    <text x="10" y="109" text-anchor="middle" fill="#aaa" font-size="2.5" font-family="sans-serif">10</text>
+                    <text x="27" y="109" text-anchor="middle" fill="#aaa" font-size="2.5" font-family="sans-serif">27</text>
+                    <text x="57" y="109" text-anchor="middle" fill="#aaa" font-size="2.5" font-family="sans-serif">57</text>
+                    
+                    <text x="-2" y="96.5" text-anchor="end" fill="#aaa" font-size="2.5" font-family="sans-serif">9</text>
+                    <text x="-2" y="84.5" text-anchor="end" fill="#aaa" font-size="2.5" font-family="sans-serif">21</text>
+                    <text x="-2" y="10.5" text-anchor="end" fill="#aaa" font-size="2.5" font-family="sans-serif">95</text>
                 </svg>
             </div>
-            <figcaption>Область пересечения двух фигур, заполненная точками</figcaption>
+            <figcaption>Математически точная модель: в области пересечения ровно матрица точек 18x13.</figcaption>
         </figure>
 
-        <p>Математически, область пересечения — это прямоугольник. Считаем точки внутри пересечения двух фигур, включая границы.<span style="display:none;">[cite: 1211]</span> По оси X точки идут от 10 до 27 (длина 17, итого 18 точек). По оси Y — от 9 до 21 (длина 12, итого 13 точек). Перемножаем: <code>18 * 13 = 234</code>.<span style="display:none;">[cite: 1211]</span></p>
+        <p>Математически, область пересечения — это прямоугольник. Считаем точки внутри пересечения двух фигур, включая границы. По оси X точки идут от 10 до 27 (длина отрезка 17, итого 18 точек). По оси Y точки идут от 9 до 21 (длина отрезка 12, итого 13 точек). Перемножаем: <code>18 * 13 = 234</code>. </p>
 
-        <div class="answer">Ответ: 234<span style="display:none;">[cite: 1217]</span></div>
+        <div class="answer">Ответ: 234 </div>
     </section>
 
 </article>
