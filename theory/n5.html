@@ -2,7 +2,7 @@
     .theory-n5 {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         line-height: 1.6;
-        color: var(--text-primary);
+        color: var(--text-primary, #e1e1e1);
         max-width: 760px;
         margin: 0 auto;
         padding: 0;
@@ -13,7 +13,7 @@
         font-weight: 700;
         letter-spacing: -0.02em;
         margin-bottom: 1.5rem;
-        color: var(--text-primary);
+        color: var(--text-primary, #ffffff);
     }
 
     .theory-n5 h2 {
@@ -22,7 +22,7 @@
         letter-spacing: -0.01em;
         margin-top: 2.25rem;
         margin-bottom: 1rem;
-        border-bottom: 1px solid var(--stroke-1);
+        border-bottom: 1px solid var(--stroke-1, #333);
         padding-bottom: 0.6rem;
     }
 
@@ -35,13 +35,13 @@
 
     .theory-n5 p {
         margin-bottom: 1.1rem;
-        color: var(--text-primary);
+        color: var(--text-primary, #e1e1e1);
     }
 
     .theory-n5 ul, .theory-n5 ol {
         margin-bottom: 1.2rem;
         padding-left: 1.4rem;
-        color: var(--text-primary);
+        color: var(--text-primary, #e1e1e1);
     }
 
     .theory-n5 li {
@@ -59,7 +59,7 @@
         display: block;
         border-radius: 12px;
         box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
-        background-color: var(--surface-2);
+        background-color: var(--surface-2, #1e1e1e);
     }
 
     [data-theme="dark"] .theory-n5 img {
@@ -74,16 +74,16 @@
     .theory-n5 figcaption {
         margin-top: 0.65rem;
         font-size: 0.9rem;
-        color: var(--text-muted);
+        color: var(--text-muted, #999);
         text-align: center;
     }
 
     .theory-n5 .highlight {
-        background-color: var(--surface-2);
+        background-color: var(--surface-2, #1e1e1e);
         padding: 1.25rem 1.5rem;
         border-radius: 12px;
         margin: 1.75rem 0;
-        border: 1px solid var(--stroke-1);
+        border: 1px solid var(--stroke-1, #333);
     }
 
     .theory-n5 .highlight p:last-child {
@@ -93,7 +93,7 @@
     .theory-n5 .step {
         display: inline-block;
         font-weight: 600;
-        color: var(--accent-1);
+        color: var(--accent-1, #00ffd5);
         background-color: rgba(0, 255, 213, 0.08);
         padding: 2px 8px;
         border-radius: 999px;
@@ -106,35 +106,35 @@
         display: inline-block;
         font-size: 1.05rem;
         font-weight: 600;
-        color: var(--text-primary);
-        background-color: var(--surface-2);
+        color: var(--text-primary, #fff);
+        background-color: var(--surface-2, #1e1e1e);
         padding: 0.75rem 1.4rem;
         border-radius: 999px;
         margin-top: 0.9rem;
-        border: 1px solid var(--stroke-1);
+        border: 1px solid var(--stroke-1, #333);
     }
     
     .theory-n5 pre {
-        background-color: var(--surface-2);
-        border: 1px solid var(--stroke-1);
+        background-color: var(--surface-2, #1e1e1e);
+        border: 1px solid var(--stroke-1, #333);
         padding: 1.25rem;
         border-radius: 12px;
         overflow-x: auto;
         font-family: 'Consolas', 'Monaco', monospace;
         font-size: 0.95rem;
-        color: var(--text-primary);
+        color: var(--text-primary, #e1e1e1);
         margin: 1.5rem 0;
         line-height: 1.4;
     }
 
     .theory-n5 code {
         font-family: 'Consolas', 'Monaco', monospace;
-        background-color: var(--surface-2);
+        background-color: var(--surface-2, #1e1e1e);
         padding: 0.15rem 0.4rem;
         border-radius: 4px;
         font-size: 0.9em;
-        color: var(--accent-1);
-        border: 1px solid var(--stroke-1);
+        color: var(--accent-1, #00ffd5);
+        border: 1px solid var(--stroke-1, #333);
     }
 
     .theory-n5 pre code {
@@ -154,26 +154,25 @@
 
     <section>
         <h2>Описание задачи</h2>
-        <p>Задание №5 из ЕГЭ по информатике направлено на проверку навыков выполнения простейших алгоритмов.<span style="display:none;">[cite: 628]</span> Это базовое задание, на решение которого отводится 4 минуты.<span style="display:none;">[cite: 629, 634]</span> Суть задачи обычно сводится к тому, что некий алгоритм принимает натуральное число <code>N</code>, преобразует его в новую систему счисления (чаще всего в двоичную), производит манипуляции со строкой и переводит результат обратно в десятичное число <code>R</code>.<span style="display:none;">[cite: 635, 636, 640]</span></p>
+        <p>Задание №5 из ЕГЭ по информатике направлено на проверку навыков выполнения простейших алгоритмов. Это базовое задание, на решение которого отводится около 4 минут. Суть задачи обычно сводится к тому, что некий алгоритм принимает натуральное число <code>N</code>, преобразует его в новую систему счисления (чаще всего в двоичную), производит манипуляции со строкой и переводит результат обратно в десятичное число <code>R</code>. </p>
     </section>
 
     <section>
         <h2>Базовые операции в Python для 5 задания</h2>
         
         <h3>1. Перевод в двоичную запись и обратно</h3>
-        <p>Для перевода числа в двоичную систему используется встроенная функция <code>bin()</code>.<span style="display:none;">[cite: 747]</span> Она возвращает строку вида <code>'0b101'</code>, где <code>'0b'</code> — технический префикс.<span style="display:none;">[cite: 747]</span> Чтобы избавиться от него, мы применяем срез <code>[2:]</code>.<span style="display:none;">[cite: 748]</span></p>
+        <p>Для перевода числа в двоичную систему используется встроенная функция <code>bin()</code>. Она возвращает строку вида <code>'0b101'</code>, где <code>'0b'</code> — технический префикс. Чтобы избавиться от него, мы применяем срез <code>[2:]</code>. </p>
         <pre><code>n = 5
 s = bin(n)[2:] # Результат: '101'</code></pre>
         
-        <p>Для обратного преобразования строки с двоичной записью в десятичное число используется функция <code>int(строка, основание)</code>.<span style="display:none;">[cite: 763, 764]</span></p>
+        <p>Для обратного преобразования строки с двоичной записью в десятичное число используется функция <code>int(строка, основание)</code>. </p>
         <pre><code>r = int('101', 2) # Результат: 5</code></pre>
 
         <h3>2. Проверка на четность</h3>
-        <p>Для проверки четности используется остаток от деления на 2 (<code>% 2</code>).<span style="display:none;">[cite: 782]</span></p>
+        <p>Для проверки четности используется остаток от деления на 2 (<code>% 2</code>). </p>
         <pre><code>if n % 2 == 0:
-    # Действия для четных чисел<span style="display:none;">[cite: 819, 820]</span>
-else:
-    # Действия для нечетных чисел<span style="display:none;">[cite: 821, 822]</span></code></pre>
+    # Действия для четных чисел else:
+    # Действия для нечетных чисел </code></pre>
     </section>
 
     <section>
@@ -195,7 +194,7 @@ print(s[:-1])   # "012345678" (вся строка кроме последнег
 print(s[::-1])  # "9876543210" (строка задом наперед, шаг -1)</code></pre>
 
         <h3>Перевод в любую систему счисления (Кастомная функция)</h3>
-        <p>Если в задании просят перевести число не в двоичную, а, например, в 7-ичную, 3-ичную или 5-ичную систему, функция <code>bin()</code> уже не поможет. Нужно написать свою функцию на основе алгоритма деления "уголком".</p>
+        <p>Если в задании просят перевести число не в двоичную, а, например, в 7-ичную, 3-ичную или 5-ичную систему, встроенных функций не хватит. Нужно написать свою функцию на основе математического деления "уголком".</p>
         <pre><code>def perevod(n):
     t = ''
     while n > 0:
@@ -215,36 +214,36 @@ c = sum(map(int, N2)) # Результат: 5</code></pre>
         <h2>Разбор типовой задачи</h2>
         
         <div class="highlight">
-            <p><strong>Условие:</strong> Алгоритм принимает натуральное число N. Сначала определяется его двоичная запись.<span style="display:none;">[cite: 635, 636]</span> Затем:<br>
-            • Если N чётное, в начало записи добавляется "10".<span style="display:none;">[cite: 638]</span><br>
-            • Если N нечётное, в начало добавляется "1", а в конец "01".<span style="display:none;">[cite: 639]</span><br>
-            Найдите минимальное натуральное число N, для которого результат R больше 516.<span style="display:none;">[cite: 642]</span></p>
+            <p><strong>Условие:</strong> Алгоритм принимает натуральное число N. Сначала определяется его двоичная запись. Затем:<br>
+            • Если N чётное, в начало записи добавляется "10". <br>
+            • Если N нечётное, в начало добавляется "1", а в конец "01". <br>
+            Найдите минимальное натуральное число N, для которого результат R больше 516. </p>
         </div>
 
         <h3>Решение на Python:</h3>
-        <p>Код выполняет последовательный перебор чисел, применяя алгоритм и проверяя выполнение условия R > 516.<span style="display:none;">[cite: 735]</span> Такой подход гарантирует нахождение минимального значения.<span style="display:none;">[cite: 736]</span></p>
+        <p>Код выполняет последовательный перебор чисел, применяя алгоритм и проверяя выполнение условия R > 516. Такой подход гарантирует нахождение минимального значения. </p>
 
-        <pre><code>def transform(num):<span style="display:none;">[cite: 660]</span>
-    binary = bin(num)[2:]<span style="display:none;">[cite: 662]</span>
+        <pre><code>def transform(num):
+    binary = bin(num)[2:]
     
-    if num % 2 == 0:<span style="display:none;">[cite: 663]</span>
-        result = "10" + binary<span style="display:none;">[cite: 664, 666]</span>
-    else:<span style="display:none;">[cite: 665]</span>
-        result = "1" + binary + "01"<span style="display:none;">[cite: 667]</span>
+    if num % 2 == 0:
+        result = "10" + binary
+    else:
+        result = "1" + binary + "01"
         
-    return int(result, 2)<span style="display:none;">[cite: 668]</span>
+    return int(result, 2)
 
-n = 1<span style="display:none;">[cite: 670]</span>
-while True:<span style="display:none;">[cite: 671]</span>
-    r = transform(n)<span style="display:none;">[cite: 672]</span>
-    if r > 516:<span style="display:none;">[cite: 673]</span>
-        print("Минимальное число n:", n)<span style="display:none;">[cite: 675]</span>
-        break<span style="display:none;">[cite: 676]</span>
-    n += 1<span style="display:none;">[cite: 677]</span></code></pre>
+n = 1
+while True:
+    r = transform(n)
+    if r > 516:
+        print("Минимальное число n:", n)
+        break
+    n += 1</code></pre>
 
-        <p>После запуска программы вычисляется минимальное значение N, для которого R > 516. Результат: N = 65.<span style="display:none;">[cite: 737]</span></p>
+        <p>После запуска программы вычисляется минимальное значение N, для которого R > 516. Результат: N = 65. </p>
 
-        <div class="answer">Ответ: 65<span style="display:none;">[cite: 738]</span></div>
+        <div class="answer">Ответ: 65 </div>
     </section>
 
 </article>
