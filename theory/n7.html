@@ -1,0 +1,353 @@
+<style>
+    .theory-n7 {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        color: var(--text-primary, #e1e1e1);
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 0;
+    }
+
+    .theory-n7 h1 {
+        font-size: 2.1rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 1.5rem;
+        color: var(--text-primary, #ffffff);
+    }
+
+    .theory-n7 h2 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-top: 2.25rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--stroke-1, #333);
+        padding-bottom: 0.6rem;
+    }
+
+    .theory-n7 h3 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-top: 1.75rem;
+        margin-bottom: 0.85rem;
+    }
+
+    .theory-n7 p {
+        margin-bottom: 1.1rem;
+        color: var(--text-primary, #e1e1e1);
+    }
+
+    .theory-n7 ul, .theory-n7 ol {
+        margin-bottom: 1.2rem;
+        padding-left: 1.4rem;
+        color: var(--text-primary, #e1e1e1);
+    }
+
+    .theory-n7 li {
+        margin-bottom: 0.4rem;
+    }
+
+    .theory-n7 figure {
+        margin: 1.75rem 0;
+        padding: 0;
+    }
+
+    .theory-n7 .svg-container {
+        display: flex;
+        justify-content: center;
+        margin: 2rem 0;
+        background-color: var(--surface-2, #1e1e1e);
+        border: 1px solid var(--stroke-1, #333);
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
+        overflow-x: auto;
+    }
+
+    .theory-n7 figcaption {
+        margin-top: 0.65rem;
+        font-size: 0.9rem;
+        color: var(--text-muted, #999);
+        text-align: center;
+    }
+
+    .theory-n7 .highlight {
+        background-color: var(--surface-2, #1e1e1e);
+        padding: 1.25rem 1.5rem;
+        border-radius: 12px;
+        margin: 1.75rem 0;
+        border: 1px solid var(--stroke-1, #333);
+    }
+
+    .theory-n7 .highlight p:last-child {
+        margin-bottom: 0;
+    }
+
+    .theory-n7 .step {
+        display: inline-block;
+        font-weight: 600;
+        color: var(--accent-1, #00ffd5);
+        background-color: rgba(0, 255, 213, 0.08);
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        margin-right: 0.4rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .theory-n7 .answer {
+        display: inline-block;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--text-primary, #fff);
+        background-color: var(--surface-2, #1e1e1e);
+        padding: 0.75rem 1.4rem;
+        border-radius: 999px;
+        margin-top: 0.9rem;
+        border: 1px solid var(--stroke-1, #333);
+    }
+
+    .theory-n7 .formula-box {
+        display: block;
+        background: rgba(0, 255, 213, 0.05);
+        border-left: 4px solid var(--accent-1, #00ffd5);
+        padding: 1rem 1.5rem;
+        margin: 1.5rem 0;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 1.1rem;
+        color: var(--text-primary, #fff);
+    }
+    
+    .theory-n7 table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+        background-color: var(--surface-2, #1e1e1e);
+        border-radius: 8px;
+        overflow: hidden;
+        font-size: 0.85rem;
+        font-family: 'Consolas', 'Monaco', monospace;
+    }
+    
+    .theory-n7 th, .theory-n7 td {
+        border: 1px solid var(--stroke-1, #333);
+        padding: 6px 10px;
+        text-align: center;
+    }
+    
+    .theory-n7 th {
+        background-color: rgba(0, 255, 213, 0.1);
+        font-weight: 600;
+        color: var(--accent-1, #00ffd5);
+    }
+</style>
+
+<article class="theory-n7">
+    <h1>Задание №7 ЕГЭ по информатике: Кодирование информации</h1>
+
+    <section>
+        <h2>Описание задания</h2>
+        <p>Задание №7 ЕГЭ по информатике проверяет навыки расчёта объёма памяти, необходимого для хранения графической или звуковой информации, а также времени, требуемого для передачи данных по каналу связи. Это задание базового уровня сложности, на выполнение которого выделяется 5 минут. </p>
+        
+        <div class="highlight">
+            <p><strong>Пример задачи:</strong> Прибор автоматической фиксации нарушений правил дорожного движения делает цветные фотографии размером 1024 × 960 пикселей, используя палитру из 8192 цветов. Снимки сохраняются в памяти камеры, затем группируются в пакеты по 160 фотографий и передаются в центр обработки информации со скоростью 14 680 064 бит/с. <br><br>
+            <strong>Вопрос:</strong> Сколько секунд потребуется для передачи одного пакета фотографий? В ответе требуется указать только целую часть полученного значения. </p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Теория: Кодирование текстовой информации</h2>
+        <p>Для того чтобы компьютер мог хранить и обрабатывать текст, каждый символ преобразуется в последовательность нулей и единиц — этот процесс называется кодированием. Объём памяти зависит от выбранной кодировки: </p>
+        
+        <ul>
+            <li><strong>ASCII (American Standard Code for Information Interchange)</strong> — кодировка, разработанная для английских текстов. Каждому символу соответствует код длиной 7 или 8 бит. Поддерживает 128 базовых символов. </li>
+            <li><strong>ANSI</strong> — расширение ASCII, где на каждый символ отводится 8 бит (1 байт). Поддерживает 256 символов. </li>
+            <li><strong>UTF-8</strong> — универсальная кодировка, поддерживающая языки всего мира. В зависимости от типа символа использует от 1 до 4 байт. </li>
+            <li><strong>UTF-16</strong> — символы кодируются 2 или 4 байтами в зависимости от сложности. Обеспечивает полную поддержку Unicode. </li>
+        </ul>
+
+        <h3>Кодовая таблица ASCII (Фрагмент)</h3>
+        <table>
+            <tr><th></th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr>
+            <tr><th>3</th><td>0</td><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>:</td><td>;</td><td>&lt;</td><td>=</td><td>&gt;</td><td>?</td></tr>
+            <tr><th>4</th><td>@</td><td>A</td><td>B</td><td>C</td><td>D</td><td>E</td><td>F</td><td>G</td><td>H</td><td>I</td><td>J</td><td>K</td><td>L</td><td>M</td><td>N</td><td>O</td></tr>
+            <tr><th>5</th><td>P</td><td>Q</td><td>R</td><td>S</td><td>T</td><td>U</td><td>V</td><td>W</td><td>X</td><td>Y</td><td>Z</td><td>[</td><td>\</td><td>]</td><td>^</td><td>_</td></tr>
+            <tr><th>6</th><td>`</td><td>a</td><td>b</td><td>c</td><td>d</td><td>e</td><td>f</td><td>g</td><td>h</td><td>i</td><td>j</td><td>k</td><td>l</td><td>m</td><td>n</td><td>o</td></tr>
+            <tr><th>7</th><td>p</td><td>q</td><td>r</td><td>s</td><td>t</td><td>u</td><td>v</td><td>w</td><td>x</td><td>y</td><td>z</td><td>{</td><td>|</td><td>}</td><td>~</td><td>DEL</td></tr>
+        </table>
+
+        <h3>Формула расчёта объёма текста</h3>
+        <div class="formula-box">
+            Объём памяти = n × i
+        </div>
+        <p>Где <strong>n</strong> — общее количество символов в тексте, а <strong>i</strong> — количество бит на один символ. </p>
+        <p><em>Пример:</em> Текст «Добро пожаловать!» (17 символов). Если используется UTF-16 (2 байта на символ), объём = 17 × 2 = 34 байта. </p>
+    </section>
+
+    <section>
+        <h2>Теория: Кодирование графической информации</h2>
+        <p>Цифровое растровое изображение создаётся путём разбиения исходного изображения на множество пикселей (пространственная дискретизация). </p>
+
+        <ul>
+            <li><strong>Пиксель</strong> — минимальный элемент изображения, обладающий цветом. </li>
+            <li><strong>Разрешение</strong> — количество пикселей по ширине и высоте. </li>
+            <li><strong>Глубина цвета (i)</strong> — количество бит, используемых для кодирования цвета одного пикселя. </li>
+        </ul>
+
+        <div class="formula-box">
+            N = 2<sup>i</sup>&nbsp;&nbsp;&nbsp;→&nbsp;&nbsp;&nbsp;i = log<sub>2</sub>N
+        </div>
+        <p>Где <strong>N</strong> — количество возможных цветов (палитра), а <strong>i</strong> — глубина цвета (в битах). <br>
+        <em>Примеры:</em> Если i = 1, то N = 2 (чёрно-белое). Если N = 1024 цвета, то потребуется 10 бит (log₂ 1024 = 10). </p>
+
+        <figure>
+            <div class="svg-container">
+                <svg viewBox="0 0 400 300" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+                    <pattern id="pixelGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+                    </pattern>
+                    <rect width="400" height="300" fill="url(#pixelGrid)"/>
+
+                    <g transform="translate(100, 50)" fill="var(--surface-2, #2a2a2a)" stroke="var(--accent-1, #00ffd5)" stroke-width="1.5">
+                        <rect x="80" y="0" width="40" height="20"/>
+                        <rect x="60" y="20" width="80" height="20"/>
+                        <rect x="40" y="40" width="120" height="20"/>
+                        <rect x="20" y="60" width="160" height="20"/>
+                        <rect x="0" y="80" width="200" height="20"/>
+                        <rect x="20" y="100" width="160" height="80"/>
+                        <rect x="80" y="120" width="40" height="60" fill="var(--surface-2, #1e1e1e)"/> </g>
+                    
+                    <path d="M 100,240 Q 100,255 115,255 L 190,255 Q 200,255 200,265 Q 200,255 210,255 L 285,255 Q 300,255 300,240" fill="none" stroke="#fff" stroke-width="2"/>
+                    <text x="200" y="285" text-anchor="middle" fill="#fff" font-size="14" font-family="sans-serif">x (количество пикселей по горизонтали)</text>
+                    
+                    <path d="M 320,50 Q 335,50 335,65 L 335,130 Q 335,140 345,140 Q 335,140 335,150 L 335,215 Q 335,230 320,230" fill="none" stroke="#fff" stroke-width="2"/>
+                    <text x="355" y="145" text-anchor="start" fill="#fff" font-size="14" font-family="sans-serif" writing-mode="vertical-rl">y (пикселей по вертикали)</text>
+
+                    <path d="M 80,40 Q 60,40 60,20" fill="none" stroke="var(--accent-1, #00ffd5)" stroke-width="2" marker-end="url(#arrow)"/>
+                    <defs>
+                        <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-1, #00ffd5)" />
+                        </marker>
+                    </defs>
+                    <text x="90" y="45" fill="#fff" font-size="14" font-family="sans-serif">i (вес одного пикселя в битах)</text>
+                </svg>
+            </div>
+            <figcaption>Структура растрового изображения</figcaption>
+        </figure>
+
+        <div class="formula-box">
+            Объём памяти = p × i = x × y × i
+        </div>
+        <p>Где <strong>p</strong> — общее количество пикселей (ширина <strong>x</strong> на высоту <strong>y</strong>). </p>
+        <p><em>Пример:</em> Изображение 200 на 300 пикселей, 6 бит на пиксель. Объём = 200 × 300 × 6 = 360 000 бит = 45 000 байт. </p>
+    </section>
+
+    <section>
+        <h2>Теория: Кодирование звуковой информации</h2>
+        <p>Звук — это колебания среды, образующие непрерывную волну с амплитудой (громкостью) и частотой (высотой тона). Для хранения в ПК звук оцифровывается в два этапа: </p>
+        <ul>
+            <li><strong>Временная дискретизация</strong> — фиксация значений сигнала через равные интервалы времени. Частота (f) измеряется в Герцах (Гц). Например, 44,1 кГц — это 44 100 отсчётов в секунду. </li>
+            <li><strong>Квантование</strong> — преобразование непрерывной амплитуды в конечное число уровней (i бит на отсчёт). 16 бит дают 65 536 уровней качества. </li>
+        </ul>
+
+        <figure>
+            <div class="svg-container">
+                <svg viewBox="0 0 500 250" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+                    <pattern id="graphGrid" width="25" height="25" patternUnits="userSpaceOnUse">
+                        <path d="M 25 0 L 0 0 0 25" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+                    </pattern>
+                    <rect width="500" height="250" fill="url(#graphGrid)"/>
+                    
+                    <line x1="50" y1="220" x2="50" y2="20" stroke="#fff" stroke-width="1.5" marker-end="url(#arrow)"/>
+                    <line x1="30" y1="125" x2="460" y2="125" stroke="#fff" stroke-width="1.5" marker-end="url(#arrow)"/>
+                    <text x="40" y="150" fill="#fff" font-size="14" font-family="sans-serif" transform="rotate(-90, 40, 150)">амплитуда</text>
+                    <text x="420" y="145" fill="#fff" font-size="14" font-family="sans-serif">время</text>
+
+                    <g fill="rgba(0, 255, 213, 0.2)">
+                        <rect x="75" y="75" width="25" height="50"/>
+                        <rect x="100" y="50" width="25" height="75"/>
+                        <rect x="125" y="25" width="25" height="100"/>
+                        <rect x="150" y="50" width="25" height="75"/>
+                        <rect x="175" y="75" width="25" height="50"/>
+                        
+                        <rect x="225" y="125" width="25" height="50"/>
+                        <rect x="250" y="125" width="25" height="75"/>
+                        <rect x="275" y="125" width="25" height="50"/>
+                    </g>
+                    
+                    <path d="M 50 125 C 100 0, 150 0, 200 125 C 250 250, 300 250, 350 125" fill="none" stroke="var(--accent-1, #00ffd5)" stroke-width="3"/>
+
+                    <path d="M 125,20 L 150,20" fill="none" stroke="#ff4757" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+                    <text x="137" y="15" text-anchor="middle" fill="#ff4757" font-size="12" font-family="sans-serif">шаг дискретизации по времени</text>
+
+                    <path d="M 90,200 L 90,175" fill="none" stroke="#ffc107" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+                    <text x="100" y="192" fill="#ffc107" font-size="12" font-family="sans-serif">шаг дискретизации по амплитуде</text>
+                </svg>
+            </div>
+            <figcaption>Дискретизация и квантование звуковой волны</figcaption>
+        </figure>
+
+        <div class="formula-box">
+            Объём памяти = i × f × t × k
+        </div>
+        <p>Где <strong>i</strong> — разрядность (бит), <strong>f</strong> — частота дискретизации (Гц), <strong>t</strong> — время звучания (сек), <strong>k</strong> — количество каналов (1 — моно, 2 — стерео, 4 — квадро). </p>
+        <p><em>Пример:</em> 5 секунд, моно, 8 000 Гц, 16-бит. Объём = 16 × 8000 × 5 × 1 = 640 000 бит. </p>
+    </section>
+
+    <section>
+        <h2>Теория: Определение скорости передачи информации</h2>
+        <p>Пропускная способность канала показывает, сколько бит передается за единицу времени. </p>
+
+        <figure>
+            <div class="svg-container">
+                <svg viewBox="0 0 300 150" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 100 100 L 200 50 A 20 30 0 0 0 220 50 L 120 100 A 20 30 0 0 1 100 100" fill="var(--surface-2, #2a2a2a)"/>
+                    <ellipse cx="110" cy="100" rx="20" ry="30" fill="var(--surface-2, #1e1e1e)" stroke="var(--accent-1, #00ffd5)" stroke-width="3" transform="rotate(-25 110 100)"/>
+                    <path d="M 110 70 L 210 20" fill="none" stroke="var(--accent-1, #00ffd5)" stroke-width="3"/>
+                    <path d="M 110 130 L 210 80" fill="none" stroke="var(--accent-1, #00ffd5)" stroke-width="3"/>
+                    <ellipse cx="210" cy="50" rx="20" ry="30" fill="transparent" stroke="var(--accent-1, #00ffd5)" stroke-width="3" transform="rotate(-25 210 50)"/>
+                    
+                    <text x="160" y="80" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold" font-family="sans-serif" transform="rotate(-25 160 80)">DATA</text>
+
+                    <path d="M 30 130 L 70 110 L 60 100 L 90 95 L 85 125 L 75 115 L 35 135 Z" fill="#ff4757"/>
+                    <path d="M 230 40 L 270 20 L 260 10 L 290 5 L 285 35 L 275 25 L 235 45 Z" fill="#ff4757"/>
+                </svg>
+            </div>
+            <figcaption>Передача данных по каналу связи</figcaption>
+        </figure>
+
+        <div class="formula-box">
+            Q = v × t&nbsp;&nbsp;&nbsp;→&nbsp;&nbsp;&nbsp;v = Q / t&nbsp;&nbsp;&nbsp;→&nbsp;&nbsp;&nbsp;t = Q / v
+        </div>
+        <p>Где <strong>Q</strong> — объём переданной информации (бит), <strong>v</strong> — скорость передачи (бит/с), <strong>t</strong> — время передачи (сек). </p>
+        <p><em>Пример:</em> Изображение 800 бит. Скорость 2 байт/с (16 бит/с). Время t = 800 / 16 = 50 секунд. </p>
+    </section>
+
+    <section>
+        <h2>Подробное решение задачи из демоверсии</h2>
+        
+        <p>Камера создаёт фотографии 1024 × 960 пикселей, 8192 цвета. Пакет — 160 фотографий. Скорость передачи — 14 680 064 бит/с. Найти время передачи пакета в секундах. </p>
+
+        <h3><span class="step">Шаг 1</span> Определение объёма данных одной фотографии</h3>
+        <ul>
+            <li>Количество пикселей в фото: <code>1024 × 960 = 983 040</code> пикселей. </li>
+            <li>Глубина цвета для палитры 8192 цвета: <code>log₂ 8192 = 13</code> бит. </li>
+            <li>Объём одной фотографии: <code>983 040 × 13 = 12 779 520</code> бит. </li>
+        </ul>
+
+        <h3><span class="step">Шаг 2</span> Определение объёма данных всего пакета</h3>
+        <p>Учитывая, что пакет состоит из 160 фотографий, вычисляем общий объём: <br>
+        <code>12 779 520 × 160 = 2 044 723 200</code> бит. </p>
+
+        <h3><span class="step">Шаг 3</span> Расчёт времени передачи пакета</h3>
+        <p>Используем формулу t = Q / v: <br>
+        <code>t = 2 044 723 200 / 14 680 064 ≈ 139.3</code> секунд. </p>
+
+        <h3><span class="step">Шаг 4</span> Запись ответа</h3>
+        <p>Так как в условии требуется указать только целую часть полученного значения, берём 139. </p>
+
+        <div class="answer">Ответ: 139 </div>
+    </section>
+
+</article>
