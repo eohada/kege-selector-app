@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ lesson.topic or 'Урок' }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
@@ -452,6 +453,8 @@
         }
     }
     </style>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     <script>
         (function(){
             try {
@@ -882,7 +885,7 @@
                         </div>
                     </div>
                     <div class="task-content">
-                        {{ lt19.task.content_html|deduplicate_formulas|sanitize_html }}
+                        {{ lt19.task.content_html|sanitize_html }}
                         {% if lt19.task.attached_files %}
                         {% set files = lt19.task.attached_files | from_json %}
                         {% if files %}
@@ -1023,7 +1026,7 @@
                     </div>
                     
                     <div class="task-content">
-                        {{ hw_task.task.content_html|deduplicate_formulas|sanitize_html }}
+                        {{ hw_task.task.content_html|sanitize_html }}
                         {% if hw_task.task.attached_files %}
                         {% set files = hw_task.task.attached_files | from_json %}
                         {% if files %}
@@ -3380,6 +3383,23 @@
                     loadWhiteboardTab();
                 }
             }, 100);
+        });
+
+        // Initialize KaTeX
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false,
+                    trust: true,
+                    ignoreClass: 'katex'
+                });
+            }
         });
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>

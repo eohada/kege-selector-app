@@ -443,7 +443,7 @@
                 </div>
                 {% else %}
                 <div class="task-content">
-                    {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|strip_attachment_links|sanitize_html }}
+                    {{ task_item.task.content_html|task_content_absolute_urls|strip_attachment_links|sanitize_html }}
                 </div>
                 {% endif %}
                 
@@ -630,7 +630,7 @@
             </div>
             
             <div class="task-content">
-                {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|strip_attachment_links|sanitize_html }}
+                {{ task_item.task.content_html|task_content_absolute_urls|strip_attachment_links|sanitize_html }}
             </div>
 
             {% if task_item.task.attached_files %}

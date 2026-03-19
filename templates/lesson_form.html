@@ -356,7 +356,7 @@
                     </div>
                     {% if hw_task.task.content_html %}
                     <div class="task-preview-content">
-                        {{ hw_task.task.content_html|deduplicate_formulas|sanitize_html }}
+                        {{ hw_task.task.content_html|sanitize_html }}
                     </div>
                     {% endif %}
                     {% if hw_task.student_answer %}
@@ -403,7 +403,7 @@
                     </div>
                     {% if cw_task.task.content_html %}
                     <div class="task-preview-content">
-                        {{ cw_task.task.content_html|deduplicate_formulas|sanitize_html }}
+                        {{ cw_task.task.content_html|sanitize_html }}
                     </div>
                     {% endif %}
                 </div>
