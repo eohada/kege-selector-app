@@ -1,0 +1,199 @@
+<style>
+    .theory-n10 {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        color: var(--text-primary, #e1e1e1);
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 0;
+    }
+
+    .theory-n10 h1 {
+        font-size: 2.1rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 1.5rem;
+        color: var(--text-primary, #ffffff);
+    }
+
+    .theory-n10 h2 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-top: 2.25rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--stroke-1, #333);
+        padding-bottom: 0.6rem;
+    }
+
+    .theory-n10 h3 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-top: 1.75rem;
+        margin-bottom: 0.85rem;
+    }
+
+    .theory-n10 p {
+        margin-bottom: 1.1rem;
+        color: var(--text-primary, #e1e1e1);
+    }
+
+    .theory-n10 ul, .theory-n10 ol {
+        margin-bottom: 1.2rem;
+        padding-left: 1.4rem;
+        color: var(--text-primary, #e1e1e1);
+    }
+
+    .theory-n10 li {
+        margin-bottom: 0.4rem;
+    }
+
+    .theory-n10 figure {
+        margin: 1.75rem 0;
+        padding: 0;
+    }
+
+    .theory-n10 img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 12px;
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
+        background-color: var(--surface-2, #1e1e1e);
+    }
+
+    [data-theme="dark"] .theory-n10 img {
+        opacity: 0.9;
+        transition: opacity 0.25s ease;
+    }
+
+    [data-theme="dark"] .theory-n10 img:hover {
+        opacity: 1;
+    }
+
+    .theory-n10 figcaption {
+        margin-top: 0.65rem;
+        font-size: 0.9rem;
+        color: var(--text-muted, #999);
+        text-align: center;
+    }
+
+    .theory-n10 .highlight {
+        background-color: var(--surface-2, #1e1e1e);
+        padding: 1.25rem 1.5rem;
+        border-radius: 12px;
+        margin: 1.75rem 0;
+        border: 1px solid var(--stroke-1, #333);
+    }
+
+    .theory-n10 .highlight p:last-child {
+        margin-bottom: 0;
+    }
+
+    .theory-n10 .step {
+        display: inline-block;
+        font-weight: 600;
+        color: var(--accent-1, #00ffd5);
+        background-color: rgba(0, 255, 213, 0.08);
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        margin-right: 0.4rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .theory-n10 .answer {
+        display: inline-block;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--text-primary, #fff);
+        background-color: var(--surface-2, #1e1e1e);
+        padding: 0.75rem 1.4rem;
+        border-radius: 999px;
+        margin-top: 0.9rem;
+        border: 1px solid var(--stroke-1, #333);
+    }
+
+    .theory-n10 .math-box {
+        display: block;
+        background: rgba(0, 255, 213, 0.05);
+        border-left: 4px solid var(--accent-1, #00ffd5);
+        padding: 1rem 1.5rem;
+        margin: 1.5rem 0;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 1.2rem;
+        color: var(--text-primary, #fff);
+        text-align: center;
+    }
+</style>
+
+<article class="theory-n10">
+    <h1>Задание №10 ЕГЭ по информатике: Поиск информации в Word</h1>
+
+    <figure>
+        <img src="https://placehold.co/760x400/1e1e1e/00ffd5?text=Задание+10+ЕГЭ:+Word" alt="Обложка задания 10 ЕГЭ по информатике">
+    </figure>
+
+    <section>
+        <p>В этой статье разберём решение задания №10 ЕГЭ по информатике 2025 с помощью Microsoft Word. Пошагово рассмотрим алгоритм поиска вхождений сочетания букв «по» или «По» в составе других слов, включая сложные слова с дефисом, исключая случаи, когда оно используется как самостоятельное слово. </p>
+
+        <h2>Описание задания</h2>
+        <p>Задание №10 из ЕГЭ по информатике 2025 года оценивает навыки информационного поиска с использованием текстового процессора. Оно относится к базовому уровню сложности, и на его выполнение отведено 3 минуты. Пример задания взят из открытого варианта ЕГЭ, опубликованного на сайте ФИПИ. </p>
+        
+        <div class="highlight">
+            <p><strong>Условие задачи:</strong> С помощью текстового редактора определите, сколько раз встречается сочетание букв «по» или «По» в тексте главы III повести А.И. Куприна «Поединок». Важно, чтобы найденные вхождения встречались только в составе других слов (в том числе в сложных словах, соединённых дефисом), но не являлись отдельным словом. </p>
+        </div>
+
+        <h3>Задача состоит в следующем:</h3>
+        <ol>
+            <li>Необходимо найти все случаи появления сочетания «по» или «По», но исключить те случаи, когда это сочетание стоит как самостоятельное слово (например, предлог «по»). </li>
+            <li>Нужно учитывать сочетания, входящие в состав других слов, включая сложные слова, соединённые дефисом (например, «по-русски»). </li>
+            <li>В качестве ответа следует указать количество таких вхождений. </li>
+        </ol>
+
+        <p>Задание проверяет умение работы с функциями поиска и обработки текста в текстовом процессоре, а также внимательность при исключении лишних вхождений. </p>
+    </section>
+
+    <section>
+        <h2>Подробное решение задания в Word</h2>
+        <p>Для безошибочного решения задания в текстовом процессоре Microsoft Word следуем поэтапному алгоритму: </p>
+
+        <p><span class="step">Шаг 1</span> <strong>Откроем файл с текстом.</strong> Откройте скачанный файл, содержащий исходное произведение в Word. </p>
+
+        <p><span class="step">Шаг 2</span> <strong>Копируем текст нужной главы.</strong> Так как в задании сказано искать только в главе III, скопируйте текст главы №3 в новый, пустой документ. Это сделает работу намного удобнее и безопаснее, так как поиск будет вестись строго в нужном фрагменте, исключая случайные совпадения из других глав. </p>
+
+        <p><span class="step">Шаг 3</span> <strong>Используем инструмент «Поиск».</strong> Перейдите к инструменту поиска, нажав комбинацию клавиш <code>Ctrl + F</code> или выбрав на ленте пункт «Главная» -> «Найти». После этого слева откроется панель «Навигация». </p>
+
+        <p><span class="step">Шаг 4</span> <strong>Поиск всех вхождений «по».</strong> Введите сочетание букв «по» в поле поиска и нажмите Enter. Word подсветит все вхождения этого сочетания: внутри слов, как отдельные слова и в словах с дефисом. Запишите общее количество найденных вхождений — <strong>114</strong>. </p>
+
+        <figure>
+            <img src="/static/images/scr_n1.png" alt="Поиск всех вхождений в Word">
+            <figcaption>Результат обычного поиска: найдено 114 совпадений.</figcaption>
+        </figure>
+
+        <p><span class="step">Шаг 5</span> <strong>Поиск «по» как отдельного слова.</strong> Нам нужно исключить предлог «по». Откройте окно расширенного поиска (кликните на лупу или стрелочку в строке поиска -> «Расширенный поиск...» или «Параметры»). Установите галочку напротив критерия <strong>«Только слово целиком»</strong>. Это заставит Word искать строго самостоятельные слова и игнорировать части слов. Запишите количество найденных отдельных слов «по» — <strong>11</strong>. </p>
+
+        <figure>
+            <img src="/static/images/scr_n2.png" alt="Поиск с параметром 'Только слово целиком'">
+            <figcaption>Поиск с галочкой «Только слово целиком»: найдено 11 совпадений.</figcaption>
+        </figure>
+
+        <p><span class="step">Шаг 6</span> <strong>Поиск сложных слов с дефисом («по-»).</strong> При поиске «Только слово целиком» Word мог проигнорировать слова с дефисом, хотя по условию они нам нужны. Поэтому их стоит перепроверить отдельно. Снимите галочку «Только слово целиком», введите в поисковую строку «по-» (с дефисом) и найдите все такие вхождения. Запишите количество сложных слов с дефисом — <strong>3</strong>. </p>
+
+        <figure>
+            <img src="/static/images/scr_n3.png" alt="Поиск слов с дефисом">
+            <figcaption>Поиск фрагмента «по-»: найдено 3 совпадения.</figcaption>
+        </figure>
+
+        <p><span class="step">Шаг 7</span> <strong>Подсчёт итогового ответа.</strong> Чтобы найти количество вхождений сочетания «по» или «По» <em>только</em> в составе других слов, проведем простое математическое вычисление: из всех вхождений вычтем самостоятельные слова и прибавим слова с дефисом (если они не учлись).</p>
+        
+        <div class="math-box">
+            114 (все совпадения) - 11 (слова целиком) + 3 (слова через дефис) = 106
+        </div>
+
+        <p>Таким образом, мы исключили все самостоятельные слова-предлоги, но сохранили в подсчете сложные слова с дефисом, строго выполнив условие задачи. </p>
+
+        <div class="answer">Ответ: 106 </div>
+    </section>
+
+</article>
