@@ -1,0 +1,267 @@
+<style>
+    .theory-n8 {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        color: var(--text-primary, #e1e1e1);
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 0;
+    }
+
+    .theory-n8 h1 {
+        font-size: 2.1rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 1.5rem;
+        color: var(--text-primary, #ffffff);
+    }
+
+    .theory-n8 h2 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-top: 2.25rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--stroke-1, #333);
+        padding-bottom: 0.6rem;
+    }
+
+    .theory-n8 h3 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-top: 1.75rem;
+        margin-bottom: 0.85rem;
+    }
+
+    .theory-n8 p {
+        margin-bottom: 1.1rem;
+        color: var(--text-primary, #e1e1e1);
+    }
+
+    .theory-n8 ul, .theory-n8 ol {
+        margin-bottom: 1.2rem;
+        padding-left: 1.4rem;
+        color: var(--text-primary, #e1e1e1);
+    }
+
+    .theory-n8 li {
+        margin-bottom: 0.4rem;
+    }
+
+    .theory-n8 figure {
+        margin: 1.75rem 0;
+        padding: 0;
+    }
+
+    .theory-n8 img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 12px;
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
+        background-color: var(--surface-2, #1e1e1e);
+    }
+
+    [data-theme="dark"] .theory-n8 img {
+        opacity: 0.9;
+        transition: opacity 0.25s ease;
+    }
+
+    [data-theme="dark"] .theory-n8 img:hover {
+        opacity: 1;
+    }
+
+    .theory-n8 figcaption {
+        margin-top: 0.65rem;
+        font-size: 0.9rem;
+        color: var(--text-muted, #999);
+        text-align: center;
+    }
+
+    .theory-n8 .highlight {
+        background-color: var(--surface-2, #1e1e1e);
+        padding: 1.25rem 1.5rem;
+        border-radius: 12px;
+        margin: 1.75rem 0;
+        border: 1px solid var(--stroke-1, #333);
+    }
+
+    .theory-n8 .highlight p:last-child {
+        margin-bottom: 0;
+    }
+
+    .theory-n8 .step {
+        display: inline-block;
+        font-weight: 600;
+        color: var(--accent-1, #00ffd5);
+        background-color: rgba(0, 255, 213, 0.08);
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        margin-right: 0.4rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .theory-n8 .answer {
+        display: inline-block;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--text-primary, #fff);
+        background-color: var(--surface-2, #1e1e1e);
+        padding: 0.75rem 1.4rem;
+        border-radius: 999px;
+        margin-top: 0.9rem;
+        border: 1px solid var(--stroke-1, #333);
+    }
+    
+    .theory-n8 pre {
+        background-color: var(--surface-2, #1e1e1e);
+        border: 1px solid var(--stroke-1, #333);
+        padding: 1.25rem;
+        border-radius: 12px;
+        overflow-x: auto;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.95rem;
+        color: var(--text-primary, #e1e1e1);
+        margin: 1.5rem 0;
+        line-height: 1.5;
+    }
+
+    .theory-n8 code {
+        font-family: 'Consolas', 'Monaco', monospace;
+        background-color: var(--surface-2, #1e1e1e);
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.9em;
+        color: var(--accent-1, #00ffd5);
+        border: 1px solid var(--stroke-1, #333);
+    }
+
+    .theory-n8 pre code {
+        background-color: transparent;
+        padding: 0;
+        border: none;
+        color: inherit;
+    }
+    
+    .theory-n8 .word-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-family: 'Consolas', 'Monaco', monospace;
+        background-color: var(--surface-2, #1e1e1e);
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        border-left: 4px solid var(--accent-1, #00ffd5);
+        margin-bottom: 1.5rem;
+    }
+</style>
+
+<article class="theory-n8">
+    <h1>Задание №8 ЕГЭ по информатике: Упорядоченный список слов</h1>
+
+    <section>
+        <h2>Описание задания</h2>
+        <p>Задание №8 из ЕГЭ по информатике 2025 года направлено на проверку знаний базовых понятий и методов, связанных с измерением количества информации. Для успешного выполнения этого задания требуется понимание ключевых терминов, таких как алфавит сообщения, длина сообщения, мощность алфавита и объём информации. На решение задачи выделяется 4 минуты, что соответствует средней сложности. Пример задания взят из открытого варианта ЕГЭ, опубликованного на сайте ФИПИ. </p>
+        
+        <div class="highlight">
+            <p><strong>Условие задачи:</strong> Все пятибуквенные слова, составленные из букв русского алфавита: <strong>П, А, Р, У, С</strong>, записаны в алфавитном порядке и пронумерованы, начиная с 1. </p>
+            <p>Начало списка выглядит следующим образом:</p>
+            <div class="word-list">
+                <span>1. ААААА</span>
+                <span>2. ААААП</span>
+                <span>3. ААААР</span>
+                <span>4. ААААС</span>
+                <span>5. ААААУ</span>
+                <span>6. АААПА</span>
+            </div>
+            <p><strong>Вопрос:</strong> Под каким номером в списке идёт последнее слово, которое: <br>
+            • содержит не более одной буквы «У»; <br>
+            • не содержит двух букв «А», стоящих подряд. </p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Полезные советы при решении подобных задач:</h2>
+        
+        <h3>1. Различие между мощностью алфавита и длиной сообщения:</h3>
+        <ul>
+            <li><strong>Мощность алфавита</strong> — это количество различных символов, входящих в состав алфавита. В данном случае мощность равна 5 (буквы П, А, Р, У, С). </li>
+            <li><strong>Длина сообщения</strong> — это количество символов в слове. Для этой задачи длина сообщения составляет 5 символов. </li>
+        </ul>
+
+        <h3>2. Использование методов работы со строками:</h3>
+        <ul>
+            <li>Для проверки, содержит ли слово не более одной буквы «У», используйте метод <code>.count('У')</code>. </li>
+            <li>Для проверки отсутствия двух подряд идущих букв «А» используйте проверку подстроки <code>"АА" not in слово</code>. </li>
+        </ul>
+
+        <h3>3. Автоматизация перебора с помощью Python:</h3>
+        <p>Встроенная библиотека <code>itertools</code> позволяет быстро и эффективно генерировать все возможные комбинации символов. Используйте функцию <code>itertools.product</code> для перебора всех вариантов слов заданной длины. </p>
+
+        <h3>4. Оптимизация решения:</h3>
+        <ul>
+            <li>Сначала создайте отсортированный список всех возможных слов. </li>
+            <li>Затем применяйте фильтрацию по заданным условиям. Это сократит время выполнения задачи, особенно если потребуется перебрать большой объём данных. </li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Подробное решение задачи на упорядоченный список</h2>
+        <p>Ниже приведён пример программы на Python, которая перебирает все возможные 5-буквенные слова, составленные из букв «ПАРУС», и проверяет каждое слово по заданным условиям. Программа выводит подходящие слова и их порядковые номера: </p>
+
+<pre><code>from itertools import *
+
+# Инициализируем счётчик
+count = 1
+
+# Перебираем все возможные слова
+for i in product(sorted("ПАРУС"), repeat=5):
+    if i.count("У") <= 1 and "АА" not in "".join(i):
+        print("".join(i), count) # Выводим слово и номер
+    count += 1</code></pre>
+
+        <h3>Давайте разберём работу этого кода шаг за шагом.</h3>
+        
+        <p><span class="step">Шаг 1</span> <strong>Импорт модуля itertools:</strong><br>
+        Модуль <code>itertools</code> содержит полезные функции для работы с итерациями. В данном случае используется функция <code>product</code>, которая позволяет генерировать все возможные комбинации элементов с повторением. </p>
+
+        <p><span class="step">Шаг 2</span> <strong>Инициализация счётчика:</strong><br>
+        Переменная <code>count</code> используется для подсчёта и нумерации слов. Начинаем с 1, так как первое слово будет под номером 1. </p>
+
+        <p><span class="step">Шаг 3</span> <strong>Генерация всех возможных 5-буквенных слов:</strong><br>
+        Здесь создаются все возможные слова длиной 5 букв, используя буквы «П», «А», «Р», «У», «С». Рассмотрим подробнее: <br>
+        • <code>sorted("ПАРУС")</code> сортирует буквы в алфавитном порядке, возвращая список: <code>['А', 'П', 'Р', 'С', 'У']</code>. Это нужно для того, чтобы слова генерировались в алфавитном порядке. <br>
+        • <code>product(..., repeat=5)</code> — генерирует все возможные комбинации длиной 5 символов (с повторением букв). <br>
+        Примеры первых слов: <br>
+        • Первое слово — ('А', 'А', 'А', 'А', 'А'); <br>
+        • Второе — ('А', 'А', 'А', 'А', 'П'); <br>
+        • Третье — ('А', 'А', 'А', 'А', 'Р') и так далее. <br>
+        Всего будет сгенерировано 5<sup>5</sup> = 3125 слов, так как каждая из 5 букв может занимать 5 позиций. </p>
+
+        <p><span class="step">Шаг 4</span> <strong>Проверка условий для каждого слова:</strong><br>
+        На каждом шаге проверяется, удовлетворяет ли слово следующим условиям: <br>
+        • <code>i.count("У") <= 1</code> — в слове может быть не более одной буквы «У». <br>
+        • <code>"АА" not in "".join(i)</code> — в слове не должно быть двух подряд идущих букв «А». <br>
+        Так как <code>i</code> — это кортеж (набор символов), преобразуем его в строку с помощью <code>"".join(i)</code>, чтобы проверить наличие подстроки "АА". </p>
+
+        <p><span class="step">Шаг 5</span> <strong>Вывод подходящих слов и их порядковых номеров:</strong><br>
+        Если слово прошло проверку, оно выводится в виде строки (после преобразования с помощью <code>"".join(i)</code>), а рядом указывается его порядковый номер. </p>
+
+        <p><span class="step">Шаг 6</span> <strong>Увеличение счётчика:</strong><br>
+        Счётчик увеличивается на 1 в конце каждой итерации, чтобы на следующей итерации присвоить слову корректный порядковый номер. </p>
+
+        <h3>Как работает программа:</h3>
+        <ul>
+            <li>На первой итерации генерируется слово ('А', 'А', 'А', 'А', 'А'). Оно не удовлетворяет условиям, так как содержит две подряд идущие буквы «А», поэтому не выводится. </li>
+            <li>На второй итерации генерируется слово ('А', 'А', 'А', 'А', 'П'). Оно также не удовлетворяет условиям, так как содержит две подряд идущие буквы «А». </li>
+            <li>Когда формируется слово ('А', 'П', 'А', 'П', 'А'), оно успешно проходит обе проверки: в нём нет двух подряд идущих букв «А», а количество букв «У» не превышает одной. Так как это слово соответствует заданным условиям, оно выводится на экран с порядковым номером 131. </li>
+            <li>Программа продолжает последовательно перебирать все возможные слова и проверять каждое из них на соответствие заданным условиям. Если слово удовлетворяет критериям, оно отображается на экране вместе с его порядковым номером. </li>
+        </ul>
+
+        <p>В выведенном на экран списке последнее подходящее слово — <strong>«УСССС»</strong>, и его порядковый номер равен <strong>2969</strong>. </p>
+
+        <div class="answer">Ответ на задачу: 2969 </div>
+    </section>
+
+</article>
