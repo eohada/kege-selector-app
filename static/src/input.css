@@ -105,35 +105,6 @@
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    --color-bg-app: #0F172A;
-    --color-bg-surface: #1E293B;
-    --color-bg-surface-alt: #334155;
-    --color-bg-sidebar: #1E293B;
-    --color-accent-soft: rgba(123, 92, 255, 0.15);
-    --color-text-primary: #F1F5F9;
-    --color-text-secondary: #CBD5E1;
-    --color-text-muted: #94A3B8;
-    --color-stroke: rgba(255, 255, 255, 0.1);
-    --color-stroke-strong: rgba(255, 255, 255, 0.18);
-    color-scheme: dark;
-    --page-bg: var(--color-bg-app);
-    --surface-1: var(--color-bg-surface);
-    --surface-2: var(--color-bg-surface-alt);
-    --surface-3: #1E293B;
-    --surface-card: var(--color-bg-surface);
-    --text-primary: var(--color-text-primary);
-    --text-secondary: var(--color-text-secondary);
-    --text-muted: var(--color-text-muted);
-    --stroke-1: var(--color-stroke);
-    --stroke-2: var(--color-stroke-strong);
-    --overlay-hover: rgba(255, 255, 255, 0.06);
-    --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.3);
-    --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.3);
-    --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.4);
-  }
-}
 
 /* ============================================================
    @layer base
