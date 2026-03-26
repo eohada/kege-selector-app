@@ -5,60 +5,62 @@
 
 {% block content %}
 
-        {# ── Compact Hero ── #}
-        <section class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 rounded-card-lg shadow-card bg-bg-surface p-6 lg:p-8">
-            <div class="min-w-0">
-                <p class="text-xs font-bold uppercase tracking-widest text-text-muted mb-1">панель управления</p>
-                <h1 class="text-2xl lg:text-3xl font-extrabold m-0 leading-tight">BooStudy</h1>
-                <p class="text-text-secondary mt-1 mb-0 text-sm lg:text-base">Ученики, уроки и прогресс — всё в одном месте.</p>
-                {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
-                <div class="flex flex-wrap gap-2 mt-4">
-                    <a href="{{ url_for('main.export_data') }}" class="neo-button accent sm">
-                        {{ ui_icon('action.export', 'sm', decorative=true) }}
-                        Экспорт
-                    </a>
-                    <a href="{{ url_for('main.import_data') }}" class="neo-button outline sm">
-                        {{ ui_icon('action.import', 'sm', decorative=true) }}
-                        Импорт
-                    </a>
-                    <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost sm">
-                        {{ ui_icon('action.backup', 'sm', decorative=true) }}
-                        Бэкап БД
-                    </a>
+        {# ── Hero Card ── #}
+        <section class="bg-bg-surface p-5 lg:p-6" style="border-radius:16px; border:2px solid var(--color-stroke); border-bottom-width:4px;">
+            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="hero-eyebrow">панель управления</p>
+                    <h1 class="hero-title">BooStudy</h1>
+                    <p class="hero-subtitle">Ученики, уроки и прогресс — всё в одном месте.</p>
+                    {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
+                    <div class="flex flex-wrap gap-2 mt-3">
+                        <a href="{{ url_for('main.export_data') }}" class="neo-button accent sm">
+                            {{ ui_icon('action.export', 'sm', decorative=true) }}
+                            Экспорт
+                        </a>
+                        <a href="{{ url_for('main.import_data') }}" class="neo-button outline sm">
+                            {{ ui_icon('action.import', 'sm', decorative=true) }}
+                            Импорт
+                        </a>
+                        <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost sm">
+                            {{ ui_icon('action.backup', 'sm', decorative=true) }}
+                            Бэкап БД
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
-            </div>
-            <div class="flex flex-wrap gap-3 shrink-0">
-                <div class="flex items-center gap-2.5 rounded-pill bg-accent-soft px-4 py-2">
-                    <span class="text-2xl font-black leading-none">{{ total_students }}</span>
-                    <span class="text-xs text-text-muted leading-tight">активных<br>учеников</span>
-                </div>
-                <div class="flex items-center gap-2.5 rounded-pill bg-success-soft px-4 py-2">
-                    <span class="text-2xl font-black leading-none">{{ planned_lessons }}</span>
-                    <span class="text-xs text-text-muted leading-tight">запланировано<br>уроков</span>
-                </div>
-                <div class="flex items-center gap-2.5 rounded-pill bg-gamification-soft px-4 py-2">
-                    <span class="text-2xl font-black leading-none">{{ completed_lessons }}</span>
-                    <span class="text-xs text-text-muted leading-tight">проведено<br>уроков</span>
+                <div class="flex flex-wrap gap-2 shrink-0">
+                    <div class="bento-card purple flex items-center gap-2">
+                        <span class="text-xl font-black leading-none" style="color:#7B5CFF;">{{ total_students }}</span>
+                        <span class="text-[0.7rem] font-bold text-text-muted leading-tight">активных<br>учеников</span>
+                    </div>
+                    <div class="bento-card green flex items-center gap-2">
+                        <span class="text-xl font-black leading-none" style="color:#059669;">{{ planned_lessons }}</span>
+                        <span class="text-[0.7rem] font-bold text-text-muted leading-tight">запланировано<br>уроков</span>
+                    </div>
+                    <div class="bento-card orange flex items-center gap-2">
+                        <span class="text-xl font-black leading-none" style="color:#D97706;">{{ completed_lessons }}</span>
+                        <span class="text-[0.7rem] font-bold text-text-muted leading-tight">проведено<br>уроков</span>
+                    </div>
                 </div>
             </div>
         </section>
 
         {# ── Tutors Section ── #}
         {% if my_tutors %}
-        <section class="mt-6">
-            <p class="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">мой преподаватель{% if my_tutors|length > 1 %}и{% endif %}</p>
-            <div class="flex flex-wrap gap-4">
+        <section class="mt-5">
+            <p class="hero-eyebrow mb-2">мой преподаватель{% if my_tutors|length > 1 %}и{% endif %}</p>
+            <div class="flex flex-wrap gap-3">
                 {% for tutor in my_tutors %}
-                <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="flex items-center gap-4 rounded-card-lg shadow-card bg-bg-surface p-5 hover:shadow-card-hover transition-shadow">
-                    <div class="w-14 h-14 rounded-full overflow-hidden shrink-0 bg-accent-soft flex items-center justify-center font-bold text-xl text-accent">
+                <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="flex items-center gap-3 bg-bg-surface p-3 hover:border-accent no-underline" style="border-radius:14px; border:2px solid var(--color-stroke); border-bottom-width:3px; transition:border-color 0.12s ease; color:inherit;">
+                    <div class="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-accent-soft flex items-center justify-center font-extrabold text-sm text-accent" style="border:2px solid var(--color-stroke);">
                         {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="" class="w-full h-full object-cover">{% else %}{{ tutor.username[0]|upper }}{% endif %}
                     </div>
                     <div class="min-w-0">
-                        <div class="font-bold text-lg leading-snug">
+                        <div class="font-extrabold text-sm leading-snug text-text-primary">
                             {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}{{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}{% else %}{{ tutor.username }}{% endif %}
                         </div>
-                        <div class="text-sm text-text-muted mt-0.5">{{ tutor.get_role_display() }} · Открыть профиль →</div>
+                        <div class="text-xs text-text-muted mt-0.5 font-semibold">{{ tutor.get_role_display() }} · Открыть →</div>
                     </div>
                 </a>
                 {% endfor %}
@@ -66,32 +68,32 @@
         </section>
         {% endif %}
 
-        {# ── Quick Actions — Bento Cards ── #}
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-            <div class="rounded-card-lg shadow-card p-5 bg-accent-soft">
-                <p class="text-sm font-semibold text-text-secondary mb-1">На проверку (классная)</p>
-                <p class="text-4xl font-black m-0 leading-none">{{ review_lesson_tasks_count }}</p>
-                <a href="{{ url_for('lessons.review_queue', source='lessons', status='submitted') }}" class="inline-block mt-3 text-sm font-bold text-accent hover:underline">Открыть →</a>
+        {# ── Quick Actions — Bento Tiles ── #}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+            <div class="bento-card purple">
+                <p class="text-xs font-extrabold text-text-secondary mb-0.5">На проверку (классная)</p>
+                <p class="text-3xl font-black m-0 leading-none" style="color:#7B5CFF;">{{ review_lesson_tasks_count }}</p>
+                <a href="{{ url_for('lessons.review_queue', source='lessons', status='submitted') }}" class="inline-block mt-2 text-xs font-extrabold text-accent hover:underline">Открыть →</a>
             </div>
-            <div class="rounded-card-lg shadow-card p-5 bg-success-soft">
-                <p class="text-sm font-semibold text-text-secondary mb-1">На проверку (работы)</p>
-                <p class="text-4xl font-black m-0 leading-none">{{ review_submissions_count }}</p>
-                <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="inline-block mt-3 text-sm font-bold text-success hover:underline">Открыть →</a>
+            <div class="bento-card green">
+                <p class="text-xs font-extrabold text-text-secondary mb-0.5">На проверку (работы)</p>
+                <p class="text-3xl font-black m-0 leading-none" style="color:#059669;">{{ review_submissions_count }}</p>
+                <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="inline-block mt-2 text-xs font-extrabold hover:underline" style="color:#059669;">Открыть →</a>
             </div>
-            <div class="rounded-card-lg shadow-card p-5 bg-gamification-soft">
-                <p class="text-sm font-semibold text-text-secondary mb-1">Группы</p>
-                <p class="text-4xl font-black m-0 leading-none">{{ groups_count }}</p>
-                <a href="{{ url_for('groups.groups_list') }}" class="inline-block mt-3 text-sm font-bold text-gamification hover:underline">Открыть →</a>
+            <div class="bento-card orange">
+                <p class="text-xs font-extrabold text-text-secondary mb-0.5">Группы</p>
+                <p class="text-3xl font-black m-0 leading-none" style="color:#D97706;">{{ groups_count }}</p>
+                <a href="{{ url_for('groups.groups_list') }}" class="inline-block mt-2 text-xs font-extrabold hover:underline" style="color:#D97706;">Открыть →</a>
             </div>
         </div>
 
         {# ── Filters ── #}
-        <section class="filters-panel rounded-card-lg shadow-card bg-bg-surface p-5 mt-6">
+        <section class="filters-panel mt-5">
             <form method="GET" action="{{ url_for('main.dashboard') }}" class="filters-grid">
                 <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
                 <div class="neo-field">
-                    <label class="neo-label">Поиск <span class="keyboard-hint" data-tooltip="Нажмите Ctrl+F для быстрого поиска"><kbd>Ctrl</kbd>+<kbd>F</kbd></span></label>
-                    <input type="text" name="search" value="{{ search_query }}" class="neo-input" placeholder="Имя или ID ученика" data-tooltip="Введите имя или ID ученика для поиска">
+                    <label class="neo-label">Поиск <span class="keyboard-hint"><kbd>Ctrl</kbd>+<kbd>F</kbd></span></label>
+                    <input type="text" name="search" value="{{ search_query }}" class="neo-input" placeholder="Имя или ID ученика">
                 </div>
                 <div class="neo-field">
                     <label class="neo-label">Категория</label>
@@ -104,23 +106,23 @@
                     </select>
                 </div>
                 <div class="filters-actions">
-                    <button type="submit" class="neo-button accent" data-tooltip="Применить фильтры (Enter)">
+                    <button type="submit" class="neo-button accent sm">
                         {{ ui_icon('action.search', 'sm', decorative=true) }}
                         Найти
                     </button>
                     {% if search_query or category_filter %}
-                    <a href="{{ url_for('main.dashboard', show_archive='true' if show_archive else 'false') }}" class="neo-button ghost" data-tooltip="Сбросить все фильтры">⟲ Сбросить</a>
+                    <a href="{{ url_for('main.dashboard', show_archive='true' if show_archive else 'false') }}" class="neo-button ghost sm">Сбросить</a>
                     {% endif %}
                 </div>
             </form>
-            <div class="mt-4 flex gap-2 items-center">
+            <div class="mt-3 flex gap-2 items-center">
                 <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category=category_filter) }}"
-                   class="neo-button {% if not show_archive %}accent{% else %}ghost{% endif %}">
+                   class="neo-button sm {% if not show_archive %}accent{% else %}ghost{% endif %}">
                     {{ ui_icon('nav.students', 'sm', decorative=true) }}
                     Активные ({{ total_students }})
                 </a>
                 <a href="{{ url_for('main.dashboard', show_archive='true', search=search_query, category=category_filter) }}"
-                   class="neo-button {% if show_archive %}accent{% else %}ghost{% endif %}">
+                   class="neo-button sm {% if show_archive %}accent{% else %}ghost{% endif %}">
                     {{ ui_icon('nav.archive', 'sm', decorative=true) }}
                     Архив ({{ archived_students_count }})
                 </a>
@@ -128,54 +130,56 @@
         </section>
 
         {# ── Students Grid ── #}
-        <section class="mt-6">
-            <div class="flex items-center justify-between mb-4">
+        <section class="mt-5">
+            <div class="flex items-center justify-between mb-3">
                 <div>
-                    <p class="text-xs font-bold uppercase tracking-widest text-text-muted mb-1">{% if show_archive %}архивные ученики{% else %}активные ученики{% endif %}</p>
-                    <h2 class="text-xl font-extrabold m-0">{{ students|length }} в подборке</h2>
+                    <p class="hero-eyebrow mb-0.5">{% if show_archive %}архивные ученики{% else %}активные ученики{% endif %}</p>
+                    <h2 class="text-lg font-extrabold m-0">{{ students|length }} в подборке</h2>
                 </div>
                 {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
-                <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">{{ ui_icon('action.plus', 'sm', decorative=true) }}Добавить</a>
+                <a href="{{ url_for('students.student_new') }}" class="neo-button accent sm">{{ ui_icon('action.plus', 'sm', decorative=true) }} Добавить</a>
                 {% endif %}
             </div>
 
             {% if students %}
             <div class="students-grid">
                 {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
-                <a href="{{ url_for('students.student_new') }}" class="student-card student-card--cta rounded-card shadow-none">
-                    <p class="text-xs font-bold uppercase tracking-widest text-text-muted mb-1">quick action</p>
-                    <h3 class="m-0">Создать нового ученика</h3>
-                    <p class="text-sm text-text-muted mt-1">Стартовая точка для целей, уроков и заметок.</p>
+                <a href="{{ url_for('students.student_new') }}" class="student-card student-card--cta">
+                    <div class="text-2xl mb-1 opacity-40">+</div>
+                    <p class="text-sm font-extrabold m-0">Новый ученик</p>
+                    <p class="text-xs text-text-muted mt-0.5">Создать карточку</p>
                 </a>
                 {% endif %}
                 {% for student in students %}
-                <div class="student-card shadow-card rounded-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %}"
+                <div class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %}"
                    data-student-id="{{ student.student_id }}">
-                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="student-card__main-link block">
+                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="student-card__main-link">
                     <div class="student-card__head">
                         <div class="student-avatar {% if show_archive %}student-avatar--archived{% endif %}">
                             {% if student.user and student.user.avatar_url %}
-                                <img src="{{ student.user.avatar_url }}" alt="" class="w-full h-full object-cover rounded-[inherit]">
+                                <img src="{{ student.user.avatar_url }}" alt="">
                             {% else %}
                                 {{ student.name[0].upper() }}
                             {% endif %}
                         </div>
-                        <div>
-                            <p class="student-name">{{ student.name }}{% if show_archive %} <span class="opacity-60 text-sm">(архив)</span>{% endif %}</p>
+                        <div class="min-w-0">
+                            <p class="student-name m-0">{{ student.name }}{% if show_archive %} <span class="opacity-60 text-xs">(архив)</span>{% endif %}</p>
                             {% if student.platform_id %}
-                            <p class="student-meta student-platform-id">ID: {{ student.platform_id }}</p>
+                            <p class="student-meta student-platform-id m-0">ID: {{ student.platform_id }}</p>
                             {% endif %}
                         </div>
                     </div>
-                    {% if student.category %}
-                    <span class="student-tag student-category">{{ student.category }}</span>
-                    {% endif %}
-                    {% if student.school_class %}
-                    <span class="student-tag student-class">{{ student.school_class }} класс</span>
-                    {% endif %}
+                    <div class="flex flex-wrap gap-1 mt-1">
+                        {% if student.category %}
+                        <span class="student-tag">{{ student.category }}</span>
+                        {% endif %}
+                        {% if student.school_class %}
+                        <span class="student-tag student-class">{{ student.school_class }} класс</span>
+                        {% endif %}
+                    </div>
                     {% if student.description %}
-                    <p class="text-sm text-text-muted mt-1">
-                        "{{ student.description[:130] }}{% if student.description|length > 130 %}…{% endif %}"
+                    <p class="text-xs text-text-muted mt-1 m-0 leading-relaxed">
+                        "{{ student.description[:100] }}{% if student.description|length > 100 %}…{% endif %}"
                     </p>
                     {% endif %}
                     <div class="student-insights">
@@ -198,19 +202,10 @@
                         {% if student.diagnostic_level %}
                         <div>{{ ui_icon('nav.stats', 'sm', decorative=true) }}Диагностика: <span>{{ student.diagnostic_level }}</span></div>
                         {% endif %}
-                        {% if student.overall_rating %}
-                        <div>{{ ui_icon('action.star', 'sm', decorative=true) }}Оценка: <span>{{ student.overall_rating }}</span></div>
-                        {% endif %}
-                        {% if student.strengths %}
-                        <div>{{ ui_icon('nav.stats', 'sm', decorative=true) }}Сильные стороны: <span>{{ student.strengths[:60] }}{% if student.strengths|length > 60 %}…{% endif %}</span></div>
-                        {% endif %}
-                        {% if student.weaknesses %}
-                        <div>{{ ui_icon('nav.stats', 'sm', decorative=true) }}Зоны роста: <span>{{ student.weaknesses[:60] }}{% if student.weaknesses|length > 60 %}…{% endif %}</span></div>
-                        {% endif %}
                     </div>
                     </a>
-                    <div class="mt-2 pt-2 border-t border-stroke/30">
-                        <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost sm">Профиль ученика</a>
+                    <div class="mt-1.5 pt-1.5" style="border-top: 1px solid var(--color-stroke);">
+                        <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost sm" style="font-size:0.75rem;">Профиль ученика →</a>
                     </div>
                 </div>
                 {% endfor %}
@@ -223,7 +218,7 @@
                 {% else %}
                 <span class="pagination-btn disabled">‹ Назад</span>
                 {% endif %}
-                <span>Страница {{ pagination.page }} из {{ pagination.pages }}</span>
+                <span class="text-sm font-bold text-text-muted">{{ pagination.page }} / {{ pagination.pages }}</span>
                 {% if pagination.has_next %}
                 <a href="{{ url_for('main.dashboard', page=pagination.next_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">Вперёд ›</a>
                 {% else %}
@@ -245,7 +240,7 @@
                 {% if not show_archive %}
                 <div class="empty-state-actions">
                     {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
-                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">{{ ui_icon('action.plus', 'sm', decorative=true) }}Добавить ученика</a>
+                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent">{{ ui_icon('action.plus', 'sm', decorative=true) }} Добавить ученика</a>
                     {% endif %}
                 </div>
                 {% endif %}
