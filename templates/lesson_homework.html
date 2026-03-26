@@ -1418,7 +1418,7 @@
             if (typeof io === 'undefined') return;
             var lessonSocket = null;
             try {
-                lessonSocket = io('/lesson', { path: '/socket.io', transports: ['websocket', 'polling'] });
+                lessonSocket = io('/lesson', { path: '/socket.io', transports: ['websocket', 'polling'], reconnectionAttempts: 3, timeout: 5000 });
                 window.lessonSocket = lessonSocket;
                 lessonSocket.on('connect', function() {
                     lessonSocket.emit('join_lesson', { lesson_id: LESSON_ID });
