@@ -167,7 +167,8 @@
     padding: 1rem 1rem 0;
   }
   @media (min-width: 1024px) {
-    .dock-wrapper { padding: 1.25rem 2.5rem 0; }
+    /* On desktop, align dock with `.app-content` inner content area (max-width minus inner padding). */
+    .dock-wrapper { padding: 1.25rem 0 0; }
   }
 
   .dock {
@@ -180,6 +181,10 @@
     border-radius: 16px;
     padding: 0.5rem 0.75rem;
     box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+  }
+  @media (min-width: 1024px) {
+    /* `.app-content` is max 1400px with 2.5rem padding on both sides => inner content width is 1400 - 5rem = 1320px */
+    .dock { max-width: calc(1400px - 5rem); }
   }
 
   .dock-brand {
