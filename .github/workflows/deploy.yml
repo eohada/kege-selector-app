@@ -1,8 +1,7 @@
-name: Deploy to VPS
+name: Deploy to VPS (MANUAL PROD)
 
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch: # <-- Вот эта магия делает запуск ручным по кнопке!
 
 jobs:
   deploy:
@@ -22,8 +21,6 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          # Если ключ с паролем — добавь в Secrets PASSphrase и раскомментируй:
-          # passphrase: ${{ secrets.SSH_PASSPHRASE }}
           timeout: 30s
           command_timeout: 5m
           script: |
