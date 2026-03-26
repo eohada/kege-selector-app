@@ -1,71 +1,8 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} · URep</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    {% include '_ux_enhancements.html' %}
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="{% if active_lesson %}lesson-active{% endif %}">
-    {% if active_lesson %}
-    <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
-    </div>
-    <div class="now-playing-panel" id="lessonMenu">
-        <div class="hero-eyebrow">текущий урок</div>
-        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
-        {% if active_lesson.topic %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
-        {% endif %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
-        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
-        <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
-            </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('profile.user', 'sm', decorative=true) }}Профиль</a>
-        </div>
-    </div>
-    <script>
-        function toggleLessonMenu() {
-            const menu = document.getElementById('lessonMenu');
-            if (menu) {
-                menu.classList.toggle('active');
-            }
-        }
-        document.addEventListener('click', (event) => {
-            const menu = document.getElementById('lessonMenu');
-            const badge = document.querySelector('.now-playing-pill');
-            if (!menu || !badge) return;
-            if (!menu.contains(event.target) && !badge.contains(event.target)) {
-                menu.classList.remove('active');
-            }
-        });
-    </script>
-    {% endif %}
+{% extends 'base.html' %}
+{% block title %}{{ title }} · BooStudy{% endblock %}
+{% set active_page = 'dashboard' %}
 
-    <div class="app-layout">
-        {% set active_page = 'dashboard' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
-
+{% block content %}
         <section class="glass-panel form-hero">
             <div>
                 <p class="hero-eyebrow">форма ученика</p>
@@ -73,118 +10,119 @@
             </div>
         </section>
 
-        <form method="POST" data-validate>
+        <form method="POST" data-validate
+              hx-post="" hx-target="body" hx-swap="outerHTML" hx-indicator=".loading-overlay">
             {{ form.hidden_tag() }}
-            
+
             <section class="form-section">
                 <div class="form-section-title">{{ ui_icon('action.copy', 'sm') }} Основная информация</div>
                 <div class="form-grid">
                     <div class="neo-field">
                         {{ form.name.label(class='neo-label') }}
                         {{ form.name(class='neo-input', placeholder='Петя', required=True, minlength=2, **{'data-tooltip': 'Введите полное имя ученика (минимум 2 символа)'}) }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Полное имя ученика</small>
+                        <small class="block text-text-muted text-sm mt-1">Полное имя ученика</small>
                     </div>
-                    
+
                     <div class="neo-field">
                         {{ form.platform_id.label(class='neo-label') }}
                         {{ form.platform_id(class='neo-input', placeholder='Оставьте пустым для автоматического присвоения...') }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Уникальный идентификатор на платформе (опционально). Если не указан, будет автоматически присвоен трехзначный номер (100-999)</small>
+                        <small class="block text-text-muted text-sm mt-1">Уникальный идентификатор на платформе (опционально). Если не указан, будет автоматически присвоен трехзначный номер (100-999)</small>
                     </div>
-                    
+
                     <div class="neo-field">
                         {{ form.category.label(class='neo-label') }}
                         {{ form.category(class='neo-select') }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Категория ученика для удобной организации</small>
+                        <small class="block text-text-muted text-sm mt-1">Категория ученика для удобной организации</small>
                     </div>
-                    <div class="neo-field"> 
-                        {{ form.school_class.label(class='neo-label') }} 
-                        {{ form.school_class(class='neo-select') }} 
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Укажи текущий школьный класс (1-11)</small> 
+                    <div class="neo-field">
+                        {{ form.school_class.label(class='neo-label') }}
+                        {{ form.school_class(class='neo-select') }}
+                        <small class="block text-text-muted text-sm mt-1">Укажи текущий школьный класс (1-11)</small>
                     </div>
                 </div>
             </section>
-            
-            <section class="form-section"> 
+
+            <section class="form-section">
                 <div class="form-section-title">{{ ui_icon('nav.generator', 'sm', decorative=true) }} Цели и сроки</div>
-                <div class="form-grid"> 
-                    <div class="neo-field category-field" data-field="numeric-goal"> 
-                        <label class="neo-label" for="{{ form.target_score.id }}" id="targetScoreLabel">Целевой балл (0-100)</label> 
-                        {{ form.target_score(class='neo-input', placeholder='85', type='number', min=0, max=100, **{'data-tooltip': 'Введите целевой балл от 0 до 100'}) }} 
-                        <small id="targetScoreHint" style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Целевой балл ЕГЭ (0-100)</small> 
+                <div class="form-grid">
+                    <div class="neo-field category-field" data-field="numeric-goal">
+                        <label class="neo-label" for="{{ form.target_score.id }}" id="targetScoreLabel">Целевой балл (0-100)</label>
+                        {{ form.target_score(class='neo-input', placeholder='85', type='number', min=0, max=100, **{'data-tooltip': 'Введите целевой балл от 0 до 100'}) }}
+                        <small id="targetScoreHint" class="block text-text-muted text-sm mt-1">Целевой балл ЕГЭ (0-100)</small>
                     </div>
-                    
-                    <div class="neo-field category-field" data-field="text-goal"> 
-                        {{ form.goal_text.label(class='neo-label') }} 
-                        {{ form.goal_text(class='neo-input', placeholder='Например: подготовиться к хакатону или выйти на определенный уровень', rows=3) }} 
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Опиши цель словами для направлений ЛЕВЕЛАП и Программирование</small> 
+
+                    <div class="neo-field category-field" data-field="text-goal">
+                        {{ form.goal_text.label(class='neo-label') }}
+                        {{ form.goal_text(class='neo-input', placeholder='Например: подготовиться к хакатону или выйти на определенный уровень', rows=3) }}
+                        <small class="block text-text-muted text-sm mt-1">Опиши цель словами для направлений ЛЕВЕЛАП и Программирование</small>
                     </div>
-                    
-                    <div class="neo-field category-field" data-field="deadline"> 
-                        {{ form.deadline.label(class='neo-label') }} 
-                        {{ form.deadline(class='neo-input', placeholder='Июнь 2025') }} 
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">К какому сроку нужно достичь цели</small> 
+
+                    <div class="neo-field category-field" data-field="deadline">
+                        {{ form.deadline.label(class='neo-label') }}
+                        {{ form.deadline(class='neo-input', placeholder='Июнь 2025') }}
+                        <small class="block text-text-muted text-sm mt-1">К какому сроку нужно достичь цели</small>
                     </div>
-                    
-                    <div class="neo-field category-field" data-field="programming-language"> 
-                        {{ form.programming_language.label(class='neo-label') }} 
-                        {{ form.programming_language(class='neo-input', placeholder='Python, C++, JavaScript...') }} 
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Укажи приоритетный язык для занятий</small> 
+
+                    <div class="neo-field category-field" data-field="programming-language">
+                        {{ form.programming_language.label(class='neo-label') }}
+                        {{ form.programming_language(class='neo-input', placeholder='Python, C++, JavaScript...') }}
+                        <small class="block text-text-muted text-sm mt-1">Укажи приоритетный язык для занятий</small>
                     </div>
                 </div>
             </section>
-            
+
             <section class="form-section">
                 <div class="form-section-title">{{ ui_icon('nav.stats', 'sm', decorative=true) }} Диагностика и оценка</div>
                 <div class="form-grid form-grid-compact">
                     <div class="neo-field">
                         {{ form.diagnostic_level.label(class='neo-label') }}
                         {{ form.diagnostic_level(class='neo-input', placeholder='60-70 баллов') }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Уровень знаний на основе диагностики</small>
+                        <small class="block text-text-muted text-sm mt-1">Уровень знаний на основе диагностики</small>
                     </div>
-                    
+
                     <div class="neo-field">
                         {{ form.overall_rating.label(class='neo-label') }}
                         {{ form.overall_rating(class='neo-input', placeholder='7/10' or 'Хорошо') }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Общая оценка ученика (цифра или текст)</small>
+                        <small class="block text-text-muted text-sm mt-1">Общая оценка ученика (цифра или текст)</small>
                     </div>
-                    
+
                     <div class="neo-field form-grid-full">
                         {{ form.preferences.label(class='neo-label') }}
                         {{ form.preferences(class='neo-input', placeholder='Предпочитает теорию с примерами, любит практику...', rows=3) }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Как ученик предпочитает решать задачи</small>
+                        <small class="block text-text-muted text-sm mt-1">Как ученик предпочитает решать задачи</small>
                     </div>
-                    
+
                     <div class="neo-field form-grid-full">
                         {{ form.strengths.label(class='neo-label') }}
                         {{ form.strengths(class='neo-input', placeholder='Отлично разбирается в алгоритмах...', rows=3) }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Наиболее сильная сторона ученика</small>
+                        <small class="block text-text-muted text-sm mt-1">Наиболее сильная сторона ученика</small>
                     </div>
-                    
+
                     <div class="neo-field form-grid-full">
                         {{ form.weaknesses.label(class='neo-label') }}
                         {{ form.weaknesses(class='neo-input', placeholder='Проблемы с логикой, нужна практика...', rows=3) }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Наиболее слабая сторона ученика</small>
+                        <small class="block text-text-muted text-sm mt-1">Наиболее слабая сторона ученика</small>
                     </div>
                 </div>
             </section>
-            
+
             <section class="form-section">
                 <div class="form-section-title">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Описание</div>
                 <div class="form-grid">
                     <div class="neo-field form-grid-full">
                         {{ form.description.label(class='neo-label') }}
                         {{ form.description(class='neo-input', placeholder='Мотивированный ученик, хорошо усваивает материал...', rows=4) }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Краткое текстовое описание ученика</small>
+                        <small class="block text-text-muted text-sm mt-1">Краткое текстовое описание ученика</small>
                     </div>
-                    
+
                     <div class="neo-field form-grid-full">
                         {{ form.notes.label(class='neo-label') }}
                         {{ form.notes(class='neo-input', placeholder='Дополнительные заметки...', rows=5) }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Любые дополнительные заметки</small>
+                        <small class="block text-text-muted text-sm mt-1">Любые дополнительные заметки</small>
                     </div>
                 </div>
             </section>
-            
+
             <section class="form-section">
                 <div class="form-actions">
                     {{ form.submit(class='neo-button accent') }}
@@ -192,80 +130,33 @@
                 </div>
             </section>
         </form>
-    </main>
-    </div>
-</div>
-    
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
-    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
-    <script src="{{ url_for('static', filename='loading.js') }}"></script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+{% endblock %}
+
+{% block scripts_extra %}
     <script>
-        // Конвертируем flash-сообщения в toast-уведомления при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% if category == 'error' or category == 'danger' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.error('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.error('{{ message|e }}');
-                            }
-                        {% elif category == 'warning' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.warning('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.warning('{{ message|e }}');
-                            }
-                        {% elif category == 'info' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.info('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.info('{{ message|e }}');
-                            }
-                        {% else %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.success('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.success('{{ message|e }}');
-                            }
-                        {% endif %}
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
-            // Обработка отправки формы через AJAX для немедленного показа toast
-            // Выбираем форму создания/редактирования ученика (не форму завершения урока)
-            const studentForm = document.querySelector('section.form-hero') ? 
-                document.querySelector('section.form-hero').nextElementSibling?.querySelector('form[method="POST"]') : 
+            const studentForm = document.querySelector('section.form-hero') ?
+                document.querySelector('section.form-hero').nextElementSibling?.querySelector('form[method="POST"]') :
                 document.querySelector('form[method="POST"]:not([action*="lesson_complete"])');
-            
+
             if (studentForm) {
-                // Проверяем, что это форма ученика (содержит поле name)
                 const nameField = studentForm.querySelector('input[name="name"]');
                 if (nameField && !studentForm.dataset.ajaxHandled) {
                     studentForm.addEventListener('submit', async function(e) {
                         e.preventDefault();
-                        
+
                         const formData = new FormData(studentForm);
                         const submitButton = studentForm.querySelector('button[type="submit"], input[type="submit"]');
                         const originalText = submitButton ? (submitButton.textContent || submitButton.value) : '';
-                        
-                        // Показываем индикатор загрузки
-                        let loaderId = null;
-                        if (typeof loading !== 'undefined' && loading) {
-                            loaderId = loading.show(studentForm, 'Сохранение...');
-                        } else if (submitButton) {
+
+                        if (submitButton) {
                             submitButton.disabled = true;
                             if (submitButton.tagName === 'BUTTON') {
                                 submitButton.textContent = 'Сохранение...';
                             }
                         }
-                        
+
                         try {
-                            // Определяем, создание или редактирование
                             {% if student and student.student_id %}
                             const isEdit = true;
                             const studentId = {{ student.student_id }};
@@ -274,40 +165,36 @@
                             const isEdit = false;
                             const apiUrl = '{{ url_for("api.api_student_create") }}';
                             {% endif %}
-                            
-                            // Получаем CSRF токен
+
                             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
                                             studentForm.querySelector('input[name="csrf_token"]')?.value;
-                            
+
                             const headers = {
                                 'X-Requested-With': 'XMLHttpRequest'
                             };
-                            
+
                             if (csrfToken) {
                                 headers['X-CSRFToken'] = csrfToken;
                             }
-                            
-                            // Отправляем через AJAX API
+
                             const response = await fetch(apiUrl, {
                                 method: 'POST',
                                 body: formData,
                                 headers: headers
                             });
-                            
+
                             if (!response.ok) {
                                 const errorText = await response.text();
                                 throw new Error(errorText || `HTTP error! status: ${response.status}`);
                             }
-                            
+
                             const result = await response.json();
-                            
+
                             if (result.success) {
-                                // Показываем toast сразу
-                                if (typeof toast !== 'undefined' && toast) {
-                                    toast.success(result.message || (isEdit ? 'Данные ученика обновлены!' : 'Ученик успешно добавлен!'));
+                                if (window.toast) {
+                                    window.toast.success(result.message || (isEdit ? 'Данные ученика обновлены!' : 'Ученик успешно добавлен!'));
                                 }
-                                
-                                // Перенаправляем на dashboard через небольшую задержку
+
                                 setTimeout(() => {
                                     {% if student and student.student_id %}
                                     window.location.href = '{{ url_for("students.student_profile", student_id=student.student_id) }}';
@@ -316,15 +203,10 @@
                                     {% endif %}
                                 }, 500);
                             } else {
-                                // Показываем ошибку
-                                if (typeof toast !== 'undefined' && toast) {
-                                    toast.error(result.error || 'Ошибка при сохранении');
+                                if (window.toast) {
+                                    window.toast.error(result.error || 'Ошибка при сохранении');
                                 }
-                                
-                                // Восстанавливаем кнопку
-                                if (loaderId && typeof loading !== 'undefined' && loading) {
-                                    loading.hide(loaderId);
-                                } else if (submitButton) {
+                                if (submitButton) {
                                     submitButton.disabled = false;
                                     if (submitButton.tagName === 'BUTTON') {
                                         submitButton.textContent = originalText;
@@ -333,16 +215,10 @@
                             }
                         } catch (error) {
                             console.error('Ошибка при отправке формы:', error);
-                            
-                            // Показываем ошибку
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.error('Ошибка при сохранении. Попробуйте еще раз.');
+                            if (window.toast) {
+                                window.toast.error('Ошибка при сохранении. Попробуйте еще раз.');
                             }
-                            
-                            // Восстанавливаем кнопку
-                            if (loaderId && typeof loading !== 'undefined' && loading) {
-                                loading.hide(loaderId);
-                            } else if (submitButton) {
+                            if (submitButton) {
                                 submitButton.disabled = false;
                                 if (submitButton.tagName === 'BUTTON') {
                                     submitButton.textContent = originalText;
@@ -355,48 +231,47 @@
         });
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => { // Ждём загрузку документа
-            const categorySelect = document.querySelector('select[name="category"]'); // Ищем селект категории
-            const targetInput = document.getElementById('target_score'); // Берём поле числовой цели
-            const targetLabel = document.getElementById('targetScoreLabel'); // Берём подпись числовой цели
-            const targetHint = document.getElementById('targetScoreHint'); // Берём подсказку числовой цели
-            const fieldMap = { // Сопоставляем поля с ключами конфигурации
-                numericGoal: document.querySelector('[data-field="numeric-goal"]'), // Секция числовой цели
-                textGoal: document.querySelector('[data-field="text-goal"]'), // Секция текстовой цели
-                deadline: document.querySelector('[data-field="deadline"]'), // Секция сроков
-                programmingLanguage: document.querySelector('[data-field="programming-language"]') // Секция языка программирования
+        document.addEventListener('DOMContentLoaded', () => {
+            const categorySelect = document.querySelector('select[name="category"]');
+            const targetInput = document.getElementById('target_score');
+            const targetLabel = document.getElementById('targetScoreLabel');
+            const targetHint = document.getElementById('targetScoreHint');
+            const fieldMap = {
+                numericGoal: document.querySelector('[data-field="numeric-goal"]'),
+                textGoal: document.querySelector('[data-field="text-goal"]'),
+                deadline: document.querySelector('[data-field="deadline"]'),
+                programmingLanguage: document.querySelector('[data-field="programming-language"]')
             };
 
-            const config = { // Описываем конфигурацию отображения для категорий
-                'ЕГЭ': { show: ['numericGoal', 'deadline'], label: 'Целевой балл (0-100)', hint: 'Целевой балл ЕГЭ (0-100)', min: 0, max: 100 }, // Настройки для ЕГЭ
-                'ОГЭ': { show: ['numericGoal', 'deadline'], label: 'Целевая оценка (1-5)', hint: 'Цель по пятибалльной шкале', min: 1, max: 5 }, // Настройки для ОГЭ
-                'ПРОГРАММИРОВАНИЕ': { show: ['textGoal', 'programmingLanguage'], label: null }, // Настройки для программирования
-                'ЛЕВЕЛАП': { show: ['textGoal', 'deadline'], label: null } // Настройки для ЛЕВЕЛАП
+            const config = {
+                'ЕГЭ': { show: ['numericGoal', 'deadline'], label: 'Целевой балл (0-100)', hint: 'Целевой балл ЕГЭ (0-100)', min: 0, max: 100 },
+                'ОГЭ': { show: ['numericGoal', 'deadline'], label: 'Целевая оценка (1-5)', hint: 'Цель по пятибалльной шкале', min: 1, max: 5 },
+                'ПРОГРАММИРОВАНИЕ': { show: ['textGoal', 'programmingLanguage'], label: null },
+                'ЛЕВЕЛАП': { show: ['textGoal', 'deadline'], label: null }
             };
 
-            function applyCategory(categoryValue) { // Функция применения конфигурации
-                const normalized = (categoryValue || 'ЕГЭ').toUpperCase(); // Приводим значение к верхнему регистру для сопоставления
-                const selectedConfig = config[normalized] || config['ЕГЭ']; // Берём конфиг или дефолт ЕГЭ
+            function applyCategory(categoryValue) {
+                const normalized = (categoryValue || 'ЕГЭ').toUpperCase();
+                const selectedConfig = config[normalized] || config['ЕГЭ'];
 
-                Object.keys(fieldMap).forEach((key) => { // Проходим по всем секциям
-                    if (selectedConfig.show.includes(key)) { // Проверяем, нужно ли показывать секцию
-                        fieldMap[key].style.display = ''; // Показываем секцию
+                Object.keys(fieldMap).forEach((key) => {
+                    if (selectedConfig.show.includes(key)) {
+                        fieldMap[key].style.display = '';
                     } else {
-                        fieldMap[key].style.display = 'none'; // Скрываем секцию
+                        fieldMap[key].style.display = 'none';
                     }
                 });
 
-                if (selectedConfig.label && targetLabel && targetInput) { // Обновляем подпись и границы числовой цели
-                    targetLabel.textContent = selectedConfig.label; // Меняем текст подписи
-                    targetHint.textContent = selectedConfig.hint; // Меняем подсказку
-                    targetInput.min = selectedConfig.min; // Обновляем мин
-                    targetInput.max = selectedConfig.max; // Обновляем макс
+                if (selectedConfig.label && targetLabel && targetInput) {
+                    targetLabel.textContent = selectedConfig.label;
+                    targetHint.textContent = selectedConfig.hint;
+                    targetInput.min = selectedConfig.min;
+                    targetInput.max = selectedConfig.max;
                 }
             }
 
-            applyCategory(categorySelect.value); // Применяем настройки при загрузке
-            categorySelect.addEventListener('change', (event) => applyCategory(event.target.value)); // Обновляем при смене категории
+            applyCategory(categorySelect.value);
+            categorySelect.addEventListener('change', (event) => applyCategory(event.target.value));
         });
     </script>
-</body>
-</html>
+{% endblock %}

@@ -1,61 +1,43 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Доступ к теории: {{ student.name or 'Ученик' }} · BooStudy</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% include '_ux_enhancements.html' %}
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .access-student-container { max-width: 800px; margin: 0 auto; }
-        .access-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.5rem; }
-        .access-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); }
-        .access-item input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--accent-1); }
-        .access-item label { margin: 0; cursor: pointer; flex: 1; }
-        .form-actions { margin-top: 1.5rem; }
-        .form-hint { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; }
-    </style>
-    <script>
-        (function(){ try { var v = localStorage.getItem('ui.themeMode'); if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch(e) {} })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = active_page|default('theory_manage') %}
-        {% include '_sidebar.html' %}
-        <div class="app-main">
-            {% include '_topbar.html' %}
-            <main class="app-content">
-                <div class="access-student-container">
-                    <section class="dashboard-hero" style="margin-bottom: 1.5rem;">
-                        <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" style="color: var(--text-muted); text-decoration: none; margin-bottom: 0.5rem; display: inline-block;">← К списку учеников</a>
-                        <h1 class="hero-title">Доступ к теории: {{ student.name or 'Ученик' }}</h1>
-                        <p class="form-hint">Включите номера заданий, по которым ученик может смотреть теорию. Снятая галочка = просмотр запрещён. По умолчанию все разрешены.</p>
-                    </section>
+{% extends 'base.html' %}
+{% set active_page = active_page|default('theory_manage') %}
 
-                    <form method="post" action="{{ url_for('theory.manage_access_student', student_id=student.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=student.student_id) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        {% if course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}
-                        <div class="access-grid">
-                            {% for num in task_numbers %}
-                            <div class="access-item">
-                                <input type="checkbox" id="allow_{{ num }}" name="allow_{{ num }}" {% if access_by_number.get(num, true) %}checked{% endif %}>
-                                <label for="allow_{{ num }}">Задание {{ num }}</label>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="neo-button accent">Сохранить</button>
-                            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="neo-button ghost">Отмена</a>
-                        </div>
-                    </form>
-                </div>
-            </main>
+{% block title %}Доступ к теории: {{ student.name or 'Ученик' }} · BooStudy{% endblock %}
+
+{% block head_css %}
+<style>
+    .access-student-container { max-width: 800px; margin: 0 auto; }
+    .access-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.5rem; }
+    .access-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: var(--surface-1); border-radius: var(--radius-sm); box-shadow: var(--shadow-card); }
+    .access-item input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--accent-1); }
+    .access-item label { margin: 0; cursor: pointer; flex: 1; }
+    .form-actions { margin-top: 1.5rem; }
+    .form-hint { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="access-student-container">
+    <section class="dashboard-hero mb-6">
+        <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="text-muted no-underline mb-2 inline-block">← К списку учеников</a>
+        <h1 class="hero-title">Доступ к теории: {{ student.name or 'Ученик' }}</h1>
+        <p class="form-hint">Включите номера заданий, по которым ученик может смотреть теорию. Снятая галочка = просмотр запрещён. По умолчанию все разрешены.</p>
+    </section>
+
+    <form method="post" action="{{ url_for('theory.manage_access_student', student_id=student.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=student.student_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}
+        <div class="access-grid">
+            {% for num in task_numbers %}
+            <div class="access-item">
+                <input type="checkbox" id="allow_{{ num }}" name="allow_{{ num }}" {% if access_by_number.get(num, true) %}checked{% endif %}>
+                <label for="allow_{{ num }}">Задание {{ num }}</label>
+            </div>
+            {% endfor %}
         </div>
-    </div>
-</body>
-</html>
+        <div class="form-actions">
+            <button type="submit" class="neo-button accent">Сохранить</button>
+            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="neo-button ghost">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,126 +1,114 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Редактировать работу · {{ assignment.title }}</title>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% include '_ux_enhancements.html' %}
-    <style>
-        .edit-panel { border: 1px solid var(--stroke-1); background: var(--surface-1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; }
-        .edit-panel h2 { margin: 0 0 1rem 0; font-weight: 900; font-size: 1.25rem; }
-        .task-edit-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
-        .task-edit-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.6rem 1rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); }
-        .task-edit-item .task-info { font-weight: 700; color: var(--text-primary); }
-        .task-edit-item .task-meta { font-size: 0.85rem; color: var(--text-muted); }
-        .task-edit-item .remove-btn { flex-shrink: 0; padding: 0.35rem 0.6rem; font-size: 0.85rem; }
-        .task-edit-extra { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--stroke-1); display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-start; }
-        .task-edit-extra .answer-override-wrap { flex: 1; min-width: 200px; }
-        .task-edit-extra .answer-override-wrap label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
-        .task-edit-extra .answer-override-input { width: 100%; padding: 0.4rem 0.6rem; font-size: 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-1); color: var(--text-primary); }
-    </style>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'assignments' %}
-        {% include '_sidebar.html' %}
-        <div class="app-main">
-            {% include '_topbar.html' %}
-            <main class="app-content" style="padding: 2rem 1.5rem;">
-                <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button outline" style="text-decoration: none; margin-bottom: 1rem;">← К работе</a>
-                <h1 style="font-size: 1.75rem; font-weight: 900; margin: 0 0 1.5rem 0;">Редактировать работу</h1>
+{% extends 'base.html' %}
+{% block title %}Редактировать работу · {{ assignment.title }}{% endblock %}
 
-                <form id="editForm" class="edit-panel">
-                    <h2>Основные настройки</h2>
+{% block head_css %}
+<style>
+    .edit-panel { background: var(--color-bg-surface); border-radius: var(--radius-card); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-card); }
+    .edit-panel h2 { margin: 0 0 1rem 0; font-weight: 900; font-size: 1.25rem; }
+    .task-edit-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+    .task-edit-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.6rem 1rem; background: var(--color-bg-surface-alt); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
+    .task-edit-item .task-info { font-weight: 700; color: var(--color-text-primary); }
+    .task-edit-item .task-meta { font-size: 0.85rem; color: var(--color-text-muted); }
+    .task-edit-item .remove-btn { flex-shrink: 0; padding: 0.35rem 0.6rem; font-size: 0.85rem; }
+    .task-edit-extra { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--color-stroke); display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-start; }
+    .task-edit-extra .answer-override-wrap { flex: 1; min-width: 200px; }
+    .task-edit-extra .answer-override-wrap label { display: block; font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 0.25rem; }
+    .task-edit-extra .answer-override-input { width: 100%; padding: 0.4rem 0.6rem; font-size: 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--color-stroke); background: var(--color-bg-surface); color: var(--color-text-primary); }
+</style>
+{% endblock %}
+
+{% set active_page = 'assignments' %}
+
+{% block content %}
+            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button outline" style="text-decoration: none; margin-bottom: 1rem;">← К работе</a>
+            <h1 style="font-size: 1.75rem; font-weight: 900; margin: 0 0 1.5rem 0;">Редактировать работу</h1>
+
+            <form id="editForm" class="edit-panel">
+                <h2>Основные настройки</h2>
+                <div class="neo-field">
+                    <label class="neo-label" for="edit_title">Название *</label>
+                    <input id="edit_title" class="neo-input" required value="{{ assignment.title }}" name="title">
+                </div>
+                <div class="neo-field" style="margin-top: 1rem;">
+                    <label class="neo-label" for="edit_description">Описание</label>
+                    <textarea id="edit_description" class="neo-input" name="description" rows="3">{{ assignment.description or '' }}</textarea>
+                </div>
+                <div class="neo-field" style="margin-top: 1rem;">
+                    <label class="neo-label" for="edit_deadline">Дедлайн *</label>
+                    <input id="edit_deadline" class="neo-input" type="datetime-local" required name="deadline"
+                        value="{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') if assignment.deadline else '' }}">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                     <div class="neo-field">
-                        <label class="neo-label" for="edit_title">Название *</label>
-                        <input id="edit_title" class="neo-input" required value="{{ assignment.title }}" name="title">
+                        <label class="neo-label" for="edit_time_limit">Время (мин)</label>
+                        <input id="edit_time_limit" class="neo-input" type="number" name="time_limit_minutes" placeholder="Нет" min="0" max="480" value="{{ assignment.time_limit_minutes or '' }}">
                     </div>
-                    <div class="neo-field" style="margin-top: 1rem;">
-                        <label class="neo-label" for="edit_description">Описание</label>
-                        <textarea id="edit_description" class="neo-input" name="description" rows="3">{{ assignment.description or '' }}</textarea>
+                    <div class="neo-field">
+                        <label class="neo-label" for="edit_max_attempts">Попыток</label>
+                        <input id="edit_max_attempts" class="neo-input" type="number" name="max_attempts_default" value="{{ assignment.max_attempts_default or 1 }}" min="1" max="20">
                     </div>
-                    <div class="neo-field" style="margin-top: 1rem;">
-                        <label class="neo-label" for="edit_deadline">Дедлайн *</label>
-                        <input id="edit_deadline" class="neo-input" type="datetime-local" required name="deadline"
-                            value="{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') if assignment.deadline else '' }}">
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                        <div class="neo-field">
-                            <label class="neo-label" for="edit_time_limit">Время (мин)</label>
-                            <input id="edit_time_limit" class="neo-input" type="number" name="time_limit_minutes" placeholder="Нет" min="0" max="480" value="{{ assignment.time_limit_minutes or '' }}">
-                        </div>
-                        <div class="neo-field">
-                            <label class="neo-label" for="edit_max_attempts">Попыток</label>
-                            <input id="edit_max_attempts" class="neo-input" type="number" name="max_attempts_default" value="{{ assignment.max_attempts_default or 1 }}" min="1" max="20">
-                        </div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.2rem;">
-                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                            <input type="checkbox" id="edit_hard_deadline" name="hard_deadline" {% if assignment.hard_deadline %}checked{% endif %}>
-                            <span>Запретить сдачу после дедлайна</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                            <input type="checkbox" id="edit_attempts_per_task" name="attempts_per_task" {% if assignment.attempts_per_task %}checked{% endif %}>
-                            <span>Попытки на каждое задание</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                            <input type="checkbox" id="edit_separate_submission" name="allow_separate_submission" {% if assignment.allow_separate_submission %}checked{% endif %}>
-                            <span>Разрешить сдавать по одному заданию</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                            <input type="checkbox" id="edit_time_limit_strict" name="time_limit_strict" {% if assignment.time_limit_strict %}checked{% endif %}>
-                            <span>Блокировать сдачу после истечения таймера</span>
-                        </label>
-                    </div>
-                </form>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.2rem;">
+                    <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                        <input type="checkbox" id="edit_hard_deadline" name="hard_deadline" {% if assignment.hard_deadline %}checked{% endif %}>
+                        <span>Запретить сдачу после дедлайна</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                        <input type="checkbox" id="edit_attempts_per_task" name="attempts_per_task" {% if assignment.attempts_per_task %}checked{% endif %}>
+                        <span>Попытки на каждое задание</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                        <input type="checkbox" id="edit_separate_submission" name="allow_separate_submission" {% if assignment.allow_separate_submission %}checked{% endif %}>
+                        <span>Разрешить сдавать по одному заданию</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                        <input type="checkbox" id="edit_time_limit_strict" name="time_limit_strict" {% if assignment.time_limit_strict %}checked{% endif %}>
+                        <span>Блокировать сдачу после истечения таймера</span>
+                    </label>
+                </div>
+            </form>
 
-                <div class="edit-panel">
-                    <h2>Задания в работе</h2>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1rem 0;">Порядок можно менять перетаскиванием. Удаление уберёт задание из работы (ответы учеников по нему сохранятся в истории).</p>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.5rem 0;">Ссылка «Открыть источник» и поле «Эталонный ответ» видны только преподавателям; ученики их не видят. Если ответ пустой — впишите его после просмотра источника (с ним будет сравниваться ответ ученика).</p>
-                    <ul class="task-edit-list" id="taskList">
-                        {% for at in assignment_tasks %}
-                        <li class="task-edit-item" data-assignment-task-id="{{ at.assignment_task_id }}" data-task-id="{{ at.task_id }}" data-order="{{ at.order_index }}" data-max-score="{{ at.max_score }}">
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
-                                    <span class="task-info">Задание {{ at.task.task_number }}</span>
-                                    <span class="task-meta"> · #{{ at.task_id }} · {{ at.max_score }} балл(ов)</span>
-                                </div>
-                                <div class="task-edit-extra">
-                                    {% if at.task.source_url %}
-                                    <a href="{{ at.task.source_url }}" target="_blank" rel="noopener noreferrer" class="neo-button ghost sm" style="text-decoration: none;">Открыть источник</a>
-                                    {% endif %}
-                                    <div class="answer-override-wrap">
-                                        <label for="answer_override_{{ at.assignment_task_id }}">Эталонный ответ (для сравнения с ответом ученика)</label>
-                                        <input type="text" id="answer_override_{{ at.assignment_task_id }}" class="answer-override-input" placeholder="Из задания или впишите вручную" value="{{ at.answer_override or at.task.answer or '' }}" data-task-id="{{ at.task_id }}">
-                                    </div>
+            <div class="edit-panel">
+                <h2>Задания в работе</h2>
+                <p style="color: var(--color-text-muted); font-size: 0.9rem; margin: 0 0 1rem 0;">Порядок можно менять перетаскиванием. Удаление уберёт задание из работы (ответы учеников по нему сохранятся в истории).</p>
+                <p style="color: var(--color-text-muted); font-size: 0.85rem; margin: 0 0 0.5rem 0;">Ссылка «Открыть источник» и поле «Эталонный ответ» видны только преподавателям; ученики их не видят. Если ответ пустой — впишите его после просмотра источника (с ним будет сравниваться ответ ученика).</p>
+                <ul class="task-edit-list" id="taskList">
+                    {% for at in assignment_tasks %}
+                    <li class="task-edit-item" data-assignment-task-id="{{ at.assignment_task_id }}" data-task-id="{{ at.task_id }}" data-order="{{ at.order_index }}" data-max-score="{{ at.max_score }}">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
+                                <span class="task-info">Задание {{ at.task.task_number }}</span>
+                                <span class="task-meta"> · #{{ at.task_id }} · {{ at.max_score }} балл(ов)</span>
+                            </div>
+                            <div class="task-edit-extra">
+                                {% if at.task.source_url %}
+                                <a href="{{ at.task.source_url }}" target="_blank" rel="noopener noreferrer" class="neo-button ghost sm" style="text-decoration: none;">Открыть источник</a>
+                                {% endif %}
+                                <div class="answer-override-wrap">
+                                    <label for="answer_override_{{ at.assignment_task_id }}">Эталонный ответ (для сравнения с ответом ученика)</label>
+                                    <input type="text" id="answer_override_{{ at.assignment_task_id }}" class="answer-override-input" placeholder="Из задания или впишите вручную" value="{{ at.answer_override or at.task.answer or '' }}" data-task-id="{{ at.task_id }}">
                                 </div>
                             </div>
-                            <button type="button" class="neo-button danger ghost sm remove-btn" data-task-id="{{ at.task_id }}" title="Убрать из работы">✕</button>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% if not assignment_tasks %}
-                    <p style="color: var(--text-muted); margin: 0;">Заданий пока нет.</p>
-                    {% endif %}
-                    <div style="margin-top: 1rem;">
-                        <a href="{{ url_for('task_generator.task_generator') }}?return_edit={{ assignment.assignment_id }}" class="neo-button outline" style="text-decoration: none;">➕ Добавить задания из генератора</a>
-                    </div>
+                        </div>
+                        <button type="button" class="neo-button danger ghost sm remove-btn" data-task-id="{{ at.task_id }}" title="Убрать из работы">✕</button>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if not assignment_tasks %}
+                <p style="color: var(--color-text-muted); margin: 0;">Заданий пока нет.</p>
+                {% endif %}
+                <div style="margin-top: 1rem;">
+                    <a href="{{ url_for('task_generator.task_generator') }}?return_edit={{ assignment.assignment_id }}" class="neo-button outline" style="text-decoration: none;">➕ Добавить задания из генератора</a>
                 </div>
+            </div>
 
-                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
-                    <button type="button" class="neo-button accent" id="saveBtn">Сохранить изменения</button>
-                    <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="text-decoration: none;">Отмена</a>
-                </div>
-            </main>
-        </div>
-    </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="button" class="neo-button accent" id="saveBtn">Сохранить изменения</button>
+                <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="text-decoration: none;">Отмена</a>
+            </div>
+{% endblock %}
 
+{% block scripts_extra %}
     <script>
         (function() {
             const assignmentId = {{ assignment.assignment_id }};
@@ -191,6 +179,4 @@
             });
         })();
     </script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-</body>
-</html>
+{% endblock %}

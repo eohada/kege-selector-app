@@ -1,290 +1,419 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Тарифы</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-  {% include '_ux_enhancements.html' %}
-  {% if csrf_token %}
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-  {% endif %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-  <div class="app-layout">
-    {% set active_page = 'billing' %}
-    {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
+{% block title %}Тарифы{% endblock %}
 
-    <main style="margin-top: 1.25rem;">
-      <section class="glass-panel" style="margin-bottom: 1.25rem;">
-        <p class="hero-eyebrow">биллинг</p>
-        <h1 class="hero-title" style="margin-bottom:.25rem;">Тарифы</h1>
-        <div style="color: var(--text-muted);">MVP без платежных интеграций: тарифы и подписки выдаются вручную.</div>
-        <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: .9rem;">
-          <a class="neo-button accent sm" href="{{ url_for('billing.billing_plans') }}" style="text-decoration:none;">Тарифы</a>
-          <a class="neo-button outline sm" href="{{ url_for('billing.billing_subscriptions') }}" style="text-decoration:none;">Подписки</a>
+{% set active_page = 'billing' %}
+
+{% block content %}
+<section class="glass-panel" style="margin-bottom: 1.25rem;">
+    <p class="hero-eyebrow">биллинг</p>
+    <h1 class="hero-title" style="margin-bottom:.25rem;">Тарифы</h1>
+    <div style="color: var(--text-muted);">Подберите тариф за 3 простых шага</div>
+    <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: .9rem;">
+        <a class="neo-button accent sm" href="{{ url_for('billing.billing_plans') }}" style="text-decoration:none;">Тарифы</a>
+        <a class="neo-button outline sm" href="{{ url_for('billing.billing_subscriptions') }}" style="text-decoration:none;">Подписки</a>
+    </div>
+</section>
+
+{# ── 3-Step Tariff Wizard ── #}
+<section class="glass-panel" style="margin-bottom: 1.25rem; padding: 2rem;" x-data="{
+    step: 1,
+    goal: '',
+    format: '',
+    plan: '',
+    goalLabel() { return this.goal === 'oge' ? 'ОГЭ' : this.goal === 'ege' ? 'ЕГЭ' : '' },
+    formatLabel() {
+        const m = { solo: 'Solo', mentor: 'Mentor', godmode: 'God Mode' };
+        return m[this.format] || '';
+    },
+    planLabel() {
+        const m = { junior: 'Junior', middle: 'Middle', advanced: 'Advanced' };
+        return m[this.plan] || '';
+    },
+    planPrice() {
+        const m = { junior: '2 490', middle: '4 990', advanced: '9 990' };
+        return m[this.plan] || '';
+    },
+    allSelected() { return this.goal && this.format && this.plan; }
+}">
+
+    {# Step Indicators #}
+    <div class="flex items-center justify-center gap-2 mb-8">
+        <template x-for="s in [1,2,3]">
+            <div class="flex items-center gap-2">
+                <div :class="step >= s ? 'bg-accent text-white' : 'bg-bg-surface-alt text-text-muted'"
+                     class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                    <span x-text="s"></span>
+                </div>
+                <div x-show="s < 3" :class="step > s ? 'bg-accent' : 'bg-stroke'" class="w-12 h-0.5"></div>
+            </div>
+        </template>
+    </div>
+
+    {# ── Step 1: Choose Goal ── #}
+    <div x-show="step === 1" x-transition>
+        <h2 class="text-2xl font-bold text-center mb-6">Выберите цель</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+            <div @click="goal = 'oge'; step = 2"
+                 :class="goal === 'oge' ? 'ring-2 ring-accent shadow-accent' : ''"
+                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                <div class="text-4xl mb-3">📝</div>
+                <div class="text-xl font-bold">ОГЭ</div>
+                <div class="text-text-muted text-sm mt-2">Основной государственный экзамен · 9 класс</div>
+            </div>
+            <div @click="goal = 'ege'; step = 2"
+                 :class="goal === 'ege' ? 'ring-2 ring-accent shadow-accent' : ''"
+                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                <div class="text-4xl mb-3">🎓</div>
+                <div class="text-xl font-bold">ЕГЭ</div>
+                <div class="text-text-muted text-sm mt-2">Единый государственный экзамен · 11 класс</div>
+            </div>
         </div>
-      </section>
+    </div>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;" class="profile-grid-responsive">
-        <section class="glass-panel">
-          <div class="panel-head">
+    {# ── Step 2: Choose Format ── #}
+    <div x-show="step === 2" x-transition>
+        <h2 class="text-2xl font-bold text-center mb-6">Выберите формат</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div @click="format = 'solo'; step = 3"
+                 :class="format === 'solo' ? 'ring-2 ring-accent shadow-accent' : ''"
+                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                <div class="text-3xl mb-3">🧑‍💻</div>
+                <div class="text-lg font-bold">Solo</div>
+                <div class="text-text-muted text-sm mt-2">Самостоятельная подготовка с доступом к тренажёру и материалам</div>
+                <div class="text-accent font-bold mt-3">от 2 490 ₽</div>
+            </div>
+            <div @click="format = 'mentor'; step = 3"
+                 :class="format === 'mentor' ? 'ring-2 ring-accent shadow-accent' : ''"
+                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                <div class="text-3xl mb-3">👨‍🏫</div>
+                <div class="text-lg font-bold">Mentor</div>
+                <div class="text-text-muted text-sm mt-2">Занятия с преподавателем + тренажёр + разбор заданий</div>
+                <div class="text-accent font-bold mt-3">от 4 990 ₽</div>
+            </div>
+            <div @click="format = 'godmode'; step = 3"
+                 :class="format === 'godmode' ? 'ring-2 ring-accent shadow-accent' : ''"
+                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                <div class="text-3xl mb-3">⚡</div>
+                <div class="text-lg font-bold">God Mode</div>
+                <div class="text-text-muted text-sm mt-2">Полный доступ: наставник + тренажёр + приоритетная проверка</div>
+                <div class="text-accent font-bold mt-3">от 9 990 ₽</div>
+            </div>
+        </div>
+        <div class="flex justify-center mt-8">
+            <button @click="step--" class="neo-button ghost">← Назад</button>
+        </div>
+    </div>
+
+    {# ── Step 3: Choose Plan ── #}
+    <div x-show="step === 3" x-transition>
+        <h2 class="text-2xl font-bold text-center mb-6">Выберите пакет</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div @click="plan = 'junior'"
+                 :class="plan === 'junior' ? 'ring-2 ring-accent shadow-accent' : ''"
+                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                <div class="text-lg font-bold">Junior</div>
+                <div class="text-text-muted text-sm mt-2">4 урока · базовый набор</div>
+                <div class="text-3xl font-bold mt-4">2 490 ₽</div>
+                <div class="text-text-muted text-sm mt-1">623 ₽ / урок</div>
+            </div>
+            <div @click="plan = 'middle'"
+                 :class="plan === 'middle' ? 'ring-2 ring-accent shadow-accent' : 'shadow-accent-glow'"
+                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center relative">
+                <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-xs font-bold px-3 py-1 rounded-full">Оптимальный</span>
+                <div class="text-lg font-bold">Middle</div>
+                <div class="text-text-muted text-sm mt-2">8 уроков · расширенный набор</div>
+                <div class="text-3xl font-bold mt-4">4 990 ₽</div>
+                <div class="text-text-muted text-sm mt-1">624 ₽ / урок</div>
+            </div>
+            <div @click="plan = 'advanced'"
+                 :class="plan === 'advanced' ? 'ring-2 ring-accent shadow-accent' : ''"
+                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                <div class="text-lg font-bold">Advanced</div>
+                <div class="text-text-muted text-sm mt-2">16 уроков · полный курс</div>
+                <div class="text-3xl font-bold mt-4">9 990 ₽</div>
+                <div class="text-text-muted text-sm mt-1">624 ₽ / урок</div>
+            </div>
+        </div>
+        <div class="flex justify-center mt-8">
+            <button @click="step--" class="neo-button ghost">← Назад</button>
+        </div>
+    </div>
+
+    {# ── Summary Card ── #}
+    <div x-show="allSelected()" x-transition class="mt-8">
+        <div class="rounded-card-lg shadow-card p-8 max-w-xl mx-auto bg-bg-surface">
+            <h3 class="text-xl font-bold mb-4 text-center">Ваш выбор</h3>
+            <div class="space-y-3 mb-6">
+                <div class="flex items-center gap-2">
+                    <span class="text-accent">✓</span>
+                    <span>Экзамен: <strong x-text="goalLabel()"></strong></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-accent">✓</span>
+                    <span>Формат: <strong x-text="formatLabel()"></strong></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-accent">✓</span>
+                    <span>Пакет: <strong x-text="planLabel()"></strong></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-accent">✓</span>
+                    <span>Доступ к тренажёру и материалам</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-accent">✓</span>
+                    <span>Персональная статистика</span>
+                </div>
+            </div>
+            <div class="text-center mb-6">
+                <div class="text-text-muted text-sm">Итого</div>
+                <div class="text-3xl font-bold" x-text="planPrice() + ' ₽'"></div>
+            </div>
+            <button class="neo-button accent w-full py-4 text-lg">Оплатить</button>
+        </div>
+    </div>
+</section>
+
+{# ── Admin: Manage Plans ── #}
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;" class="profile-grid-responsive">
+    <section class="glass-panel">
+        <div class="panel-head">
             <div><p class="eyebrow">создать</p><h2>Новый тариф</h2></div>
-          </div>
-          <form method="POST" action="{{ url_for('billing.billing_plan_create') }}" style="margin-top: 1rem;">
+        </div>
+        <form method="POST" action="{{ url_for('billing.billing_plan_create') }}" style="margin-top: 1rem;">
             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
             <div class="neo-field">
-              <label class="neo-label">Название *</label>
-              <input class="neo-input" name="title" required>
+                <label class="neo-label">Название *</label>
+                <input class="neo-input" name="title" required>
             </div>
             <div class="neo-field" style="margin-top:.75rem;">
-              <label class="neo-label">Описание</label>
-              <textarea class="neo-input" name="description" style="min-height: 90px;"></textarea>
+                <label class="neo-label">Описание</label>
+                <textarea class="neo-input" name="description" style="min-height: 90px;"></textarea>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top:.75rem;">
-              <div class="neo-field">
-                <label class="neo-label">Группа</label>
-                <select class="neo-select" name="group_id">
-                  <option value="">—</option>
-                  {% for g in groups %}
-                    <option value="{{ g.group_id }}">{{ g.title }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="neo-field">
-                <label class="neo-label">Порядок</label>
-                <input class="neo-input" name="order_index" type="number" value="0">
-              </div>
-            </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top:.75rem;">
-              <div class="neo-field">
-                <label class="neo-label">Цена (₽)</label>
-                <input class="neo-input" name="price_rub" type="number" min="0">
-              </div>
-              <div class="neo-field">
-                <label class="neo-label">Кол-во уроков</label>
-                <input class="neo-input" name="lessons_count" type="number" min="1" placeholder="напр. 8">
-              </div>
-            </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top:.75rem;">
-              <div class="neo-field">
-                <label class="neo-label">Цена за урок (₽)</label>
-                <input class="neo-input" name="price_per_lesson_rub" type="number" min="0">
-              </div>
-              <div class="neo-field">
-                <label class="neo-label">Период (дней)</label>
-                <input class="neo-input" name="period_days" type="number" min="1" placeholder="опц.">
-              </div>
-            </div>
-            <div style="margin-top:.75rem; display:flex; gap: 1rem; flex-wrap: wrap;">
-              <label style="display:flex; align-items:center; gap:.5rem;">
-                <input type="checkbox" name="allow_lessons" checked>
-                <span style="color: var(--text-muted);">Доступ: уроки</span>
-              </label>
-              <label style="display:flex; align-items:center; gap:.5rem;">
-                <input type="checkbox" name="allow_trainer" checked>
-                <span style="color: var(--text-muted);">Доступ: тренажёр</span>
-              </label>
-            </div>
-            <div style="margin-top: 1rem; display:flex; justify-content:flex-end;">
-              <button class="neo-button accent" type="submit">Создать</button>
-            </div>
-          </form>
-        </section>
-
-        <section class="glass-panel">
-          <div class="panel-head">
-            <div><p class="eyebrow">список</p><h2>Тарифы</h2></div>
-          </div>
-          <div style="margin-top: .75rem;">
-            <details open>
-              <summary style="cursor:pointer; font-weight: 900;">Группы тарифов</summary>
-              <div style="margin-top: .75rem; display:grid; gap:.75rem;">
-                <form method="POST" action="{{ url_for('billing.billing_group_create') }}" style="display:grid; grid-template-columns: 1fr 140px 140px; gap:.6rem; align-items:end;">
-                  {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                  <div class="neo-field">
-                    <label class="neo-label">Название группы</label>
-                    <input class="neo-input" name="title" placeholder="Напр.: ЕГЭ · Базовый">
-                  </div>
-                  <div class="neo-field">
+                <div class="neo-field">
+                    <label class="neo-label">Группа</label>
+                    <select class="neo-select" name="group_id">
+                        <option value="">—</option>
+                        {% for g in groups %}
+                        <option value="{{ g.group_id }}">{{ g.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="neo-field">
                     <label class="neo-label">Порядок</label>
                     <input class="neo-input" name="order_index" type="number" value="0">
-                  </div>
-                  <button class="neo-button outline" type="submit">Добавить</button>
-                </form>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top:.75rem;">
+                <div class="neo-field">
+                    <label class="neo-label">Цена (₽)</label>
+                    <input class="neo-input" name="price_rub" type="number" min="0">
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Кол-во уроков</label>
+                    <input class="neo-input" name="lessons_count" type="number" min="1" placeholder="напр. 8">
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top:.75rem;">
+                <div class="neo-field">
+                    <label class="neo-label">Цена за урок (₽)</label>
+                    <input class="neo-input" name="price_per_lesson_rub" type="number" min="0">
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Период (дней)</label>
+                    <input class="neo-input" name="period_days" type="number" min="1" placeholder="опц.">
+                </div>
+            </div>
+            <div style="margin-top:.75rem; display:flex; gap: 1rem; flex-wrap: wrap;">
+                <label style="display:flex; align-items:center; gap:.5rem;">
+                    <input type="checkbox" name="allow_lessons" checked>
+                    <span style="color: var(--text-muted);">Доступ: уроки</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:.5rem;">
+                    <input type="checkbox" name="allow_trainer" checked>
+                    <span style="color: var(--text-muted);">Доступ: тренажёр</span>
+                </label>
+            </div>
+            <div style="margin-top: 1rem; display:flex; justify-content:flex-end;">
+                <button class="neo-button accent" type="submit">Создать</button>
+            </div>
+        </form>
+    </section>
 
-                {% if groups and groups|length > 0 %}
-                  <div style="display:grid; gap:.5rem;">
-                    {% for g in groups %}
-                      <div style="padding:.7rem .9rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02); display:flex; justify-content: space-between; gap:.75rem; flex-wrap: wrap;">
-                        <div style="min-width:0;">
-                          <div style="font-weight: 900;">{{ g.title }}</div>
-                          <div style="color: var(--text-muted); font-size:.9rem;">порядок: {{ g.order_index }}</div>
+    <section class="glass-panel">
+        <div class="panel-head">
+            <div><p class="eyebrow">список</p><h2>Тарифы</h2></div>
+        </div>
+        <div style="margin-top: .75rem;">
+            <details open>
+                <summary style="cursor:pointer; font-weight: 900;">Группы тарифов</summary>
+                <div style="margin-top: .75rem; display:grid; gap:.75rem;">
+                    <form method="POST" action="{{ url_for('billing.billing_group_create') }}" style="display:grid; grid-template-columns: 1fr 140px 140px; gap:.6rem; align-items:end;">
+                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                        <div class="neo-field">
+                            <label class="neo-label">Название группы</label>
+                            <input class="neo-input" name="title" placeholder="Напр.: ЕГЭ · Базовый">
                         </div>
-                        <form method="POST" action="{{ url_for('billing.billing_group_toggle', group_id=g.group_id) }}">
-                          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                          <button class="neo-button outline sm" type="submit">Вкл/выкл</button>
-                        </form>
-                      </div>
-                    {% endfor %}
-                  </div>
-                {% else %}
-                  <div style="color: var(--text-muted);">Групп пока нет.</div>
-                {% endif %}
-              </div>
-            </details>
-          </div>
+                        <div class="neo-field">
+                            <label class="neo-label">Порядок</label>
+                            <input class="neo-input" name="order_index" type="number" value="0">
+                        </div>
+                        <button class="neo-button outline" type="submit">Добавить</button>
+                    </form>
 
-          {% macro plan_card(p) -%}
-            <div style="padding:.9rem 1rem; border-radius: var(--radius-lg); border:1px solid var(--stroke-1); background: rgba(255,255,255,0.02); display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
-              <div style="min-width:0;">
+                    {% if groups and groups|length > 0 %}
+                    <div style="display:grid; gap:.5rem;">
+                        {% for g in groups %}
+                        <div class="glass-panel" style="padding:.7rem .9rem; display:flex; justify-content: space-between; gap:.75rem; flex-wrap: wrap;">
+                            <div style="min-width:0;">
+                                <div style="font-weight: 900;">{{ g.title }}</div>
+                                <div style="color: var(--text-muted); font-size:.9rem;">порядок: {{ g.order_index }}</div>
+                            </div>
+                            <form method="POST" action="{{ url_for('billing.billing_group_toggle', group_id=g.group_id) }}">
+                                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                <button class="neo-button outline sm" type="submit">Вкл/выкл</button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div style="color: var(--text-muted);">Групп пока нет.</div>
+                    {% endif %}
+                </div>
+            </details>
+        </div>
+
+        {% macro plan_card(p) -%}
+        <div class="glass-panel" style="padding:.9rem 1rem; display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
+            <div style="min-width:0;">
                 <div style="font-weight: 900; display:flex; gap:.5rem; align-items: center; flex-wrap: wrap;">
-                  <span>{{ p.title }}</span>
-                  <span class="status-badge status-info" style="font-weight:800;">#{{ p.order_index or 0 }}</span>
-                  {% if not p.is_active %}
+                    <span>{{ p.title }}</span>
+                    <span class="status-badge status-info" style="font-weight:800;">#{{ p.order_index or 0 }}</span>
+                    {% if not p.is_active %}
                     <span class="status-badge" style="background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); color: var(--text-muted);">inactive</span>
-                  {% endif %}
+                    {% endif %}
                 </div>
                 <div style="color: var(--text-muted); font-size:.92rem; margin-top:.25rem;">
-                  {% if p.price_rub is not none %}{{ p.price_rub }} ₽{% endif %}
-                  {% if p.lessons_count is not none %}{% if p.price_rub is not none %} · {% endif %}<strong>{{ p.lessons_count }} уроков</strong>{% endif %}
-                  {% if p.price_per_lesson_rub is not none %}{% if p.price_rub is not none or p.lessons_count is not none %} · {% endif %}{{ p.price_per_lesson_rub }} ₽/урок{% endif %}
-                  {% if p.period_days is not none %} · {{ p.period_days }} дней{% endif %}
-                  · статус: <strong>{{ 'active' if p.is_active else 'inactive' }}</strong>
+                    {% if p.price_rub is not none %}{{ p.price_rub }} ₽{% endif %}
+                    {% if p.lessons_count is not none %}{% if p.price_rub is not none %} · {% endif %}<strong>{{ p.lessons_count }} уроков</strong>{% endif %}
+                    {% if p.price_per_lesson_rub is not none %}{% if p.price_rub is not none or p.lessons_count is not none %} · {% endif %}{{ p.price_per_lesson_rub }} ₽/урок{% endif %}
+                    {% if p.period_days is not none %} · {{ p.period_days }} дней{% endif %}
+                    · статус: <strong>{{ 'active' if p.is_active else 'inactive' }}</strong>
                 </div>
                 {% if p.description %}
                 <div style="color: var(--text-muted); margin-top:.4rem; white-space: pre-line;">{{ p.description }}</div>
                 {% endif %}
-              </div>
-              <div style="display:flex; gap:.5rem; flex-wrap: wrap;">
+            </div>
+            <div style="display:flex; gap:.5rem; flex-wrap: wrap;">
                 <a class="neo-button ghost sm" href="{{ url_for('billing.billing_subscriptions', plan_id=p.plan_id) }}" style="text-decoration:none;">Назначить</a>
                 <form method="POST" action="{{ url_for('billing.billing_plan_toggle', plan_id=p.plan_id) }}">
-                  {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                  <button class="neo-button outline sm" type="submit">Вкл/выкл</button>
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button class="neo-button outline sm" type="submit">Вкл/выкл</button>
                 </form>
-              </div>
             </div>
-            <details style="margin-top: -0.25rem;">
-              <summary style="cursor:pointer; color: var(--text-muted); font-weight: 800;">Редактировать</summary>
-              <form method="POST" action="{{ url_for('billing.billing_plan_update', plan_id=p.plan_id) }}" style="margin-top:.75rem; padding:.9rem 1rem; border-radius: var(--radius-lg); border:1px solid var(--stroke-1); background: rgba(0,0,0,0.15);">
+        </div>
+        <details style="margin-top: -0.25rem;">
+            <summary style="cursor:pointer; color: var(--text-muted); font-weight: 800;">Редактировать</summary>
+            <form method="POST" action="{{ url_for('billing.billing_plan_update', plan_id=p.plan_id) }}" style="margin-top:.75rem; padding:.9rem 1rem; border-radius: var(--radius-lg); border:1px solid var(--stroke-1); background: rgba(0,0,0,0.15);">
                 {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem;">
-                  <div class="neo-field">
-                    <label class="neo-label">Название</label>
-                    <input class="neo-input" name="title" value="{{ p.title }}">
-                  </div>
-                  <div class="neo-field">
-                    <label class="neo-label">Группа</label>
-                    <select class="neo-select" name="group_id">
-                      <option value="">—</option>
-                      {% for g in groups %}
-                        <option value="{{ g.group_id }}" {% if p.group_id == g.group_id %}selected{% endif %}>{{ g.title }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
+                    <div class="neo-field">
+                        <label class="neo-label">Название</label>
+                        <input class="neo-input" name="title" value="{{ p.title }}">
+                    </div>
+                    <div class="neo-field">
+                        <label class="neo-label">Группа</label>
+                        <select class="neo-select" name="group_id">
+                            <option value="">—</option>
+                            {% for g in groups %}
+                            <option value="{{ g.group_id }}" {% if p.group_id == g.group_id %}selected{% endif %}>{{ g.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
                 <div class="neo-field" style="margin-top:.75rem;">
-                  <label class="neo-label">Описание</label>
-                  <textarea class="neo-input" name="description" style="min-height: 90px;">{{ p.description or '' }}</textarea>
+                    <label class="neo-label">Описание</label>
+                    <textarea class="neo-input" name="description" style="min-height: 90px;">{{ p.description or '' }}</textarea>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem; margin-top:.75rem;">
-                  <div class="neo-field">
-                    <label class="neo-label">Цена (₽)</label>
-                    <input class="neo-input" name="price_rub" type="number" min="0" value="{{ p.price_rub if p.price_rub is not none else '' }}">
-                  </div>
-                  <div class="neo-field">
-                    <label class="neo-label">Кол-во уроков</label>
-                    <input class="neo-input" name="lessons_count" type="number" min="1" value="{{ p.lessons_count if p.lessons_count is not none else '' }}">
-                  </div>
+                    <div class="neo-field">
+                        <label class="neo-label">Цена (₽)</label>
+                        <input class="neo-input" name="price_rub" type="number" min="0" value="{{ p.price_rub if p.price_rub is not none else '' }}">
+                    </div>
+                    <div class="neo-field">
+                        <label class="neo-label">Кол-во уроков</label>
+                        <input class="neo-input" name="lessons_count" type="number" min="1" value="{{ p.lessons_count if p.lessons_count is not none else '' }}">
+                    </div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem; margin-top:.75rem;">
-                  <div class="neo-field">
-                    <label class="neo-label">Цена за урок (₽)</label>
-                    <input class="neo-input" name="price_per_lesson_rub" type="number" min="0" value="{{ p.price_per_lesson_rub if p.price_per_lesson_rub is not none else '' }}">
-                  </div>
-                  <div class="neo-field">
-                    <label class="neo-label">Период (дней)</label>
-                    <input class="neo-input" name="period_days" type="number" min="1" value="{{ p.period_days if p.period_days is not none else '' }}" placeholder="опц.">
-                  </div>
+                    <div class="neo-field">
+                        <label class="neo-label">Цена за урок (₽)</label>
+                        <input class="neo-input" name="price_per_lesson_rub" type="number" min="0" value="{{ p.price_per_lesson_rub if p.price_per_lesson_rub is not none else '' }}">
+                    </div>
+                    <div class="neo-field">
+                        <label class="neo-label">Период (дней)</label>
+                        <input class="neo-input" name="period_days" type="number" min="1" value="{{ p.period_days if p.period_days is not none else '' }}" placeholder="опц.">
+                    </div>
                 </div>
                 <div style="margin-top:.75rem; display:flex; gap: 1rem; flex-wrap: wrap;">
-                  <label style="display:flex; align-items:center; gap:.5rem;">
-                    <input type="checkbox" name="allow_lessons" {% if p.allow_lessons %}checked{% endif %}>
-                    <span style="color: var(--text-muted);">Доступ: уроки</span>
-                  </label>
-                  <label style="display:flex; align-items:center; gap:.5rem;">
-                    <input type="checkbox" name="allow_trainer" {% if p.allow_trainer %}checked{% endif %}>
-                    <span style="color: var(--text-muted);">Доступ: тренажёр</span>
-                  </label>
+                    <label style="display:flex; align-items:center; gap:.5rem;">
+                        <input type="checkbox" name="allow_lessons" {% if p.allow_lessons %}checked{% endif %}>
+                        <span style="color: var(--text-muted);">Доступ: уроки</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:.5rem;">
+                        <input type="checkbox" name="allow_trainer" {% if p.allow_trainer %}checked{% endif %}>
+                        <span style="color: var(--text-muted);">Доступ: тренажёр</span>
+                    </label>
                 </div>
                 <div class="neo-field" style="margin-top:.75rem;">
-                  <label class="neo-label">Порядок</label>
-                  <input class="neo-input" name="order_index" type="number" value="{{ p.order_index or 0 }}">
+                    <label class="neo-label">Порядок</label>
+                    <input class="neo-input" name="order_index" type="number" value="{{ p.order_index or 0 }}">
                 </div>
                 <div style="display:flex; justify-content:flex-end; margin-top: .9rem;">
-                  <button class="neo-button outline" type="submit">Сохранить</button>
+                    <button class="neo-button outline" type="submit">Сохранить</button>
                 </div>
-              </form>
-            </details>
-          {%- endmacro %}
+            </form>
+        </details>
+        {%- endmacro %}
 
-          <div style="display:grid; gap: 1.25rem; margin-top: 1rem;">
+        <div style="display:grid; gap: 1.25rem; margin-top: 1rem;">
             {% for g, items in plans_by_group %}
-              <section style="border:1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1rem; background: rgba(255,255,255,0.015);">
+            <section class="glass-panel" style="padding: 1rem;">
                 <div style="display:flex; justify-content: space-between; align-items: baseline; gap: .75rem; flex-wrap: wrap;">
-                  <div style="font-weight: 900; font-size: 1.05rem;">{{ g.title }}</div>
-                  <div style="color: var(--text-muted); font-size: .9rem;">{{ items|length }} тарифов</div>
+                    <div style="font-weight: 900; font-size: 1.05rem;">{{ g.title }}</div>
+                    <div style="color: var(--text-muted); font-size: .9rem;">{{ items|length }} тарифов</div>
                 </div>
                 {% if items and items|length > 0 %}
-                  <div style="display:grid; gap:.75rem; margin-top: .75rem;">
+                <div style="display:grid; gap:.75rem; margin-top: .75rem;">
                     {% for p in items %}
-                      {{ plan_card(p) }}
+                    {{ plan_card(p) }}
                     {% endfor %}
-                  </div>
+                </div>
                 {% else %}
-                  <div style="color: var(--text-muted); margin-top: .75rem;">В группе пока нет тарифов.</div>
+                <div style="color: var(--text-muted); margin-top: .75rem;">В группе пока нет тарифов.</div>
                 {% endif %}
-              </section>
+            </section>
             {% endfor %}
 
             {% if ungrouped_plans and ungrouped_plans|length > 0 %}
-              <section style="border:1px dashed rgba(255,255,255,0.18); border-radius: var(--radius-lg); padding: 1rem; background: rgba(255,255,255,0.01);">
+            <section style="border:1px dashed rgba(255,255,255,0.18); border-radius: var(--radius-lg); padding: 1rem; background: rgba(255,255,255,0.01);">
                 <div style="display:flex; justify-content: space-between; align-items: baseline; gap: .75rem; flex-wrap: wrap;">
-                  <div style="font-weight: 900; font-size: 1.05rem; color: var(--text-muted);">Без группы</div>
-                  <div style="color: var(--text-muted); font-size: .9rem;">{{ ungrouped_plans|length }} тарифов</div>
+                    <div style="font-weight: 900; font-size: 1.05rem; color: var(--text-muted);">Без группы</div>
+                    <div style="color: var(--text-muted); font-size: .9rem;">{{ ungrouped_plans|length }} тарифов</div>
                 </div>
                 <div style="display:grid; gap:.75rem; margin-top: .75rem;">
-                  {% for p in ungrouped_plans %}
+                    {% for p in ungrouped_plans %}
                     {{ plan_card(p) }}
-                  {% endfor %}
+                    {% endfor %}
                 </div>
-              </section>
+            </section>
             {% endif %}
 
             {% if (plans_by_group|length == 0) and (not ungrouped_plans or ungrouped_plans|length == 0) %}
-              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Тарифов пока нет.</p></div>
+            <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Тарифов пока нет.</p></div>
             {% endif %}
-          </div>
-        </section>
-      </div>
-    </main>
-  </main>
-    </div>
+        </div>
+    </section>
 </div>
-  <script src="{{ url_for('static', filename='toast.js') }}"></script>
-</body>
-</html>
-
+{% endblock %}

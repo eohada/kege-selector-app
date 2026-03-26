@@ -1,83 +1,58 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% if is_new %}Создать группу{% else %}Редактировать группу{% endif %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-  {% include '_ux_enhancements.html' %}
-  {% if csrf_token %}
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-  {% endif %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-  <div class="app-layout">
-    {% set active_page = 'groups' %}
-    {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
+{% block title %}{% if is_new %}Создать группу{% else %}Редактировать группу{% endif %}{% endblock %}
 
-    <section class="glass-panel" style="margin-bottom: 1.25rem;">
-      <p class="hero-eyebrow">группы</p>
-      <h1 class="hero-title">{% if is_new %}Создать группу{% else %}Редактировать группу{% endif %}</h1>
-    </section>
+{% set active_page = 'groups' %}
 
-    <section class="glass-panel">
-      <form method="POST" action="{% if is_new %}{{ url_for('groups.group_new') }}{% else %}{{ url_for('groups.group_edit', group_id=group.group_id) }}{% endif %}" data-no-ajax="1">
+{% block content %}
+<section class="glass-panel" style="margin-bottom: 1.25rem;">
+    <p class="hero-eyebrow">группы</p>
+    <h1 class="hero-title">{% if is_new %}Создать группу{% else %}Редактировать группу{% endif %}</h1>
+</section>
+
+<section class="glass-panel">
+    <form method="POST" action="{% if is_new %}{{ url_for('groups.group_new') }}{% else %}{{ url_for('groups.group_edit', group_id=group.group_id) }}{% endif %}" data-no-ajax="1">
         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
         {% if form and form.errors %}
         <div class="alert alert-danger" style="margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 8px; background: var(--danger-bg, #fde8e8); color: var(--danger, #c53030); border: 1px solid var(--danger, #c53030);">
             <strong>Ошибки валидации:</strong>
             <ul style="margin: 0.25rem 0 0 1.2rem; padding: 0;">
                 {% for field, errors in form.errors.items() %}
-                    {% for error in errors %}
-                    <li>{{ error }}</li>
-                    {% endfor %}
+                {% for error in errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
                 {% endfor %}
             </ul>
         </div>
         {% endif %}
         <div class="neo-field">
-          <label class="neo-label">Название *</label>
-          <input class="neo-input" name="title" required value="{{ group.title if group else '' }}" placeholder="Например: 10А (информатика)">
+            <label class="neo-label">Название *</label>
+            <input class="neo-input" name="title" required value="{{ group.title if group else '' }}" placeholder="Например: 10А (информатика)">
         </div>
         <div class="neo-field" style="margin-top: .9rem;">
-          <label class="neo-label">Предмет</label>
-          <input class="neo-input" name="subject" value="{{ group.subject if group else '' }}" placeholder="INFORMATICS_EGE_2026">
+            <label class="neo-label">Предмет</label>
+            <input class="neo-input" name="subject" value="{{ group.subject if group else '' }}" placeholder="INFORMATICS_EGE_2026">
         </div>
         <div class="neo-field" style="margin-top: .9rem;">
-          <label class="neo-label">Статус</label>
-          {% set st = (group.status if group else 'active') %}
-          <select class="neo-select" name="status">
-            <option value="active" {% if st == 'active' %}selected{% endif %}>active</option>
-            <option value="archived" {% if st == 'archived' %}selected{% endif %}>archived</option>
-          </select>
+            <label class="neo-label">Статус</label>
+            {% set st = (group.status if group else 'active') %}
+            <select class="neo-select" name="status">
+                <option value="active" {% if st == 'active' %}selected{% endif %}>active</option>
+                <option value="archived" {% if st == 'archived' %}selected{% endif %}>archived</option>
+            </select>
         </div>
         <div class="neo-field" style="margin-top: .9rem;">
-          <label class="neo-label">Описание</label>
-          <textarea class="neo-input" rows="4" name="description" placeholder="Для кого группа, цели, примечания...">{{ group.description if group and group.description else '' }}</textarea>
+            <label class="neo-label">Описание</label>
+            <textarea class="neo-input" rows="4" name="description" placeholder="Для кого группа, цели, примечания...">{{ group.description if group and group.description else '' }}</textarea>
         </div>
         <div style="display:flex; gap:.6rem; margin-top: 1rem; flex-wrap: wrap;">
-          <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
-          <a href="{% if is_new %}{{ url_for('groups.groups_list') }}{% else %}{{ url_for('groups.group_view', group_id=group.group_id) }}{% endif %}" class="neo-button outline">Отмена</a>
+            <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
+            <a href="{% if is_new %}{{ url_for('groups.groups_list') }}{% else %}{{ url_for('groups.group_view', group_id=group.group_id) }}{% endif %}" class="neo-button outline">Отмена</a>
         </div>
-      </form>
-    </section>
-  </main>
-    </div>
-</div>
-  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    </form>
+</section>
+{% endblock %}
+
+{% block scripts_extra %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('form').forEach(function(form) {
@@ -94,6 +69,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-</body>
-</html>
-
+{% endblock %}

@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Управление тестерами · Удаленная админка</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
     <script>
         (function(){
             try {
@@ -23,9 +25,9 @@
 
         <main class="remote-main">
         <section class="glass-panel" style="max-width: 1000px; padding: 2rem;">
-            <div style="margin-bottom: 2rem;">
-                <h1 style="margin: 0;">Тестеры (Tester Entities)</h1>
-                <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+            <div class="mb-8">
+                <h1 class="m-0">Тестеры (Tester Entities)</h1>
+                <p class="text-muted mt-2">
                     Окружение: <strong>{{ environment_name }}</strong>
                 </p>
             </div>
@@ -56,7 +58,7 @@
                                 </td>
                                 <td>{{ tester.created_at[:10] if tester.created_at else '—' }}</td>
                                 <td>
-                                    <div style="display: flex; gap: 0.5rem;">
+                                    <div class="flex gap-2">
                                         <form method="POST" action="{{ url_for('remote_admin.tester_toggle', tester_id=tester.id) }}">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="is_active" value="{{ 'false' if tester.is_active else 'true' }}">
@@ -78,14 +80,14 @@
                         </tbody>
                     </table>
                     {% else %}
-                    <div style="text-align: center; padding: 3rem; background: var(--surface-2); border-radius: var(--radius-md); color: var(--text-muted);">
+                    <div class="text-center text-muted" style="padding: 3rem; background: var(--surface-2); border-radius: var(--radius-md);">
                         Тестеры не найдены
                     </div>
                     {% endif %}
                 </div>
 
-                <div class="glass-panel" style="background: var(--surface-2); height: fit-content; padding: 1.5rem;">
-                    <h3 style="margin-top: 0;">Новый тестер</h3>
+                <div class="glass-panel p-6" style="background: var(--surface-2); height: fit-content;">
+                    <h3 class="mt-0">Новый тестер</h3>
                     <form method="POST" action="{{ url_for('remote_admin.testers') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
@@ -105,7 +107,7 @@
                         <button type="submit" class="neo-button full-width">Создать</button>
                     </form>
                     
-                    <div style="margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                    <div class="mt-6 text-sm text-muted">
                         <p><strong>Что это такое?</strong></p>
                         <p>Тестеры (Tester Entities) — это сущности для группировки тестовых пользователей в Sandbox.</p>
                     </div>

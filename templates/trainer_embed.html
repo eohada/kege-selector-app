@@ -1,134 +1,108 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Тренажёр</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-  {% include '_ux_enhancements.html' %}
-  {% if csrf_token %}
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-  {% endif %}
-  <style>
+{% extends 'base.html' %}
+{% set active_page = 'trainer' %}
+{% block title %}Тренажёр{% endblock %}
+
+{% block head_css %}
+<style>
     .iframe-wrap {
-      margin-top: 1.25rem;
-      border: 1px solid var(--stroke-1);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      background: rgba(255,255,255,0.02);
+        margin-top: 1.25rem;
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        background: rgba(255,255,255,0.02);
     }
     .iframe-wrap iframe {
-      width: 100%;
-      height: calc(100vh - 190px);
-      border: 0;
-      display: block;
-      background: transparent;
+        width: 100%;
+        height: calc(100vh - 190px);
+        border: 0;
+        display: block;
+        background: transparent;
     }
-  </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-  <div class="app-layout">
-    {% set active_page = 'trainer' %}
-    {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+</style>
+{% endblock %}
 
-    <main style="margin-top: 1.25rem;">
-      <section class="glass-panel" style="margin-bottom: 1.25rem;">
-        <p class="hero-eyebrow">тренажёр</p>
-        <h1 class="hero-title" style="margin-bottom:.25rem;">Виртуальный помощник</h1>
-        <div style="color: var(--text-muted);">
-          Помощник анализирует ваш код и задаёт наводящие вопросы, помогая дойти до решения.
-        </div>
-      </section>
-
-      {% if not trainer_url or not iframe_url %}
-        <section class="glass-panel" style="padding: 1.5rem;">
-          <div style="font-weight: 900; font-size: 1.1rem;">Тренажёр не настроен</div>
-          <div style="color: var(--text-muted); margin-top:.35rem;">
-            {% if config_error %}
-              {{ config_error }}
-            {% else %}
-              Не задана переменная окружения <code>TRAINER_URL</code> (URL Streamlit-сервиса).
-            {% endif %}
-          </div>
-        </section>
-      {% else %}
-        <div class="iframe-wrap">
-          <iframe id="trainer-iframe" allow="clipboard-write"></iframe>
-        </div>
-        <script>
-        (function() {
-          var STORAGE_KEY = 'ui.themeMode';
-          var baseUrl = {{ iframe_url | tojson }};
-          function resolveTheme() {
-            try {
-              var v = localStorage.getItem(STORAGE_KEY);
-              if (v === 'light' || v === 'dark') return v;
-              if (v === 'auto') return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-              return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-            } catch (e) { return 'dark'; }
-          }
-          function getIframeUrlWithTheme() {
-            var theme = resolveTheme();
-            var sep = baseUrl.indexOf('?') >= 0 ? '&' : '?';
-            return baseUrl + sep + 'theme=' + encodeURIComponent(theme);
-          }
-          var iframeEl = document.getElementById('trainer-iframe');
-          iframeEl.src = getIframeUrlWithTheme();
-          function sendThemeToTrainer(target) {
-            var theme = resolveTheme();
-            try {
-              (target || iframeEl.contentWindow).postMessage({ type: 'trainer-theme', theme: theme }, '*');
-              return theme;
-            } catch (e) { return null; }
-          }
-          var lastSent = null;
-          function sendOnceLoaded() {
-            try {
-              if (iframeEl.contentWindow) lastSent = sendThemeToTrainer(iframeEl.contentWindow);
-            } catch (e) {}
-          }
-          iframeEl.addEventListener('load', function() {
-            sendOnceLoaded();
-            setTimeout(sendOnceLoaded, 200);
-            setTimeout(sendOnceLoaded, 600);
-            setTimeout(sendOnceLoaded, 1500);
-          });
-          window.addEventListener('message', function(e) {
-            if (e.data && e.data.type === 'trainer-theme-request' && e.source === iframeEl.contentWindow) {
-              lastSent = sendThemeToTrainer(e.source);
-            }
-          });
-          setInterval(function() {
-            var t = resolveTheme();
-            if (t !== lastSent) { lastSent = t; sendThemeToTrainer(); }
-          }, 1500);
-          window.addEventListener('storage', function(e) {
-            if (e.key === STORAGE_KEY && e.newValue) {
-              var t = e.newValue === 'light' || e.newValue === 'dark' ? e.newValue : resolveTheme();
-              if (t !== lastSent) { lastSent = t; sendThemeToTrainer(); }
-            }
-          });
-        })();
-        </script>
-      {% endif %}
-    </main>
-  </main>
+{% block content %}
+<section class="glass-panel mb-5">
+    <p class="hero-eyebrow">тренажёр</p>
+    <h1 class="hero-title mb-1">Виртуальный помощник</h1>
+    <div class="text-text-muted">
+        Помощник анализирует ваш код и задаёт наводящие вопросы, помогая дойти до решения.
     </div>
-</div>
-  <script src="{{ url_for('static', filename='toast.js') }}"></script>
-</body>
-</html>
+</section>
 
+{% if not trainer_url or not iframe_url %}
+<section class="glass-panel p-6">
+    <div class="font-black text-lg">Тренажёр не настроен</div>
+    <div class="text-text-muted mt-1.5">
+        {% if config_error %}
+            {{ config_error }}
+        {% else %}
+            Не задана переменная окружения <code>TRAINER_URL</code> (URL Streamlit-сервиса).
+        {% endif %}
+    </div>
+</section>
+{% else %}
+<div class="iframe-wrap shadow-card">
+    <iframe id="trainer-iframe" allow="clipboard-write"></iframe>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts_extra %}
+{% if trainer_url and iframe_url %}
+<script>
+(function() {
+    var STORAGE_KEY = 'ui.themeMode';
+    var baseUrl = {{ iframe_url | tojson }};
+    function resolveTheme() {
+        try {
+            var v = localStorage.getItem(STORAGE_KEY);
+            if (v === 'light' || v === 'dark') return v;
+            if (v === 'auto') return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+        } catch (e) { return 'dark'; }
+    }
+    function getIframeUrlWithTheme() {
+        var theme = resolveTheme();
+        var sep = baseUrl.indexOf('?') >= 0 ? '&' : '?';
+        return baseUrl + sep + 'theme=' + encodeURIComponent(theme);
+    }
+    var iframeEl = document.getElementById('trainer-iframe');
+    iframeEl.src = getIframeUrlWithTheme();
+    function sendThemeToTrainer(target) {
+        var theme = resolveTheme();
+        try {
+            (target || iframeEl.contentWindow).postMessage({ type: 'trainer-theme', theme: theme }, '*');
+            return theme;
+        } catch (e) { return null; }
+    }
+    var lastSent = null;
+    function sendOnceLoaded() {
+        try {
+            if (iframeEl.contentWindow) lastSent = sendThemeToTrainer(iframeEl.contentWindow);
+        } catch (e) {}
+    }
+    iframeEl.addEventListener('load', function() {
+        sendOnceLoaded();
+        setTimeout(sendOnceLoaded, 200);
+        setTimeout(sendOnceLoaded, 600);
+        setTimeout(sendOnceLoaded, 1500);
+    });
+    window.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'trainer-theme-request' && e.source === iframeEl.contentWindow) {
+            lastSent = sendThemeToTrainer(e.source);
+        }
+    });
+    setInterval(function() {
+        var t = resolveTheme();
+        if (t !== lastSent) { lastSent = t; sendThemeToTrainer(); }
+    }, 1500);
+    window.addEventListener('storage', function(e) {
+        if (e.key === STORAGE_KEY && e.newValue) {
+            var t = e.newValue === 'light' || e.newValue === 'dark' ? e.newValue : resolveTheme();
+            if (t !== lastSent) { lastSent = t; sendThemeToTrainer(); }
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

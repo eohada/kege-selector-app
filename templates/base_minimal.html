@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BooStudy{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    {% block head_css %}{% endblock %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    {% block body %}
+    <div class="min-h-screen flex items-center justify-center p-6">
+        {% block content %}{% endblock %}
+    </div>
+    {% endblock %}
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for category, message in messages %}
+        {% if category == 'error' or category == 'danger' %}
+        if (window.toast) window.toast.error({{ message|tojson }});
+        {% elif category == 'warning' %}
+        if (window.toast) window.toast.warning({{ message|tojson }});
+        {% elif category == 'info' %}
+        if (window.toast) window.toast.info({{ message|tojson }});
+        {% else %}
+        if (window.toast) window.toast.success({{ message|tojson }});
+        {% endif %}
+        {% endfor %}
+    });
+    </script>
+    {% endif %}
+    {% endwith %}
+
+    {% block scripts_extra %}{% endblock %}
+</body>
+</html>

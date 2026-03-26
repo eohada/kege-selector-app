@@ -1,5 +1,4 @@
 <style>
-    /* QA Floating Action Button */
     .qa-fab {
         position: fixed;
         bottom: 24px;
@@ -25,8 +24,7 @@
         background: rgba(18, 18, 24, 1);
     }
     .qa-fab svg { width: 24px; height: 24px; }
-    
-    /* QA Widget Panel */
+
     .qa-god-widget {
         position: fixed;
         bottom: 90px;
@@ -34,15 +32,13 @@
         background: rgba(18, 18, 24, 0.95);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        color: var(--text-primary, #fff);
+        color: var(--text-primary);
         width: 320px;
         max-height: 80vh;
-        border-radius: 16px;
+        border-radius: var(--radius-lg);
         border: 1px solid rgba(255, 71, 87, 0.3);
-        box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 
-                    0 20px 50px -10px rgba(0,0,0,0.7);
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 20px 50px -10px rgba(0,0,0,0.7);
         z-index: 10000;
-        font-family: 'MonaspaceNeon', system-ui, -apple-system, sans-serif;
         display: none;
         flex-direction: column;
         overflow: hidden;
@@ -68,11 +64,7 @@
         color: #ff6b81;
     }
 
-    .qa-body {
-        padding: 0;
-        overflow-y: auto;
-    }
-    
+    .qa-body { padding: 0; overflow-y: auto; }
     .qa-content-pad { padding: 16px; }
 
     .qa-btn {
@@ -82,20 +74,20 @@
         width: 100%;
         padding: 10px 12px;
         margin-bottom: 8px;
-        background: var(--surface-2, rgba(255,255,255,0.05));
-        color: var(--text-primary, #fff);
-        border: 1px solid var(--stroke-1, rgba(255,255,255,0.1));
-        border-radius: 8px;
+        background: var(--surface-2);
+        color: var(--text-primary);
+        border: 1px solid var(--color-stroke);
+        border-radius: var(--radius-md);
         cursor: pointer;
         font-size: 13px;
         text-align: left;
         transition: all 0.2s ease;
     }
     .qa-btn:hover {
-        background: var(--surface-3, rgba(255,255,255,0.1));
+        background: var(--surface-3);
         border-color: rgba(255,255,255,0.2);
     }
-    
+
     .qa-accordion { border-bottom: 1px solid rgba(255,255,255,0.05); }
     .qa-accordion-header {
         padding: 12px 16px;
@@ -116,19 +108,14 @@
     .qa-accordion-icon { transition: transform 0.2s; }
     .qa-accordion.active .qa-accordion-icon { transform: rotate(180deg); }
 
-    .qa-user-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 6px;
-    }
+    .qa-user-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
     .qa-user-row form { flex-grow: 1; }
     .qa-user-btn {
         width: 100%;
         padding: 6px 10px;
         background: rgba(255,255,255,0.05);
         border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 6px;
+        border-radius: var(--radius-sm);
         color: var(--text-muted);
         font-size: 12px;
         text-align: left;
@@ -137,7 +124,6 @@
     }
     .qa-user-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
-    /* Bug Report Modal */
     .qa-modal-overlay {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -152,11 +138,10 @@
     }
     .qa-modal-overlay.open { display: flex; opacity: 1; }
     .qa-modal {
-        background: #1e1e2f;
+        background: var(--surface-1);
         width: 500px;
         max-width: 90vw;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: var(--radius-lg);
         box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         transform: scale(0.95);
         transition: transform 0.2s;
@@ -164,30 +149,28 @@
         flex-direction: column;
     }
     .qa-modal-overlay.open .qa-modal { transform: scale(1); }
-    .qa-modal-header { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+    .qa-modal-header { padding: 16px; border-bottom: 1px solid var(--color-stroke); display: flex; justify-content: space-between; align-items: center; }
     .qa-modal-body { padding: 16px; overflow-y: auto; max-height: 70vh; }
     .qa-screenshot-preview {
         margin-top: 10px;
         width: 100%;
         height: 150px;
         border: 1px dashed rgba(255,255,255,0.2);
-        border-radius: 8px;
+        border-radius: var(--radius-md);
         background-size: cover;
         background-position: center;
         position: relative;
     }
     .qa-input {
         width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 6px; color: #fff; margin-bottom: 12px; font-size: 13px;
+        border-radius: var(--radius-sm); color: #fff; margin-bottom: 12px; font-size: 13px;
     }
 </style>
 
-<!-- Trigger Button -->
 <div class="qa-fab" onclick="toggleQAWidget()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
 </div>
 
-<!-- Widget Panel -->
 <div class="qa-god-widget" id="qaWidget">
     <div class="qa-header">
         <span>QA God Mode</span>
@@ -196,13 +179,13 @@
     
     <div class="qa-body">
         <div class="qa-content-pad">
-            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Current Session:</div>
-            <div style="font-weight: 500; font-size: 14px; color: #fff;">
+            <div class="text-xs text-muted mb-1">Current Session:</div>
+            <div class="font-medium text-sm">
                 {{ current_user.username }} 
-                <span style="opacity: 0.5;">(#{{ current_user.id }})</span>
+                <span class="opacity-50">(#{{ current_user.id }})</span>
             </div>
             {% if session.get('impersonator_id') %}
-            <div style="margin-top: 8px;">
+            <div class="mt-2">
                 <form action="{{ url_for('qa.revert_impersonation') }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
                     <button type="submit" class="qa-btn" style="background: rgba(255, 71, 87, 0.1); color: #ff6b81; border-color: rgba(255, 71, 87, 0.3); justify-content: center;">
@@ -219,7 +202,7 @@
                 <span class="qa-accordion-icon">▼</span>
             </div>
             <div class="qa-accordion-content">
-                <div style="margin-bottom: 8px; font-size: 11px; color: var(--text-muted);">Ученики</div>
+                <div class="mb-2 text-xs text-muted">Ученики</div>
                 {% for un in ['qa_pool_student_1', 'qa_pool_student_2', 'qa_pool_student_3'] %}
                 <div class="qa-user-row">
                     <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
@@ -230,7 +213,7 @@
                 </div>
                 {% endfor %}
                 
-                <div style="margin: 12px 0 8px 0; font-size: 11px; color: var(--text-muted);">Преподаватели</div>
+                <div class="mt-3 mb-2 text-xs text-muted">Преподаватели</div>
                 {% for un in ['qa_pool_tutor_1', 'qa_pool_tutor_2', 'qa_pool_tutor_3'] %}
                 <div class="qa-user-row">
                     <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
@@ -241,7 +224,7 @@
                 </div>
                 {% endfor %}
                 
-                <div style="margin: 12px 0 8px 0; font-size: 11px; color: var(--text-muted);">Родители</div>
+                <div class="mt-3 mb-2 text-xs text-muted">Родители</div>
                 {% for un in ['qa_pool_parent_1', 'qa_pool_parent_2', 'qa_pool_parent_3'] %}
                 <div class="qa-user-row">
                     <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
@@ -252,7 +235,7 @@
                 </div>
                 {% endfor %}
                 
-                <div style="margin: 12px 0 8px 0; font-size: 11px; color: var(--text-muted);">Администратор</div>
+                <div class="mt-3 mb-2 text-xs text-muted">Администратор</div>
                 <div class="qa-user-row">
                     <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
@@ -261,8 +244,8 @@
                     </form>
                 </div>
                 
-                <div style="margin-top: 12px;">
-                    <a href="{{ url_for('qa.pool') }}" class="qa-btn" style="text-decoration: none; justify-content: center; font-size: 11px;">
+                <div class="mt-3">
+                    <a href="{{ url_for('qa.pool') }}" class="qa-btn no-underline" style="justify-content: center; font-size: 11px;">
                         ⚙️ Управление привязками
                     </a>
                 </div>
@@ -276,10 +259,10 @@
             </div>
             <div class="qa-accordion-content">
                 {% if config.get('SANDBOX_URL') and not config.get('IS_SANDBOX') %}
-                <a href="{{ url_for('qa.cross_env_redirect', target='sandbox') }}" class="qa-btn" style="text-decoration: none;">🧪 Перейти в песочницу</a>
+                <a href="{{ url_for('qa.cross_env_redirect', target='sandbox') }}" class="qa-btn no-underline">🧪 Перейти в песочницу</a>
                 {% endif %}
                 {% if config.get('PROD_URL') and config.get('IS_SANDBOX') %}
-                <a href="{{ url_for('qa.cross_env_redirect', target='prod') }}" class="qa-btn" style="text-decoration: none;">🚀 Перейти на прод</a>
+                <a href="{{ url_for('qa.cross_env_redirect', target='prod') }}" class="qa-btn no-underline">🚀 Перейти на прод</a>
                 {% endif %}
                 {% if not (config.get('SANDBOX_URL') or config.get('PROD_URL')) %}
                 <div class="qa-btn" style="opacity: 0.7; cursor: default;">Настройте PROD_URL / SANDBOX_URL</div>
@@ -294,11 +277,11 @@
             </div>
             <div class="qa-accordion-content">
                 <button class="qa-btn" onclick="openBugModal()">🐞 Создать баг-репорт</button>
-                <a href="{{ url_for('qa.board') }}" class="qa-btn" style="text-decoration: none;">📋 Канбан-доска</a>
-                <a href="{{ url_for('qa.bug_reports') }}" class="qa-btn" style="text-decoration: none;">🐛 Список багов</a>
-                <a href="{{ url_for('qa.pool') }}" class="qa-btn" style="text-decoration: none;">⚙️ Привязки профилей</a>
+                <a href="{{ url_for('qa.board') }}" class="qa-btn no-underline">📋 Канбан-доска</a>
+                <a href="{{ url_for('qa.bug_reports') }}" class="qa-btn no-underline">🐛 Список багов</a>
+                <a href="{{ url_for('qa.pool') }}" class="qa-btn no-underline">⚙️ Привязки профилей</a>
                 {% if current_user.is_chief_tester() or current_user.is_creator() %}
-                <a href="{{ url_for('qa.testers') }}" class="qa-btn" style="text-decoration: none;">👥 Управление тестерами</a>
+                <a href="{{ url_for('qa.testers') }}" class="qa-btn no-underline">👥 Управление тестерами</a>
                 {% endif %}
             </div>
         </div>
@@ -343,11 +326,10 @@
     </div>
 </div>
 
-<!-- Bug Report Modal -->
 <div class="qa-modal-overlay" id="bugModalOverlay">
     <div class="qa-modal">
         <div class="qa-modal-header">
-            <h3 style="margin:0; font-size:16px; color:#fff;">Новый баг-репорт</h3>
+            <h3 class="text-base font-semibold">Новый баг-репорт</h3>
             <button onclick="closeBugModal()" style="background:none; border:none; color:rgba(255,255,255,0.5); cursor:pointer;">✕</button>
         </div>
         <div class="qa-modal-body">
@@ -357,13 +339,13 @@
                 <input type="text" class="qa-input" name="title" placeholder="Краткая суть бага" required>
                 <textarea class="qa-input" name="description" rows="3" placeholder="Описание и шаги воспроизведения..."></textarea>
                 
-                <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Скриншот (автоматически):</div>
+                <div class="text-xs text-muted mb-1.5">Скриншот (автоматически):</div>
                 <div class="qa-screenshot-preview" id="bugScreenshotPreview" style="position:relative; min-height:120px;">
                     <img id="bugScreenshotImg" alt="Скриншот" style="max-width:100%; max-height:180px; width:auto; height:auto; border-radius:8px; display:none;">
                     <span id="bugScreenshotPlaceholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:rgba(255,255,255,0.4); font-size:12px;">Загрузка...</span>
                 </div>
                 
-                <div style="margin-top:16px; display:flex; gap:10px;">
+                <div class="mt-4 flex gap-2.5">
                     <button type="submit" class="qa-btn" style="justify-content:center; background:var(--accent-1); border:none;">Отправить</button>
                     <button type="button" class="qa-btn" onclick="closeBugModal()" style="justify-content:center; width:auto;">Отмена</button>
                 </div>
@@ -386,7 +368,6 @@
         if (imgEl) { imgEl.style.display = 'none'; imgEl.removeAttribute('src'); }
         if (placeholder) placeholder.textContent = 'Загрузка...';
         setTimeout(function() {
-            // Сначала пробуем видимую область; при пустом canvas — полную страницу
             var viewportOpts = {
                 scrollX: -window.scrollX,
                 scrollY: -window.scrollY,

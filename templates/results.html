@@ -1,270 +1,93 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Результаты: Задание {{ task_type }}</title>
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    {% include '_ux_enhancements.html' %}
-    <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    
-    <style>
-        .results-hero {
-            margin-bottom: 2rem;
-        }
-        
-        .mode-banner {
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            border: 1px solid var(--stroke-1);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            background: var(--surface-1);
-        }
+{% extends 'base.html' %}
+{% block title %}Результаты: Задание {{ task_type }}{% endblock %}
 
-        .mode-banner.mode-homework {
-            border-left: 3px solid var(--accent-2);
-        }
+{% block head_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+<style>
+    .results-hero { margin-bottom: 2rem; }
 
-        .mode-banner.mode-classwork {
-            border-left: 3px solid var(--success);
-        }
+    .mode-banner {
+        border-radius: var(--radius-card);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: var(--color-bg-surface);
+        box-shadow: var(--shadow-card);
+    }
+    .mode-banner.mode-homework { border-left: 3px solid var(--color-accent); }
+    .mode-banner.mode-classwork { border-left: 3px solid var(--color-success); }
+    .mode-banner .mode-icon { font-size: 2.5em; flex-shrink: 0; }
+    .mode-banner .mode-title { font-weight: 700; font-size: 1.2em; color: var(--color-text-primary); margin-bottom: 0.5em; }
+    .mode-banner .mode-details { color: var(--color-text-muted); font-size: 0.95em; margin-bottom: 0.5em; }
+    .mode-banner .mode-details strong { color: var(--color-accent); }
+    .mode-banner .mode-hint { color: var(--color-text-muted); font-size: 0.9em; }
 
-        .mode-banner .mode-icon {
-            font-size: 2.5em;
-            flex-shrink: 0;
-        }
+    .select-all {
+        background: var(--color-bg-surface);
+        border-radius: var(--radius-card);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        box-shadow: var(--shadow-card);
+    }
+    .select-all label { display: flex; align-items: center; gap: 0.5em; color: var(--color-text-primary); font-weight: 600; cursor: pointer; }
+    .select-all input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+    .select-all-actions { display: flex; gap: 0.5em; flex-wrap: wrap; }
 
-        .mode-banner .mode-title {
-            font-weight: 700;
-            font-size: 1.2em;
-            color: var(--text-primary);
-            margin-bottom: 0.5em;
-        }
+    .task-content { line-height: 1.8; font-size: 1.05em; color: var(--color-text-primary); margin-bottom: 1.5rem; }
+    .task-content img { max-width: 100%; height: auto; border-radius: var(--radius-sm); margin: 1em 0; }
+    .task-content table { border-collapse: collapse; margin: 1em 0; width: 100%; }
+    .task-content td, .task-content th { border: 1px solid var(--color-stroke); padding: 0.5em; }
 
-        .mode-banner .mode-details {
-            color: var(--text-muted);
-            font-size: 0.95em;
-            margin-bottom: 0.5em;
-        }
+    .attached-files { background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: var(--radius-card); padding: 1.5rem; margin-bottom: 1.5rem; }
+    .attached-files h4 { color: var(--color-text-primary); margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .file-list { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .file-list li { margin: 0; }
 
-        .mode-banner .mode-details strong {
-            color: var(--accent-1);
-        }
+    .file-link {
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+        padding: 0.65rem 1.2rem; border-radius: var(--radius-sm); border: 1px solid var(--color-stroke);
+        text-decoration: none; font-weight: 600; letter-spacing: 0.03em;
+        color: var(--color-text-primary); background: var(--color-bg-surface-alt);
+        transition: all 0.2s ease; font-size: 0.9rem;
+    }
+    .file-link:hover { transform: translateY(-1px); border-color: var(--color-accent); color: var(--color-accent); background: var(--color-bg-surface); box-shadow: var(--shadow-card); }
 
-        .mode-banner .mode-hint {
-            color: var(--text-muted);
-            font-size: 0.9em;
-        }
+    .task-actions { display: flex; gap: 0.5em; flex-wrap: wrap; }
+</style>
+{% endblock %}
 
-        .select-all {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
+{% block head_js %}
+<script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+{% endblock %}
 
-        .select-all label {
-            display: flex;
-            align-items: center;
-            gap: 0.5em;
-            color: var(--text-primary);
-            font-weight: 600;
-            cursor: pointer;
-        }
+{% block body_attrs %}data-lesson-id="{% if lesson_id %}{{ lesson_id }}{% endif %}" data-assignment-type="{{ assignment_type }}" data-template-id="{% if template_id %}{{ template_id }}{% endif %}"{% endblock %}
 
-        .select-all input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
+{% set active_page = active_page | default('generator') %}
 
-        .select-all-actions {
-            display: flex;
-            gap: 0.5em;
-            flex-wrap: wrap;
-        }
-
-        .task-content {
-            line-height: 1.8;
-            font-size: 1.05em;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-        }
-
-        .task-content img {
-            max-width: 100%;
-            height: auto;
-            border-radius: var(--radius-sm);
-            margin: 1em 0;
-        }
-
-        .task-content table {
-            border-collapse: collapse;
-            margin: 1em 0;
-            width: 100%;
-        }
-
-        .task-content td, .task-content th {
-            border: 1px solid var(--stroke-1);
-            padding: 0.5em;
-        }
-
-        .attached-files {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .attached-files h4 {
-            color: var(--text-primary);
-            margin-bottom: 1rem;
-            font-weight: 600;
-            font-size: 0.95rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .file-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-        }
-
-        .file-list li {
-            margin: 0;
-        }
-
-        .file-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem;
-            padding: 0.65rem 1.2rem;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--stroke-1);
-            text-decoration: none;
-            font-weight: 600;
-            letter-spacing: 0.03em;
-            color: var(--text-primary);
-            background: var(--surface-2);
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
-        }
-
-        .file-link:hover {
-            transform: translateY(-1px);
-            border-color: var(--accent-1);
-            color: var(--accent-1);
-            background: var(--surface-1);
-            box-shadow: var(--shadow-soft);
-        }
-
-        .task-actions {
-            display: flex;
-            gap: 0.5em;
-            flex-wrap: wrap;
-        }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-    <body class="{% if active_lesson %}lesson-active{% endif %}" data-lesson-id="{% if lesson_id %}{{ lesson_id }}{% endif %}" data-assignment-type="{{ assignment_type }}" data-template-id="{% if template_id %}{{ template_id }}{% endif %}">
-    {% set is_homework = assignment_type == 'homework' %}
-    {% set mode_label = 'домашнего задания' if is_homework else 'классной работы' %}
-    {% set add_action_text = 'Добавить в ДЗ' if is_homework else 'Добавить в работу' %}
-    {% set mode_class = 'mode-homework' if is_homework else 'mode-classwork' %}
-    
-    {% if active_lesson %}
-    <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
-    </div>
-    <div class="now-playing-panel" id="lessonMenu">
-        <div class="hero-eyebrow">текущий урок</div>
-        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
-        {% if active_lesson.topic %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
-        {% endif %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
-        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
-        <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
-            </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('profile.user', 'sm', decorative=true) }}Профиль</a>
-        </div>
-    </div>
-    <script>
-        function toggleLessonMenu() {
-            const menu = document.getElementById('lessonMenu');
-            if (menu) {
-                menu.classList.toggle('active');
-            }
-        }
-        document.addEventListener('click', (event) => {
-            const menu = document.getElementById('lessonMenu');
-            const badge = document.querySelector('.now-playing-pill');
-            if (!menu || !badge) return;
-            if (!menu.contains(event.target) && !badge.contains(event.target)) {
-                menu.classList.remove('active');
-            }
-        });
-    </script>
-    {% endif %}
-
-    <div class="app-layout">
-        {% set active_page = active_page | default('generator') %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% block content %}
+        {% set is_homework = assignment_type == 'homework' %}
+        {% set mode_label = 'домашнего задания' if is_homework else 'классной работы' %}
+        {% set add_action_text = 'Добавить в ДЗ' if is_homework else 'Добавить в работу' %}
+        {% set mode_class = 'mode-homework' if is_homework else 'mode-classwork' %}
 
         <section class="glass-panel results-hero">
             <div>
                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                     {% if template_id %}
-                    <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="neo-button ghost" style="text-decoration: none;">
-                        ← К шаблону
-                    </a>
-                    <a href="{{ url_for('task_generator.task_generator', template_id=template_id, assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">
-                        ← К генератору
-                    </a>
+                    <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="neo-button ghost" style="text-decoration: none;">← К шаблону</a>
+                    <a href="{{ url_for('task_generator.task_generator', template_id=template_id, assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">← К генератору</a>
                     {% elif lesson_id %}
-                    <a href="{{ url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">
-                        ← Назад к генератору
-                    </a>
+                    <a href="{{ url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">← Назад к генератору</a>
                     {% else %}
-                    <a href="{{ url_for('task_generator.task_generator', assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">
-                        ← Назад к генератору
-                    </a>
+                    <a href="{{ url_for('task_generator.task_generator', assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">← Назад к генератору</a>
                     {% endif %}
                 </div>
                 <p class="hero-eyebrow">результаты генератора</p>
@@ -276,26 +99,16 @@
         {% if lesson and student %}
         <section class="mode-banner {{ mode_class }}">
             <div class="mode-icon">
-                {% if is_homework %}
-                {{ ui_icon('nav.assignments', 'lg', decorative=true) }}
-                {% else %}
-                {{ ui_icon('action.school', 'lg', decorative=true) }}
-                {% endif %}
+                {% if is_homework %}{{ ui_icon('nav.assignments', 'lg', decorative=true) }}{% else %}{{ ui_icon('action.school', 'lg', decorative=true) }}{% endif %}
             </div>
             <div style="flex: 1;">
                 <div class="mode-title">Режим формирования {{ mode_label }}</div>
                 <div class="mode-details">
                     <strong>Ученик:</strong> {{ student.name }}
-                    {% if lesson.lesson_date %}
-                    | <strong>Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
-                    {% endif %}
-                    {% if lesson.topic %}
-                    | <strong>Тема:</strong> {{ lesson.topic }}
-                    {% endif %}
+                    {% if lesson.lesson_date %} | <strong>Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% endif %}
+                    {% if lesson.topic %} | <strong>Тема:</strong> {{ lesson.topic }}{% endif %}
                 </div>
-                <div class="mode-hint">
-                    {{ 'Нажми «Добавить в ДЗ», чтобы закрепить задания за учеником.' if is_homework else 'Выбирай «Добавить в работу», чтобы использовать задания прямо на уроке.' }}
-                </div>
+                <div class="mode-hint">{{ 'Нажми «Добавить в ДЗ», чтобы закрепить задания за учеником.' if is_homework else 'Выбирай «Добавить в работу», чтобы использовать задания прямо на уроке.' }}</div>
             </div>
             <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль</a>
         </section>
@@ -305,16 +118,14 @@
             <div class="select-all" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <label style="display: flex; align-items: center; gap: 0.5em; cursor: pointer;">
                     <input type="checkbox" id="select-all-checkbox" style="width: 20px; height: 20px; cursor: pointer;">
-                    <span style="color: var(--text-primary); font-weight: 600;">Выбрать все задания</span>
+                    <span style="color: var(--color-text-primary); font-weight: 600;">Выбрать все задания</span>
                 </label>
                 <div class="select-all-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <button class="neo-button accent" data-bulk-action="accept" data-tooltip="Принять все выбранные задания">{% if lesson %}{{ add_action_text }}{% else %}Принять выбранные{% endif %}</button>
                     <button class="neo-button outline" data-bulk-action="skip" data-tooltip="Пропустить все выбранные задания (можно вернуть позже)">Пропустить выбранные</button>
                     <button class="neo-button danger" data-bulk-action="blacklist" data-tooltip="Добавить все выбранные задания в черный список (необратимо)">В черный список</button>
                     {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
-                    <button class="neo-button" id="create-assignment-btn" data-tooltip="Создать работу из выбранных заданий" style="background: var(--accent-1); color: white; border: none;">
-                        📝 Создать работу
-                    </button>
+                    <button class="neo-button" id="create-assignment-btn" data-tooltip="Создать работу из выбранных заданий" style="background: var(--color-accent); color: white; border: none;">📝 Создать работу</button>
                     {% endif %}
                 </div>
             </div>
@@ -322,24 +133,24 @@
 
         {% for task in tasks %}
         <section class="glass-panel task-card" data-task-id="{{ task.task_id }}" style="margin-bottom: 2rem;">
-            <div class="task-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1); flex-wrap: wrap; gap: 1rem;">
+            <div class="task-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-stroke); flex-wrap: wrap; gap: 1rem;">
                 <label style="display: flex; align-items: center; gap: 0.5em; cursor: pointer; flex: 1;">
                     <input type="checkbox" class="task-checkbox" value="{{ task.task_id }}" id="task-{{ task.task_id }}" style="width: 20px; height: 20px; cursor: pointer;">
                     <div>
-                        <b style="color: var(--text-primary);">№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b>
-                        <span style="color: var(--text-muted); margin: 0 0.5em;">|</span>
+                        <b style="color: var(--color-text-primary);">№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b>
+                        <span style="color: var(--color-text-muted); margin: 0 0.5em;">|</span>
                         <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.9em; padding: 0.4em 0.8em; text-decoration: none;">🔗 Источник</a>
                     </div>
                 </label>
             </div>
-            
-            <div class="task-content" style="line-height: 1.8; font-size: 1.05em; color: var(--text-primary); margin-bottom: 1.5rem;">
+
+            <div class="task-content" style="line-height: 1.8; font-size: 1.05em; color: var(--color-text-primary); margin-bottom: 1.5rem;">
                 {{ task.content_html | sanitize_html }}
             </div>
-            
+
             {% if task.attached_files %}
-            <div class="attached-files" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;">
-                <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">📎 Прикрепленные файлы</h4>
+            <div class="attached-files" style="background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); border-radius: var(--radius-card); padding: 1.5rem; margin-bottom: 1.5rem;">
+                <h4 style="color: var(--color-text-primary); margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">📎 Прикрепленные файлы</h4>
                 <ul class="file-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.75rem;">
                     {% set files = task.attached_files | from_json %}
                     {% for file in files %}
@@ -363,9 +174,7 @@
                     {% endif %}
                     {% if download_url is defined %}
                     <li>
-                        <a href="{{ download_url }}" target="_blank" class="neo-button outline" style="font-size: 0.9rem; padding: 0.65rem 1.2rem; text-decoration: none;" download="{{ file_name }}">
-                            {{ file_name }}
-                        </a>
+                        <a href="{{ download_url }}" target="_blank" class="neo-button outline" style="font-size: 0.9rem; padding: 0.65rem 1.2rem; text-decoration: none;" download="{{ file_name }}">{{ file_name }}</a>
                     </li>
                     {% endif %}
                     {% endif %}
@@ -373,7 +182,7 @@
                 </ul>
             </div>
             {% endif %}
-            
+
             <div class="task-actions" style="display: flex; gap: 0.5em; flex-wrap: wrap; margin-top: 1rem;">
                 <button class="neo-button accent" data-task-id="{{ task.task_id }}" data-action="accept" data-tooltip="Принять задание">{% if lesson %}{{ ui_icon('action.check', 'sm') }} {{ add_action_text }}{% else %}{{ ui_icon('action.check', 'sm') }} Принять{% endif %}</button>
                 <button class="neo-button outline" data-task-id="{{ task.task_id }}" data-action="skip" data-tooltip="Пропустить задание (можно вернуть позже)">⊘ Пропустить</button>
@@ -381,21 +190,14 @@
             </div>
         </section>
         {% endfor %}
-    </div>
-
-    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
-    
-    <script src="{{ url_for('static', filename='loading.js') }}"></script>
 
     <div class="modal-overlay" id="createAssignmentModal" style="display:none; align-items:center; justify-content:center; padding: 2rem; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 1200; backdrop-filter: blur(4px);">
-        <div class="glass-panel" style="width: 100%; max-width: 640px; border-radius: var(--radius-lg);">
+        <div class="glass-panel" style="width: 100%; max-width: 640px; border-radius: var(--radius-card);">
             <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
                 <div>
                     <p class="hero-eyebrow">создание работы</p>
                     <h2 style="margin: .25rem 0 0 0;">Создать работу из выбранных заданий</h2>
-                    <div style="color: var(--text-muted); margin-top: .5rem; line-height: 1.45;">
-                        Работа появится в разделе <strong>«Работы»</strong> и назначится выбранным ученикам.
-                    </div>
+                    <div style="color: var(--color-text-muted); margin-top: .5rem; line-height: 1.45;">Работа появится в разделе <strong>«Работы»</strong> и назначится выбранным ученикам.</div>
                 </div>
                 <button type="button" class="neo-button ghost" onclick="closeCreateAssignmentModal()" aria-label="Закрыть">{{ ui_icon('action.close', 'sm') }}</button>
             </div>
@@ -407,11 +209,7 @@
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
                     <div class="neo-field">
                         <label class="neo-label" for="ca_type">Тип</label>
-                        <select id="ca_type" class="neo-select" name="type">
-                            <option value="homework">ДЗ</option>
-                            <option value="classwork">КР</option>
-                            <option value="exam">Проверочная</option>
-                        </select>
+                        <select id="ca_type" class="neo-select" name="type"><option value="homework">ДЗ</option><option value="classwork">КР</option><option value="exam">Проверочная</option></select>
                     </div>
                     <div class="neo-field">
                         <label class="neo-label" for="ca_deadline">Дедлайн *</label>
@@ -422,11 +220,11 @@
                     <div class="neo-field">
                         <label class="neo-label" for="ca_time_limit">Лимит времени (мин)</label>
                         <input id="ca_time_limit" class="neo-input" type="number" name="time_limit_minutes" min="5" step="5" placeholder="например: 60">
-                        <div style="color: var(--text-muted); font-size: .9rem; margin-top: .35rem;">Опционально, для тестов.</div>
+                        <div style="color: var(--color-text-muted); font-size: .9rem; margin-top: .35rem;">Опционально, для тестов.</div>
                     </div>
                     <div class="neo-field">
                         <label class="neo-label">Жёсткий дедлайн</label>
-                        <label style="display:flex; gap:.6rem; align-items:center; padding:.75rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-md); background: rgba(255,255,255,0.02);">
+                        <label style="display:flex; gap:.6rem; align-items:center; padding:.75rem 1rem; border:1px solid var(--color-stroke); border-radius: var(--radius-md); background: rgba(255,255,255,0.02);">
                             <input id="ca_hard_deadline" type="checkbox" style="width: 18px; height: 18px;">
                             <span>Запретить сдачу после дедлайна</span>
                         </label>
@@ -438,13 +236,11 @@
                 </div>
                 <div class="neo-field" style="margin-top: .9rem;">
                     <label class="neo-label">Получатели</label>
-                    <label style="display:flex; gap:.6rem; align-items:center; padding:.75rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-md); background: rgba(255,255,255,0.02);">
+                    <label style="display:flex; gap:.6rem; align-items:center; padding:.75rem 1rem; border:1px solid var(--color-stroke); border-radius: var(--radius-md); background: rgba(255,255,255,0.02);">
                         <input id="ca_group_all" type="radio" name="recipients_mode" value="all" checked style="width: 18px; height: 18px;">
                         <span>Все мои ученики</span>
                     </label>
-                    <div style="color: var(--text-muted); font-size: .9rem; margin-top: .35rem;">
-                        В этой версии выбираем «все доступные ученики» (по вашему scope). Точное распределение по списку добавим следующим шагом.
-                    </div>
+                    <div style="color: var(--color-text-muted); font-size: .9rem; margin-top: .35rem;">В этой версии выбираем «все доступные ученики» (по вашему scope). Точное распределение по списку добавим следующим шагом.</div>
                 </div>
                 <div style="display:flex; gap:.75rem; justify-content:flex-end; flex-wrap: wrap; margin-top: 1.25rem;">
                     <button type="button" class="neo-button ghost" onclick="closeCreateAssignmentModal()">Отмена</button>
@@ -452,68 +248,28 @@
                 </div>
             </form>
         </div>
-    </main>
     </div>
-</div>
+{% endblock %}
+
+{% block scripts_extra %}
+    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script>
-        // Функция для временного уведомления, если toast не загружен
         function showTemporaryNotification(message, type) {
             const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 1rem 1.5rem;
-                background: ${type === 'success' ? '#4CAF50' : '#f44336'};
-                color: white;
-                border-radius: 8px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                z-index: 10000;
-                font-size: 14px;
-                max-width: 300px;
-                animation: slideIn 0.3s ease-out;
-            `;
+            notification.style.cssText = `position: fixed; top: 20px; right: 20px; padding: 1rem 1.5rem; background: ${type === 'success' ? '#4CAF50' : '#f44336'}; color: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10000; font-size: 14px; max-width: 300px; animation: slideIn 0.3s ease-out;`;
             notification.textContent = message;
             document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'slideOut 0.3s ease-out';
-                setTimeout(() => notification.remove(), 300);
-            }, 3000);
+            setTimeout(() => { notification.style.animation = 'slideOut 0.3s ease-out'; setTimeout(() => notification.remove(), 300); }, 3000);
         }
-        
-        // Добавляем стили для анимации
         const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideIn {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-            @keyframes slideOut {
-                from {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-            }
-        `;
+        style.textContent = `@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } } @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }`;
         document.head.appendChild(style);
     </script>
     <script>
-        // Определяем константы в глобальной области видимости ДО всех функций
         const LESSON_ID = document.body.dataset.lessonId ? parseInt(document.body.dataset.lessonId) : null;
         const ASSIGNMENT_TYPE = document.body.dataset.assignmentType || 'homework';
         const TEMPLATE_ID = document.body.dataset.templateId ? parseInt(document.body.dataset.templateId) : null;
-        // Формируем REDIRECT_URL с учетом template_id
         let REDIRECT_URL;
         if (TEMPLATE_ID) {
             REDIRECT_URL = "{{ url_for('task_generator.task_generator', template_id=0, assignment_type=assignment_type) }}".replace('template_id=0', `template_id=${TEMPLATE_ID}`);
@@ -534,36 +290,14 @@
             const modal = document.getElementById('createAssignmentModal');
             const form = document.getElementById('createAssignmentForm');
             if (!modal || !form) return;
-
             const titleEl = document.getElementById('ca_title');
             const typeEl = document.getElementById('ca_type');
             const deadlineEl = document.getElementById('ca_deadline');
             const submitBtn = document.getElementById('ca_submit_btn');
-
-            if (typeEl) {
-                const t = (ASSIGNMENT_TYPE || 'homework').toLowerCase();
-                if (['homework', 'classwork', 'exam'].includes(t)) typeEl.value = t;
-            }
-
-            if (titleEl) {
-                const t = (ASSIGNMENT_TYPE || 'homework').toLowerCase();
-                const prefix = (t === 'classwork') ? 'КР' : (t === 'exam' ? 'Проверочная' : 'ДЗ');
-                titleEl.value = `${prefix} · ${__createAssignmentSelectedTasks.length} заданий`;
-            }
-
-            if (deadlineEl) {
-                const d = new Date();
-                d.setDate(d.getDate() + 1);
-                d.setHours(23, 59, 0, 0);
-                const pad = (n) => String(n).padStart(2, '0');
-                deadlineEl.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-            }
-
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Создать работу';
-            }
-
+            if (typeEl) { const t = (ASSIGNMENT_TYPE || 'homework').toLowerCase(); if (['homework', 'classwork', 'exam'].includes(t)) typeEl.value = t; }
+            if (titleEl) { const t = (ASSIGNMENT_TYPE || 'homework').toLowerCase(); const prefix = (t === 'classwork') ? 'КР' : (t === 'exam' ? 'Проверочная' : 'ДЗ'); titleEl.value = `${prefix} · ${__createAssignmentSelectedTasks.length} заданий`; }
+            if (deadlineEl) { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(23, 59, 0, 0); const pad = (n) => String(n).padStart(2, '0'); deadlineEl.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
@@ -578,822 +312,219 @@
             const modal = document.getElementById('createAssignmentModal');
             const form = document.getElementById('createAssignmentForm');
             if (!modal || !form) return;
-
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) closeCreateAssignmentModal();
-            });
-
+            modal.addEventListener('click', function(e) { if (e.target === modal) closeCreateAssignmentModal(); });
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const submitBtn = document.getElementById('ca_submit_btn');
-                if (submitBtn) {
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = 'Создаём...';
-                }
-
+                if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Создаём...'; }
                 const title = (document.getElementById('ca_title')?.value || '').trim();
                 const type = (document.getElementById('ca_type')?.value || 'homework').trim();
                 const deadlineLocal = (document.getElementById('ca_deadline')?.value || '').trim();
                 const hardDeadline = !!document.getElementById('ca_hard_deadline')?.checked;
                 const timeLimitRaw = (document.getElementById('ca_time_limit')?.value || '').trim();
                 const description = (document.getElementById('ca_description')?.value || '').trim();
-
-                if (!title) {
-                    if (window.toast) window.toast.error('Введите название работы');
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
-                    return;
-                }
-                if (!deadlineLocal) {
-                    if (window.toast) window.toast.error('Выберите дедлайн');
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
-                    return;
-                }
+                if (!title) { if (window.toast) window.toast.error('Введите название работы'); if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; } return; }
+                if (!deadlineLocal) { if (window.toast) window.toast.error('Выберите дедлайн'); if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; } return; }
                 const deadlineDate = new Date(deadlineLocal);
-                if (!Number.isFinite(deadlineDate.getTime())) {
-                    if (window.toast) window.toast.error('Некорректный дедлайн');
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
-                    return;
-                }
-
+                if (!Number.isFinite(deadlineDate.getTime())) { if (window.toast) window.toast.error('Некорректный дедлайн'); if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; } return; }
                 let timeLimitMinutes = null;
-                if (timeLimitRaw !== '') {
-                    const v = parseInt(timeLimitRaw, 10);
-                    if (Number.isFinite(v) && v > 0) timeLimitMinutes = v;
-                }
-
-                const payload = {
-                    title,
-                    type,
-                    deadline: deadlineDate.toISOString(),
-                    hard_deadline: hardDeadline,
-                    time_limit_minutes: timeLimitMinutes,
-                    description: description || '',
-                    tasks: (__createAssignmentSelectedTasks || []).map((taskId, idx) => ({
-                        task_id: taskId,
-                        max_score: 1,
-                        order: idx
-                    })),
-                    groupId: 'all',
-                };
-
+                if (timeLimitRaw !== '') { const v = parseInt(timeLimitRaw, 10); if (Number.isFinite(v) && v > 0) timeLimitMinutes = v; }
+                const payload = { title, type, deadline: deadlineDate.toISOString(), hard_deadline: hardDeadline, time_limit_minutes: timeLimitMinutes, description: description || '', tasks: (__createAssignmentSelectedTasks || []).map((taskId, idx) => ({ task_id: taskId, max_score: 1, order: idx })), groupId: 'all' };
                 if (LESSON_ID) payload.lesson_id = LESSON_ID;
-
                 try {
-                    const resp = await fetch(ASSIGNMENTS_DISTRIBUTE_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': CSRF_TOKEN || '',
-                            'X-Requested-With': 'XMLHttpRequest',
-                        },
-                        body: JSON.stringify(payload),
-                    });
+                    const resp = await fetch(ASSIGNMENTS_DISTRIBUTE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN || '', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(payload) });
                     const data = await resp.json().catch(() => ({}));
-                    if (!resp.ok || data.success === false) {
-                        const msg = data.error || `HTTP ${resp.status}`;
-                        if (window.toast) window.toast.error(msg);
-                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
-                        return;
-                    }
-
+                    if (!resp.ok || data.success === false) { const msg = data.error || `HTTP ${resp.status}`; if (window.toast) window.toast.error(msg); if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; } return; }
                     const assignmentId = data.assignment_id || data.assignmentId || data.id;
                     if (window.toast) window.toast.success('Работа создана');
                     closeCreateAssignmentModal();
-                    setTimeout(() => {
-                        if (assignmentId) {
-                            window.location.href = ASSIGNMENT_VIEW_URL_TPL.replace('/0', '/' + assignmentId);
-                        } else {
-                            window.location.href = ASSIGNMENTS_LIST_URL;
-                        }
-                    }, 350);
-                } catch (err) {
-                    const msg = err?.message || 'Ошибка создания работы';
-                    if (window.toast) window.toast.error(msg);
-                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
-                }
+                    setTimeout(() => { if (assignmentId) { window.location.href = ASSIGNMENT_VIEW_URL_TPL.replace('/0', '/' + assignmentId); } else { window.location.href = ASSIGNMENTS_LIST_URL; } }, 350);
+                } catch (err) { const msg = err?.message || 'Ошибка создания работы'; if (window.toast) window.toast.error(msg); if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; } }
             });
         })();
-        
-        console.log('Инициализация констант:', {
-            LESSON_ID,
-            ASSIGNMENT_TYPE,
-            TEMPLATE_ID,
-            REDIRECT_URL,
-            CSRF_TOKEN: CSRF_TOKEN ? 'present' : 'missing'
-        });
-        
+
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof renderMathInElement !== 'undefined') {
-                renderMathInElement(document.body, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '$', right: '$', display: false},
-                        {left: '\\(', right: '\\)', display: false},
-                        {left: '\\[', right: '\\]', display: true}
-                    ],
-                    throwOnError: false,
-                    trust: true
-                });
+                renderMathInElement(document.body, { delimiters: [{left: '$$', right: '$$', display: true},{left: '$', right: '$', display: false},{left: '\\(', right: '\\)', display: false},{left: '\\[', right: '\\]', display: true}], throwOnError: false, trust: true });
             }
-            // Проверяем, что toast загружен
-            if (typeof toast === 'undefined') {
-                console.error('Toast не загружен! Проверьте подключение toast.js');
-            }
-            
             const selectAllCheckbox = document.getElementById('select-all-checkbox');
-            if (selectAllCheckbox) {
-                selectAllCheckbox.addEventListener('change', function() {
-                    toggleAllTasks();
-                });
-            }
-            document.querySelectorAll('.task-actions .neo-button[data-action]').forEach(button => {
-                button.addEventListener('click', function() {
-                    const taskId = parseInt(this.getAttribute('data-task-id'));
-                    const action = this.getAttribute('data-action');
-                    taskAction(taskId, action);
-                });
-            });
-            document.querySelectorAll('[data-bulk-action]').forEach(button => {
-                button.addEventListener('click', function() {
-                    const action = this.getAttribute('data-bulk-action');
-                    bulkAction(action);
-                });
-            });
-            
-            // Обработчик создания работы
+            if (selectAllCheckbox) { selectAllCheckbox.addEventListener('change', function() { toggleAllTasks(); }); }
+            document.querySelectorAll('.task-actions .neo-button[data-action]').forEach(button => { button.addEventListener('click', function() { const taskId = parseInt(this.getAttribute('data-task-id')); const action = this.getAttribute('data-action'); taskAction(taskId, action); }); });
+            document.querySelectorAll('[data-bulk-action]').forEach(button => { button.addEventListener('click', function() { const action = this.getAttribute('data-bulk-action'); bulkAction(action); }); });
             const createAssignmentBtn = document.getElementById('create-assignment-btn');
             if (createAssignmentBtn) {
                 createAssignmentBtn.addEventListener('click', function() {
                     const selectedTasks = Array.from(document.querySelectorAll('.task-checkbox:checked')).map(cb => parseInt(cb.value));
-                    if (selectedTasks.length === 0) {
-                        if (typeof toast !== 'undefined' && toast) {
-                            toast.warning('Выберите хотя бы одно задание');
-                        } else {
-                            alert('Выберите хотя бы одно задание');
-                        }
-                        return;
-                    }
+                    if (selectedTasks.length === 0) { if (typeof toast !== 'undefined' && toast) { toast.warning('Выберите хотя бы одно задание'); } else { alert('Выберите хотя бы одно задание'); } return; }
                     showCreateAssignmentModal(selectedTasks);
                 });
             }
         });
-        
+
         function taskAction(taskId, action) {
-            // Ищем элемент задания - сначала section с классом task-card, потом любой элемент с data-task-id
             let taskElement = document.querySelector(`section.task-card[data-task-id="${taskId}"]`);
-            if (!taskElement) {
-                taskElement = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
-            }
-            if (!taskElement) {
-                // Пробуем найти по кнопке и подняться к родителю
-                const button = document.querySelector(`button[data-task-id="${taskId}"]`);
-                if (button) {
-                    taskElement = button.closest('.task-card') || button.closest('section[data-task-id]');
-                }
-            }
-            if (!taskElement) {
-                console.error('Task element not found:', taskId);
-                console.log('Available task elements:', Array.from(document.querySelectorAll('[data-task-id]')).map(el => ({
-                    tag: el.tagName,
-                    classes: el.className,
-                    taskId: el.getAttribute('data-task-id')
-                })));
-                return;
-            }
-            
-            // Показываем подтверждение для критических действий
+            if (!taskElement) taskElement = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+            if (!taskElement) { const button = document.querySelector(`button[data-task-id="${taskId}"]`); if (button) taskElement = button.closest('.task-card') || button.closest('section[data-task-id]'); }
+            if (!taskElement) { console.error('Task element not found:', taskId); return; }
+
             if (action === 'blacklist') {
-                showConfirmModal({
-                    title: 'Добавить в черный список?',
-                    message: 'Задание будет добавлено в черный список и никогда не будет показываться. Это действие необратимо.',
-                    confirmText: 'В черный список',
-                    cancelText: 'Отмена',
-                    confirmClass: 'danger',
-                    onConfirm: () => {
-                        performTaskAction(taskId, action, taskElement);
-                    }
-                });
+                showConfirmModal({ title: 'Добавить в черный список?', message: 'Задание будет добавлено в черный список и никогда не будет показываться. Это действие необратимо.', confirmText: 'В черный список', cancelText: 'Отмена', confirmClass: 'danger', onConfirm: () => { performTaskAction(taskId, action, taskElement); } });
                 return;
             }
-            
-            // Для остальных действий выполняем сразу
             performTaskAction(taskId, action, taskElement);
         }
-        
+
         function performTaskAction(taskId, action, taskElement) {
             const buttons = taskElement.querySelectorAll('.neo-button');
             buttons.forEach(btn => btn.disabled = true);
-            
-            // Показываем индикатор загрузки
             let loaderId = null;
-            try {
-                if (typeof loading !== 'undefined' && loading && typeof loading.show === 'function') {
-                    loaderId = loading.show(taskElement, 'Обработка...');
-                }
-            } catch (e) {
-                console.warn('Не удалось показать индикатор загрузки:', e);
-            }
-            
-            // Таймаут теперь обрабатывается внутри performRequest через AbortController
-            let timeoutId = null; // Оставляем для совместимости с clearTimeout в catch
-            
-            const requestBody = {
-                action: action,
-                task_ids: [taskId],
-                assignment_type: ASSIGNMENT_TYPE
-            };
-            
-            if (LESSON_ID) {
-                requestBody.lesson_id = LESSON_ID;
-            }
-            
-            if (TEMPLATE_ID) {
-                requestBody.template_id = TEMPLATE_ID;
-                console.log('[DEBUG] Добавляем template_id в запрос:', TEMPLATE_ID);
-            } else {
-                console.warn('⚠️ TEMPLATE_ID не определен:', TEMPLATE_ID, 'Тип:', typeof TEMPLATE_ID);
-            }
-            
-            console.log('📤 Отправка запроса с телом:', JSON.stringify(requestBody, null, 2));
-            
-            // Функция для выполнения запроса с retry-логикой
+            try { if (typeof loading !== 'undefined' && loading && typeof loading.show === 'function') { loaderId = loading.show(taskElement, 'Обработка...'); } } catch (e) {}
+            let timeoutId = null;
+
+            const requestBody = { action: action, task_ids: [taskId], assignment_type: ASSIGNMENT_TYPE };
+            if (LESSON_ID) requestBody.lesson_id = LESSON_ID;
+            if (TEMPLATE_ID) requestBody.template_id = TEMPLATE_ID;
+
             async function performRequest(retryCount = 0, maxRetries = 2) {
                 const controller = new AbortController();
                 let requestTimeoutId = null;
-                
                 try {
-                    // Устанавливаем таймаут 30 секунд
-                    requestTimeoutId = setTimeout(() => {
-                        controller.abort();
-                    }, 30000);
-                    
-                    const response = await fetch('{{ url_for("task_generator.task_action") }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': CSRF_TOKEN || '',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify(requestBody),
-                        signal: controller.signal
-                    });
-                    
-                    // Очищаем таймаут при успешном получении ответа
-                    if (requestTimeoutId) {
-                        clearTimeout(requestTimeoutId);
-                        requestTimeoutId = null;
-                    }
-                    
-                    console.log('Получен ответ:', response.status, response.statusText);
-                    console.log('Response headers:', response.headers);
-                    
-                    // Обработка 502 ошибок с автоматическим повтором
-                    if (response.status === 502 && retryCount < maxRetries) {
-                        console.warn(`⚠️ Получена 502 ошибка, повторная попытка ${retryCount + 1}/${maxRetries}...`);
-                        // Ждем перед повтором (экспоненциальная задержка)
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-                        return performRequest(retryCount + 1, maxRetries);
-                    }
-                    
+                    requestTimeoutId = setTimeout(() => { controller.abort(); }, 30000);
+                    const response = await fetch('{{ url_for("task_generator.task_action") }}', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN || '', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(requestBody), signal: controller.signal });
+                    if (requestTimeoutId) { clearTimeout(requestTimeoutId); requestTimeoutId = null; }
+                    if (response.status === 502 && retryCount < maxRetries) { await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); return performRequest(retryCount + 1, maxRetries); }
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.error('Ошибка ответа:', errorText);
-                        
-                        // Более понятные сообщения для разных ошибок
                         let userMessage = 'Ошибка при выполнении действия';
-                        if (response.status === 502) {
-                            userMessage = 'Сервер временно недоступен. Попробуйте еще раз.';
-                        } else if (response.status === 503) {
-                            userMessage = 'Сервис временно недоступен. Попробуйте через несколько секунд.';
-                        } else if (response.status === 504) {
-                            userMessage = 'Превышено время ожидания ответа. Попробуйте еще раз.';
-                        } else if (response.status >= 500) {
-                            userMessage = 'Ошибка сервера. Попробуйте еще раз.';
-                        }
-                        
+                        if (response.status === 502) userMessage = 'Сервер временно недоступен. Попробуйте еще раз.';
+                        else if (response.status === 503) userMessage = 'Сервис временно недоступен. Попробуйте через несколько секунд.';
+                        else if (response.status === 504) userMessage = 'Превышено время ожидания ответа. Попробуйте еще раз.';
+                        else if (response.status >= 500) userMessage = 'Ошибка сервера. Попробуйте еще раз.';
                         throw new Error(userMessage + ` (HTTP ${response.status})`);
                     }
-                    
                     const responseText = await response.text();
-                    console.log('Raw response text:', responseText);
-                    try {
-                        const jsonData = JSON.parse(responseText);
-                        console.log('Parsed JSON:', jsonData);
-                        return jsonData;
-                    } catch (e) {
-                        console.error('Ошибка парсинга JSON:', e, 'Response text:', responseText);
-                        throw new Error('Некорректный ответ от сервера. Попробуйте еще раз.');
-                    }
+                    try { return JSON.parse(responseText); } catch (e) { throw new Error('Некорректный ответ от сервера. Попробуйте еще раз.'); }
                 } catch (error) {
-                    // Очищаем таймаут при ошибке
-                    if (requestTimeoutId) {
-                        clearTimeout(requestTimeoutId);
-                        requestTimeoutId = null;
-                    }
-                    
-                    // Обработка ошибок сети с retry
-                    if ((error.name === 'AbortError' || error.name === 'TypeError' || error.message.includes('fetch')) && retryCount < maxRetries) {
-                        console.warn(`⚠️ Сетевая ошибка, повторная попытка ${retryCount + 1}/${maxRetries}...`);
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-                        return performRequest(retryCount + 1, maxRetries);
-                    }
-                    
+                    if (requestTimeoutId) { clearTimeout(requestTimeoutId); requestTimeoutId = null; }
+                    if ((error.name === 'AbortError' || error.name === 'TypeError' || error.message.includes('fetch')) && retryCount < maxRetries) { await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); return performRequest(retryCount + 1, maxRetries); }
                     throw error;
                 }
             }
-            
+
             performRequest()
             .then(data => {
-                clearTimeout(timeoutId); // Отменяем таймаут
-                console.log('Данные ответа:', data);
-                console.log('data.success:', data ? data.success : 'data is null');
-                console.log('taskElement:', taskElement);
-                console.log('taskElement.parentNode:', taskElement ? taskElement.parentNode : 'taskElement is null');
-                
-                // Всегда скрываем индикатор загрузки
-                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
-                    try {
-                        loading.hide(loaderId);
-                        loaderId = null; // Помечаем как скрытый
-                    } catch (e) {
-                        console.warn('Не удалось скрыть индикатор загрузки:', e);
-                        // Пытаемся удалить напрямую
-                        const loader = document.querySelector(`[data-loader-id="${loaderId}"]`);
-                        if (loader) {
-                            loader.remove();
-                        }
-                        loaderId = null;
-                    }
-                }
-                
-                // Проверяем успешность ответа
-                if (!data) {
-                    console.error('Ответ от сервера пустой');
-                    const errorMessage = 'Пустой ответ от сервера';
-                    if (typeof toast !== 'undefined' && toast) {
-                        toast.error(errorMessage);
-                    }
-                    buttons.forEach(btn => btn.disabled = false);
-                    return;
-                }
-                
-                // Проверяем успешность ответа - может быть true, 'true', или просто truthy
+                clearTimeout(timeoutId);
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') { try { loading.hide(loaderId); loaderId = null; } catch (e) { const loader = document.querySelector(`[data-loader-id="${loaderId}"]`); if (loader) loader.remove(); loaderId = null; } }
+                if (!data) { if (typeof toast !== 'undefined' && toast) toast.error('Пустой ответ от сервера'); buttons.forEach(btn => btn.disabled = false); return; }
                 const isSuccess = data && (data.success === true || data.success === 'true' || data.success);
-                
-                console.log('Проверка успешности:', {
-                    data: data,
-                    'data.success': data ? data.success : 'data is null',
-                    'data.success === true': data ? (data.success === true) : false,
-                    'data.success === "true"': data ? (data.success === 'true') : false,
-                    'isSuccess': isSuccess
-                });
-                
                 if (isSuccess) {
-                    // Определяем сообщение в зависимости от действия
                     let message = data.message;
-                    if (!message) {
-                        const actionMessages = {
-                            'accept': 'Задание принято',
-                            'skip': 'Задание пропущено',
-                            'blacklist': 'Задание добавлено в черный список'
-                        };
-                        message = actionMessages[action] || 'Действие выполнено успешно';
-                    }
-                    
-                    console.log('Успешный ответ, удаляем задание');
-                    console.log('taskElement перед удалением:', taskElement);
-                    console.log('taskElement.parentNode:', taskElement ? taskElement.parentNode : 'taskElement is null');
-                    
-                    // Сразу делаем задание полупрозрачным
+                    if (!message) { const actionMessages = { 'accept': 'Задание принято', 'skip': 'Задание пропущено', 'blacklist': 'Задание добавлено в черный список' }; message = actionMessages[action] || 'Действие выполнено успешно'; }
                     if (taskElement) {
-                        taskElement.style.opacity = '0.5';
-                        taskElement.style.transition = 'opacity 0.3s';
-                        
-                        // Удаляем задание через небольшую задержку для анимации
+                        taskElement.style.opacity = '0.5'; taskElement.style.transition = 'opacity 0.3s';
                         setTimeout(() => {
-                            console.log('Попытка удалить taskElement');
-                            if (taskElement) {
-                                if (taskElement.parentNode) {
-                                    console.log('Удаляем taskElement через parentNode.removeChild');
-                                    taskElement.parentNode.removeChild(taskElement);
-                                } else {
-                                    console.log('Удаляем taskElement напрямую через remove()');
-                                    taskElement.remove();
-                                }
-                            } else {
-                                console.error('taskElement стал null перед удалением');
-                            }
-                            
-                            // Проверяем, остались ли задания
+                            if (taskElement) { if (taskElement.parentNode) taskElement.parentNode.removeChild(taskElement); else taskElement.remove(); }
+                            if (data.template_id) { const templateMessage = data.template_name ? `Задания добавлены в шаблон "${data.template_name}"` : `Задания добавлены в шаблон`; if (typeof toast !== 'undefined' && toast) toast.success(templateMessage); }
                             const remainingTasks = document.querySelectorAll('section.task-card[data-task-id], .task-card[data-task-id]');
-                            console.log('Оставшиеся задания:', remainingTasks.length);
-                            
-                            // Если есть template_id в ответе, показываем сообщение о добавлении в шаблон
-                            if (data.template_id) {
-                                const templateMessage = data.template_name 
-                                    ? `Задания добавлены в шаблон "${data.template_name}"`
-                                    : `Задания добавлены в шаблон`;
-                                if (typeof toast !== 'undefined' && toast) {
-                                    toast.success(templateMessage);
-                                }
-                            }
-                            
                             if (remainingTasks.length === 0) {
-                                console.log('Все задания обработаны, редирект');
-                                // Если есть template_id, возвращаемся к шаблону, иначе к генератору
-                                if (TEMPLATE_ID || data.template_id) {
-                                    const finalTemplateId = TEMPLATE_ID || data.template_id;
-                                    setTimeout(() => {
-                                        window.location.href = `{{ url_for('templates.template_view', template_id=0) }}`.replace('0', finalTemplateId);
-                                    }, 1500);
-                                } else {
-                                    setTimeout(() => {
-                                        window.location.href = REDIRECT_URL;
-                                    }, 1500);
-                                }
+                                if (TEMPLATE_ID || data.template_id) { const finalTemplateId = TEMPLATE_ID || data.template_id; setTimeout(() => { window.location.href = `{{ url_for('templates.template_view', template_id=0) }}`.replace('0', finalTemplateId); }, 1500); }
+                                else { setTimeout(() => { window.location.href = REDIRECT_URL; }, 1500); }
                             }
                         }, 500);
-                    } else {
-                        console.error('taskElement is null, не могу удалить');
                     }
-                    
-                    // Всегда показываем уведомление
-                    if (typeof toast !== 'undefined' && toast) {
-                        toast.success(message);
-                    } else if (window.toast) {
-                        window.toast.success(message);
-                    } else {
-                        console.log('[SUCCESS] Успех:', message);
-                        if (typeof showTemporaryNotification === 'function') {
-                            showTemporaryNotification(message, 'success');
-                        }
-                    }
+                    if (typeof toast !== 'undefined' && toast) toast.success(message); else if (window.toast) window.toast.success(message); else if (typeof showTemporaryNotification === 'function') showTemporaryNotification(message, 'success');
                 } else {
                     const errorMessage = data ? (data.error || 'Неизвестная ошибка') : 'Ошибка при обработке ответа';
-                    if (typeof toast !== 'undefined' && toast) {
-                        toast.error(errorMessage);
-                    } else if (window.toast) {
-                        window.toast.error(errorMessage);
-                    } else {
-                        console.error('[ERROR] Ошибка:', errorMessage);
-                        if (typeof showTemporaryNotification === 'function') {
-                            showTemporaryNotification(errorMessage, 'error');
-                        }
-                    }
+                    if (typeof toast !== 'undefined' && toast) toast.error(errorMessage); else if (window.toast) window.toast.error(errorMessage); else if (typeof showTemporaryNotification === 'function') showTemporaryNotification(errorMessage, 'error');
                     buttons.forEach(btn => btn.disabled = false);
                 }
-                
-                // Всегда скрываем индикатор загрузки в конце
-                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
-                    try {
-                        loading.hide(loaderId);
-                    } catch (e) {
-                        console.warn('Не удалось скрыть индикатор загрузки:', e);
-                        const loader = document.querySelector(`[data-loader-id="${loaderId}"]`);
-                        if (loader) {
-                            loader.remove();
-                        }
-                    }
-                }
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') { try { loading.hide(loaderId); } catch (e) { const loader = document.querySelector(`[data-loader-id="${loaderId}"]`); if (loader) loader.remove(); } }
             })
             .catch(error => {
-                // Таймаут теперь обрабатывается внутри performRequest
                 console.error('Ошибка при выполнении запроса:', error);
-                // Всегда скрываем индикатор загрузки
-                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
-                    try {
-                        loading.hide(loaderId);
-                        loaderId = null;
-                    } catch (e) {
-                        console.warn('Не удалось скрыть индикатор загрузки:', e);
-                        // Пытаемся удалить напрямую
-                        const loader = document.querySelector(`[data-loader-id="${loaderId}"]`);
-                        if (loader) {
-                            loader.remove();
-                        }
-                        loaderId = null;
-                    }
-                }
-                
-                // Более понятные сообщения об ошибках
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') { try { loading.hide(loaderId); loaderId = null; } catch (e) { const loader = document.querySelector(`[data-loader-id="${loaderId}"]`); if (loader) loader.remove(); loaderId = null; } }
                 let errorMessage = error.message || 'Ошибка при выполнении действия';
-                
-                // Если ошибка уже содержит понятное сообщение, используем его
-                if (error.message && !error.message.includes('HTTP error!') && !error.message.includes('status:')) {
-                    errorMessage = error.message;
-                } else if (error.message && error.message.includes('502')) {
-                    errorMessage = 'Сервер временно недоступен. Попробуйте нажать кнопку еще раз.';
-                } else if (error.message && error.message.includes('504')) {
-                    errorMessage = 'Превышено время ожидания. Попробуйте еще раз.';
-                } else if (error.name === 'AbortError') {
-                    errorMessage = 'Превышено время ожидания ответа. Попробуйте еще раз.';
-                } else if (error.message && error.message.includes('fetch')) {
-                    errorMessage = 'Ошибка соединения с сервером. Проверьте интернет-соединение и попробуйте еще раз.';
-                } else {
-                    errorMessage = 'Ошибка при выполнении действия. Попробуйте еще раз.';
-                }
-                
-                if (typeof toast !== 'undefined' && toast) {
-                    toast.error(errorMessage);
-                } else if (window.toast) {
-                    window.toast.error(errorMessage);
-                } else {
-                    console.error('[ERROR] Ошибка:', errorMessage);
-                    if (typeof showTemporaryNotification === 'function') {
-                        showTemporaryNotification(errorMessage, 'error');
-                    } else {
-                        alert(errorMessage);
-                    }
-                }
+                if (error.message && error.message.includes('502')) errorMessage = 'Сервер временно недоступен. Попробуйте нажать кнопку еще раз.';
+                else if (error.message && error.message.includes('504')) errorMessage = 'Превышено время ожидания. Попробуйте еще раз.';
+                else if (error.name === 'AbortError') errorMessage = 'Превышено время ожидания ответа. Попробуйте еще раз.';
+                else if (error.message && error.message.includes('fetch')) errorMessage = 'Ошибка соединения с сервером. Проверьте интернет-соединение.';
+                if (typeof toast !== 'undefined' && toast) toast.error(errorMessage); else if (window.toast) window.toast.error(errorMessage); else if (typeof showTemporaryNotification === 'function') showTemporaryNotification(errorMessage, 'error'); else alert(errorMessage);
                 buttons.forEach(btn => btn.disabled = false);
             });
         }
-        
+
         function toggleAllTasks() {
             const selectAll = document.getElementById('select-all-checkbox');
             const checkboxes = document.querySelectorAll('.task-checkbox');
             checkboxes.forEach(cb => cb.checked = selectAll.checked);
         }
-        
+
         function bulkAction(action) {
             const checked = Array.from(document.querySelectorAll('.task-checkbox:checked'));
-            if (checked.length === 0) {
-                if (window.toast) {
-                    toast.error('Выберите хотя бы одно задание');
-                }
-                return;
-            }
-            
+            if (checked.length === 0) { if (window.toast) toast.error('Выберите хотя бы одно задание'); return; }
             const taskIds = checked.map(cb => parseInt(cb.value));
-            const actionNames = {
-                'accept': LESSON_ID ? (ASSIGNMENT_TYPE === 'homework' ? 'добавить в ДЗ' : 'добавить в работу') : 'принять',
-                'skip': 'пропустить',
-                'blacklist': 'добавить в черный список'
-            };
-            
-            // Показываем модальное окно подтверждения с разными сообщениями
+            const actionNames = { 'accept': LESSON_ID ? (ASSIGNMENT_TYPE === 'homework' ? 'добавить в ДЗ' : 'добавить в работу') : 'принять', 'skip': 'пропустить', 'blacklist': 'добавить в черный список' };
             let title = 'Подтверждение действия';
             let message = `Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`;
             let confirmText = 'Подтвердить';
             let confirmClass = 'accent';
-            
-            if (action === 'blacklist') {
-                title = 'Добавить в черный список?';
-                message = `Вы уверены, что хотите добавить ${taskIds.length} заданий в черный список? Это действие необратимо - задания никогда не будут показываться.`;
-                confirmText = 'В черный список';
-                confirmClass = 'danger';
-            } else if (action === 'accept') {
-                title = 'Принять задания?';
-                message = `Принять ${taskIds.length} выбранных заданий?`;
-                confirmText = 'Принять';
-            } else if (action === 'skip') {
-                title = 'Пропустить задания?';
-                message = `Пропустить ${taskIds.length} выбранных заданий? Их можно будет вернуть позже.`;
-                confirmText = 'Пропустить';
-            }
-            
-            showConfirmModal({
-                title: title,
-                message: message,
-                confirmText: confirmText,
-                cancelText: 'Отмена',
-                confirmClass: confirmClass,
-                onConfirm: () => {
-                    performBulkAction(action, taskIds);
-                }
-            });
-            
-            return;
+            if (action === 'blacklist') { title = 'Добавить в черный список?'; message = `Вы уверены, что хотите добавить ${taskIds.length} заданий в черный список? Это действие необратимо.`; confirmText = 'В черный список'; confirmClass = 'danger'; }
+            else if (action === 'accept') { title = 'Принять задания?'; message = `Принять ${taskIds.length} выбранных заданий?`; confirmText = 'Принять'; }
+            else if (action === 'skip') { title = 'Пропустить задания?'; message = `Пропустить ${taskIds.length} выбранных заданий? Их можно будет вернуть позже.`; confirmText = 'Пропустить'; }
+            showConfirmModal({ title, message, confirmText, cancelText: 'Отмена', confirmClass, onConfirm: () => { performBulkAction(action, taskIds); } });
         }
-        
+
         function performBulkAction(action, taskIds) {
-            
-            // Показываем индикатор загрузки
             const container = document.querySelector('.app-shell');
             const loaderId = loading.show(container, `Обработка ${taskIds.length} заданий...`);
-            
-            const requestBody = {
-                action: action,
-                task_ids: taskIds,
-                assignment_type: ASSIGNMENT_TYPE
-            };
-            
-            if (LESSON_ID) {
-                requestBody.lesson_id = LESSON_ID;
-            }
-            
-            if (TEMPLATE_ID) {
-                requestBody.template_id = TEMPLATE_ID;
-            }
-            
-            // Функция для выполнения запроса с retry-логикой
+            const requestBody = { action: action, task_ids: taskIds, assignment_type: ASSIGNMENT_TYPE };
+            if (LESSON_ID) requestBody.lesson_id = LESSON_ID;
+            if (TEMPLATE_ID) requestBody.template_id = TEMPLATE_ID;
+
             async function performBulkRequest(retryCount = 0, maxRetries = 2) {
                 const controller = new AbortController();
                 let requestTimeoutId = null;
-                
                 try {
-                    // Устанавливаем таймаут 30 секунд
-                    requestTimeoutId = setTimeout(() => {
-                        controller.abort();
-                    }, 30000);
-                    
-                    const response = await fetch('{{ url_for("task_generator.task_action") }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': CSRF_TOKEN || '',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: JSON.stringify(requestBody),
-                        signal: controller.signal
-                    });
-                    
-                    // Очищаем таймаут при успешном получении ответа
-                    if (requestTimeoutId) {
-                        clearTimeout(requestTimeoutId);
-                        requestTimeoutId = null;
-                    }
-                    
-                    // Обработка 502 ошибок с автоматическим повтором
-                    if (response.status === 502 && retryCount < maxRetries) {
-                        console.warn(`⚠️ Получена 502 ошибка, повторная попытка ${retryCount + 1}/${maxRetries}...`);
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-                        return performBulkRequest(retryCount + 1, maxRetries);
-                    }
-                    
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        let userMessage = 'Ошибка при выполнении действия';
-                        if (response.status === 502) {
-                            userMessage = 'Сервер временно недоступен. Попробуйте еще раз.';
-                        } else if (response.status >= 500) {
-                            userMessage = 'Ошибка сервера. Попробуйте еще раз.';
-                        }
-                        throw new Error(userMessage + ` (HTTP ${response.status})`);
-                    }
-                    
+                    requestTimeoutId = setTimeout(() => { controller.abort(); }, 30000);
+                    const response = await fetch('{{ url_for("task_generator.task_action") }}', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN || '', 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(requestBody), signal: controller.signal });
+                    if (requestTimeoutId) { clearTimeout(requestTimeoutId); requestTimeoutId = null; }
+                    if (response.status === 502 && retryCount < maxRetries) { await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); return performBulkRequest(retryCount + 1, maxRetries); }
+                    if (!response.ok) { let userMessage = 'Ошибка при выполнении действия'; if (response.status === 502) userMessage = 'Сервер временно недоступен.'; else if (response.status >= 500) userMessage = 'Ошибка сервера.'; throw new Error(userMessage + ` (HTTP ${response.status})`); }
                     const responseText = await response.text();
-                    try {
-                        return JSON.parse(responseText);
-                    } catch (e) {
-                        throw new Error('Некорректный ответ от сервера. Попробуйте еще раз.');
-                    }
+                    try { return JSON.parse(responseText); } catch (e) { throw new Error('Некорректный ответ от сервера.'); }
                 } catch (error) {
-                    // Очищаем таймаут при ошибке
-                    if (requestTimeoutId) {
-                        clearTimeout(requestTimeoutId);
-                        requestTimeoutId = null;
-                    }
-                    
-                    // Обработка ошибок сети с retry
-                    if ((error.name === 'AbortError' || error.name === 'TypeError' || error.message.includes('fetch')) && retryCount < maxRetries) {
-                        console.warn(`⚠️ Сетевая ошибка, повторная попытка ${retryCount + 1}/${maxRetries}...`);
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-                        return performBulkRequest(retryCount + 1, maxRetries);
-                    }
-                    
+                    if (requestTimeoutId) { clearTimeout(requestTimeoutId); requestTimeoutId = null; }
+                    if ((error.name === 'AbortError' || error.name === 'TypeError' || error.message.includes('fetch')) && retryCount < maxRetries) { await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); return performBulkRequest(retryCount + 1, maxRetries); }
                     throw error;
                 }
             }
-            
+
             performBulkRequest()
             .then(data => {
                 if (loaderId) loading.hide(loaderId);
                 if (data && data.success) {
-                    // Определяем сообщение
                     let message = data.message;
-                    if (!message) {
-                        const actionMessages = {
-                            'accept': 'Задания приняты',
-                            'skip': 'Задания пропущены',
-                            'blacklist': 'Задания добавлены в черный список'
-                        };
-                        message = actionMessages[action] || `${taskIds.length} заданий обработано`;
-                    }
-                    
+                    if (!message) { const actionMessages = { 'accept': 'Задания приняты', 'skip': 'Задания пропущены', 'blacklist': 'Задания добавлены в черный список' }; message = actionMessages[action] || `${taskIds.length} заданий обработано`; }
                     taskIds.forEach(taskId => {
-                        // Ищем элемент задания - может быть как .task-card с data-task-id, так и section с data-task-id
-                        let taskElement = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
-                        if (!taskElement) {
-                            taskElement = document.querySelector(`section[data-task-id="${taskId}"]`);
-                        }
-                        if (!taskElement) {
-                            // Пробуем найти по кнопке
-                            const button = document.querySelector(`button[data-task-id="${taskId}"]`);
-                            if (button) {
-                                taskElement = button.closest('.task-card') || button.closest('section');
-                            }
-                        }
-                        if (taskElement) {
-                            taskElement.style.opacity = '0.5';
-                            setTimeout(() => taskElement.remove(), 300);
-                        } else {
-                            console.warn('Task element not found for removal:', taskId);
-                        }
+                        let taskElement = document.querySelector(`.task-card[data-task-id="${taskId}"]`) || document.querySelector(`section[data-task-id="${taskId}"]`);
+                        if (!taskElement) { const button = document.querySelector(`button[data-task-id="${taskId}"]`); if (button) taskElement = button.closest('.task-card') || button.closest('section'); }
+                        if (taskElement) { taskElement.style.opacity = '0.5'; setTimeout(() => taskElement.remove(), 300); }
                     });
-                    
-                    // Всегда показываем уведомление
-                    if (typeof toast !== 'undefined' && toast) {
-                        toast.success(message);
-                    } else if (window.toast) {
-                        window.toast.success(message);
-                    } else {
-                        console.log('[SUCCESS] Успех:', message);
-                        if (typeof showTemporaryNotification === 'function') {
-                            showTemporaryNotification(message, 'success');
-                        }
-                    }
-                    
-                    setTimeout(() => {
-                        if (document.querySelectorAll('.task-card').length === 0) {
-                            window.location.href = REDIRECT_URL;
-                        }
-                    }, 500);
+                    if (typeof toast !== 'undefined' && toast) toast.success(message); else if (window.toast) window.toast.success(message); else if (typeof showTemporaryNotification === 'function') showTemporaryNotification(message, 'success');
+                    setTimeout(() => { if (document.querySelectorAll('.task-card').length === 0) window.location.href = REDIRECT_URL; }, 500);
                 } else {
                     const errorMessage = data.error || 'Неизвестная ошибка';
-                    if (typeof toast !== 'undefined' && toast) {
-                        toast.error(errorMessage);
-                    } else if (window.toast) {
-                        window.toast.error(errorMessage);
-                    } else {
-                        console.error('[ERROR] Ошибка:', errorMessage);
-                        if (typeof showTemporaryNotification === 'function') {
-                            showTemporaryNotification(errorMessage, 'error');
-                        }
-                    }
+                    if (typeof toast !== 'undefined' && toast) toast.error(errorMessage); else if (window.toast) window.toast.error(errorMessage); else if (typeof showTemporaryNotification === 'function') showTemporaryNotification(errorMessage, 'error');
                 }
             })
             .catch(error => {
                 if (loaderId) loading.hide(loaderId);
-                console.error('Error:', error);
-                
-                // Более понятные сообщения об ошибках
                 let errorMessage = error.message || 'Ошибка при выполнении действия';
-                
-                if (error.message && error.message.includes('502')) {
-                    errorMessage = 'Сервер временно недоступен. Попробуйте еще раз.';
-                } else if (error.message && error.message.includes('504')) {
-                    errorMessage = 'Превышено время ожидания. Попробуйте еще раз.';
-                } else if (error.name === 'AbortError') {
-                    errorMessage = 'Превышено время ожидания ответа. Попробуйте еще раз.';
-                } else if (error.message && error.message.includes('fetch')) {
-                    errorMessage = 'Ошибка соединения с сервером. Проверьте интернет-соединение и попробуйте еще раз.';
-                } else if (!error.message || error.message.includes('HTTP error!')) {
-                    errorMessage = 'Ошибка при выполнении действия. Попробуйте еще раз.';
-                }
-                
-                if (typeof toast !== 'undefined' && toast) {
-                    toast.error(errorMessage);
-                } else if (window.toast) {
-                    window.toast.error(errorMessage);
-                } else {
-                    console.error('[ERROR] Ошибка:', errorMessage);
-                    if (typeof showTemporaryNotification === 'function') {
-                        showTemporaryNotification(errorMessage, 'error');
-                    } else {
-                        alert(errorMessage);
-                    }
-                }
+                if (error.message && error.message.includes('502')) errorMessage = 'Сервер временно недоступен.';
+                else if (error.name === 'AbortError') errorMessage = 'Превышено время ожидания.';
+                else if (error.message && error.message.includes('fetch')) errorMessage = 'Ошибка соединения.';
+                if (typeof toast !== 'undefined' && toast) toast.error(errorMessage); else if (window.toast) window.toast.error(errorMessage); else if (typeof showTemporaryNotification === 'function') showTemporaryNotification(errorMessage, 'error'); else alert(errorMessage);
             });
         }
     </script>
-    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
-    <script>
-        // Конвертируем flash-сообщения в toast-уведомления
-        document.addEventListener('DOMContentLoaded', function() {
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% if category == 'error' or category == 'danger' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.error('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.error('{{ message|e }}');
-                            }
-                        {% elif category == 'warning' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.warning('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.warning('{{ message|e }}');
-                            }
-                        {% elif category == 'info' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.info('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.info('{{ message|e }}');
-                            }
-                        {% else %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.success('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.success('{{ message|e }}');
-                            }
-                        {% endif %}
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        });
-    </script>
-</body>
-</html>
+{% endblock %}

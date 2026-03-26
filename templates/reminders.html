@@ -1,230 +1,205 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Напоминания · URep</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% include '_ux_enhancements.html' %}
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .reminders-container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        .reminder-card {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            transition: all 0.25s ease;
-            position: relative;
-        }
-        
-        .reminder-card:hover {
-            border-color: rgba(0, 255, 213, 0.4);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 255, 213, 0.1);
-        }
-        
-        .reminder-card.completed {
-            opacity: 0.6;
-        }
-        
-        .reminder-card.completed .reminder-title {
-            text-decoration: line-through;
-        }
-        
-        .reminder-card.overdue {
-            border-left: 3px solid var(--danger);
-        }
-        
-        .reminder-card.overdue .reminder-time {
-            color: var(--danger);
-            font-weight: 600;
-        }
-        
-        .reminder-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 1rem;
-            margin-bottom: 0.75rem;
-        }
-        
-        .reminder-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            flex: 1;
-        }
-        
-        .reminder-time {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            white-space: nowrap;
-        }
-        
-        .reminder-time.past {
-            color: var(--danger);
-        }
-        
-        .reminder-time.upcoming {
-            color: var(--accent-1);
-        }
-        
-        .reminder-time.no-time {
-            color: var(--text-muted);
-            font-style: italic;
-        }
-        
-        .reminder-message {
-            color: var(--text-muted);
-            line-height: 1.6;
-            margin-bottom: 1rem;
-        }
-        
-        .reminder-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        .reminder-actions .neo-button {
-            font-size: 0.9rem;
-            padding: 0.5rem 1rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--text-muted);
-        }
-        
-        .empty-state-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-        
-        .filter-toggle {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .filter-toggle .neo-button {
-            font-size: 0.9rem;
-        }
+{% extends 'base.html' %}
+{% block title %}Напоминания · URep{% endblock %}
+{% block head_css %}
+<style>
+    .reminders-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .reminder-card {
+        background: var(--surface-1);
+        border: 1px solid var(--stroke-1);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.25s ease;
+        position: relative;
+    }
+    
+    .reminder-card:hover {
+        border-color: rgba(0, 255, 213, 0.4);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 255, 213, 0.1);
+    }
+    
+    .reminder-card.completed {
+        opacity: 0.6;
+    }
+    
+    .reminder-card.completed .reminder-title {
+        text-decoration: line-through;
+    }
+    
+    .reminder-card.overdue {
+        border-left: 3px solid var(--danger);
+    }
+    
+    .reminder-card.overdue .reminder-time {
+        color: var(--danger);
+        font-weight: 600;
+    }
+    
+    .reminder-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .reminder-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        flex: 1;
+    }
+    
+    .reminder-time {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+    }
+    
+    .reminder-time.past {
+        color: var(--danger);
+    }
+    
+    .reminder-time.upcoming {
+        color: var(--accent-1);
+    }
+    
+    .reminder-time.no-time {
+        color: var(--text-muted);
+        font-style: italic;
+    }
+    
+    .reminder-message {
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+    
+    .reminder-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    
+    .reminder-actions .neo-button {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+    }
+    
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .filter-toggle {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .filter-toggle .neo-button {
+        font-size: 0.9rem;
+    }
 
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: 1000;
-            backdrop-filter: blur(4px);
-        }
-        
-        .modal-overlay.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-        
-        .modal {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            max-width: 500px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-        
-        .modal-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-        
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 0.5rem;
-            line-height: 1;
-            transition: color 0.2s ease;
-        }
-        
-        .modal-close:hover {
-            color: var(--text-primary);
-        }
-        
-        .modal-body {
-            margin-bottom: 1.5rem;
-        }
-        
-        .modal-footer {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: flex-end;
-        }
-        
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-left: 0.5rem;
-        }
-        
-        .status-badge.overdue {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-        }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'reminders' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
-        
-        <main class="app-content">
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+    }
+    
+    .modal-overlay.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+    
+    .reminder-modal {
+        background: var(--surface-1);
+        border: 1px solid var(--stroke-1);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        max-width: 500px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0.5rem;
+        line-height: 1;
+        transition: color 0.2s ease;
+    }
+    
+    .modal-close:hover {
+        color: var(--text-primary);
+    }
+    
+    .modal-body {
+        margin-bottom: 1.5rem;
+    }
+    
+    .modal-footer {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+    }
+    
+    .status-badge.overdue {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--danger);
+    }
+</style>
+{% endblock %}
+{% set active_page = 'reminders' %}
+{% block content %}
             <div class="reminders-container">
                 <section class="dashboard-hero" style="margin-bottom: 2rem;">
                     <div class="hero-pane" style="display: flex; justify-content: space-between; align-items: center;">
@@ -321,11 +296,9 @@
                 </section>
                 {% endif %}
             </div>
-        </main>
-    </div>
 
     <div class="modal-overlay" id="createModal">
-        <div class="modal">
+        <div class="reminder-modal">
             <div class="modal-header">
                 <h2 class="modal-title">Создать напоминание</h2>
                 <button class="modal-close" onclick="closeCreateModal()">&times;</button>
@@ -375,24 +348,19 @@
                 </div>
             </form>
         </div>
-    </main>
     </div>
-</div>
-
-    <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+{% endblock %}
+{% block scripts_extra %}
     <script>
         function parseIsoToDate(value) {
             if (!value) return null;
             try {
                 const d = new Date(value);
                 if (!Number.isFinite(d.getTime())) {
-                    // Фоллбек для "YYYY-MM-DD HH:MM(:SS)" -> ISO
                     let v = String(value).trim();
                     if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(v)) {
                         v = v.replace(' ', 'T');
                     }
-                    // Если timezone отсутствует, считаем, что это уже локальное время
                     const d2 = new Date(v);
                     if (!Number.isFinite(d2.getTime())) return null;
                     return d2;
@@ -422,10 +390,8 @@
             document.getElementById('modal_title').value = title;
             document.getElementById('modal_message').value = message || '';
             
-            // Устанавливаем время в datetime-local input
             const timeInput = document.getElementById('modal_reminder_time');
             if (timeIso && timeIso !== 'null') {
-                // Конвертируем ISO строку с timezone в формат для datetime-local
                 const date = parseIsoToDate(timeIso);
                 if (!date) {
                     timeInput.value = '';
@@ -519,7 +485,6 @@
         }
         
         document.addEventListener('DOMContentLoaded', function() {
-            // UX: /reminders?create=1 — открыть модалку "Создать" (и убрать параметр из URL)
             try {
                 const params = new URLSearchParams(window.location.search || '');
                 if (params.get('create') === '1') {
@@ -531,17 +496,13 @@
                         (window.location.hash || '');
                     window.history.replaceState({}, '', next);
                 }
-            } catch (e) {
-                // no-op
-            }
+            } catch (e) {}
 
-            // Конвертируем время напоминаний в локальное время устройства
             const timeDisplays = document.querySelectorAll('.reminder-time[data-time-iso]');
             timeDisplays.forEach(element => {
                 const timeIso = element.getAttribute('data-time-iso');
                 if (timeIso) {
                     try {
-                        // Парсим ISO строку с timezone (например: 2025-12-22T15:00:00+03:00)
                         const date = parseIsoToDate(timeIso);
                         if (!date) return;
                         
@@ -560,7 +521,6 @@
                 }
             });
             
-            // Обработка toggle через AJAX
             const toggleForms = document.querySelectorAll('form[action*="/toggle"]');
             toggleForms.forEach(form => {
                 form.addEventListener('submit', function(e) {
@@ -612,20 +572,19 @@
         });
     </script>
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('form').forEach(function(form) {
-        if (form.classList.contains('danger-btn') || form.classList.contains('no-protect')) return;
-        form.addEventListener('submit', function() {
-            var btn = form.querySelector('button[type="submit"], input[type="submit"]');
-            if (btn && !btn.disabled) {
-                btn.disabled = true;
-                btn.dataset.originalText = btn.textContent;
-                btn.textContent = 'Сохранение...';
-                setTimeout(function() { btn.disabled = false; btn.textContent = btn.dataset.originalText; }, 8000);
-            }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('form').forEach(function(form) {
+            if (form.classList.contains('danger-btn') || form.classList.contains('no-protect')) return;
+            form.addEventListener('submit', function() {
+                var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+                if (btn && !btn.disabled) {
+                    btn.disabled = true;
+                    btn.dataset.originalText = btn.textContent;
+                    btn.textContent = 'Сохранение...';
+                    setTimeout(function() { btn.disabled = false; btn.textContent = btn.dataset.originalText; }, 8000);
+                }
+            });
         });
     });
-});
-</script>
-</body>
-</html>
+    </script>
+{% endblock %}

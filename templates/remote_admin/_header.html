@@ -1,25 +1,25 @@
 {% from '_ui_icon.html' import ui_icon %}
 
 <header class="remote-header">
-    <div style="display:flex; align-items:center; gap: 1rem; min-width: 0;">
+    <div class="flex items-center gap-4 min-w-0">
         <div class="remote-badge">
             {{ ui_icon('action.admin', 'sm', decorative=true) }}
             Remote control
         </div>
-        <div style="color: var(--text-muted); font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        <div class="text-muted text-sm truncate">
             Центр управления платформой
         </div>
     </div>
 
     {% if current_user and current_user.is_authenticated %}
-    <div style="display:flex; align-items:center; gap: 0.8rem; flex-wrap: wrap; justify-content: flex-end;">
+    <div class="flex items-center gap-3 flex-wrap justify-end">
         <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления (remote)">
             <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
             <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
             <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
         </div>
-        <span style="color: var(--text-muted); font-size: 0.9rem;">{{ current_user.username }}</span>
-        <a href="{{ url_for('auth.logout') }}" class="neo-button ghost" style="text-decoration: none; padding: 0.6rem 1rem;">
+        <span class="text-muted text-sm">{{ current_user.username }}</span>
+        <a href="{{ url_for('auth.logout') }}" class="neo-button ghost no-underline" style="padding: 0.6rem 1rem;">
             {{ ui_icon('action.logout', 'sm', decorative=true) }}
             Выход
         </a>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BooStudy{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    {% block head_css %}{% endblock %}
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    {% block head_js %}{% endblock %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
+    {% block body %}
+    {% if active_lesson is defined and active_lesson %}
+    {% include '_active_lesson_banner.html' %}
+    {% endif %}
+
+    <div class="app-layout">
+        {% set active_page = active_page | default('') %}
+        {% include '_sidebar.html' %}
+        <div class="app-main">
+            {% include '_topbar.html' %}
+            <main class="app-content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    {% endblock %}
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <script type="application/json" id="flash-messages-data">
+    [{% for category, message in messages %}{"category": "{{ category }}", "message": {{ message|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]
+    </script>
+    <script>
+    (function() {
+        function show() {
+            var t = window.toast;
+            if (!t || typeof t.success !== 'function') { if ((show.n = (show.n||0)+1) < 20) setTimeout(show, 100); return; }
+            var el = document.getElementById('flash-messages-data');
+            if (!el || show.done) return;
+            try {
+                JSON.parse(el.textContent).forEach(function(m) {
+                    var c = m.category || 'success';
+                    if (c === 'error' || c === 'danger') t.error(m.message);
+                    else if (c === 'warning') t.warning(m.message);
+                    else if (c === 'info') t.info(m.message);
+                    else t.success(m.message);
+                });
+                show.done = true;
+            } catch(e) {}
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show);
+        else show();
+        window.addEventListener('load', function() { setTimeout(show, 100); });
+    })();
+    </script>
+    {% endif %}
+    {% endwith %}
+
+    {% if current_user is defined and current_user.is_authenticated %}
+        {% if current_user.role in ['chief_tester', 'creator', 'chief_admin', 'tester', 'admin'] or session.get('impersonator_id') %}
+            {% include 'qa/_floating_widget.html' %}
+        {% endif %}
+    {% endif %}
+
+    {% if current_user is defined and current_user.is_authenticated and current_user.is_demo_user %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/demo_cinema.css') }}">
+    {% if cinema_demo_ids is defined and cinema_demo_ids %}
+    <meta name="cinema-demo-ids" content='{{ cinema_demo_ids | tojson }}'>
+    {% endif %}
+    <div id="cinema-root"></div>
+    <script src="{{ url_for('static', filename='js/demo_cinema.js') }}?v=9"></script>
+    {% endif %}
+
+    <script>
+    document.addEventListener('showToast', function(evt) {
+        if (window.toast && evt.detail) {
+            var d = evt.detail;
+            if (d.type === 'error') window.toast.error(d.message);
+            else if (d.type === 'warning') window.toast.warning(d.message);
+            else if (d.type === 'info') window.toast.info(d.message);
+            else window.toast.success(d.message);
+        }
+    });
+    </script>
+
+    {% block scripts_extra %}{% endblock %}
+</body>
+</html>

@@ -2,11 +2,11 @@
 
 <aside class="app-sidebar" aria-label="Боковая навигация">
     <div class="sidebar-header">
-        <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 0.75rem; color: inherit; width: 100%;">
-            <div style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="Logo" class="brand-logo-img" style="width: 100%; height: 100%; object-fit: contain;">
+        <a href="{{ url_for('main.index') }}" class="flex items-center gap-3 no-underline w-full" style="color: inherit;">
+            <div class="w-[38px] h-[38px] flex items-center justify-center shrink-0">
+                <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="Logo" class="brand-logo-img w-full h-full object-contain">
             </div>
-            <div class="brand-caption" style="font-weight: 800; font-size: 1.25rem; letter-spacing: 0.03em;">BooStudy</div>
+            <div class="brand-caption">BooStudy</div>
         </a>
     </div>
     <nav class="nav-links">

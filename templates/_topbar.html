@@ -1,18 +1,16 @@
 {% from '_ui_icon.html' import ui_icon %}
 
 <header class="app-topbar">
-    <a href="{{ url_for('main.index') }}" class="nav-brand desktop-hidden-logo" style="text-decoration: none; display: flex; align-items: center; gap: 0.75rem; color: inherit;">
-        <div style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="Logo" class="brand-logo-img" style="width: 100%; height: 100%; object-fit: contain;">
+    <a href="{{ url_for('main.index') }}" class="nav-brand desktop-hidden-logo flex items-center gap-3 no-underline" style="color: inherit;">
+        <div class="w-8 h-8 flex items-center justify-center shrink-0">
+            <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="Logo" class="brand-logo-img w-full h-full object-contain">
         </div>
-        <div class="brand-caption" style="font-weight: 800; font-size: 1.15rem;">BooStudy</div>
+        <div class="brand-caption">BooStudy</div>
     </a>
 
-    <div class="topbar-actions" style="display: flex; align-items: center; gap: 1rem; margin-left: auto;">
+    <div class="topbar-actions">
         {% if config.get('IS_SANDBOX') %}
-        <div class="sandbox-badge" style="background: rgba(255, 71, 87, 0.2); color: #ff6b81; border: 1px solid #ff4757; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; letter-spacing: 1px;">
-            SANDBOX MODE
-        </div>
+        <div class="sandbox-badge">SANDBOX MODE</div>
         {% endif %}
         {% if current_user and current_user.is_authenticated %}
         <div class="nav-user-actions">
@@ -20,7 +18,7 @@
                 <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }}">
                     {% if current_user.is_demo_user %}<img src="{{ url_for('static', filename='images/demo_user_avatar.png') }}" alt="Avatar">{% elif current_user.avatar_url %}<img src="{{ current_user.avatar_url }}" alt="Avatar">{% else %}{{ current_user.username[0].upper() }}{% endif %}
                 </a>
-                
+
                 <div class="profile-dropdown-content">
                     <a href="{{ url_for('auth.user_profile') }}" class="profile-item">
                         {{ ui_icon('profile.user', 'sm', title='Профиль') }}
@@ -47,10 +45,10 @@
                             <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
                         </div>
                     </div>
-                    
-                    <div style="border-top: 1px solid var(--stroke-1); margin: 0.4rem 0;"></div>
-                    
-                    <a href="{{ url_for('auth.logout') }}" class="profile-item" style="color: var(--danger);">
+
+                    <div class="my-1.5 border-t border-stroke"></div>
+
+                    <a href="{{ url_for('auth.logout') }}" class="profile-item text-error">
                         {{ ui_icon('action.logout', 'sm', title='Выход') }}
                         <span>Выход</span>
                     </a>

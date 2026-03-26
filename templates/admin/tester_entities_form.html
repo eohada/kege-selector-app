@@ -1,225 +1,187 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if tester %}Редактирование тестировщика{% else %}Создание тестировщика{% endif %} · Админ-панель</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .form-container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        .form-label {
-            display: block;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
-        .form-label .required {
-            color: #ef4444;
-        }
-        .form-input,
-        .form-textarea {
-            width: 100%;
-            padding: 0.75rem;
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-family: inherit;
-            font-size: 0.95rem;
-        }
-        .form-input:focus,
-        .form-textarea:focus {
-            outline: none;
-            border-color: var(--accent-1);
-            box-shadow: 0 0 0 3px rgba(var(--accent-1-rgb), 0.1);
-        }
-        .form-textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-        .form-help {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-        }
-        .form-checkbox {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .form-checkbox input[type="checkbox"] {
-            width: 1.25rem;
-            height: 1.25rem;
-            cursor: pointer;
-        }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'admin' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
+{% block title %}{% if tester %}Редактирование тестировщика{% else %}Создание тестировщика{% endif %} · Админ-панель{% endblock %}
 
-        {% include '_ux_enhancements.html' %}
+{% block head_css %}
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        margin-bottom: 0.5rem;
+    }
+    .form-label .required {
+        color: #FF6B6B;
+    }
+    .form-input,
+    .form-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        background: var(--color-bg-app);
+        border: none;
+        border-radius: 12px;
+        color: var(--color-text-primary);
+        font-family: inherit;
+        font-size: 0.95rem;
+        transition: box-shadow 0.2s ease;
+    }
+    .form-input:focus,
+    .form-textarea:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px #7B5CFF;
+    }
+    .form-textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+    .form-help {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        margin-top: 0.5rem;
+    }
+    .form-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .form-checkbox input[type="checkbox"] {
+        width: 1.25rem;
+        height: 1.25rem;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
 
-        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
-            <div style="margin-bottom: 1.5rem;">
-                <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button ghost" style="text-decoration: none;">
-                    ← К списку тестировщиков
+{% set active_page = 'admin' %}
+
+{% block content %}
+<section class="glass-panel">
+    <div class="mb-6">
+        <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button ghost">
+            ← К списку тестировщиков
+        </a>
+    </div>
+    <h1 class="mb-4">
+        {% if tester %}
+            Редактирование тестировщика
+        {% else %}
+            Создание тестировщика
+        {% endif %}
+    </h1>
+
+    <div class="form-container">
+        <form method="POST" action="{% if tester %}{{ url_for('admin.admin_tester_entities_edit', tester_id=tester.tester_id) }}{% else %}{{ url_for('admin.admin_tester_entities_create') }}{% endif %}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="name" class="form-label">
+                    Имя тестировщика <span class="required">*</span>
+                </label>
+                <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    class="form-input"
+                    value="{{ tester.name if tester else '' }}"
+                    required
+                    placeholder="Введите имя тестировщика">
+                <div class="form-help">
+                    Уникальное имя для идентификации тестировщика
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="ip_address" class="form-label">
+                    IP адрес
+                </label>
+                <input
+                    type="text"
+                    id="ip_address"
+                    name="ip_address"
+                    class="form-input"
+                    value="{{ tester.ip_address if tester else '' }}"
+                    placeholder="192.168.1.1">
+                <div class="form-help">
+                    IP адрес тестировщика (опционально)
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="user_agent" class="form-label">
+                    User Agent
+                </label>
+                <textarea
+                    id="user_agent"
+                    name="user_agent"
+                    class="form-textarea"
+                    placeholder="Mozilla/5.0...">{{ tester.user_agent if tester else '' }}</textarea>
+                <div class="form-help">
+                    User Agent браузера тестировщика (опционально)
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="session_id" class="form-label">
+                    Session ID
+                </label>
+                <input
+                    type="text"
+                    id="session_id"
+                    name="session_id"
+                    class="form-input"
+                    value="{{ tester.session_id if tester else '' }}"
+                    placeholder="session_id">
+                <div class="form-help">
+                    ID сессии тестировщика (опционально)
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="form-checkbox">
+                    <input
+                        type="checkbox"
+                        id="is_active"
+                        name="is_active"
+                        {% if tester and tester.is_active or not tester %}checked{% endif %}>
+                    <label for="is_active" class="form-label" style="margin: 0; cursor: pointer;">
+                        Активен
+                    </label>
+                </div>
+                <div class="form-help">
+                    Если неактивен, тестировщик не будет использоваться в логировании
+                </div>
+            </div>
+
+            {% if tester %}
+            <div class="form-group p-4 bg-bg-surface-alt rounded-card shadow-card">
+                <div class="text-sm text-text-muted mb-2">Информация о тестировщике:</div>
+                <div class="text-sm text-text-secondary">
+                    <div><strong>ID:</strong> {{ tester.tester_id }}</div>
+                    <div><strong>Первое появление:</strong> {{ tester.first_seen.strftime('%d.%m.%Y %H:%M:%S') if tester.first_seen else '—' }}</div>
+                    <div><strong>Последнее обновление:</strong> {{ tester.last_seen.strftime('%d.%m.%Y %H:%M:%S') if tester.last_seen else '—' }}</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="flex gap-4 mt-8">
+                <button type="submit" class="neo-button accent flex-1">
+                    {% if tester %}
+                        💾 Сохранить изменения
+                    {% else %}
+                        {{ ui_icon('action.plus', 'sm', decorative=true) }}Создать тестировщика
+                    {% endif %}
+                </button>
+                <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline flex-1 text-center">
+                    Отмена
                 </a>
             </div>
-            <h1 style="margin-bottom: 1rem;">
-                {% if tester %}
-                    Редактирование тестировщика
-                {% else %}
-                    Создание тестировщика
-                {% endif %}
-            </h1>
-
-            <div class="form-container">
-                <form method="POST" action="{% if tester %}{{ url_for('admin.admin_tester_entities_edit', tester_id=tester.tester_id) }}{% else %}{{ url_for('admin.admin_tester_entities_create') }}{% endif %}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    
-                    <div class="form-group">
-                        <label for="name" class="form-label">
-                            Имя тестировщика <span class="required">*</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="name" 
-                            name="name" 
-                            class="form-input" 
-                            value="{{ tester.name if tester else '' }}" 
-                            required
-                            placeholder="Введите имя тестировщика">
-                        <div class="form-help">
-                            Уникальное имя для идентификации тестировщика
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="ip_address" class="form-label">
-                            IP адрес
-                        </label>
-                        <input 
-                            type="text" 
-                            id="ip_address" 
-                            name="ip_address" 
-                            class="form-input" 
-                            value="{{ tester.ip_address if tester else '' }}" 
-                            placeholder="192.168.1.1">
-                        <div class="form-help">
-                            IP адрес тестировщика (опционально)
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="user_agent" class="form-label">
-                            User Agent
-                        </label>
-                        <textarea 
-                            id="user_agent" 
-                            name="user_agent" 
-                            class="form-textarea" 
-                            placeholder="Mozilla/5.0...">{{ tester.user_agent if tester else '' }}</textarea>
-                        <div class="form-help">
-                            User Agent браузера тестировщика (опционально)
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="session_id" class="form-label">
-                            Session ID
-                        </label>
-                        <input 
-                            type="text" 
-                            id="session_id" 
-                            name="session_id" 
-                            class="form-input" 
-                            value="{{ tester.session_id if tester else '' }}" 
-                            placeholder="session_id">
-                        <div class="form-help">
-                            ID сессии тестировщика (опционально)
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <div class="form-checkbox">
-                            <input 
-                                type="checkbox" 
-                                id="is_active" 
-                                name="is_active" 
-                                {% if tester and tester.is_active or not tester %}checked{% endif %}>
-                            <label for="is_active" class="form-label" style="margin: 0; cursor: pointer;">
-                                Активен
-                            </label>
-                        </div>
-                        <div class="form-help">
-                            Если неактивен, тестировщик не будет использоваться в логировании
-                        </div>
-                    </div>
-
-                    {% if tester %}
-                    <div class="form-group" style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);">
-                        <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Информация о тестировщике:</div>
-                        <div style="font-size: 0.85rem; color: var(--text-secondary);">
-                            <div><strong>ID:</strong> {{ tester.tester_id }}</div>
-                            <div><strong>Первое появление:</strong> {{ tester.first_seen.strftime('%d.%m.%Y %H:%M:%S') if tester.first_seen else '—' }}</div>
-                            <div><strong>Последнее обновление:</strong> {{ tester.last_seen.strftime('%d.%m.%Y %H:%M:%S') if tester.last_seen else '—' }}</div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button type="submit" class="neo-button accent" style="flex: 1;">
-                            {% if tester %}
-                                💾 Сохранить изменения
-                            {% else %}
-                                {{ ui_icon('action.plus', 'sm', decorative=true) }}Создать тестировщика
-                            {% endif %}
-                        </button>
-                        <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none; flex: 1; text-align: center;">
-                            Отмена
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </section>
-    </main>
+        </form>
     </div>
-</div>
-
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <script>
-                    showToast('{{ message }}', '{{ category }}');
-                </script>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-</body>
-</html>
-
+</section>
+{% endblock %}

@@ -29,3 +29,6 @@ numpy>=1.24.0
 opencv-python-headless>=4.8.0
 streamlit>=1.41.0
 streamlit-ace>=0.1.1
+celery[redis]
+redis
+boto3

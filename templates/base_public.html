@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BooStudy{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    {% block head_css %}{% endblock %}
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    {% block body %}
+    <header class="app-topbar">
+        <a href="/" class="flex items-center gap-3 no-underline" style="color: inherit;">
+            <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="BooStudy" class="w-8 h-8 rounded-btn object-contain">
+            <span class="font-extrabold text-accent text-lg">BooStudy</span>
+        </a>
+        <div class="topbar-actions">
+            <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема">
+                <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
+                <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
+                <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
+            </div>
+            {% if current_user is defined and current_user.is_authenticated %}
+            <a href="{{ url_for('main.dashboard') }}" class="neo-button accent sm">Панель</a>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}" class="neo-button accent sm">Войти</a>
+            {% endif %}
+        </div>
+    </header>
+    <main class="app-content">
+        {% block content %}{% endblock %}
+    </main>
+    {% endblock %}
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for category, message in messages %}
+        {% if category == 'error' or category == 'danger' %}
+        if (window.toast) window.toast.error({{ message|tojson }});
+        {% elif category == 'warning' %}
+        if (window.toast) window.toast.warning({{ message|tojson }});
+        {% elif category == 'info' %}
+        if (window.toast) window.toast.info({{ message|tojson }});
+        {% else %}
+        if (window.toast) window.toast.success({{ message|tojson }});
+        {% endif %}
+        {% endfor %}
+    });
+    </script>
+    {% endif %}
+    {% endwith %}
+
+    {% block scripts_extra %}{% endblock %}
+</body>
+</html>

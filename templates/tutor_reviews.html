@@ -1,172 +1,105 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ручная проверка · Тьютор</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    {% include '_ux_enhancements.html' %}
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .queue-hero {
-            background: linear-gradient(135deg, rgba(0, 255, 213, 0.06), rgba(31, 123, 255, 0.06));
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
-        .queue-title {
-            font-size: 2.15rem;
-            font-weight: 900;
-            margin: 0.4rem 0 0 0;
-        }
-        .queue-sub {
-            color: var(--text-muted);
-            margin-top: 0.65rem;
-            line-height: 1.45;
-        }
-        .filters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            align-items: end;
-            margin-top: 1.1rem;
-        }
-        .filter-label {
-            color: var(--text-muted);
-            font-weight: 800;
-            font-size: 0.9rem;
-            margin-bottom: 0.35rem;
-            display: block;
-        }
-        .card {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.25rem;
-        }
-        .submission-chip {
-            border: 1px solid var(--stroke-1);
-            background: var(--surface-2);
-            border-radius: var(--radius-sm);
-            padding: 0.75rem 0.85rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.75rem;
-            text-decoration: none;
-            color: inherit;
-            transition: transform 0.2s, background 0.2s, border-color 0.2s;
-        }
-        .submission-chip:hover {
-            transform: translateY(-1px);
-            background: rgba(255,255,255,0.04);
-            border-color: rgba(0,255,213,0.35);
-        }
-        .submission-left { min-width: 0; }
-        .submission-name {
-            font-weight: 900;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .submission-meta {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-top: 0.25rem;
-        }
-        .submissions-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 0.65rem;
-        }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = active_page | default('tutor_reviews') %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
+{% block title %}Ручная проверка · Тьютор{% endblock %}
 
-        <main style="margin-top: 1.25rem;">
-            <section class="queue-hero">
-                <div class="hero-eyebrow">Ручная проверка</div>
-                <h1 class="queue-title">Требуют проверки</h1>
-                <div class="queue-sub">Сдачи со статусом «Требует проверки» (NEEDS_MANUAL_REVIEW). Отфильтруй по курсу и переходи к проверке.</div>
+{% block head_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    .queue-hero {
+        background: linear-gradient(135deg, rgba(0, 255, 213, 0.06), rgba(31, 123, 255, 0.06));
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .queue-title { font-size: 2.15rem; font-weight: 900; margin: 0.4rem 0 0 0; }
+    .queue-sub { color: var(--text-muted); margin-top: 0.65rem; line-height: 1.45; }
+    .filters { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; margin-top: 1.1rem; }
+    .filter-label { color: var(--text-muted); font-weight: 800; font-size: 0.9rem; margin-bottom: 0.35rem; display: block; }
+    .card {
+        background: var(--surface-1);
+        border-radius: var(--radius-lg);
+        padding: 1.25rem;
+    }
+    .submission-chip {
+        background: var(--surface-2);
+        border-radius: var(--radius-sm);
+        padding: 0.75rem 0.85rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.2s, background 0.2s;
+    }
+    .submission-chip:hover { transform: translateY(-1px); background: rgba(255,255,255,0.04); }
+    .submission-left { min-width: 0; }
+    .submission-name { font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .submission-meta { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; }
+    .submissions-grid { display: flex; flex-direction: column; gap: 0.65rem; }
+</style>
+{% endblock %}
 
-                <form method="GET" class="filters">
-                    <div>
-                        <label class="filter-label" for="course_id">Курс</label>
-                        <select class="neo-select" id="course_id" name="course_id">
-                            <option value="" {% if not course_id %}selected{% endif %}>Все курсы</option>
-                            {% for c in courses %}
-                            <option value="{{ c.id }}" {% if course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end;">
-                        <button type="submit" class="neo-button accent">
-                            <i class="fas fa-filter ui-icon ui-icon--sm"></i> Применить
-                        </button>
-                        <a href="{{ url_for('lessons.tutor_manual_reviews') }}" class="neo-button outline">
-                            <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> Сброс
-                        </a>
-                        <a href="{{ url_for('lessons.review_queue') }}" class="neo-button ghost" style="text-decoration:none;">
-                            <i class="fas fa-list ui-icon ui-icon--sm"></i> Журнал проверок
-                        </a>
-                    </div>
-                </form>
-            </section>
+{% set active_page = active_page | default('tutor_reviews') %}
 
-            {% if submissions and submissions|length > 0 %}
-            <section class="card">
-                <h2 class="lesson-title" style="font-size: 1.2rem; font-weight: 900; margin: 0 0 0.9rem 0;">{{ submissions|length }} сдач</h2>
-                <div class="submissions-grid">
-                    {% for s in submissions %}
-                    <a class="submission-chip" href="{{ url_for('assignments.submission_grade_view', submission_id=s.submission_id) }}">
-                        <div class="submission-left">
-                            <div class="submission-name">{{ s.student.name if s.student else ('Student #' ~ s.student_id) }}</div>
-                            <div class="submission-meta">
-                                {{ s.assignment.title if s.assignment else '—' }}
-                                ·
-                                {% if s.submitted_at %}сдано: {{ s.submitted_at.strftime('%d.%m.%Y %H:%M') }}{% elif s.assigned_at %}назначено: {{ s.assigned_at.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}
-                                {% if s.assignment and s.assignment.exam_course %}
-                                · {{ s.assignment.exam_course.title }}
-                                {% endif %}
-                            </div>
-                        </div>
-                        <span class="status-badge status-info" style="opacity: 0.9; white-space: nowrap;">
-                            <i class="fas fa-arrow-right ui-icon ui-icon--sm"></i> Проверить
-                        </span>
-                    </a>
-                    {% endfor %}
+{% block content %}
+<section class="queue-hero">
+    <div class="hero-eyebrow">Ручная проверка</div>
+    <h1 class="queue-title">Требуют проверки</h1>
+    <div class="queue-sub">Сдачи со статусом «Требует проверки» (NEEDS_MANUAL_REVIEW). Отфильтруй по курсу и переходи к проверке.</div>
+
+    <form method="GET" class="filters">
+        <div>
+            <label class="filter-label" for="course_id">Курс</label>
+            <select class="neo-select" id="course_id" name="course_id">
+                <option value="" {% if not course_id %}selected{% endif %}>Все курсы</option>
+                {% for c in courses %}
+                <option value="{{ c.id }}" {% if course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end;">
+            <button type="submit" class="neo-button accent">
+                <i class="fas fa-filter ui-icon ui-icon--sm"></i> Применить
+            </button>
+            <a href="{{ url_for('lessons.tutor_manual_reviews') }}" class="neo-button outline">
+                <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> Сброс
+            </a>
+            <a href="{{ url_for('lessons.review_queue') }}" class="neo-button ghost" style="text-decoration:none;">
+                <i class="fas fa-list ui-icon ui-icon--sm"></i> Журнал проверок
+            </a>
+        </div>
+    </form>
+</section>
+
+{% if submissions and submissions|length > 0 %}
+<section class="card">
+    <h2 class="lesson-title" style="font-size: 1.2rem; font-weight: 900; margin: 0 0 0.9rem 0;">{{ submissions|length }} сдач</h2>
+    <div class="submissions-grid">
+        {% for s in submissions %}
+        <a class="submission-chip" href="{{ url_for('assignments.submission_grade_view', submission_id=s.submission_id) }}">
+            <div class="submission-left">
+                <div class="submission-name">{{ s.student.name if s.student else ('Student #' ~ s.student_id) }}</div>
+                <div class="submission-meta">
+                    {{ s.assignment.title if s.assignment else '—' }}
+                    ·
+                    {% if s.submitted_at %}сдано: {{ s.submitted_at.strftime('%d.%m.%Y %H:%M') }}{% elif s.assigned_at %}назначено: {{ s.assigned_at.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}
+                    {% if s.assignment and s.assignment.exam_course %}
+                    · {{ s.assignment.exam_course.title }}
+                    {% endif %}
                 </div>
-            </section>
-            {% else %}
-            <div class="glass-panel" style="padding: 2rem; text-align: center;">
-                <div style="font-size: 3rem; margin-bottom: 0.75rem;">✅</div>
-                <div style="font-size: 1.25rem; font-weight: 900;">Очередь пуста</div>
-                <div style="color: var(--text-muted); margin-top: 0.5rem;">Нет сдач, требующих ручной проверки{% if course_id %} по выбранному курсу{% endif %}.</div>
             </div>
-            {% endif %}
-        </main>
-    </main>
+            <span class="status-badge status-info" style="opacity: 0.9; white-space: nowrap;">
+                <i class="fas fa-arrow-right ui-icon ui-icon--sm"></i> Проверить
+            </span>
+        </a>
+        {% endfor %}
     </div>
+</section>
+{% else %}
+<div class="glass-panel" style="padding: 2rem; text-align: center;">
+    <div style="font-size: 3rem; margin-bottom: 0.75rem;">✅</div>
+    <div style="font-size: 1.25rem; font-weight: 900;">Очередь пуста</div>
+    <div style="color: var(--text-muted); margin-top: 0.5rem;">Нет сдач, требующих ручной проверки{% if course_id %} по выбранному курсу{% endif %}.</div>
 </div>
-</body>
-</html>
+{% endif %}
+{% endblock %}

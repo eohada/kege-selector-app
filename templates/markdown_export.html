@@ -1,121 +1,75 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Экспорт в Markdown - {{ student.name }} · URep</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .markdown-container {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            position: relative;
-            margin-bottom: 2rem;
-        }
-        
-        .copy-btn {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            z-index: 10;
-        }
-        
-        .markdown-text {
-            font-family: 'MonaspaceNeon', 'Courier New', monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            color: var(--text-primary);
-            line-height: 1.6;
-            font-size: 0.95em;
-            padding-top: 3rem;
-            background: var(--surface-2);
-            border-radius: var(--radius-sm);
-            padding: 1rem;
-            margin-top: 3rem;
-        }
-        
-        .info-box {
-            background: rgba(31, 123, 255, 0.1);
-            border-left: 3px solid var(--accent-2);
-            border-radius: var(--radius-sm);
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            color: var(--accent-2);
-        }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="{% if active_lesson %}lesson-active{% endif %}">
-    {% include '_active_lesson_banner.html' %}
-    
-    <div class="app-layout">
-        {% set active_page = 'dashboard' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base_minimal.html' %}
+{% block title %}Экспорт в Markdown - {{ student.name }} · BooStudy{% endblock %}
 
-        {% include '_ux_enhancements.html' %}
+{% block head_css %}
+<style>
+    .markdown-container {
+        background: var(--surface-1);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        position: relative;
+        margin-bottom: 2rem;
+    }
+    .copy-btn { position: absolute; top: 1rem; right: 1rem; z-index: 10; }
+    .markdown-text {
+        font-family: 'MonaspaceNeon', 'Courier New', monospace;
+        white-space: pre-wrap; word-wrap: break-word;
+        color: var(--text-primary); line-height: 1.6; font-size: 0.95em;
+        background: var(--surface-2); border-radius: var(--radius-sm);
+        padding: 1rem; margin-top: 3rem;
+    }
+    .info-box {
+        background: rgba(31, 123, 255, 0.1);
+        border-left: 3px solid var(--accent-2);
+        border-radius: var(--radius-sm);
+        padding: 1rem; margin-bottom: 1.5rem;
+        color: var(--accent-2);
+    }
+</style>
+{% endblock %}
 
-        <section class="glass-panel" style="margin-bottom: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                <div>
-                    <p class="hero-eyebrow">экспорт в markdown</p>
-                    <h1 class="hero-title">{{ ui_icon('action.export', 'md', decorative=true) }} Экспорт в Markdown (Obsidian)</h1>
-                </div>
-                <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">← Назад в урок</a>
-            </div>
-        </section>
-        
-        <div class="info-box">
-            Скопируй текст ниже и вставь в Obsidian. Блоки <code style="background: var(--surface-2); padding: 0.2em 0.4em; border-radius: 4px; font-family: 'MonaspaceNeon', 'Courier New', monospace;">spoiler-block</code> будут работать как скрытые спойлеры.
+{% block content %}
+<section class="glass-panel" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <p class="hero-eyebrow">экспорт в markdown</p>
+            <h1 class="hero-title">{{ ui_icon('action.export', 'md', decorative=true) }} Экспорт в Markdown (Obsidian)</h1>
         </div>
-        
-        <section class="markdown-container">
-            <button class="neo-button accent copy-btn" onclick="copyToClipboard()" id="copyBtn">{{ ui_icon('action.copy', 'sm', decorative=true) }} Копировать</button>
-            <div class="markdown-text" id="markdownText">{{ markdown_content }}</div>
-        </section>
-    </main>
+        <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">← Назад в урок</a>
     </div>
+</section>
+
+<div class="info-box">
+    Скопируй текст ниже и вставь в Obsidian. Блоки <code style="background: var(--surface-2); padding: 0.2em 0.4em; border-radius: 4px; font-family: 'MonaspaceNeon', 'Courier New', monospace;">spoiler-block</code> будут работать как скрытые спойлеры.
 </div>
-    
-    <script>
-        function copyToClipboard() {
-            const text = document.getElementById('markdownText').textContent;
-            const button = document.getElementById('copyBtn');
+
+<section class="markdown-container">
+    <button class="neo-button accent copy-btn" onclick="copyToClipboard()" id="copyBtn">{{ ui_icon('action.copy', 'sm', decorative=true) }} Копировать</button>
+    <div class="markdown-text" id="markdownText">{{ markdown_content }}</div>
+</section>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    function copyToClipboard() {
+        const text = document.getElementById('markdownText').textContent;
+        const button = document.getElementById('copyBtn');
+        
+        navigator.clipboard.writeText(text).then(() => {
+            button.textContent = '✓ Скопировано!';
+            button.classList.remove('accent');
+            button.classList.add('ghost');
             
-            navigator.clipboard.writeText(text).then(() => {
-                button.textContent = '✓ Скопировано!';
-                button.classList.remove('accent');
-                button.classList.add('ghost');
-                
-                setTimeout(() => {
-                    button.innerHTML = '<img src="{{ url_for("static", filename="icons/icons8-копировать-100.png") }}" alt="Копировать" class="ui-icon ui-icon--sm"> Копировать';
-                    button.classList.remove('ghost');
-                    button.classList.add('accent');
-                }, 2000);
-            }).catch(err => {
-                if (typeof toast !== 'undefined' && toast) {
-                    toast.error('Ошибка при копировании: ' + err);
-                }
-            });
-        }
-    </script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
-</body>
-</html>
+            setTimeout(() => {
+                button.innerHTML = '<img src="{{ url_for("static", filename="icons/icons8-копировать-100.png") }}" alt="Копировать" class="ui-icon ui-icon--sm"> Копировать';
+                button.classList.remove('ghost');
+                button.classList.add('accent');
+            }, 2000);
+        }).catch(err => {
+            if (typeof toast !== 'undefined' && toast) {
+                toast.error('Ошибка при копировании: ' + err);
+            }
+        });
+    }
+</script>
+{% endblock %}

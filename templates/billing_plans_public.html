@@ -1,563 +1,227 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тарифы BooStudy</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    {% include '_ux_enhancements.html' %}
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+{% extends 'base_public.html' %}
+{% block title %}Тарифы BooStudy{% endblock %}
 
-    <style>
-        :root {
-            --bg-color: #0a0a0c;
-            --surface-color: #121216;
-            --surface-hover: #1a1a20;
-            --text-primary: #ffffff;
-            --text-secondary: #8a8a93;
-            --accent-color: #00e0ff;
-            --accent-glow: rgba(0, 224, 255, 0.2);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --border-hover: rgba(255, 255, 255, 0.2);
-            --radius-lg: 24px;
-            --radius-md: 16px;
-            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
+{% block head_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg-color: #0a0a0c; --surface-color: #121216; --surface-hover: #1a1a20;
+        --text-primary: #ffffff; --text-secondary: #8a8a93;
+        --accent-color: #00e0ff; --accent-glow: rgba(0, 224, 255, 0.2);
+        --border-color: rgba(255, 255, 255, 0.08); --border-hover: rgba(255, 255, 255, 0.2);
+        --radius-lg: 24px; --radius-md: 16px;
+        --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-primary); margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
+    .premium-nav { position: fixed; top: 0; left: 0; width: 100%; height: 70px; display: flex; align-items: center; justify-content: center; padding: 0 2rem; box-sizing: border-box; background: rgba(10, 10, 12, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border-color); z-index: 1000; }
+    .nav-brand { display: flex; align-items: center; gap: 12px; color: var(--text-primary); font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em; user-select: none; }
+    .nav-brand img { width: 32px; height: 32px; object-fit: contain; }
+    .wizard-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 120px 2rem 4rem; max-width: 1000px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+    .wizard-header { text-align: center; margin-bottom: 3rem; }
+    .wizard-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; letter-spacing: -0.03em; margin: 0 0 1rem; line-height: 1.1; }
+    .wizard-subtitle { font-size: 1.1rem; color: var(--text-secondary); max-width: 500px; margin: 0 auto; line-height: 1.5; }
+    .progress-indicator { display: flex; gap: 8px; justify-content: center; margin-bottom: 3rem; }
+    .progress-dot { width: 32px; height: 4px; border-radius: 2px; background: var(--surface-hover); transition: var(--transition); }
+    .progress-dot.active { background: var(--accent-color); box-shadow: 0 0 10px var(--accent-glow); }
+    .wizard-step { display: none; width: 100%; animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .wizard-step.active { display: block; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .step-title { font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 2rem; }
+    .cards-grid { display: grid; gap: 1.25rem; width: 100%; }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 768px) { .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+    .selection-card { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 2rem 1.5rem; text-align: left; cursor: pointer; transition: var(--transition); position: relative; overflow: hidden; display: flex; flex-direction: column; height: 100%; box-sizing: border-box; appearance: none; outline: none; color: inherit; }
+    .selection-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at top right, var(--accent-glow), transparent 60%); opacity: 0; transition: var(--transition); pointer-events: none; }
+    .selection-card:hover { border-color: var(--border-hover); transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.1); }
+    .selection-card:hover::before { opacity: 1; }
+    .card-badge { position: absolute; top: 16px; right: 16px; background: var(--text-primary); color: var(--bg-color); font-size: 0.7rem; font-weight: 700; padding: 4px 10px; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .card-badge.hit { background: var(--accent-color); color: #000; box-shadow: 0 0 15px var(--accent-glow); }
+    .card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
+    .card-desc { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; flex-grow: 1; margin-bottom: 1.5rem; }
+    .card-price { font-size: 1.25rem; font-weight: 800; color: var(--accent-color); display: flex; align-items: baseline; gap: 4px; }
+    .summary-box { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 3rem; text-align: center; max-width: 500px; margin: 0 auto; position: relative; }
+    .summary-breadcrumbs { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; font-weight: 500; letter-spacing: 0.02em; }
+    .summary-total { font-size: 3rem; font-weight: 800; color: var(--text-primary); margin: 0.5rem 0 2rem; letter-spacing: -0.03em; }
+    .btn-primary { display: inline-block; background: var(--accent-color); color: #000; font-weight: 700; font-size: 1.1rem; padding: 1rem 2.5rem; border-radius: 100px; text-decoration: none; border: none; cursor: pointer; width: 100%; box-sizing: border-box; transition: var(--transition); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px var(--accent-glow); filter: brightness(1.1); }
+    .wizard-controls { margin-top: 2rem; display: flex; justify-content: center; }
+    .btn-back { background: none; border: none; color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; cursor: pointer; padding: 10px 20px; display: flex; align-items: center; gap: 8px; transition: var(--transition); }
+    .btn-back:hover { color: var(--text-primary); }
+    .btn-back svg { width: 16px; height: 16px; }
+</style>
+{% endblock %}
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+{% block body %}
+<nav class="premium-nav">
+    <div class="nav-brand">
+        <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="BooStudy">
+        <span>BooStudy</span>
+    </div>
+</nav>
 
-        /* Nav */
-        .premium-nav {
-            position: fixed;
-            top: 0; left: 0; width: 100%;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 2rem;
-            box-sizing: border-box;
-            background: rgba(10, 10, 12, 0.7);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-bottom: 1px solid var(--border-color);
-            z-index: 1000;
-        }
+<main class="wizard-container">
+    <div class="wizard-header">
+        <h1 class="wizard-title">Собери свой тариф</h1>
+        <p class="wizard-subtitle">Персонализированный план подготовки, который адаптируется под твои цели и темп.</p>
+    </div>
 
-        .nav-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: var(--text-primary);
-            font-weight: 800;
-            font-size: 1.25rem;
-            letter-spacing: -0.02em;
-            user-select: none;
-        }
+    <div class="progress-indicator">
+        <div class="progress-dot active" id="dot-1"></div>
+        <div class="progress-dot" id="dot-2"></div>
+        <div class="progress-dot" id="dot-3"></div>
+        <div class="progress-dot" id="dot-4"></div>
+    </div>
 
-        .nav-brand img { width: 32px; height: 32px; object-fit: contain; }
+    <div id="step-1" class="wizard-step active">
+        <div class="step-title">Выбери свою цель</div>
+        <div class="cards-grid grid-2">
+            <button class="selection-card" data-step="1" data-val="oge" data-label="ОГЭ">
+                <div class="card-title">ОГЭ</div>
+                <div class="card-desc">9 класс. Закладываем прочную базу для будущего.</div>
+            </button>
+            <button class="selection-card" data-step="1" data-val="ege" data-label="ЕГЭ">
+                <div class="card-title">ЕГЭ</div>
+                <div class="card-desc">11 класс. Уверенное поступление в вуз мечты.</div>
+            </button>
+        </div>
+    </div>
 
-        /* Wizard Layout */
-        .wizard-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 120px 2rem 4rem;
-            max-width: 1000px;
-            margin: 0 auto;
-            width: 100%;
-            box-sizing: border-box;
-        }
+    <div id="step-2" class="wizard-step">
+        <div class="step-title">Выбери формат подготовки</div>
+        <div class="cards-grid grid-3">
+            <button class="selection-card" data-step="2" data-val="solo" data-label="Solo">
+                <div class="card-title">Solo (Инди-трек)</div>
+                <div class="card-desc">Самостоятельная подготовка в тренажёре с поддержкой материалов.</div>
+                <div class="card-price">5 000 ₽ <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary)">/ мес</span></div>
+            </button>
+            <button class="selection-card" data-step="2" data-val="mentor" data-label="Mentor">
+                <div class="card-title">Mentor (Классика)</div>
+                <div class="card-desc">Только живая работа с преподавателем. Без тренажёра.</div>
+                <div class="card-price">от 1 750 ₽ <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary)">/ урок</span></div>
+            </button>
+            <button class="selection-card" data-step="2" data-val="godmode" data-label="God Mode">
+                <div class="card-badge hit">Премиум</div>
+                <div class="card-title">God Mode</div>
+                <div class="card-desc">Ментор + Solo. Уроки с преподавателем и безлимитный тренажёр.</div>
+                <div class="card-price">от 1 600 ₽ <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary)">/ урок</span></div>
+            </button>
+        </div>
+        <div class="wizard-controls"><button class="btn-back" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Назад</button></div>
+    </div>
 
-        .wizard-header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
-        .wizard-title {
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            margin: 0 0 1rem;
-            line-height: 1.1;
-        }
-
-        .wizard-subtitle {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            max-width: 500px;
-            margin: 0 auto;
-            line-height: 1.5;
-        }
-
-        /* Progress Bar */
-        .progress-indicator {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin-bottom: 3rem;
-        }
-
-        .progress-dot {
-            width: 32px;
-            height: 4px;
-            border-radius: 2px;
-            background: var(--surface-hover);
-            transition: var(--transition);
-        }
-
-        .progress-dot.active {
-            background: var(--accent-color);
-            box-shadow: 0 0 10px var(--accent-glow);
-        }
-
-        /* Step Logic */
-        .wizard-step {
-            display: none;
-            width: 100%;
-            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
+    <div id="step-3" class="wizard-step">
+        <div class="step-title" id="step-3-title">Выбери объём</div>
         
-        .wizard-step.active { display: block; }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .step-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        /* Cards Grid */
-        .cards-grid {
-            display: grid;
-            gap: 1.25rem;
-            width: 100%;
-        }
-        .grid-2 { grid-template-columns: repeat(2, 1fr); }
-        .grid-3 { grid-template-columns: repeat(3, 1fr); }
-        .grid-4 { grid-template-columns: repeat(4, 1fr); }
-
-        @media (max-width: 768px) {
-            .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 480px) {
-            .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
-        }
-
-        /* Card Styles */
-        .selection-card {
-            background: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 2rem 1.5rem;
-            text-align: left;
-            cursor: pointer;
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            box-sizing: border-box;
-            appearance: none;
-            outline: none;
-            color: inherit;
-        }
-
-        .selection-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: radial-gradient(circle at top right, var(--accent-glow), transparent 60%);
-            opacity: 0;
-            transition: var(--transition);
-            pointer-events: none;
-        }
-
-        .selection-card:hover {
-            border-color: var(--border-hover);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
-        }
-
-        .selection-card:hover::before { opacity: 1; }
-
-        .card-badge {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            background: var(--text-primary);
-            color: var(--bg-color);
-            font-size: 0.7rem;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 100px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .card-badge.hit {
-            background: var(--accent-color);
-            color: #000;
-            box-shadow: 0 0 15px var(--accent-glow);
-        }
-
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-        }
-
-        .card-desc {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            flex-grow: 1;
-            margin-bottom: 1.5rem;
-        }
-
-        .card-price {
-            font-size: 1.25rem;
-            font-weight: 800;
-            color: var(--accent-color);
-            display: flex;
-            align-items: baseline;
-            gap: 4px;
-        }
-
-        /* Summary Step */
-        .summary-box {
-            background: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 3rem;
-            text-align: center;
-            max-width: 500px;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .summary-breadcrumbs {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-bottom: 1rem;
-            font-weight: 500;
-            letter-spacing: 0.02em;
-        }
-
-        .summary-total {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--text-primary);
-            margin: 0.5rem 0 2rem;
-            letter-spacing: -0.03em;
-        }
-
-        .btn-primary {
-            display: inline-block;
-            background: var(--accent-color);
-            color: #000;
-            font-weight: 700;
-            font-size: 1.1rem;
-            padding: 1rem 2.5rem;
-            border-radius: 100px;
-            text-decoration: none;
-            border: none;
-            cursor: pointer;
-            width: 100%;
-            box-sizing: border-box;
-            transition: var(--transition);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px var(--accent-glow);
-            filter: brightness(1.1);
-        }
-
-        /* Navigation controls (Back) */
-        .wizard-controls {
-            margin-top: 2rem;
-            display: flex;
-            justify-content: center;
-        }
-
-        .btn-back {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            padding: 10px 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: var(--transition);
-        }
-
-        .btn-back:hover {
-            color: var(--text-primary);
-        }
-
-        .btn-back svg { width: 16px; height: 16px; }
-    </style>
-</head>
-<body>
-
-    <nav class="premium-nav">
-        <div class="nav-brand">
-            <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="BooStudy">
-            <span>BooStudy</span>
+        <div id="panel-solo" class="cards-grid grid-3" style="display:none;">
+            <button class="selection-card" data-step="3" data-price="5000" data-label="Sprint"><div class="card-title">Sprint</div><div class="card-desc">1 месяц доступа к тренажёру. Быстрый старт.</div><div class="card-price">5 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="14000" data-label="Season Pass"><div class="card-badge">Выгодно</div><div class="card-title">Season Pass</div><div class="card-desc">3 месяца доступа. Идеально для рывка.</div><div class="card-price">14 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="35000" data-label="Career Mode"><div class="card-badge hit">Весь год</div><div class="card-title">Career Mode</div><div class="card-desc">9 месяцев. Максимальная выгода и спокойствие.</div><div class="card-price">35 000 ₽</div></button>
         </div>
-    </nav>
-
-    <main class="wizard-container">
-        <div class="wizard-header">
-            <h1 class="wizard-title">Собери свой тариф</h1>
-            <p class="wizard-subtitle">Персонализированный план подготовки, который адаптируется под твои цели и темп.</p>
+        <div id="panel-mentor-oge" class="cards-grid grid-4" style="display:none;">
+            <button class="selection-card" data-step="3" data-price="14000" data-label="Junior (8 уроков)"><div class="card-title">Junior</div><div class="card-desc">8 уроков • 1 месяц</div><div class="card-price">14 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="27000" data-label="Middle (16 уроков)"><div class="card-title">Middle</div><div class="card-desc">16 уроков • 2 месяца</div><div class="card-price">27 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="39000" data-label="Advanced (24 урока)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced</div><div class="card-desc">24 урока • 3 месяца</div><div class="card-price">39 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="52000" data-label="Senior (32 урока)"><div class="card-title">Senior</div><div class="card-desc">32 урока • 4 месяца</div><div class="card-price">52 000 ₽</div></button>
         </div>
-
-        <div class="progress-indicator">
-            <div class="progress-dot active" id="dot-1"></div>
-            <div class="progress-dot" id="dot-2"></div>
-            <div class="progress-dot" id="dot-3"></div>
-            <div class="progress-dot" id="dot-4"></div>
+        <div id="panel-mentor-ege" class="cards-grid grid-4" style="display:none;">
+            <button class="selection-card" data-step="3" data-price="16000" data-label="Junior (8 уроков)"><div class="card-title">Junior</div><div class="card-desc">8 уроков • 1 месяц</div><div class="card-price">16 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="31000" data-label="Middle (16 уроков)"><div class="card-title">Middle</div><div class="card-desc">16 уроков • 2 месяца</div><div class="card-price">31 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="45000" data-label="Advanced (24 урока)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced</div><div class="card-desc">24 урока • 3 месяца</div><div class="card-price">45 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="55000" data-label="Senior (32 урока)"><div class="card-title">Senior</div><div class="card-desc">32 урока • 4 месяца</div><div class="card-price">55 000 ₽</div></button>
         </div>
-
-        <div id="step-1" class="wizard-step active">
-            <div class="step-title">Выбери свою цель</div>
-            <div class="cards-grid grid-2">
-                <button class="selection-card" data-step="1" data-val="oge" data-label="ОГЭ">
-                    <div class="card-title">ОГЭ</div>
-                    <div class="card-desc">9 класс. Закладываем прочную базу для будущего.</div>
-                </button>
-                <button class="selection-card" data-step="1" data-val="ege" data-label="ЕГЭ">
-                    <div class="card-title">ЕГЭ</div>
-                    <div class="card-desc">11 класс. Уверенное поступление в вуз мечты.</div>
-                </button>
-            </div>
+        <div id="panel-godmode-oge" class="cards-grid grid-4" style="display:none;">
+            <button class="selection-card" data-step="3" data-price="17500" data-label="Junior+ (8 ур + 1 мес)"><div class="card-title">Junior+</div><div class="card-desc">8 ур. + 1 мес. тренажёра</div><div class="card-price">17 500 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="34000" data-label="Middle+ (16 ур + 2 мес)"><div class="card-title">Middle+</div><div class="card-desc">16 ур. + 2 мес. тренажёра</div><div class="card-price">34 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="48000" data-label="Advanced+ (24 ур + 3 мес)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced+</div><div class="card-desc">24 ур. + 3 мес. тренажёра</div><div class="card-price">48 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="64000" data-label="Senior+ (32 ур + 4 мес)"><div class="card-title">Senior+</div><div class="card-desc">32 ур. + 4 мес. тренажёра</div><div class="card-price">64 000 ₽</div></button>
         </div>
-
-        <div id="step-2" class="wizard-step">
-            <div class="step-title">Выбери формат подготовки</div>
-            <div class="cards-grid grid-3">
-                <button class="selection-card" data-step="2" data-val="solo" data-label="Solo">
-                    <div class="card-title">Solo (Инди-трек)</div>
-                    <div class="card-desc">Самостоятельная подготовка в тренажёре с поддержкой материалов.</div>
-                    <div class="card-price">5 000 ₽ <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary)">/ мес</span></div>
-                </button>
-                <button class="selection-card" data-step="2" data-val="mentor" data-label="Mentor">
-                    <div class="card-title">Mentor (Классика)</div>
-                    <div class="card-desc">Только живая работа с преподавателем. Без тренажёра.</div>
-                    <div class="card-price">от 1 750 ₽ <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary)">/ урок</span></div>
-                </button>
-                <button class="selection-card" data-step="2" data-val="godmode" data-label="God Mode">
-                    <div class="card-badge hit">Премиум</div>
-                    <div class="card-title">God Mode</div>
-                    <div class="card-desc">Ментор + Solo. Уроки с преподавателем и безлимитный тренажёр.</div>
-                    <div class="card-price">от 1 600 ₽ <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary)">/ урок</span></div>
-                </button>
-            </div>
-            <div class="wizard-controls"><button class="btn-back" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Назад</button></div>
+        <div id="panel-godmode-ege" class="cards-grid grid-4" style="display:none;">
+            <button class="selection-card" data-step="3" data-price="19000" data-label="Junior+ (8 ур + 1 мес)"><div class="card-title">Junior+</div><div class="card-desc">8 ур. + 1 мес. тренажёра</div><div class="card-price">19 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="37000" data-label="Middle+ (16 ур + 2 мес)"><div class="card-title">Middle+</div><div class="card-desc">16 ур. + 2 мес. тренажёра</div><div class="card-price">37 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="52000" data-label="Advanced+ (24 ур + 3 мес)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced+</div><div class="card-desc">24 ур. + 3 мес. тренажёра</div><div class="card-price">52 000 ₽</div></button>
+            <button class="selection-card" data-step="3" data-price="70000" data-label="Senior+ (32 ур + 4 мес)"><div class="card-title">Senior+</div><div class="card-desc">32 ур. + 4 мес. тренажёра</div><div class="card-price">70 000 ₽</div></button>
         </div>
+        
+        <div class="wizard-controls"><button class="btn-back" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Назад</button></div>
+    </div>
 
-        <div id="step-3" class="wizard-step">
-            <div class="step-title" id="step-3-title">Выбери объём</div>
-            
-            <div id="panel-solo" class="cards-grid grid-3" style="display:none;">
-                <button class="selection-card" data-step="3" data-price="5000" data-label="Sprint">
-                    <div class="card-title">Sprint</div>
-                    <div class="card-desc">1 месяц доступа к тренажёру. Быстрый старт.</div>
-                    <div class="card-price">5 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="14000" data-label="Season Pass">
-                    <div class="card-badge">Выгодно</div>
-                    <div class="card-title">Season Pass</div>
-                    <div class="card-desc">3 месяца доступа. Идеально для рывка.</div>
-                    <div class="card-price">14 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="35000" data-label="Career Mode">
-                    <div class="card-badge hit">Весь год</div>
-                    <div class="card-title">Career Mode</div>
-                    <div class="card-desc">9 месяцев. Максимальная выгода и спокойствие.</div>
-                    <div class="card-price">35 000 ₽</div>
-                </button>
-            </div>
-
-            <div id="panel-mentor-oge" class="cards-grid grid-4" style="display:none;">
-                <button class="selection-card" data-step="3" data-price="14000" data-label="Junior (8 уроков)">
-                    <div class="card-title">Junior</div><div class="card-desc">8 уроков • 1 месяц</div><div class="card-price">14 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="27000" data-label="Middle (16 уроков)">
-                    <div class="card-title">Middle</div><div class="card-desc">16 уроков • 2 месяца</div><div class="card-price">27 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="39000" data-label="Advanced (24 урока)">
-                    <div class="card-badge hit">Хит</div><div class="card-title">Advanced</div><div class="card-desc">24 урока • 3 месяца</div><div class="card-price">39 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="52000" data-label="Senior (32 урока)">
-                    <div class="card-title">Senior</div><div class="card-desc">32 урока • 4 месяца</div><div class="card-price">52 000 ₽</div>
-                </button>
-            </div>
-
-            <div id="panel-mentor-ege" class="cards-grid grid-4" style="display:none;">
-                <button class="selection-card" data-step="3" data-price="16000" data-label="Junior (8 уроков)">
-                    <div class="card-title">Junior</div><div class="card-desc">8 уроков • 1 месяц</div><div class="card-price">16 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="31000" data-label="Middle (16 уроков)">
-                    <div class="card-title">Middle</div><div class="card-desc">16 уроков • 2 месяца</div><div class="card-price">31 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="45000" data-label="Advanced (24 урока)">
-                    <div class="card-badge hit">Хит</div><div class="card-title">Advanced</div><div class="card-desc">24 урока • 3 месяца</div><div class="card-price">45 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="55000" data-label="Senior (32 урока)">
-                    <div class="card-title">Senior</div><div class="card-desc">32 урока • 4 месяца</div><div class="card-price">55 000 ₽</div>
-                </button>
-            </div>
-
-            <div id="panel-godmode-oge" class="cards-grid grid-4" style="display:none;">
-                <button class="selection-card" data-step="3" data-price="17500" data-label="Junior+ (8 ур + 1 мес)">
-                    <div class="card-title">Junior+</div><div class="card-desc">8 ур. + 1 мес. тренажёра</div><div class="card-price">17 500 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="34000" data-label="Middle+ (16 ур + 2 мес)">
-                    <div class="card-title">Middle+</div><div class="card-desc">16 ур. + 2 мес. тренажёра</div><div class="card-price">34 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="48000" data-label="Advanced+ (24 ур + 3 мес)">
-                    <div class="card-badge hit">Хит</div><div class="card-title">Advanced+</div><div class="card-desc">24 ур. + 3 мес. тренажёра</div><div class="card-price">48 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="64000" data-label="Senior+ (32 ур + 4 мес)">
-                    <div class="card-title">Senior+</div><div class="card-desc">32 ур. + 4 мес. тренажёра</div><div class="card-price">64 000 ₽</div>
-                </button>
-            </div>
-
-            <div id="panel-godmode-ege" class="cards-grid grid-4" style="display:none;">
-                <button class="selection-card" data-step="3" data-price="19000" data-label="Junior+ (8 ур + 1 мес)">
-                    <div class="card-title">Junior+</div><div class="card-desc">8 ур. + 1 мес. тренажёра</div><div class="card-price">19 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="37000" data-label="Middle+ (16 ур + 2 мес)">
-                    <div class="card-title">Middle+</div><div class="card-desc">16 ур. + 2 мес. тренажёра</div><div class="card-price">37 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="52000" data-label="Advanced+ (24 ур + 3 мес)">
-                    <div class="card-badge hit">Хит</div><div class="card-title">Advanced+</div><div class="card-desc">24 ур. + 3 мес. тренажёра</div><div class="card-price">52 000 ₽</div>
-                </button>
-                <button class="selection-card" data-step="3" data-price="70000" data-label="Senior+ (32 ур + 4 мес)">
-                    <div class="card-title">Senior+</div><div class="card-desc">32 ур. + 4 мес. тренажёра</div><div class="card-price">70 000 ₽</div>
-                </button>
-            </div>
-            
-            <div class="wizard-controls"><button class="btn-back" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Назад</button></div>
+    <div id="step-4" class="wizard-step">
+        <div class="step-title">Программа готова</div>
+        <div class="summary-box">
+            <div class="summary-breadcrumbs" id="summary-path">ОГЭ / God Mode / Advanced+</div>
+            <div class="summary-total" id="summary-price">48 000 ₽</div>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.95rem;">Отправь выбранный тариф нам в Telegram для оформления доступа.</p>
+            <a href="#" target="_blank" rel="noopener noreferrer" class="btn-primary" id="tg-pay-link">Перейти к оплате</a>
         </div>
+        <div class="wizard-controls"><button class="btn-back" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Изменить выбор</button></div>
+    </div>
+</main>
+{% endblock %}
 
-        <div id="step-4" class="wizard-step">
-            <div class="step-title">Программа готова</div>
-            <div class="summary-box">
-                <div class="summary-breadcrumbs" id="summary-path">ОГЭ / God Mode / Advanced+</div>
-                <div class="summary-total" id="summary-price">48 000 ₽</div>
-                <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.95rem;">Отправь выбранный тариф нам в Telegram для оформления доступа.</p>
-                <a href="#" target="_blank" rel="noopener noreferrer" class="btn-primary" id="tg-pay-link">Перейти к оплате</a>
-            </div>
-            <div class="wizard-controls"><button class="btn-back" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Изменить выбор</button></div>
-        </div>
+{% block scripts_extra %}
+<script>
+    const state = { step: 1, goal: null, goalLabel: null, format: null, formatLabel: null, volumeLabel: null, price: null };
 
-    </main>
+    function updateDots(step) {
+        for(let i=1; i<=4; i++) {
+            const dot = document.getElementById('dot-' + i);
+            if(i <= step) dot.classList.add('active');
+            else dot.classList.remove('active');
+        }
+    }
 
-    <script>
-        const state = { step: 1, goal: null, goalLabel: null, format: null, formatLabel: null, volumeLabel: null, price: null };
+    function showStep(step) {
+        document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+        document.getElementById('step-' + step).classList.add('active');
+        updateDots(step);
+        state.step = step;
+    }
 
-        function updateDots(step) {
-            for(let i=1; i<=4; i++) {
-                const dot = document.getElementById('dot-' + i);
-                if(i <= step) dot.classList.add('active');
-                else dot.classList.remove('active');
+    function goBack() {
+        if(state.step > 1) showStep(state.step - 1);
+    }
+
+    document.querySelectorAll('button[data-step="1"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            state.goal = this.getAttribute('data-val');
+            state.goalLabel = this.getAttribute('data-label');
+            showStep(2);
+        });
+    });
+
+    document.querySelectorAll('button[data-step="2"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            state.format = this.getAttribute('data-val');
+            state.formatLabel = this.getAttribute('data-label');
+            document.querySelectorAll('[id^="panel-"]').forEach(p => p.style.display = 'none');
+            let panelId = 'panel-';
+            if(state.format === 'solo') {
+                panelId += 'solo';
+                document.getElementById('step-3-title').textContent = 'На какой срок нужен доступ?';
+            } else {
+                panelId += state.format + '-' + state.goal;
+                document.getElementById('step-3-title').textContent = 'Выбери пакет уроков';
             }
-        }
-
-        function showStep(step) {
-            document.querySelectorAll('.wizard-step').forEach(el => {
-                el.classList.remove('active');
-            });
-            document.getElementById('step-' + step).classList.add('active');
-            updateDots(step);
-            state.step = step;
-        }
-
-        function goBack() {
-            if(state.step > 1) {
-                showStep(state.step - 1);
-            }
-        }
-
-        // Логика шага 1
-        document.querySelectorAll('button[data-step="1"]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                state.goal = this.getAttribute('data-val');
-                state.goalLabel = this.getAttribute('data-label');
-                showStep(2);
-            });
+            document.getElementById(panelId).style.display = 'grid';
+            showStep(3);
         });
+    });
 
-        // Логика шага 2
-        document.querySelectorAll('button[data-step="2"]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                state.format = this.getAttribute('data-val');
-                state.formatLabel = this.getAttribute('data-label');
-                
-                document.querySelectorAll('[id^="panel-"]').forEach(p => p.style.display = 'none');
-                
-                let panelId = 'panel-';
-                if(state.format === 'solo') {
-                    panelId += 'solo';
-                    document.getElementById('step-3-title').textContent = 'На какой срок нужен доступ?';
-                } else {
-                    panelId += state.format + '-' + state.goal;
-                    document.getElementById('step-3-title').textContent = 'Выбери пакет уроков';
-                }
-                
-                document.getElementById(panelId).style.display = 'grid';
-                showStep(3);
-            });
+    document.querySelectorAll('button[data-step="3"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            state.volumeLabel = this.getAttribute('data-label');
+            state.price = parseInt(this.getAttribute('data-price'));
+            const fullPath = `${state.goalLabel} / ${state.formatLabel} / ${state.volumeLabel}`;
+            const formattedPrice = state.price.toLocaleString('ru-RU') + ' ₽';
+            document.getElementById('summary-path').textContent = fullPath;
+            document.getElementById('summary-price').textContent = formattedPrice;
+            const tgMessage = `Здравствуйте, я по поводу оплаты тарифа!\nМой выбор: ${fullPath} (${formattedPrice})`;
+            document.getElementById('tg-pay-link').href = `https://t.me/eohada?text=${encodeURIComponent(tgMessage)}`;
+            showStep(4);
         });
-
-        // Логика шага 3 и генерация ссылки Telegram
-        document.querySelectorAll('button[data-step="3"]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                state.volumeLabel = this.getAttribute('data-label');
-                state.price = parseInt(this.getAttribute('data-price'));
-                
-                // Собираем данные
-                const fullPath = `${state.goalLabel} / ${state.formatLabel} / ${state.volumeLabel}`;
-                const formattedPrice = state.price.toLocaleString('ru-RU') + ' ₽';
-                
-                document.getElementById('summary-path').textContent = fullPath;
-                document.getElementById('summary-price').textContent = formattedPrice;
-                
-                // Формируем текст для Telegram
-                const tgMessage = `Здравствуйте, я по поводу оплаты тарифа!\nМой выбор: ${fullPath} (${formattedPrice})`;
-                const tgLink = `https://t.me/eohada?text=${encodeURIComponent(tgMessage)}`;
-                
-                // Обновляем ссылку на кнопке оплаты
-                document.getElementById('tg-pay-link').href = tgLink;
-                
-                showStep(4);
-            });
-        });
-    </script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}

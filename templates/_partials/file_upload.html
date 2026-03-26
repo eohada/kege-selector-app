@@ -1,0 +1,164 @@
+{#
+  Reusable Drag & Drop file upload component (Alpine.js + HTMX).
+
+  Usage:
+    {% include '_partials/file_upload.html' %}
+
+  Optional variables (set before include):
+    upload_url    — endpoint (default: '/storage/upload')
+    upload_folder — subfolder key (default: 'uploads')
+    accept        — file input accept attr (default: '*/*')
+    multiple      — allow multiple files (default: true)
+    max_size_mb   — max file size in MB (default: 10)
+#}
+{% from '_ui_icon.html' import ui_icon %}
+
+{% set _upload_url   = upload_url   | default('/storage/upload') %}
+{% set _folder       = upload_folder | default('uploads') %}
+{% set _accept       = accept       | default('*/*') %}
+{% set _multiple     = multiple     | default(true) %}
+{% set _max_size_mb  = max_size_mb  | default(10) %}
+
+<div x-data="fileUpload('{{ _upload_url }}', '{{ _folder }}', {{ _max_size_mb }})"
+     class="relative border-2 border-dashed border-border-default rounded-card p-6
+            transition-colors duration-200 cursor-pointer
+            hover:border-accent hover:bg-accent/5"
+     :class="{ 'border-accent bg-accent/10': dragover, 'border-red-400 bg-red-50': error }"
+     @dragover.prevent="dragover = true"
+     @dragleave.prevent="dragover = false"
+     @drop.prevent="handleDrop($event)"
+     @click="!uploading && $refs.fileInput.click()">
+
+  <input type="file"
+         x-ref="fileInput"
+         @change="handleFiles($event)"
+         class="hidden"
+         accept="{{ _accept }}"
+         {% if _multiple %}multiple{% endif %}>
+
+  {# Idle state #}
+  <div x-show="!uploading" class="flex flex-col items-center gap-2 text-center">
+    {{ ui_icon('upload', 'lg') }}
+    <p class="text-sm font-medium text-text-default">Перетащите файлы сюда</p>
+    <p class="text-xs text-text-muted">или нажмите для выбора</p>
+    <p class="text-xs text-text-muted">Макс. {{ _max_size_mb }} МБ</p>
+  </div>
+
+  {# Uploading state #}
+  <div x-show="uploading" class="flex flex-col items-center gap-2 text-center">
+    <div class="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+    <p class="text-sm font-medium text-text-default">Загрузка...</p>
+    <p class="text-xs text-text-muted" x-text="progressText"></p>
+  </div>
+
+  {# Error message #}
+  <template x-if="error">
+    <p class="text-red-500 text-xs mt-2 text-center" x-text="error"></p>
+  </template>
+</div>
+
+{# Uploaded file list #}
+<div x-data x-ref="fileList" id="upload-file-list" class="mt-3 space-y-1">
+  <template x-for="file in $store.uploadedFiles" :key="file.key">
+    <div class="flex items-center gap-2 p-2 bg-bg-app rounded-btn">
+      <span x-text="file.name" class="text-sm truncate flex-1"></span>
+      <span x-text="file.sizeText" class="text-xs text-text-muted"></span>
+      <a :href="file.url" target="_blank"
+         class="text-accent hover:underline text-xs">открыть</a>
+      <button type="button" @click="$store.uploadedFiles = $store.uploadedFiles.filter(f => f.key !== file.key)"
+              class="text-text-muted hover:text-red-500 text-xs">&times;</button>
+      <input type="hidden" name="file_keys[]" :value="file.key">
+    </div>
+  </template>
+</div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+  Alpine.store('uploadedFiles', []);
+});
+
+function fileUpload(uploadUrl, folder, maxSizeMb) {
+  return {
+    dragover: false,
+    uploading: false,
+    error: null,
+    progressText: '',
+
+    handleDrop(e) {
+      this.dragover = false;
+      const files = e.dataTransfer.files;
+      if (files.length) this._upload(files);
+    },
+
+    handleFiles(e) {
+      const files = e.target.files;
+      if (files.length) this._upload(files);
+      e.target.value = '';
+    },
+
+    async _upload(files) {
+      this.error = null;
+      this.uploading = true;
+      this.progressText = `0 / ${files.length}`;
+
+      const maxBytes = maxSizeMb * 1024 * 1024;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > maxBytes) {
+          this.error = `Файл "${file.name}" превышает ${maxSizeMb} МБ`;
+          this.uploading = false;
+          return;
+        }
+
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('folder', folder);
+
+        try {
+          const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+          const headers = {};
+          if (csrfMeta) headers['X-CSRFToken'] = csrfMeta.content;
+
+          const resp = await fetch(uploadUrl, { method: 'POST', body: fd, headers });
+          if (!resp.ok) {
+            const text = await resp.text();
+            try {
+              const j = JSON.parse(text);
+              this.error = j.error || 'Ошибка загрузки';
+            } catch { this.error = 'Ошибка загрузки'; }
+            this.uploading = false;
+            return;
+          }
+
+          const data = await resp.json();
+          if (data.files) {
+            data.files.forEach(f => {
+              Alpine.store('uploadedFiles').push({
+                key: f.key,
+                name: f.name,
+                url: f.url,
+                sizeText: _formatSize(f.size),
+              });
+            });
+          }
+          this.progressText = `${i + 1} / ${files.length}`;
+        } catch (err) {
+          this.error = 'Сетевая ошибка: ' + err.message;
+          this.uploading = false;
+          return;
+        }
+      }
+
+      this.uploading = false;
+    },
+  };
+}
+
+function _formatSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes + ' Б';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
+}
+</script>

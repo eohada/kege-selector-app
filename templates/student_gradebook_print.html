@@ -1,9 +1,7 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>Журнал · {{ student.name }}</title>
-  <style>
+{% extends 'base_minimal.html' %}
+{% block title %}Журнал · {{ student.name }} · BooStudy{% endblock %}
+{% block head_css %}
+<style>
     body { font-family: Arial, sans-serif; color: #111; }
     h1 { margin: 0 0 6px 0; font-size: 20px; }
     .meta { color: #444; font-size: 12px; margin-bottom: 14px; }
@@ -11,18 +9,9 @@
     th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 12px; vertical-align: top; }
     th { background: #f3f3f3; text-align: left; }
     .muted { color: #666; }
-  </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
+</style>
+{% endblock %}
+{% block body %}
   <h1>Журнал оценок · {{ student.name }}</h1>
   <div class="meta">Student ID: {{ student.student_id }} · Сформировано: {{ (moscow_now().strftime('%d.%m.%Y %H:%M') if moscow_now is defined else '') }}</div>
 
@@ -58,6 +47,4 @@
       {% endfor %}
     </tbody>
   </table>
-</body>
-</html>
-
+{% endblock %}

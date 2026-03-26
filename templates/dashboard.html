@@ -1,132 +1,64 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard · URep</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="{% if active_lesson %}lesson-active{% endif %}">
-    {% if active_lesson %}
-    <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        {{ ui_icon('nav.schedule', 'sm', decorative=true) }}Урок идет: {{ active_student.name }}
-    </div>
-    <div class="now-playing-panel" id="lessonMenu">
-        <div class="hero-eyebrow">текущий урок</div>
-        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
-        {% if active_lesson.topic %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
-        {% endif %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
-        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
-        <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
-            </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('nav.students', 'sm', decorative=true) }}Профиль</a>
-        </div>
-    </div>
-    <script>
-        function toggleLessonMenu() {
-            const menu = document.getElementById('lessonMenu');
-            if (menu) {
-                menu.classList.toggle('active');
-            }
-        }
-        document.addEventListener('click', (event) => {
-            const menu = document.getElementById('lessonMenu');
-            const badge = document.querySelector('.now-playing-pill');
-            if (!menu || !badge) return;
-            if (!menu.contains(event.target) && !badge.contains(event.target)) {
-                menu.classList.remove('active');
-            }
-        });
-    </script>
-    {% endif %}
+{% extends 'base.html' %}
+{% block title %}Dashboard · BooStudy{% endblock %}
 
-    <div class="app-layout">
-        {% set active_page = 'dashboard' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% set active_page = 'dashboard' %}
 
-        {% include '_ux_enhancements.html' %}
-        
-        <section class="dashboard-hero glass-panel">
-            <div>
-                <p class="hero-eyebrow">панель управления</p>
-                <h1 class="hero-title">URep. Новый взгляд на учёбу.</h1>
-                <p class="hero-subtitle">
-                    Управляй учениками, уроками и прогрессом в едином неоновом пространстве. Лаконично, быстро
-                    и с визуальными акцентами на то, что важно прямо сейчас.
-                </p>
-                <div class="hero-actions">
-                    {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
-                    <a href="{{ url_for('main.export_data') }}" class="neo-button accent">
-                        {{ ui_icon('action.export', 'md', decorative=true) }}
+{% block content %}
+
+        {# ── Compact Hero ── #}
+        <section class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 rounded-card-lg shadow-card bg-bg-surface p-6 lg:p-8">
+            <div class="min-w-0">
+                <p class="text-xs font-bold uppercase tracking-widest text-text-muted mb-1">панель управления</p>
+                <h1 class="text-2xl lg:text-3xl font-extrabold m-0 leading-tight">BooStudy</h1>
+                <p class="text-text-secondary mt-1 mb-0 text-sm lg:text-base">Ученики, уроки и прогресс — всё в одном месте.</p>
+                {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
+                <div class="flex flex-wrap gap-2 mt-4">
+                    <a href="{{ url_for('main.export_data') }}" class="neo-button accent sm">
+                        {{ ui_icon('action.export', 'sm', decorative=true) }}
                         Экспорт
                     </a>
-                    <a href="{{ url_for('main.import_data') }}" class="neo-button outline">
-                        {{ ui_icon('action.import', 'md', decorative=true) }}
+                    <a href="{{ url_for('main.import_data') }}" class="neo-button outline sm">
+                        {{ ui_icon('action.import', 'sm', decorative=true) }}
                         Импорт
                     </a>
-                    <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost">
-                        {{ ui_icon('action.backup', 'md', decorative=true) }}
+                    <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost sm">
+                        {{ ui_icon('action.backup', 'sm', decorative=true) }}
                         Бэкап БД
                     </a>
-                    {% endif %}
                 </div>
+                {% endif %}
             </div>
-            <div class="hero-pane">
-                <div class="hero-metric">
-                    <div class="hero-metric-label">активные ученики</div>
-                    <div class="hero-metric-value">{{ total_students }}</div>
+            <div class="flex flex-wrap gap-3 shrink-0">
+                <div class="flex items-center gap-2.5 rounded-pill bg-accent-soft px-4 py-2">
+                    <span class="text-2xl font-black leading-none">{{ total_students }}</span>
+                    <span class="text-xs text-text-muted leading-tight">активных<br>учеников</span>
                 </div>
-                <div class="hero-metric">
-                    <div class="hero-metric-label">запланировано уроков</div>
-                    <div class="hero-metric-value">{{ planned_lessons }}</div>
+                <div class="flex items-center gap-2.5 rounded-pill bg-success-soft px-4 py-2">
+                    <span class="text-2xl font-black leading-none">{{ planned_lessons }}</span>
+                    <span class="text-xs text-text-muted leading-tight">запланировано<br>уроков</span>
                 </div>
-                <div class="hero-metric">
-                    <div class="hero-metric-label">проведено уроков</div>
-                    <div class="hero-metric-value">{{ completed_lessons }}</div>
+                <div class="flex items-center gap-2.5 rounded-pill bg-gamification-soft px-4 py-2">
+                    <span class="text-2xl font-black leading-none">{{ completed_lessons }}</span>
+                    <span class="text-xs text-text-muted leading-tight">проведено<br>уроков</span>
                 </div>
             </div>
         </section>
 
+        {# ── Tutors Section ── #}
         {% if my_tutors %}
-        <section class="glass-panel" style="margin-top: 1rem;">
-            <div class="panel-head">
-                <div>
-                    <p class="eyebrow">мой преподаватель{% if my_tutors|length > 1 %}и{% endif %}</p>
-                    <h2 style="margin: 0;">Профиль преподавателя</h2>
-                </div>
-            </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
+        <section class="mt-6">
+            <p class="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">мой преподаватель{% if my_tutors|length > 1 %}и{% endif %}</p>
+            <div class="flex flex-wrap gap-4">
                 {% for tutor in my_tutors %}
-                <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); text-decoration: none; color: inherit; transition: border-color .2s, background .2s;">
-                    <div style="width: 56px; height: 56px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.4rem;">
-                        {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="" style="width:100%; height:100%; object-fit:cover;">{% else %}{{ tutor.username[0]|upper }}{% endif %}
+                <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="flex items-center gap-4 rounded-card-lg shadow-card bg-bg-surface p-5 hover:shadow-card-hover transition-shadow">
+                    <div class="w-14 h-14 rounded-full overflow-hidden shrink-0 bg-accent-soft flex items-center justify-center font-bold text-xl text-accent">
+                        {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="" class="w-full h-full object-cover">{% else %}{{ tutor.username[0]|upper }}{% endif %}
                     </div>
-                    <div style="min-width: 0;">
-                        <div style="font-weight: 700; font-size: 1.1rem;">
+                    <div class="min-w-0">
+                        <div class="font-bold text-lg leading-snug">
                             {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}{{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}{% else %}{{ tutor.username }}{% endif %}
                         </div>
-                        <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.2rem;">{{ tutor.get_role_display() }} · Открыть профиль →</div>
+                        <div class="text-sm text-text-muted mt-0.5">{{ tutor.get_role_display() }} · Открыть профиль →</div>
                     </div>
                 </a>
                 {% endfor %}
@@ -134,39 +66,27 @@
         </section>
         {% endif %}
 
-        <section class="glass-panel" style="margin-top: 1rem;">
-            <div class="panel-head">
-                <div>
-                    <p class="eyebrow">быстрые действия</p>
-                    <h2>Сегодня</h2>
-                </div>
+        {# ── Quick Actions — Bento Cards ── #}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+            <div class="rounded-card-lg shadow-card p-5 bg-accent-soft">
+                <p class="text-sm font-semibold text-text-secondary mb-1">На проверку (классная)</p>
+                <p class="text-4xl font-black m-0 leading-none">{{ review_lesson_tasks_count }}</p>
+                <a href="{{ url_for('lessons.review_queue', source='lessons', status='submitted') }}" class="inline-block mt-3 text-sm font-bold text-accent hover:underline">Открыть →</a>
             </div>
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem;">
-                <div style="padding: 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
-                    <div style="color: var(--text-muted); font-size: .9rem;">На проверку (классная)</div>
-                    <div style="font-size: 2rem; font-weight: 900; margin-top:.25rem;">{{ review_lesson_tasks_count }}</div>
-                    <div style="margin-top:.75rem;">
-                        <a href="{{ url_for('lessons.review_queue', source='lessons', status='submitted') }}" class="neo-button outline sm">Открыть</a>
-                    </div>
-                </div>
-                <div style="padding: 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
-                    <div style="color: var(--text-muted); font-size: .9rem;">На проверку (работы)</div>
-                    <div style="font-size: 2rem; font-weight: 900; margin-top:.25rem;">{{ review_submissions_count }}</div>
-                    <div style="margin-top:.75rem;">
-                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="neo-button outline sm">Открыть</a>
-                    </div>
-                </div>
-                <div style="padding: 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
-                    <div style="color: var(--text-muted); font-size: .9rem;">Группы</div>
-                    <div style="font-size: 2rem; font-weight: 900; margin-top:.25rem;">{{ groups_count }}</div>
-                    <div style="margin-top:.75rem;">
-                        <a href="{{ url_for('groups.groups_list') }}" class="neo-button outline sm">Открыть</a>
-                    </div>
-                </div>
+            <div class="rounded-card-lg shadow-card p-5 bg-success-soft">
+                <p class="text-sm font-semibold text-text-secondary mb-1">На проверку (работы)</p>
+                <p class="text-4xl font-black m-0 leading-none">{{ review_submissions_count }}</p>
+                <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="inline-block mt-3 text-sm font-bold text-success hover:underline">Открыть →</a>
             </div>
-        </section>
+            <div class="rounded-card-lg shadow-card p-5 bg-gamification-soft">
+                <p class="text-sm font-semibold text-text-secondary mb-1">Группы</p>
+                <p class="text-4xl font-black m-0 leading-none">{{ groups_count }}</p>
+                <a href="{{ url_for('groups.groups_list') }}" class="inline-block mt-3 text-sm font-bold text-gamification hover:underline">Открыть →</a>
+            </div>
+        </div>
 
-        <section class="glass-panel filters-panel">
+        {# ── Filters ── #}
+        <section class="filters-panel rounded-card-lg shadow-card bg-bg-surface p-5 mt-6">
             <form method="GET" action="{{ url_for('main.dashboard') }}" class="filters-grid">
                 <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
                 <div class="neo-field">
@@ -179,8 +99,8 @@
                         <option value="">Все категории</option>
                         <option value="ЕГЭ" {% if category_filter == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
                         <option value="ОГЭ" {% if category_filter == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
-                        <option value="ЛЕВЕЛАП" {% if category_filter == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option> 
-                        <option value="ПРОГРАММИРОВАНИЕ" {% if category_filter == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option> 
+                        <option value="ЛЕВЕЛАП" {% if category_filter == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option>
+                        <option value="ПРОГРАММИРОВАНИЕ" {% if category_filter == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
                     </select>
                 </div>
                 <div class="filters-actions">
@@ -193,59 +113,55 @@
                     {% endif %}
                 </div>
             </form>
-            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
-                <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category=category_filter) }}" 
-                   class="neo-button {% if not show_archive %}accent{% else %}ghost{% endif %}" 
-                   style="text-decoration: none;">
+            <div class="mt-4 flex gap-2 items-center">
+                <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category=category_filter) }}"
+                   class="neo-button {% if not show_archive %}accent{% else %}ghost{% endif %}">
                     {{ ui_icon('nav.students', 'sm', decorative=true) }}
                     Активные ({{ total_students }})
                 </a>
-                <a href="{{ url_for('main.dashboard', show_archive='true', search=search_query, category=category_filter) }}" 
-                   class="neo-button {% if show_archive %}accent{% else %}ghost{% endif %}" 
-                   style="text-decoration: none;">
+                <a href="{{ url_for('main.dashboard', show_archive='true', search=search_query, category=category_filter) }}"
+                   class="neo-button {% if show_archive %}accent{% else %}ghost{% endif %}">
                     {{ ui_icon('nav.archive', 'sm', decorative=true) }}
                     Архив ({{ archived_students_count }})
                 </a>
             </div>
         </section>
 
-
-        <section class="glass-panel students-panel">
-            <div class="panel-head">
+        {# ── Students Grid ── #}
+        <section class="mt-6">
+            <div class="flex items-center justify-between mb-4">
                 <div>
-                    <p class="eyebrow">{% if show_archive %}архивные ученики{% else %}активные ученики{% endif %}</p>
-                    <h2>{{ students|length }} в подборке</h2>
+                    <p class="text-xs font-bold uppercase tracking-widest text-text-muted mb-1">{% if show_archive %}архивные ученики{% else %}активные ученики{% endif %}</p>
+                    <h2 class="text-xl font-extrabold m-0">{{ students|length }} в подборке</h2>
                 </div>
-                <div class="hero-actions">
-                    {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
-                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">{{ ui_icon('action.plus', 'sm', decorative=true) }}Добавить</a>
-                    {% endif %}
-                </div>
+                {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
+                <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">{{ ui_icon('action.plus', 'sm', decorative=true) }}Добавить</a>
+                {% endif %}
             </div>
 
             {% if students %}
             <div class="students-grid">
                 {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
-                <a href="{{ url_for('students.student_new') }}" class="student-card student-card--cta">
-                    <div class="hero-eyebrow">quick action</div>
-                    <h3 style="margin: 0;">Создать нового ученика</h3>
-                    <p class="hero-subtitle">Стартовая точка для целей, уроков и заметок.</p>
+                <a href="{{ url_for('students.student_new') }}" class="student-card student-card--cta rounded-card shadow-none">
+                    <p class="text-xs font-bold uppercase tracking-widest text-text-muted mb-1">quick action</p>
+                    <h3 class="m-0">Создать нового ученика</h3>
+                    <p class="text-sm text-text-muted mt-1">Стартовая точка для целей, уроков и заметок.</p>
                 </a>
                 {% endif %}
                 {% for student in students %}
-                <div class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %}"
+                <div class="student-card shadow-card rounded-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %}"
                    data-student-id="{{ student.student_id }}">
-                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="student-card__main-link" style="text-decoration:none; color:inherit; display:block;">
+                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="student-card__main-link block">
                     <div class="student-card__head">
                         <div class="student-avatar {% if show_archive %}student-avatar--archived{% endif %}">
                             {% if student.user and student.user.avatar_url %}
-                                <img src="{{ student.user.avatar_url }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+                                <img src="{{ student.user.avatar_url }}" alt="" class="w-full h-full object-cover rounded-[inherit]">
                             {% else %}
                                 {{ student.name[0].upper() }}
                             {% endif %}
                         </div>
                         <div>
-                            <p class="student-name">{{ student.name }}{% if show_archive %} <span style="opacity: 0.6; font-size: 0.85em;">(архив)</span>{% endif %}</p>
+                            <p class="student-name">{{ student.name }}{% if show_archive %} <span class="opacity-60 text-sm">(архив)</span>{% endif %}</p>
                             {% if student.platform_id %}
                             <p class="student-meta student-platform-id">ID: {{ student.platform_id }}</p>
                             {% endif %}
@@ -255,29 +171,29 @@
                     <span class="student-tag student-category">{{ student.category }}</span>
                     {% endif %}
                     {% if student.school_class %}
-                    <span class="student-tag student-class">{{ student.school_class }} класс</span> 
+                    <span class="student-tag student-class">{{ student.school_class }} класс</span>
                     {% endif %}
                     {% if student.description %}
-                    <p class="hero-subtitle" style="font-size: 0.9rem;">
+                    <p class="text-sm text-text-muted mt-1">
                         "{{ student.description[:130] }}{% if student.description|length > 130 %}…{% endif %}"
                     </p>
                     {% endif %}
                     <div class="student-insights">
                         {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.goal_text %}
-                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}Цель: {{ student.goal_text }}</div> 
+                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}Цель: {{ student.goal_text }}</div>
                         {% elif student.category == 'ЛЕВЕЛАП' and student.goal_text %}
-                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}Цель: {{ student.goal_text }}</div> 
+                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}Цель: {{ student.goal_text }}</div>
                         {% elif student.target_score %}
-                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}{% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Цель{% endif %}: {{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</div> 
+                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}{% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Цель{% endif %}: {{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</div>
                         {% endif %}
                         {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
-                        <div>{{ ui_icon('action.clock', 'sm', decorative=true) }}Срок: {{ student.deadline }}</div> 
+                        <div>{{ ui_icon('action.clock', 'sm', decorative=true) }}Срок: {{ student.deadline }}</div>
                         {% endif %}
                         {% if student.school_class %}
-                        <div>{{ ui_icon('action.school', 'sm', decorative=true) }}Класс: {{ student.school_class }}</div> 
+                        <div>{{ ui_icon('action.school', 'sm', decorative=true) }}Класс: {{ student.school_class }}</div>
                         {% endif %}
                         {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.programming_language %}
-                        <div>Язык: {{ student.programming_language }}</div> 
+                        <div>Язык: {{ student.programming_language }}</div>
                         {% endif %}
                         {% if student.diagnostic_level %}
                         <div>{{ ui_icon('nav.stats', 'sm', decorative=true) }}Диагностика: <span>{{ student.diagnostic_level }}</span></div>
@@ -293,8 +209,8 @@
                         {% endif %}
                     </div>
                     </a>
-                    <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--stroke-1);">
-                        <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; text-decoration: none;">Профиль ученика</a>
+                    <div class="mt-2 pt-2 border-t border-stroke/30">
+                        <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost sm">Профиль ученика</a>
                     </div>
                 </div>
                 {% endfor %}
@@ -336,20 +252,15 @@
             </div>
             {% endif %}
         </section>
-    </main>
-    </div>
-</div>
+{% endblock %}
 
+{% block scripts_extra %}
     <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
-    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
     <script src="{{ url_for('static', filename='dashboard-ajax.js') }}"></script>
     <script src="{{ url_for('static', filename='filter-storage.js') }}"></script>
     <script src="{{ url_for('static', filename='filter-state-manager.js') }}"></script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script>
-        // Убеждаемся, что класс creator-theme-active не применяется на других страницах
         document.addEventListener('DOMContentLoaded', () => {
             const profileContainer = document.querySelector('.profile-container.theme-creator');
             if (!profileContainer) {
@@ -357,5 +268,4 @@
             }
         });
     </script>
-</body>
-</html>
+{% endblock %}

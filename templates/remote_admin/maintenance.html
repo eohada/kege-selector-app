@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Режим обслуживания · Удаленная админка</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
     <script>
         (function(){
             try {
@@ -23,18 +25,18 @@
 
         <main class="remote-main">
         <section class="glass-panel" style="max-width: 800px; padding: 2rem;">
-            <div style="margin-bottom: 2rem;">
-                <h1 style="margin: 0;">Технические работы</h1>
-                <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+            <div class="mb-8">
+                <h1 class="m-0">Технические работы</h1>
+                <p class="text-muted mt-2">
                     Окружение: <strong>{{ environment_name }}</strong>
                 </p>
             </div>
 
             <div class="glass-panel" style="padding: 2rem; background: var(--surface-2); border: 2px solid {% if status.enabled %}var(--accent-1){% else %}var(--stroke-2){% endif %};">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+                <div class="flex justify-between items-start mb-8">
                     <div>
-                        <h2 style="margin: 0 0 0.5rem 0;">Статус платформы</h2>
-                        <p style="color: var(--text-muted); margin: 0;">
+                        <h2 class="m-0 mb-2">Статус платформы</h2>
+                        <p class="text-muted m-0">
                             {% if status.enabled %}
                             <span style="color: #ff2e2e;">● Режим обслуживания ВКЛЮЧЕН</span>
                             <br>Пользователи видят страницу-заглушку.
@@ -45,7 +47,7 @@
                         </p>
                     </div>
                     
-                    <div style="text-align: right; font-size: 0.9rem; color: var(--text-muted);">
+                    <div class="text-right text-sm text-muted">
                         <div>Обновлено: {{ status.updated_at[:16].replace('T', ' ') if status.updated_at else '—' }}</div>
                         <div>Кем: {{ status.updated_by or '—' }}</div>
                     </div>
@@ -74,9 +76,9 @@
                 </form>
             </div>
 
-            <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(255, 200, 46, 0.1); border-radius: var(--radius-md); border-left: 4px solid #ffc82e;">
-                <h3 style="margin: 0 0 0.5rem 0; color: #ffc82e;">Важно знать</h3>
-                <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-primary); font-size: 0.95rem;">
+            <div class="mt-8 p-6" style="background: rgba(255, 200, 46, 0.1); border-radius: var(--radius-md); border-left: 4px solid #ffc82e;">
+                <h3 class="m-0 mb-2" style="color: #ffc82e;">Важно знать</h3>
+                <ul class="m-0 pl-6 text-sm">
                     <li>Включенный режим блокирует доступ ко всем страницам для обычных пользователей.</li>
                     <li>Администраторы и Создатели <strong>всегда имеют доступ</strong>, даже при включенном режиме.</li>
                     <li>API endpoints для удаленной админки остаются доступными.</li>

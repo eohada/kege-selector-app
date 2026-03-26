@@ -1,37 +1,7 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Массовое создание уроков · URep</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="{% if active_lesson %}lesson-active{% endif %}">
-    {% include '_active_lesson_banner.html' %}
-    
-    <div class="app-layout">
-        {% set active_page = 'schedule' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
-
-        {% include '_ux_enhancements.html' %}
-
+{% extends 'base.html' %}
+{% block title %}Массовое создание уроков · URep{% endblock %}
+{% set active_page = 'schedule' %}
+{% block content %}
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div>
                 <p class="hero-eyebrow">массовое создание</p>
@@ -96,48 +66,4 @@
                 </div>
             </form>
         </section>
-    </main>
-    </div>
-</div>
-
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='loading.js') }}"></script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
-    <script>
-        // Конвертируем flash-сообщения в toast-уведомления
-        document.addEventListener('DOMContentLoaded', function() {
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% if category == 'error' or category == 'danger' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.error('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.error('{{ message|e }}');
-                            }
-                        {% elif category == 'warning' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.warning('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.warning('{{ message|e }}');
-                            }
-                        {% elif category == 'info' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.info('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.info('{{ message|e }}');
-                            }
-                        {% else %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.success('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.success('{{ message|e }}');
-                            }
-                        {% endif %}
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        });
-    </script>
-</body>
-</html>
+{% endblock %}

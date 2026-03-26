@@ -1,18 +1,13 @@
+{% extends 'base.html' %}
 {% from '_ui_icon.html' import ui_icon %}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Баг-репорты · QA</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
+{% set active_page = 'qa_board' %}
+
+{% block title %}Баг-репорты · QA{% endblock %}
+
+{% block head_css %}
+<style>
     .reports-list { max-width: 900px; }
-    .report-card { background: var(--surface-1, #1e1e2f); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); padding: 1.25rem; margin-bottom: 1rem; }
+    .report-card { background: var(--surface-1); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; box-shadow: var(--shadow-card); }
     .report-card h4 { margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--text-primary); }
     .report-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
     .report-status { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
@@ -22,25 +17,17 @@
     .report-status.done { background: #00ff9d; color: #000; }
     .report-actions { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
     .report-actions form { display: inline; }
-    .btn-sm { padding: 0.35rem 0.6rem; font-size: 0.75rem; border-radius: 6px; }
-    </style>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'qa_board' %}
-        {% include '_sidebar.html' %}
-        <div class="app-main">
-            {% include '_topbar.html' %}
-            <main class="app-content">
-                {% include '_ux_enhancements.html' %}
+</style>
+{% endblock %}
 
+{% block content %}
 <div class="container-fluid mt-4 px-4">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+    <div class="flex justify-between items-center mb-8 pb-4">
         <div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px;">QA</div>
-            <h1 style="font-family: 'MonaspaceNeon', sans-serif; font-size: 1.8rem; color: var(--text-primary);">Баг-репорты</h1>
+            <div class="text-xs text-muted uppercase tracking-widest">QA</div>
+            <h1 class="text-2xl font-bold">Баг-репорты</h1>
         </div>
-        <div style="display: flex; gap: 0.75rem;">
+        <div class="flex gap-3">
             <a href="{{ url_for('qa.bug_report') }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать баг-репорт</a>
             <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Канбан</a>
         </div>
@@ -58,67 +45,66 @@
             </div>
             {% if r.screenshot_path %}
             {% set _scr = r.screenshot_path.replace('static/', '') %}
-            <div style="margin-bottom: 0.75rem;">
+            <div class="mb-3">
                 <a href="{{ url_for('static', filename=_scr) }}" target="_blank" rel="noopener">
-                    <img src="{{ url_for('static', filename=_scr) }}" alt="Скриншот" style="max-width: 200px; max-height: 150px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);" loading="lazy" onerror="this.style.display='none'">
+                    <img src="{{ url_for('static', filename=_scr) }}" alt="Скриншот" class="max-w-[200px] max-h-[150px] rounded-btn" loading="lazy" onerror="this.style.display='none'">
                 </a>
             </div>
             {% endif %}
             {% if r.description %}
-            <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0 0 0.5rem 0; white-space: pre-wrap;">{{ r.description }}</p>
+            <p class="text-sm text-muted mb-2 whitespace-pre-wrap">{{ r.description }}</p>
             {% endif %}
             {% if can_edit %}
             <div class="report-actions">
-                <span style="font-size: 0.8rem; color: var(--text-muted);">Сменить статус:</span>
-                <button type="button" onclick="updateStatus({{ r.id }}, 'new', this)" class="neo-button ghost btn-sm">New</button>
-                <button type="button" onclick="updateStatus({{ r.id }}, 'in_progress', this)" class="neo-button ghost btn-sm">In progress</button>
-                <button type="button" onclick="updateStatus({{ r.id }}, 'review', this)" class="neo-button ghost btn-sm">Review</button>
-                <button type="button" onclick="updateStatus({{ r.id }}, 'done', this)" class="neo-button ghost btn-sm">Done</button>
+                <span class="text-xs text-muted">Сменить статус:</span>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'new', this)" class="neo-button ghost sm">New</button>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'in_progress', this)" class="neo-button ghost sm">In progress</button>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'review', this)" class="neo-button ghost sm">Review</button>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'done', this)" class="neo-button ghost sm">Done</button>
             </div>
             {% else %}
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Статус меняет только создатель платформы.</p>
+            <p class="text-xs text-muted mt-2">Статус меняет только создатель платформы.</p>
             {% endif %}
         </div>
         {% else %}
-        <div style="text-align: center; padding: 3rem; color: var(--text-muted);">Баг-репортов пока нет. <a href="{{ url_for('qa.bug_report') }}" style="color: var(--accent-1);">Создать</a></div>
+        <div class="text-center p-12 text-muted">Баг-репортов пока нет. <a href="{{ url_for('qa.bug_report') }}" class="text-accent">Создать</a></div>
         {% endfor %}
     </div>
 </div>
-            </main>
-        </div>
-    </div>
-    <script>
-    function updateStatus(taskId, status, btn) {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '...';
-        btn.disabled = true;
+{% endblock %}
 
-        fetch(`/qa/bug-reports/${taskId}/status`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({ status: status })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Ошибка: ' + (data.error || 'Не удалось обновить статус'));
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Ошибка сети');
-        })
-        .finally(() => {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        });
-    }
-    </script>
-</body>
-</html>
+{% block scripts_extra %}
+<script>
+function updateStatus(taskId, status, btn) {
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '...';
+    btn.disabled = true;
+
+    fetch(`/qa/bug-reports/${taskId}/status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ status: status })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || 'Не удалось обновить статус'));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Ошибка сети');
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+</script>
+{% endblock %}

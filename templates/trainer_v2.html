@@ -1,126 +1,140 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Тренажёр v2 · BooStudy</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
-  {% include '_ux_enhancements.html' %}
-  {% if csrf_token %}
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-  {% endif %}
+{% extends 'base.html' %}
+{% set active_page = 'trainer' %}
+{% block title %}Тренажёр v2 · BooStudy{% endblock %}
 
-  <!-- inter font -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+{% block body_class %}{% if zen_mode %}trainer-v2-zen-body{% endif %}{% endblock %}
+{% block body_attrs %}data-cinema-scene="trainer"{% endblock %}
 
-  <!-- codemirror (editor) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+{% block head_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='trainer_v2/trainer_v2.css') }}">
+{% endblock %}
 
-  <!-- easymde (scratchpad markdown) -->
-  <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
-
-  <link rel="stylesheet" href="{{ url_for('static', filename='trainer_v2/trainer_v2.css') }}">
-
-  <script>
-    (function(){
-      try {
-        var v = localStorage.getItem('ui.themeMode');
-        if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-        else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-      } catch(e) {}
-    })();
-  </script>
-</head>
-<body class="{% if zen_mode %}trainer-v2-zen-body{% endif %}" data-cinema-scene="trainer">
-  {% if not zen_mode %}
-  <div class="app-layout">
-    {% set active_page = 'trainer' %}
+{% block body %}
+{% if not zen_mode %}
+<div class="app-layout">
     {% include '_sidebar.html' %}
     <div class="app-main">
-      {% include '_topbar.html' %}
-      <main class="app-content">
-  {% endif %}
+        {% include '_topbar.html' %}
+        <main class="app-content">
+{% endif %}
 
-  <main class="trainer-v2-shell{% if zen_mode %} is-zen{% endif %}">
-    <section class="glass-panel trainer-v2-hero">
-      <div class="trainer-v2-hero-left">
-        <p class="hero-eyebrow">Тренажёр</p>
-        <h1 class="hero-title" style="margin-bottom:.25rem;">Рабочее место</h1>
-        <div class="trainer-v2-subtitle">Ctrl+K — палитра команд</div>
-      </div>
-      <div class="trainer-v2-hero-right">
-        <div class="trainer-v2-pill" id="tv2TaskMeta">—</div>
-      </div>
-    </section>
+<main class="trainer-v2-shell{% if zen_mode %} is-zen{% endif %}">
+    <nav class="breadcrumbs mb-4 flex items-center justify-between px-2">
+        <div class="flex items-center gap-2 text-sm text-text-muted">
+            <a href="{{ url_for('trainer_v2_page') if url_for is defined else '#' }}" class="hover:text-text-primary transition-colors">Тренажёр</a>
+            <span class="opacity-40">/</span>
+            <span id="tv2BreadcrumbTaskNum">—</span>
+            <span class="opacity-40">/</span>
+            <span id="tv2BreadcrumbTaskId" class="text-text-primary font-semibold">—</span>
+        </div>
+        <span class="streak-badge inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill bg-accent/10 text-accent font-bold text-sm"
+              id="tv2StreakBadge">🔥 Стрик: <span id="tv2StreakDays">0</span> дней</span>
+    </nav>
 
     {% if not trainer_token %}
-      <section class="glass-panel" style="padding: 1.25rem;">
-        <div style="font-weight: 900; font-size: 1.05rem;">Тренажёр V2 недоступен</div>
-        <div style="color: var(--text-muted); margin-top: .35rem;">
-          {% if config_error %}{{ config_error }}{% else %}не удалось выдать токен{% endif %}
+    <section class="glass-panel p-5">
+        <div class="font-black text-base">Тренажёр V2 недоступен</div>
+        <div class="text-text-muted mt-1.5">
+            {% if config_error %}{{ config_error }}{% else %}не удалось выдать токен{% endif %}
         </div>
-      </section>
+    </section>
     {% else %}
-      <section class="trainer-v2-root" id="trainerV2Root" data-tv2-theme="auto">
+    <section class="trainer-v2-root" id="trainerV2Root" data-tv2-theme="auto"
+             x-data="{ activeTab: 'solution', showTerminal: false }">
         {% if zen_mode %}
         <div class="trainer-v2-zen-overlay" aria-label="zen controls">
-          <button type="button" class="trainer-v2-zen-exit" id="tv2ZenExitBtn">выход</button>
+            <button type="button" class="trainer-v2-zen-exit" id="tv2ZenExitBtn">выход</button>
         </div>
         {% endif %}
+
         <div class="trainer-v2-topbar">
-          <div class="trainer-v2-topbar-left">
-            <label class="trainer-v2-label" for="tv2TaskType">тип задания</label>
-            <select id="tv2TaskType" class="trainer-v2-select">
-              {% for n in task_numbers %}
-                <option value="{{ n }}">{{ n }}</option>
-              {% endfor %}
-            </select>
-            <button type="button" class="neo-button outline sm" id="tv2StartBtn">начать</button>
-            <button type="button" class="neo-button ghost sm" id="tv2NextBtn" disabled>следующее</button>
-          </div>
-          <div class="trainer-v2-topbar-right">
-            <div class="trainer-v2-streak" id="tv2StreakInfo" title="ударный режим (правильных ответов подряд)">0</div>
-            <div class="trainer-v2-queue" id="tv2QueueInfo" title="очередь фоновых проверок">0</div>
-          </div>
+            <div class="trainer-v2-topbar-left">
+                <label class="trainer-v2-label" for="tv2TaskType">тип задания</label>
+                <select id="tv2TaskType" class="trainer-v2-select">
+                    {% for n in task_numbers %}
+                    <option value="{{ n }}">{{ n }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="neo-button outline sm" id="tv2StartBtn">начать</button>
+                <button type="button" class="neo-button ghost sm" id="tv2NextBtn" disabled>следующее</button>
+            </div>
+            <div class="trainer-v2-topbar-right">
+                <div class="trainer-v2-streak" id="tv2StreakInfo" title="ударный режим (правильных ответов подряд)">0</div>
+                <div class="trainer-v2-queue" id="tv2QueueInfo" title="очередь фоновых проверок">0</div>
+            </div>
         </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+            {# Left: Task condition #}
+            <div class="bg-bg-surface rounded-card-lg shadow-soft p-8">
+                <div id="tv2TaskCondition" class="task-content text-lg leading-relaxed"></div>
+            </div>
+
+            {# Right: Code editor area #}
+            <div class="bg-[#1E1B4B] rounded-card-lg shadow-soft overflow-hidden flex flex-col">
+                <div class="flex gap-1 p-2 bg-black/20">
+                    <button type="button"
+                            class="px-4 py-2 rounded-pill text-sm font-bold transition-colors"
+                            :class="activeTab === 'solution' ? 'bg-accent text-white' : 'text-white/60 hover:text-white/90'"
+                            x-on:click="activeTab = 'solution'">Решение</button>
+                    <button type="button"
+                            class="px-4 py-2 rounded-pill text-sm font-bold transition-colors"
+                            :class="activeTab === 'draft' ? 'bg-accent text-white' : 'text-white/60 hover:text-white/90'"
+                            x-on:click="activeTab = 'draft'">Черновик</button>
+                </div>
+                <div class="p-4 flex-1 min-h-0" id="tv2EditorArea">
+                    <div x-show="activeTab === 'solution'" id="tv2EditorSolution"></div>
+                    <div x-show="activeTab === 'draft'" id="tv2EditorDraft"></div>
+                </div>
+                <div x-show="showTerminal" x-transition
+                     class="border-t border-white/10 p-4 bg-black/30" id="tv2Terminal"></div>
+            </div>
+        </div>
+
+        {# Original dock preserved for JS compatibility #}
         <div id="trainerV2Dock" class="trainer-v2-dock"></div>
         <div class="trainer-v2-toast-area" id="tv2InlineToastArea" aria-live="polite"></div>
-      </section>
+    </section>
+
+    <button type="button"
+            class="fixed bottom-6 right-6 neo-button accent shadow-fab px-6 py-3 text-lg z-50"
+            id="tv2CheckAnswerFab">
+        Проверить ответ
+    </button>
     {% endif %}
-  </main>
+</main>
 
-  {% if not zen_mode %}
-      </main>
+{% if not zen_mode %}
+        </main>
     </div>
-  </div>
-  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
 
-  <script>
+{% block scripts_extra %}
+<script>
     window.__TRAINER_V2__ = {
-      token: {{ trainer_token|tojson }},
-      zenMode: {{ 'true' if zen_mode else 'false' }},
-      passthrough: {{ (passthrough or {})|tojson }},
-      baseApi: '/internal/trainer',
-      currentUserId: {{ (current_user.id if current_user and current_user.is_authenticated else 0) | int }},
-      canViewTheory: {{ 'true' if (current_user and current_user.is_authenticated and has_permission(current_user, 'theory.view')) else 'false' }},
-      canViewSource: {{ 'true' if (current_user and current_user.is_authenticated and (current_user.is_creator() or current_user.role in ['chief_admin', 'admin', 'tutor'])) else 'false' }},
+        token: {{ trainer_token|tojson }},
+        zenMode: {{ 'true' if zen_mode else 'false' }},
+        passthrough: {{ (passthrough or {})|tojson }},
+        baseApi: '/internal/trainer',
+        currentUserId: {{ (current_user.id if current_user and current_user.is_authenticated else 0) | int }},
+        canViewTheory: {{ 'true' if (current_user and current_user.is_authenticated and has_permission(current_user, 'theory.view')) else 'false' }},
+        canViewSource: {{ 'true' if (current_user and current_user.is_authenticated and (current_user.is_creator() or current_user.role in ['chief_admin', 'admin', 'tutor'])) else 'false' }},
     };
-  </script>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
-  <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/diff/5.1.0/diff.min.js"></script>
-  <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
-  <script src="{{ url_for('static', filename='toast.js') }}"></script>
-  <script src="{{ url_for('static', filename='trainer_v2/trainer_v2.js') }}"></script>
-</body>
-</html>
-
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/diff/5.1.0/diff.min.js"></script>
+<script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
+<script src="{{ url_for('static', filename='trainer_v2/trainer_v2.js') }}"></script>
+{% endblock %}

@@ -1,345 +1,332 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ public_display_name }} · Профиль</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% include '_ux_enhancements.html' %}
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .public-profile-wrap { max-width: 1060px; margin: 1.25rem auto 3rem; padding: 0 1rem; }
-        .public-hero { display:flex; gap: 1.25rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-        .public-identity { display:flex; gap: 1.1rem; align-items:center; min-width: 0; }
-        .public-avatar { width: 84px; height: 84px; border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid var(--stroke-1); display:flex; align-items:center; justify-content:center; font-weight: 900; font-size: 1.9rem; color: var(--text-muted); overflow:hidden; }
-        .public-avatar img { width:100%; height:100%; object-fit: cover; object-position: center 22%; }
-        .public-title { min-width:0; }
-        .public-title h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .public-sub { margin-top: .35rem; display:flex; gap:.5rem; flex-wrap: wrap; align-items:center; color: var(--text-muted); }
-        .public-grid { display:grid; grid-template-columns: 1fr 360px; gap: 1.25rem; margin-top: 1.25rem; }
-        @media (max-width: 960px) { .public-grid { grid-template-columns: 1fr; } }
-        .public-bio { white-space: pre-wrap; line-height: 1.6; color: var(--text-primary); }
-        .public-actions { display:flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
+{% extends 'base.html' %}
+{% block title %}{{ public_display_name }} · Профиль{% endblock %}
+
 {% set use_custom_theme = (public_user.id == custom_theme_user_id or (public_user.numeric_id is not none and (public_user.numeric_id|string) == (custom_theme_user_id|string))) %}
-<body class="{% if public_user.is_creator() %}creator-theme-active{% elif use_custom_theme %}custom-theme-active{% endif %}{% if request.args.get('cinema_scene') == '8' %} cinema-profile-view{% endif %}" data-cinema-scene="{{ request.args.get('cinema_scene', '') }}">
+
+{% block head_css %}
+<style>
+    .public-profile-wrap { max-width: 1060px; margin: 1.25rem auto 3rem; padding: 0 1rem; }
+    .public-hero { display:flex; gap: 1.25rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .public-identity { display:flex; gap: 1.1rem; align-items:center; min-width: 0; }
+    .public-avatar { width: 84px; height: 84px; border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid var(--stroke-1); display:flex; align-items:center; justify-content:center; font-weight: 900; font-size: 1.9rem; color: var(--text-muted); overflow:hidden; }
+    .public-avatar img { width:100%; height:100%; object-fit: cover; object-position: center 22%; }
+    .public-title { min-width:0; }
+    .public-title h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .public-sub { margin-top: .35rem; display:flex; gap:.5rem; flex-wrap: wrap; align-items:center; color: var(--text-muted); }
+    .public-grid { display:grid; grid-template-columns: 1fr 360px; gap: 1.25rem; margin-top: 1.25rem; }
+    @media (max-width: 960px) { .public-grid { grid-template-columns: 1fr; } }
+    .public-bio { white-space: pre-wrap; line-height: 1.6; color: var(--text-primary); }
+    .public-actions { display:flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; }
+    .profile-content-grid {
+        grid-template-columns: minmax(420px, 1.05fr) minmax(380px, 0.95fr);
+        gap: 1.25rem; align-items: start; min-width: 0;
+    }
+    @media (max-width: 1040px) { .profile-content-grid { grid-template-columns: 1fr; } }
     {% if request.args.get('cinema_scene') == '8' %}
-    <style>
-        .cinema-profile-view .app-sidebar { display: none !important; }
-        .cinema-profile-view .app-main { margin-left: 0 !important; }
-        .cinema-profile-view .app-content { padding-top: 0 !important; }
-        .cinema-profile-view .profile-container { margin-top: 0 !important; }
-    </style>
+    .cinema-profile-view .app-sidebar { display: none !important; }
+    .cinema-profile-view .app-main { margin-left: 0 !important; }
+    .cinema-profile-view .app-content { padding-top: 0 !important; }
+    .cinema-profile-view .profile-container { margin-top: 0 !important; }
     {% endif %}
+</style>
+{% endblock %}
+
+{% block body_class %}{% if public_user.is_creator() %}creator-theme-active{% elif use_custom_theme %}custom-theme-active{% endif %}{% if request.args.get('cinema_scene') == '8' %} cinema-profile-view{% endif %}{% endblock %}
+
+{% block body_attrs %}data-cinema-scene="{{ request.args.get('cinema_scene', '') }}"{% endblock %}
+
+{% set active_page = None %}
+
+{% block body %}
+{% if public_user.is_creator() %}
+<div class="creator-snowflakes" aria-hidden="true">
+    {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
+</div>
+{% elif use_custom_theme %}
+<div class="custom-theme-stars" aria-hidden="true">
+    {% for i in range(36) %}<span class="star">★</span>{% endfor %}
+</div>
+{% endif %}
+{{ super() }}
+{% endblock %}
+
+{% block content %}
     {% if public_user.is_creator() %}
-    <div class="creator-snowflakes" aria-hidden="true">
-        {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
+    {% set _ov = demo_profile_override %}
+    {% set _username = _ov.username if _ov else public_user.username %}
+    {% set _about_me = _ov.about_me if _ov else public_user.about_me %}
+    {% set _custom_status = _ov.custom_status if _ov else public_user.custom_status %}
+    {% set _telegram_link = _ov.telegram_link if _ov else public_user.telegram_link %}
+    {% set _created_at = _ov.created_at_display if _ov else (public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—') %}
+    {% set _avatar_url = _ov.avatar_url if _ov else public_user.avatar_url %}
+    <div class="profile-container theme-creator">
+        <div class="profile-card">
+            {% set creator_cover = creator_cover_url|default(none) %}
+            <div class="profile-cover {% if creator_cover %}has-cover{% endif %}" {% if creator_cover %}style="background-image: url('{{ creator_cover }}');"{% endif %}></div>
+            <div class="profile-header">
+                <div class="profile-identity">
+                    <div class="profile-avatar-wrapper {% if _avatar_url %}profile-avatar-clickable{% endif %}" {% if _avatar_url %}data-avatar-url="{{ _avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
+                        <div class="profile-avatar-big">
+                            {% if _avatar_url %}
+                                <img src="{{ _avatar_url }}" alt="Avatar">
+                            {% else %}
+                                {{ public_display_name[0]|upper }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="profile-info">
+                        <div class="profile-role-badge">{{ public_user.get_primary_role_display() }}</div>
+                        <h1>{{ public_display_name }}</h1>
+                        <div class="public-sub" style="margin-top: 0.35rem;">
+                            <span class="status-badge status-info" style="opacity:.75;">{{ _username }}</span>
+                            {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
+                            {% if _telegram_link %}<span class="status-badge" style="opacity:.8;">{{ _telegram_link }}</span>{% endif %}
+                            {% if _custom_status %}
+                            <span class="status-badge" style="opacity:.9;">{{ _custom_status }}</span>
+                            {% endif %}
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <a class="neo-button outline" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 0 2.5rem 2.5rem;">
+                <div class="profile-content-grid">
+                    <section class="profile-section">
+                        <h3>О пользователе</h3>
+                        {% if _about_me %}
+                            <div class="public-bio">{{ _about_me }}</div>
+                        {% else %}
+                            <div style="color: var(--text-muted);">Пока нет описания.</div>
+                        {% endif %}
+                    </section>
+                    <aside class="profile-section">
+                        <h3>Сводка</h3>
+                        <div class="data-row">
+                            <span class="data-label">Роль</span>
+                            <span class="data-value">{{ public_user.get_roles_display() | join(', ') }}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Логин</span>
+                            <span class="data-value">{{ _username }}</span>
+                        </div>
+                        {% if public_numeric_id %}
+                        <div class="data-row">
+                            <span class="data-label">ID</span>
+                            <span class="data-value">#{{ public_numeric_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if _telegram_link %}
+                        <div class="data-row">
+                            <span class="data-label">Telegram</span>
+                            <span class="data-value">{{ _telegram_link }}</span>
+                        </div>
+                        {% endif %}
+                        {% if _custom_status %}
+                        <div class="data-row">
+                            <span class="data-label">Статус</span>
+                            <span class="data-value">{{ _custom_status }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="data-row">
+                            <span class="data-label">В системе с</span>
+                            <span class="data-value">{{ _created_at }}</span>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
     </div>
     {% elif use_custom_theme %}
-    <div class="custom-theme-stars" aria-hidden="true">
-        {% for i in range(36) %}<span class="star">★</span>{% endfor %}
-    </div>
-    {% endif %}
-    <div class="app-layout">
-        {% set active_page = None %}
-        {% if request.args.get('cinema_scene') != '8' %}{% include '_sidebar.html' %}{% endif %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
-
-        {% if public_user.is_creator() %}
-        {% set _ov = demo_profile_override %}
-        {% set _username = _ov.username if _ov else public_user.username %}
-        {% set _about_me = _ov.about_me if _ov else public_user.about_me %}
-        {% set _custom_status = _ov.custom_status if _ov else public_user.custom_status %}
-        {% set _telegram_link = _ov.telegram_link if _ov else public_user.telegram_link %}
-        {% set _created_at = _ov.created_at_display if _ov else (public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—') %}
-        {% set _avatar_url = _ov.avatar_url if _ov else public_user.avatar_url %}
-        <main class="profile-container theme-creator">
-            <div class="profile-card">
-                {% set creator_cover = creator_cover_url|default(none) %}
-                <div class="profile-cover {% if creator_cover %}has-cover{% endif %}" {% if creator_cover %}style="background-image: url('{{ creator_cover }}');"{% endif %}></div>
-                <div class="profile-header">
-                    <div class="profile-identity">
-                        <div class="profile-avatar-wrapper {% if _avatar_url %}profile-avatar-clickable{% endif %}" {% if _avatar_url %}data-avatar-url="{{ _avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
-                            <div class="profile-avatar-big">
-                                {% if _avatar_url %}
-                                    <img src="{{ _avatar_url }}" alt="Avatar">
-                                {% else %}
-                                    {{ public_display_name[0]|upper }}
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="profile-info">
-                            <div class="profile-role-badge">{{ public_user.get_primary_role_display() }}</div>
-                            <h1>{{ public_display_name }}</h1>
-                            <div class="public-sub" style="margin-top: 0.35rem;">
-                                <span class="status-badge status-info" style="opacity:.75;">{{ _username }}</span>
-                                {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
-                                {% if _telegram_link %}<span class="status-badge" style="opacity:.8;">{{ _telegram_link }}</span>{% endif %}
-                                {% if _custom_status %}
-                                <span class="status-badge" style="opacity:.9;">{{ _custom_status }}</span>
-                                {% endif %}
-                            </div>
-                            <div style="margin-top: 1rem;">
-                                <a class="neo-button outline" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div style="padding: 0 2.5rem 2.5rem;">
-                    <div class="profile-content-grid">
-                        <section class="profile-section">
-                            <h3>О пользователе</h3>
-                            {% if _about_me %}
-                                <div class="public-bio">{{ _about_me }}</div>
-                            {% else %}
-                                <div style="color: var(--text-muted);">Пока нет описания.</div>
-                            {% endif %}
-                        </section>
-                        <aside class="profile-section">
-                            <h3>Сводка</h3>
-                            <div class="data-row">
-                                <span class="data-label">Роль</span>
-                                <span class="data-value">{{ public_user.get_roles_display() | join(', ') }}</span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-label">Логин</span>
-                                <span class="data-value">{{ _username }}</span>
-                            </div>
-                            {% if public_numeric_id %}
-                            <div class="data-row">
-                                <span class="data-label">ID</span>
-                                <span class="data-value">#{{ public_numeric_id }}</span>
-                            </div>
-                            {% endif %}
-                            {% if _telegram_link %}
-                            <div class="data-row">
-                                <span class="data-label">Telegram</span>
-                                <span class="data-value">{{ _telegram_link }}</span>
-                            </div>
-                            {% endif %}
-                            {% if _custom_status %}
-                            <div class="data-row">
-                                <span class="data-label">Статус</span>
-                                <span class="data-value">{{ _custom_status }}</span>
-                            </div>
-                            {% endif %}
-                            <div class="data-row">
-                                <span class="data-label">В системе с</span>
-                                <span class="data-value">{{ _created_at }}</span>
-                            </div>
-                        </aside>
-                    </div>
-                </div>
-            </div>
-        </main>
-        {% elif use_custom_theme %}
-        <main class="profile-container theme-custom-999">
-            <div class="profile-card">
-                {% set creator_cover = creator_cover_url|default(none) %}
-                <div class="profile-cover {% if creator_cover %}has-cover{% endif %}" {% if creator_cover %}style="background-image: url('{{ creator_cover }}');"{% endif %}></div>
-                <div class="profile-header">
-                    <div class="profile-identity">
-                        <div class="profile-avatar-wrapper {% if public_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if public_user.avatar_url %}data-avatar-url="{{ public_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
-                            <div class="profile-avatar-big">
-                                {% if public_user.avatar_url %}
-                                    <img src="{{ public_user.avatar_url }}" alt="Avatar">
-                                {% else %}
-                                    {{ public_display_name[0]|upper }}
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="profile-info">
-                            <div class="profile-role-badge">{{ public_user.get_primary_role_display() }}</div>
-                            <h1>{{ public_display_name }}</h1>
-                            <div class="public-sub" style="margin-top: 0.35rem;">
-                                <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
-                                {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
-                                {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
-                                {% if public_user.custom_status %}
-                                <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
-                                {% endif %}
-                            </div>
-                            <div style="margin-top: 1rem;">
-                                <a class="neo-button outline" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div style="padding: 0 2.5rem 2.5rem;">
-                    <div class="profile-content-grid">
-                        <section class="profile-section">
-                            <h3>О пользователе</h3>
-                            {% if public_user.about_me %}
-                                <div class="public-bio">{{ public_user.about_me }}</div>
-                            {% else %}
-                                <div style="color: var(--text-muted);">Пока нет описания.</div>
-                            {% endif %}
-                        </section>
-                        <aside class="profile-section">
-                            <h3>Сводка</h3>
-                            <div class="data-row">
-                                <span class="data-label">Роль</span>
-                                <span class="data-value">{{ public_user.get_roles_display() | join(', ') }}</span>
-                            </div>
-                            <div class="data-row">
-                                <span class="data-label">Логин</span>
-                                <span class="data-value">{{ public_user.username }}</span>
-                            </div>
-                            {% if public_numeric_id %}
-                            <div class="data-row">
-                                <span class="data-label">ID</span>
-                                <span class="data-value">#{{ public_numeric_id }}</span>
-                            </div>
-                            {% endif %}
-                            {% if public_user.telegram_link %}
-                            <div class="data-row">
-                                <span class="data-label">Telegram</span>
-                                <span class="data-value">{{ public_user.telegram_link }}</span>
-                            </div>
-                            {% endif %}
-                            {% if public_user.custom_status %}
-                            <div class="data-row">
-                                <span class="data-label">Статус</span>
-                                <span class="data-value">{{ public_user.custom_status }}</span>
-                            </div>
-                            {% endif %}
-                            <div class="data-row">
-                                <span class="data-label">В системе с</span>
-                                <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>
-                            </div>
-                        </aside>
-                    </div>
-                </div>
-            </div>
-        </main>
-        {% else %}
-        
-        <main class="public-profile-wrap {% if public_user.is_admin() %}theme-admin{% elif public_user.is_tutor() %}theme-tutor{% elif public_user.is_content_maker() %}theme-tutor{% elif public_user.is_parent() %}theme-parent{% elif public_user.is_student() %}theme-student{% endif %}">
-            <section class="glass-panel">
-                <div class="public-hero">
-                    <div class="public-identity">
-                        <div class="public-avatar {% if public_user.avatar_url %}avatar-clickable{% endif %}" {% if public_user.avatar_url %}data-avatar-url="{{ public_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
+    <div class="profile-container theme-custom-999">
+        <div class="profile-card">
+            {% set creator_cover = creator_cover_url|default(none) %}
+            <div class="profile-cover {% if creator_cover %}has-cover{% endif %}" {% if creator_cover %}style="background-image: url('{{ creator_cover }}');"{% endif %}></div>
+            <div class="profile-header">
+                <div class="profile-identity">
+                    <div class="profile-avatar-wrapper {% if public_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if public_user.avatar_url %}data-avatar-url="{{ public_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
+                        <div class="profile-avatar-big">
                             {% if public_user.avatar_url %}
                                 <img src="{{ public_user.avatar_url }}" alt="Avatar">
                             {% else %}
                                 {{ public_display_name[0]|upper }}
                             {% endif %}
                         </div>
-                        <div class="public-title">
-                            <div class="hero-eyebrow">профиль</div>
-                            <h1 title="{{ public_display_name }}">{{ public_display_name }}</h1>
-                            <div class="public-sub">
-                                <span class="status-badge status-info" style="opacity:.9;">{{ public_user.get_primary_role_display() }}</span>
-                                <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
-                                {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
-                                {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
-                                {% if public_user.custom_status %}
-                                <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
-                                {% endif %}
-                            </div>
+                    </div>
+                    <div class="profile-info">
+                        <div class="profile-role-badge">{{ public_user.get_primary_role_display() }}</div>
+                        <h1>{{ public_display_name }}</h1>
+                        <div class="public-sub" style="margin-top: 0.35rem;">
+                            <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
+                            {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
+                            {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
+                            {% if public_user.custom_status %}
+                            <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
+                            {% endif %}
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <a class="neo-button outline" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
                         </div>
                     </div>
-                    <div class="public-actions">
-                        <a class="neo-button outline" href="{{ url_for('auth.user_profile') }}" style="text-decoration:none;">Мой профиль</a>
-                        <a class="neo-button ghost" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
+                </div>
+            </div>
+            <div style="padding: 0 2.5rem 2.5rem;">
+                <div class="profile-content-grid">
+                    <section class="profile-section">
+                        <h3>О пользователе</h3>
+                        {% if public_user.about_me %}
+                            <div class="public-bio">{{ public_user.about_me }}</div>
+                        {% else %}
+                            <div style="color: var(--text-muted);">Пока нет описания.</div>
+                        {% endif %}
+                    </section>
+                    <aside class="profile-section">
+                        <h3>Сводка</h3>
+                        <div class="data-row">
+                            <span class="data-label">Роль</span>
+                            <span class="data-value">{{ public_user.get_roles_display() | join(', ') }}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Логин</span>
+                            <span class="data-value">{{ public_user.username }}</span>
+                        </div>
+                        {% if public_numeric_id %}
+                        <div class="data-row">
+                            <span class="data-label">ID</span>
+                            <span class="data-value">#{{ public_numeric_id }}</span>
+                        </div>
+                        {% endif %}
+                        {% if public_user.telegram_link %}
+                        <div class="data-row">
+                            <span class="data-label">Telegram</span>
+                            <span class="data-value">{{ public_user.telegram_link }}</span>
+                        </div>
+                        {% endif %}
+                        {% if public_user.custom_status %}
+                        <div class="data-row">
+                            <span class="data-label">Статус</span>
+                            <span class="data-value">{{ public_user.custom_status }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="data-row">
+                            <span class="data-label">В системе с</span>
+                            <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="public-profile-wrap {% if public_user.is_admin() %}theme-admin{% elif public_user.is_tutor() %}theme-tutor{% elif public_user.is_content_maker() %}theme-tutor{% elif public_user.is_parent() %}theme-parent{% elif public_user.is_student() %}theme-student{% endif %}">
+        <section class="glass-panel">
+            <div class="public-hero">
+                <div class="public-identity">
+                    <div class="public-avatar {% if public_user.avatar_url %}avatar-clickable{% endif %}" {% if public_user.avatar_url %}data-avatar-url="{{ public_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
+                        {% if public_user.avatar_url %}
+                            <img src="{{ public_user.avatar_url }}" alt="Avatar">
+                        {% else %}
+                            {{ public_display_name[0]|upper }}
+                        {% endif %}
+                    </div>
+                    <div class="public-title">
+                        <div class="hero-eyebrow">профиль</div>
+                        <h1 title="{{ public_display_name }}">{{ public_display_name }}</h1>
+                        <div class="public-sub">
+                            <span class="status-badge status-info" style="opacity:.9;">{{ public_user.get_primary_role_display() }}</span>
+                            <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
+                            {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
+                            {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
+                            {% if public_user.custom_status %}
+                            <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-            </section>
-            <div class="public-grid">
-                <section class="profile-section">
-                    <h3>О пользователе</h3>
-                    {% if public_user.about_me %}
-                        <div class="public-bio">{{ public_user.about_me }}</div>
-                    {% else %}
-                        <div style="color: var(--text-muted);">Пока нет описания.</div>
-                    {% endif %}
-                </section>
-                <aside class="profile-section">
-                    <h3>Сводка</h3>
-                    <div class="data-row">
-                        <span class="data-label">Роль</span>
-                        <span class="data-value" style="font-family: 'JetBrains Mono', monospace;">{{ public_user.get_roles_display() | join(', ') }}</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Логин</span>
-                        <span class="data-value">{{ public_user.username }}</span>
-                    </div>
-                    {% if public_numeric_id %}
-                    <div class="data-row">
-                        <span class="data-label">ID</span>
-                        <span class="data-value">#{{ public_numeric_id }}</span>
-                    </div>
-                    {% endif %}
-                    {% if public_user.telegram_link %}
-                    <div class="data-row">
-                        <span class="data-label">Telegram</span>
-                        <span class="data-value">{{ public_user.telegram_link }}</span>
-                    </div>
-                    {% endif %}
-                    {% if public_user.custom_status %}
-                    <div class="data-row">
-                        <span class="data-label">Статус</span>
-                        <span class="data-value">{{ public_user.custom_status }}</span>
-                    </div>
-                    {% endif %}
-                    <div class="data-row">
-                        <span class="data-label">В системе с</span>
-                        <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>
-                    </div>
-                </aside>
+                <div class="public-actions">
+                    <a class="neo-button outline" href="{{ url_for('auth.user_profile') }}" style="text-decoration:none;">Мой профиль</a>
+                    <a class="neo-button ghost" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
+                </div>
             </div>
-        </main>
-        {% endif %}
+        </section>
+        <div class="public-grid">
+            <section class="profile-section">
+                <h3>О пользователе</h3>
+                {% if public_user.about_me %}
+                    <div class="public-bio">{{ public_user.about_me }}</div>
+                {% else %}
+                    <div style="color: var(--text-muted);">Пока нет описания.</div>
+                {% endif %}
+            </section>
+            <aside class="profile-section">
+                <h3>Сводка</h3>
+                <div class="data-row">
+                    <span class="data-label">Роль</span>
+                    <span class="data-value" style="font-family: 'JetBrains Mono', monospace;">{{ public_user.get_roles_display() | join(', ') }}</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Логин</span>
+                    <span class="data-value">{{ public_user.username }}</span>
+                </div>
+                {% if public_numeric_id %}
+                <div class="data-row">
+                    <span class="data-label">ID</span>
+                    <span class="data-value">#{{ public_numeric_id }}</span>
+                </div>
+                {% endif %}
+                {% if public_user.telegram_link %}
+                <div class="data-row">
+                    <span class="data-label">Telegram</span>
+                    <span class="data-value">{{ public_user.telegram_link }}</span>
+                </div>
+                {% endif %}
+                {% if public_user.custom_status %}
+                <div class="data-row">
+                    <span class="data-label">Статус</span>
+                    <span class="data-value">{{ public_user.custom_status }}</span>
+                </div>
+                {% endif %}
+                <div class="data-row">
+                    <span class="data-label">В системе с</span>
+                    <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>
+                </div>
+            </aside>
+        </div>
     </div>
+    {% endif %}
 
     <div class="modal-overlay avatar-modal-overlay" id="avatarModal" onclick="closeAvatarModal(event)" style="z-index: 10001;">
         <div class="modal modal-avatar-wrap" onclick="event.stopPropagation()">
             <img id="avatarModalImg" src="" alt="Аватар в полном размере">
         </div>
-    </main>
     </div>
-</div>
+{% endblock %}
 
-    <script>
-        function openAvatarModal(url) {
-            var el = document.getElementById('avatarModalImg');
-            var overlay = document.getElementById('avatarModal');
-            if (el && overlay && url) { el.src = url; overlay.classList.add('active'); document.body.style.overflow = 'hidden'; }
+{% block scripts_extra %}
+<script>
+    function openAvatarModal(url) {
+        var el = document.getElementById('avatarModalImg');
+        var overlay = document.getElementById('avatarModal');
+        if (el && overlay && url) { el.src = url; overlay.classList.add('active'); document.body.style.overflow = 'hidden'; }
+    }
+    function openAvatarModalFromEl(el) {
+        var url = el && el.getAttribute && el.getAttribute('data-avatar-url');
+        if (url) openAvatarModal(url);
+    }
+    function closeAvatarModal(event) {
+        if (!event) return;
+        var t = event.target;
+        if (t.id === 'avatarModal' || t.classList.contains('avatar-modal-overlay')) {
+            document.getElementById('avatarModal').classList.remove('active');
+            document.body.style.overflow = '';
         }
-        function openAvatarModalFromEl(el) {
-            var url = el && el.getAttribute && el.getAttribute('data-avatar-url');
-            if (url) openAvatarModal(url);
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('avatarModal').classList.contains('active')) {
+            document.getElementById('avatarModal').classList.remove('active');
+            document.body.style.overflow = '';
         }
-        function closeAvatarModal(event) {
-            if (!event) return;
-            var t = event.target;
-            if (t.id === 'avatarModal' || t.classList.contains('avatar-modal-overlay')) {
-                document.getElementById('avatarModal').classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        }
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && document.getElementById('avatarModal').classList.contains('active')) {
-                document.getElementById('avatarModal').classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        });
-    </script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}

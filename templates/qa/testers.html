@@ -1,20 +1,15 @@
+{% extends 'base.html' %}
 {% from '_ui_icon.html' import ui_icon %}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Управление тестерами · QA</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token() }}">{% endif %}
-    <style>
-    .qa-testers-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .qa-testers-title { font-family: 'MonaspaceNeon', sans-serif; font-size: 1.8rem; color: var(--text-primary); }
-    .glass-panel { background: var(--surface-1, #1e1e2f); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); padding: 1.25rem; margin-bottom: 1rem; }
-    .tester-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 8px; }
+{% set active_page = 'qa_board' %}
+
+{% block title %}Управление тестерами · QA{% endblock %}
+
+{% block head_css %}
+<style>
+    .glass-panel { background: var(--surface-1); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; box-shadow: var(--shadow-card); }
+    .tester-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); margin-bottom: 8px; }
     .tester-row:hover { background: rgba(255,255,255,0.05); }
-    .tester-accordion { margin-top: 8px; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; }
+    .tester-accordion { margin-top: 8px; border-radius: var(--radius-md); overflow: hidden; }
     .tester-accordion-header { padding: 10px 14px; cursor: pointer; font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.15); transition: background 0.2s; }
     .tester-accordion-header:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
     .tester-accordion-body { padding: 14px; background: rgba(0,0,0,0.2); display: none; }
@@ -26,46 +21,38 @@
     .perm-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
     .perm-item input { accent-color: var(--accent-1); }
     .create-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 1.5rem; }
-    .create-form input { padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: 8px; color: var(--text-primary); min-width: 160px; }
-    .save-perms-btn { margin-top: 12px; }
-    </style>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'qa_board' %}
-        {% include '_sidebar.html' %}
-        <div class="app-main">
-            {% include '_topbar.html' %}
-            <main class="app-content">
-                {% include '_ux_enhancements.html' %}
+    .create-form input { padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); color: var(--text-primary); min-width: 160px; }
+</style>
+{% endblock %}
 
+{% block content %}
 <div class="container-fluid mt-4 px-4">
-    <div class="qa-testers-header">
+    <div class="flex justify-between items-center mb-8 pb-4">
         <div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px;">QA</div>
-            <h1 class="qa-testers-title">Управление тестерами</h1>
+            <div class="text-xs text-muted uppercase tracking-widest">QA</div>
+            <h1 class="text-2xl font-bold">Управление тестерами</h1>
         </div>
         <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Канбан</a>
     </div>
 
     <div class="glass-panel">
-        <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--text-primary);">Создать тестировщика</h3>
+        <h3 class="mb-4 text-base font-semibold">Создать тестировщика</h3>
         <form action="{{ url_for('qa.testers_create') }}" method="POST" class="create-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="username" placeholder="Логин" required>
             <input type="password" name="password" placeholder="Пароль" required>
             <button type="submit" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать</button>
         </form>
-        <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Если пользователь с таким логином уже есть — будет обновлён пароль и роль «тестировщик».</p>
+        <p class="text-xs text-muted">Если пользователь с таким логином уже есть — будет обновлён пароль и роль «тестировщик».</p>
     </div>
 
     <div class="glass-panel">
-        <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--text-primary);">Список тестировщиков и права</h3>
+        <h3 class="mb-4 text-base font-semibold">Список тестировщиков и права</h3>
         {% for u in testers_list %}
         <div class="tester-row">
             <div>
                 <strong>{{ u.username }}</strong>
-                <span style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">{{ u.role }} · ID {{ u.id }}</span>
+                <span class="text-xs text-muted ml-2">{{ u.role }} · ID {{ u.id }}</span>
             </div>
             <button type="button" class="neo-button ghost sm" onclick="this.closest('.tester-row').nextElementSibling.classList.toggle('open')">
                 Права
@@ -92,15 +79,17 @@
                     </div>
                 </div>
                 {% endfor %}
-                <button type="button" class="neo-button accent save-perms-btn" onclick="savePermissions({{ u.id }}, this)">Сохранить права</button>
+                <button type="button" class="neo-button accent mt-3" onclick="savePermissions({{ u.id }}, this)">Сохранить права</button>
             </div>
         </div>
         {% else %}
-        <p style="color: var(--text-muted);">Тестировщиков пока нет. Создайте выше.</p>
+        <p class="text-muted">Тестировщиков пока нет. Создайте выше.</p>
         {% endfor %}
     </div>
 </div>
+{% endblock %}
 
+{% block scripts_extra %}
 <script>
 function savePermissions(userId, btn) {
     var block = btn.closest('.tester-accordion-body');
@@ -133,8 +122,4 @@ function savePermissions(userId, btn) {
     .finally(function() { btn.disabled = false; btn.textContent = originalText; });
 }
 </script>
-            </main>
-        </div>
-    </div>
-</body>
-</html>
+{% endblock %}

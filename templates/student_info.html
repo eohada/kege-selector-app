@@ -1,83 +1,45 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ student.name }} · Профиль ученика</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    {% include '_ux_enhancements.html' %}
-    <style>
-        .info-card { width: 95%; max-width: 1100px; margin-left: auto; margin-right: auto; }
-        .data-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px solid var(--stroke-1); }
-        .data-row:last-child { border-bottom: none; }
-        .data-label { color: var(--text-muted); font-size: 0.9rem; flex-shrink: 0; }
-        .data-value { text-align: right; color: var(--text-primary); word-break: break-word; }
-        .info-section { margin-bottom: 1.5rem; }
-        .info-section h3 { margin: 0 0 0.75rem 0; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
-        .profile-avatar-big { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.6rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); color: #fff; overflow: hidden; }
-        .profile-avatar-big img { width: 100%; height: 100%; object-fit: cover; }
-        .info-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
-            z-index: 9999;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-overlay.active { display: flex; }
-        .modal-box {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-2);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            max-width: 420px;
-            width: 90%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-        }
-        .modal-box h3 { margin: 0 0 0.75rem 0; font-size: 1.15rem; }
-        .modal-box p { color: var(--text-muted); margin: 0 0 1.5rem 0; line-height: 1.5; }
-        .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
-        .tag--demo {
-            border-color: rgba(251, 191, 36, 0.45);
-            color: rgba(251, 191, 36, 0.95);
-            background: rgba(251, 191, 36, 0.08);
-            display: inline-flex;
-            align-items: center;
-            gap: .35rem;
-            padding: .3rem .55rem;
-            border-radius: 999px;
-            font-size: .85rem;
-        }
-        @media (max-width: 768px) {
-            .data-row { flex-direction: column; gap: 0.25rem; text-align: left; }
-            .data-value { text-align: left; }
-        }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'students' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
+{% block title %}{{ student.name }} · Профиль ученика · BooStudy{% endblock %}
+{% set active_page = 'students' %}
+
+{% block head_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    .info-card { width: 95%; max-width: 1100px; margin-left: auto; margin-right: auto; }
+    .data-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px solid var(--color-stroke); }
+    .data-row:last-child { border-bottom: none; }
+    .data-label { color: var(--color-text-muted); font-size: 0.9rem; flex-shrink: 0; }
+    .data-value { text-align: right; color: var(--color-text-primary); word-break: break-word; }
+    .info-section { margin-bottom: 1.5rem; }
+    .info-section h3 { margin: 0 0 0.75rem 0; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+    .profile-avatar-big { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.6rem; font-weight: 700; background: linear-gradient(135deg, #7B5CFF, #20C997); color: #fff; overflow: hidden; }
+    .profile-avatar-big img { width: 100%; height: 100%; object-fit: cover; }
+    .info-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
+    .modal-overlay {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+        background: var(--color-bg-surface); border: 1px solid var(--color-stroke-strong); border-radius: 20px; padding: 2rem; max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal-box h3 { margin: 0 0 0.75rem 0; font-size: 1.15rem; }
+    .modal-box p { color: var(--color-text-muted); margin: 0 0 1.5rem 0; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+    .tag--demo {
+        border-color: rgba(251, 191, 36, 0.45); color: rgba(251, 191, 36, 0.95); background: rgba(251, 191, 36, 0.08);
+        display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .55rem; border-radius: 999px; font-size: .85rem;
+    }
+    @media (max-width: 768px) {
+        .data-row { flex-direction: column; gap: 0.25rem; text-align: left; }
+        .data-value { text-align: left; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
         {% include '_mobile_menu.html' %}
 
-        <div class="profile-card theme-student info-card" style="margin-bottom: 2rem;">
+        <div class="profile-card theme-student info-card mb-8">
             <div class="profile-cover"></div>
             <div class="profile-header">
                 <div class="profile-identity">
@@ -90,38 +52,38 @@
                             {% endif %}
                         </div>
                     </div>
-                    <div class="profile-info" style="min-width: 0;">
+                    <div class="profile-info min-w-0">
                         <div class="profile-role-badge">Профиль ученика</div>
-                        <h1 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ student.name }}</h1>
-                        <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top:.35rem;">
+                        <h1 class="truncate">{{ student.name }}</h1>
+                        <div class="flex gap-2 flex-wrap mt-1">
                             {% if student_user and student_user.is_demo_user %}
                             <span class="tag--demo">Демо</span>
                             {% endif %}
-                            {% if student.school_class %}<span class="status-badge status-info" style="opacity:.85;">{{ student.school_class }} класс</span>{% endif %}
-                            {% if student.category %}<span class="status-badge status-info" style="opacity:.85;">{{ student.category }}</span>{% endif %}
-                            {% if student.platform_id %}<span class="status-badge status-info" style="opacity:.75;">ID: {{ student.platform_id }}</span>{% endif %}
+                            {% if student.school_class %}<span class="status-badge status-info opacity-80">{{ student.school_class }} класс</span>{% endif %}
+                            {% if student.category %}<span class="status-badge status-info opacity-80">{{ student.category }}</span>{% endif %}
+                            {% if student.platform_id %}<span class="status-badge status-info opacity-75">ID: {{ student.platform_id }}</span>{% endif %}
                         </div>
                     </div>
                 </div>
                 <div class="hero-actions">
-                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button accent" style="text-decoration:none;">
+                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button accent">
                         <i class="fas fa-door-open ui-icon ui-icon--sm"></i> Комната ученика
                     </a>
                     {% if not current_user.is_student() and not current_user.is_parent() %}
-                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
+                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button outline">
                         <i class="fas fa-pen ui-icon ui-icon--sm"></i> Редактировать
                     </a>
                     {% endif %}
-                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
+                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline">
                         <i class="fas fa-chart-line ui-icon ui-icon--sm"></i> Статистика
                     </a>
-                    <a href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}" class="neo-button ghost" style="text-decoration:none;">
+                    <a href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}" class="neo-button ghost">
                         <i class="fas fa-route ui-icon ui-icon--sm"></i> Траектория
                     </a>
                     {% if current_user.is_creator() or current_user.is_admin() %}
-                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="display:inline;">
+                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" class="inline">
                         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                        <button type="submit" class="neo-button ghost" style="color: var(--text-muted);">
+                        <button type="submit" class="neo-button ghost text-text-muted">
                             <i class="fas fa-archive ui-icon ui-icon--sm"></i> {% if student.is_active %}В архив{% else %}Восстановить{% endif %}
                         </button>
                     </form>
@@ -135,7 +97,7 @@
             <div style="padding: 0 2rem 2rem;">
                 <div class="info-section">
                     <h3>Данные</h3>
-                    <div class="glass-panel" style="padding: 1rem;">
+                    <div class="glass-panel p-4">
                         <div class="data-row">
                             <span class="data-label">ID на платформе</span>
                             <span class="data-value">{% if student.platform_id %}{{ student.platform_id }}{% else %}—{% endif %}</span>
@@ -159,13 +121,13 @@
                         {% if student.description %}
                         <div class="data-row">
                             <span class="data-label">Описание</span>
-                            <span class="data-value" style="white-space: pre-wrap;">{{ student.description }}</span>
+                            <span class="data-value whitespace-pre-wrap">{{ student.description }}</span>
                         </div>
                         {% endif %}
                         {% if (not current_user.is_student() and not current_user.is_parent()) and student.notes %}
                         <div class="data-row">
                             <span class="data-label">Заметки</span>
-                            <span class="data-value" style="white-space: pre-wrap;">{{ student.notes }}</span>
+                            <span class="data-value whitespace-pre-wrap">{{ student.notes }}</span>
                         </div>
                         {% endif %}
                     </div>
@@ -173,7 +135,7 @@
 
                 <div class="info-section">
                     <h3>Контакты</h3>
-                    <div class="glass-panel" style="padding: 1rem;">
+                    <div class="glass-panel p-4">
                         <div class="data-row">
                             <span class="data-label">Телефон</span>
                             <span class="data-value">{% if student.phone %}{{ student.phone }}{% else %}—{% endif %}</span>
@@ -188,17 +150,17 @@
                 {% if tutors_list %}
                 <div class="info-section">
                     <h3>Преподаватель{% if tutors_list|length > 1 %}и{% endif %}</h3>
-                    <div class="glass-panel" style="padding: 1rem;">
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                    <div class="glass-panel p-4">
+                        <div class="flex flex-wrap gap-3">
                             {% for tutor in tutors_list %}
-                            <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--stroke-1); text-decoration: none; color: inherit;">
-                                <span style="width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;">
-                                    {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="" style="width:100%; height:100%; object-fit:cover;">{% else %}{{ tutor.username[0]|upper }}{% endif %}
+                            <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="inline-flex items-center gap-2 px-3 py-2 bg-bg-surface-alt rounded-btn shadow-card no-underline text-inherit">
+                                <span class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 bg-bg-surface-alt flex items-center justify-center font-bold text-sm">
+                                    {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="" class="w-full h-full object-cover">{% else %}{{ tutor.username[0]|upper }}{% endif %}
                                 </span>
-                                <span style="font-weight: 600;">
+                                <span class="font-semibold">
                                     {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}{{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}{% else %}{{ tutor.username }}{% endif %}
                                 </span>
-                                <span style="color: var(--text-muted); font-size: 0.85rem;">→ Профиль</span>
+                                <span class="text-text-muted text-sm">→ Профиль</span>
                             </a>
                             {% endfor %}
                         </div>
@@ -209,37 +171,37 @@
                 {% if student_subscription %}
                 <div class="info-section">
                     <h3>Доступ / подписка</h3>
-                    <div class="glass-panel" style="padding: 1rem;">
+                    <div class="glass-panel p-4">
                         {% if student_subscription.subscription and student_subscription.plan %}
-                            <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem;">
-                                <span class="status-badge status-info" style="opacity:0.95;">{{ student_subscription.label }}</span>
-                                <span class="status-badge status-info" style="opacity:0.85;">Тариф: <strong>{{ student_subscription.plan.title }}</strong></span>
+                            <div class="flex gap-2 flex-wrap items-center mb-2">
+                                <span class="status-badge status-info opacity-95">{{ student_subscription.label }}</span>
+                                <span class="status-badge status-info opacity-80">Тариф: <strong>{{ student_subscription.plan.title }}</strong></span>
                                 {% if student_subscription.ends_at_utc %}
-                                    <span class="status-badge status-info" style="opacity:0.85;">До: <strong>{{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</strong></span>
+                                    <span class="status-badge status-info opacity-80">До: <strong>{{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</strong></span>
                                 {% endif %}
                             </div>
                             {% if student_subscription.lessons_remaining is not none %}
-                                <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted);">
-                                    Осталось уроков: 
+                                <div class="flex items-center gap-2 text-text-muted">
+                                    Осталось уроков:
                                     {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
                                         <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student.user_id }}', -1)" title="Уменьшить" style="padding: 0 0.4rem;">-</button>
                                     {% endif %}
-                                    <strong class="lessons-remaining-val" style="color: var(--text-primary); font-size: 1.2rem;">{{ student_subscription.lessons_remaining }}</strong>
+                                    <strong class="lessons-remaining-val text-text-primary" style="font-size: 1.2rem;">{{ student_subscription.lessons_remaining }}</strong>
                                     {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
                                         <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student.user_id }}', 1)" title="Увеличить" style="padding: 0 0.4rem;">+</button>
                                     {% endif %}
                                 </div>
                             {% elif student_subscription.seconds_left is not none %}
                                 {% set days_left = (student_subscription.seconds_left // 86400) %}
-                                <div style="color: var(--text-muted);">Осталось: <strong style="color: var(--text-primary);">{{ days_left }} дн.</strong></div>
+                                <div class="text-text-muted">Осталось: <strong class="text-text-primary">{{ days_left }} дн.</strong></div>
                             {% endif %}
                         {% elif student_subscription.status == 'expired' %}
-                            <div style="font-weight: 700; color: var(--danger);">Подписка истекла</div>
+                            <div class="font-bold text-error">Подписка истекла</div>
                             {% if student_subscription.ends_at_utc %}
-                                <div style="color: var(--text-muted); font-size: 0.9rem;">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
+                                <div class="text-text-muted text-sm">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
                             {% endif %}
                         {% else %}
-                            <div style="color: var(--text-muted);">Тариф не задан</div>
+                            <div class="text-text-muted">Тариф не задан</div>
                         {% endif %}
                     </div>
                 </div>
@@ -248,8 +210,8 @@
                 {% if student.goal_text %}
                 <div class="info-section">
                     <h3>Цель</h3>
-                    <div class="glass-panel" style="padding: 1rem;">
-                        <p style="margin: 0; line-height: 1.5; white-space: pre-wrap;">{{ student.goal_text }}</p>
+                    <div class="glass-panel p-4">
+                        <p class="m-0 leading-relaxed whitespace-pre-wrap">{{ student.goal_text }}</p>
                     </div>
                 </div>
                 {% endif %}
@@ -257,7 +219,7 @@
                 {% if parents_info %}
                 <div class="info-section">
                     <h3>Родители</h3>
-                    <div class="glass-panel" style="padding: 1rem;">
+                    <div class="glass-panel p-4">
                         {% for p in parents_info %}
                         <div class="data-row">
                             <span class="data-label">{{ p.name }}</span>
@@ -265,7 +227,7 @@
                                 {% if p.phone %}{{ p.phone }}{% endif %}
                                 {% if p.phone and p.telegram_id %} · {% endif %}
                                 {% if p.telegram_id %}{{ p.telegram_id }}{% endif %}
-                                {% if p.access_level and p.access_level != 'full' %} <span style="color: var(--text-muted); font-size: 0.85em;">({{ p.access_level }})</span>{% endif %}
+                                {% if p.access_level and p.access_level != 'full' %} <span class="text-text-muted text-sm">({{ p.access_level }})</span>{% endif %}
                             </span>
                         </div>
                         {% endfor %}
@@ -274,9 +236,9 @@
                 {% endif %}
             </div>
         </div>
-    </main>
-    </div>
-</div>
+{% endblock %}
+
+{% block scripts_extra %}
     {% if current_user.is_creator() or current_user.is_admin() %}
     <div class="modal-overlay" id="deleteModal">
         <div class="modal-box">
@@ -286,7 +248,7 @@
                 <button class="neo-button ghost" onclick="document.getElementById('deleteModal').classList.remove('active')">Отмена</button>
                 <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" style="margin: 0;">
                     {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <button type="submit" class="neo-button accent" style="background: var(--danger, #ef4444); border-color: var(--danger, #ef4444);">Удалить</button>
+                    <button type="submit" class="neo-button accent" style="background: #FF6B6B; border-color: #FF6B6B;">Удалить</button>
                 </form>
             </div>
         </div>
@@ -298,7 +260,6 @@
     </script>
     {% endif %}
 
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script>
         async function updateLessonsRemaining(userId, delta) {
             if (!userId || userId === 'None') return;
@@ -306,23 +267,18 @@
                 const url = `/api/user/${userId}/lessons-remaining`;
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-                    },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
                     body: JSON.stringify({ delta: delta })
                 });
-                
+
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success) {
                         const countEls = document.querySelectorAll('.lessons-remaining-val');
                         countEls.forEach(el => el.innerText = data.new_count);
                         if (window.toast) window.toast.success('Количество уроков обновлено');
-                        else alert('Успешно обновлено');
                     } else {
                         if (window.toast) window.toast.error(data.error || 'Ошибка');
-                        else alert(data.error || 'Ошибка');
                     }
                 } else {
                     const err = await response.json();
@@ -334,5 +290,4 @@
             }
         }
     </script>
-</body>
-</html>
+{% endblock %}

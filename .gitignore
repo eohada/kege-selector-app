@@ -124,3 +124,9 @@ data/rag_hints/
 
 # Отладка GraphExtractor/TableExtractor
 debug_out/
+
+# Tailwind CSS standalone CLI
+tailwindcss*.exe
+
+# Tailwind output (generated from static/src/input.css)
+static/dist/

@@ -1,471 +1,376 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Управление пользователями · Админ-панель</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='relationship-graph.css') }}">
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .users-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--surface-2);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-            margin-bottom: 2rem;
-        }
-        .users-table th {
-            background: var(--surface-3);
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-primary);
-            border-bottom: 1px solid var(--stroke-2);
-        }
-        .users-table td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--stroke-1);
-        }
-        .users-table tr:hover {
-            background: var(--surface-3);
-        }
-        .user-name {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        .user-email {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-        }
-        .role-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        .role-admin { background: rgba(255, 46, 46, 0.15); color: #ff2e2e; }
-        .role-tutor { background: rgba(46, 125, 255, 0.15); color: #2e7dff; }
-        .role-student { background: rgba(46, 255, 125, 0.15); color: #2eff7d; }
-        .role-parent { background: rgba(255, 200, 46, 0.15); color: #ffc82e; }
-        .role-tester { background: rgba(150, 150, 150, 0.15); color: #969696; }
-        .role-creator { background: rgba(200, 46, 255, 0.15); color: #c82eff; }
-        .role-chief_admin { background: rgba(255, 80, 80, 0.2); color: #ff5050; }
-        .role-content_maker { background: rgba(100, 180, 255, 0.2); color: #64b4ff; }
-        .status-active {
-            color: #28a745;
-        }
-        .status-inactive {
-            color: var(--text-muted);
-        }
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .stat-card {
-            background: var(--surface-2);
-            padding: 1rem;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--stroke-1);
-        }
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-        .stat-label {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-top: 0.25rem;
-        }
+{% extends 'base.html' %}
+{% block title %}Управление пользователями · Админ-панель{% endblock %}
 
-        .tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin: 1rem 0 0 0;
-            flex-wrap: wrap;
-        }
-        .tab-btn {
-            border: 1px solid var(--stroke-2);
-            background: var(--surface-2);
-            color: var(--text-primary);
-            padding: 0.55rem 0.9rem;
-            border-radius: 999px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        .tab-btn.active {
-            background: var(--accent-1);
-            color: #000;
-            border-color: rgba(0,0,0,0.15);
-        }
+{% block head_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='relationship-graph.css') }}">
+<style>
+    .users-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--color-bg-surface-alt);
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+    .users-table th {
+        background: var(--color-bg-app);
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        border-bottom: 2px solid var(--color-stroke);
+    }
+    .users-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--color-stroke);
+    }
+    .users-table tr:hover {
+        background: var(--color-accent-soft);
+    }
+    .role-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .role-admin { background: rgba(255, 46, 46, 0.15); color: #ff2e2e; }
+    .role-tutor { background: rgba(46, 125, 255, 0.15); color: #2e7dff; }
+    .role-student { background: rgba(46, 255, 125, 0.15); color: #2eff7d; }
+    .role-parent { background: rgba(255, 200, 46, 0.15); color: #ffc82e; }
+    .role-tester { background: rgba(150, 150, 150, 0.15); color: #969696; }
+    .role-creator { background: rgba(200, 46, 255, 0.15); color: #c82eff; }
+    .role-chief_admin { background: rgba(255, 80, 80, 0.2); color: #ff5050; }
+    .role-content_maker { background: rgba(100, 180, 255, 0.2); color: #64b4ff; }
 
-        .graph-shell {
-            margin-top: 1.5rem;
-            border: 1px solid var(--stroke-2);
-            border-radius: var(--radius-md);
-            background: var(--surface-2);
-            overflow: hidden;
-        }
-        .graph-toolbar {
-            padding: 1rem;
-            border-bottom: 1px solid var(--stroke-2);
-            display: grid;
-            grid-template-columns: 1.2fr 1.2fr 1.2fr 1fr;
-            gap: 1rem;
-            align-items: end;
-            background: var(--surface-3);
-        }
-        .graph-stage {
-            position: relative;
-            padding: 1rem;
-            min-height: 520px;
-            overflow: auto;
-        }
-        .graph-columns {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 1rem;
-            min-width: 980px;
-        }
-        .graph-col {
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-md);
-            background: rgba(255,255,255,0.02);
-            padding: 0.75rem;
-        }
-        .graph-col h3 {
-            margin: 0 0 0.75rem 0;
-            font-size: 1rem;
-            color: var(--text-primary);
-        }
-        .node-card {
-            border: 1px solid var(--stroke-2);
-            border-radius: var(--radius-md);
-            background: var(--surface-2);
-            padding: 0.75rem;
-            margin-bottom: 0.75rem;
-            cursor: pointer;
-        }
-        .node-card:hover { background: var(--surface-3); }
-        .node-title { font-weight: 800; color: var(--text-primary); display:flex; gap:0.5rem; align-items:center; }
-        .node-sub { color: var(--text-muted); font-size: 0.88rem; margin-top: 0.25rem; }
-        .node-dim { opacity: 0.55; }
-        .graph-svg {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-        }
-        .graph-svg path {
-            pointer-events: auto;
-            cursor: pointer;
-        }
-        .edge-label {
-            font-size: 12px;
-            fill: var(--text-muted);
-        }
+    .tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin: 1rem 0 0 0;
+        flex-wrap: wrap;
+    }
+    .tab-btn {
+        background: var(--color-bg-surface-alt);
+        color: var(--color-text-primary);
+        padding: 0.55rem 0.9rem;
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 600;
+        border: none;
+    }
+    .tab-btn.active {
+        background: #7B5CFF;
+        color: #fff;
+    }
 
-        dialog.link-dialog {
-            border: 1px solid var(--stroke-2);
-            border-radius: var(--radius-md);
-            background: var(--surface-2);
-            color: var(--text-primary);
-            padding: 0;
-            width: min(680px, 92vw);
-        }
-        dialog.link-dialog::backdrop {
-            background: rgba(0,0,0,0.55);
-        }
-        .dlg-head {
-            padding: 1rem 1.25rem;
-            border-bottom: 1px solid var(--stroke-2);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--surface-3);
-        }
-        .dlg-body { padding: 1rem 1.25rem; display: grid; gap: 0.9rem; }
-        .dlg-actions { padding: 1rem 1.25rem; border-top: 1px solid var(--stroke-2); display:flex; justify-content:flex-end; gap:0.6rem; }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'admin' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+    .graph-shell {
+        margin-top: 1.5rem;
+        border-radius: 20px;
+        background: var(--color-bg-surface-alt);
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06);
+    }
+    .graph-toolbar {
+        padding: 1rem;
+        border-bottom: 1px solid var(--color-stroke);
+        display: grid;
+        grid-template-columns: 1.2fr 1.2fr 1.2fr 1fr;
+        gap: 1rem;
+        align-items: end;
+        background: var(--color-bg-app);
+    }
+    .graph-stage {
+        position: relative;
+        padding: 1rem;
+        min-height: 520px;
+        overflow: auto;
+    }
+    .graph-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1rem;
+        min-width: 980px;
+    }
+    .graph-col {
+        border-radius: 20px;
+        background: rgba(255,255,255,0.02);
+        padding: 0.75rem;
+        box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06);
+    }
+    .graph-col h3 {
+        margin: 0 0 0.75rem 0;
+        font-size: 1rem;
+        color: var(--color-text-primary);
+    }
+    .node-card {
+        border-radius: 20px;
+        background: var(--color-bg-surface-alt);
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+        cursor: pointer;
+        box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06);
+    }
+    .node-card:hover { background: var(--color-bg-app); }
+    .node-title { font-weight: 800; color: var(--color-text-primary); display:flex; gap:0.5rem; align-items:center; }
+    .node-sub { color: var(--color-text-muted); font-size: 0.88rem; margin-top: 0.25rem; }
+    .node-dim { opacity: 0.55; }
+    .graph-svg {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+    .graph-svg path {
+        pointer-events: auto;
+        cursor: pointer;
+    }
+    .edge-label {
+        font-size: 12px;
+        fill: var(--color-text-muted);
+    }
 
-        {% include '_ux_enhancements.html' %}
+    dialog.link-dialog {
+        border: none;
+        border-radius: 20px;
+        background: var(--color-bg-surface-alt);
+        color: var(--color-text-primary);
+        padding: 0;
+        width: min(680px, 92vw);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    }
+    dialog.link-dialog::backdrop {
+        background: rgba(0,0,0,0.55);
+    }
+    .dlg-head {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--color-stroke);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--color-bg-app);
+    }
+    .dlg-body { padding: 1rem 1.25rem; display: grid; gap: 0.9rem; }
+    .dlg-actions { padding: 1rem 1.25rem; border-top: 1px solid var(--color-stroke); display:flex; justify-content:flex-end; gap:0.6rem; }
+</style>
+{% endblock %}
 
-        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
-                        ← К админ панели
-                    </a>
-                    <h1 style="margin: 0;">Управление пользователями</h1>
-                </div>
-                <a href="{{ url_for('admin.admin_user_new') }}" class="neo-button accent" style="text-decoration: none;">
-                    {{ ui_icon('action.plus', 'sm', decorative=true) }}
-                    Создать пользователя
-                </a>
-            </div>
+{% set active_page = 'admin' %}
 
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">{{ role_stats.get('admin', 0) }}</div>
-                    <div class="stat-label">Администраторы</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ role_stats.get('tutor', 0) }}</div>
-                    <div class="stat-label">Преподаватели</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ role_stats.get('student', 0) }}</div>
-                    <div class="stat-label">Ученики</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ role_stats.get('parent', 0) }}</div>
-                    <div class="stat-label">Родители</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ role_stats.get('tester', 0) }}</div>
-                    <div class="stat-label">Тестировщики</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ role_stats.get('creator', 0) }}</div>
-                    <div class="stat-label">Создатели</div>
-                </div>
-            </div>
-
-            <div class="tabs" role="tablist" aria-label="Users tabs">
-                <button class="tab-btn active" type="button" data-tab="list">Список</button>
-                <button class="tab-btn" type="button" data-tab="graph">Связи (граф)</button>
-            </div>
-
-            <div id="tab-list" role="tabpanel">
-            
-            <form method="GET" class="filters-grid" style="margin-bottom: 1.5rem;">
-                <div class="neo-field">
-                    <label class="neo-label" for="role-filter">Роль</label>
-                    <select id="role-filter" name="role" class="neo-input">
-                        <option value="">Все роли</option>
-                        <option value="creator" {% if role_filter == 'creator' %}selected{% endif %}>Создатель</option>
-                        <option value="chief_admin" {% if role_filter == 'chief_admin' %}selected{% endif %}>Главный администратор</option>
-                        <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Администратор</option>
-                        <option value="tutor" {% if role_filter == 'tutor' %}selected{% endif %}>Преподаватель</option>
-                        <option value="content_maker" {% if role_filter == 'content_maker' %}selected{% endif %}>Контент мейкер</option>
-                        <option value="student" {% if role_filter == 'student' %}selected{% endif %}>Ученик</option>
-                        <option value="parent" {% if role_filter == 'parent' %}selected{% endif %}>Родитель</option>
-                        <option value="tester" {% if role_filter == 'tester' %}selected{% endif %}>Тестировщик</option>
-                        <option value="chief_tester" {% if role_filter == 'chief_tester' %}selected{% endif %}>Главный тестировщик</option>
-                        <option value="designer" {% if role_filter == 'designer' %}selected{% endif %}>Графический дизайнер</option>
-                    </select>
-                </div>
-                <div class="neo-field">
-                    <label class="neo-label" for="active-filter">Статус</label>
-                    <select id="active-filter" name="is_active" class="neo-input">
-                        <option value="">Все</option>
-                        <option value="true" {% if is_active_filter == 'true' %}selected{% endif %}>Активные</option>
-                        <option value="false" {% if is_active_filter == 'false' %}selected{% endif %}>Неактивные</option>
-                    </select>
-                </div>
-                <div class="filters-actions">
-                    <button type="submit" class="neo-button outline">Применить фильтры</button>
-                    <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost">Сбросить</a>
-                </div>
-            </form>
-
-            <table class="users-table">
-                <thead>
-                    <tr>
-                        <th>Пользователь</th>
-                        <th>Роль</th>
-                        <th>Статус</th>
-                        <th>Создан</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td>
-                            <div class="user-name">{{ user.username }}</div>
-                            {% if user.profile and (user.profile.first_name or user.profile.last_name) %}
-                            <div class="user-email">
-                                {{ user.profile.first_name or '' }} {{ user.profile.last_name or '' }}
-                            </div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="role-badge role-{{ user.roles()[0] if user.roles() else (user.role or '') }}">
-                                {{ user.get_primary_role_display() }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if user.is_active %}
-                            <span class="status-active">● Активен</span>
-                            {% else %}
-                            <span class="status-inactive">● Неактивен</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div style="font-size: 0.9rem; color: var(--text-muted);">
-                                {{ user.created_at.strftime('%d.%m.%Y') if user.created_at else '—' }}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="action-buttons" style="display: flex; gap: 0.5rem;">
-                                <a href="{{ url_for('auth.user_public_profile', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="Профиль">
-                                    {{ ui_icon('profile.user', 'sm', decorative=true) }}
-                                </a>
-                                <a href="{{ url_for('admin.admin_user_edit', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="Редактировать">
-                                    {{ ui_icon('action.edit', 'sm', decorative=true) }}
-                                </a>
-                                {% if not user.is_creator() %}
-                                    {% if is_sandbox %}
-                                        <button type="button" class="neo-button danger action-delete-btn" style="padding:0.5rem 0.75rem;" title="Удалить" 
-                                                data-url="{{ url_for('admin.admin_sandbox_user_delete', user_id=user.id) }}" 
-                                                data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
-                                            {{ ui_icon('action.trash', 'sm', decorative=true) }}
-                                            <span style="display:none;">✕</span>
-                                        </button>
-                                    {% else %}
-                                        <button type="button" class="neo-button danger action-delete-btn" style="padding:0.5rem 0.75rem;" title="Удалить" 
-                                                data-url="{{ url_for('admin.admin_user_delete', user_id=user.id) }}" 
-                                                data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
-                                            {{ ui_icon('action.trash', 'sm', decorative=true) }}
-                                            <span style="display:none;">✕</span>
-                                        </button>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                            Пользователи не найдены
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            </div>
-
-            <div id="tab-graph" role="tabpanel" style="display:none;">
-                <p style="color: var(--text-muted); margin-top: 1rem;">
-                    Наглядно показывает связи: <strong>преподаватель → ученик</strong> (Enrollment) и <strong>родитель → ученик</strong> (FamilyTie).
-                    Клик по стрелке — редактирование “настройки” связи.
-                </p>
-                <div id="rel-graph-admin"
-                     data-graph-url="{{ url_for('admin.admin_users_graph_data') }}"
-                     data-ft-prefix="{{ url_for('admin.admin_api_family_tie_manage', tie_id=1).replace('/1', '/') }}"
-                     data-enr-prefix="{{ url_for('admin.admin_api_enrollment_manage', enrollment_id=1).replace('/1', '/') }}"
-                     data-ft-create="{{ url_for('admin.admin_api_family_tie_create') }}"
-                     data-enr-create="{{ url_for('admin.admin_api_enrollment_create') }}"
-                     data-user-edit-prefix="{{ url_for('admin.admin_user_edit', user_id=0).replace('/0/edit', '') }}"
-                     data-storage-key="relationshipGraph:admin">
-                </div>
-            </div>
-        </section>
-    </main>
+{% block content %}
+<section class="glass-panel">
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-4">
+            <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}" class="neo-button ghost">
+                ← К админ панели
+            </a>
+            <h1 class="m-0">Управление пользователями</h1>
+        </div>
+        <a href="{{ url_for('admin.admin_user_new') }}" class="neo-button accent">
+            {{ ui_icon('action.plus', 'sm', decorative=true) }}
+            Создать пользователя
+        </a>
     </div>
-</div>
 
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
-    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
-    <script src="{{ url_for('static', filename='relationship-graph.js') }}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                try {
-                    var msg = {{ message|tojson }};
-                    var cat = '{{ category }}';
-                    var toastFunc = window.toast || toast;
-                    if (toastFunc) {
-                        if (cat === 'error' || cat === 'danger') {
-                            toastFunc.error(msg);
-                        } else if (cat === 'warning') {
-                            toastFunc.warning(msg);
-                        } else if (cat === 'info') {
-                            toastFunc.info(msg);
-                        } else {
-                            toastFunc.success(msg);
-                        }
-                    }
-                } catch (e) {
-                    console.error('Ошибка при отображении flash сообщения:', e);
-                }
-                {% endfor %}
-            {% endif %}
-            {% endwith %}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="text-2xl font-bold text-text-primary">{{ role_stats.get('admin', 0) }}</div>
+            <div class="text-sm text-text-muted mt-1">Администраторы</div>
+        </div>
+        <div class="stat-card">
+            <div class="text-2xl font-bold text-text-primary">{{ role_stats.get('tutor', 0) }}</div>
+            <div class="text-sm text-text-muted mt-1">Преподаватели</div>
+        </div>
+        <div class="stat-card">
+            <div class="text-2xl font-bold text-text-primary">{{ role_stats.get('student', 0) }}</div>
+            <div class="text-sm text-text-muted mt-1">Ученики</div>
+        </div>
+        <div class="stat-card">
+            <div class="text-2xl font-bold text-text-primary">{{ role_stats.get('parent', 0) }}</div>
+            <div class="text-sm text-text-muted mt-1">Родители</div>
+        </div>
+        <div class="stat-card">
+            <div class="text-2xl font-bold text-text-primary">{{ role_stats.get('tester', 0) }}</div>
+            <div class="text-sm text-text-muted mt-1">Тестировщики</div>
+        </div>
+        <div class="stat-card">
+            <div class="text-2xl font-bold text-text-primary">{{ role_stats.get('creator', 0) }}</div>
+            <div class="text-sm text-text-muted mt-1">Создатели</div>
+        </div>
+    </div>
 
-            // Tabs
-            const tabButtons = document.querySelectorAll('.tab-btn');
-            const tabList = document.getElementById('tab-list');
-            const tabGraph = document.getElementById('tab-graph');
-            function setTab(name) {
-                tabButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-                tabList.style.display = (name === 'list') ? '' : 'none';
-                tabGraph.style.display = (name === 'graph') ? '' : 'none';
-            }
-            tabButtons.forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+    <div class="tabs" role="tablist" aria-label="Users tabs">
+        <button class="tab-btn active" type="button" data-tab="list">Список</button>
+        <button class="tab-btn" type="button" data-tab="graph">Связи (граф)</button>
+    </div>
 
-            // Relationship graph (lazy init)
-            let relGraphInited = false;
-            let relGraph = null;
-            function initRelGraphOnce() {
-                if (relGraphInited) return;
-                relGraphInited = true;
-                const host = document.getElementById('rel-graph-admin');
-                if (!host || !window.RelationshipGraph) return;
-                relGraph = new window.RelationshipGraph(host, {
-                    graphUrl: host.dataset.graphUrl,
-                    ftUrlPrefix: host.dataset.ftPrefix,
-                    enrUrlPrefix: host.dataset.enrPrefix,
-                    ftCreateUrl: host.dataset.ftCreate,
-                    enrCreateUrl: host.dataset.enrCreate,
-                    userEditUrlPrefix: host.dataset.userEditPrefix,
-                    storageKey: host.dataset.storageKey || 'relationshipGraph:admin',
-                    enableEdgeEdit: true,
-                });
-                relGraph.reload().catch(e => {
-                    console.error(e);
-                    (window.toast || toast)?.error?.('Не удалось загрузить граф связей');
-                });
-            }
-            // Hook into tab switching
-            const _oldSetTab = setTab;
-            setTab = function(name) {
-                _oldSetTab(name);
-                if (name === 'graph') initRelGraphOnce();
-            }
-        });
-    </script>
-</body>
-</html>
+    <div id="tab-list" role="tabpanel">
+
+    <form method="GET" class="filters-grid mb-6">
+        <div class="neo-field">
+            <label class="neo-label" for="role-filter">Роль</label>
+            <select id="role-filter" name="role" class="neo-input">
+                <option value="">Все роли</option>
+                <option value="creator" {% if role_filter == 'creator' %}selected{% endif %}>Создатель</option>
+                <option value="chief_admin" {% if role_filter == 'chief_admin' %}selected{% endif %}>Главный администратор</option>
+                <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Администратор</option>
+                <option value="tutor" {% if role_filter == 'tutor' %}selected{% endif %}>Преподаватель</option>
+                <option value="content_maker" {% if role_filter == 'content_maker' %}selected{% endif %}>Контент мейкер</option>
+                <option value="student" {% if role_filter == 'student' %}selected{% endif %}>Ученик</option>
+                <option value="parent" {% if role_filter == 'parent' %}selected{% endif %}>Родитель</option>
+                <option value="tester" {% if role_filter == 'tester' %}selected{% endif %}>Тестировщик</option>
+                <option value="chief_tester" {% if role_filter == 'chief_tester' %}selected{% endif %}>Главный тестировщик</option>
+                <option value="designer" {% if role_filter == 'designer' %}selected{% endif %}>Графический дизайнер</option>
+            </select>
+        </div>
+        <div class="neo-field">
+            <label class="neo-label" for="active-filter">Статус</label>
+            <select id="active-filter" name="is_active" class="neo-input">
+                <option value="">Все</option>
+                <option value="true" {% if is_active_filter == 'true' %}selected{% endif %}>Активные</option>
+                <option value="false" {% if is_active_filter == 'false' %}selected{% endif %}>Неактивные</option>
+            </select>
+        </div>
+        <div class="filters-actions">
+            <button type="submit" class="neo-button outline">Применить фильтры</button>
+            <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost">Сбросить</a>
+        </div>
+    </form>
+
+    <table class="users-table">
+        <thead>
+            <tr>
+                <th>Пользователь</th>
+                <th>Роль</th>
+                <th>Статус</th>
+                <th>Создан</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>
+                    <div class="font-semibold text-text-primary">{{ user.username }}</div>
+                    {% if user.profile and (user.profile.first_name or user.profile.last_name) %}
+                    <div class="text-sm text-text-muted">
+                        {{ user.profile.first_name or '' }} {{ user.profile.last_name or '' }}
+                    </div>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="role-badge role-{{ user.roles()[0] if user.roles() else (user.role or '') }}">
+                        {{ user.get_primary_role_display() }}
+                    </span>
+                </td>
+                <td>
+                    {% if user.is_active %}
+                    <span class="text-success">● Активен</span>
+                    {% else %}
+                    <span class="text-text-muted">● Неактивен</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="text-sm text-text-muted">
+                        {{ user.created_at.strftime('%d.%m.%Y') if user.created_at else '—' }}
+                    </div>
+                </td>
+                <td>
+                    <div class="flex gap-2">
+                        <a href="{{ url_for('auth.user_public_profile', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="Профиль">
+                            {{ ui_icon('profile.user', 'sm', decorative=true) }}
+                        </a>
+                        <a href="{{ url_for('admin.admin_user_edit', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="Редактировать">
+                            {{ ui_icon('action.edit', 'sm', decorative=true) }}
+                        </a>
+                        {% if not user.is_creator() %}
+                            {% if is_sandbox %}
+                                <button type="button" class="neo-button danger action-delete-btn" style="padding:0.5rem 0.75rem;" title="Удалить"
+                                        data-url="{{ url_for('admin.admin_sandbox_user_delete', user_id=user.id) }}"
+                                        data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
+                                    {{ ui_icon('action.trash', 'sm', decorative=true) }}
+                                    <span class="hidden">✕</span>
+                                </button>
+                            {% else %}
+                                <button type="button" class="neo-button danger action-delete-btn" style="padding:0.5rem 0.75rem;" title="Удалить"
+                                        data-url="{{ url_for('admin.admin_user_delete', user_id=user.id) }}"
+                                        data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
+                                    {{ ui_icon('action.trash', 'sm', decorative=true) }}
+                                    <span class="hidden">✕</span>
+                                </button>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center p-8 text-text-muted">
+                    Пользователи не найдены
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    <div id="tab-graph" role="tabpanel" class="hidden">
+        <p class="text-text-muted mt-4">
+            Наглядно показывает связи: <strong>преподаватель → ученик</strong> (Enrollment) и <strong>родитель → ученик</strong> (FamilyTie).
+            Клик по стрелке — редактирование "настройки" связи.
+        </p>
+        <div id="rel-graph-admin"
+             data-graph-url="{{ url_for('admin.admin_users_graph_data') }}"
+             data-ft-prefix="{{ url_for('admin.admin_api_family_tie_manage', tie_id=1).replace('/1', '/') }}"
+             data-enr-prefix="{{ url_for('admin.admin_api_enrollment_manage', enrollment_id=1).replace('/1', '/') }}"
+             data-ft-create="{{ url_for('admin.admin_api_family_tie_create') }}"
+             data-enr-create="{{ url_for('admin.admin_api_enrollment_create') }}"
+             data-user-edit-prefix="{{ url_for('admin.admin_user_edit', user_id=0).replace('/0/edit', '') }}"
+             data-storage-key="relationshipGraph:admin">
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="{{ url_for('static', filename='relationship-graph.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabList = document.getElementById('tab-list');
+        const tabGraph = document.getElementById('tab-graph');
+        function setTab(name) {
+            tabButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+            tabList.style.display = (name === 'list') ? '' : 'none';
+            tabGraph.style.display = (name === 'graph') ? '' : 'none';
+        }
+        tabButtons.forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+        let relGraphInited = false;
+        let relGraph = null;
+        function initRelGraphOnce() {
+            if (relGraphInited) return;
+            relGraphInited = true;
+            const host = document.getElementById('rel-graph-admin');
+            if (!host || !window.RelationshipGraph) return;
+            relGraph = new window.RelationshipGraph(host, {
+                graphUrl: host.dataset.graphUrl,
+                ftUrlPrefix: host.dataset.ftPrefix,
+                enrUrlPrefix: host.dataset.enrPrefix,
+                ftCreateUrl: host.dataset.ftCreate,
+                enrCreateUrl: host.dataset.enrCreate,
+                userEditUrlPrefix: host.dataset.userEditPrefix,
+                storageKey: host.dataset.storageKey || 'relationshipGraph:admin',
+                enableEdgeEdit: true,
+            });
+            relGraph.reload().catch(e => {
+                console.error(e);
+                (window.toast || toast)?.error?.('Не удалось загрузить граф связей');
+            });
+        }
+        const _oldSetTab = setTab;
+        setTab = function(name) {
+            _oldSetTab(name);
+            if (name === 'graph') initRelGraphOnce();
+        }
+    });
+</script>
+{% endblock %}

@@ -87,6 +87,11 @@ def create_app(config_name=None):
 
     app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
 
+    app.config['S3_ENDPOINT_URL'] = (os.environ.get('S3_ENDPOINT_URL') or '').strip() or None
+    app.config['S3_ACCESS_KEY'] = (os.environ.get('S3_ACCESS_KEY') or '').strip() or None
+    app.config['S3_SECRET_KEY'] = (os.environ.get('S3_SECRET_KEY') or '').strip() or None
+    app.config['S3_BUCKET'] = (os.environ.get('S3_BUCKET') or '').strip() or 'boostudy'
+
     app.config['ADMIN_URL'] = (os.environ.get('ADMIN_URL') or '').strip().rstrip('/') or None
     
     app.config['IS_SANDBOX'] = os.environ.get('IS_SANDBOX', 'False').lower() == 'true'
@@ -117,7 +122,10 @@ def create_app(config_name=None):
     db.init_app(app)
     migrate.init_app(app, db)
     audit_logger.init_app(app)
-    
+
+    from app.storage import storage as file_storage
+    file_storage.init_app(app)
+
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Для доступа к системе необходимо войти.'
@@ -248,8 +256,11 @@ def create_app(config_name=None):
     from app.billing import billing_bp
     from app.trainer import trainer_bp
     from app.uploads import uploads_bp
+    from app.storage.routes import storage_bp
     from app.qa.routes import qa_bp
     from app.theory import theory_bp
+    from app.telegram.webhook import telegram_bp
+    from app.telegram.mini_app import tg_app_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -274,8 +285,11 @@ def create_app(config_name=None):
     app.register_blueprint(billing_bp)
     app.register_blueprint(trainer_bp)
     app.register_blueprint(uploads_bp)
+    app.register_blueprint(storage_bp)
     app.register_blueprint(qa_bp)
     app.register_blueprint(theory_bp)
+    app.register_blueprint(telegram_bp)
+    app.register_blueprint(tg_app_bp)
 
     # Real-time комната урока (WebSocket)
     try:
@@ -353,6 +367,13 @@ def create_app(config_name=None):
 
     from app.api.routes import api_telegram_link_bot
     csrf.exempt(api_telegram_link_bot)
+
+    from app.telegram.webhook import telegram_webhook, set_webhook
+    csrf.exempt(telegram_webhook)
+    csrf.exempt(set_webhook)
+
+    from app.telegram.mini_app import mini_app_api_dashboard
+    csrf.exempt(mini_app_api_dashboard)
 
     @app.context_processor
     def inject_csrf_token():

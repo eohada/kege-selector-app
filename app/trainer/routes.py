@@ -5,7 +5,9 @@ import os
 from urllib.parse import urlencode
 from typing import Any
 
-from flask import render_template, request, abort, jsonify, send_file, session
+import json as _json
+
+from flask import render_template, request, abort, jsonify, send_file, session, make_response
 from flask_login import login_required, current_user
 
 from app.trainer import trainer_bp
@@ -721,7 +723,20 @@ def trainer_submit_answer():
         is_correct=is_correct,
         time_spent_sec=time_spent_sec
     )
-    
+
+    if request.headers.get('HX-Request'):
+        response = make_response(render_template(
+            '_partials/trainer_result.html',
+            is_correct=is_correct,
+            explanation=task.answer if not is_correct else None,
+        ))
+        toast_msg = 'Правильно!' if is_correct else 'Неправильно — попробуй ещё раз'
+        toast_type = 'success' if is_correct else 'error'
+        response.headers['HX-Trigger'] = _json.dumps({
+            'showToast': {'message': toast_msg, 'type': toast_type}
+        })
+        return response
+
     return jsonify({
         'success': True,
         'is_correct': is_correct,

@@ -1,33 +1,7 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ручное создание заданий · URep</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    {% include '_ux_enhancements.html' %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'dashboard' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
+{% block title %}Ручное создание заданий · URep{% endblock %}
+{% set active_page = 'dashboard' %}
+{% block content %}
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                 <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="text-decoration: none;">
@@ -49,12 +23,8 @@
                 </button>
             </div>
         </section>
-    </main>
-    </div>
-</div>
-
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+{% endblock %}
+{% block scripts_extra %}
     <script>
         async function saveTasks() {
             const cards = document.querySelectorAll('.task-card-entry');
@@ -88,7 +58,6 @@
                 return;
             }
 
-            const loaderId = loading.show(document.body, 'Сохранение заданий...');
             const csrfToken = document.querySelector('meta[name="csrf-token"]');
 
             try {
@@ -114,10 +83,7 @@
             } catch (e) {
                 console.error(e);
                 toast.error('Ошибка сети');
-            } finally {
-                loading.hide(loaderId);
             }
         }
     </script>
-</body>
-</html>
+{% endblock %}

@@ -1,219 +1,187 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Библиотека · Материалы</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    {% include '_ux_enhancements.html' %}
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .hero {
-            background: linear-gradient(135deg, rgba(0, 255, 213, 0.06), rgba(31, 123, 255, 0.06));
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-top: 1.25rem;
-            margin-bottom: 1rem;
-        }
-        .hero h1 { margin: 0.35rem 0 0 0; font-size: 2.15rem; font-weight: 900; }
-        .hero p { margin: 0.65rem 0 0 0; color: var(--text-muted); line-height: 1.45; }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-        @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
-        .panel {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.25rem;
-        }
-        .assets-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 0.9rem;
-        }
-        .asset-card {
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-md);
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.6rem;
-            position: relative;
-            transition: transform 0.2s, border-color 0.2s, background 0.2s;
-        }
-        .asset-card:hover { transform: translateY(-2px); border-color: rgba(0,255,213,0.35); background: rgba(255,255,255,0.04); }
-        .asset-title { font-weight: 900; line-height: 1.25; }
-        .asset-meta { color: var(--text-muted); font-size: 0.9rem; display: flex; gap: 0.65rem; flex-wrap: wrap; }
-        .tags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-        .tag {
-            padding: 0.18rem 0.5rem;
-            border-radius: 999px;
-            border: 1px solid var(--stroke-1);
-            background: rgba(255,255,255,0.03);
-            color: var(--text-muted);
-            font-size: 0.82rem;
-            font-weight: 700;
-        }
-        .danger-btn {
-            position: absolute;
-            top: 0.75rem;
-            right: 0.75rem;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-        .asset-card:hover .danger-btn { opacity: 1; }
-        .field-label { display:block; color: var(--text-muted); font-weight: 800; font-size: 0.9rem; margin-bottom: 0.35rem; }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'library' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
+{% set active_page = 'library' %}
+{% block title %}Библиотека · Материалы{% endblock %}
 
-        <main>
-            <section class="hero">
-                <div class="hero-eyebrow">Контент и библиотека</div>
-                <h1>Библиотека материалов</h1>
-                <p>Храни раздатки, файлы и опоры в одном месте и прикрепляй к любым урокам. Сейчас это приватная библиотека (для твоего аккаунта) — дальше добавим shared и теги.</p>
-            </section>
+{% block head_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    .mat-hero {
+        background: linear-gradient(135deg, rgba(0, 255, 213, 0.06), rgba(31, 123, 255, 0.06));
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .mat-hero h1 { margin: 0.35rem 0 0 0; font-size: 2.15rem; font-weight: 900; }
+    .mat-hero p { margin: 0.65rem 0 0 0; color: var(--text-muted); line-height: 1.45; }
+    .mat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    @media (max-width: 980px) { .mat-grid { grid-template-columns: 1fr; } }
+    .mat-assets-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 0.9rem;
+    }
+    .mat-asset-card {
+        background: var(--surface-2);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        position: relative;
+        transition: transform 0.2s, background 0.2s;
+        box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,.08));
+    }
+    .mat-asset-card:hover { transform: translateY(-2px); background: rgba(255,255,255,0.04); }
+    .mat-asset-title { font-weight: 900; line-height: 1.25; }
+    .mat-asset-meta { color: var(--text-muted); font-size: 0.9rem; display: flex; gap: 0.65rem; flex-wrap: wrap; }
+    .mat-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .mat-tag {
+        padding: 0.18rem 0.5rem;
+        border-radius: 999px;
+        border: 1px solid var(--stroke-1);
+        background: rgba(255,255,255,0.03);
+        color: var(--text-muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+    .mat-danger-btn {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .mat-asset-card:hover .mat-danger-btn { opacity: 1; }
+    .field-label { display: block; color: var(--text-muted); font-weight: 800; font-size: 0.9rem; margin-bottom: 0.35rem; }
+</style>
+{% endblock %}
 
-            <div class="grid">
-                <section class="panel">
-                    <div style="display:flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                        <h2 style="margin: 0; font-size: 1.15rem; font-weight: 900;">Загрузить новый материал</h2>
-                    </div>
-                    <form method="POST" action="{{ url_for('library.materials_upload') }}" enctype="multipart/form-data" style="margin-top: 1rem;">
-                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                        <div style="display:grid; grid-template-columns: 1fr; gap: 0.85rem;">
-                            <div>
-                                <label class="field-label">Файл</label>
-                                <input class="neo-input" type="file" name="file" required>
-                            </div>
-                            <div>
-                                <label class="field-label">Название (опционально)</label>
-                                <input class="neo-input" name="title" placeholder="Напр.: Таблица истинности — шпаргалка">
-                            </div>
-                            <div>
-                                <label class="field-label">Теги (через запятую)</label>
-                                <input class="neo-input" name="tags" placeholder="егэ, 24, питон, шпора">
-                            </div>
-                            <div>
-                                <label class="field-label">Описание (опционально)</label>
-                                <textarea class="neo-textarea" name="description" placeholder="Коротко: для чего, когда выдавать, нюансы..."></textarea>
-                            </div>
-                            <div style="display:flex; justify-content: flex-end;">
-                                <button class="neo-button accent" type="submit">
-                                    <i class="fas fa-cloud-upload-alt ui-icon ui-icon--sm"></i> Добавить
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </section>
+{% block content %}
+<section class="mat-hero">
+    <div class="hero-eyebrow">Контент и библиотека</div>
+    <h1>Библиотека материалов</h1>
+    <p>Храни раздатки, файлы и опоры в одном месте и прикрепляй к любым урокам. Сейчас это приватная библиотека (для твоего аккаунта) — дальше добавим shared и теги.</p>
+</section>
 
-                <section class="panel">
-                    <div style="display:flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap;">
-                        <div>
-                            <h2 style="margin: 0; font-size: 1.15rem; font-weight: 900;">Мои материалы</h2>
-                            <div style="color: var(--text-muted); margin-top: 0.35rem;">{{ assets|length }} шт.</div>
-                        </div>
-                        <form method="GET" style="display:flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-                            <input class="neo-input" name="q" value="{{ q }}" placeholder="Поиск по названию…" style="min-width: 240px;">
-                            <input class="neo-input" name="tag" value="{{ tag }}" placeholder="Тег" style="width: 120px;">
-                            <button class="neo-button outline" type="submit"><i class="fas fa-search"></i></button>
-                            <a class="neo-button ghost" href="{{ url_for('library.materials_library') }}"><i class="fas fa-rotate-left"></i></a>
-                        </form>
-                    </div>
-
-                    <div style="margin-top: 1rem;">
-                        {% if assets and assets|length > 0 %}
-                        <div class="assets-grid">
-                            {% for a in assets %}
-                            <div class="asset-card">
-                                <form method="POST" action="{{ url_for('library.materials_delete', asset_id=a.asset_id) }}" class="danger-btn">
-                                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                                    <button type="submit" class="neo-button danger sm" onclick="return confirm('Удалить материал из библиотеки?');">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                                <div class="asset-title">{{ a.title }}</div>
-                                <div class="asset-meta">
-                                    <span><i class="far fa-file"></i> {{ a.file_name }}</span>
-                                    {% if a.file_size %}<span><i class="fas fa-weight-hanging"></i> {{ (a.file_size/1024)|round(0) }} KB</span>{% endif %}
-                                </div>
-                                {% if a.tags and a.tags|length > 0 %}
-                                <div class="tags">
-                                    {% for t in a.tags %}
-                                    <a class="tag" href="{{ url_for('library.materials_library', tag=t) }}">{{ t }}</a>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                                <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.25rem;">
-                                    <a class="neo-button outline sm" href="{{ a.file_url }}" target="_blank">
-                                        <i class="fas fa-arrow-up-right-from-square"></i> Открыть
-                                    </a>
-                                    <a class="neo-button ghost sm" href="{{ a.file_url }}" download>
-                                        <i class="fas fa-download"></i> Скачать
-                                    </a>
-                                </div>
-                                {% if a.description %}
-                                <div style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.45; margin-top: 0.25rem;">
-                                    {{ a.description }}
-                                </div>
-                                {% endif %}
-                                <details style="margin-top: 0.5rem;">
-                                    <summary class="neo-button ghost sm" style="cursor:pointer;">
-                                        <i class="fas fa-pen"></i> Редактировать
-                                    </summary>
-                                    <form method="POST" action="{{ url_for('library.materials_edit', asset_id=a.asset_id) }}" style="margin-top: 0.5rem; display:flex; flex-direction:column; gap:0.4rem;">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="text" name="title" class="neo-input" value="{{ a.title }}" placeholder="Название" required>
-                                        <input type="text" name="description" class="neo-input" value="{{ a.description or '' }}" placeholder="Описание">
-                                        <input type="text" name="tags" class="neo-input" value="{{ (a.tags or [])|join(', ') }}" placeholder="Теги через запятую">
-                                        <button type="submit" class="neo-button accent sm">Сохранить</button>
-                                    </form>
-                                </details>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="glass-panel" style="padding: 1.5rem; text-align:center;">
-                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📎</div>
-                            <div style="font-weight: 900;">Пока пусто</div>
-                            <div style="color: var(--text-muted); margin-top: 0.35rem;">Загрузи первый материал — и он появится здесь.</div>
-                        </div>
-                        {% endif %}
-                    </div>
-                </section>
+<div class="mat-grid">
+    <section class="glass-panel">
+        <div class="flex justify-between items-center gap-4 flex-wrap">
+            <h2 class="m-0 text-lg font-black">Загрузить новый материал</h2>
+        </div>
+        <form method="POST" action="{{ url_for('library.materials_upload') }}" enctype="multipart/form-data" class="mt-4">
+            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+            <div class="grid gap-3.5">
+                <div>
+                    <label class="field-label">Файл</label>
+                    <input class="neo-input" type="file" name="file" required>
+                </div>
+                <div>
+                    <label class="field-label">Название (опционально)</label>
+                    <input class="neo-input" name="title" placeholder="Напр.: Таблица истинности — шпаргалка">
+                </div>
+                <div>
+                    <label class="field-label">Теги (через запятую)</label>
+                    <input class="neo-input" name="tags" placeholder="егэ, 24, питон, шпора">
+                </div>
+                <div>
+                    <label class="field-label">Описание (опционально)</label>
+                    <textarea class="neo-textarea" name="description" placeholder="Коротко: для чего, когда выдавать, нюансы..."></textarea>
+                </div>
+                <div class="flex justify-end">
+                    <button class="neo-button accent" type="submit">
+                        <i class="fas fa-cloud-upload-alt ui-icon ui-icon--sm"></i> Добавить
+                    </button>
+                </div>
             </div>
-        </main>
-    </main>
-    </div>
+        </form>
+    </section>
+
+    <section class="glass-panel">
+        <div class="flex justify-between items-end gap-4 flex-wrap">
+            <div>
+                <h2 class="m-0 text-lg font-black">Мои материалы</h2>
+                <div class="text-text-muted mt-1.5">{{ assets|length }} шт.</div>
+            </div>
+            <form method="GET" class="flex gap-2.5 items-center flex-wrap">
+                <input class="neo-input min-w-[240px]" name="q" value="{{ q }}" placeholder="Поиск по названию…">
+                <input class="neo-input w-[120px]" name="tag" value="{{ tag }}" placeholder="Тег">
+                <button class="neo-button outline" type="submit"><i class="fas fa-search"></i></button>
+                <a class="neo-button ghost" href="{{ url_for('library.materials_library') }}"><i class="fas fa-rotate-left"></i></a>
+            </form>
+        </div>
+
+        <div class="mt-4">
+            {% if assets and assets|length > 0 %}
+            <div class="mat-assets-grid">
+                {% for a in assets %}
+                <div class="mat-asset-card">
+                    <form method="POST" action="{{ url_for('library.materials_delete', asset_id=a.asset_id) }}" class="mat-danger-btn">
+                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                        <button type="submit" class="neo-button danger sm" onclick="return confirm('Удалить материал из библиотеки?');">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                    <div class="mat-asset-title">{{ a.title }}</div>
+                    <div class="mat-asset-meta">
+                        <span><i class="far fa-file"></i> {{ a.file_name }}</span>
+                        {% if a.file_size %}<span><i class="fas fa-weight-hanging"></i> {{ (a.file_size/1024)|round(0) }} KB</span>{% endif %}
+                    </div>
+                    {% if a.tags and a.tags|length > 0 %}
+                    <div class="mat-tags">
+                        {% for t in a.tags %}
+                        <a class="mat-tag" href="{{ url_for('library.materials_library', tag=t) }}">{{ t }}</a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="flex gap-2.5 flex-wrap mt-1">
+                        <a class="neo-button outline sm" href="{{ a.file_url }}" target="_blank">
+                            <i class="fas fa-arrow-up-right-from-square"></i> Открыть
+                        </a>
+                        <a class="neo-button ghost sm" href="{{ a.file_url }}" download>
+                            <i class="fas fa-download"></i> Скачать
+                        </a>
+                    </div>
+                    {% if a.description %}
+                    <div class="text-text-muted text-sm leading-snug mt-1">
+                        {{ a.description }}
+                    </div>
+                    {% endif %}
+                    <details class="mt-2">
+                        <summary class="neo-button ghost sm cursor-pointer">
+                            <i class="fas fa-pen"></i> Редактировать
+                        </summary>
+                        <form method="POST" action="{{ url_for('library.materials_edit', asset_id=a.asset_id) }}" class="mt-2 flex flex-col gap-1.5">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="text" name="title" class="neo-input" value="{{ a.title }}" placeholder="Название" required>
+                            <input type="text" name="description" class="neo-input" value="{{ a.description or '' }}" placeholder="Описание">
+                            <input type="text" name="tags" class="neo-input" value="{{ (a.tags or [])|join(', ') }}" placeholder="Теги через запятую">
+                            <button type="submit" class="neo-button accent sm">Сохранить</button>
+                        </form>
+                    </details>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="glass-panel p-6 text-center">
+                <div class="text-4xl mb-2">📎</div>
+                <div class="font-black">Пока пусто</div>
+                <div class="text-text-muted mt-1.5">Загрузи первый материал — и он появится здесь.</div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('form').forEach(function(form) {
-        if (form.classList.contains('danger-btn') || form.classList.contains('no-protect')) return;
+        if (form.classList.contains('mat-danger-btn') || form.classList.contains('no-protect')) return;
         form.addEventListener('submit', function() {
             var btn = form.querySelector('button[type="submit"], input[type="submit"]');
             if (btn && !btn.disabled) {
@@ -226,6 +194,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-</body>
-</html>
-
+{% endblock %}

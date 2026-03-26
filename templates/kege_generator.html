@@ -1,828 +1,647 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор КЕГЭ · URep</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    {% include '_ux_enhancements.html' %}
-    <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .gen-premium-shell {
-            display: grid;
-            gap: 1.5rem;
-            margin-top: 1.5rem;
-            grid-template-columns: minmax(320px, 1fr) minmax(520px, 2.1fr);
-            align-items: start;
-        }
+{% extends 'base.html' %}
+{% set active_page = 'generator' %}
+{% block title %}Генератор КЕГЭ{% endblock %}
 
-        .gen-start-card {
-            position: sticky;
-            top: 1rem;
-        }
+{% block body_class %}{% if active_lesson %}lesson-active{% endif %}{% endblock %}
 
-        .gen-deck {
-            position: relative;
-            min-height: 520px;
-        }
+{% block head_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+<style>
+    .gen-premium-shell {
+        display: grid;
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+        grid-template-columns: minmax(320px, 1fr) minmax(520px, 2.1fr);
+        align-items: start;
+    }
+    .gen-start-card { position: sticky; top: 1rem; }
+    .gen-deck { position: relative; min-height: 520px; }
+    .gen-task-card {
+        background: var(--surface-1);
+        border-radius: var(--radius-lg);
+        padding: 1.6rem;
+        box-shadow: var(--shadow-soft);
+        transition: transform 240ms ease, opacity 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+    }
+    .gen-task-card.is-entering { transform: translateY(10px); opacity: 0; }
+    .gen-task-card.is-leaving { transform: translateY(-10px); opacity: 0; }
+    .gen-task-top {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 1rem; padding-bottom: 1rem; margin-bottom: 1rem;
+        border-bottom: 1px solid var(--stroke-1);
+    }
+    .gen-task-badges { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .gen-pill {
+        display: inline-flex; align-items: center; gap: 0.45rem;
+        padding: 0.35rem 0.75rem; border-radius: 999px;
+        border: 1px solid var(--stroke-1); background: var(--surface-2);
+        color: var(--text-muted); font-weight: 600; font-size: 0.9rem;
+    }
+    .gen-task-body { color: var(--text-primary); line-height: 1.75; font-size: 1.02rem; }
+    .gen-task-body img { max-width: 100%; height: auto; border-radius: var(--radius-md); }
+    .gen-answer {
+        margin-top: 1.1rem; padding: 1rem; border-radius: var(--radius-md);
+        border: 1px dashed var(--stroke-2); background: rgba(0, 198, 164, 0.06); display: none;
+    }
+    .gen-answer.is-visible { display: block; }
+    .gen-answer-line { margin-top: 0.4rem; }
+    .gen-answer-line:first-child { margin-top: 0; }
+    .gen-actions-row { margin-top: 1.2rem; display: flex; gap: 0.65rem; flex-wrap: wrap; }
+    .gen-actions-row .neo-button { flex: 1 1 180px; justify-content: center; }
+    .gen-empty {
+        border: 1px dashed var(--stroke-2); border-radius: var(--radius-lg);
+        padding: 2rem; color: var(--text-muted);
+        background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+    }
+    .gen-kbd {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        border: 1px solid var(--stroke-1); background: var(--surface-2);
+        border-radius: 0.5rem; padding: 0.1rem 0.35rem;
+        color: var(--text-primary); font-size: 0.9rem;
+    }
+    @media (max-width: 1024px) {
+        .gen-premium-shell { grid-template-columns: 1fr; }
+        .gen-start-card { position: static; }
+    }
+</style>
+{% endblock %}
 
-        .gen-task-card {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.6rem;
-            box-shadow: var(--shadow-soft);
-            transition: transform 240ms ease, opacity 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
-        }
+{% block head_js %}
+<script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+{% endblock %}
 
-        .gen-task-card.is-entering {
-            transform: translateY(10px);
-            opacity: 0;
-        }
-
-        .gen-task-card.is-leaving {
-            transform: translateY(-10px);
-            opacity: 0;
-        }
-
-        .gen-task-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--stroke-1);
-            margin-bottom: 1rem;
-        }
-
-        .gen-task-badges {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .gen-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            padding: 0.35rem 0.75rem;
-            border-radius: 999px;
-            border: 1px solid var(--stroke-1);
-            background: var(--surface-2);
-            color: var(--text-muted);
-            font-weight: 600;
-            font-size: 0.9rem;
-            letter-spacing: 0.01em;
-        }
-
-        .gen-task-body {
-            color: var(--text-primary);
-            line-height: 1.75;
-            font-size: 1.02rem;
-        }
-
-        .gen-task-body img {
-            max-width: 100%;
-            height: auto;
-            border-radius: var(--radius-md);
-        }
-
-        .gen-answer {
-            margin-top: 1.1rem;
-            padding: 1rem;
-            border-radius: var(--radius-md);
-            border: 1px dashed var(--stroke-2);
-            background: rgba(0, 198, 164, 0.06);
-            display: none;
-        }
-
-        .gen-answer.is-visible {
-            display: block;
-        }
-        .gen-answer-line {
-            margin-top: 0.4rem;
-        }
-        .gen-answer-line:first-child {
-            margin-top: 0;
-        }
-
-        .gen-actions-row {
-            margin-top: 1.2rem;
-            display: flex;
-            gap: 0.65rem;
-            flex-wrap: wrap;
-        }
-
-        .gen-actions-row .neo-button {
-            flex: 1 1 180px;
-            justify-content: center;
-        }
-
-        .gen-empty {
-            border: 1px dashed var(--stroke-2);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            color: var(--text-muted);
-            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
-        }
-
-        .gen-kbd {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            border: 1px solid var(--stroke-1);
-            background: var(--surface-2);
-            border-radius: 0.5rem;
-            padding: 0.1rem 0.35rem;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-        }
-
-        @media (max-width: 1024px) {
-            .gen-premium-shell {
-                grid-template-columns: 1fr;
-            }
-            .gen-start-card {
-                position: static;
-            }
-        }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="{% if active_lesson %}lesson-active{% endif %}">
-    {% set is_homework = (assignment_type == 'homework') %}
-    {% set is_classwork = (assignment_type == 'classwork') %}
-    {% set is_exam = (assignment_type == 'exam') %}
+{% block content %}
+{% set is_homework = (assignment_type == 'homework') %}
+{% set is_classwork = (assignment_type == 'classwork') %}
+{% set is_exam = (assignment_type == 'exam') %}
+{% if is_homework %}
+    {% set mode_label = 'домашнего задания' %}
+    {% set banner_icon_path = 'icons/dz.png' %}
+    {% set mode_class = 'generator-mode--homework' %}
+{% elif is_exam %}
+    {% set mode_label = 'проверочной работы' %}
+    {% set banner_icon_path = 'icons/icons8-bar-chart-100.png' %}
+    {% set mode_class = 'generator-mode--exam' %}
+{% else %}
+    {% set mode_label = 'классной работы' %}
+    {% set banner_icon_path = 'icons/klassrab.png' %}
+    {% set mode_class = 'generator-mode--classwork' %}
+{% endif %}
+{% if lesson_id %}
     {% if is_homework %}
-        {% set mode_label = 'домашнего задания' %}
-        {% set banner_icon_path = 'icons/dz.png' %}
-        {% set mode_class = 'generator-mode--homework' %}
+        {% set mode_text = 'Домашняя работа без повторов' %}
     {% elif is_exam %}
-        {% set mode_label = 'проверочной работы' %}
-        {% set banner_icon_path = 'icons/icons8-bar-chart-100.png' %}
-        {% set mode_class = 'generator-mode--exam' %}
+        {% set mode_text = 'Проверочная работа без повторов' %}
     {% else %}
-        {% set mode_label = 'классной работы' %}
-        {% set banner_icon_path = 'icons/klassrab.png' %}
-        {% set mode_class = 'generator-mode--classwork' %}
+        {% set mode_text = 'Классная работа без повторов' %}
     {% endif %}
-    {% if lesson_id %}
-        {% if is_homework %}
-            {% set mode_text = 'Домашняя работа без повторов' %}
-        {% elif is_exam %}
-            {% set mode_text = 'Проверочная работа без повторов' %}
-        {% else %}
-            {% set mode_text = 'Классная работа без повторов' %}
-        {% endif %}
-    {% else %}
-        {% set mode_text = 'Общий генератор' %}
-    {% endif %}
+{% else %}
+    {% set mode_text = 'Общий генератор' %}
+{% endif %}
 
-    {% if active_lesson %}
-    <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        {{ ui_icon('nav.schedule', 'sm', decorative=true) }}Урок идет: {{ active_student.name }}
-    </div>
-    <div class="now-playing-panel" id="lessonMenu">
-        <div class="hero-eyebrow">текущий урок</div>
-        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
-        {% if active_lesson.topic %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
-        {% endif %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
-        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
-        <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
-            </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('nav.students', 'sm', decorative=true) }}Профиль</a>
+<section class="glass-panel generator-hero">
+    <div>
+        <p class="hero-eyebrow">генератор заданий</p>
+        <h1 class="hero-title">Один поток. Одна задача. Максимум фокуса.</h1>
+        <p class="hero-subtitle">
+            Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной.
+            Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
+        </p>
+        <div class="hero-actions flex items-baseline gap-3 flex-wrap">
+            <span class="hero-eyebrow mb-0">режим работы</span>
+            <span class="text-lg font-semibold text-accent">
+                {{ mode_text }}
+            </span>
         </div>
     </div>
-    {% endif %}
+    <div class="generator-context">
+        <div>
+            <p class="hero-eyebrow">что уже известно</p>
+            <div class="hero-metric-value text-xl">
+                {{ 'Нет привязки к уроку' if not lesson else 'Урок #' ~ lesson.lesson_id }}
+            </div>
+        </div>
+        <div>
+            <p class="hero-eyebrow">следующий шаг</p>
+            <p class="m-0 text-text-muted">
+                Запусти генератор и работай в спокойном темпе. Горячие клавиши: <span class="gen-kbd">A</span> принять · <span class="gen-kbd">S</span> пропустить · <span class="gen-kbd">B</span> blacklist · <span class="gen-kbd">Space</span> ответ
+            </p>
+        </div>
+    </div>
+</section>
 
-    <div class="app-layout">
-        {% set active_page = 'generator' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% if lesson and student %}
+<section class="glass-panel generator-mode {{ mode_class }}">
+    <div class="generator-mode__icon"><img src="{{ url_for('static', filename=banner_icon_path) }}" alt="Режим" class="ui-icon ui-icon--md ui-icon--only"></div>
+    <div class="flex-1">
+        <div class="generator-mode__title">Режим {{ mode_label }}</div>
+        <div>
+            <strong>Ученик:</strong> {{ student.name }}
+            {% if lesson.lesson_date %}
+            · <strong>Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
+            {% endif %}
+            {% if lesson.topic %}
+            · <strong>Тема:</strong> {{ lesson.topic }}
+            {% endif %}
+        </div>
+        <div class="generator-mode__hint">
+            {{ 'Все принятые карточки попадут в ДЗ и скроются из будущих выдач для ученика.' if is_homework else 'Все принятые карточки добавляются в работу и не повторяются для ученика.' }}
+        </div>
+    </div>
+    <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) if assignment_type == 'homework' else url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">
+        ← К уроку
+    </a>
+</section>
+{% elif template_id %}
+<section class="glass-panel generator-mode {{ mode_class }}">
+    <div class="generator-mode__icon">{{ ui_icon('nav.templates', 'md', decorative=true, extra_class='ui-icon--only') }}</div>
+    <div class="flex-1">
+        <div class="generator-mode__title">Режим редактирования шаблона</div>
+        <div class="generator-mode__hint">
+            Все принятые задания будут добавлены в шаблон.
+        </div>
+    </div>
+    <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="neo-button ghost">
+        ← К шаблону
+    </a>
+</section>
+{% endif %}
 
-        <section class="glass-panel generator-hero">
+<div class="gen-premium-shell">
+    <section class="glass-panel generator-panel gen-start-card">
+        <div class="flex justify-between items-start mb-6">
             <div>
-                <p class="hero-eyebrow">генератор заданий</p>
-                <h1 class="hero-title">Один поток. Одна задача. Максимум фокуса.</h1>
-                <p class="hero-subtitle">
-                    Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной.
-                    Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
-                </p>
-                <div class="hero-actions" style="display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;">
-                    <span class="hero-eyebrow" style="margin-bottom: 0;">режим работы</span>
-                    <span style="font-size: 1.1rem; font-weight: 600; color: var(--accent-1);">
-                        {{ mode_text }}
-                    </span>
-                </div>
+                <h2>Запуск</h2>
+                <p class="hint m-0">Выбери номер задания и нажми старт.</p>
             </div>
-            <div class="generator-context">
-                <div>
-                    <p class="hero-eyebrow">что уже известно</p>
-                    <div class="hero-metric-value" style="font-size: 1.4rem;">
-                        {{ 'Нет привязки к уроку' if not lesson else 'Урок #' ~ lesson.lesson_id }}
-                    </div>
-                </div>
-                <div>
-                    <p class="hero-eyebrow">следующий шаг</p>
-                    <p style="margin: 0; color: var(--text-muted);">
-                        Запусти генератор и работай в спокойном темпе. Горячие клавиши: <span class="gen-kbd">A</span> принять · <span class="gen-kbd">S</span> пропустить · <span class="gen-kbd">B</span> blacklist · <span class="gen-kbd">Space</span> ответ
-                    </p>
-                </div>
-            </div>
-        </section>
-
-        {% if lesson and student %}
-        <section class="glass-panel generator-mode {{ mode_class }}">
-            <div class="generator-mode__icon"><img src="{{ url_for('static', filename=banner_icon_path) }}" alt="Режим" class="ui-icon ui-icon--md ui-icon--only"></div>
-            <div style="flex: 1;">
-                <div class="generator-mode__title">Режим {{ mode_label }}</div>
-                <div style="color: var(--text-primary);">
-                    <strong>Ученик:</strong> {{ student.name }}
-                    {% if lesson.lesson_date %}
-                    · <strong>Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
-                    {% endif %}
-                    {% if lesson.topic %}
-                    · <strong>Тема:</strong> {{ lesson.topic }}
-                    {% endif %}
-                </div>
-                <div class="generator-mode__hint">
-                    {{ 'Все принятые карточки попадут в ДЗ и скроются из будущих выдач для ученика.' if is_homework else 'Все принятые карточки добавляются в работу и не повторяются для ученика.' }}
-                </div>
-            </div>
-            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) if assignment_type == 'homework' else url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">
-                ← К уроку
-            </a>
-        </section>
-        {% elif template_id %}
-        <section class="glass-panel generator-mode {{ mode_class }}">
-            <div class="generator-mode__icon">{{ ui_icon('nav.templates', 'md', decorative=true, extra_class='ui-icon--only') }}</div>
-            <div style="flex: 1;">
-                <div class="generator-mode__title">Режим редактирования шаблона</div>
-                <div class="generator-mode__hint">
-                    Все принятые задания будут добавлены в шаблон.
-                </div>
-            </div>
-            <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="neo-button ghost">
-                ← К шаблону
-            </a>
-        </section>
-        {% endif %}
-
-        <div class="gen-premium-shell">
-            <section class="glass-panel generator-panel gen-start-card">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
-                    <div>
-                        <h2>Запуск</h2>
-                        <p class="hint" style="margin:0;">Выбери номер задания и нажми старт.</p>
-                    </div>
-                    {% if generator_recipient_ids %}
-                    <button type="button" id="genCreateWorkBtnTop" class="neo-button accent shadow-sm">
-                        {{ ui_icon('action.check', 'sm') }} Завершить и создать
-                    </button>
-                    {% endif %}
-                </div>
-                <form id="genStartForm" class="generator-form-grid" onsubmit="return false;">
-                    {{ selection_form.hidden_tag() }}
-                    <div class="neo-field">
-                        {{ selection_form.task_type.label(class_='neo-label') }}
-                        {{ selection_form.task_type(class_='neo-select', id='taskTypeSelect') }}
-                    </div>
-                    <div class="generator-actions">
-                        <button type="button" class="neo-button accent" id="genStartBtn">
-                            {{ ui_icon('action.play', 'sm', decorative=true) }}Старт
-                        </button>
-                        <button type="button" class="neo-button ghost" id="genStopBtn" disabled>
-                            {{ ui_icon('action.stop', 'sm', decorative=true) }}Стоп
-                        </button>
-                    </div>
-                    <label class="neo-checkbox" style="margin-top:0.4rem;">
-                        <input id="useSkipped" type="checkbox" class="neo-checkbox-input">
-                        <span>включать пропущенные (опционально)</span>
-                    </label>
-                    <div class="generator-note">
-                        Подсказка: кнопки можно прожимать с клавиатуры — <span class="gen-kbd">A</span>/<span class="gen-kbd">S</span>/<span class="gen-kbd">B</span>.
-                    </div>
-                </form>
-                <div class="generator-reset" style="margin-top: 1.4rem;">
-                    <details>
-                        <summary style="cursor:pointer; color: var(--text-primary); font-weight: 700;">Расширенные действия</summary>
-                        <div style="margin-top: 1rem;">
-                            <div class="generator-links" style="margin-bottom: 1rem;">
-                                <a href="{{ url_for('assignments.assignments_accepted', assignment_type=assignment_type) }}" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Принятые</a>
-                                {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
-                                <button type="button" id="genCreateWorkBtn" class="neo-button outline"><span id="genCreateWorkBtnText">📝 Создать работу</span></button>
-                                {% endif %}
-                                <a href="{{ url_for('assignments.assignments_skipped') }}" class="neo-button ghost">{{ ui_icon('action.minus', 'sm', decorative=true) }}Пропущенные</a>
-                            </div>
-                            <form method="POST"
-                                  action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
-                                  class="generator-form-grid generator-reset">
-                                {{ reset_form.hidden_tag() }}
-                                <div class="neo-field">
-                                    {{ reset_form.task_type_reset.label(class_='neo-label') }}
-                                    {{ reset_form.task_type_reset(class_='neo-select') }}
-                                </div>
-                                <div class="neo-field">
-                                    {{ reset_form.reset_type.label(class_='neo-label') }}
-                                    {{ reset_form.reset_type(class_='neo-select') }}
-                                </div>
-                                {{ reset_form.reset_submit(class_='neo-button danger') }}
-                            </form>
-                            <form method="POST"
-                                  action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
-                                  class="generator-form-grid" style="margin-top: 1rem;">
-                                {{ search_form.hidden_tag() }}
-                                <input type="hidden" name="lesson_id" value="{{ lesson_id or '' }}">
-                                <div class="neo-field">
-                                    {{ search_form.task_id.label(class_='neo-label') }}
-                                    {{ search_form.task_id(class_='neo-input') }}
-                                </div>
-                                {{ search_form.search_submit(class_='neo-button ghost') }}
-                            </form>
-                        </div>
-                    </details>
-                </div>
-            </section>
-
-            <section class="glass-panel gen-deck" id="genDeck"
-                     data-lesson-id="{{ lesson_id or '' }}"
-                     data-assignment-type="{{ assignment_type }}"
-                     data-template-id="{{ template_id or '' }}"
-                     data-recipient-ids="{{ (generator_recipient_ids or []) | tojson }}">
-                <div class="gen-empty" id="genEmpty">
-                    <div style="display:flex; gap: 0.75rem; align-items:center; margin-bottom: 0.75rem;">
-                        {{ ui_icon('nav.generator', 'md', decorative=true, extra_class='ui-icon--only') }}
-                        <div style="font-weight: 800; color: var(--text-primary); font-size: 1.15rem;">Готов к запуску</div>
-                    </div>
-                    Выбери номер задания слева и нажми <strong>Старт</strong>. Дальше ты работаешь в потоке — быстро и без лишних кликов.
-                </div>
-
-                <div class="gen-task-card is-entering" id="genTaskCard" style="display:none;">
-                    <div class="gen-task-top">
-                        <div class="gen-task-badges">
-                            <span class="gen-pill" id="genTaskBadge">
-                                {{ ui_icon('nav.assignments', 'sm', decorative=true, extra_class='ui-icon--only') }}
-                                <span id="genTaskTitle">Задание</span>
-                            </span>
-                            <a id="genSourceLink" class="gen-pill" href="#" target="_blank" rel="noopener" style="text-decoration:none; display:none;">
-                                {{ ui_icon('action.link', 'sm', decorative=true, extra_class='ui-icon--only') }}
-                                источник
-                            </a>
-                        </div>
-                        <button type="button" class="neo-button ghost" id="genToggleAnswerBtn" disabled>
-                            {{ ui_icon('action.eye', 'sm', decorative=true) }}Ответ
-                        </button>
-                    </div>
-
-                    <div class="gen-task-body" id="genTaskBody"></div>
-                    <div class="gen-answer" id="genAnswer"></div>
-
-                    <div class="gen-actions-row">
-                        <button type="button" class="neo-button accent" id="genAcceptBtn" disabled>
-                            {{ ui_icon('action.check', 'sm', decorative=true) }}Принять
-                        </button>
-                        <button type="button" class="neo-button ghost" id="genSkipBtn" disabled>
-                            {{ ui_icon('action.minus', 'sm', decorative=true) }}Пропустить
-                        </button>
-                        <button type="button" class="neo-button danger" id="genBlacklistBtn" disabled>
-                            {{ ui_icon('action.trash', 'sm', decorative=true) }}Blacklist
-                        </button>
-                    </div>
-
-                    <div style="margin-top: 0.85rem; display:none;" id="genBlacklistPanel">
-                        <div class="neo-field">
-                            <label class="neo-label">Причина (опционально)</label>
-                            <input type="text" class="neo-input" id="genBlacklistReason" placeholder="Например: не по теме / битая разметка / плохой вариант">
-                        </div>
-                        <div class="gen-actions-row" style="margin-top:0.75rem;">
-                            <button type="button" class="neo-button danger" id="genBlacklistConfirmBtn">
-                                {{ ui_icon('nav.archive', 'sm', decorative=true) }}Добавить
-                            </button>
-                            <button type="button" class="neo-button ghost" id="genBlacklistCancelBtn">Отмена</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            {% if generator_recipient_ids %}
+            <button type="button" id="genCreateWorkBtnTop" class="neo-button accent shadow-sm">
+                {{ ui_icon('action.check', 'sm') }} Завершить и создать
+            </button>
+            {% endif %}
         </div>
-    </div>
+        <form id="genStartForm" class="generator-form-grid" onsubmit="return false;">
+            {{ selection_form.hidden_tag() }}
+            <div class="neo-field">
+                {{ selection_form.task_type.label(class_='neo-label') }}
+                {{ selection_form.task_type(class_='neo-select', id='taskTypeSelect') }}
+            </div>
+            <div class="generator-actions">
+                <button type="button" class="neo-button accent" id="genStartBtn">
+                    {{ ui_icon('action.play', 'sm', decorative=true) }}Старт
+                </button>
+                <button type="button" class="neo-button ghost" id="genStopBtn" disabled>
+                    {{ ui_icon('action.stop', 'sm', decorative=true) }}Стоп
+                </button>
+            </div>
+            <label class="neo-checkbox mt-1.5">
+                <input id="useSkipped" type="checkbox" class="neo-checkbox-input">
+                <span>включать пропущенные (опционально)</span>
+            </label>
+            <div class="generator-note">
+                Подсказка: кнопки можно прожимать с клавиатуры — <span class="gen-kbd">A</span>/<span class="gen-kbd">S</span>/<span class="gen-kbd">B</span>.
+            </div>
+        </form>
+        <div class="generator-reset mt-6">
+            <details>
+                <summary class="cursor-pointer font-bold">Расширенные действия</summary>
+                <div class="mt-4">
+                    <div class="generator-links mb-4">
+                        <a href="{{ url_for('assignments.assignments_accepted', assignment_type=assignment_type) }}" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Принятые</a>
+                        {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
+                        <button type="button" id="genCreateWorkBtn" class="neo-button outline"><span id="genCreateWorkBtnText">📝 Создать работу</span></button>
+                        {% endif %}
+                        <a href="{{ url_for('assignments.assignments_skipped') }}" class="neo-button ghost">{{ ui_icon('action.minus', 'sm', decorative=true) }}Пропущенные</a>
+                    </div>
+                    <form method="POST"
+                          action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
+                          class="generator-form-grid generator-reset">
+                        {{ reset_form.hidden_tag() }}
+                        <div class="neo-field">
+                            {{ reset_form.task_type_reset.label(class_='neo-label') }}
+                            {{ reset_form.task_type_reset(class_='neo-select') }}
+                        </div>
+                        <div class="neo-field">
+                            {{ reset_form.reset_type.label(class_='neo-label') }}
+                            {{ reset_form.reset_type(class_='neo-select') }}
+                        </div>
+                        {{ reset_form.reset_submit(class_='neo-button danger') }}
+                    </form>
+                    <form method="POST"
+                          action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
+                          class="generator-form-grid mt-4">
+                        {{ search_form.hidden_tag() }}
+                        <input type="hidden" name="lesson_id" value="{{ lesson_id or '' }}">
+                        <div class="neo-field">
+                            {{ search_form.task_id.label(class_='neo-label') }}
+                            {{ search_form.task_id(class_='neo-input') }}
+                        </div>
+                        {{ search_form.search_submit(class_='neo-button ghost') }}
+                    </form>
+                </div>
+            </details>
+        </div>
+    </section>
 
-    <script>
-        function toggleLessonMenu() {
-            const menu = document.getElementById('lessonMenu');
-            if (menu) {
-                menu.classList.toggle('active');
-            }
+    <section class="glass-panel gen-deck" id="genDeck"
+             data-lesson-id="{{ lesson_id or '' }}"
+             data-assignment-type="{{ assignment_type }}"
+             data-template-id="{{ template_id or '' }}"
+             data-recipient-ids="{{ (generator_recipient_ids or []) | tojson }}">
+        <div class="gen-empty" id="genEmpty">
+            <div class="flex gap-3 items-center mb-3">
+                {{ ui_icon('nav.generator', 'md', decorative=true, extra_class='ui-icon--only') }}
+                <div class="font-extrabold text-lg">Готов к запуску</div>
+            </div>
+            Выбери номер задания слева и нажми <strong>Старт</strong>. Дальше ты работаешь в потоке — быстро и без лишних кликов.
+        </div>
+
+        <div class="gen-task-card is-entering" id="genTaskCard" style="display:none;">
+            <div class="gen-task-top">
+                <div class="gen-task-badges">
+                    <span class="gen-pill" id="genTaskBadge">
+                        {{ ui_icon('nav.assignments', 'sm', decorative=true, extra_class='ui-icon--only') }}
+                        <span id="genTaskTitle">Задание</span>
+                    </span>
+                    <a id="genSourceLink" class="gen-pill no-underline" href="#" target="_blank" rel="noopener" style="display:none;">
+                        {{ ui_icon('action.link', 'sm', decorative=true, extra_class='ui-icon--only') }}
+                        источник
+                    </a>
+                </div>
+                <button type="button" class="neo-button ghost" id="genToggleAnswerBtn" disabled>
+                    {{ ui_icon('action.eye', 'sm', decorative=true) }}Ответ
+                </button>
+            </div>
+
+            <div class="gen-task-body" id="genTaskBody"></div>
+            <div class="gen-answer" id="genAnswer"></div>
+
+            <div class="gen-actions-row">
+                <button type="button" class="neo-button accent" id="genAcceptBtn" disabled>
+                    {{ ui_icon('action.check', 'sm', decorative=true) }}Принять
+                </button>
+                <button type="button" class="neo-button ghost" id="genSkipBtn" disabled>
+                    {{ ui_icon('action.minus', 'sm', decorative=true) }}Пропустить
+                </button>
+                <button type="button" class="neo-button danger" id="genBlacklistBtn" disabled>
+                    {{ ui_icon('action.trash', 'sm', decorative=true) }}Blacklist
+                </button>
+            </div>
+
+            <div class="mt-3" id="genBlacklistPanel" style="display:none;">
+                <div class="neo-field">
+                    <label class="neo-label">Причина (опционально)</label>
+                    <input type="text" class="neo-input" id="genBlacklistReason" placeholder="Например: не по теме / битая разметка / плохой вариант">
+                </div>
+                <div class="gen-actions-row mt-3">
+                    <button type="button" class="neo-button danger" id="genBlacklistConfirmBtn">
+                        {{ ui_icon('nav.archive', 'sm', decorative=true) }}Добавить
+                    </button>
+                    <button type="button" class="neo-button ghost" id="genBlacklistCancelBtn">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    window.__GEN_SEED_TASK__ = {{ seed_task_payload | tojson if seed_task_payload else 'null' }};
+</script>
+<script>
+    (function() {
+        const deck = document.getElementById('genDeck');
+        const empty = document.getElementById('genEmpty');
+        const card = document.getElementById('genTaskCard');
+        const body = document.getElementById('genTaskBody');
+        const answer = document.getElementById('genAnswer');
+        const title = document.getElementById('genTaskTitle');
+        const badge = document.getElementById('genTaskBadge');
+        const sourceLink = document.getElementById('genSourceLink');
+
+        const startBtn = document.getElementById('genStartBtn');
+        const stopBtn = document.getElementById('genStopBtn');
+        const taskTypeSelect = document.getElementById('taskTypeSelect');
+        const useSkipped = document.getElementById('useSkipped');
+
+        const toggleAnswerBtn = document.getElementById('genToggleAnswerBtn');
+        const acceptBtn = document.getElementById('genAcceptBtn');
+        const skipBtn = document.getElementById('genSkipBtn');
+        const blacklistBtn = document.getElementById('genBlacklistBtn');
+
+        const blPanel = document.getElementById('genBlacklistPanel');
+        const blReason = document.getElementById('genBlacklistReason');
+
+        function escapeHtml(s) {
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+        const blConfirm = document.getElementById('genBlacklistConfirmBtn');
+        const blCancel = document.getElementById('genBlacklistCancelBtn');
+
+        let currentTask = null;
+        let isBusy = false;
+        let acceptedInSession = [];
+
+        function getCtx() {
+            let recipientIds = [];
+            try {
+                const raw = deck.dataset.recipientIds;
+                if (raw) recipientIds = JSON.parse(raw);
+                if (!Array.isArray(recipientIds)) recipientIds = [];
+            } catch (e) {}
+            return {
+                lesson_id: deck.dataset.lessonId || null,
+                assignment_type: deck.dataset.assignmentType || 'homework',
+                template_id: deck.dataset.templateId || null,
+                recipient_ids: recipientIds,
+            };
         }
 
-        document.addEventListener('click', (event) => {
-            const menu = document.getElementById('lessonMenu');
-            const badge = document.querySelector('.now-playing-pill');
-            if (!menu || !badge) return;
-            if (!menu.contains(event.target) && !badge.contains(event.target)) {
-                menu.classList.remove('active');
-            }
-        });
-    </script>
-    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
-    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
-    <script>
-        window.__GEN_SEED_TASK__ = {{ seed_task_payload | tojson if seed_task_payload else 'null' }};
-    </script>
-    <script>
-        (function() {
-            const deck = document.getElementById('genDeck');
-            const empty = document.getElementById('genEmpty');
-            const card = document.getElementById('genTaskCard');
-            const body = document.getElementById('genTaskBody');
-            const answer = document.getElementById('genAnswer');
-            const title = document.getElementById('genTaskTitle');
-            const badge = document.getElementById('genTaskBadge');
-            const sourceLink = document.getElementById('genSourceLink');
+        function setButtonsEnabled(enabled) {
+            toggleAnswerBtn.disabled = !enabled;
+            acceptBtn.disabled = !enabled;
+            skipBtn.disabled = !enabled;
+            blacklistBtn.disabled = !enabled;
+        }
 
-            const startBtn = document.getElementById('genStartBtn');
-            const stopBtn = document.getElementById('genStopBtn');
-            const taskTypeSelect = document.getElementById('taskTypeSelect');
-            const useSkipped = document.getElementById('useSkipped');
+        function setBusy(busy) {
+            isBusy = busy;
+            startBtn.disabled = busy;
+            stopBtn.disabled = !currentTask ? true : busy ? true : false;
+            setButtonsEnabled(!busy && !!currentTask);
+        }
 
-            const toggleAnswerBtn = document.getElementById('genToggleAnswerBtn');
-            const acceptBtn = document.getElementById('genAcceptBtn');
-            const skipBtn = document.getElementById('genSkipBtn');
-            const blacklistBtn = document.getElementById('genBlacklistBtn');
-
-            const blPanel = document.getElementById('genBlacklistPanel');
-            const blReason = document.getElementById('genBlacklistReason');
-
-            function escapeHtml(s) {
-                const div = document.createElement('div');
-                div.textContent = s;
-                return div.innerHTML;
-            }
-            const blConfirm = document.getElementById('genBlacklistConfirmBtn');
-            const blCancel = document.getElementById('genBlacklistCancelBtn');
-
-            let currentTask = null;
-            let isBusy = false;
-            /** id заданий, принятых в этой сессии генератора (для «Создать работу» → source=generator&task_ids=…) */
-            let acceptedInSession = [];
-
-            function getCtx() {
-                let recipientIds = [];
-                try {
-                    const raw = deck.dataset.recipientIds;
-                    if (raw) recipientIds = JSON.parse(raw);
-                    if (!Array.isArray(recipientIds)) recipientIds = [];
-                } catch (e) {}
-                return {
-                    lesson_id: deck.dataset.lessonId || null,
-                    assignment_type: deck.dataset.assignmentType || 'homework',
-                    template_id: deck.dataset.templateId || null,
-                    recipient_ids: recipientIds,
-                };
-            }
-
-            function setButtonsEnabled(enabled) {
-                toggleAnswerBtn.disabled = !enabled;
-                acceptBtn.disabled = !enabled;
-                skipBtn.disabled = !enabled;
-                blacklistBtn.disabled = !enabled;
-            }
-
-            function setBusy(busy) {
-                isBusy = busy;
-                startBtn.disabled = busy;
-                stopBtn.disabled = !currentTask ? true : busy ? true : false;
-                setButtonsEnabled(!busy && !!currentTask);
-            }
-
-            function renderMath(container) {
-                try {
-                    if (window.renderMathInElement) {
-                        window.renderMathInElement(container, {
-                            delimiters: [
-                                {left: "$$", right: "$$", display: true},
-                                {left: "$", right: "$", display: false}
-                            ]
-                        });
-                    }
-                } catch (_) {}
-            }
-
-            function renderTask(task) {
-                currentTask = task;
-                blPanel.style.display = 'none';
-                blReason.value = '';
-                answer.classList.remove('is-visible');
-                answer.textContent = '';
-
-                if (!task) {
-                    card.style.display = 'none';
-                    empty.style.display = 'block';
-                    stopBtn.disabled = true;
-                    setButtonsEnabled(false);
-                    return;
+        function renderMath(container) {
+            try {
+                if (window.renderMathInElement) {
+                    window.renderMathInElement(container, {
+                        delimiters: [
+                            {left: "$$", right: "$$", display: true},
+                            {left: "$", right: "$", display: false}
+                        ]
+                    });
                 }
+            } catch (_) {}
+        }
 
-                empty.style.display = 'none';
-                card.style.display = 'block';
+        function renderTask(task) {
+            currentTask = task;
+            blPanel.style.display = 'none';
+            blReason.value = '';
+            answer.classList.remove('is-visible');
+            answer.textContent = '';
 
-                const isTriplet = task.is_triplet_19_21 && Array.isArray(task.triplet_answers);
-                title.textContent = isTriplet
-                    ? `Задания 19–21 (тройка) · #${(task.triplet_task_ids || [task.task_id]).join(', #')}`
-                    : `Задание ${task.task_number} · #${task.task_id}`;
-                badge.textContent = isTriplet ? '19–21' : String(task.task_number);
-                badge.title = task.site_task_id ? `site_task_id: ${task.site_task_id}` : (isTriplet ? 'Три задания с одним условием' : '');
-
-                body.innerHTML = task.content_html || '';
-                renderMath(body);
-
-                if (task.source_url) {
-                    sourceLink.href = task.source_url;
-                    sourceLink.style.display = 'inline-flex';
-                } else {
-                    sourceLink.href = '#';
-                    sourceLink.style.display = 'none';
-                }
-
-                if (isTriplet) {
-                    const hasAny = (task.triplet_answers || []).some(a => a && String(a).trim());
-                    toggleAnswerBtn.disabled = !hasAny;
-                    answer.innerHTML = (task.triplet_answers || ['', '', '']).map((a, i) =>
-                        `<div class="gen-answer-line"><strong>Ответ ${19 + i}:</strong> ${escapeHtml(String(a || '').trim() || '—')}</main>
-    </div>
-</div>`
-                    ).join('');
-                } else if (task.answer) {
-                    toggleAnswerBtn.disabled = false;
-                    answer.textContent = task.answer;
-                } else {
-                    toggleAnswerBtn.disabled = true;
-                }
-
-                stopBtn.disabled = false;
-                setButtonsEnabled(true);
+            if (!task) {
+                card.style.display = 'none';
+                empty.style.display = 'block';
+                stopBtn.disabled = true;
+                setButtonsEnabled(false);
+                return;
             }
 
-            async function postJSON(url, payload) {
-                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                const resp = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': token
-                    },
-                    body: JSON.stringify(payload || {})
-                });
-                const data = await resp.json().catch(() => ({}));
-                if (!resp.ok || !data || data.success === false) {
-                    const err = (data && data.error) ? data.error : `HTTP ${resp.status}`;
-                    throw new Error(err);
-                }
-                return data;
+            empty.style.display = 'none';
+            card.style.display = 'block';
+
+            const isTriplet = task.is_triplet_19_21 && Array.isArray(task.triplet_answers);
+            title.textContent = isTriplet
+                ? `Задания 19–21 (тройка) · #${(task.triplet_task_ids || [task.task_id]).join(', #')}`
+                : `Задание ${task.task_number} · #${task.task_id}`;
+            badge.textContent = isTriplet ? '19–21' : String(task.task_number);
+            badge.title = task.site_task_id ? `site_task_id: ${task.site_task_id}` : (isTriplet ? 'Три задания с одним условием' : '');
+
+            body.innerHTML = task.content_html || '';
+            renderMath(body);
+
+            if (task.source_url) {
+                sourceLink.href = task.source_url;
+                sourceLink.style.display = 'inline-flex';
+            } else {
+                sourceLink.href = '#';
+                sourceLink.style.display = 'none';
             }
 
-            function animateSwap(nextTask, message) {
-                card.classList.add('is-leaving');
-                setTimeout(() => {
-                    renderTask(nextTask);
-                    card.classList.remove('is-leaving');
-                    card.classList.add('is-entering');
-                    setTimeout(() => card.classList.remove('is-entering'), 30);
-                    if (message && window.toast) window.toast.success(message);
-                }, 200);
+            if (isTriplet) {
+                const hasAny = (task.triplet_answers || []).some(a => a && String(a).trim());
+                toggleAnswerBtn.disabled = !hasAny;
+                answer.innerHTML = (task.triplet_answers || ['', '', '']).map((a, i) =>
+                    `<div class="gen-answer-line"><strong>Ответ ${19 + i}:</strong> ${escapeHtml(String(a || '').trim() || '—')}</div>`
+                ).join('');
+            } else if (task.answer) {
+                toggleAnswerBtn.disabled = false;
+                answer.textContent = task.answer;
+            } else {
+                toggleAnswerBtn.disabled = true;
             }
 
-            async function startStream() {
-                if (isBusy) return;
-                setBusy(true);
-                try {
-                    const task_type = taskTypeSelect.value;
-                    const ctx = getCtx();
-                    const payload = {
-                        task_type,
-                        lesson_id: ctx.lesson_id,
-                        assignment_type: ctx.assignment_type,
-                        template_id: ctx.template_id,
-                        use_skipped: !!useSkipped.checked
-                    };
-                    if (ctx.recipient_ids && ctx.recipient_ids.length) payload.recipient_ids = ctx.recipient_ids;
-                    const data = await postJSON('/kege-generator/stream/start', payload);
-                    if (data.done) {
-                        renderTask(null);
-                        if (window.toast) window.toast.warning('Задания закончились. Попробуй включить пропущенные или сбросить историю.');
-                    } else {
-                        renderTask(data.task);
-                        card.classList.remove('is-entering');
-                        card.classList.add('is-entering');
-                        setTimeout(() => card.classList.remove('is-entering'), 30);
-                    }
-                } catch (e) {
-                    if (window.toast) window.toast.error(e.message || 'Ошибка запуска генератора');
-                } finally {
-                    setBusy(false);
-                }
-            }
+            stopBtn.disabled = false;
+            setButtonsEnabled(true);
+        }
 
-            async function act(action, extra) {
-                if (isBusy || !currentTask) return;
-                setBusy(true);
-                try {
-                    const ctx = getCtx();
-                    const actPayload = {
-                        action,
-                        task_id: currentTask.task_id,
-                        task_type: currentTask.task_number,
-                        lesson_id: ctx.lesson_id,
-                        assignment_type: ctx.assignment_type,
-                        template_id: ctx.template_id,
-                        use_skipped: !!useSkipped.checked,
-                        ...(extra || {})
-                    };
-                    if (ctx.recipient_ids && ctx.recipient_ids.length) actPayload.recipient_ids = ctx.recipient_ids;
-                    const data = await postJSON('/kege-generator/stream/act', actPayload);
-                    if (data.done) {
-                        animateSwap(null, data.message || 'Готово.');
-                        if (window.toast) window.toast.info('Задания закончились.');
-                    } else {
-                        if (action === 'accept' && currentTask) {
-                            const ids = currentTask.is_triplet_19_21
-                                ? (currentTask.triplet_task_ids || [currentTask.task_id].filter(Boolean))
-                                : [currentTask.task_id];
-                            acceptedInSession.push(...ids);
-                        }
-                        animateSwap(data.task, data.message);
-                    }
-                } catch (e) {
-                    if (window.toast) window.toast.error(e.message || 'Ошибка');
-                } finally {
-                    setBusy(false);
-                }
+        async function postJSON(url, payload) {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': token
+                },
+                body: JSON.stringify(payload || {})
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || !data || data.success === false) {
+                const err = (data && data.error) ? data.error : `HTTP ${resp.status}`;
+                throw new Error(err);
             }
+            return data;
+        }
 
-            function finishAndCreate() {
-                const params = new URLSearchParams(window.location.search);
-                const returnEdit = params.get('return_edit');
-                if (returnEdit && acceptedInSession.length) {
-                    (async () => {
-                        try {
-                            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-                            const r = await fetch('/assignments/' + returnEdit + '/tasks', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
-                                body: JSON.stringify({ task_ids: acceptedInSession })
-                            });
-                            const data = await r.json().catch(() => ({}));
-                            if (!r.ok || !data.success) throw new Error(data.error || 'Ошибка');
-                            if (window.toast) window.toast.success('Задания добавлены в работу');
-                            location.href = data.redirect || ('/assignments/' + returnEdit + '/edit');
-                        } catch (e) {
-                            if (window.toast) window.toast.error(e.message || 'Ошибка');
-                        }
-                    })();
-                    return;
-                }
+        function animateSwap(nextTask, message) {
+            card.classList.add('is-leaving');
+            setTimeout(() => {
+                renderTask(nextTask);
+                card.classList.remove('is-leaving');
+                card.classList.add('is-entering');
+                setTimeout(() => card.classList.remove('is-entering'), 30);
+                if (message && window.toast) window.toast.success(message);
+            }, 200);
+        }
+
+        async function startStream() {
+            if (isBusy) return;
+            setBusy(true);
+            try {
+                const task_type = taskTypeSelect.value;
                 const ctx = getCtx();
-                let base = '/assignments/create?assignment_type=' + encodeURIComponent(ctx.assignment_type || 'homework');
-                if (ctx.recipient_ids && ctx.recipient_ids.length) {
-                    base += '&recipient_ids=' + ctx.recipient_ids.join(',');
-                }
-                const url = acceptedInSession.length
-                    ? base + '&source=generator&task_ids=' + acceptedInSession.join(',')
-                    : base + '&source=manual';
-                location.href = url;
-            }
-
-            (function updateAddToWorkLabel() {
-                const params = new URLSearchParams(window.location.search);
-                const returnEdit = params.get('return_edit');
-                const label = returnEdit ? '➕ Добавить в работу' : '📝 Создать работу';
-                document.getElementById('genCreateWorkBtnText').textContent = label;
-                const topBtn = document.getElementById('genCreateWorkBtnTop');
-                if (topBtn) topBtn.textContent = label;
-            })();
-            document.getElementById('genCreateWorkBtnTop')?.addEventListener('click', finishAndCreate);
-            document.getElementById('genCreateWorkBtn')?.addEventListener('click', finishAndCreate);
-
-            startBtn?.addEventListener('click', startStream);
-            stopBtn?.addEventListener('click', () => {
-                currentTask = null;
-                renderTask(null);
-                if (window.toast) window.toast.info('Остановлено.');
-            });
-
-            toggleAnswerBtn?.addEventListener('click', () => {
-                if (!currentTask) return;
-                const hasAnswer = currentTask.is_triplet_19_21
-                    ? (currentTask.triplet_answers || []).some(a => a && String(a).trim())
-                    : currentTask.answer;
-                if (!hasAnswer) return;
-                answer.classList.toggle('is-visible');
-            });
-
-            acceptBtn?.addEventListener('click', () => act('accept'));
-            skipBtn?.addEventListener('click', () => act('skip'));
-
-            blacklistBtn?.addEventListener('click', () => {
-                if (!currentTask) return;
-                blPanel.style.display = 'block';
-                blReason.focus();
-            });
-            blCancel?.addEventListener('click', () => {
-                blPanel.style.display = 'none';
-                blReason.value = '';
-            });
-            blConfirm?.addEventListener('click', () => {
-                const reason = blReason.value || '';
-                blPanel.style.display = 'none';
-                blReason.value = '';
-                act('blacklist', {reason});
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-                if (!currentTask) return;
-                if (isBusy) return;
-                if (e.code === 'Space') {
-                    e.preventDefault();
-                    toggleAnswerBtn?.click();
-                } else if (e.key === 'a' || e.key === 'A') {
-                    acceptBtn?.click();
-                } else if (e.key === 's' || e.key === 'S') {
-                    skipBtn?.click();
-                } else if (e.key === 'b' || e.key === 'B') {
-                    blacklistBtn?.click();
-                } else if (e.key === 'Escape') {
-                    stopBtn?.click();
-                }
-            });
-
-            // Если пришли через "поиск по ID" — показываем seed task сразу, без запроса.
-            if (window.__GEN_SEED_TASK__) {
-                try {
-                    renderTask(window.__GEN_SEED_TASK__);
+                const payload = {
+                    task_type,
+                    lesson_id: ctx.lesson_id,
+                    assignment_type: ctx.assignment_type,
+                    template_id: ctx.template_id,
+                    use_skipped: !!useSkipped.checked
+                };
+                if (ctx.recipient_ids && ctx.recipient_ids.length) payload.recipient_ids = ctx.recipient_ids;
+                const data = await postJSON('/kege-generator/stream/start', payload);
+                if (data.done) {
+                    renderTask(null);
+                    if (window.toast) window.toast.warning('Задания закончились. Попробуй включить пропущенные или сбросить историю.');
+                } else {
+                    renderTask(data.task);
                     card.classList.remove('is-entering');
                     card.classList.add('is-entering');
                     setTimeout(() => card.classList.remove('is-entering'), 30);
-                } catch (_) {}
+                }
+            } catch (e) {
+                if (window.toast) window.toast.error(e.message || 'Ошибка запуска генератора');
+            } finally {
+                setBusy(false);
             }
+        }
+
+        async function act(action, extra) {
+            if (isBusy || !currentTask) return;
+            setBusy(true);
+            try {
+                const ctx = getCtx();
+                const actPayload = {
+                    action,
+                    task_id: currentTask.task_id,
+                    task_type: currentTask.task_number,
+                    lesson_id: ctx.lesson_id,
+                    assignment_type: ctx.assignment_type,
+                    template_id: ctx.template_id,
+                    use_skipped: !!useSkipped.checked,
+                    ...(extra || {})
+                };
+                if (ctx.recipient_ids && ctx.recipient_ids.length) actPayload.recipient_ids = ctx.recipient_ids;
+                const data = await postJSON('/kege-generator/stream/act', actPayload);
+                if (data.done) {
+                    animateSwap(null, data.message || 'Готово.');
+                    if (window.toast) window.toast.info('Задания закончились.');
+                } else {
+                    if (action === 'accept' && currentTask) {
+                        const ids = currentTask.is_triplet_19_21
+                            ? (currentTask.triplet_task_ids || [currentTask.task_id].filter(Boolean))
+                            : [currentTask.task_id];
+                        acceptedInSession.push(...ids);
+                    }
+                    animateSwap(data.task, data.message);
+                }
+            } catch (e) {
+                if (window.toast) window.toast.error(e.message || 'Ошибка');
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        function finishAndCreate() {
+            const params = new URLSearchParams(window.location.search);
+            const returnEdit = params.get('return_edit');
+            if (returnEdit && acceptedInSession.length) {
+                (async () => {
+                    try {
+                        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                        const r = await fetch('/assignments/' + returnEdit + '/tasks', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
+                            body: JSON.stringify({ task_ids: acceptedInSession })
+                        });
+                        const data = await r.json().catch(() => ({}));
+                        if (!r.ok || !data.success) throw new Error(data.error || 'Ошибка');
+                        if (window.toast) window.toast.success('Задания добавлены в работу');
+                        location.href = data.redirect || ('/assignments/' + returnEdit + '/edit');
+                    } catch (e) {
+                        if (window.toast) window.toast.error(e.message || 'Ошибка');
+                    }
+                })();
+                return;
+            }
+            const ctx = getCtx();
+            let base = '/assignments/create?assignment_type=' + encodeURIComponent(ctx.assignment_type || 'homework');
+            if (ctx.recipient_ids && ctx.recipient_ids.length) {
+                base += '&recipient_ids=' + ctx.recipient_ids.join(',');
+            }
+            const url = acceptedInSession.length
+                ? base + '&source=generator&task_ids=' + acceptedInSession.join(',')
+                : base + '&source=manual';
+            location.href = url;
+        }
+
+        (function updateAddToWorkLabel() {
+            const params = new URLSearchParams(window.location.search);
+            const returnEdit = params.get('return_edit');
+            const label = returnEdit ? '➕ Добавить в работу' : '📝 Создать работу';
+            document.getElementById('genCreateWorkBtnText').textContent = label;
+            const topBtn = document.getElementById('genCreateWorkBtnTop');
+            if (topBtn) topBtn.textContent = label;
         })();
-    </script>
-    <script>
-        // Конвертируем flash-сообщения в toast-уведомления
-        document.addEventListener('DOMContentLoaded', function() {
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% if category == 'error' or category == 'danger' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.error('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.error('{{ message|e }}');
-                            }
-                        {% elif category == 'warning' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.warning('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.warning('{{ message|e }}');
-                            }
-                        {% elif category == 'info' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.info('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.info('{{ message|e }}');
-                            }
-                        {% else %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.success('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.success('{{ message|e }}');
-                            }
-                        {% endif %}
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
+        document.getElementById('genCreateWorkBtnTop')?.addEventListener('click', finishAndCreate);
+        document.getElementById('genCreateWorkBtn')?.addEventListener('click', finishAndCreate);
+
+        startBtn?.addEventListener('click', startStream);
+        stopBtn?.addEventListener('click', () => {
+            currentTask = null;
+            renderTask(null);
+            if (window.toast) window.toast.info('Остановлено.');
         });
-    </script>
-</body>
-</html>
+
+        toggleAnswerBtn?.addEventListener('click', () => {
+            if (!currentTask) return;
+            const hasAnswer = currentTask.is_triplet_19_21
+                ? (currentTask.triplet_answers || []).some(a => a && String(a).trim())
+                : currentTask.answer;
+            if (!hasAnswer) return;
+            answer.classList.toggle('is-visible');
+        });
+
+        acceptBtn?.addEventListener('click', () => act('accept'));
+        skipBtn?.addEventListener('click', () => act('skip'));
+
+        blacklistBtn?.addEventListener('click', () => {
+            if (!currentTask) return;
+            blPanel.style.display = 'block';
+            blReason.focus();
+        });
+        blCancel?.addEventListener('click', () => {
+            blPanel.style.display = 'none';
+            blReason.value = '';
+        });
+        blConfirm?.addEventListener('click', () => {
+            const reason = blReason.value || '';
+            blPanel.style.display = 'none';
+            blReason.value = '';
+            act('blacklist', {reason});
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+            if (!currentTask) return;
+            if (isBusy) return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                toggleAnswerBtn?.click();
+            } else if (e.key === 'a' || e.key === 'A') {
+                acceptBtn?.click();
+            } else if (e.key === 's' || e.key === 'S') {
+                skipBtn?.click();
+            } else if (e.key === 'b' || e.key === 'B') {
+                blacklistBtn?.click();
+            } else if (e.key === 'Escape') {
+                stopBtn?.click();
+            }
+        });
+
+        if (window.__GEN_SEED_TASK__) {
+            try {
+                renderTask(window.__GEN_SEED_TASK__);
+                card.classList.remove('is-entering');
+                card.classList.add('is-entering');
+                setTimeout(() => card.classList.remove('is-entering'), 30);
+            } catch (_) {}
+        }
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,11 @@
+<div class="rounded-card p-4 animate-slide-up {{ 'bg-success-soft' if is_correct else 'bg-error-soft' }}">
+    <div class="flex items-center gap-2 mb-2">
+        {{ ui_icon('action.check' if is_correct else 'action.close', 'md') }}
+        <span class="font-bold {{ 'text-success' if is_correct else 'text-error' }}">
+            {{ 'Правильно!' if is_correct else 'Неправильно' }}
+        </span>
+    </div>
+    {% if explanation %}
+    <p class="text-text-secondary text-sm mt-2">{{ explanation }}</p>
+    {% endif %}
+</div>

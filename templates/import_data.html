@@ -1,113 +1,40 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Импорт данных · URep</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="{% if active_lesson %}lesson-active{% endif %}">
-    {% include '_active_lesson_banner.html' %}
-    
-    <div class="app-layout">
-        {% set active_page = 'dashboard' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
+{% block title %}Импорт данных · BooStudy{% endblock %}
 
-        {% include '_ux_enhancements.html' %}
+{% set active_page = 'dashboard' %}
 
-        <section class="glass-panel" style="margin-bottom: 2rem;">
-            <div>
-                <p class="hero-eyebrow">импорт данных</p>
-                <h1 class="hero-title">{{ ui_icon('action.import', 'md', decorative=true) }}Импорт данных</h1>
-            </div>
-        </section>
-
-        <section class="glass-panel" style="margin-bottom: 2rem; border-left: 4px solid var(--danger);">
-            <div style="background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 1rem; color: var(--danger);">
-                <strong style="display: block; margin-bottom: 0.5rem;">{{ ui_icon('action.warning', 'sm') }} Внимание!</strong>
-                <p style="margin: 0; color: var(--text-primary);">Импорт добавит новые записи в базу данных. Существующие ученики с такими же именем и ID платформы будут пропущены.</p>
-            </div>
-        </section>
-
-        <section class="glass-panel">
-            <form method="POST" enctype="multipart/form-data" data-validate>
-                <div class="neo-field" style="margin-bottom: 1.5rem;">
-                    <label class="neo-label" for="file">Выберите JSON файл для импорта</label>
-                    <input type="file" 
-                           id="file" 
-                           name="file" 
-                           accept=".json" 
-                           required 
-                           class="neo-input"
-                           style="cursor: pointer;">
-                    <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.5em;">Файл должен быть в формате JSON, экспортированный из этой системы</small>
-                </div>
-                
-                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <button type="submit" class="neo-button accent">{{ ui_icon('action.import', 'sm', decorative=true) }}Импортировать</button>
-                    <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost">{{ ui_icon('action.close', 'sm', decorative=true) }}Отмена</a>
-                </div>
-            </form>
-        </section>
-    </main>
+{% block content %}
+<section class="glass-panel mb-6">
+    <div>
+        <p class="hero-eyebrow">импорт данных</p>
+        <h1 class="hero-title">{{ ui_icon('action.import', 'md', decorative=true) }}Импорт данных</h1>
     </div>
-</div>
-    
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='loading.js') }}"></script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
-    <script>
-        // Конвертируем flash-сообщения в toast-уведомления
-        document.addEventListener('DOMContentLoaded', function() {
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% if category == 'error' or category == 'danger' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.error('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.error('{{ message|e }}');
-                            }
-                        {% elif category == 'warning' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.warning('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.warning('{{ message|e }}');
-                            }
-                        {% elif category == 'info' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.info('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.info('{{ message|e }}');
-                            }
-                        {% else %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.success('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.success('{{ message|e }}');
-                            }
-                        {% endif %}
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        });
-    </script>
-</body>
-</html>
+</section>
+
+<section class="glass-panel mb-6" style="border-left: 4px solid #FF6B6B;">
+    <div class="p-4 bg-error-soft rounded-btn text-error" style="border-left: 3px solid #FF6B6B;">
+        <strong class="block mb-2">{{ ui_icon('action.warning', 'sm') }} Внимание!</strong>
+        <p class="m-0 text-text-primary">Импорт добавит новые записи в базу данных. Существующие ученики с такими же именем и ID платформы будут пропущены.</p>
+    </div>
+</section>
+
+<section class="glass-panel">
+    <form method="POST" enctype="multipart/form-data" data-validate>
+        <div class="neo-field mb-6">
+            <label class="neo-label" for="file">Выберите JSON файл для импорта</label>
+            <input type="file"
+                   id="file"
+                   name="file"
+                   accept=".json"
+                   required
+                   class="neo-input cursor-pointer">
+            <small class="block text-text-muted text-sm mt-2">Файл должен быть в формате JSON, экспортированный из этой системы</small>
+        </div>
+
+        <div class="flex gap-4 flex-wrap">
+            <button type="submit" class="neo-button accent">{{ ui_icon('action.import', 'sm', decorative=true) }}Импортировать</button>
+            <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost">{{ ui_icon('action.close', 'sm', decorative=true) }}Отмена</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

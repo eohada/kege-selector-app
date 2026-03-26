@@ -1,177 +1,206 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Дашборд ученика</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-  {% include '_ux_enhancements.html' %}
-  {% if csrf_token %}
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-  {% endif %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body data-cinema-scene="dashboard">
-  {% if request.args.get('cinema_scene') %}
-  <div id="cinema-instant-cover" class="cinema-instant-cover"></div>
-  {% endif %}
-  <div class="app-layout">
-    {% set active_page = 'dashboard' %}
-    {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
+{% block title %}Дашборд ученика · BooStudy{% endblock %}
+{% set active_page = 'dashboard' %}
+{% block body_attrs %}data-cinema-scene="dashboard"{% endblock %}
 
-    <main style="margin-top: 1.5rem;">
-      <section class="glass-panel" style="margin-bottom: 1.5rem;">
+{% block content %}
+    {% if request.args.get('cinema_scene') %}
+    <div id="cinema-instant-cover" class="cinema-instant-cover"></div>
+    {% endif %}
+
+    {# ── Hero ── #}
+    <section class="glass-panel mb-6">
         {% if enrollments and enrollments|length > 1 %}
-        <div class="d-flex gap-2 mb-3" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+        <div class="flex gap-2 mb-4 flex-wrap">
             {% for enrollment in enrollments %}
-            <a href="?course_id={{ enrollment.course_id }}" class="neo-button {% if selected_course_id == enrollment.course_id %}accent{% else %}ghost{% endif %} sm" style="text-decoration: none; padding: 0.5rem 1rem; font-weight: 600; font-size: 0.9rem;">
+            <a href="?course_id={{ enrollment.course_id }}"
+               class="neo-button {% if selected_course_id == enrollment.course_id %}accent{% else %}ghost{% endif %} sm">
                 {{ enrollment.course.title if enrollment.course else ('Курс #' ~ enrollment.course_id) }}
             </a>
             {% endfor %}
         </div>
         {% endif %}
-        <p class="hero-eyebrow">ученик</p>
-        <h1 class="hero-title" style="margin-bottom:.25rem;">Дашборд</h1>
-        {% if student %}
-          <div style="color: var(--text-muted);">{{ student.name }}</div>
-        {% else %}
-          <div style="color: var(--text-muted);">Профиль ученика не найден.</div>
-        {% endif %}
-        <div class="hero-actions" id="cinema-notifications" style="margin-top: 1rem;">
-          <a href="{{ url_for('notifications.notifications_list') }}" class="neo-button outline">Уведомления{% if unread_notifications %} ({{ unread_notifications }}){% endif %}</a>
-          {% if student %}
-          <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button ghost">Аналитика</a>
-          {% endif %}
+
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <p class="hero-eyebrow">панель ученика</p>
+                {% if student %}
+                <h1 class="hero-title mb-1">{{ student.name }}</h1>
+                {% else %}
+                <h1 class="hero-title mb-1">Дашборд</h1>
+                <p class="hero-subtitle text-text-muted">Профиль ученика не найден.</p>
+                {% endif %}
+                {% if enrollments and enrollments|length > 0 %}
+                <p class="hero-subtitle text-text-muted">
+                    {% for enrollment in enrollments if selected_course_id == enrollment.course_id %}
+                        {{ enrollment.course.title if enrollment.course else '' }}
+                    {% else %}
+                        {{ enrollments[0].course.title if enrollments[0].course else '' }}
+                    {% endfor %}
+                </p>
+                {% endif %}
+                <div class="hero-actions mt-4" id="cinema-notifications">
+                    <a href="{{ url_for('notifications.notifications_list') }}" class="neo-button outline">
+                        Уведомления{% if unread_notifications %} ({{ unread_notifications }}){% endif %}
+                    </a>
+                    {% if student %}
+                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button ghost">Аналитика</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% if streak_days is defined and streak_days %}
+            <span class="streak-badge">{{ streak_icon }} Стрик: {{ streak_days }} дней</span>
+            {% endif %}
         </div>
-      </section>
+    </section>
 
-      {% if student %}
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;" class="profile-grid-responsive">
-        <section class="glass-panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">план</p>
-              <h2>Траектория (ближайшее)</h2>
-            </div>
-            <div>
-              <a class="neo-button outline sm" href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}">Открыть</a>
-            </div>
-          </div>
-          <div style="display:grid; gap:.65rem; margin-top: 1rem;">
-            {% for it in plan_items %}
-              <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
-                <div style="display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
-                  <div style="font-weight: 900;">{{ it.title }}</div>
-                  <div class="status-badge status-info" style="opacity:.9;">{{ it.status }}</div>
-                </div>
-                <div style="color: var(--text-muted); margin-top:.35rem; font-size:.92rem;">
-                  {% if it.due_date %}Дедлайн: <strong>{{ it.due_date.strftime('%d.%m.%Y %H:%M') }}</strong>{% else %}Без дедлайна{% endif %}
-                </div>
-              </div>
-            {% else %}
-              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Пока нет пунктов траектории.</p></div>
-            {% endfor %}
-          </div>
-        </section>
+    {% if student %}
+    {# ── Bento Grid ── #}
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
 
-        <section class="glass-panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">задания</p>
-              <h2>Активные работы</h2>
-            </div>
-            <div>
-              <a id="demo-open-assignments" class="neo-button outline sm" href="{{ url_for('assignments.submissions_list') }}">Все</a>
-            </div>
-          </div>
-          <div style="display:grid; gap:.65rem; margin-top: 1rem;">
-            {% for s in pending_submissions %}
-              <a href="{{ url_for('assignments.submission_view', submission_id=s.submission_id) }}" style="text-decoration:none; color: inherit;">
-                <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
-                  <div style="display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
-                    <div style="font-weight: 900;">{{ s.assignment.title if s.assignment else ('Работа #' ~ s.submission_id) }}</div>
-                    <div class="status-badge status-info" style="opacity:.9;">{{ s.status }}</div>
-                  </div>
-                  <div style="color: var(--text-muted); margin-top:.35rem; font-size:.92rem;">
-                    {% if s.assignment and s.assignment.deadline %}Дедлайн: <strong>{{ s.assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</strong>{% endif %}
-                  </div>
+        {# ── Schedule / Plan Card ── #}
+        <div class="rounded-card-lg shadow-card p-5 bg-accent-soft col-span-2 lg:col-span-1">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <p class="eyebrow text-accent">план</p>
+                    <h3 class="font-bold text-lg">Траектория</h3>
                 </div>
-              </a>
-            {% else %}
-              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Нет активных работ.</p></div>
-            {% endfor %}
-          </div>
-        </section>
-      </div>
+                <a class="neo-button ghost sm"
+                   href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}">Открыть</a>
+            </div>
+            <div class="grid gap-2">
+                {% for it in plan_items[:3] %}
+                <div class="bg-white/60 dark:bg-white/10 px-3 py-2 rounded-btn">
+                    <div class="flex justify-between gap-2 flex-wrap">
+                        <span class="font-bold text-sm">{{ it.title }}</span>
+                        <span class="status-badge status-info opacity-90 text-xs">{{ it.status }}</span>
+                    </div>
+                    <div class="text-text-muted text-xs mt-0.5">
+                        {% if it.due_date %}{{ it.due_date.strftime('%d.%m.%Y %H:%M') }}{% else %}Без дедлайна{% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-text-muted text-sm py-4 text-center">Нет пунктов траектории</div>
+                {% endfor %}
+            </div>
+        </div>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;" class="profile-grid-responsive">
-        <section class="glass-panel" id="cinema-weak-topics" data-cinema="weak-topics">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">риски</p>
-              <h2>Слабые темы</h2>
+        {# ── Progress Card ── #}
+        <div class="rounded-card-lg shadow-card p-5 bg-success-soft">
+            <p class="eyebrow text-success">прогресс</p>
+            <h3 class="font-bold text-lg mb-3">Выполнение</h3>
+            {% set pct = completion_pct if completion_pct is defined else 0 %}
+            <div class="text-3xl font-black text-success mb-2">{{ pct }}%</div>
+            <div class="bg-bg-app rounded-full h-3 overflow-hidden">
+                <div class="bg-accent rounded-full h-full transition-all duration-500" style="width: {{ pct }}%"></div>
             </div>
-          </div>
-          <div style="display:grid; gap:.6rem; margin-top: 1rem;">
-            {% for t in problem_topics %}
-              <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
-                <div style="font-weight: 900;">{{ t.name }}</div>
-                <div style="color: var(--text-muted); font-size:.92rem; margin-top:.35rem;">Средний результат: <strong>{{ t.avg_score }}%</strong></div>
-              </div>
-            {% else %}
-              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Пока недостаточно данных.</p></div>
-            {% endfor %}
-          </div>
-        </section>
+            <div class="text-text-muted text-xs mt-2">общий прогресс по курсу</div>
+        </div>
 
-        <section class="glass-panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">журнал</p>
-              <h2>Последние оценки</h2>
-            </div>
-            <div>
-              <a class="neo-button outline sm" href="{{ url_for('students.student_gradebook', student_id=student.student_id) }}">Открыть</a>
-            </div>
-          </div>
-          <div style="display:grid; gap:.6rem; margin-top: 1rem;">
-            {% for e in recent_grades %}
-              <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
-                <div style="display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
-                  <div style="font-weight: 900;">{{ e.title }}</div>
-                  <div class="status-badge status-info" style="opacity:.9;">
-                    {% if e.score is not none and e.max_score is not none %}{{ e.score }}/{{ e.max_score }}{% else %}—{% endif %}
-                  </div>
+        {# ── Weak Topics Card ── #}
+        <div class="rounded-card-lg shadow-card p-5 bg-gamification-soft" id="cinema-weak-topics" data-cinema="weak-topics">
+            <p class="eyebrow text-gamification">риски</p>
+            <h3 class="font-bold text-lg mb-3">Слабые темы</h3>
+            <div class="grid gap-2">
+                {% for t in problem_topics[:4] %}
+                <div class="bg-white/60 dark:bg-white/10 px-3 py-2 rounded-btn flex justify-between items-center">
+                    <span class="font-semibold text-sm">{{ t.name }}</span>
+                    <span class="text-xs font-bold opacity-70">{{ t.avg_score }}%</span>
                 </div>
-                <div style="color: var(--text-muted); font-size:.92rem; margin-top:.35rem;">
-                  {% if e.created_at %}{{ e.created_at.strftime('%d.%m.%Y') }}{% endif %}
+                {% else %}
+                <div class="text-text-muted text-sm py-4 text-center">Недостаточно данных</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# ── Stat Cards ── #}
+        <div class="rounded-card-lg shadow-card p-5 bg-bg-surface">
+            <div class="flex items-center gap-2 mb-1">
+                {{ ui_icon('nav.stats', 'md') }}
+                <p class="eyebrow">уроки</p>
+            </div>
+            <div class="text-3xl font-black">{{ total_lessons if total_lessons is defined else plan_items|length }}</div>
+            <div class="text-text-muted text-xs">всего занятий</div>
+        </div>
+
+        <div class="rounded-card-lg shadow-card p-5 bg-bg-surface">
+            <div class="flex items-center gap-2 mb-1">
+                {{ ui_icon('nav.stats', 'md') }}
+                <p class="eyebrow">задания</p>
+            </div>
+            <div class="text-3xl font-black">{{ completed_tasks if completed_tasks is defined else 0 }}</div>
+            <div class="text-text-muted text-xs">выполнено заданий</div>
+        </div>
+
+        <div class="rounded-card-lg shadow-card p-5 bg-bg-surface">
+            <div class="flex items-center gap-2 mb-1">
+                {{ ui_icon('nav.stats', 'md') }}
+                <p class="eyebrow">средний балл</p>
+            </div>
+            <div class="text-3xl font-black">{{ avg_score if avg_score is defined else '—' }}</div>
+            <div class="text-text-muted text-xs">по всем работам</div>
+        </div>
+
+        {# ── Active Submissions ── #}
+        <div class="rounded-card-lg shadow-card p-5 bg-bg-surface col-span-2">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <p class="eyebrow">задания</p>
+                    <h3 class="font-bold text-lg">Активные работы</h3>
                 </div>
-              </div>
-            {% else %}
-              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Пока нет записей.</p></div>
-            {% endfor %}
-          </div>
-        </section>
-      </div>
-      {% endif %}
-    </main>
-  </main>
+                <a id="demo-open-assignments" class="neo-button ghost sm"
+                   href="{{ url_for('assignments.submissions_list') }}">Все</a>
+            </div>
+            <div class="grid gap-2">
+                {% for s in pending_submissions %}
+                <a href="{{ url_for('assignments.submission_view', submission_id=s.submission_id) }}"
+                   class="block no-underline text-inherit bg-white/60 dark:bg-white/10 px-3 py-2 rounded-btn hover:shadow-card-hover transition-shadow">
+                    <div class="flex justify-between gap-4 flex-wrap">
+                        <span class="font-bold text-sm">{{ s.assignment.title if s.assignment else ('Работа #' ~ s.submission_id) }}</span>
+                        <span class="status-badge status-info opacity-90 text-xs">{{ s.status }}</span>
+                    </div>
+                    {% if s.assignment and s.assignment.deadline %}
+                    <div class="text-text-muted text-xs mt-0.5">Дедлайн: {{ s.assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
+                    {% endif %}
+                </a>
+                {% else %}
+                <div class="text-text-muted text-sm py-4 text-center">Нет активных работ</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# ── Recent Grades ── #}
+        <div class="rounded-card-lg shadow-card p-5 bg-bg-surface">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <p class="eyebrow">журнал</p>
+                    <h3 class="font-bold text-lg">Последние оценки</h3>
+                </div>
+                <a class="neo-button ghost sm"
+                   href="{{ url_for('students.student_gradebook', student_id=student.student_id) }}">Открыть</a>
+            </div>
+            <div class="grid gap-2">
+                {% for e in recent_grades[:4] %}
+                <div class="bg-white/60 dark:bg-white/10 px-3 py-2 rounded-btn flex justify-between items-center">
+                    <div>
+                        <span class="font-semibold text-sm">{{ e.title }}</span>
+                        {% if e.created_at %}
+                        <span class="text-text-muted text-xs ml-1">{{ e.created_at.strftime('%d.%m') }}</span>
+                        {% endif %}
+                    </div>
+                    <span class="font-bold text-sm">
+                        {% if e.score is not none and e.max_score is not none %}{{ e.score }}/{{ e.max_score }}{% else %}—{% endif %}
+                    </span>
+                </div>
+                {% else %}
+                <div class="text-text-muted text-sm py-4 text-center">Нет записей</div>
+                {% endfor %}
+            </div>
+        </div>
     </div>
-</div>
 
-  <script src="{{ url_for('static', filename='toast.js') }}"></script>
-</body>
-</html>
-
+    {# ── Mascot ── #}
+    <img src="{{ url_for('static', filename='icons/mascot-boo.svg') }}"
+         class="mascot-boo mascot-boo--sm mascot-boo--neon" alt="">
+    {% endif %}
+{% endblock %}

@@ -1,10 +1,10 @@
 
-<div class="nav-actions" style="display: flex; align-items: center; gap: 1rem;">
+<div class="nav-actions flex items-center gap-4">
     {% if current_user.is_authenticated %}
-    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em;">
+    <div class="flex items-center gap-2 text-muted text-sm">
         <span>👤 {{ current_user.username }}</span>
     </div>
-    <a href="{{ url_for('auth.logout') }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em; text-decoration: none;">🚪 Выход</a>
+    <a href="{{ url_for('auth.logout') }}" class="neo-button ghost text-sm no-underline" style="padding: 0.5em 1em;">🚪 Выход</a>
     {% endif %}
 </div>
 

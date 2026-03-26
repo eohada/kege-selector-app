@@ -1,75 +1,45 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Оферта</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-  {% include '_ux_enhancements.html' %}
-  {% if csrf_token %}
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-  {% endif %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-  <div class="app-layout">
-    {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
-    <main style="margin-top: 1.25rem;">
-      <section class="glass-panel">
-        <p class="hero-eyebrow">юридическое</p>
-        <h1 class="hero-title" style="margin-bottom:.25rem;">Публичная оферта</h1>
-        
-        {% set pdf_url = url_for('static', filename='documents/offer.pdf') %}
-        {% set pdf_exists = pdf_url %}
-        
-        <div style="margin-top: 1.5rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-          <a href="{{ pdf_url }}" target="_blank" class="neo-button" download style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+{% extends 'base_public.html' %}
+{% block title %}Оферта{% endblock %}
+
+{% block content %}
+<section class="glass-panel">
+    <p class="hero-eyebrow">юридическое</p>
+    <h1 class="hero-title" style="margin-bottom:.25rem;">Публичная оферта</h1>
+    
+    {% set pdf_url = url_for('static', filename='documents/offer.pdf') %}
+    {% set pdf_exists = pdf_url %}
+    
+    <div style="margin-top: 1.5rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <a href="{{ pdf_url }}" target="_blank" class="neo-button" download style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
             <span>📄</span>
             <span>Скачать PDF</span>
-          </a>
-          <a href="{{ pdf_url }}" target="_blank" class="neo-button secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+        </a>
+        <a href="{{ pdf_url }}" target="_blank" class="neo-button secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
             <span>🔗</span>
             <span>Открыть в новой вкладке</span>
-          </a>
-        </div>
+        </a>
+    </div>
 
-        <div style="margin-top: 1.5rem; border-radius: 12px; overflow: hidden; background: var(--bg-secondary, #f5f5f5); min-height: 600px;">
-          <iframe 
+    <div style="margin-top: 1.5rem; border-radius: 12px; overflow: hidden; background: var(--bg-secondary, #f5f5f5); min-height: 600px;">
+        <iframe 
             src="{{ pdf_url }}" 
             style="width: 100%; height: 80vh; min-height: 600px; border: none;"
             title="Публичная оферта"
             type="application/pdf">
             <p style="padding: 2rem; text-align: center; color: var(--text-muted);">
-              Ваш браузер не поддерживает отображение PDF. 
-              <a href="{{ pdf_url }}" target="_blank" download>Скачайте документ</a> для просмотра.
+                Ваш браузер не поддерживает отображение PDF. 
+                <a href="{{ pdf_url }}" target="_blank" download>Скачайте документ</a> для просмотра.
             </p>
-          </iframe>
-        </div>
-
-        {% if current_user.is_authenticated %}
-        <form method="POST" action="{{ url_for('main.legal_accept') }}" style="margin-top: 1.5rem;">
-          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-          <input type="hidden" name="document_key" value="offer">
-          <input type="hidden" name="version" value="1">
-          <button type="submit" class="neo-button accent">Я принимаю оферту</button>
-        </form>
-        {% endif %}
-      </section>
-    </main>
-  </main>
+        </iframe>
     </div>
-</div>
-</body>
-</html>
 
+    {% if current_user.is_authenticated %}
+    <form method="POST" action="{{ url_for('main.legal_accept') }}" style="margin-top: 1.5rem;">
+        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+        <input type="hidden" name="document_key" value="offer">
+        <input type="hidden" name="version" value="1">
+        <button type="submit" class="neo-button accent">Я принимаю оферту</button>
+    </form>
+    {% endif %}
+</section>
+{% endblock %}

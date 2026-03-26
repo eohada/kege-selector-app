@@ -1,217 +1,156 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %} · URep</title>
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="{% if active_lesson %}lesson-active{% endif %}">
-    {% include '_active_lesson_banner.html' %}
-    
-    <div class="app-layout">
-        {% set active_page = active_page | default('generator') %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
 
-        <section class="glass-panel" style="margin-bottom: 2rem;">
-            <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
-                <div>
-                <p class="hero-eyebrow">принятые задания</p>
-                <h1 class="hero-title">{{ ui_icon('action.check', 'sm', decorative=true) }}Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
-                <p class="hero-subtitle">Всего: {{ tasks|length }} шт.</p>
-            </div>
-                <div class="hero-actions" style="margin-top: 0;">
-                    {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
-                    <a class="neo-button accent" style="text-decoration:none;" href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type=assignment_type, task_type=task_type) }}">
-                        📝 Создать работу ({{ tasks|length }})
-                    </a>
-                    {% endif %}
-                    <form method="POST" action="{{ clear_accepted_url | default(url_for('assignments.assignments_accepted_clear')) }}" style="display:inline-flex; gap:.5rem; align-items:center;" onsubmit="return confirmAcceptedClear();">
-                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                        {% if task_type %}<input type="hidden" name="task_type" value="{{ task_type }}">{% endif %}
-                        {% if assignment_type %}<input type="hidden" name="assignment_type" value="{{ assignment_type }}">{% endif %}
-                        <button type="submit" class="neo-button ghost" style="color: var(--danger);">
-                            🧹 Очистить принятые{% if task_type %} (тип {{ task_type }}){% endif %}
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </section>
+{% block title %}Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %} · BooStudy{% endblock %}
 
-        <section class="glass-panel filters-panel">
-            <div class="neo-field">
-                <label class="neo-label" for="task-type-filter">Фильтр по номеру задания</label>
-                <select id="task-type-filter" class="neo-select" onchange="filterByTaskType(this.value)">
-                    <option value="">Все задания</option>
-                    {% for i in task_numbers %}
-                        <option value="{{ i }}" {% if task_type == i %}selected{% endif %}>Задание {{ i }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </section>
+{% block body_class %}{% if active_lesson %}lesson-active{% endif %}{% endblock %}
 
-        {% if tasks %}
+{% block head_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+{% endblock %}
+
+{% block head_extra %}
+<script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<section class="glass-panel">
+    <div class="flex justify-between items-start gap-4 flex-wrap">
         <div>
-            {% for task in tasks %}
-            <section class="glass-panel task-card" data-task-id="{{ task.task_id }}" style="margin-bottom: 2rem;">
-                <div class="task-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1);">
-                    <div>
-                        <b style="color: var(--text-primary);">№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b>
-                        <span style="color: var(--text-muted); margin: 0 0.5em;">|</span>
-                        <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.9em; padding: 0.4em 0.8em;">{{ ui_icon('action.link', 'sm', decorative=true) }}Источник</a>
-                    </div>
-                    <span class="neo-button accent" style="font-size: 0.85em; padding: 0.4em 0.8em; cursor: default;">{{ ui_icon('action.check', 'sm', decorative=true) }}ПРИНЯТО</span>
-                </div>
-                
-                <div class="task-content" style="line-height: 1.8; font-size: 1.05em; color: var(--text-primary); margin-bottom: 1.5rem;">
-                    {{ task.content_html | sanitize_html }}
-                </div>
-                
-                {% if task.attached_files %}
-                <div class="attached-files" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;">
-                    <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">📎 Прикрепленные файлы</h4>
-                    <ul class="file-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.75rem;">
-                        {% set files = task.attached_files | from_json %}
-                        {% for file in files %}
-                        {% if file %}
-                        {% set file_path = file.path if file.path is defined else None %}
-                        {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
-                        {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else ((file_path or file_url or '').split('/')[-1].split('?')[0] if (file_path or file_url) else 'file')) %}
-                        {% if file_path %}
-                            {% set download_url = file_path ~ (('?download_name=' ~ (file_name|urlencode)) if file_name else '') %}
-                        {% elif file_url %}
-                            {% if file_url.startswith('//') %}
-                                {% set file_url = 'https:' ~ file_url %}
-                            {% elif file_url.startswith('/') %}
-                                {% set file_url = 'https://kompege.ru' ~ file_url %}
-                            {% endif %}
-                            {% if file_url.startswith('https://kompege.ru/') or file_url.startswith('http://kompege.ru/') %}
-                                {% set download_url = url_for('assignments.attached_proxy') ~ '?url=' ~ (file_url|urlencode) %}
-                            {% else %}
-                                {% set download_url = file_url %}
-                            {% endif %}
-                        {% endif %}
-                        {% if download_url is defined %}
-                        <li>
-                            <a href="{{ download_url }}" target="_blank" class="neo-button outline" style="font-size: 0.9rem; padding: 0.65rem 1.2rem; text-decoration: none;" download="{{ file_name }}">
-                                {{ file_name }}
-                            </a>
-                        </li>
-                        {% endif %}
-                        {% endif %}
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-            </section>
-            {% endfor %}
+            <p class="hero-eyebrow">принятые задания</p>
+            <h1 class="hero-title">{{ ui_icon('action.check', 'sm', decorative=true) }}Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
+            <p class="hero-subtitle">Всего: {{ tasks|length }} шт.</p>
         </div>
-        {% else %}
-        <section class="glass-panel">
-            <div class="empty-state">
-                <div class="empty-state-icon">{{ ui_icon('action.check', 'lg') }}</div>
-                <h3 class="empty-state-title">Нет принятых заданий</h3>
-                <p class="empty-state-description">Принятые задания будут отображаться здесь</p>
-                <div class="empty-state-actions">
-                    <a href="{{ back_url | default(url_for('assignments.assignments_list')) }}" class="neo-button accent">{{ ui_icon('nav.generator', 'sm', decorative=true) }}Назад</a>
-                </div>
-            </div>
-        </section>
-        {% endif %}
-    </main>
+        <div class="hero-actions mt-0">
+            {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
+            <a class="neo-button accent" href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type=assignment_type, task_type=task_type) }}">
+                📝 Создать работу ({{ tasks|length }})
+            </a>
+            {% endif %}
+            <form method="POST" action="{{ clear_accepted_url | default(url_for('assignments.assignments_accepted_clear')) }}" class="inline-flex gap-2 items-center" onsubmit="return confirmAcceptedClear();">
+                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                {% if task_type %}<input type="hidden" name="task_type" value="{{ task_type }}">{% endif %}
+                {% if assignment_type %}<input type="hidden" name="assignment_type" value="{{ assignment_type }}">{% endif %}
+                <button type="submit" class="neo-button ghost text-error">
+                    🧹 Очистить принятые{% if task_type %} (тип {{ task_type }}){% endif %}
+                </button>
+            </form>
+        </div>
     </div>
-</div>
+</section>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof renderMathInElement !== 'undefined') {
-                renderMathInElement(document.body, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '$', right: '$', display: false},
-                        {left: '\\(', right: '\\)', display: false},
-                        {left: '\\[', right: '\\]', display: true}
-                    ],
-                    throwOnError: false,
-                    trust: true
-                });
-            }
-        });
-        
-        function filterByTaskType(taskType) {
-            if (taskType === '') {
-                window.location.href = '{{ accepted_base_url | default(url_for('assignments.assignments_accepted', assignment_type=assignment_type)) }}';
-            } else {
-                window.location.href = '{{ accepted_base_url | default(url_for('assignments.assignments_accepted', assignment_type=assignment_type)) }}?task_type=' + taskType;
-            }
-        }
+<section class="glass-panel filters-panel">
+    <div class="neo-field">
+        <label class="neo-label" for="task-type-filter">Фильтр по номеру задания</label>
+        <select id="task-type-filter" class="neo-select" onchange="filterByTaskType(this.value)">
+            <option value="">Все задания</option>
+            {% for i in task_numbers %}
+                <option value="{{ i }}" {% if task_type == i %}selected{% endif %}>Задание {{ i }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</section>
 
-        function confirmAcceptedClear() {
-            const total = {{ (tasks|length) if tasks is defined else 0 }};
-            const typePart = {% if task_type %}'типа {{ task_type }}'{% else %}'всех типов'{% endif %};
-            return window.confirm('Очистить принятые задания ' + typePart + '?\\n\\nСейчас в списке: ' + total + ' шт.\\nДействие необратимо.');
-        }
-    </script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='loading.js') }}"></script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
-    <script>
-        // Конвертируем flash-сообщения в toast-уведомления
-        document.addEventListener('DOMContentLoaded', function() {
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% if category == 'error' or category == 'danger' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.error('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.error('{{ message|e }}');
-                            }
-                        {% elif category == 'warning' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.warning('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.warning('{{ message|e }}');
-                            }
-                        {% elif category == 'info' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.info('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.info('{{ message|e }}');
-                            }
-                        {% else %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.success('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.success('{{ message|e }}');
-                            }
-                        {% endif %}
-                    {% endfor %}
+{% if tasks %}
+<div>
+    {% for task in tasks %}
+    <section class="glass-panel task-card" data-task-id="{{ task.task_id }}">
+        <div class="flex justify-between items-center mb-4 pb-4 border-b border-stroke">
+            <div class="flex items-center gap-2">
+                <b>№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b>
+                <span class="text-text-muted">|</span>
+                <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost sm">{{ ui_icon('action.link', 'sm', decorative=true) }}Источник</a>
+            </div>
+            <span class="neo-button accent sm cursor-default">{{ ui_icon('action.check', 'sm', decorative=true) }}ПРИНЯТО</span>
+        </div>
+
+        <div class="task-content mb-6">
+            {{ task.content_html | sanitize_html }}
+        </div>
+
+        {% if task.attached_files %}
+        <div class="bg-bg-surface-alt border border-stroke rounded-card p-6 mb-6">
+            <h4 class="text-text-primary mb-4 font-semibold text-sm uppercase tracking-wide">📎 Прикрепленные файлы</h4>
+            <ul class="list-none p-0 m-0 flex flex-wrap gap-3">
+                {% set files = task.attached_files | from_json %}
+                {% for file in files %}
+                {% if file %}
+                {% set file_path = file.path if file.path is defined else None %}
+                {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
+                {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else ((file_path or file_url or '').split('/')[-1].split('?')[0] if (file_path or file_url) else 'file')) %}
+                {% if file_path %}
+                    {% set download_url = file_path ~ (('?download_name=' ~ (file_name|urlencode)) if file_name else '') %}
+                {% elif file_url %}
+                    {% if file_url.startswith('//') %}
+                        {% set file_url = 'https:' ~ file_url %}
+                    {% elif file_url.startswith('/') %}
+                        {% set file_url = 'https://kompege.ru' ~ file_url %}
+                    {% endif %}
+                    {% if file_url.startswith('https://kompege.ru/') or file_url.startswith('http://kompege.ru/') %}
+                        {% set download_url = url_for('assignments.attached_proxy') ~ '?url=' ~ (file_url|urlencode) %}
+                    {% else %}
+                        {% set download_url = file_url %}
+                    {% endif %}
                 {% endif %}
-            {% endwith %}
-        });
-    </script>
+                {% if download_url is defined %}
+                <li>
+                    <a href="{{ download_url }}" target="_blank" class="neo-button outline sm" download="{{ file_name }}">
+                        {{ file_name }}
+                    </a>
+                </li>
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </section>
+    {% endfor %}
+</div>
+{% else %}
+<section class="glass-panel">
+    <div class="empty-state">
+        <div class="empty-state-icon">{{ ui_icon('action.check', 'lg') }}</div>
+        <h3 class="empty-state-title">Нет принятых заданий</h3>
+        <p class="empty-state-description">Принятые задания будут отображаться здесь</p>
+        <div class="empty-state-actions">
+            <a href="{{ back_url | default(url_for('assignments.assignments_list')) }}" class="neo-button accent">{{ ui_icon('nav.generator', 'sm', decorative=true) }}Назад</a>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
 
-</body>
-</html>
+{% block scripts_extra %}
+<script src="{{ url_for('static', filename='loading.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\(', right: '\\)', display: false},
+                {left: '\\[', right: '\\]', display: true}
+            ],
+            throwOnError: false,
+            trust: true
+        });
+    }
+});
+
+function filterByTaskType(taskType) {
+    if (taskType === '') {
+        window.location.href = '{{ accepted_base_url | default(url_for("assignments.assignments_accepted", assignment_type=assignment_type)) }}';
+    } else {
+        window.location.href = '{{ accepted_base_url | default(url_for("assignments.assignments_accepted", assignment_type=assignment_type)) }}?task_type=' + taskType;
+    }
+}
+
+function confirmAcceptedClear() {
+    const total = {{ (tasks|length) if tasks is defined else 0 }};
+    const typePart = {% if task_type %}'типа {{ task_type }}'{% else %}'всех типов'{% endif %};
+    return window.confirm('Очистить принятые задания ' + typePart + '?\n\nСейчас в списке: ' + total + ' шт.\nДействие необратимо.');
+}
+</script>
+{% endblock %}

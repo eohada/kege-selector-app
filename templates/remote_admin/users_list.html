@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Пользователи · Удаленная админка</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='relationship-graph.css') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
@@ -207,18 +209,18 @@
 
         <main class="remote-main">
         <section class="glass-panel" style="max-width: 1400px; padding: 2rem;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+            <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h1 style="margin: 0;">Пользователи</h1>
-                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+                    <h1 class="m-0">Пользователи</h1>
+                    <p class="text-muted mt-2">
                         Окружение: <strong>{{ environment_name }}</strong>
                     </p>
                 </div>
-                <div style="display: flex; gap: 0.75rem;">
-                    <a href="{{ url_for('remote_admin.create_pack') }}" class="neo-button accent" style="text-decoration: none;">
+                <div class="flex gap-3">
+                    <a href="{{ url_for('remote_admin.create_pack') }}" class="neo-button accent no-underline">
                         🎒 Создать пак
                     </a>
-                    <a href="{{ url_for('remote_admin.user_new') }}" class="neo-button outline" style="text-decoration: none;">
+                    <a href="{{ url_for('remote_admin.user_new') }}" class="neo-button outline no-underline">
                         + Пользователя
                     </a>
                 </div>
@@ -289,7 +291,7 @@
                     {% for user in users %}
                     <tr>
                         <td>
-                            <div style="font-weight: 600; color: var(--text-primary);">{{ user.username }}</div>
+                            <div class="font-semibold">{{ user.username }}</div>
                         </td>
                         <td>
                             <span class="role-badge role-{{ user.role }}">
@@ -314,18 +316,18 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div style="font-size: 0.9rem; color: var(--text-muted);">
+                            <div class="text-sm text-muted">
                                 {% if user.created_at %}{{ user.created_at[:10] }}{% else %}—{% endif %}
                             </div>
                         </td>
                         <td>
-                            <div style="font-size: 0.9rem; color: var(--text-muted);">
+                            <div class="text-sm text-muted">
                                 {% if user.last_login %}{{ user.last_login[:10] }}{% else %}—{% endif %}
                             </div>
                         </td>
                         <td>
-                            <div class="action-buttons" style="display: flex; gap: 0.5rem;">
-                                <a href="{{ url_for('remote_admin.user_edit', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem; text-decoration: none;" title="Редактировать">
+                            <div class="action-buttons flex gap-2">
+                                <a href="{{ url_for('remote_admin.user_edit', user_id=user.id) }}" class="neo-button ghost no-underline" style="padding:0.5rem 0.75rem;" title="Редактировать">
                                     {{ ui_icon('action.edit', 'sm', decorative=true) }}
                                 </a>
                                 {% if user.role != 'creator' %}
@@ -334,7 +336,7 @@
                                         data-method="DELETE"
                                         data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
                                     {{ ui_icon('action.trash', 'sm', decorative=true) }}
-                                    <span style="display:none;">✕</span>
+                                    <span class="hidden">✕</span>
                                 </button>
                                 {% endif %}
                             </div>
@@ -344,14 +346,14 @@
                 </tbody>
             </table>
             {% else %}
-            <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+            <div class="text-center text-muted" style="padding: 3rem;">
                 <p>Пользователи не найдены или произошла ошибка загрузки</p>
             </div>
             {% endif %}
             </div>
 
-            <div id="tab-graph" role="tabpanel" style="display:none;">
-                <p style="color: var(--text-muted); margin-top: 1rem;">
+            <div id="tab-graph" role="tabpanel" class="hidden">
+                <p class="text-muted mt-4">
                     Наглядно показывает связи: <strong>преподаватель → ученик</strong> (Enrollment) и <strong>родитель → ученик</strong> (FamilyTie).
                     Клик по стрелке — редактирование “настройки” связи.
                 </p>

@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Удаленная админка · Бот</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -26,10 +28,10 @@
 
         <main class="remote-main">
             <section class="glass-panel" style="max-width: 1400px; padding: 2rem; margin-bottom: 2rem;">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div class="flex items-center justify-between gap-4 flex-wrap">
                     <div>
                         <p class="hero-eyebrow">telegram бот</p>
-                        <h1 class="hero-title" style="margin-bottom: 0.4rem;">Админка бота</h1>
+                        <h1 class="hero-title mb-1">Админка бота</h1>
                         <p class="hero-subtitle">Админы, рассылка и сообщения об ошибках в выбранном окружении.</p>
                     </div>
                     <div class="status-badge status-info" style="padding: 0.4rem 0.8rem;">
@@ -46,7 +48,7 @@
                     </div>
                 </div>
 
-                <p class="hero-subtitle" style="margin-bottom: 1rem;">Добавленный пользователь будет получать в боте: сообщения об ошибках от учеников, уведомления о рефералах и критические ошибки системы. У него также станет доступна команда /users и админ-меню в боте.</p>
+                <p class="hero-subtitle mb-4">Добавленный пользователь будет получать в боте: сообщения об ошибках от учеников, уведомления о рефералах и критические ошибки системы. У него также станет доступна команда /users и админ-меню в боте.</p>
                 <form method="POST" action="{{ url_for('remote_admin.bot_admins_add') }}" class="filters-grid" style="align-items: end;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="neo-field">
@@ -57,9 +59,9 @@
                         <button type="submit" class="neo-button accent">Добавить админа бота</button>
                     </div>
                 </form>
-                <p class="hero-subtitle" style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.85;">Важно: пользователь должен сначала <strong>привязать Telegram</strong> в своём профиле на сайте (Профиль → Привязать Telegram → код ввести в боте командой /link), иначе уведомления ему не будут доставляться.</p>
+                <p class="hero-subtitle mt-2 text-sm opacity-85">Важно: пользователь должен сначала <strong>привязать Telegram</strong> в своём профиле на сайте (Профиль → Привязать Telegram → код ввести в боте командой /link), иначе уведомления ему не будут доставляться.</p>
 
-                <div class="table-responsive" style="margin-top: 1rem;">
+                <div class="table-responsive mt-4">
                     <table class="styled-table">
                         <thead>
                             <tr>
@@ -83,7 +85,7 @@
                                         <span class="status-badge status-info">выключен</span>
                                     {% endif %}
                                 </td>
-                                <td style="display:flex; gap:.6rem; flex-wrap: wrap;">
+                                <td class="flex gap-2 flex-wrap">
                                     <form method="POST" action="{{ url_for('remote_admin.bot_admins_toggle', admin_id=admin.admin_id) }}">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button class="neo-button outline sm" type="submit">
@@ -98,7 +100,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="5" style="color: var(--text-muted);">Администраторы не назначены.</td>
+                                <td colspan="5" class="text-muted">Администраторы не назначены.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -111,7 +113,7 @@
                     <div>
                         <p class="eyebrow">рассылка</p>
                         <h2>Новости платформы</h2>
-                        <div style="color: var(--text-muted);">Отправляется только пользователям с включенным пунктом «Новости платформы» в боте.</div>
+                        <div class="text-muted">Отправляется только пользователям с включенным пунктом «Новости платформы» в боте.</div>
                     </div>
                 </div>
 
@@ -140,7 +142,7 @@
                     <div>
                         <p class="eyebrow">безопасность</p>
                         <h2>Отвязка Telegram</h2>
-                        <div style="color: var(--text-muted);">Удаляет привязку Telegram от профиля в выбранном окружении.</div>
+                        <div class="text-muted">Удаляет привязку Telegram от профиля в выбранном окружении.</div>
                     </div>
                 </div>
 
@@ -171,13 +173,13 @@
                     </div>
                 </div>
 
-                <div style="display: grid; gap: 1rem;">
+                <div class="grid gap-4">
                     {% for r in reports %}
-                    <div class="glass-panel" style="padding: 1rem;">
-                        <div style="display:flex; gap:1rem; justify-content: space-between; flex-wrap: wrap; align-items: center;">
+                    <div class="glass-panel p-4">
+                        <div class="flex gap-4 justify-between flex-wrap items-center">
                             <div>
-                                <div style="font-weight: 800;">#{{ r.report_id }}</div>
-                                <div style="color: var(--text-muted); font-size: .9rem;">{{ r.created_at }}</div>
+                                <div class="font-extrabold">#{{ r.report_id }}</div>
+                                <div class="text-muted text-sm">{{ r.created_at }}</div>
                             </div>
                             <div>
                                 {% if r.status == 'new' %}
@@ -191,9 +193,9 @@
                                 {% endif %}
                             </div>
                         </div>
-                        <div style="margin-top: .75rem; white-space: pre-wrap;">{{ r.message }}</div>
+                        <div class="mt-3 whitespace-pre-wrap">{{ r.message }}</div>
 
-                        <div style="margin-top: 1rem; display:flex; gap:.6rem; flex-wrap: wrap;">
+                        <div class="mt-4 flex gap-2 flex-wrap">
                             <form method="POST" action="{{ url_for('remote_admin.bot_error_status', report_id=r.report_id) }}">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="status" value="in_progress">
@@ -206,7 +208,7 @@
                             </form>
                         </div>
 
-                        <form method="POST" action="{{ url_for('remote_admin.bot_error_reply', report_id=r.report_id) }}" style="margin-top: 1rem;">
+                        <form method="POST" action="{{ url_for('remote_admin.bot_error_reply', report_id=r.report_id) }}" class="mt-4">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="neo-field">
                                 <label class="neo-label">Ответ ученику</label>

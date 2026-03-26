@@ -1,64 +1,46 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Доступ к теории по ученикам · BooStudy</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% include '_ux_enhancements.html' %}
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .access-container { max-width: 700px; margin: 0 auto; }
-        .student-list { display: flex; flex-direction: column; gap: 0.5rem; }
-        .student-row {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1rem 1.25rem;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .student-row a { text-decoration: none; color: var(--accent-1); font-weight: 600; }
-        .student-row a:hover { text-decoration: underline; }
-        .empty-state { text-align: center; padding: 3rem 2rem; color: var(--text-muted); }
-    </style>
-    <script>
-        (function(){ try { var v = localStorage.getItem('ui.themeMode'); if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch(e) {} })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = active_page|default('theory_manage') %}
-        {% include '_sidebar.html' %}
-        <div class="app-main">
-            {% include '_topbar.html' %}
-            <main class="app-content">
-                <div class="access-container">
-                    <section class="dashboard-hero" style="margin-bottom: 1.5rem;">
-                        <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" style="color: var(--text-muted); text-decoration: none; margin-bottom: 0.5rem; display: inline-block;">← Управление теорией</a>
-                        <h1 class="hero-title">Доступ к теории по ученикам</h1>
-                        <p class="hero-subtitle">Выберите ученика, чтобы открыть или закрыть просмотр теории по конкретным номерам заданий (1–27).</p>
-                    </section>
+{% extends 'base.html' %}
+{% set active_page = active_page|default('theory_manage') %}
 
-                    {% if students %}
-                    <div class="student-list">
-                        {% for s in students %}
-                        <div class="student-row">
-                            <span>{{ s.name or 'Ученик #' ~ s.student_id }}</span>
-                            <a href="{{ url_for('theory.manage_access_student', student_id=s.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=s.student_id) }}">Настроить доступ →</a>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="empty-state">
-                        <p>Нет учеников в вашей зоне видимости.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </main>
+{% block title %}Доступ к теории по ученикам · BooStudy{% endblock %}
+
+{% block head_css %}
+<style>
+    .access-container { max-width: 700px; margin: 0 auto; }
+    .student-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .student-row {
+        background: var(--surface-1);
+        border-radius: var(--radius-lg);
+        padding: 1rem 1.25rem;
+        display: flex; justify-content: space-between; align-items: center;
+        box-shadow: var(--shadow-card);
+    }
+    .student-row a { text-decoration: none; color: var(--accent-1); font-weight: 600; }
+    .student-row a:hover { text-decoration: underline; }
+    .empty-state { text-align: center; padding: 3rem 2rem; color: var(--text-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="access-container">
+    <section class="dashboard-hero mb-6">
+        <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" class="text-muted no-underline mb-2 inline-block">← Управление теорией</a>
+        <h1 class="hero-title">Доступ к теории по ученикам</h1>
+        <p class="hero-subtitle">Выберите ученика, чтобы открыть или закрыть просмотр теории по конкретным номерам заданий (1–27).</p>
+    </section>
+
+    {% if students %}
+    <div class="student-list">
+        {% for s in students %}
+        <div class="student-row">
+            <span>{{ s.name or 'Ученик #' ~ s.student_id }}</span>
+            <a href="{{ url_for('theory.manage_access_student', student_id=s.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=s.student_id) }}">Настроить доступ →</a>
         </div>
+        {% endfor %}
     </div>
-</body>
-</html>
+    {% else %}
+    <div class="empty-state">
+        <p>Нет учеников в вашей зоне видимости.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

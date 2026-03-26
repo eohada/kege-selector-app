@@ -10,20 +10,13 @@ from flask_login import current_user
 from markupsafe import Markup, escape
 
 
-def _normalize_icon_key_to_id(key: str) -> str:
-    key = (key or "").strip()
-    key = key.replace("\\", "-").replace("/", "-").replace(".", "-")
-    key = re.sub(r"[^a-zA-Z0-9_-]+", "-", key)
-    key = re.sub(r"-{2,}", "-", key).strip("-")
-    return key
-
-
 def ui_icon(key, size="sm", title=None, decorative=True, extra_class=""):
     """
-    Глобальная функция для шаблонов: рендер SVG-иконки из спрайта.
-    Использование в Jinja: {{ ui_icon('nav.students', 'md') }}
+    Render a Lucide SVG icon inline.
+    Usage in Jinja: {{ ui_icon('nav.students', 'md') }}
     """
-    safe_id = _normalize_icon_key_to_id(str(key or ""))
+    from app.utils.icons import get_icon_svg_inner
+
     size = str(size or "sm")
     if size not in ("sm", "md", "lg"):
         size = "sm"
@@ -32,8 +25,7 @@ def ui_icon(key, size="sm", title=None, decorative=True, extra_class=""):
     if extra_class:
         svg_class = f"{svg_class} {extra_class}"
 
-    # sprite.svg#id
-    sprite_href = url_for("static", filename="icons/sprite.svg") + f"#{safe_id}"
+    inner = get_icon_svg_inner(str(key or ""))
 
     wrapper_aria = ' aria-hidden="true"' if decorative else ""
     aria_attr = ' aria-hidden="true"' if decorative else ""
@@ -42,15 +34,28 @@ def ui_icon(key, size="sm", title=None, decorative=True, extra_class=""):
     if (not decorative) and title:
         label_attr = f' aria-label="{escape(str(title))}"'
 
-    html = (
-        f'<span class="ui-icon-slot ui-icon-slot--{escape(size)}" '
-        f'data-asset-key="{escape(str(key or ""))}"'
-        f"{wrapper_aria}>"
-        f'<svg class="{escape(svg_class)}"{aria_attr}{role_attr}{label_attr} focusable="false">'
-        f'<use href="{escape(sprite_href)}"></use>'
-        f"</svg>"
-        f"</span>"
-    )
+    if inner:
+        html = (
+            f'<span class="ui-icon-slot ui-icon-slot--{escape(size)}"'
+            f"{wrapper_aria}>"
+            f'<svg class="{escape(svg_class)}" viewBox="0 0 24 24" fill="none" '
+            f'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
+            f"{aria_attr}{role_attr}{label_attr} focusable=\"false\">"
+            f"{inner}"
+            f"</svg>"
+            f"</span>"
+        )
+    else:
+        sprite_href = url_for("static", filename="icons/sprite.svg") + f"#{escape(str(key or '').replace('.', '-'))}"
+        html = (
+            f'<span class="ui-icon-slot ui-icon-slot--{escape(size)}" '
+            f'data-asset-key="{escape(str(key or ""))}"'
+            f"{wrapper_aria}>"
+            f'<svg class="{escape(svg_class)}"{aria_attr}{role_attr}{label_attr} focusable="false">'
+            f'<use href="{escape(sprite_href)}"></use>'
+            f"</svg>"
+            f"</span>"
+        )
     return Markup(html)
 
 
@@ -278,3 +283,4 @@ def init_jinja_filters(app):
     app.jinja_env.filters['strip_attachment_links'] = strip_attachment_links
     app.jinja_env.filters['sanitize_html'] = sanitize_html
     app.jinja_env.globals["ui_icon"] = ui_icon
+    app.jinja_env.globals["ui_icon_global"] = ui_icon

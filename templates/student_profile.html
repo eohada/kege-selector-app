@@ -1,261 +1,81 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ student.name }} · Профиль</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    {% include '_ux_enhancements.html' %}
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        
-        .lesson-feed-item {
-            display: grid;
-            grid-template-columns: 60px 1fr auto;
-            gap: 1.5rem;
-            padding: 1.2rem;
-            border-bottom: 1px solid var(--stroke-1);
-            transition: background 0.2s, transform 0.2s;
-            align-items: center;
-            text-decoration: none;
-            color: inherit;
-        }
-        
-        .lesson-feed-item:last-child {
-            border-bottom: none;
-        }
-        
-        .lesson-feed-item:hover {
-            background: var(--surface-2);
-            transform: translateX(4px);
-        }
-        
-        .lesson-date-badge {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 56px;
-            height: 56px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 16px;
-            border: 1px solid var(--stroke-1);
-            color: var(--text-muted);
-            line-height: 1;
-        }
-        
-        .lesson-date-day { 
-            font-size: 1.4rem; 
-            font-weight: 700; 
-            color: var(--text-primary); 
-            margin-bottom: 2px;
-        }
-        
-        .lesson-date-month { 
-            font-size: 0.7rem; 
-            text-transform: uppercase; 
-            letter-spacing: 0.05em;
-        }
-        
-        .lesson-info { 
-            min-width: 0; 
-        }
-        
-        .lesson-title { 
-            font-weight: 700; 
-            font-size: 1.1rem; 
-            color: var(--text-primary); 
-            margin-bottom: 0.4rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .lesson-meta { 
-            display: flex; 
-            flex-wrap: wrap;
-            gap: 1rem; 
-            font-size: 0.85rem; 
-            color: var(--text-muted); 
-            align-items: center;
-        }
-        
-        .lesson-meta span {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-        
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        
-        .status-dot.planned { background-color: var(--text-muted); box-shadow: 0 0 5px rgba(255, 255, 255, 0.2); }
-        .status-dot.in_progress { background-color: var(--accent-1); box-shadow: 0 0 8px var(--accent-1); }
-        .status-dot.completed { background-color: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
-        .status-badge--late { font-size: 0.75em; padding: 0.15rem 0.45rem; border-radius: 999px; background: rgba(255, 180, 0, 0.15); color: var(--accent-warning, #e6a700); border: 1px solid rgba(255, 180, 0, 0.35); margin-left: 0.35rem; }
-        .lessons-remaining--danger { color: var(--danger); }
-        .lessons-remaining--warning { color: var(--warning); }
-        .lessons-remaining--ok { color: var(--accent-1); }
-        
-        .active-lesson-card {
-            background: linear-gradient(135deg, rgba(0, 255, 213, 0.05), rgba(31, 123, 255, 0.05));
-            border: 1px solid var(--accent-1);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .active-lesson-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: var(--accent-1);
-        }
+{% extends 'base.html' %}
+{% block title %}{{ student.name }} · Профиль · BooStudy{% endblock %}
+{% set active_page = 'student_profile' %}
 
-        .profile-header-simple {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid var(--stroke-1);
-            margin-bottom: 2rem;
-        }
+{% block head_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    .lesson-feed-item {
+        display: grid;
+        grid-template-columns: 60px 1fr auto;
+        gap: 1.5rem;
+        padding: 1.2rem;
+        border-bottom: 1px solid var(--color-stroke);
+        transition: background 0.2s, transform 0.2s;
+        align-items: center;
+        text-decoration: none;
+        color: inherit;
+    }
+    .lesson-feed-item:last-child { border-bottom: none; }
+    .lesson-feed-item:hover { background: var(--color-bg-surface-alt); transform: translateX(4px); }
+    .lesson-date-badge {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        width: 56px; height: 56px; background: rgba(255, 255, 255, 0.03); border-radius: 16px;
+        border: 1px solid var(--color-stroke); color: var(--color-text-muted); line-height: 1;
+    }
+    .lesson-date-day { font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
+    .lesson-date-month { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .lesson-info { min-width: 0; }
+    .lesson-title { font-weight: 700; font-size: 1.1rem; color: var(--color-text-primary); margin-bottom: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lesson-meta { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.85rem; color: var(--color-text-muted); align-items: center; }
+    .lesson-meta span { display: flex; align-items: center; gap: 0.4rem; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .status-dot.planned { background-color: var(--color-text-muted); box-shadow: 0 0 5px rgba(255, 255, 255, 0.2); }
+    .status-dot.in_progress { background-color: #7B5CFF; box-shadow: 0 0 8px #7B5CFF; }
+    .status-dot.completed { background-color: #20C997; box-shadow: 0 0 8px #20C997; }
+    .status-badge--late { font-size: 0.75em; padding: 0.15rem 0.45rem; border-radius: 999px; background: rgba(255, 180, 0, 0.15); color: #e6a700; border: 1px solid rgba(255, 180, 0, 0.35); margin-left: 0.35rem; }
+    .lessons-remaining--danger { color: #FF6B6B; }
+    .lessons-remaining--warning { color: #FFB347; }
+    .lessons-remaining--ok { color: #7B5CFF; }
+    .active-lesson-card {
+        background: linear-gradient(135deg, rgba(123, 92, 255, 0.05), rgba(32, 201, 151, 0.05));
+        border: 1px solid #7B5CFF;
+        position: relative; overflow: hidden;
+    }
+    .active-lesson-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #7B5CFF; }
+    .profile-header-simple { display: flex; align-items: center; gap: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--color-stroke); margin-bottom: 2rem; }
+    .profile-avatar-simple { width: 100px; height: 100px; border-radius: 50%; background: var(--color-bg-surface-alt); border: 2px solid var(--color-stroke-strong); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 700; color: var(--color-text-muted); overflow: hidden; }
+    .profile-avatar-simple img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-info-simple h1 { margin: 0 0 0.5rem 0; font-size: 2.2rem; letter-spacing: -0.02em; }
+    .profile-stats-row { display: flex; gap: 1.5rem; color: var(--color-text-muted); font-size: 0.9rem; }
+    .profile-stats-row div { display: flex; align-items: center; gap: 0.5rem; }
+    .profile-stats-row strong { color: var(--color-text-primary); }
+    .profile-header-simple .hero-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; align-items: center; max-width: 640px; flex: 0 0 auto; }
+    .profile-header-simple .hero-actions.student-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; align-items: stretch; max-width: 720px; }
+    .profile-header-simple .hero-actions.student-actions .neo-button { width: 100%; justify-content: center; white-space: nowrap; }
+    @media (max-width: 768px) {
+        .lesson-feed-item { grid-template-columns: 1fr; gap: 1rem; }
+        .lesson-date-badge { flex-direction: row; width: auto; height: auto; padding: 0.4rem 0.8rem; gap: 0.5rem; background: transparent; border: none; justify-content: flex-start; }
+        .lesson-date-day { font-size: 1rem; margin: 0; }
+        .profile-header-simple { flex-direction: column; text-align: center; gap: 1rem; }
+        .profile-stats-row { justify-content: center; flex-wrap: wrap; }
+        .profile-header-simple .hero-actions { justify-content: center; max-width: 100%; }
+        .profile-header-simple .hero-actions.student-actions { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 900px) { .profile-grid-responsive { grid-template-columns: 1fr !important; } }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: var(--color-bg-surface); border: 1px solid var(--color-stroke-strong); border-radius: 20px; padding: 2rem; max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+    .modal-box h3 { margin: 0 0 0.75rem 0; font-size: 1.15rem; }
+    .modal-box p { color: var(--color-text-muted); margin: 0 0 1.5rem 0; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+</style>
+{% endblock %}
 
-        .profile-avatar-simple {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background: var(--surface-2);
-            border: 2px solid var(--stroke-2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--text-muted);
-            overflow: hidden;
-        }
-        
-        .profile-avatar-simple img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .profile-info-simple h1 {
-            margin: 0 0 0.5rem 0;
-            font-size: 2.2rem;
-            letter-spacing: -0.02em;
-        }
-
-        .profile-stats-row {
-            display: flex;
-            gap: 1.5rem;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        .profile-stats-row div {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .profile-stats-row strong {
-            color: var(--text-primary);
-        }
-
-        @media (max-width: 768px) {
-            .lesson-feed-item {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-            .lesson-date-badge {
-                flex-direction: row;
-                width: auto;
-                height: auto;
-                padding: 0.4rem 0.8rem;
-                gap: 0.5rem;
-                background: transparent;
-                border: none;
-                justify-content: flex-start;
-            }
-            .lesson-date-day { font-size: 1rem; margin: 0; }
-            .profile-header-simple {
-                flex-direction: column;
-                text-align: center;
-                gap: 1rem;
-            }
-            .profile-stats-row {
-                justify-content: center;
-                flex-wrap: wrap;
-            }
-        }
-
-        .profile-header-simple .hero-actions {
-            display: flex;
-            gap: 0.6rem;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            align-items: center;
-            max-width: 640px;
-            flex: 0 0 auto;
-        }
-
-        .profile-header-simple .hero-actions.student-actions {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.6rem;
-            align-items: stretch;
-            max-width: 720px;
-        }
-        .profile-header-simple .hero-actions.student-actions .neo-button {
-            width: 100%;
-            justify-content: center;
-            white-space: nowrap;
-        }
-
-        @media (max-width: 768px) {
-            .profile-header-simple .hero-actions {
-                justify-content: center;
-                max-width: 100%;
-            }
-            .profile-header-simple .hero-actions.student-actions {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'student_profile' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% block content %}
         {% include '_mobile_menu.html' %}
 
-        <div class="profile-card theme-student" style="margin-bottom: 2rem;">
+        <div class="profile-card theme-student mb-8">
             <div class="profile-cover"></div>
             <div class="profile-header">
                 <div class="profile-identity">
@@ -268,21 +88,21 @@
                             {% endif %}
                         </div>
                     </div>
-                    <div class="profile-info" style="min-width: 0;">
+                    <div class="profile-info min-w-0">
                         <div class="profile-role-badge">Комната ученика</div>
-                        <h1 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ student.name }}</h1>
-                        <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top:.35rem;">
+                        <h1 class="truncate">{{ student.name }}</h1>
+                        <div class="flex gap-2 flex-wrap mt-1">
                             {% if student_user and student_user.is_demo_user %}
                             <span class="status-badge" style="background: rgba(251, 191, 36, 0.15); color: rgba(251, 191, 36, 0.95); border-color: rgba(251, 191, 36, 0.35);">Демо</span>
                             {% endif %}
-                            {% if student.school_class %}<span class="status-badge status-info" style="opacity:.85;">{{ student.school_class }} класс</span>{% endif %}
-                            {% if student.target_score %}<span class="status-badge status-info" style="opacity:.85;">Цель: {{ student.target_score }}</span>{% endif %}
-                            {% if student.platform_id %}<span class="status-badge status-info" style="opacity:.75;">ID: {{ student.platform_id }}</span>{% endif %}
+                            {% if student.school_class %}<span class="status-badge status-info opacity-80">{{ student.school_class }} класс</span>{% endif %}
+                            {% if student.target_score %}<span class="status-badge status-info opacity-80">Цель: {{ student.target_score }}</span>{% endif %}
+                            {% if student.platform_id %}<span class="status-badge status-info opacity-75">ID: {{ student.platform_id }}</span>{% endif %}
                         </div>
                     </div>
                 </div>
                 <div class="hero-actions {% if current_user.is_student() or current_user.is_parent() %}student-actions{% endif %}">
-                    <a href="{% if current_user.is_student() and student.user_id == current_user.id %}{{ url_for('auth.user_profile') }}{% else %}{{ url_for('students.student_info', student_id=student.student_id) }}{% endif %}" class="neo-button ghost" style="text-decoration:none;">
+                    <a href="{% if current_user.is_student() and student.user_id == current_user.id %}{{ url_for('auth.user_profile') }}{% else %}{{ url_for('students.student_info', student_id=student.student_id) }}{% endif %}" class="neo-button ghost">
                         <i class="fas fa-user ui-icon ui-icon--sm"></i> Профиль ученика
                     </a>
                     {% if not current_user.is_student() and not current_user.is_parent() %}
@@ -300,9 +120,9 @@
                         <i class="fas fa-route ui-icon ui-icon--sm"></i> Траектория
                     </a>
                     {% if current_user.is_creator() or current_user.is_admin() %}
-                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="display:inline;">
+                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" class="inline">
                         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                        <button type="submit" class="neo-button ghost" style="color: var(--text-muted);">
+                        <button type="submit" class="neo-button ghost text-text-muted">
                             <i class="fas fa-archive ui-icon ui-icon--sm"></i> {% if student.is_active %}В архив{% else %}Восстановить{% endif %}
                         </button>
                     </form>
@@ -313,28 +133,25 @@
                 </div>
             </div>
 
-
             {% if student_subscription %}
-            <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
+            <div class="glass-panel mt-4 p-4">
                 <div class="hero-eyebrow">доступ</div>
                 {% if student_subscription.subscription and student_subscription.plan %}
-                    <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items: center; margin-top: .35rem;">
-                        <span class="status-badge status-info" style="opacity:0.95;">{{ student_subscription.label }}</span>
-                        <span class="status-badge status-info" style="opacity:0.85;">Тариф: <strong>{{ student_subscription.plan.title }}</strong></span>
+                    <div class="flex gap-2 flex-wrap items-center mt-1">
+                        <span class="status-badge status-info opacity-95">{{ student_subscription.label }}</span>
+                        <span class="status-badge status-info opacity-80">Тариф: <strong>{{ student_subscription.plan.title }}</strong></span>
                         {% if student_subscription.ends_at_utc %}
-                            <span class="status-badge status-info" style="opacity:0.85;">
-                                До: <strong>{{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</strong>
-                            </span>
+                            <span class="status-badge status-info opacity-80">До: <strong>{{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</strong></span>
                         {% endif %}
                     </div>
-                    
+
                     {% if student_subscription.lessons_remaining is not none %}
                         {% if student_subscription.lessons_remaining <= 2 %}{% set lessons_remaining_class = 'lessons-remaining--danger' %}
                         {% elif student_subscription.lessons_remaining <= 5 %}{% set lessons_remaining_class = 'lessons-remaining--warning' %}
                         {% else %}{% set lessons_remaining_class = 'lessons-remaining--ok' %}{% endif %}
-                        <div style="margin-top: .6rem; display: flex; align-items: center; gap: .5rem;">
-                            <span style="color: var(--text-muted);">Осталось уроков:</span>
-                            <div class="manual-lesson-counter" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div class="mt-2 flex items-center gap-2">
+                            <span class="text-text-muted">Осталось уроков:</span>
+                            <div class="manual-lesson-counter flex items-center gap-2">
                                 {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
                                     <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student_user.id if student_user else '' }}', -1)" title="Уменьшить" style="padding: 0 0.4rem;">-</button>
                                 {% endif %}
@@ -349,12 +166,12 @@
                     {% elif student_subscription.seconds_left is not none %}
                         {% set days_left = (student_subscription.seconds_left // 86400) %}
                         {% set hours_left = ((student_subscription.seconds_left % 86400) // 3600) %}
-                        <div style="margin-top: .6rem; color: var(--text-muted);">
-                            Осталось: <strong style="color: var(--text-primary);">{{ days_left }}д {{ hours_left }}ч</strong>
+                        <div class="mt-2 text-text-muted">
+                            Осталось: <strong class="text-text-primary">{{ days_left }}д {{ hours_left }}ч</strong>
                         </div>
                     {% endif %}
                 {% elif student_subscription.status == 'expired' %}
-                    <div style="margin-top: .35rem; font-weight: 900; color: var(--danger);">
+                    <div class="mt-1 font-black text-error">
                         {% if student_subscription.lessons_remaining is not none and student_subscription.lessons_remaining <= 0 %}
                             Уроки закончились
                         {% else %}
@@ -362,74 +179,74 @@
                         {% endif %}
                     </div>
                     {% if student_subscription.ends_at_utc %}
-                    <div style="margin-top: .35rem; color: var(--text-muted);">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
+                    <div class="mt-1 text-text-muted">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
                     {% endif %}
                 {% else %}
-                    <div style="margin-top: .35rem; color: var(--text-muted);">Тариф не задан (legacy).</div>
+                    <div class="mt-1 text-text-muted">Тариф не задан (legacy).</div>
                 {% endif %}
             </div>
             {% endif %}
 
             {% if tutors_list %}
-            <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
+            <div class="glass-panel mt-4 p-4">
                 <div class="hero-eyebrow">преподаватель{% if tutors_list|length > 1 %}и{% endif %}</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem; align-items: center;">
+                <div class="flex flex-wrap gap-4 mt-2 items-center">
                     {% for tutor in tutors_list %}
-                    <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="tutor-profile-link" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--stroke-1); text-decoration: none; color: inherit; transition: border-color .2s, background .2s;" onmouseover="this.style.borderColor='var(--accent-1)'; this.style.background='rgba(0,255,213,0.06)';" onmouseout="this.style.borderColor='var(--stroke-1)'; this.style.background='rgba(255,255,255,0.04)';">
-                        <div style="width: 44px; height: 44px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                    <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="flex items-center gap-3 px-3 py-2 bg-bg-surface-alt rounded-btn shadow-card no-underline text-inherit hover:shadow-card-hover transition-shadow">
+                        <div class="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 bg-bg-surface-alt flex items-center justify-center font-bold">
                             {% if tutor.avatar_url %}
-                                <img src="{{ tutor.avatar_url }}" alt="" style="width:100%; height:100%; object-fit:cover;">
+                                <img src="{{ tutor.avatar_url }}" alt="" class="w-full h-full object-cover">
                             {% else %}
                                 {{ tutor.username[0]|upper }}
                             {% endif %}
                         </div>
-                        <div style="min-width: 0;">
-                            <div style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        <div class="min-w-0">
+                            <div class="font-bold truncate">
                                 {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}
                                     {{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}
                                 {% else %}
                                     {{ tutor.username }}
                                 {% endif %}
                             </div>
-                            <div style="font-size: 0.85rem; color: var(--text-muted);">Профиль →</div>
+                            <div class="text-sm text-text-muted">Профиль →</div>
                         </div>
                     </a>
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
-            
+
             {% if student.goal_text %}
-            <div style="background: var(--surface-2); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);">
-                <span class="hero-eyebrow" style="margin-bottom: 0.5rem; display: block;">Глобальная цель</span>
-                <p style="margin: 0; line-height: 1.5;">{{ student.goal_text }}</p>
+            <div class="bg-bg-surface-alt p-4 rounded-btn mt-4 shadow-card">
+                <span class="hero-eyebrow block mb-2">Глобальная цель</span>
+                <p class="m-0 leading-relaxed">{{ student.goal_text }}</p>
             </div>
             {% endif %}
         </div>
 
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;" class="profile-grid-responsive">
             {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
-            
-            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+            <div class="flex flex-col gap-6">
 
                 {% if in_progress_lesson %}
                 <section class="glass-panel active-lesson-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <div class="flex justify-between items-start mb-4">
                         <div>
-                            <div class="hero-eyebrow" style="color: var(--accent-1);">Текущий урок</div>
-                            <h2 style="margin: 0.5rem 0 0 0; font-size: 1.8rem;">{{ in_progress_lesson.topic or 'Без темы' }}</h2>
+                            <div class="hero-eyebrow text-accent">Текущий урок</div>
+                            <h2 class="mt-2" style="font-size: 1.8rem;">{{ in_progress_lesson.topic or 'Без темы' }}</h2>
                         </div>
-                        <span class="status-badge status-info" style="background: rgba(0, 255, 213, 0.15); color: var(--accent-1); border-color: rgba(0, 255, 213, 0.3);">LIVE</span>
+                        <span class="status-badge status-info" style="background: rgba(123, 92, 255, 0.15); color: #7B5CFF; border-color: rgba(123, 92, 255, 0.3);">LIVE</span>
                     </div>
-                    
-                    <div style="display: flex; gap: 2rem; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
+
+                    <div class="flex gap-8 mb-6 text-text-muted text-sm">
                         {% set in_progress_local = (in_progress_lesson.lesson_date|to_tz(tz_name)) %}
                         <div><i class="far fa-clock"></i> Начало: {{ in_progress_local.strftime('%H:%M') if in_progress_local else '—' }}</div>
                         <div><i class="fas fa-hourglass-half"></i> Длительность: {{ in_progress_lesson.duration }} мин</div>
                     </div>
 
-                    <div style="display: flex; gap: 1rem;">
-                        <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=in_progress_lesson.lesson_id) }}" class="neo-button accent" style="padding-left: 2rem; padding-right: 2rem;">
+                    <div class="flex gap-4">
+                        <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=in_progress_lesson.lesson_id) }}" class="neo-button accent px-8">
                             Войти в класс
                         </a>
                         {% if not current_user.is_student() and not current_user.is_parent() %}
@@ -444,18 +261,18 @@
                 {% endif %}
 
                 <section class="glass-panel">
-                    <h3 class="form-section-title" style="border-bottom: none; margin-bottom: 1rem;"><i class="fas fa-tasks ui-icon"></i> Задания</h3>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1rem 0;">Работы с дедлайном и задания по занятиям (ДЗ, классная, проверочная) — в одном месте.</p>
-                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button accent" style="text-decoration: none;">
+                    <h3 class="form-section-title mb-4" style="border-bottom: none;"><i class="fas fa-tasks ui-icon"></i> Задания</h3>
+                    <p class="text-text-muted text-sm m-0 mb-4">Работы с дедлайном и задания по занятиям (ДЗ, классная, проверочная) — в одном месте.</p>
+                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button accent">
                         Открыть все задания
                     </a>
                     {% if active_submissions and active_submissions|length > 0 %}
-                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Срочно (с дедлайном):</div>
+                    <div class="mt-4 pt-4 border-t border-stroke">
+                        <div class="text-sm text-text-muted mb-2">Срочно (с дедлайном):</div>
                         {% for submission in active_submissions[:3] %}
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.5rem 0;">
-                            <span style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ submission.assignment.title }}</span>
-                            <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.35rem 0.75rem; white-space: nowrap;">Открыть</a>
+                        <div class="flex justify-between items-center gap-3 py-2">
+                            <span class="font-semibold truncate">{{ submission.assignment.title }}</span>
+                            <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="neo-button ghost text-sm" style="padding: 0.35rem 0.75rem; white-space: nowrap;">Открыть</a>
                         </div>
                         {% endfor %}
                     </div>
@@ -466,12 +283,12 @@
                     <details class="profile-details">
                         <summary>
                             Лента занятий
-                            <span class="status-badge status-info" style="opacity:.75;">{{ lessons|length }}</span>
+                            <span class="status-badge status-info opacity-75">{{ lessons|length }}</span>
                         </summary>
                         <div class="profile-details-body">
-                            <p style="color: var(--text-muted); font-size: 0.88rem; margin: 0 0 1rem 0;">По клику — страница занятия с вкладками ДЗ, классная работа и проверочная.</p>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; gap: 1rem; flex-wrap: wrap;">
-                                <div style="color: var(--text-muted); font-size: .92rem;">Фильтр</div>
+                            <p class="text-text-muted text-sm m-0 mb-4">По клику — страница занятия с вкладками ДЗ, классная работа и проверочная.</p>
+                            <div class="flex justify-between items-center mb-5 gap-4 flex-wrap">
+                                <div class="text-text-muted text-sm">Фильтр</div>
                                 <select id="lessonFilter" class="neo-select" style="width: auto; padding: 0.5rem 2rem 0.5rem 1rem; font-size: 0.9rem;">
                                     <option value="all">Все занятия</option>
                                     <option value="planned">Предстоящие</option>
@@ -504,10 +321,10 @@
                             </div>
                         </a>
                         {% endfor %}
-                        
+
                         {% if not lessons %}
-                        <div class="empty-state" style="padding: 3rem 1rem;">
-                            <div class="empty-state-icon" style="font-size: 2.5rem; margin-bottom: 1rem;">📅</div>
+                        <div class="empty-state px-4 py-12">
+                            <div style="font-size: 2.5rem; margin-bottom: 1rem;">📅</div>
                             <p>История занятий пуста</p>
                         </div>
                         {% endif %}
@@ -517,21 +334,20 @@
                 </section>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                
+            <div class="flex flex-col gap-6">
                 <section class="glass-panel">
-                    <h3 class="form-section-title" style="font-size: 1.1rem; margin-bottom: 1.2rem;"><i class="fas fa-info-circle ui-icon"></i> Информация</h3>
-                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <h3 class="form-section-title mb-4" style="font-size: 1.1rem;"><i class="fas fa-info-circle ui-icon"></i> Информация</h3>
+                    <div class="flex flex-col gap-4">
                         {% if student.category %}
-                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--stroke-1); padding-bottom: 0.8rem;">
-                            <span style="color: var(--text-muted);">Категория</span>
-                            <span style="font-weight: 600;">{{ student.category }}</span>
+                        <div class="flex justify-between border-b border-stroke pb-3">
+                            <span class="text-text-muted">Категория</span>
+                            <span class="font-semibold">{{ student.category }}</span>
                         </div>
                         {% endif %}
                         {% if student.overall_rating %}
-                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--stroke-1); padding-bottom: 0.8rem;">
-                            <span style="color: var(--text-muted);">Уровень</span>
-                            <span style="font-weight: 600;">{{ student.overall_rating }}</span>
+                        <div class="flex justify-between border-b border-stroke pb-3">
+                            <span class="text-text-muted">Уровень</span>
+                            <span class="font-semibold">{{ student.overall_rating }}</span>
                         </div>
                         {% endif %}
                     </div>
@@ -539,11 +355,11 @@
 
                 {% if parents_info %}
                 <section class="glass-panel">
-                    <h3 class="form-section-title" style="font-size: 1.1rem; margin-bottom: 1.2rem;"><i class="fas fa-users ui-icon"></i> Связи</h3>
+                    <h3 class="form-section-title mb-4" style="font-size: 1.1rem;"><i class="fas fa-users ui-icon"></i> Связи</h3>
                     {% for parent in parents_info %}
-                    <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1);">
-                        <div style="font-weight: 600; margin-bottom: 0.3rem;">{{ parent.name }}</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                    <div class="mb-4 pb-4 border-b border-stroke">
+                        <div class="font-semibold mb-1">{{ parent.name }}</div>
+                        <div class="text-sm text-text-muted flex items-center gap-2">
                             <i class="fas fa-phone"></i> {{ parent.phone or '—' }}
                         </div>
                     </div>
@@ -553,28 +369,17 @@
 
                 {% if student.notes %}
                 <section class="glass-panel">
-                    <h3 class="form-section-title" style="font-size: 1.1rem; margin-bottom: 1.2rem;"><i class="fas fa-sticky-note ui-icon"></i> Заметки</h3>
-                    <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-muted); white-space: pre-line;">
+                    <h3 class="form-section-title mb-4" style="font-size: 1.1rem;"><i class="fas fa-sticky-note ui-icon"></i> Заметки</h3>
+                    <div class="text-sm leading-relaxed text-text-muted whitespace-pre-line">
                         {{ student.notes }}
                     </div>
                 </section>
                 {% endif %}
             </div>
         </div>
-    </main>
-    </div>
-</div>
+{% endblock %}
 
-    <style>
-        
-        @media (max-width: 900px) {
-            .profile-grid-responsive {
-                grid-template-columns: 1fr !important;
-            }
-        }
-    </style>
-
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+{% block scripts_extra %}
     <script>
         async function updateLessonsRemaining(userId, delta) {
             if (!userId) return;
@@ -582,23 +387,18 @@
                 const url = `/api/user/${userId}/lessons-remaining`;
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-                    },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
                     body: JSON.stringify({ delta: delta })
                 });
-                
+
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success) {
                         const countEl = document.querySelector('.lessons-remaining-val');
                         if (countEl) countEl.innerText = data.new_count;
                         if (window.toast) window.toast.success('Количество уроков обновлено');
-                        else alert('Успешно обновлено');
                     } else {
                         if (window.toast) window.toast.error(data.error || 'Ошибка');
-                        else alert(data.error || 'Ошибка');
                     }
                 } else {
                     const err = await response.json();
@@ -613,19 +413,11 @@
         document.getElementById('lessonFilter').addEventListener('change', function(e) {
             const status = e.target.value;
             const items = document.querySelectorAll('.lesson-feed-item');
-            
             items.forEach(item => {
-                if (status === 'all') {
-                    item.style.display = 'grid';
-                } else {
+                if (status === 'all') { item.style.display = 'grid'; }
+                else {
                     const itemStatus = item.getAttribute('data-status');
-                    if (status === 'completed' && itemStatus === 'completed') {
-                        item.style.display = 'grid';
-                    } else if (status === 'planned' && itemStatus === 'planned') {
-                        item.style.display = 'grid';
-                    } else {
-                        item.style.display = 'none';
-                    }
+                    item.style.display = (status === itemStatus) ? 'grid' : 'none';
                 }
             });
         });
@@ -636,31 +428,6 @@
     </script>
 
     {% if current_user.is_creator() or current_user.is_admin() %}
-    <style>
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
-            z-index: 9999;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-overlay.active { display: flex; }
-        .modal-box {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-2);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            max-width: 420px;
-            width: 90%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-        }
-        .modal-box h3 { margin: 0 0 0.75rem 0; font-size: 1.15rem; }
-        .modal-box p { color: var(--text-muted); margin: 0 0 1.5rem 0; line-height: 1.5; }
-        .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
-    </style>
     <div class="modal-overlay" id="deleteModal">
         <div class="modal-box">
             <h3>Удалить ученика?</h3>
@@ -669,11 +436,10 @@
                 <button class="neo-button ghost" onclick="document.getElementById('deleteModal').classList.remove('active')">Отмена</button>
                 <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" style="margin: 0;">
                     {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <button type="submit" class="neo-button accent" style="background: var(--danger, #ef4444); border-color: var(--danger, #ef4444);">Удалить</button>
+                    <button type="submit" class="neo-button accent" style="background: #FF6B6B; border-color: #FF6B6B;">Удалить</button>
                 </form>
             </div>
         </div>
     </div>
     {% endif %}
-</body>
-</html>
+{% endblock %}

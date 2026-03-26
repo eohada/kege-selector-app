@@ -1,37 +1,20 @@
+{% extends 'base.html' %}
 {% from '_ui_icon.html' import ui_icon %}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QA Board · BooStudy</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'qa_board' %}
-        {% include '_sidebar.html' %}
-        <div class="app-main">
-            {% include '_topbar.html' %}
-            <main class="app-content">
-                {% include '_ux_enhancements.html' %}
+{% set active_page = 'qa_board' %}
 
+{% block title %}QA Board · BooStudy{% endblock %}
+
+{% block head_css %}
 <style>
-    .qa-board-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .qa-title { font-family: 'MonaspaceNeon', sans-serif; font-size: 1.8rem; color: var(--text-primary); }
     .board-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; align-items: start; }
-    .board-column { background: var(--surface-1, #1e1e2f); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; min-height: 70vh; }
-    .column-header { padding: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; }
+    .board-column { background: var(--surface-1); border-radius: var(--radius-lg); display: flex; flex-direction: column; min-height: 70vh; overflow: hidden; }
+    .column-header { padding: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between; }
     .col-todo .column-header { color: #ff9f43; border-top: 3px solid #ff9f43; }
     .col-progress .column-header { color: #00f2ff; border-top: 3px solid #00f2ff; }
     .col-review .column-header { color: #bc13fe; border-top: 3px solid #bc13fe; }
     .col-done .column-header { color: #00ff9d; border-top: 3px solid #00ff9d; }
-    .column-body { padding: 1rem; flex-grow: 1; background: rgba(0,0,0,0.2); }
-    .task-card { background: var(--surface-2, #2d2d3f); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.05); transition: all 0.2s ease; position: relative; overflow: hidden; }
+    .column-body { padding: 1rem; flex-grow: 1; }
+    .task-card { background: var(--surface-2); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem; transition: all 0.2s ease; position: relative; overflow: hidden; box-shadow: var(--shadow-card); }
     .task-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
     .task-priority { position: absolute; top: 0; right: 0; width: 4px; height: 100%; }
     .p-critical { background: #ff4757; }
@@ -41,21 +24,22 @@
     .task-title { font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; padding-right: 10px; color: var(--text-primary); }
     .task-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; margin-top: 0.8rem; }
     .task-badge { padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1); font-size: 0.7rem; }
-    .avatar-sm { width: 24px; height: 24px; border-radius: 50%; background: #555; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; border: 1px solid rgba(255,255,255,0.2); color: #fff; }
     .empty-col { text-align: center; color: rgba(255,255,255,0.2); font-size: 0.9rem; margin-top: 2rem; font-style: italic; }
 </style>
+{% endblock %}
 
+{% block content %}
 <div class="container-fluid mt-4 px-4">
-    <div class="qa-board-header">
+    <div class="flex justify-between items-center mb-8 pb-4">
         <div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px;">QA</div>
-            <h1 class="qa-title">Канбан-доска</h1>
+            <div class="text-xs text-muted uppercase tracking-widest">QA</div>
+            <h1 class="text-2xl font-bold">Канбан-доска</h1>
         </div>
-        <div style="display: flex; gap: 0.75rem; align-items: center;">
-        <a href="{{ url_for('qa.bug_reports') }}" class="neo-button ghost">Баг-репорты</a>
-        {% if current_user.is_creator() %}
-        <a href="{{ url_for('qa.task_new') }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Новая задача</a>
-        {% endif %}
+        <div class="flex gap-3 items-center">
+            <a href="{{ url_for('qa.bug_reports') }}" class="neo-button ghost">Баг-репорты</a>
+            {% if current_user.is_creator() %}
+            <a href="{{ url_for('qa.task_new') }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Новая задача</a>
+            {% endif %}
         </div>
     </div>
 
@@ -67,9 +51,9 @@
                 <div class="task-card">
                     <div class="task-priority p-{{ task.priority or 'medium' }}"></div>
                     <div class="task-title">{{ task.title }}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">#{{ task.id }}</div>
+                    <div class="text-xs text-muted">#{{ task.id }}</div>
                     {% if task.context_url %}
-                    <div style="margin-top: 6px;"><a href="{{ task.context_url }}" target="_blank" class="task-badge" style="text-decoration: none; color: #00f2ff;">🔗 Контекст</a></div>
+                    <div class="mt-1.5"><a href="{{ task.context_url }}" target="_blank" class="task-badge no-underline" style="color: #00f2ff;">🔗 Контекст</a></div>
                     {% endif %}
                     <div class="task-meta">
                         <span>{{ task.created_at.strftime('%d.%m') if task.created_at else '' }}</span>
@@ -77,14 +61,14 @@
                         {% if _aids %}{% for aid in _aids %}{% if assignee_map.get(aid) %}<span class="task-badge" title="{{ assignee_map[aid].username }}">{{ (assignee_map[aid].username or '?')[:1] }}</span>{% endif %}{% endfor %}{% else %}<span class="task-badge">—</span>{% endif %}
                     </div>
                     {% if can_edit_assignee %}
-                    <div class="qa-assignees-edit" data-task-id="{{ task.id }}" data-assignee-ids="{{ (task.assignee_ids or [task.assignee_id] if task.assignee_id else [])|join(',') }}" style="margin-top: 6px; font-size: 0.75rem;">
-                        <button type="button" class="neo-button ghost sm" onclick="toggleAssignees(this)" style="font-size: 0.7rem;">Исполнители</button>
-                        <div class="qa-assignees-form" style="display:none; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 6px;">{% for u in testers %}<label style="display:block;margin-bottom:4px;"><input type="checkbox" class="qa-assignee-cb" data-user-id="{{ u.id }}"> {{ u.username }}</label>{% endfor %}<button type="button" class="neo-button accent sm" style="margin-top:6px;font-size:0.7rem;" onclick="saveAssignees(this)">Сохранить</button></div>
+                    <div class="qa-assignees-edit" data-task-id="{{ task.id }}" data-assignee-ids="{{ (task.assignee_ids or [task.assignee_id] if task.assignee_id else [])|join(',') }}" class="mt-1.5 text-xs">
+                        <button type="button" class="neo-button ghost sm text-xs" onclick="toggleAssignees(this)">Исполнители</button>
+                        <div class="qa-assignees-form" style="display:none; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 6px;">{% for u in testers %}<label class="block mb-1"><input type="checkbox" class="qa-assignee-cb" data-user-id="{{ u.id }}"> {{ u.username }}</label>{% endfor %}<button type="button" class="neo-button accent sm text-xs mt-1.5" onclick="saveAssignees(this)">Сохранить</button></div>
                     </div>
                     {% endif %}
                     {% if can_edit_status %}
-                    <div style="margin-top: 0.5rem; display: flex; gap: 4px; flex-wrap: wrap;">
-                        <button type="button" onclick="updateTaskStatus({{ task.id }}, 'in_progress', this)" class="neo-button ghost sm" style="font-size: 0.7rem;">В работу</button>
+                    <div class="mt-2 flex gap-1 flex-wrap">
+                        <button type="button" onclick="updateTaskStatus({{ task.id }}, 'in_progress', this)" class="neo-button ghost sm text-xs">В работу</button>
                     </div>
                     {% endif %}
                 </div>
@@ -106,13 +90,13 @@
                         {% if _aids %}{% for aid in _aids %}{% if assignee_map.get(aid) %}<span class="task-badge">{{ (assignee_map[aid].username or '?')[:1] }}</span>{% endif %}{% endfor %}{% else %}<span class="task-badge">—</span>{% endif %}
                     </div>
                     {% if can_edit_assignee %}
-                    <div class="qa-assignees-edit" data-task-id="{{ task.id }}" data-assignee-ids="{{ (task.assignee_ids or [task.assignee_id] if task.assignee_id else [])|join(',') }}" style="margin-top: 6px; font-size: 0.75rem;">
-                        <button type="button" class="neo-button ghost sm" onclick="toggleAssignees(this)" style="font-size: 0.7rem;">Исполнители</button>
-                        <div class="qa-assignees-form" style="display:none; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 6px;">{% for u in testers %}<label style="display:block;margin-bottom:4px;"><input type="checkbox" class="qa-assignee-cb" data-user-id="{{ u.id }}"> {{ u.username }}</label>{% endfor %}<button type="button" class="neo-button accent sm" style="margin-top:6px;font-size:0.7rem;" onclick="saveAssignees(this)">Сохранить</button></div>
+                    <div class="qa-assignees-edit" data-task-id="{{ task.id }}" data-assignee-ids="{{ (task.assignee_ids or [task.assignee_id] if task.assignee_id else [])|join(',') }}" class="mt-1.5 text-xs">
+                        <button type="button" class="neo-button ghost sm text-xs" onclick="toggleAssignees(this)">Исполнители</button>
+                        <div class="qa-assignees-form" style="display:none; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 6px;">{% for u in testers %}<label class="block mb-1"><input type="checkbox" class="qa-assignee-cb" data-user-id="{{ u.id }}"> {{ u.username }}</label>{% endfor %}<button type="button" class="neo-button accent sm text-xs mt-1.5" onclick="saveAssignees(this)">Сохранить</button></div>
                     </div>
                     {% endif %}
                     {% if can_edit_status %}
-                    <div style="margin-top: 0.5rem;"><button type="button" onclick="updateTaskStatus({{ task.id }}, 'review', this)" class="neo-button ghost sm" style="font-size: 0.7rem;">На ревью</button></div>
+                    <div class="mt-2"><button type="button" onclick="updateTaskStatus({{ task.id }}, 'review', this)" class="neo-button ghost sm text-xs">На ревью</button></div>
                     {% endif %}
                 </div>
                 {% else %}
@@ -129,13 +113,13 @@
                     <div class="task-title">{{ task.title }}</div>
                     <div class="task-meta">{% set _aids = (task.assignee_ids or [task.assignee_id] if task.assignee_id else []) %}{% if _aids %}{% for aid in _aids %}{% if assignee_map.get(aid) %}<span class="task-badge">{{ (assignee_map[aid].username or '?')[:1] }}</span>{% endif %}{% endfor %}{% else %}<span class="task-badge">—</span>{% endif %}</div>
                     {% if can_edit_assignee %}
-                    <div class="qa-assignees-edit" data-task-id="{{ task.id }}" data-assignee-ids="{{ (task.assignee_ids or [task.assignee_id] if task.assignee_id else [])|join(',') }}" style="margin-top:6px;font-size:0.75rem;">
-                        <button type="button" class="neo-button ghost sm" onclick="toggleAssignees(this)" style="font-size:0.7rem;">Исполнители</button>
-                        <div class="qa-assignees-form" style="display:none;margin-top:6px;padding:6px;background:rgba(0,0,0,0.2);border-radius:6px;">{% for u in testers %}<label style="display:block;margin-bottom:4px;"><input type="checkbox" class="qa-assignee-cb" data-user-id="{{ u.id }}"> {{ u.username }}</label>{% endfor %}<button type="button" class="neo-button accent sm" style="margin-top:6px;font-size:0.7rem;" onclick="saveAssignees(this)">Сохранить</button></div>
+                    <div class="qa-assignees-edit" data-task-id="{{ task.id }}" data-assignee-ids="{{ (task.assignee_ids or [task.assignee_id] if task.assignee_id else [])|join(',') }}" class="mt-1.5 text-xs">
+                        <button type="button" class="neo-button ghost sm text-xs" onclick="toggleAssignees(this)">Исполнители</button>
+                        <div class="qa-assignees-form" style="display:none;margin-top:6px;padding:6px;background:rgba(0,0,0,0.2);border-radius:6px;">{% for u in testers %}<label class="block mb-1"><input type="checkbox" class="qa-assignee-cb" data-user-id="{{ u.id }}"> {{ u.username }}</label>{% endfor %}<button type="button" class="neo-button accent sm text-xs mt-1.5" onclick="saveAssignees(this)">Сохранить</button></div>
                     </div>
                     {% endif %}
                     {% if can_edit_status %}
-                    <div style="margin-top: 0.5rem;"><button type="button" onclick="updateTaskStatus({{ task.id }}, 'done', this)" class="neo-button ghost sm" style="width: 100%; font-size: 0.7rem;">Одобрить (Done)</button></div>
+                    <div class="mt-2"><button type="button" onclick="updateTaskStatus({{ task.id }}, 'done', this)" class="neo-button ghost sm w-full text-xs">Одобрить (Done)</button></div>
                     {% endif %}
                 </div>
                 {% else %}
@@ -149,7 +133,7 @@
                 {% for task in tasks if task.status == 'done' %}
                 <div class="task-card" style="opacity: 0.6;">
                     <div class="task-priority p-{{ task.priority or 'medium' }}"></div>
-                    <div class="task-title" style="text-decoration: line-through;">{{ task.title }}</div>
+                    <div class="task-title line-through">{{ task.title }}</div>
                     <div class="task-meta"><span>{{ task.created_at.strftime('%d.%m') if task.created_at else '' }}</span><span style="color: #00ff9d;">✓</span></div>
                 </div>
                 {% else %}
@@ -159,65 +143,64 @@
         </div>
     </div>
 </div>
-            </main>
-        </div>
-    </div>
-    <script>
-    function updateTaskStatus(taskId, status, btn) {
-        if (btn) { btn.innerHTML = '...'; btn.disabled = true; }
-        var csrf = document.querySelector('meta[name="csrf-token"]');
-        fetch('/qa/tasks/' + taskId + '/status', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrf ? csrf.content : '',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({ status: status })
-        })
-        .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
-        .then(function(r) {
-            if (r.ok && r.data.success) location.reload();
-            else { alert(r.data && r.data.error ? r.data.error : 'Не удалось обновить статус'); if (btn) { btn.innerHTML = 'В работу'; btn.disabled = false; } }
-        })
-        .catch(function() { alert('Ошибка сети'); if (btn) { btn.innerHTML = 'В работу'; btn.disabled = false; } });
-    }
+{% endblock %}
 
-    function toggleAssignees(btn) {
-        var block = btn.closest('.qa-assignees-edit');
-        var form = block.querySelector('.qa-assignees-form');
-        if (form.style.display === 'none') {
-            var ids = (block.getAttribute('data-assignee-ids') || '').split(',').filter(Boolean).map(Number);
-            form.querySelectorAll('.qa-assignee-cb').forEach(function(cb) {
-                cb.checked = ids.indexOf(parseInt(cb.dataset.userId, 10)) !== -1;
-            });
-            form.style.display = 'block';
-        } else {
-            form.style.display = 'none';
-        }
-    }
+{% block scripts_extra %}
+<script>
+function updateTaskStatus(taskId, status, btn) {
+    if (btn) { btn.innerHTML = '...'; btn.disabled = true; }
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/qa/tasks/' + taskId + '/status', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf ? csrf.content : '',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ status: status })
+    })
+    .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+    .then(function(r) {
+        if (r.ok && r.data.success) location.reload();
+        else { alert(r.data && r.data.error ? r.data.error : 'Не удалось обновить статус'); if (btn) { btn.innerHTML = 'В работу'; btn.disabled = false; } }
+    })
+    .catch(function() { alert('Ошибка сети'); if (btn) { btn.innerHTML = 'В работу'; btn.disabled = false; } });
+}
 
-    function saveAssignees(btn) {
-        var block = btn.closest('.qa-assignees-edit');
-        var taskId = block.dataset.taskId;
-        var ids = [];
-        block.querySelectorAll('.qa-assignee-cb:checked').forEach(function(cb) { ids.push(parseInt(cb.dataset.userId, 10)); });
-        btn.disabled = true;
-        btn.textContent = '...';
-        var csrf = document.querySelector('meta[name="csrf-token"]');
-        fetch('/qa/tasks/' + taskId + '/assign', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf ? csrf.content : '', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify({ assignee_ids: ids })
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            if (data && data.success) location.reload();
-            else alert(data && data.error ? data.error : 'Ошибка сохранения');
-        })
-        .catch(function() { alert('Ошибка сети'); })
-        .finally(function() { btn.disabled = false; btn.textContent = 'Сохранить'; });
+function toggleAssignees(btn) {
+    var block = btn.closest('.qa-assignees-edit');
+    var form = block.querySelector('.qa-assignees-form');
+    if (form.style.display === 'none') {
+        var ids = (block.getAttribute('data-assignee-ids') || '').split(',').filter(Boolean).map(Number);
+        form.querySelectorAll('.qa-assignee-cb').forEach(function(cb) {
+            cb.checked = ids.indexOf(parseInt(cb.dataset.userId, 10)) !== -1;
+        });
+        form.style.display = 'block';
+    } else {
+        form.style.display = 'none';
     }
-    </script>
-</body>
-</html>
+}
+
+function saveAssignees(btn) {
+    var block = btn.closest('.qa-assignees-edit');
+    var taskId = block.dataset.taskId;
+    var ids = [];
+    block.querySelectorAll('.qa-assignee-cb:checked').forEach(function(cb) { ids.push(parseInt(cb.dataset.userId, 10)); });
+    btn.disabled = true;
+    btn.textContent = '...';
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    fetch('/qa/tasks/' + taskId + '/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf ? csrf.content : '', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ assignee_ids: ids })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data && data.success) location.reload();
+        else alert(data && data.error ? data.error : 'Ошибка сохранения');
+    })
+    .catch(function() { alert('Ошибка сети'); })
+    .finally(function() { btn.disabled = false; btn.textContent = 'Сохранить'; });
+}
+</script>
+{% endblock %}

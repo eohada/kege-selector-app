@@ -1,449 +1,109 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Статистика - {{ student.name }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
-    {% include '_ux_enhancements.html' %}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        
-        .stats-tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 2rem;
-            border-bottom: 1px solid var(--stroke-1);
-            padding-bottom: 0;
-        }
-        
-        .stats-tab {
-            padding: 0.75rem 1.5rem;
-            background: transparent;
-            border: none;
-            border-bottom: 2px solid transparent;
-            color: var(--text-muted);
-            font-family: var(--font-base);
-            font-size: 0.95rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-            top: 1px;
-        }
-        
-        .stats-tab:hover {
-            color: var(--text-primary);
-        }
-        
-        .stats-tab.active {
-            color: var(--accent-1);
-            border-bottom-color: var(--accent-1);
-        }
-        
-        .stats-tab-content {
-            display: none;
-        }
-        
-        .stats-tab-content.active {
-            display: block;
-        }
+{% extends 'base.html' %}
+{% block title %}Статистика - {{ student.name }} · BooStudy{% endblock %}
+{% set active_page = 'dashboard' %}
+{% block body_attrs %}data-cinema-scene="analytics"{% endblock %}
 
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-            align-items: start; 
-        }
-        .charts-grid.charts-grid-full {
-            grid-template-columns: 1fr;
-        }
-        
-        .chart-container {
-            display: flex;
-            flex-direction: column;
-            height: 400px; 
-        }
-        
-        .chart-container canvas {
-            flex: 1;
-            max-height: 100%;
-        }
+{% block head_css %}
+<style>
+    .stats-tabs {
+        display: flex; gap: 0.5rem; margin-bottom: 2rem;
+        border-bottom: 1px solid var(--color-stroke); padding-bottom: 0;
+    }
+    .stats-tab {
+        padding: 0.75rem 1.5rem; background: transparent; border: none;
+        border-bottom: 2px solid transparent; color: var(--color-text-muted);
+        font-family: inherit; font-size: 0.95rem; font-weight: 500;
+        cursor: pointer; transition: all 0.2s ease; position: relative; top: 1px;
+    }
+    .stats-tab:hover { color: var(--color-text-primary); }
+    .stats-tab.active { color: #7B5CFF; border-bottom-color: #7B5CFF; }
+    .stats-tab-content { display: none; }
+    .stats-tab-content.active { display: block; }
+    .charts-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 1.5rem; margin-bottom: 2rem; align-items: start;
+    }
+    .charts-grid.charts-grid-full { grid-template-columns: 1fr; }
+    .chart-container { display: flex; flex-direction: column; height: 400px; }
+    .chart-container canvas { flex: 1; max-height: 100%; }
+    .metrics-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem; margin-bottom: 2rem;
+    }
+    .metric-card {
+        background: var(--color-bg-surface-alt); border-radius: 12px; padding: 1.25rem;
+        transition: all 0.2s ease; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06);
+    }
+    .metric-card:hover { box-shadow: 0 8px 30px rgba(123, 92, 255, 0.12); transform: translateY(-2px); }
+    .metric-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); margin-bottom: 0.5rem; }
+    .metric-value { font-size: 2rem; font-weight: 700; color: #7B5CFF; line-height: 1.2; }
+    .metric-delta { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.5rem; }
+    .metric-delta.positive { color: #22c55e; }
+    .metric-delta.negative { color: #ef4444; }
+    @media (max-width: 980px) { .charts-grid { grid-template-columns: 1fr; } .chart-container { height: 320px; } }
+    @media (max-width: 600px) { .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); } }
+    .heatmap-wrapper { overflow-x: auto; margin-top: 1rem; padding: 1rem 0; }
+    .heatmap-container { display: flex; flex-direction: column; gap: 0.5rem; }
+    .heatmap-days-header { display: flex; gap: 0.5rem; align-items: flex-end; margin-left: 60px; }
+    .heatmap-day-header-label { font-size: 0.8rem; color: var(--color-text-muted); width: 20px; text-align: center; font-weight: 500; }
+    .heatmap-main { display: flex; gap: 0.5rem; align-items: flex-start; }
+    .heatmap-months { display: flex; flex-direction: column; gap: 2px; min-width: 60px; }
+    .heatmap-month-label { font-size: 0.8rem; color: var(--color-text-primary); font-weight: 600; height: 20px; display: flex; align-items: center; padding-left: 8px; border-left: 3px solid #7B5CFF; margin-bottom: 2px; }
+    .heatmap-month-spacer { height: 20px; }
+    .heatmap-grid { display: flex; flex-direction: column; gap: 2px; }
+    .heatmap-week { display: flex; gap: 2px; }
+    .heatmap-day { width: 20px; height: 20px; border-radius: 4px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); cursor: pointer; transition: transform 0.1s ease, border-color 0.1s ease; }
+    .heatmap-day:hover { transform: scale(1.3); z-index: 10; position: relative; border-color: #7B5CFF; }
+    .heatmap-day.status-none { background: var(--color-bg-surface-alt); }
+    .heatmap-day.status-completed { background: rgba(32, 201, 151, 0.7); }
+    .heatmap-day.status-canceled-student { background: rgba(255, 107, 107, 0.7); }
+    .heatmap-day.status-canceled-teacher { background: rgba(255, 179, 71, 0.7); }
+    .heatmap-legend { display: flex; align-items: center; gap: 0.75rem; margin-top: 1.5rem; padding: 1rem; background: var(--color-bg-surface-alt); border-radius: 12px; flex-wrap: wrap; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06); }
+    .heatmap-legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--color-text-muted); }
+    .heatmap-legend-label { font-weight: 500; color: var(--color-text-primary); }
+    .punctuality-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .punctuality-item { text-align: center; padding: 1rem; background: var(--color-bg-surface-alt); border-radius: 12px; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06); }
+    .punctuality-value { font-size: 1.5rem; font-weight: 700; color: #7B5CFF; }
+    .punctuality-label { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.25rem; }
+    .analytics-header { margin-bottom: 1.5rem; }
+    .analytics-title { font-size: 1.5rem; margin: 0; color: var(--color-text-primary); }
+    .analytics-loading, .analytics-error { text-align: center; padding: 3rem 2rem; color: var(--color-text-muted); }
+    .analytics-spinner { width: 40px; height: 40px; margin: 0 auto 1rem; border: 3px solid var(--color-stroke); border-top-color: #7B5CFF; border-radius: 50%; animation: analytics-spin 0.8s linear infinite; }
+    @keyframes analytics-spin { to { transform: rotate(360deg); } }
+    .analytics-error p { margin: 0; max-width: 400px; margin-left: auto; margin-right: auto; }
+    .analytics-content { animation: analytics-fade 0.3s ease; }
+    @keyframes analytics-fade { from { opacity: 0; } to { opacity: 1; } }
+    .analytics-score-card { background: linear-gradient(135deg, var(--color-bg-surface-alt) 0%, var(--color-bg-surface) 100%); border-radius: 20px; padding: 2rem; margin-bottom: 2rem; text-align: center; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06); }
+    .analytics-score-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin-bottom: 0.5rem; }
+    .analytics-score-value { font-size: 3rem; font-weight: 800; color: #7B5CFF; line-height: 1.2; }
+    .analytics-score-hint { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.5rem; }
+    .analytics-score-secondary { font-size: 1rem; font-weight: 600; color: var(--color-text-primary); margin-top: 0.25rem; }
+    .analytics-table-legend { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--color-bg-surface-alt); border-radius: 12px; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06); }
+    .analytics-table-legend span { white-space: nowrap; }
+    .analytics-table-legend strong { color: var(--color-text-primary); font-weight: 600; }
+    .analytics-radar-section { margin-bottom: 2rem; }
+    .analytics-radar-desc { font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 1rem; }
+    .analytics-radar-wrap { max-width: 640px; margin: 0 auto; height: 520px; }
+    .analytics-radar-wrap canvas { display: block; }
+    .analytics-nodes-section { margin-bottom: 2rem; }
+    .analytics-nodes-table-wrap { overflow-x: auto; }
+    .analytics-nodes-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .analytics-nodes-table th, .analytics-nodes-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--color-stroke); }
+    .analytics-nodes-table th { color: var(--color-text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.04em; }
+    .analytics-nodes-table tbody tr:hover { background: var(--color-bg-surface-alt); }
+    .analytics-nodes-table .rating-cell { font-weight: 600; color: #7B5CFF; }
+    .analytics-nodes-table .code-cell { font-family: monospace; font-size: 0.85em; color: var(--color-text-muted); }
+</style>
+{% endblock %}
 
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .metric-card {
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-md);
-            padding: 1.25rem;
-            transition: all 0.2s ease;
-        }
-        
-        .metric-card:hover {
-            border-color: var(--accent-1);
-            transform: translateY(-2px);
-        }
-        
-        .metric-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
-        }
-        
-        .metric-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent-1);
-            line-height: 1.2;
-        }
-        
-        .metric-delta {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-        }
-        
-        .metric-delta.positive {
-            color: #22c55e;
-        }
-        
-        .metric-delta.negative {
-            color: #ef4444;
-        }
+{% block head_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
 
-        @media (max-width: 980px) {
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
-            .chart-container {
-                height: 320px;
-            }
-        }
-
-        @media (max-width: 600px) {
-            .metrics-grid {
-                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            }
-        }
-
-        .heatmap-wrapper {
-            overflow-x: auto;
-            margin-top: 1rem;
-            padding: 1rem 0;
-        }
-        
-        .heatmap-container {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        
-        .heatmap-days-header {
-            display: flex;
-            gap: 0.5rem;
-            align-items: flex-end;
-            margin-left: 60px; 
-        }
-        
-        .heatmap-day-header-label {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            width: 20px;
-            text-align: center;
-            font-weight: 500;
-        }
-        
-        .heatmap-main {
-            display: flex;
-            gap: 0.5rem;
-            align-items: flex-start;
-        }
-        
-        .heatmap-months {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 60px;
-        }
-        
-        .heatmap-month-label {
-            font-size: 0.8rem;
-            color: var(--text-primary);
-            font-weight: 600;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            padding-left: 8px;
-            border-left: 3px solid var(--accent-1);
-            margin-bottom: 2px;
-        }
-        
-        .heatmap-month-spacer {
-            height: 20px;
-        }
-        
-        .heatmap-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-        
-        .heatmap-week {
-            display: flex;
-            gap: 2px;
-        }
-        
-        .heatmap-day {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            background: var(--surface-3);
-            border: 1px solid var(--stroke-1);
-            cursor: pointer;
-            transition: transform 0.1s ease, border-color 0.1s ease;
-        }
-        
-        .heatmap-day:hover {
-            transform: scale(1.3);
-            z-index: 10;
-            position: relative;
-            border-color: var(--accent-1);
-        }
-        
-        .heatmap-day.status-none {
-            background: var(--surface-3);
-        }
-        
-        .heatmap-day.status-completed {
-            background: rgba(0, 255, 213, 0.7);
-        }
-        
-        .heatmap-day.status-canceled-student {
-            background: rgba(239, 68, 68, 0.7);
-        }
-        
-        .heatmap-day.status-canceled-teacher {
-            background: rgba(234, 179, 8, 0.7);
-        }
-        
-        .heatmap-legend {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-top: 1.5rem;
-            padding: 1rem;
-            background: var(--surface-2);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--stroke-1);
-            flex-wrap: wrap;
-        }
-        
-        .heatmap-legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-        
-        .heatmap-legend-label {
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .punctuality-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        
-        .punctuality-item {
-            text-align: center;
-            padding: 1rem;
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-md);
-        }
-        
-        .punctuality-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--accent-1);
-        }
-        
-        .punctuality-label {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-top: 0.25rem;
-        }
-
-        .analytics-header { margin-bottom: 1.5rem; }
-        .analytics-title { font-size: 1.5rem; margin: 0; color: var(--text-primary); }
-        .analytics-loading, .analytics-error {
-            text-align: center;
-            padding: 3rem 2rem;
-            color: var(--text-muted);
-        }
-        .analytics-spinner {
-            width: 40px;
-            height: 40px;
-            margin: 0 auto 1rem;
-            border: 3px solid var(--stroke-1);
-            border-top-color: var(--accent-1);
-            border-radius: 50%;
-            animation: analytics-spin 0.8s linear infinite;
-        }
-        @keyframes analytics-spin { to { transform: rotate(360deg); } }
-        .analytics-error p { margin: 0; max-width: 400px; margin-left: auto; margin-right: auto; }
-        .analytics-content { animation: analytics-fade 0.3s ease; }
-        @keyframes analytics-fade { from { opacity: 0; } to { opacity: 1; } }
-        .analytics-score-card {
-            background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            margin-bottom: 2rem;
-            text-align: center;
-        }
-        .analytics-score-label {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--text-muted);
-            margin-bottom: 0.5rem;
-        }
-        .analytics-score-value {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--accent-1);
-            line-height: 1.2;
-        }
-        .analytics-score-hint {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-        }
-        .analytics-score-secondary {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-top: 0.25rem;
-        }
-        .analytics-table-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem 1.5rem;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-bottom: 1rem;
-            padding: 0.75rem 1rem;
-            background: var(--surface-2);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--stroke-1);
-        }
-        .analytics-table-legend span { white-space: nowrap; }
-        .analytics-table-legend strong { color: var(--text-primary); font-weight: 600; }
-        .analytics-radar-section { margin-bottom: 2rem; }
-        .analytics-radar-desc {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-bottom: 1rem;
-        }
-        .analytics-radar-wrap {
-            max-width: 640px;
-            margin: 0 auto;
-            height: 520px;
-        }
-        .analytics-radar-wrap canvas { display: block; }
-        .analytics-nodes-section { margin-bottom: 2rem; }
-        .analytics-nodes-table-wrap { overflow-x: auto; }
-        .analytics-nodes-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
-        .analytics-nodes-table th,
-        .analytics-nodes-table td {
-            padding: 0.75rem 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--stroke-1);
-        }
-        .analytics-nodes-table th {
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.04em;
-        }
-        .analytics-nodes-table tbody tr:hover {
-            background: var(--surface-2);
-        }
-        .analytics-nodes-table .rating-cell { font-weight: 600; color: var(--accent-1); }
-        .analytics-nodes-table .code-cell { font-family: monospace; font-size: 0.85em; color: var(--text-muted); }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="{% if active_lesson %}lesson-active{% endif %}" data-cinema-scene="analytics">
-    {% if active_lesson and active_student %}
-    <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
-    </div>
-    <div class="now-playing-panel" id="lessonMenu">
-        <div class="hero-eyebrow">текущий урок</div>
-        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
-        {% if active_lesson.topic %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
-        {% endif %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
-        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
-        <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
-            </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('profile.user', 'sm', decorative=true) }}Профиль</a>
-        </div>
-    </div>
-    <script>
-        function toggleLessonMenu() {
-            const menu = document.getElementById('lessonMenu');
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        }
-    </script>
-    {% endif %}
-    
-    <div class="app-layout">
-        {% set active_page = 'dashboard' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
-
-        <section class="glass-panel" style="margin-bottom: 2rem;">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost" style="text-decoration: none;">
+{% block content %}
+        <section class="glass-panel mb-8">
+            <div class="flex items-center gap-4 mb-4">
+                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">
                     ← К профилю
                 </a>
             </div>
@@ -457,7 +117,7 @@
         </div>
 
         <div id="tab-skills" class="stats-tab-content active">
-            
+
             <div class="metrics-grid">
                 <div class="metric-card">
                     <div class="metric-label">Процент выполнения работ</div>
@@ -468,17 +128,14 @@
                     </div>
                     {% endif %}
                 </div>
-                
                 <div class="metric-card">
                     <div class="metric-label">GPA по ДЗ</div>
                     <div class="metric-value">{{ gpa_by_type.homework }}%</div>
                 </div>
-                
                 <div class="metric-card">
                     <div class="metric-label">GPA по контрольным</div>
                     <div class="metric-value">{{ gpa_by_type.exam }}%</div>
                 </div>
-                
                 <div class="metric-card">
                     <div class="metric-label">Проведено уроков</div>
                     <div class="metric-value">{{ metrics.completed_lessons }}</div>
@@ -487,7 +144,6 @@
             </div>
 
             <div class="charts-grid {% if hide_skills_radar %}charts-grid-full{% endif %}">
-                
                 <section class="glass-panel">
                     <div class="panel-head">
                         <div>
@@ -515,7 +171,7 @@
                 {% endif %}
             </div>
 
-            <section class="glass-panel" style="margin-bottom: 2rem;" id="section-statistics-chart">
+            <section class="glass-panel mb-8" id="section-statistics-chart">
                 <div class="panel-head">
                     <div>
                         <p class="eyebrow">выполнение заданий</p>
@@ -523,175 +179,114 @@
                     </div>
                 </div>
                 {% if chart_data %}
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
+                <p class="text-text-muted text-sm mt-4">
                     Показаны только задания, по которым есть выполненные работы (всего: {{ chart_data|length }})
                 </p>
-                <div style="margin-top: 2rem;">
+                <div class="mt-8">
                     <canvas id="statisticsChart" style="max-height: 400px;"></canvas>
                 </div>
                 {% else %}
-                <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                <p class="text-text-muted text-center p-8">
                     Нет данных для отображения. Выполните задания, чтобы увидеть статистику.
                 </p>
                 {% endif %}
             </section>
 
             {% if chart_data and can_edit is defined and can_edit %}
-            <section class="glass-panel" style="margin-bottom: 2rem;">
+            <section class="glass-panel mb-8">
                 <div class="panel-head">
                     <div>
                         <p class="eyebrow">ручное редактирование</p>
                         <h2>Изменить статистику</h2>
                     </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div class="flex gap-2 items-center">
                         <button type="button" id="resetAllStats" class="neo-button" style="font-size: 0.85em; padding: 0.5rem 1rem;">
                             Сбросить все
                         </button>
                     </div>
                 </div>
-                <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9em;">
+                <p class="mt-4 text-text-muted text-sm">
                     Гибкая система редактирования статистики. Выберите режим редактирования и введите значения для каждого задания.
                 </p>
 
-                <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
+                <div class="mt-6 p-4 bg-bg-surface-alt rounded-card shadow-card">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                        
                         <div>
-                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.75rem; color: var(--text-muted); font-weight: 500;">
-                                Режим редактирования:
-                            </label>
-                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                    <input type="radio" name="editMode" value="add" checked style="cursor: pointer;">
+                            <label class="block text-sm mb-3 text-text-muted font-medium">Режим редактирования:</label>
+                            <div class="flex flex-col gap-2">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="editMode" value="add" checked class="cursor-pointer">
                                     <span>Добавить</span>
-                                    <small style="color: var(--text-muted); font-size: 0.85em;">(прибавить к текущему)</small>
+                                    <small class="text-text-muted text-sm">(прибавить к текущему)</small>
                                 </label>
-                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                    <input type="radio" name="editMode" value="set" style="cursor: pointer;">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="editMode" value="set" class="cursor-pointer">
                                     <span>Установить</span>
-                                    <small style="color: var(--text-muted); font-size: 0.85em;">(абсолютное значение)</small>
+                                    <small class="text-text-muted text-sm">(абсолютное значение)</small>
                                 </label>
-                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                    <input type="radio" name="editMode" value="subtract" style="cursor: pointer;">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="editMode" value="subtract" class="cursor-pointer">
                                     <span>Вычесть</span>
-                                    <small style="color: var(--text-muted); font-size: 0.85em;">(отнять от текущего)</small>
+                                    <small class="text-text-muted text-sm">(отнять от текущего)</small>
                                 </label>
                             </div>
                         </div>
 
                         <div>
-                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.75rem; color: var(--text-muted); font-weight: 500;">
-                                Массовое редактирование:
-                            </label>
+                            <label class="block text-sm mb-3 text-text-muted font-medium">Массовое редактирование:</label>
                             <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: end;">
                                 <div>
-                                    <label style="display: block; font-size: 0.85em; margin-bottom: 0.25rem; color: var(--text-muted);">
-                                        Правильно:
-                                    </label>
-                                    <input type="number" 
-                                           min="0" 
-                                           step="1"
-                                           id="bulkCorrect" 
-                                           class="neo-input" 
-                                           value="0"
-                                           placeholder="0"
-                                           style="width: 100%;">
+                                    <label class="block text-sm mb-1 text-text-muted">Правильно:</label>
+                                    <input type="number" min="0" step="1" id="bulkCorrect" class="neo-input w-full" value="0" placeholder="0">
                                 </div>
                                 <div>
-                                    <label style="display: block; font-size: 0.85em; margin-bottom: 0.25rem; color: var(--text-muted);">
-                                        Неправильно:
-                                    </label>
-                                    <input type="number" 
-                                           min="0" 
-                                           step="1"
-                                           id="bulkIncorrect" 
-                                           class="neo-input" 
-                                           value="0"
-                                           placeholder="0"
-                                           style="width: 100%;">
+                                    <label class="block text-sm mb-1 text-text-muted">Неправильно:</label>
+                                    <input type="number" min="0" step="1" id="bulkIncorrect" class="neo-input w-full" value="0" placeholder="0">
                                 </div>
                                 <div>
-                                    <button type="button" 
-                                            id="bulkApplyBtn" 
-                                            class="neo-button accent"
-                                            style="white-space: nowrap;">
-                                        Применить ко всем
-                                    </button>
+                                    <button type="button" id="bulkApplyBtn" class="neo-button accent whitespace-nowrap">Применить ко всем</button>
                                 </div>
                             </div>
-                            <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
-                                Значения будут применены ко всем заданиям с выбранным режимом
-                            </small>
+                            <small class="block mt-2 text-text-muted text-sm">Значения будут применены ко всем заданиям с выбранным режимом</small>
                         </div>
                     </div>
                 </div>
 
-                <div style="margin-top: 2rem; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1); border-style: dashed;">
-                    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <div class="mt-8 p-4 bg-bg-surface-alt rounded-card shadow-card" style="border-style: dashed; border: 1px dashed var(--color-stroke);">
+                    <div class="flex items-center gap-4 flex-wrap">
                         <div style="flex: 1; min-width: 200px;">
-                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
-                                Добавить новое задание:
-                            </label>
-                            <input type="number" 
-                                   min="1" 
-                                   max="27" 
-                                   step="1"
-                                   id="newTaskNumber" 
-                                   class="neo-input" 
-                                   placeholder="Номер задания (1-27)"
-                                   style="width: 100%;">
+                            <label class="block text-sm mb-2 text-text-muted font-medium">Добавить новое задание:</label>
+                            <input type="number" min="1" max="27" step="1" id="newTaskNumber" class="neo-input w-full" placeholder="Номер задания (1-27)">
                         </div>
                         <div style="flex: 1; min-width: 150px;">
-                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
-                                Правильно:
-                            </label>
-                            <input type="number" 
-                                   min="0" 
-                                   step="1"
-                                   id="newTaskCorrect" 
-                                   class="neo-input" 
-                                   value="0"
-                                   placeholder="0"
-                                   style="width: 100%;">
+                            <label class="block text-sm mb-2 text-text-muted font-medium">Правильно:</label>
+                            <input type="number" min="0" step="1" id="newTaskCorrect" class="neo-input w-full" value="0" placeholder="0">
                         </div>
                         <div style="flex: 1; min-width: 150px;">
-                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
-                                Неправильно:
-                            </label>
-                            <input type="number" 
-                                   min="0" 
-                                   step="1"
-                                   id="newTaskIncorrect" 
-                                   class="neo-input" 
-                                   value="0"
-                                   placeholder="0"
-                                   style="width: 100%;">
+                            <label class="block text-sm mb-2 text-text-muted font-medium">Неправильно:</label>
+                            <input type="number" min="0" step="1" id="newTaskIncorrect" class="neo-input w-full" value="0" placeholder="0">
                         </div>
-                        <div style="display: flex; align-items: end;">
-                            <button type="button" 
-                                    id="addNewTaskBtn" 
-                                    class="neo-button accent"
-                                    style="white-space: nowrap;">
+                        <div class="flex items-end">
+                            <button type="button" id="addNewTaskBtn" class="neo-button accent whitespace-nowrap">
                                 {{ ui_icon('action.plus', 'sm', decorative=true) }} Добавить задание
                             </button>
                         </div>
                     </div>
-                    <small style="display: block; margin-top: 0.75rem; color: var(--text-muted); font-size: 0.85em;">
+                    <small class="block mt-3 text-text-muted text-sm">
                         Добавьте статистику для задания, которого еще нет в списке. После добавления оно появится в списке ниже, и к нему будут добавляться результаты автопроверки.
                     </small>
                 </div>
-                
-                <div style="margin-top: 2rem;">
-                    <div id="statisticsEditor" style="display: grid; gap: 1rem;">
+
+                <div class="mt-8">
+                    <div id="statisticsEditor" class="grid gap-4">
                         {% for item in chart_data %}
-                        <div class="stat-edit-item" data-task-number="{{ item.task_number }}" style="padding: 1.25rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
-                            
-                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1);">
+                        <div class="stat-edit-item p-5 bg-bg-surface-alt rounded-card shadow-card" data-task-number="{{ item.task_number }}">
+                            <div class="flex justify-between items-start mb-4 pb-4 border-b border-stroke">
                                 <div>
                                     <strong style="font-size: 1.1em;">Задание {{ item.task_number }}</strong>
-                                    <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.5rem;">
+                                    <div class="text-sm text-text-muted mt-2">
                                         <div>Итого: <strong>{{ item.correct }}/{{ item.total }}</strong> ({{ item.percent }}%)</div>
-                                        <div style="margin-top: 0.25rem;">
+                                        <div class="mt-1">
                                             Авто: {{ item.auto_correct }}/{{ item.auto_total }}
                                             {% if item.manual_correct > 0 or item.manual_incorrect > 0 %}
                                             | Ручное: +{{ item.manual_correct }}/-{{ item.manual_incorrect }}
@@ -700,11 +295,7 @@
                                     </div>
                                 </div>
                                 {% if item.manual_correct > 0 or item.manual_incorrect > 0 %}
-                                <button type="button" 
-                                        class="stat-reset-btn neo-button" 
-                                        data-task-number="{{ item.task_number }}"
-                                        style="font-size: 0.85em; padding: 0.4rem 0.8rem;"
-                                        title="Сбросить ручные изменения">
+                                <button type="button" class="stat-reset-btn neo-button" data-task-number="{{ item.task_number }}" style="font-size: 0.85em; padding: 0.4rem 0.8rem;" title="Сбросить ручные изменения">
                                     Сбросить
                                 </button>
                                 {% endif %}
@@ -712,45 +303,27 @@
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div>
-                                    <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
+                                    <label class="block text-sm mb-2 text-text-muted font-medium">
                                         {{ ui_icon('action.check', 'sm', decorative=true) }} Правильно:
                                     </label>
-                                    <input type="number" 
-                                           min="0" 
-                                           step="1"
-                                           class="stat-input-correct neo-input" 
-                                           value="0"
-                                           placeholder="0"
-                                           style="width: 100%;">
+                                    <input type="number" min="0" step="1" class="stat-input-correct neo-input w-full" value="0" placeholder="0">
                                     {% if item.manual_correct > 0 %}
-                                    <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
-                                        Текущее ручное значение: {{ item.manual_correct }}
-                                    </small>
+                                    <small class="block mt-2 text-text-muted text-sm">Текущее ручное значение: {{ item.manual_correct }}</small>
                                     {% endif %}
                                 </div>
                                 <div>
-                                    <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
+                                    <label class="block text-sm mb-2 text-text-muted font-medium">
                                         {{ ui_icon('action.close', 'sm', decorative=true) }} Неправильно:
                                     </label>
-                                    <input type="number" 
-                                           min="0" 
-                                           step="1"
-                                           class="stat-input-incorrect neo-input" 
-                                           value="0"
-                                           placeholder="0"
-                                           style="width: 100%;">
+                                    <input type="number" min="0" step="1" class="stat-input-incorrect neo-input w-full" value="0" placeholder="0">
                                     {% if item.manual_incorrect > 0 %}
-                                    <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
-                                        Текущее ручное значение: {{ item.manual_incorrect }}
-                                    </small>
+                                    <small class="block mt-2 text-text-muted text-sm">Текущее ручное значение: {{ item.manual_incorrect }}</small>
                                     {% endif %}
                                 </div>
                             </div>
 
-                            <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
-                                <button type="button" 
-                                        class="neo-button accent stat-save-btn" 
-                                        data-task-number="{{ item.task_number }}">
+                            <div class="mt-4 flex justify-end">
+                                <button type="button" class="neo-button accent stat-save-btn" data-task-number="{{ item.task_number }}">
                                     {{ ui_icon('action.check', 'sm', decorative=true) }} Сохранить
                                 </button>
                             </div>
@@ -762,22 +335,22 @@
             {% endif %}
 
             {% if problem_topics %}
-            <section class="glass-panel" style="margin-bottom: 2rem;">
+            <section class="glass-panel mb-8">
                 <div class="panel-head">
                     <div>
                         <p class="eyebrow">требует внимания</p>
                         <h2>Проблемные темы</h2>
                     </div>
                 </div>
-                <div style="margin-top: 1.5rem;">
-                    <div style="display: grid; gap: 1rem;">
+                <div class="mt-6">
+                    <div class="grid gap-4">
                         {% for topic in problem_topics %}
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
+                        <div class="flex items-center justify-between p-4 bg-bg-surface-alt rounded-card shadow-card">
                             <div>
-                                <span style="font-weight: 500;">{{ topic.name }}</span>
-                                <span style="color: var(--text-muted); margin-left: 1rem;">{{ topic.avg_score }}%</span>
+                                <span class="font-medium">{{ topic.name }}</span>
+                                <span class="text-text-muted ml-4">{{ topic.avg_score }}%</span>
                             </div>
-                            <a href="{{ url_for('task_generator.task_generator') }}?student_id={{ student.student_id }}" class="neo-button accent" style="text-decoration: none;">
+                            <a href="{{ url_for('task_generator.task_generator') }}?student_id={{ student.student_id }}" class="neo-button accent">
                                 Создать отработку
                             </a>
                         </div>
@@ -849,22 +422,17 @@
                 </section>
             </div>
         </div>
-    </main>
-    </div>
-</div>
-    
+{% endblock %}
+
+{% block scripts_extra %}
     <script>
         const STUDENT_ID_FOR_ANALYTICS = {{ student.student_id }};
         let analyticsRadarChartInstance = null;
         let analyticsDataLoaded = false;
 
         function switchTab(tabName, btn) {
-            document.querySelectorAll('.stats-tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.querySelectorAll('.stats-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
+            document.querySelectorAll('.stats-tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
             const content = document.getElementById('tab-' + tabName);
             if (content) content.classList.add('active');
             if (btn) btn.classList.add('active');
@@ -876,6 +444,7 @@
             var meta = document.querySelector('meta[name="cinema-demo-ids"]');
             return meta && meta.getAttribute('content') && meta.getAttribute('content').trim().length > 20;
         }
+
         function getDemoAnalyticsNodes() {
             var topics = [
                 { name: 'Графы. Поиск путей', code: 'GRAPH-BASICS', task_number: 1, exam_points: 1 },
@@ -907,30 +476,18 @@
                 { name: 'Анализ данных (эффективные алгоритмы)', code: 'ALG-OPTIMIZATION', task_number: 27, exam_points: 2 }
             ];
             return topics.map(function(t) {
-                return {
-                    node_name: t.name,
-                    node_code: t.code,
-                    task_number: t.task_number,
-                    exam_points: t.exam_points,
-                    rating: 800 + Math.floor(Math.random() * 1200),
-                    streak_days: Math.random() > 0.7 ? Math.floor(Math.random() * 5) : 0
-                };
+                return { node_name: t.name, node_code: t.code, task_number: t.task_number, exam_points: t.exam_points, rating: 800 + Math.floor(Math.random() * 1200), streak_days: Math.random() > 0.7 ? Math.floor(Math.random() * 5) : 0 };
             });
         }
+
         function loadAnalyticsTab() {
             var loadingEl = document.getElementById('analytics-loading');
             var errorEl = document.getElementById('analytics-error');
             var contentEl = document.getElementById('analytics-content');
             if (!loadingEl || !errorEl || !contentEl) return;
-            loadingEl.style.display = 'block';
-            errorEl.style.display = 'none';
-            contentEl.style.display = 'none';
+            loadingEl.style.display = 'block'; errorEl.style.display = 'none'; contentEl.style.display = 'none';
             var courseIdParam = '';
-            try {
-                var urlParams = new URLSearchParams(window.location.search);
-                var cid = urlParams.get('course_id');
-                if (cid) courseIdParam = '&course_id=' + encodeURIComponent(cid);
-            } catch(e) {}
+            try { var urlParams = new URLSearchParams(window.location.search); var cid = urlParams.get('course_id'); if (cid) courseIdParam = '&course_id=' + encodeURIComponent(cid); } catch(e) {}
             var url = '/api/analytics/summary?student_id=' + encodeURIComponent(STUDENT_ID_FOR_ANALYTICS) + courseIdParam;
             fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
                 .then(function(r) { return r.json(); })
@@ -939,10 +496,7 @@
                     if (isCinemaDemo() && (!data.success || !data.nodes || data.nodes.length === 0)) {
                         data = { success: true, nodes: getDemoAnalyticsNodes(), predicted_primary_score: 12, grading: data.grading || {}, course_slug: data.course_slug || 'ege' };
                     }
-                    if (!data.success || !data.nodes) {
-                        errorEl.style.display = 'block';
-                        return;
-                    }
+                    if (!data.success || !data.nodes) { errorEl.style.display = 'block'; return; }
                     analyticsDataLoaded = true;
                     contentEl.style.display = 'block';
                     var primary = data.predicted_primary_score != null ? data.predicted_primary_score : 0;
@@ -952,12 +506,8 @@
                     if (isOge && data.grading && data.grading.scales) {
                         var maxP = data.grading.max_primary || 19;
                         if (scoreEl) scoreEl.textContent = primary + ' из ' + maxP + ' (первичный)';
-                        var grade = null;
-                        var rounded = Math.round(primary);
-                        for (var si = 0; si < data.grading.scales.length; si++) {
-                            var sc = data.grading.scales[si];
-                            if (rounded >= sc.min && rounded <= sc.max) { grade = sc.grade; break; }
-                        }
+                        var grade = null; var rounded = Math.round(primary);
+                        for (var si = 0; si < data.grading.scales.length; si++) { var sc = data.grading.scales[si]; if (rounded >= sc.min && rounded <= sc.max) { grade = sc.grade; break; } }
                         if (secondaryEl) secondaryEl.textContent = grade != null ? 'Оценка: ' + grade + ' (' + (data.grading.scales.find(function(s){return s.grade===grade;}) || {}).label + ')' : '';
                     } else {
                         var maxPrimary = (data.grading && data.grading.max_primary) ? data.grading.max_primary : 29;
@@ -967,55 +517,21 @@
                         if (secondaryEl) secondaryEl.textContent = testScore != null ? '≈ ' + testScore + ' тестовых баллов (по шкале ФИПИ)' : '';
                     }
                     var nodes = data.nodes || [];
-                    var accent1 = getComputedStyle(document.documentElement).getPropertyValue('--accent-1').trim();
-                    var textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
-                    var stroke1 = getComputedStyle(document.documentElement).getPropertyValue('--stroke-1').trim();
-                    function hexToRgb(hex) {
-                        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                        return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
-                    }
+                    var accent1 = '#7B5CFF';
+                    var textMuted = getComputedStyle(document.documentElement).getPropertyValue('--color-text-muted').trim() || '#888';
+                    function hexToRgb(hex) { var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null; }
                     var accentRgb = hexToRgb(accent1);
-                    var fillRgba = accentRgb ? 'rgba(' + accentRgb.r + ',' + accentRgb.g + ',' + accentRgb.b + ',0.2)' : 'rgba(0,255,213,0.2)';
+                    var fillRgba = accentRgb ? 'rgba(' + accentRgb.r + ',' + accentRgb.g + ',' + accentRgb.b + ',0.2)' : 'rgba(123,92,255,0.2)';
                     var labels = nodes.map(function(n) { return (n.task_number != null ? String(n.task_number) : (n.node_code || '?')); });
                     var minR = 800, maxR = 2500;
-                    var values = nodes.map(function(n) {
-                        var r = n.rating != null ? n.rating : 1000;
-                        return Math.max(0, Math.min(100, ((r - minR) / (maxR - minR)) * 100));
-                    });
+                    var values = nodes.map(function(n) { var r = n.rating != null ? n.rating : 1000; return Math.max(0, Math.min(100, ((r - minR) / (maxR - minR)) * 100)); });
                     var canvas = document.getElementById('analyticsRadarChart');
                     if (canvas && typeof Chart !== 'undefined') {
                         if (analyticsRadarChartInstance) analyticsRadarChartInstance.destroy();
                         analyticsRadarChartInstance = new Chart(canvas.getContext('2d'), {
                             type: 'radar',
-                            data: {
-                                labels: labels,
-                                datasets: [{
-                                    label: 'Рейтинг по теме',
-                                    data: values,
-                                    borderColor: accent1,
-                                    backgroundColor: fillRgba,
-                                    borderWidth: 2,
-                                    pointBackgroundColor: accent1,
-                                    pointBorderColor: '#fff',
-                                    pointHoverBackgroundColor: '#fff',
-                                    pointHoverBorderColor: accent1
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    r: {
-                                        beginAtZero: true,
-                                        max: 100,
-                                        ticks: { color: textMuted, backdropColor: 'transparent' },
-                                        pointLabels: { color: textMuted, font: { size: 14 } }
-                                    }
-                                },
-                                plugins: {
-                                    legend: { display: false }
-                                }
-                            }
+                            data: { labels: labels, datasets: [{ label: 'Рейтинг по теме', data: values, borderColor: accent1, backgroundColor: fillRgba, borderWidth: 2, pointBackgroundColor: accent1, pointBorderColor: '#fff', pointHoverBackgroundColor: '#fff', pointHoverBorderColor: accent1 }] },
+                            options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100, ticks: { color: textMuted, backdropColor: 'transparent' }, pointLabels: { color: textMuted, font: { size: 14 } } } }, plugins: { legend: { display: false } } }
                         });
                     }
                     var tbody = document.getElementById('analyticsNodesBody');
@@ -1031,911 +547,226 @@
                         }).join('');
                     }
                 })
-                .catch(function() {
-                    loadingEl.style.display = 'none';
-                    errorEl.style.display = 'block';
-                });
+                .catch(function() { loadingEl.style.display = 'none'; errorEl.style.display = 'block'; });
         }
-        
-        // Инициализация графиков
+
         document.addEventListener("DOMContentLoaded", function() {
-            const accent1 = getComputedStyle(document.documentElement).getPropertyValue('--accent-1').trim();
-            const textPrimary = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
-            const textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
-            const stroke1 = getComputedStyle(document.documentElement).getPropertyValue('--stroke-1').trim();
-            
-            function hexToRgb(hex) {
-                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                return result ? {
-                    r: parseInt(result[1], 16),
-                    g: parseInt(result[2], 16),
-                    b: parseInt(result[3], 16)
-                } : null;
-            }
-            
+            const accent1 = '#7B5CFF';
+            const textPrimary = getComputedStyle(document.documentElement).getPropertyValue('--color-text-primary').trim() || '#1a1a2e';
+            const textMuted = getComputedStyle(document.documentElement).getPropertyValue('--color-text-muted').trim() || '#888';
+            const stroke1 = getComputedStyle(document.documentElement).getPropertyValue('--color-stroke').trim() || '#e0e0e0';
+
+            function hexToRgb(hex) { const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null; }
             const accentRgb = hexToRgb(accent1);
-            const accentRgba = accentRgb ? `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.25)` : 'rgba(0, 255, 213, 0.25)';
-            
-            // График динамики GPA
+            const accentRgba = accentRgb ? `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.25)` : 'rgba(123, 92, 255, 0.25)';
+
             const ctxTrend = document.getElementById('trendChart');
             if (ctxTrend) {
                 new Chart(ctxTrend.getContext('2d'), {
                     type: 'line',
-                    data: {
-                        labels: {{ charts.trend_dates | safe }},
-                        datasets: [{
-                            label: 'Процент выполнения (%)',
-                            data: {{ charts.trend_scores | safe }},
-                            borderColor: accent1,
-                            backgroundColor: accentRgba,
-                            tension: 0.4,
-                            fill: {
-                                target: 'origin',
-                                above: accentRgba
-                            },
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            pointBackgroundColor: accent1,
-                            pointBorderColor: textPrimary,
-                            pointBorderWidth: 2
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        layout: {
-                            padding: {
-                                top: 10,
-                                right: 10,
-                                bottom: 10,
-                                left: 10
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                labels: { 
-                                    color: textPrimary,
-                                    padding: 15,
-                                    usePointStyle: true
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 100,
-                                ticks: {
-                                    color: textMuted,
-                                    padding: 8,
-                                    callback: function(value) {
-                                        return value + '%';
-                                    }
-                                },
-                                grid: { 
-                                    color: stroke1,
-                                    drawBorder: false
-                                }
-                            },
-                            x: {
-                                ticks: { 
-                                    color: textMuted,
-                                    padding: 8
-                                },
-                                grid: { 
-                                    color: stroke1,
-                                    drawBorder: false
-                                }
-                            }
-                        }
-                    }
+                    data: { labels: {{ charts.trend_dates | safe }}, datasets: [{ label: 'Процент выполнения (%)', data: {{ charts.trend_scores | safe }}, borderColor: accent1, backgroundColor: accentRgba, tension: 0.4, fill: { target: 'origin', above: accentRgba }, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: accent1, pointBorderColor: textPrimary, pointBorderWidth: 2 }] },
+                    options: { responsive: true, maintainAspectRatio: false, layout: { padding: 10 }, plugins: { legend: { display: true, position: 'top', labels: { color: textPrimary, padding: 15, usePointStyle: true } } }, scales: { y: { beginAtZero: true, max: 100, ticks: { color: textMuted, padding: 8, callback: v => v + '%' }, grid: { color: stroke1, drawBorder: false } }, x: { ticks: { color: textMuted, padding: 8 }, grid: { color: stroke1, drawBorder: false } } } }
                 });
             }
-            
-            // График навыков (Radar)
+
             const ctxSkills = document.getElementById('skillsChart');
             if (ctxSkills && {{ charts.skill_labels | safe }}.length > 0) {
                 new Chart(ctxSkills.getContext('2d'), {
                     type: 'radar',
-                    data: {
-                        labels: {{ charts.skill_labels | safe }},
-                        datasets: [{
-                            label: 'Уровень владения',
-                            data: {{ charts.skill_values | safe }},
-                            backgroundColor: accentRgba,
-                            borderColor: accent1,
-                            borderWidth: 3,
-                            pointBackgroundColor: accent1,
-                            pointBorderColor: textPrimary,
-                            pointBorderWidth: 2,
-                            pointRadius: 5,
-                            pointHoverRadius: 7
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        layout: {
-                            padding: { top: 20, bottom: 20, left: 20, right: 20 }
-                        },
-                        scales: {
-                            r: {
-                                beginAtZero: true,
-                                min: 0,
-                                max: 100,
-                                ticks: {
-                                    stepSize: 20,
-                                    color: textMuted,
-                                    font: { size: 11, family: 'MonaspaceNeon, monospace' },
-                                    backdropColor: 'transparent',
-                                    callback: function(value) {
-                                        return value + '%';
-                                    }
-                                },
-                                grid: { color: stroke1, lineWidth: 1 },
-                                angleLines: { color: stroke1, lineWidth: 1 },
-                                pointLabels: {
-                                    color: textPrimary,
-                                    font: { size: 10, family: 'MonaspaceNeon, monospace', weight: '500' },
-                                    padding: 10
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                labels: { color: textPrimary }
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(8, 10, 18, 0.95)',
-                                titleColor: accent1,
-                                bodyColor: textPrimary,
-                                borderColor: accent1,
-                                borderWidth: 1,
-                                padding: 12,
-                                callbacks: {
-                                    label: function(context) {
-                                        return context.dataset.label + ': ' + context.parsed.r + '%';
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    data: { labels: {{ charts.skill_labels | safe }}, datasets: [{ label: 'Уровень владения', data: {{ charts.skill_values | safe }}, backgroundColor: accentRgba, borderColor: accent1, borderWidth: 3, pointBackgroundColor: accent1, pointBorderColor: textPrimary, pointBorderWidth: 2, pointRadius: 5, pointHoverRadius: 7 }] },
+                    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 20, bottom: 20, left: 20, right: 20 } }, scales: { r: { beginAtZero: true, min: 0, max: 100, ticks: { stepSize: 20, color: textMuted, font: { size: 11 }, backdropColor: 'transparent', callback: v => v + '%' }, grid: { color: stroke1, lineWidth: 1 }, angleLines: { color: stroke1, lineWidth: 1 }, pointLabels: { color: textPrimary, font: { size: 10, weight: '500' }, padding: 10 } } }, plugins: { legend: { display: true, position: 'top', labels: { color: textPrimary } }, tooltip: { backgroundColor: 'rgba(8, 10, 18, 0.95)', titleColor: accent1, bodyColor: textPrimary, borderColor: accent1, borderWidth: 1, padding: 12, callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.r + '%' } } } }
                 });
             }
-            
-            // График статистики по заданиям
+
             const ctxStats = document.getElementById('statisticsChart');
             if (ctxStats && {{ chart_data | tojson | safe }}.length > 0) {
                 const statsData = {{ chart_data | tojson | safe }};
                 new Chart(ctxStats.getContext('2d'), {
                     type: 'bar',
-                    data: {
-                        labels: statsData.map(d => '№' + d.task_number),
-                        datasets: [{
-                            label: 'Процент выполнения',
-                            data: statsData.map(d => d.percent),
-                            backgroundColor: statsData.map(d => d.color),
-                            borderColor: statsData.map(d => d.color),
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const data = statsData[context.dataIndex];
-                                        return `Выполнено: ${data.correct}/${data.total} (${data.percent}%)`;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 100,
-                                ticks: {
-                                    color: textMuted,
-                                    callback: function(value) {
-                                        return value + '%';
-                                    }
-                                },
-                                grid: { color: stroke1 }
-                            },
-                            x: {
-                                ticks: { color: textMuted },
-                                grid: { color: stroke1 }
-                            }
-                        }
-                    }
+                    data: { labels: statsData.map(d => '№' + d.task_number), datasets: [{ label: 'Процент выполнения', data: statsData.map(d => d.percent), backgroundColor: statsData.map(d => d.color), borderColor: statsData.map(d => d.color), borderWidth: 1 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => { const data = statsData[ctx.dataIndex]; return `Выполнено: ${data.correct}/${data.total} (${data.percent}%)`; } } } }, scales: { y: { beginAtZero: true, max: 100, ticks: { color: textMuted, callback: v => v + '%' }, grid: { color: stroke1 } }, x: { ticks: { color: textMuted }, grid: { color: stroke1 } } } }
                 });
             }
-            
-            // График посещаемости (Pie)
+
             const ctxAttendance = document.getElementById('attendanceChart');
             if (ctxAttendance && {{ charts.attendance_labels | safe }}.length > 0) {
                 new Chart(ctxAttendance.getContext('2d'), {
                     type: 'pie',
-                    data: {
-                        labels: {{ charts.attendance_labels | safe }},
-                        datasets: [{
-                            data: {{ charts.attendance_values | safe }},
-                            backgroundColor: [
-                                'rgba(34, 197, 94, 0.8)',
-                                'rgba(234, 179, 8, 0.8)',
-                                'rgba(239, 68, 68, 0.8)',
-                                'rgba(147, 51, 234, 0.8)',
-                                'rgba(59, 130, 246, 0.8)',
-                                'rgba(168, 85, 247, 0.8)'
-                            ],
-                            borderColor: [
-                                'rgb(34, 197, 94)',
-                                'rgb(234, 179, 8)',
-                                'rgb(239, 68, 68)',
-                                'rgb(147, 51, 234)',
-                                'rgb(59, 130, 246)',
-                                'rgb(168, 85, 247)'
-                            ],
-                            borderWidth: 2
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'right',
-                                labels: { color: textPrimary }
-                            }
-                        }
-                    }
+                    data: { labels: {{ charts.attendance_labels | safe }}, datasets: [{ data: {{ charts.attendance_values | safe }}, backgroundColor: ['rgba(34,197,94,0.8)','rgba(234,179,8,0.8)','rgba(239,68,68,0.8)','rgba(147,51,234,0.8)','rgba(59,130,246,0.8)','rgba(168,85,247,0.8)'], borderColor: ['rgb(34,197,94)','rgb(234,179,8)','rgb(239,68,68)','rgb(147,51,234)','rgb(59,130,246)','rgb(168,85,247)'], borderWidth: 2 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'right', labels: { color: textPrimary } } } }
                 });
             }
-            
-            // Heatmap посещаемости
+
             const heatmapContainer = document.getElementById('attendanceHeatmap');
             const heatmapMonthsContainer = document.getElementById('heatmapMonths');
             if (heatmapContainer && heatmapMonthsContainer) {
                 const dates = {{ charts.heatmap_dates | safe }};
                 const statuses = {{ charts.heatmap_statuses | safe }};
-                
-                // Функция форматирования даты
-                function formatDate(dateStr) {
-                    const date = new Date(dateStr);
-                    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-                }
-                
-                // Группируем по неделям (7 дней), начиная с понедельника
-                const weeks = [];
-                let currentWeek = [];
-                
-                // Находим первый понедельник
+                function formatDate(dateStr) { const date = new Date(dateStr); return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }); }
+                const weeks = []; let currentWeek = [];
                 let firstMondayIdx = 0;
-                for (let i = 0; i < dates.length; i++) {
-                    const dateObj = new Date(dates[i]);
-                    const dayOfWeek = dateObj.getDay(); // 0 = воскресенье, 1 = понедельник
-                    if (dayOfWeek === 1) { // Понедельник
-                        firstMondayIdx = i;
-                        break;
-                    }
-                }
-                
-                // Заполняем первую неделю до понедельника пустыми днями
-                for (let i = 0; i < firstMondayIdx; i++) {
-                    currentWeek.push(null);
-                }
-                
-                // Группируем остальные дни по неделям
+                for (let i = 0; i < dates.length; i++) { const dateObj = new Date(dates[i]); if (dateObj.getDay() === 1) { firstMondayIdx = i; break; } }
+                for (let i = 0; i < firstMondayIdx; i++) { currentWeek.push(null); }
                 for (let i = firstMondayIdx; i < dates.length; i++) {
-                    const date = dates[i];
-                    const status = statuses[i];
-                    const dateObj = new Date(date);
-                    const dayOfWeek = dateObj.getDay();
-                    
-                    currentWeek.push({
-                        date: date,
-                        status: status,
-                        dayOfWeek: dayOfWeek
-                    });
-                    
-                    // Если неделя заполнена (7 дней) или это последний день
-                    if (currentWeek.length === 7 || i === dates.length - 1) {
-                        // Дополняем последнюю неделю пустыми днями если нужно
-                        while (currentWeek.length < 7) {
-                            currentWeek.push(null);
-                        }
-                        weeks.push(currentWeek);
-                        currentWeek = [];
-                    }
+                    currentWeek.push({ date: dates[i], status: statuses[i], dayOfWeek: new Date(dates[i]).getDay() });
+                    if (currentWeek.length === 7 || i === dates.length - 1) { while (currentWeek.length < 7) currentWeek.push(null); weeks.push(currentWeek); currentWeek = []; }
                 }
-                
-                // Определяем месяцы для подписей (группируем недели по месяцам)
-                const monthLabels = [];
-                let currentMonth = '';
-                let currentMonthWeeks = 0;
-                
+                const monthLabels = []; let currentMonth = ''; let currentMonthWeeks = 0;
                 weeks.forEach((week, weekIdx) => {
                     const firstDay = week.find(d => d !== null);
                     if (firstDay) {
-                        const date = new Date(firstDay.date);
-                        const month = date.toLocaleDateString('ru-RU', { month: 'short' });
-                        
-                        if (month !== currentMonth) {
-                            // Если сменился месяц, добавляем метку для предыдущего месяца
-                            if (currentMonth && currentMonthWeeks > 0) {
-                                monthLabels.push({ 
-                                    weekIdx: weekIdx - currentMonthWeeks, 
-                                    month: currentMonth,
-                                    weeks: currentMonthWeeks
-                                });
-                            }
-                            currentMonth = month;
-                            currentMonthWeeks = 1;
-                        } else {
-                            currentMonthWeeks++;
-                        }
+                        const month = new Date(firstDay.date).toLocaleDateString('ru-RU', { month: 'short' });
+                        if (month !== currentMonth) { if (currentMonth && currentMonthWeeks > 0) monthLabels.push({ weekIdx: weekIdx - currentMonthWeeks, month: currentMonth, weeks: currentMonthWeeks }); currentMonth = month; currentMonthWeeks = 1; } else { currentMonthWeeks++; }
                     }
                 });
-                
-                // Добавляем последний месяц
-                if (currentMonth && currentMonthWeeks > 0) {
-                    monthLabels.push({ 
-                        weekIdx: weeks.length - currentMonthWeeks, 
-                        month: currentMonth,
-                        weeks: currentMonthWeeks
-                    });
-                }
-                
-                // Создаем heatmap
-                weeks.forEach((week, weekIdx) => {
-                    const weekDiv = document.createElement('div');
-                    weekDiv.className = 'heatmap-week';
-                    
-                    // Заполняем неделю (7 дней)
+                if (currentMonth && currentMonthWeeks > 0) monthLabels.push({ weekIdx: weeks.length - currentMonthWeeks, month: currentMonth, weeks: currentMonthWeeks });
+                weeks.forEach(week => {
+                    const weekDiv = document.createElement('div'); weekDiv.className = 'heatmap-week';
                     for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
-                        const day = week[dayIdx];
-                        const dayDiv = document.createElement('div');
-                        dayDiv.className = 'heatmap-day';
-                        
+                        const day = week[dayIdx]; const dayDiv = document.createElement('div'); dayDiv.className = 'heatmap-day';
                         if (day && day.status) {
-                            if (day.status === 'completed') {
-                                dayDiv.classList.add('status-completed');
-                            } else if (day.status === 'canceled_student') {
-                                dayDiv.classList.add('status-canceled-student');
-                            } else if (day.status === 'canceled_teacher') {
-                                dayDiv.classList.add('status-canceled-teacher');
-                            } else {
-                                dayDiv.classList.add('status-none');
-                            }
-                            
-                            // Форматируем подсказку
-                            const dateFormatted = formatDate(day.date);
-                            let tooltipText = `${dateFormatted}`;
-                            if (day.status === 'completed') {
-                                tooltipText += `\nПроведен`;
-                            } else if (day.status === 'canceled_student') {
-                                tooltipText += `\nОтменен учеником`;
-                            } else if (day.status === 'canceled_teacher') {
-                                tooltipText += `\nОтменен учителем`;
-                            }
+                            if (day.status === 'completed') dayDiv.classList.add('status-completed');
+                            else if (day.status === 'canceled_student') dayDiv.classList.add('status-canceled-student');
+                            else if (day.status === 'canceled_teacher') dayDiv.classList.add('status-canceled-teacher');
+                            else dayDiv.classList.add('status-none');
+                            let tooltipText = formatDate(day.date);
+                            if (day.status === 'completed') tooltipText += '\nПроведен';
+                            else if (day.status === 'canceled_student') tooltipText += '\nОтменен учеником';
+                            else if (day.status === 'canceled_teacher') tooltipText += '\nОтменен учителем';
                             dayDiv.title = tooltipText;
-                        } else {
-                            dayDiv.classList.add('status-none');
-                        }
-                        
+                        } else { dayDiv.classList.add('status-none'); }
                         weekDiv.appendChild(dayDiv);
                     }
-                    
                     heatmapContainer.appendChild(weekDiv);
                 });
-                
-                // Добавляем подписи месяцев с правильным распределением
                 let currentWeekIdx = 0;
                 monthLabels.forEach(({ weekIdx, month, weeks: monthWeeks }) => {
-                    // Добавляем отступы до нужной недели
-                    while (currentWeekIdx < weekIdx) {
-                        const spacer = document.createElement('div');
-                        spacer.className = 'heatmap-month-spacer';
-                        heatmapMonthsContainer.appendChild(spacer);
-                        currentWeekIdx++;
-                    }
-                    
-                    // Добавляем метку месяца
-                    const monthLabel = document.createElement('div');
-                    monthLabel.className = 'heatmap-month-label';
-                    monthLabel.textContent = month;
-                    monthLabel.style.height = (monthWeeks * 22) + 'px'; // 20px высота недели + 2px gap
-                    heatmapMonthsContainer.appendChild(monthLabel);
-                    currentWeekIdx += monthWeeks;
+                    while (currentWeekIdx < weekIdx) { const spacer = document.createElement('div'); spacer.className = 'heatmap-month-spacer'; heatmapMonthsContainer.appendChild(spacer); currentWeekIdx++; }
+                    const monthLabel = document.createElement('div'); monthLabel.className = 'heatmap-month-label'; monthLabel.textContent = month; monthLabel.style.height = (monthWeeks * 22) + 'px'; heatmapMonthsContainer.appendChild(monthLabel); currentWeekIdx += monthWeeks;
                 });
-                
-                // Добавляем отступы до конца если нужно
-                while (currentWeekIdx < weeks.length) {
-                    const spacer = document.createElement('div');
-                    spacer.className = 'heatmap-month-spacer';
-                    heatmapMonthsContainer.appendChild(spacer);
-                    currentWeekIdx++;
-                }
+                while (currentWeekIdx < weeks.length) { const spacer = document.createElement('div'); spacer.className = 'heatmap-month-spacer'; heatmapMonthsContainer.appendChild(spacer); currentWeekIdx++; }
             }
         });
-        
-        // Обработка сохранения статистики
+
         document.addEventListener('DOMContentLoaded', function() {
             const saveButtons = document.querySelectorAll('.stat-save-btn');
             const resetButtons = document.querySelectorAll('.stat-reset-btn');
             const resetAllBtn = document.getElementById('resetAllStats');
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            
-            if (!csrfToken) {
-                console.warn('CSRF токен не найден');
-            }
-            
-            // Функция для временного уведомления
+
             function showTemporaryNotification(message, type) {
-                if (typeof toast !== 'undefined' && toast && typeof toast.show === 'function') {
-                    toast.show(message, type);
-                    return;
-                }
-                if (window.toast && typeof window.toast.show === 'function') {
-                    window.toast.show(message, type);
-                    return;
-                }
-                
-                // Fallback: создаем уведомление вручную
+                if (window.toast && typeof window.toast.success === 'function') { if (type === 'success') window.toast.success(message); else if (type === 'error') window.toast.error(message); else window.toast.info(message); return; }
                 const notification = document.createElement('div');
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    padding: 1rem 1.5rem;
-                    background: ${type === 'success' ? '#22c55e' : '#ef4444'};
-                    color: white;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                    z-index: 10000;
-                    font-size: 14px;
-                    max-width: 300px;
-                `;
-                notification.textContent = message;
-                document.body.appendChild(notification);
-                
-                setTimeout(() => {
-                    notification.remove();
-                }, 3000);
+                notification.style.cssText = `position:fixed;top:20px;right:20px;padding:1rem 1.5rem;background:${type === 'success' ? '#22c55e' : '#ef4444'};color:white;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);z-index:10000;font-size:14px;max-width:300px;`;
+                notification.textContent = message; document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 3000);
             }
-            
-            // Функция для получения выбранного режима редактирования
-            function getEditMode() {
-                const selectedMode = document.querySelector('input[name="editMode"]:checked');
-                return selectedMode ? selectedMode.value : 'add';
-            }
-            
-            // Функция для обновления плейсхолдеров в зависимости от режима
+
+            function getEditMode() { const selected = document.querySelector('input[name="editMode"]:checked'); return selected ? selected.value : 'add'; }
+
             function updatePlaceholders() {
                 const mode = getEditMode();
-                const items = document.querySelectorAll('.stat-edit-item');
-                items.forEach(item => {
-                    const correctInput = item.querySelector('.stat-input-correct');
-                    const incorrectInput = item.querySelector('.stat-input-incorrect');
-                    
-                    if (mode === 'add') {
-                        correctInput.placeholder = 'Добавить';
-                        incorrectInput.placeholder = 'Добавить';
-                    } else if (mode === 'set') {
-                        correctInput.placeholder = 'Установить значение';
-                        incorrectInput.placeholder = 'Установить значение';
-                    } else if (mode === 'subtract') {
-                        correctInput.placeholder = 'Вычесть';
-                        incorrectInput.placeholder = 'Вычесть';
-                    }
+                document.querySelectorAll('.stat-edit-item').forEach(item => {
+                    const ci = item.querySelector('.stat-input-correct'), ii = item.querySelector('.stat-input-incorrect');
+                    if (mode === 'add') { ci.placeholder = 'Добавить'; ii.placeholder = 'Добавить'; }
+                    else if (mode === 'set') { ci.placeholder = 'Установить значение'; ii.placeholder = 'Установить значение'; }
+                    else if (mode === 'subtract') { ci.placeholder = 'Вычесть'; ii.placeholder = 'Вычесть'; }
                 });
             }
-            
-            // Обновляем плейсхолдеры при изменении режима
-            document.querySelectorAll('input[name="editMode"]').forEach(radio => {
-                radio.addEventListener('change', updatePlaceholders);
-            });
-            
-            // Обработка сохранения статистики
+            document.querySelectorAll('input[name="editMode"]').forEach(radio => radio.addEventListener('change', updatePlaceholders));
+
             saveButtons.forEach(btn => {
                 btn.addEventListener('click', async function() {
                     const taskNumber = parseInt(this.dataset.taskNumber);
                     const item = this.closest('.stat-edit-item');
-                    const correctInput = item.querySelector('.stat-input-correct');
-                    const incorrectInput = item.querySelector('.stat-input-incorrect');
-                    
-                    const manualCorrect = parseInt(correctInput.value) || 0;
-                    const manualIncorrect = parseInt(incorrectInput.value) || 0;
+                    const correctInput = item.querySelector('.stat-input-correct'), incorrectInput = item.querySelector('.stat-input-incorrect');
+                    const manualCorrect = parseInt(correctInput.value) || 0, manualIncorrect = parseInt(incorrectInput.value) || 0;
                     const editMode = getEditMode();
-                    
-                    // Валидация для режимов add и subtract
-                    if (editMode !== 'set' && (manualCorrect < 0 || manualIncorrect < 0)) {
-                        showTemporaryNotification('Значения должны быть неотрицательными', 'error');
-                        return;
-                    }
-                    
-                    // Показываем индикатор загрузки
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '⏳ Сохранение...';
-                    this.disabled = true;
-                    
+                    if (editMode !== 'set' && (manualCorrect < 0 || manualIncorrect < 0)) { showTemporaryNotification('Значения должны быть неотрицательными', 'error'); return; }
+                    const originalText = this.innerHTML; this.innerHTML = '⏳ Сохранение...'; this.disabled = true;
                     try {
-                        const url = `{{ url_for('students.update_statistics', student_id=student.student_id) }}`;
-                        
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': csrfToken || ''
-                            },
-                            body: JSON.stringify({
-                                task_number: taskNumber,
-                                mode: editMode,
-                                manual_correct: manualCorrect,
-                                manual_incorrect: manualIncorrect
-                            })
-                        });
-                        
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(`HTTP ${response.status}: ${errorText}`);
-                        }
-                        
+                        const response = await fetch(`{{ url_for('students.update_statistics', student_id=student.student_id) }}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken || '' }, body: JSON.stringify({ task_number: taskNumber, mode: editMode, manual_correct: manualCorrect, manual_incorrect: manualIncorrect }) });
+                        if (!response.ok) { const errorText = await response.text(); throw new Error(`HTTP ${response.status}: ${errorText}`); }
                         const data = await response.json();
-                        
-                        if (data && data.success) {
-                            showTemporaryNotification('Статистика успешно обновлена', 'success');
-                            // Очищаем поля ввода
-                            correctInput.value = '0';
-                            incorrectInput.value = '0';
-                            // Перезагружаем страницу с принудительным обновлением кеша
-                            setTimeout(() => {
-                                const url = new URL(window.location.href);
-                                url.searchParams.set('_t', Date.now());
-                                window.location.href = url.toString();
-                            }, 1000);
-                        } else {
-                            const errorMsg = data?.error || 'Ошибка при сохранении';
-                            showTemporaryNotification(errorMsg, 'error');
-                            this.innerHTML = originalText;
-                            this.disabled = false;
-                        }
-                    } catch (error) {
-                        console.error('Ошибка при сохранении статистики:', error);
-                        showTemporaryNotification('Ошибка при сохранении: ' + error.message, 'error');
-                        this.innerHTML = originalText;
-                        this.disabled = false;
-                    }
+                        if (data && data.success) { showTemporaryNotification('Статистика успешно обновлена', 'success'); correctInput.value = '0'; incorrectInput.value = '0'; setTimeout(() => { const url = new URL(window.location.href); url.searchParams.set('_t', Date.now()); window.location.href = url.toString(); }, 1000); }
+                        else { showTemporaryNotification(data?.error || 'Ошибка при сохранении', 'error'); this.innerHTML = originalText; this.disabled = false; }
+                    } catch (error) { console.error('Ошибка при сохранении статистики:', error); showTemporaryNotification('Ошибка при сохранении: ' + error.message, 'error'); this.innerHTML = originalText; this.disabled = false; }
                 });
             });
-            
-            // Обработка сброса для отдельного задания
+
             resetButtons.forEach(btn => {
                 btn.addEventListener('click', async function() {
                     const taskNumber = parseInt(this.dataset.taskNumber);
-                    
-                    showConfirmDialog(
-                        `Вы уверены, что хотите сбросить ручные изменения для задания ${taskNumber}?`,
-                        async () => {
-                            const originalText = this.innerHTML;
-                            this.innerHTML = '⏳ Сброс...';
-                            this.disabled = true;
-                    
+                    if (!confirm(`Сбросить ручные изменения для задания ${taskNumber}?`)) return;
+                    const originalText = this.innerHTML; this.innerHTML = '⏳ Сброс...'; this.disabled = true;
                     try {
-                        const url = `{{ url_for('students.reset_statistics', student_id=student.student_id) }}`;
-                        
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': csrfToken || ''
-                            },
-                            body: JSON.stringify({
-                                task_number: taskNumber
-                            })
-                        });
-                        
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(`HTTP ${response.status}: ${errorText}`);
-                        }
-                        
+                        const response = await fetch(`{{ url_for('students.reset_statistics', student_id=student.student_id) }}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken || '' }, body: JSON.stringify({ task_number: taskNumber }) });
+                        if (!response.ok) { const errorText = await response.text(); throw new Error(`HTTP ${response.status}: ${errorText}`); }
                         const data = await response.json();
-                        
-                        if (data && data.success) {
-                            showTemporaryNotification('Ручные изменения сброшены', 'success');
-                            setTimeout(() => {
-                                const url = new URL(window.location.href);
-                                url.searchParams.set('_t', Date.now());
-                                window.location.href = url.toString();
-                            }, 1000);
-                        } else {
-                            const errorMsg = data?.error || 'Ошибка при сбросе';
-                            showTemporaryNotification(errorMsg, 'error');
-                            this.innerHTML = originalText;
-                            this.disabled = false;
-                        }
-                    } catch (error) {
-                        console.error('Ошибка при сбросе статистики:', error);
-                        showTemporaryNotification('Ошибка при сбросе: ' + error.message, 'error');
-                        this.innerHTML = originalText;
-                        this.disabled = false;
-                    }
-                        },
-                        null,
-                        {
-                            title: 'Сбросить изменения?',
-                            isDanger: true,
-                            confirmText: 'Сбросить',
-                            cancelText: 'Отмена'
-                        }
-                    );
+                        if (data && data.success) { showTemporaryNotification('Ручные изменения сброшены', 'success'); setTimeout(() => { const url = new URL(window.location.href); url.searchParams.set('_t', Date.now()); window.location.href = url.toString(); }, 1000); }
+                        else { showTemporaryNotification(data?.error || 'Ошибка при сбросе', 'error'); this.innerHTML = originalText; this.disabled = false; }
+                    } catch (error) { console.error('Ошибка при сбросе:', error); showTemporaryNotification('Ошибка при сбросе: ' + error.message, 'error'); this.innerHTML = originalText; this.disabled = false; }
                 });
             });
-            
-            // Обработка добавления нового задания
+
             const addNewTaskBtn = document.getElementById('addNewTaskBtn');
             if (addNewTaskBtn) {
                 addNewTaskBtn.addEventListener('click', async function() {
-                    const taskNumberInput = document.getElementById('newTaskNumber');
-                    const correctInput = document.getElementById('newTaskCorrect');
-                    const incorrectInput = document.getElementById('newTaskIncorrect');
-                    
-                    const taskNumber = parseInt(taskNumberInput.value);
-                    const manualCorrect = parseInt(correctInput.value) || 0;
-                    const manualIncorrect = parseInt(incorrectInput.value) || 0;
-                    
-                    // Валидация
-                    if (!taskNumber || taskNumber < 1 || taskNumber > 27) {
-                        showTemporaryNotification('Введите корректный номер задания (1-27)', 'error');
-                        taskNumberInput.focus();
-                        return;
-                    }
-                    
-                    if (manualCorrect < 0 || manualIncorrect < 0) {
-                        showTemporaryNotification('Значения должны быть неотрицательными', 'error');
-                        return;
-                    }
-                    
-                    // Проверяем, не существует ли уже это задание в списке
-                    const existingItem = document.querySelector(`.stat-edit-item[data-task-number="${taskNumber}"]`);
-                    if (existingItem) {
-                        showTemporaryNotification(`Задание ${taskNumber} уже есть в списке. Используйте редактирование выше.`, 'error');
-                        taskNumberInput.focus();
-                        return;
-                    }
-                    
-                    // Показываем индикатор загрузки
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '⏳ Добавление...';
-                    this.disabled = true;
-                    
+                    const taskNumberInput = document.getElementById('newTaskNumber'), correctInput = document.getElementById('newTaskCorrect'), incorrectInput = document.getElementById('newTaskIncorrect');
+                    const taskNumber = parseInt(taskNumberInput.value), manualCorrect = parseInt(correctInput.value) || 0, manualIncorrect = parseInt(incorrectInput.value) || 0;
+                    if (!taskNumber || taskNumber < 1 || taskNumber > 27) { showTemporaryNotification('Введите корректный номер задания (1-27)', 'error'); taskNumberInput.focus(); return; }
+                    if (manualCorrect < 0 || manualIncorrect < 0) { showTemporaryNotification('Значения должны быть неотрицательными', 'error'); return; }
+                    if (document.querySelector(`.stat-edit-item[data-task-number="${taskNumber}"]`)) { showTemporaryNotification(`Задание ${taskNumber} уже есть в списке.`, 'error'); taskNumberInput.focus(); return; }
+                    const originalText = this.innerHTML; this.innerHTML = '⏳ Добавление...'; this.disabled = true;
                     try {
-                        const url = `{{ url_for('students.update_statistics', student_id=student.student_id) }}`;
-                        
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': csrfToken || ''
-                            },
-                            body: JSON.stringify({
-                                task_number: taskNumber,
-                                mode: 'set', // Устанавливаем абсолютное значение для нового задания
-                                manual_correct: manualCorrect,
-                                manual_incorrect: manualIncorrect
-                            })
-                        });
-                        
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(`HTTP ${response.status}: ${errorText}`);
-                        }
-                        
+                        const response = await fetch(`{{ url_for('students.update_statistics', student_id=student.student_id) }}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken || '' }, body: JSON.stringify({ task_number: taskNumber, mode: 'set', manual_correct: manualCorrect, manual_incorrect: manualIncorrect }) });
+                        if (!response.ok) { const errorText = await response.text(); throw new Error(`HTTP ${response.status}: ${errorText}`); }
                         const data = await response.json();
-                        
-                        if (data && data.success) {
-                            showTemporaryNotification(`Задание ${taskNumber} успешно добавлено`, 'success');
-                            // Очищаем поля ввода
-                            taskNumberInput.value = '';
-                            correctInput.value = '0';
-                            incorrectInput.value = '0';
-                            // Перезагружаем страницу с принудительным обновлением кеша
-                            setTimeout(() => {
-                                const url = new URL(window.location.href);
-                                url.searchParams.set('_t', Date.now());
-                                window.location.href = url.toString();
-                            }, 1000);
-                        } else {
-                            const errorMsg = data?.error || 'Ошибка при добавлении задания';
-                            showTemporaryNotification(errorMsg, 'error');
-                            this.innerHTML = originalText;
-                            this.disabled = false;
-                        }
-                    } catch (error) {
-                        console.error('Ошибка при добавлении задания:', error);
-                        showTemporaryNotification('Ошибка при добавлении: ' + error.message, 'error');
-                        this.innerHTML = originalText;
-                        this.disabled = false;
-                    }
+                        if (data && data.success) { showTemporaryNotification(`Задание ${taskNumber} успешно добавлено`, 'success'); taskNumberInput.value = ''; correctInput.value = '0'; incorrectInput.value = '0'; setTimeout(() => { const url = new URL(window.location.href); url.searchParams.set('_t', Date.now()); window.location.href = url.toString(); }, 1000); }
+                        else { showTemporaryNotification(data?.error || 'Ошибка при добавлении', 'error'); this.innerHTML = originalText; this.disabled = false; }
+                    } catch (error) { console.error('Ошибка:', error); showTemporaryNotification('Ошибка: ' + error.message, 'error'); this.innerHTML = originalText; this.disabled = false; }
                 });
-                
-                // Разрешаем добавление по Enter в поле номера задания
-                const taskNumberInput = document.getElementById('newTaskNumber');
-                if (taskNumberInput) {
-                    taskNumberInput.addEventListener('keypress', function(e) {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addNewTaskBtn.click();
-                        }
-                    });
-                }
+                document.getElementById('newTaskNumber')?.addEventListener('keypress', function(e) { if (e.key === 'Enter') { e.preventDefault(); addNewTaskBtn.click(); } });
             }
-            
-            // Обработка массового редактирования
+
             const bulkApplyBtn = document.getElementById('bulkApplyBtn');
             if (bulkApplyBtn) {
                 bulkApplyBtn.addEventListener('click', async function() {
                     const bulkCorrect = parseInt(document.getElementById('bulkCorrect').value) || 0;
                     const bulkIncorrect = parseInt(document.getElementById('bulkIncorrect').value) || 0;
                     const editMode = getEditMode();
-                    
-                    if (bulkCorrect === 0 && bulkIncorrect === 0) {
-                        showTemporaryNotification('Введите значения для массового редактирования', 'error');
-                        return;
-                    }
-                    
-                    if (editMode !== 'set' && (bulkCorrect < 0 || bulkIncorrect < 0)) {
-                        showTemporaryNotification('Значения должны быть неотрицательными', 'error');
-                        return;
-                    }
-                    
-                    showConfirmDialog(
-                        `Применить значения (${bulkCorrect} правильно, ${bulkIncorrect} неправильно) ко всем заданиям в режиме "${editMode === 'add' ? 'Добавить' : editMode === 'set' ? 'Установить' : 'Вычесть'}"?`,
-                        async () => {
-                            const originalText = this.innerHTML;
-                            this.innerHTML = '⏳ Применение...';
-                    this.disabled = true;
-                    
-                    const items = document.querySelectorAll('.stat-edit-item');
-                    let successCount = 0;
-                    let errorCount = 0;
-                    
+                    if (bulkCorrect === 0 && bulkIncorrect === 0) { showTemporaryNotification('Введите значения', 'error'); return; }
+                    if (editMode !== 'set' && (bulkCorrect < 0 || bulkIncorrect < 0)) { showTemporaryNotification('Значения должны быть неотрицательными', 'error'); return; }
+                    if (!confirm(`Применить (${bulkCorrect} правильно, ${bulkIncorrect} неправильно) ко всем заданиям?`)) return;
+                    const originalText = this.innerHTML; this.innerHTML = '⏳ Применение...'; this.disabled = true;
+                    const items = document.querySelectorAll('.stat-edit-item'); let successCount = 0; let errorCount = 0;
                     for (const item of items) {
                         const taskNumber = parseInt(item.dataset.taskNumber);
-                        
                         try {
-                            const url = `{{ url_for('students.update_statistics', student_id=student.student_id) }}`;
-                            
-                            const response = await fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRFToken': csrfToken || ''
-                                },
-                                body: JSON.stringify({
-                                    task_number: taskNumber,
-                                    mode: editMode,
-                                    manual_correct: bulkCorrect,
-                                    manual_incorrect: bulkIncorrect
-                                })
-                            });
-                            
-                            if (response.ok) {
-                                const data = await response.json();
-                                if (data && data.success) {
-                                    successCount++;
-                                } else {
-                                    errorCount++;
-                                }
-                            } else {
-                                errorCount++;
-                            }
-                        } catch (error) {
-                            console.error(`Ошибка при обновлении задания ${taskNumber}:`, error);
-                            errorCount++;
-                        }
+                            const response = await fetch(`{{ url_for('students.update_statistics', student_id=student.student_id) }}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken || '' }, body: JSON.stringify({ task_number: taskNumber, mode: editMode, manual_correct: bulkCorrect, manual_incorrect: bulkIncorrect }) });
+                            if (response.ok) { const data = await response.json(); if (data && data.success) successCount++; else errorCount++; } else errorCount++;
+                        } catch (error) { console.error(`Ошибка задания ${taskNumber}:`, error); errorCount++; }
                     }
-                    
-                    this.innerHTML = originalText;
-                    this.disabled = false;
-                    
-                    // Очищаем поля массового редактирования
-                    document.getElementById('bulkCorrect').value = '0';
-                    document.getElementById('bulkIncorrect').value = '0';
-                    
-                    if (errorCount === 0) {
-                        showTemporaryNotification(`Успешно применено к ${successCount} заданиям`, 'success');
-                        setTimeout(() => {
-                            const url = new URL(window.location.href);
-                            url.searchParams.set('_t', Date.now());
-                            window.location.href = url.toString();
-                        }, 1000);
-                    } else {
-                        showTemporaryNotification(`Применено к ${successCount} заданиям, ошибок: ${errorCount}`, 'error');
-                    }
-                        },
-                        null,
-                        {
-                            title: 'Применить к заданиям?',
-                            isDanger: false,
-                            confirmText: 'Применить',
-                            cancelText: 'Отмена'
-                        }
-                    );
+                    this.innerHTML = originalText; this.disabled = false;
+                    document.getElementById('bulkCorrect').value = '0'; document.getElementById('bulkIncorrect').value = '0';
+                    if (errorCount === 0) { showTemporaryNotification(`Успешно применено к ${successCount} заданиям`, 'success'); setTimeout(() => { const url = new URL(window.location.href); url.searchParams.set('_t', Date.now()); window.location.href = url.toString(); }, 1000); }
+                    else { showTemporaryNotification(`Применено к ${successCount}, ошибок: ${errorCount}`, 'error'); }
                 });
             }
-            
-            // Обработка сброса всех изменений
+
             if (resetAllBtn) {
                 resetAllBtn.addEventListener('click', async function() {
-                    showConfirmDialog(
-                        'Вы уверены, что хотите сбросить ВСЕ ручные изменения статистики? Это действие нельзя отменить.',
-                        async () => {
-                            const originalText = this.innerHTML;
-                            this.innerHTML = '⏳ Сброс...';
-                            this.disabled = true;
-                            
-                            try {
-                                const url = `{{ url_for('students.reset_statistics', student_id=student.student_id) }}`;
-                        
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': csrfToken || ''
-                            },
-                            body: JSON.stringify({})
-                        });
-                        
-                        if (!response.ok) {
-                            const errorText = await response.text();
-                            throw new Error(`HTTP ${response.status}: ${errorText}`);
-                        }
-                        
+                    if (!confirm('Сбросить ВСЕ ручные изменения статистики?')) return;
+                    const originalText = this.innerHTML; this.innerHTML = '⏳ Сброс...'; this.disabled = true;
+                    try {
+                        const response = await fetch(`{{ url_for('students.reset_statistics', student_id=student.student_id) }}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken || '' }, body: JSON.stringify({}) });
+                        if (!response.ok) { const errorText = await response.text(); throw new Error(`HTTP ${response.status}: ${errorText}`); }
                         const data = await response.json();
-                        
-                        if (data && data.success) {
-                            showTemporaryNotification(data.message || 'Все ручные изменения сброшены', 'success');
-                            setTimeout(() => {
-                                const url = new URL(window.location.href);
-                                url.searchParams.set('_t', Date.now());
-                                window.location.href = url.toString();
-                            }, 1000);
-                        } else {
-                            const errorMsg = data?.error || 'Ошибка при сбросе';
-                            showTemporaryNotification(errorMsg, 'error');
-                            this.innerHTML = originalText;
-                            this.disabled = false;
-                        }
-                    } catch (error) {
-                        console.error('Ошибка при сбросе статистики:', error);
-                        showTemporaryNotification('Ошибка при сбросе: ' + error.message, 'error');
-                        this.innerHTML = originalText;
-                        this.disabled = false;
-                    }
-                        },
-                        null,
-                        {
-                            title: 'Сбросить всё?',
-                            isDanger: true,
-                            confirmText: 'Сбросить',
-                            cancelText: 'Отмена'
-                        }
-                    );
+                        if (data && data.success) { showTemporaryNotification(data.message || 'Все ручные изменения сброшены', 'success'); setTimeout(() => { const url = new URL(window.location.href); url.searchParams.set('_t', Date.now()); window.location.href = url.toString(); }, 1000); }
+                        else { showTemporaryNotification(data?.error || 'Ошибка при сбросе', 'error'); this.innerHTML = originalText; this.disabled = false; }
+                    } catch (error) { console.error('Ошибка:', error); showTemporaryNotification('Ошибка: ' + error.message, 'error'); this.innerHTML = originalText; this.disabled = false; }
                 });
             }
         });
     </script>
-    
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
-</body>
-</html>
+{% endblock %}

@@ -1,147 +1,117 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ template.name }} · URep</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    {% include '_ux_enhancements.html' %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'templates' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
-        <section class="glass-panel" style="margin-bottom: 2rem;">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-                <div>
-                    <p class="hero-eyebrow">просмотр шаблона</p>
-                    <h1 class="hero-title">{{ template.name }}</h1>
-                    {% if template.description %}
-                    <p class="hero-subtitle">{{ template.description }}</p>
-                    {% endif %}
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <a href="{{ url_for('assignments.assignment_create', source='template', template_id=template.template_id, assignment_type=(template.template_type or 'homework')) }}" class="neo-button outline" style="text-decoration:none;">
-                        📝 Создать работу
-                    </a>
-                    <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button accent">{{ ui_icon('action.edit', 'sm', decorative=true) }}Редактировать</a>
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
-                <span style="padding: 0.5rem 1rem; background: var(--surface-2); color: var(--text-primary); border-radius: var(--radius-sm); font-weight: 600;">
-                    {% if template.template_type == 'homework' %}{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Домашние задания
-                    {% elif template.template_type == 'classwork' %}{{ ui_icon('action.school', 'sm', decorative=true) }} Классные работы
-                    {% elif template.template_type == 'exam' %}{{ ui_icon('action.check', 'sm', decorative=true) }}Проверочные работы
-                    {% else %}{{ ui_icon('nav.templates', 'sm', decorative=true) }} Уроки{% endif %}
-                </span>
-                {% if template.category %}
-                <span style="padding: 0.5rem 1rem; background: var(--accent-1); color: white; border-radius: var(--radius-sm); font-weight: 600;">{{ template.category }}</span>
-                {% endif %}
-                <span style="padding: 0.5rem 1rem; background: var(--surface-2); color: var(--text-muted); border-radius: var(--radius-sm);">
-                    {{ template_tasks|length }} заданий
-                </span>
-            </div>
-        </section>
+{% extends 'base.html' %}
+{% set active_page = 'templates' %}
+{% block title %}{{ template.name }}{% endblock %}
 
-        {% if template_tasks %}
-        <section class="glass-panel">
-            <div class="panel-head">
-                <div>
-                    <p class="eyebrow">задания в шаблоне</p>
-                    <h2>Список заданий ({{ template_tasks|length }})</h2>
-                </div>
-            </div>
+{% block head_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+{% endblock %}
 
-            {% for template_task in template_tasks %}
-            {% set task = template_task.task %}
-            <div class="task-card" style="
-                background: var(--surface-1);
-                border: 1px solid var(--stroke-1);
-                border-radius: var(--radius-lg);
-                padding: 2rem;
-                margin-bottom: 2rem;
-            ">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1);">
-                    <div>
-                        <div style="font-size: 1.5em; font-weight: 800; color: var(--accent-1); margin-bottom: 0.3em;">
-                            Задание {{ task.task_number }}
-                        </div>
-                        {% if task.site_task_id %}
-                        <div style="font-size: 0.9em; color: var(--text-muted); font-weight: 600;">
-                            ID: {{ task.site_task_id }}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
+{% block head_js %}
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+{% endblock %}
 
-                <div class="task-content" style="margin-bottom: 1rem;">
-                    {{ task.content_html|sanitize_html }}
-                </div>
-
-                {% if task.answer %}
-                <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); margin-top: 1rem;">
-                    <strong style="color: var(--accent-1);">Ответ:</strong> 
-                    <span style="color: var(--text-primary);">{{ task.answer }}</span>
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </section>
-        {% else %}
-        <section class="glass-panel">
-            <div class="empty-state">
-                <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
-                <h3>Нет заданий</h3>
-                <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Добавьте задания в шаблон через генератор</p>
-                <a href="{{ url_for('task_generator.task_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания</a>
-            </div>
-        </section>
-        {% endif %}
-    </main>
+{% block content %}
+<section class="glass-panel mb-8">
+    <div class="flex items-center gap-4 mb-4">
+        <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost no-underline">← К библиотеке</a>
     </div>
-</div>
+    <div class="flex justify-between items-start">
+        <div>
+            <p class="hero-eyebrow">просмотр шаблона</p>
+            <h1 class="hero-title">{{ template.name }}</h1>
+            {% if template.description %}
+            <p class="hero-subtitle">{{ template.description }}</p>
+            {% endif %}
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ url_for('assignments.assignment_create', source='template', template_id=template.template_id, assignment_type=(template.template_type or 'homework')) }}" class="neo-button outline no-underline">
+                📝 Создать работу
+            </a>
+            <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button accent">{{ ui_icon('action.edit', 'sm', decorative=true) }}Редактировать</a>
+        </div>
+    </div>
+    
+    <div class="flex gap-2 mt-4 flex-wrap">
+        <span class="py-2 px-4 bg-bg-surface-alt rounded-lg font-semibold">
+            {% if template.template_type == 'homework' %}{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Домашние задания
+            {% elif template.template_type == 'classwork' %}{{ ui_icon('action.school', 'sm', decorative=true) }} Классные работы
+            {% elif template.template_type == 'exam' %}{{ ui_icon('action.check', 'sm', decorative=true) }}Проверочные работы
+            {% else %}{{ ui_icon('nav.templates', 'sm', decorative=true) }} Уроки{% endif %}
+        </span>
+        {% if template.category %}
+        <span class="py-2 px-4 bg-accent text-white rounded-lg font-semibold">{{ template.category }}</span>
+        {% endif %}
+        <span class="py-2 px-4 bg-bg-surface-alt text-text-muted rounded-lg">
+            {{ template_tasks|length }} заданий
+        </span>
+    </div>
+</section>
 
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
-    <script>
-        // Автоматический рендеринг формул KaTeX
-        document.addEventListener("DOMContentLoaded", function() {
-            if (typeof renderMathInElement !== 'undefined') {
-                renderMathInElement(document.body, {
-                    delimiters: [
-                        {left: "$$", right: "$$", display: true},
-                        {left: "$", right: "$", display: false},
-                        {left: "\\[", right: "\\]", display: true},
-                        {left: "\\(", right: "\\)", display: false}
-                    ],
-                    ignoreClass: "katex"
-                });
-            }
-        });
-    </script>
-</body>
-</html>
+{% if template_tasks %}
+<section class="glass-panel">
+    <div class="panel-head">
+        <div>
+            <p class="eyebrow">задания в шаблоне</p>
+            <h2>Список заданий ({{ template_tasks|length }})</h2>
+        </div>
+    </div>
 
+    {% for template_task in template_tasks %}
+    {% set task = template_task.task %}
+    <div class="task-card shadow-card rounded-card p-8 mb-8">
+        <div class="flex justify-between items-start mb-4 pb-4 border-b border-stroke">
+            <div>
+                <div class="text-2xl font-extrabold text-accent mb-1">
+                    Задание {{ task.task_number }}
+                </div>
+                {% if task.site_task_id %}
+                <div class="text-sm text-text-muted font-semibold">
+                    ID: {{ task.site_task_id }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="task-content mb-4">
+            {{ task.content_html|sanitize_html }}
+        </div>
+
+        {% if task.answer %}
+        <div class="p-4 bg-bg-surface-alt rounded-lg mt-4">
+            <strong class="text-accent">Ответ:</strong> 
+            <span>{{ task.answer }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</section>
+{% else %}
+<section class="glass-panel">
+    <div class="empty-state">
+        <div class="text-6xl mb-4">📭</div>
+        <h3>Нет заданий</h3>
+        <p class="text-text-muted mb-6">Добавьте задания в шаблон через генератор</p>
+        <a href="{{ url_for('task_generator.task_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания</a>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        if (typeof renderMathInElement !== 'undefined') {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\[", right: "\\]", display: true},
+                    {left: "\\(", right: "\\)", display: false}
+                ],
+                ignoreClass: "katex"
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,109 +1,78 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Курсы · {{ student.name }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    {% include '_ux_enhancements.html' %}
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    <div class="app-layout">
-        {% set active_page = 'students' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% extends 'base.html' %}
+{% block title %}Курсы · {{ student.name }}{% endblock %}
 
-        <main style="margin-top: 1.25rem;">
-            <div class="page-header" style="display:flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
-                <div>
-                    <div class="hero-eyebrow">Программа обучения</div>
-                    <h1 style="margin: 0.35rem 0 0 0; font-size: 2.2rem; font-weight: 900;">Курсы · {{ student.name }}</h1>
-                    <p style="margin: 0.65rem 0 0 0; color: var(--text-muted);">Структура “курс → модуль → урок” и прогресс ученика</p>
-                </div>
-                <div style="display:flex; gap: 0.75rem; flex-wrap: wrap;">
-                    <a class="neo-button ghost" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
-                        <i class="fas fa-arrow-left ui-icon ui-icon--sm"></i> Профиль
-                    </a>
-                    {% if not current_user.is_student() and not current_user.is_parent() %}
-                    <a class="neo-button accent" href="{{ url_for('courses.course_new', student_id=student.student_id) }}">
-                        <i class="fas fa-plus ui-icon ui-icon--sm"></i> Создать курс
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
+{% set active_page = 'students' %}
 
-            {% if courses and courses|length > 0 %}
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
-                {% for course in courses %}
-                <a class="glass-panel" href="{{ url_for('courses.course_view', course_id=course.course_id) }}" style="text-decoration:none; padding: 1.25rem; display:flex; flex-direction: column; gap: 0.75rem;">
-                    <div style="display:flex; justify-content: space-between; gap: 1rem; align-items: flex-start;">
-                        <div style="min-width: 0;">
-                            <div style="font-weight: 900; font-size: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                {{ course.title }}
-                            </div>
-                            <div style="color: var(--text-muted); margin-top: 0.35rem; font-size: 0.95rem;">
-                                {% if course.subject %}{{ course.subject }} · {% endif %}
-                                {% if course.status == 'archived' %}Архив{% else %}Активен{% endif %}
-                            </div>
-                        </div>
-                        <span class="status-badge {% if course.status == 'archived' %}status-warning{% else %}status-success{% endif %}">
-                            {% if course.status == 'archived' %}Архив{% else %}Активен{% endif %}
-                        </span>
-                    </div>
-
-                    {% if course.description %}
-                    <div style="color: var(--text-muted); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
-                        {{ course.description }}
-                    </div>
-                    {% else %}
-                    <div style="color: var(--text-muted); line-height: 1.5; opacity: 0.8;">
-                        Нет описания. Открой курс и добавь модули/уроки.
-                    </div>
-                    {% endif %}
-
-                    <div style="display:flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.25rem;">
-                        <span class="badge" style="background: rgba(255,255,255,0.05); border: 1px solid var(--stroke-1);">
-                            <i class="fas fa-layer-group" style="margin-right: 0.35rem;"></i> Курс
-                        </span>
-                        <span class="badge" style="background: rgba(255,255,255,0.05); border: 1px solid var(--stroke-1);">
-                            <i class="far fa-clock" style="margin-right: 0.35rem;"></i> Обновлён: {{ course.updated_at.strftime('%d.%m.%Y') if course.updated_at else '—' }}
-                        </span>
-                    </div>
-                </a>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="glass-panel" style="padding: 2rem; text-align:center;">
-                <div style="font-size: 3rem; margin-bottom: 0.75rem;">📚</div>
-                <div style="font-size: 1.25rem; font-weight: 800;">Пока нет курсов</div>
-                <div style="color: var(--text-muted); margin-top: 0.5rem;">
-                    {% if not current_user.is_student() and not current_user.is_parent() %}
-                        Создай первый курс и разбей его на модули и уроки.
-                    {% else %}
-                        Попроси преподавателя создать курс и добавить модули.
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
-        </main>
-    </main>
+{% block content %}
+<div class="page-header" style="display:flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+    <div>
+        <div class="hero-eyebrow">Программа обучения</div>
+        <h1 style="margin: 0.35rem 0 0 0; font-size: 2.2rem; font-weight: 900;">Курсы · {{ student.name }}</h1>
+        <p style="margin: 0.65rem 0 0 0; color: var(--text-muted);">Структура "курс → модуль → урок" и прогресс ученика</p>
+    </div>
+    <div style="display:flex; gap: 0.75rem; flex-wrap: wrap;">
+        <a class="neo-button ghost" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
+            <i class="fas fa-arrow-left ui-icon ui-icon--sm"></i> Профиль
+        </a>
+        {% if not current_user.is_student() and not current_user.is_parent() %}
+        <a class="neo-button accent" href="{{ url_for('courses.course_new', student_id=student.student_id) }}">
+            <i class="fas fa-plus ui-icon ui-icon--sm"></i> Создать курс
+        </a>
+        {% endif %}
     </div>
 </div>
-</body>
-</html>
 
+{% if courses and courses|length > 0 %}
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
+    {% for course in courses %}
+    <a class="glass-panel" href="{{ url_for('courses.course_view', course_id=course.course_id) }}" style="text-decoration:none; padding: 1.25rem; display:flex; flex-direction: column; gap: 0.75rem;">
+        <div style="display:flex; justify-content: space-between; gap: 1rem; align-items: flex-start;">
+            <div style="min-width: 0;">
+                <div style="font-weight: 900; font-size: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    {{ course.title }}
+                </div>
+                <div style="color: var(--text-muted); margin-top: 0.35rem; font-size: 0.95rem;">
+                    {% if course.subject %}{{ course.subject }} · {% endif %}
+                    {% if course.status == 'archived' %}Архив{% else %}Активен{% endif %}
+                </div>
+            </div>
+            <span class="status-badge {% if course.status == 'archived' %}status-warning{% else %}status-success{% endif %}">
+                {% if course.status == 'archived' %}Архив{% else %}Активен{% endif %}
+            </span>
+        </div>
+
+        {% if course.description %}
+        <div style="color: var(--text-muted); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+            {{ course.description }}
+        </div>
+        {% else %}
+        <div style="color: var(--text-muted); line-height: 1.5; opacity: 0.8;">
+            Нет описания. Открой курс и добавь модули/уроки.
+        </div>
+        {% endif %}
+
+        <div style="display:flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.25rem;">
+            <span class="badge" style="background: rgba(255,255,255,0.05); border: 1px solid var(--stroke-1);">
+                <i class="fas fa-layer-group" style="margin-right: 0.35rem;"></i> Курс
+            </span>
+            <span class="badge" style="background: rgba(255,255,255,0.05); border: 1px solid var(--stroke-1);">
+                <i class="far fa-clock" style="margin-right: 0.35rem;"></i> Обновлён: {{ course.updated_at.strftime('%d.%m.%Y') if course.updated_at else '—' }}
+            </span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="glass-panel" style="padding: 2rem; text-align:center;">
+    <div style="font-size: 3rem; margin-bottom: 0.75rem;">📚</div>
+    <div style="font-size: 1.25rem; font-weight: 800;">Пока нет курсов</div>
+    <div style="color: var(--text-muted); margin-top: 0.5rem;">
+        {% if not current_user.is_student() and not current_user.is_parent() %}
+        Создай первый курс и разбей его на модули и уроки.
+        {% else %}
+        Попроси преподавателя создать курс и добавить модули.
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Права доступа (RBAC) · Удаленная админка</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
     <style>
         .rbac-grid {
             display: grid;
@@ -98,9 +100,9 @@
 
         <main class="remote-main">
         <section class="glass-panel" style="max-width: 1400px; padding: 2rem;">
-            <div style="margin-bottom: 2rem;">
-                <h1 style="margin: 0;">Права доступа (RBAC)</h1>
-                <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+            <div class="mb-8">
+                <h1 class="m-0">Права доступа (RBAC)</h1>
+                <p class="text-muted mt-2">
                     Окружение: <strong>{{ environment_name }}</strong>
                 </p>
             </div>
@@ -108,7 +110,7 @@
             <div class="rbac-grid">
                 
                 <div class="roles-list">
-                    <div style="padding: 1rem; font-weight: 600; background: var(--surface-3); border-bottom: 1px solid var(--stroke-2);">
+                    <div class="p-4 font-semibold" style="background: var(--surface-3); border-bottom: 1px solid var(--stroke-2);">
                         Роли
                     </div>
                     {% if roles %}
@@ -118,7 +120,7 @@
                     </div>
                     {% endfor %}
                     {% else %}
-                    <div style="padding: 1rem; color: var(--text-muted); text-align: center;">
+                    <div class="p-4 text-muted text-center">
                         Роли не найдены
                     </div>
                     {% endif %}
@@ -129,9 +131,9 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="role" id="selected-role">
                         
-                        <div id="permissions-container" style="display: none;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                                <h2 style="margin: 0;">Права для роли: <span id="role-title" style="color: var(--accent-1);"></span></h2>
+                        <div id="permissions-container" class="hidden">
+                            <div class="flex justify-between items-center mb-8">
+                                <h2 class="m-0">Права для роли: <span id="role-title" style="color: var(--accent-1);"></span></h2>
                                 <button type="submit" class="neo-button">Сохранить изменения</button>
                             </div>
 
@@ -162,13 +164,13 @@
                             </div>
                             {% endfor %}
                             {% else %}
-                            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            <div class="text-center text-muted" style="padding: 2rem;">
                                 <p>Нет доступных прав для настройки</p>
                             </div>
                             {% endif %}
                         </div>
 
-                        <div id="empty-state" style="text-align: center; padding: 4rem; color: var(--text-muted);">
+                        <div id="empty-state" class="text-center text-muted" style="padding: 4rem;">
                             <p>Выберите роль слева для настройки прав</p>
                         </div>
                     </form>

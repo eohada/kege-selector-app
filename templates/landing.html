@@ -1,480 +1,284 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>URep | Презентация платформы</title>
+{% extends 'base_public.html' %}
+{% block title %}URep | Презентация платформы{% endblock %}
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+{% block head_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg-dark: var(--page-bg);
+        --primary: var(--accent-3);
+        --cyan: var(--accent-1);
+        --glass-border: var(--stroke-1);
+        --glass-bg: rgba(255, 255, 255, 0.02);
+        --text-main: var(--text-primary);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+    body { background-color: var(--bg-dark); color: var(--text-main); font-family: 'Inter', sans-serif; overflow-x: hidden; }
+    h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; line-height: 1.1; }
+    .text-gradient { background: linear-gradient(135deg, #fff 30%, var(--cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    .noise-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; opacity: 0.04; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"); }
+    #hero-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+    .btn { padding: 16px 32px; border-radius: 50px; font-weight: 600; text-decoration: none; transition: all 0.3s ease; display: inline-flex; justify-content: center; align-items: center; }
+    .btn-primary { background: white; color: black; }
+    .btn-primary:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 255, 255, 0.3); }
+    .btn-glow { border: 1px solid var(--glass-border); color: var(--text-main); backdrop-filter: blur(10px); }
+    .btn-glow:hover { border-color: var(--cyan); color: var(--cyan); }
+    .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding-top: 80px; }
+    .hero-title { font-size: clamp(3.5rem, 8vw, 7rem); font-weight: 700; margin-bottom: 24px; letter-spacing: -0.03em; }
+    .hero-subtitle { font-size: clamp(1.1rem, 2vw, 1.5rem); color: var(--text-muted); max-width: 650px; margin: 0 auto 40px; }
+    .feature-block { min-height: 90vh; display: flex; align-items: center; position: relative; padding: 60px 0; }
+    .feature-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 80px; align-items: center; width: 100%; }
+    .feature-block.reversed .feature-grid { grid-template-columns: 1.2fr 1fr; direction: rtl; }
+    .feature-block.reversed .feature-content { direction: ltr; }
+    .feature-content h2 { font-size: clamp(2.5rem, 4vw, 3.5rem); margin-bottom: 24px; }
+    .feature-content p { font-size: 1.2rem; line-height: 1.7; color: var(--text-muted); margin-bottom: 32px; }
+    .feature-list li { list-style: none; margin-bottom: 16px; display: flex; align-items: center; font-size: 1.1rem; color: #fff; }
+    .feature-list li::before { content: ""; width: 8px; height: 8px; background: var(--cyan); border-radius: 50%; margin-right: 16px; box-shadow: 0 0 10px var(--cyan); }
+    .feature-visual { position: relative; aspect-ratio: 16/10; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 24px; backdrop-filter: blur(20px); box-shadow: 0 40px 100px -30px rgba(0,0,0,0.5); transition: transform 0.5s ease; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .feature-visual:hover { transform: scale(1.02) rotateY(2deg); border-color: rgba(255,255,255,0.2); }
+    .feature-visual::before { content: ''; position: absolute; width: 100%; height: 100%; top: 0; left: 0; background: radial-gradient(circle at 50% 50%, var(--primary), transparent 60%); opacity: 0.15; z-index: -1; }
+    .mockup-icon { font-size: 5rem; opacity: 0.8; }
+    .stats-strip { padding: 80px 0; border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.01); margin: 60px 0; }
+    .stats-flex { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 40px; }
+    .stat-item { text-align: center; }
+    .stat-val { font-size: 3.5rem; font-weight: 700; font-family: 'Space Grotesk'; display: block; margin-bottom: 8px; }
+    .stat-lbl { color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
+    @media (max-width: 968px) {
+        .feature-grid, .feature-block.reversed .feature-grid { grid-template-columns: 1fr; direction: ltr; gap: 40px; }
+        .feature-block { padding: 40px 0; min-height: auto; }
+        .feature-visual { order: -1; }
+        .hero-title { font-size: 3rem; }
+    }
+    .reveal { opacity: 0; transform: translateY(50px); transition: all 1s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.active { opacity: 1; transform: translateY(0); }
+    .landing-topbar { position: fixed; width: 100%; top: 0; z-index: 100; backdrop-filter: blur(12px); border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.18); }
+    :root[data-theme="light"] .landing-topbar { background: rgba(255,255,255,0.55); }
+    @media (prefers-color-scheme: light) { :root:not([data-theme]) .landing-topbar { background: rgba(255,255,255,0.55); } }
+    .landing-brand { display: flex; align-items: center; gap: 0.8rem; font-weight: 800; letter-spacing: 0.04em; }
+    .landing-brand-mark { width: 38px; height: 38px; border-radius: 14px; background: linear-gradient(135deg, rgba(52, 211, 195, 0.18), rgba(74, 141, 255, 0.14)); border: 1px solid var(--glass-border); display: grid; place-items: center; font-family: var(--font-base); }
+    .feature-visual.is-missing { display: flex; align-items: center; justify-content: center; }
+    .feature-visual.is-missing::after { content: "Изображение будет добавлено дизайнером"; color: var(--text-muted); font-weight: 600; letter-spacing: 0.02em; padding: 0 1.5rem; text-align: center; }
+</style>
+{% endblock %}
 
-    <style>
-        :root {
-            --bg-dark: var(--page-bg);
-            --primary: var(--accent-3);
-            --cyan: var(--accent-1);
-            --glass-border: var(--stroke-1);
-            --glass-bg: rgba(255, 255, 255, 0.02);
-            --text-main: var(--text-primary);
-        }
+{% block body %}
+{% from '_ui_icon.html' import ui_icon %}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+<div class="noise-overlay"></div>
+<canvas id="hero-canvas"></canvas>
 
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            overflow-x: hidden;
-        }
-
-        h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; line-height: 1.1; }
-        
-        .text-gradient {
-            background: linear-gradient(135deg, #fff 30%, var(--cyan) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-
-        .noise-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 50; opacity: 0.04;
-            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-        }
-        
-        #hero-canvas {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
-        }
-
-        .btn {
-            padding: 16px 32px; border-radius: 50px; font-weight: 600; text-decoration: none;
-            transition: all 0.3s ease; display: inline-flex; justify-content: center; align-items: center;
-        }
-        .btn-primary {
-            background: white; color: black;
-        }
-        .btn-primary:hover {
-            transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
-        }
-        .btn-glow {
-            border: 1px solid var(--glass-border); color: var(--text-main); backdrop-filter: blur(10px);
-        }
-        .btn-glow:hover {
-            border-color: var(--cyan); color: var(--cyan);
-        }
-
-        .hero {
-            min-height: 100vh;
-            display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
-            padding-top: 80px;
-        }
-        .hero-title {
-            font-size: clamp(3.5rem, 8vw, 7rem); font-weight: 700; margin-bottom: 24px;
-            letter-spacing: -0.03em;
-        }
-        .hero-subtitle {
-            font-size: clamp(1.1rem, 2vw, 1.5rem); color: var(--text-muted); max-width: 650px; margin: 0 auto 40px;
-        }
-
-        .feature-block {
-            min-height: 90vh; 
-            display: flex;
-            align-items: center;
-            position: relative;
-            padding: 60px 0;
-        }
-
-        .feature-grid {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr; 
-            gap: 80px;
-            align-items: center;
-            width: 100%;
-        }
-
-        .feature-block.reversed .feature-grid {
-            grid-template-columns: 1.2fr 1fr;
-            direction: rtl; 
-        }
-        
-        .feature-block.reversed .feature-content {
-            direction: ltr; 
-        }
-
-        .feature-content h2 {
-            font-size: clamp(2.5rem, 4vw, 3.5rem);
-            margin-bottom: 24px;
-        }
-        .feature-content p {
-            font-size: 1.2rem; line-height: 1.7; color: var(--text-muted); margin-bottom: 32px;
-        }
-        
-        .feature-list li {
-            list-style: none; margin-bottom: 16px; display: flex; align-items: center;
-            font-size: 1.1rem; color: #fff;
-        }
-        .feature-list li::before {
-            content: ""; width: 8px; height: 8px; background: var(--cyan);
-            border-radius: 50%; margin-right: 16px; box-shadow: 0 0 10px var(--cyan);
-        }
-
-        .feature-visual {
-            position: relative;
-            aspect-ratio: 16/10;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 40px 100px -30px rgba(0,0,0,0.5);
-            transition: transform 0.5s ease;
-            overflow: hidden;
-
-            display: flex; align-items: center; justify-content: center;
-        }
-        
-        .feature-visual:hover {
-            transform: scale(1.02) rotateY(2deg);
-            border-color: rgba(255,255,255,0.2);
-        }
-
-        .feature-visual::before {
-            content: ''; position: absolute; width: 100%; height: 100%; top: 0; left: 0;
-            background: radial-gradient(circle at 50% 50%, var(--primary), transparent 60%);
-            opacity: 0.15; z-index: -1;
-        }
-        
-        .mockup-icon { font-size: 5rem; opacity: 0.8; }
-
-        .stats-strip {
-            padding: 80px 0; border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);
-            background: rgba(255,255,255,0.01); margin: 60px 0;
-        }
-        .stats-flex {
-            display: flex; justify-content: space-around; flex-wrap: wrap; gap: 40px;
-        }
-        .stat-item { text-align: center; }
-        .stat-val { font-size: 3.5rem; font-weight: 700; font-family: 'Space Grotesk'; display: block; margin-bottom: 8px; }
-        .stat-lbl { color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
-
-        @media (max-width: 968px) {
-            .feature-grid, .feature-block.reversed .feature-grid {
-                grid-template-columns: 1fr; 
-                direction: ltr;
-                gap: 40px;
-            }
-            .feature-block { padding: 40px 0; min-height: auto; }
-            .feature-visual { order: -1; } 
-            .hero-title { font-size: 3rem; }
-        }
-
-        .reveal {
-            opacity: 0; transform: translateY(50px); transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .reveal.active { opacity: 1; transform: translateY(0); }
-
-        .landing-topbar {
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 100;
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--glass-border);
-            background: rgba(0,0,0,0.18);
-        }
-
-        :root[data-theme="light"] .landing-topbar {
-            background: rgba(255,255,255,0.55);
-        }
-
-        @media (prefers-color-scheme: light) {
-            :root:not([data-theme]) .landing-topbar {
-                background: rgba(255,255,255,0.55);
-            }
-        }
-
-        .landing-brand {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            font-weight: 800;
-            letter-spacing: 0.04em;
-        }
-
-        .landing-brand-mark {
-            width: 38px;
-            height: 38px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, rgba(52, 211, 195, 0.18), rgba(74, 141, 255, 0.14));
-            border: 1px solid var(--glass-border);
-            display: grid;
-            place-items: center;
-            font-family: var(--font-base);
-        }
-
-        .feature-visual.is-missing {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .feature-visual.is-missing::after {
-            content: "Изображение будет добавлено дизайнером";
-            color: var(--text-muted);
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            padding: 0 1.5rem;
-            text-align: center;
-        }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-    {% from '_ui_icon.html' import ui_icon %}
-
-    <div class="noise-overlay"></div>
-    <canvas id="hero-canvas"></canvas>
-
-    <nav class="landing-topbar">
-        <div class="container" style="height: 70px; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-            <div class="landing-brand">
-                <div class="landing-brand-mark" aria-hidden="true">B</div>
-                <div>BooStudy</div>
-            </div>
-            <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления (landing)">
-                <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
-                <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
-                <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
-            </div>
+<nav class="landing-topbar">
+    <div class="container" style="height: 70px; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+        <div class="landing-brand">
+            <div class="landing-brand-mark" aria-hidden="true">B</div>
+            <div>BooStudy</div>
         </div>
-    </nav>
-
-    <section class="hero">
-        <div class="container">
-            <h1 class="hero-title reveal">
-                Твоё будущее <br> <span class="text-gradient">в обучении</span>
-            </h1>
-            <p class="hero-subtitle reveal">
-                Современная платформа для эффективной подготовки к экзаменам. ЕГЭ и ОГЭ по информатике. Интерактивные уроки, AI-помощник, 
-                автоматическая проверка заданий и всё необходимое для успешной сдачи экзаменов.
-            </p>
-            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;" class="reveal">
-                <a href="{{ (config.DEMO_BASE_URL + '/demo') if config.DEMO_BASE_URL else url_for('auth.demo_choose') }}" class="btn btn-glow">Попробовать демо</a>
-                <a href="{{ url_for('billing.billing_plans_public') }}" class="btn btn-primary">Ознакомиться с тарифами</a>
-            </div>
+        <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления (landing)">
+            <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
+            <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
+            <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
         </div>
-    </section>
+    </div>
+</nav>
 
-    <section class="feature-block">
-        <div class="container">
-            <div class="feature-grid">
-                <div class="feature-content reveal">
-                    <span style="color: var(--cyan); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">Интерактив</span>
-                    <h2>Классная комната</h2>
-                    <p>Твоё личное пространство для обучения. Получай доступ ко всем материалам урока, 
-                    выполняй задания прямо на платформе и получай мгновенную обратную связь.</p>
-                    <ul class="feature-list">
-                        <li>Доступ к конспектам и материалам урока</li>
-                        <li>Заметки с фото для лучшего понимания</li>
-                        <li>Мгновенная проверка твоих ответов</li>
-                    </ul>
-                </div>
-                <div class="feature-visual reveal">
-                    <img src="{{ url_for('static', filename='classroom.jpg') }}" alt="Классная комната" style="width: 100%; height: 100%; object-fit: cover; border-radius: 24px;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
-                </div>
-            </div>
+<section class="hero">
+    <div class="container">
+        <h1 class="hero-title reveal">
+            Твоё будущее <br> <span class="text-gradient">в обучении</span>
+        </h1>
+        <p class="hero-subtitle reveal">
+            Современная платформа для эффективной подготовки к экзаменам. ЕГЭ и ОГЭ по информатике. Интерактивные уроки, AI-помощник, 
+            автоматическая проверка заданий и всё необходимое для успешной сдачи экзаменов.
+        </p>
+        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;" class="reveal">
+            <a href="{{ (config.DEMO_BASE_URL + '/demo') if config.DEMO_BASE_URL else url_for('auth.demo_choose') }}" class="btn btn-glow">Попробовать демо</a>
+            <a href="{{ url_for('billing.billing_plans_public') }}" class="btn btn-primary">Ознакомиться с тарифами</a>
         </div>
-    </section>
+    </div>
+</section>
 
-    <section class="feature-block reversed">
-        <div class="container">
-            <div class="feature-grid">
-                <div class="feature-content reveal">
-                    <span style="color: var(--primary); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">Планирование</span>
-                    <h2>Твоё расписание</h2>
-                    <p>Всегда знай, когда у тебя уроки. Удобный календарь с напоминаниями и синхронизацией 
-                    с твоим личным календарём — никогда не пропусти занятие.</p>
-                    <ul class="feature-list">
-                        <li>Просмотр всех запланированных уроков</li>
-                        <li>Напоминания о предстоящих занятиях</li>
-                        <li>Синхронизация с Google Calendar</li>
-                    </ul>
-                </div>
-                <div class="feature-visual reveal">
-                    <img src="{{ url_for('static', filename='documents/calendar.jpg') }}" alt="Расписание" style="width: 100%; height: 100%; object-fit: cover; border-radius: 24px;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
-                </div>
+<section class="feature-block">
+    <div class="container">
+        <div class="feature-grid">
+            <div class="feature-content reveal">
+                <span style="color: var(--cyan); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">Интерактив</span>
+                <h2>Классная комната</h2>
+                <p>Твоё личное пространство для обучения. Получай доступ ко всем материалам урока, 
+                выполняй задания прямо на платформе и получай мгновенную обратную связь.</p>
+                <ul class="feature-list">
+                    <li>Доступ к конспектам и материалам урока</li>
+                    <li>Заметки с фото для лучшего понимания</li>
+                    <li>Мгновенная проверка твоих ответов</li>
+                </ul>
             </div>
-        </div>
-    </section>
-
-    <section class="feature-block" style="flex-direction: column; text-align: center; justify-content: center;">
-        <div class="container">
-            <div class="reveal" style="max-width: 800px; margin: 0 auto 50px auto;">
-                <span style="background: var(--primary); color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; margin-bottom: 20px; display: inline-block;">NEW</span>
-                <h2 style="font-size: clamp(2.5rem, 5vw, 4rem);">AI-Помощник</h2>
-                <p style="font-size: 1.3rem; color: var(--text-muted); margin-top: 20px;">
-                    Твой личный помощник в обучении программированию. Получай подсказки, задавай вопросы 
-                    и учись на своих ошибках с помощью искусственного интеллекта.
-                </p>
-            </div>
-            
-            <div class="feature-visual reveal" style="max-width: 900px; margin: 0 auto; aspect-ratio: 16/9; position: relative;">
-                <div id="ai-carousel" style="width: 100%; height: 100%; position: relative; overflow: hidden; border-radius: 24px;">
-                    <img id="ai-image-1" src="{{ url_for('static', filename='documents/ai1.jpg') }}" alt="AI Помощник" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
-                    <img id="ai-image-2" src="{{ url_for('static', filename='documents/ai2.jpg') }}" alt="AI Помощник" style="width: 100%; height: 100%; object-fit: cover; display: none;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
-                </div>
-                <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 10;">
-                    <button id="ai-prev" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; backdrop-filter: blur(10px);">‹</button>
-                    <button id="ai-next" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; backdrop-filter: blur(10px);">›</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="feature-block reversed">
-        <div class="container">
-            <div class="feature-grid">
-                <div class="feature-content reveal">
-                    <span style="color: var(--cyan); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">ЕГЭ и ОГЭ по информатике</span>
-                    <h2>Огромная база заданий</h2>
-                    <p>Тысячи заданий для практики. Решай задачи разных уровней сложности, 
-                    отслеживай свой прогресс и готовься к экзамену эффективно.</p>
-                    <ul class="feature-list">
-                        <li>Тысячи заданий из реальных вариантов ЕГЭ и ОГЭ</li>
-                        <li>Разные уровни сложности для постепенной подготовки</li>
-                        <li>Автоматическая проверка ответов</li>
-                    </ul>
-                </div>
-                <div class="feature-visual reveal">
-                    <div class="mockup-icon">📝</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <div class="stats-strip">
-        <div class="container">
-            <div class="stats-flex">
-                <div class="stat-item reveal">
-                    <span class="stat-val text-gradient">1000+</span>
-                    <span class="stat-lbl">Заданий для практики</span>
-                </div>
-                <div class="stat-item reveal">
-                    <span class="stat-val text-gradient">24/7</span>
-                    <span class="stat-lbl">Доступ в любое время</span>
-                </div>
-                <div class="stat-item reveal">
-                    <span class="stat-val text-gradient">AI</span>
-                    <span class="stat-lbl">Персональный помощник</span>
-                </div>
+            <div class="feature-visual reveal">
+                <img src="{{ url_for('static', filename='classroom.jpg') }}" alt="Классная комната" style="width: 100%; height: 100%; object-fit: cover; border-radius: 24px;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
             </div>
         </div>
     </div>
+</section>
 
-    <section style="padding: 120px 0; text-align: center;">
-        <div class="container">
-            <h2 class="reveal" style="font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: 40px;">
-                Готов начать <span class="text-gradient">учиться?</span>
-            </h2>
-            <a href="{{ url_for('billing.billing_plans_public') }}" class="btn btn-primary reveal" style="padding: 20px 60px; font-size: 1.2rem;">Ознакомиться с тарифами</a>
+<section class="feature-block reversed">
+    <div class="container">
+        <div class="feature-grid">
+            <div class="feature-content reveal">
+                <span style="color: var(--primary); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">Планирование</span>
+                <h2>Твоё расписание</h2>
+                <p>Всегда знай, когда у тебя уроки. Удобный календарь с напоминаниями и синхронизацией 
+                с твоим личным календарём — никогда не пропусти занятие.</p>
+                <ul class="feature-list">
+                    <li>Просмотр всех запланированных уроков</li>
+                    <li>Напоминания о предстоящих занятиях</li>
+                    <li>Синхронизация с Google Calendar</li>
+                </ul>
+            </div>
+            <div class="feature-visual reveal">
+                <img src="{{ url_for('static', filename='documents/calendar.jpg') }}" alt="Расписание" style="width: 100%; height: 100%; object-fit: cover; border-radius: 24px;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
+            </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <script>
-        // 1. Scroll Reveal Animation
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('active');
-                }
-            });
-        }, { threshold: 0.15 });
-
-        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-        // 2. Simple Particles
-        const canvas = document.getElementById('hero-canvas');
-        const ctx = canvas.getContext('2d');
-        let width, height;
+<section class="feature-block" style="flex-direction: column; text-align: center; justify-content: center;">
+    <div class="container">
+        <div class="reveal" style="max-width: 800px; margin: 0 auto 50px auto;">
+            <span style="background: var(--primary); color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; margin-bottom: 20px; display: inline-block;">NEW</span>
+            <h2 style="font-size: clamp(2.5rem, 5vw, 4rem);">AI-Помощник</h2>
+            <p style="font-size: 1.3rem; color: var(--text-muted); margin-top: 20px;">
+                Твой личный помощник в обучении программированию. Получай подсказки, задавай вопросы 
+                и учись на своих ошибках с помощью искусственного интеллекта.
+            </p>
+        </div>
         
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
+        <div class="feature-visual reveal" style="max-width: 900px; margin: 0 auto; aspect-ratio: 16/9; position: relative;">
+            <div id="ai-carousel" style="width: 100%; height: 100%; position: relative; overflow: hidden; border-radius: 24px;">
+                <img id="ai-image-1" src="{{ url_for('static', filename='documents/ai1.jpg') }}" alt="AI Помощник" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
+                <img id="ai-image-2" src="{{ url_for('static', filename='documents/ai2.jpg') }}" alt="AI Помощник" style="width: 100%; height: 100%; object-fit: cover; display: none;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
+            </div>
+            <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 10;">
+                <button id="ai-prev" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; backdrop-filter: blur(10px);">‹</button>
+                <button id="ai-next" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; backdrop-filter: blur(10px);">›</button>
+            </div>
+        </div>
+    </div>
+</section>
 
-        const particles = Array.from({length: 50}, () => ({
-            x: Math.random() * width,
-            y: Math.random() * height,
-            size: Math.random() * 2,
-            speedX: (Math.random() - 0.5) * 0.2,
-            speedY: (Math.random() - 0.5) * 0.2
-        }));
+<section class="feature-block reversed">
+    <div class="container">
+        <div class="feature-grid">
+            <div class="feature-content reveal">
+                <span style="color: var(--cyan); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">ЕГЭ и ОГЭ по информатике</span>
+                <h2>Огромная база заданий</h2>
+                <p>Тысячи заданий для практики. Решай задачи разных уровней сложности, 
+                отслеживай свой прогресс и готовься к экзамену эффективно.</p>
+                <ul class="feature-list">
+                    <li>Тысячи заданий из реальных вариантов ЕГЭ и ОГЭ</li>
+                    <li>Разные уровни сложности для постепенной подготовки</li>
+                    <li>Автоматическая проверка ответов</li>
+                </ul>
+            </div>
+            <div class="feature-visual reveal">
+                <div class="mockup-icon">📝</div>
+            </div>
+        </div>
+    </div>
+</section>
 
-        function animate() {
-            ctx.clearRect(0, 0, width, height);
-            ctx.fillStyle = "rgba(143, 0, 255, 0.4)";
-            
-            particles.forEach(p => {
-                p.x += p.speedX;
-                p.y += p.speedY;
-                if(p.x < 0) p.x = width;
-                if(p.x > width) p.x = 0;
-                if(p.y < 0) p.y = height;
-                if(p.y > height) p.y = 0;
-                
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            requestAnimationFrame(animate);
-        }
-        animate();
+<div class="stats-strip">
+    <div class="container">
+        <div class="stats-flex">
+            <div class="stat-item reveal">
+                <span class="stat-val text-gradient">1000+</span>
+                <span class="stat-lbl">Заданий для практики</span>
+            </div>
+            <div class="stat-item reveal">
+                <span class="stat-val text-gradient">24/7</span>
+                <span class="stat-lbl">Доступ в любое время</span>
+            </div>
+            <div class="stat-item reveal">
+                <span class="stat-val text-gradient">AI</span>
+                <span class="stat-lbl">Персональный помощник</span>
+            </div>
+        </div>
+    </div>
+</div>
 
-        // AI Carousel
-        let currentAiImage = 1;
-        const aiImage1 = document.getElementById('ai-image-1');
-        const aiImage2 = document.getElementById('ai-image-2');
-        const aiPrev = document.getElementById('ai-prev');
-        const aiNext = document.getElementById('ai-next');
+<section style="padding: 120px 0; text-align: center;">
+    <div class="container">
+        <h2 class="reveal" style="font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: 40px;">
+            Готов начать <span class="text-gradient">учиться?</span>
+        </h2>
+        <a href="{{ url_for('billing.billing_plans_public') }}" class="btn btn-primary reveal" style="padding: 20px 60px; font-size: 1.2rem;">Ознакомиться с тарифами</a>
+    </div>
+</section>
+{% endblock %}
 
-        function showAiImage(num) {
-            if (num === 1) {
-                aiImage1.style.display = 'block';
-                aiImage2.style.display = 'none';
-            } else {
-                aiImage1.style.display = 'none';
-                aiImage2.style.display = 'block';
+{% block scripts_extra %}
+<script>
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('active');
             }
-        }
+        });
+    }, { threshold: 0.15 });
 
-        if (aiPrev && aiNext) {
-            aiPrev.addEventListener('click', () => {
-                currentAiImage = currentAiImage === 1 ? 2 : 1;
-                showAiImage(currentAiImage);
-            });
-            aiNext.addEventListener('click', () => {
-                currentAiImage = currentAiImage === 1 ? 2 : 1;
-                showAiImage(currentAiImage);
-            });
-        }
-    </script>
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-    <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
-</body>
-</html>
+    const canvas = document.getElementById('hero-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const particles = Array.from({length: 50}, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        size: Math.random() * 2,
+        speedX: (Math.random() - 0.5) * 0.2,
+        speedY: (Math.random() - 0.5) * 0.2
+    }));
+
+    function animate() {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "rgba(143, 0, 255, 0.4)";
+        
+        particles.forEach(p => {
+            p.x += p.speedX;
+            p.y += p.speedY;
+            if(p.x < 0) p.x = width;
+            if(p.x > width) p.x = 0;
+            if(p.y < 0) p.y = height;
+            if(p.y > height) p.y = 0;
+            
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        requestAnimationFrame(animate);
+    }
+    animate();
+
+    let currentAiImage = 1;
+    const aiImage1 = document.getElementById('ai-image-1');
+    const aiImage2 = document.getElementById('ai-image-2');
+    const aiPrev = document.getElementById('ai-prev');
+    const aiNext = document.getElementById('ai-next');
+
+    function showAiImage(num) {
+        if (num === 1) { aiImage1.style.display = 'block'; aiImage2.style.display = 'none'; }
+        else { aiImage1.style.display = 'none'; aiImage2.style.display = 'block'; }
+    }
+
+    if (aiPrev && aiNext) {
+        aiPrev.addEventListener('click', () => { currentAiImage = currentAiImage === 1 ? 2 : 1; showAiImage(currentAiImage); });
+        aiNext.addEventListener('click', () => { currentAiImage = currentAiImage === 1 ? 2 : 1; showAiImage(currentAiImage); });
+    }
+</script>
+{% endblock %}

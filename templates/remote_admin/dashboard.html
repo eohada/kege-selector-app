@@ -4,153 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Удаленная админка · Контроль платформы</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
     <style>
-        .environment-selector {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            background: var(--surface-2);
-            border-radius: var(--radius-md);
-        }
-        .env-card {
-            padding: 1.5rem;
-            background: var(--surface-1);
-            border-radius: var(--radius-md);
-            border: 2px solid var(--stroke-2);
-            cursor: pointer;
-            transition: all 0.2s;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .env-card:hover {
-            border-color: var(--accent-1);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .env-card.active {
-            border-color: var(--accent-1);
-            background: var(--surface-3);
-        }
-        .env-card.unavailable {
-            opacity: 0.7;
-            cursor: not-allowed;
-            border-color: var(--danger);
-        }
-        .env-status {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
-            margin-top: 1rem;
-            font-weight: 500;
-        }
-        .status-ok {
-            background: rgba(46, 255, 125, 0.1);
-            color: #2eff7d;
-            border: 1px solid rgba(46, 255, 125, 0.2);
-        }
-        .status-error {
-            background: rgba(255, 46, 46, 0.1);
-            color: #ff2e2e;
-            border: 1px solid rgba(255, 46, 46, 0.2);
-        }
-        .status-warning {
-            background: rgba(255, 200, 46, 0.1);
-            color: #ffc82e;
-            border: 1px solid rgba(255, 200, 46, 0.2);
-        }
-        .error-message {
-            font-size: 0.8rem;
-            color: var(--danger);
-            margin-top: 0.5rem;
-            background: rgba(0,0,0,0.2);
-            padding: 0.5rem;
-            border-radius: var(--radius-sm);
-            font-family: monospace;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100%;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-        .stat-card {
-            padding: 1.5rem;
-            background: var(--surface-2);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--stroke-2);
-        }
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent-1);
-            margin: 0.5rem 0;
-        }
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-        .functions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-        .function-card {
-            text-decoration: none;
-            color: var(--text-primary);
-            padding: 1.5rem;
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-2);
-            border-radius: var(--radius-md);
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        .function-card:hover {
-            border-color: var(--accent-1);
-            transform: translateY(-2px);
-            background: var(--surface-2);
-        }
-        .function-icon {
-            font-size: 2rem;
-            background: var(--surface-2);
-            width: 60px;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: var(--radius-md);
-        }
-        .function-info h3 {
-            margin: 0;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-        .function-info p {
-            margin: 0.25rem 0 0 0;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
+        .environment-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); }
+        .env-card { padding: 1.5rem; background: var(--surface-1); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; height: 100%; display: flex; flex-direction: column; justify-content: space-between; box-shadow: var(--shadow-card); }
+        .env-card:hover { border-color: var(--accent-1); transform: translateY(-2px); }
+        .env-card.active { border-color: var(--accent-1); background: var(--surface-3); }
+        .env-card.unavailable { opacity: 0.7; cursor: not-allowed; }
+        .env-status { display: inline-block; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; margin-top: 1rem; font-weight: 500; }
+        .status-ok { background: rgba(46, 255, 125, 0.1); color: #2eff7d; border: 1px solid rgba(46, 255, 125, 0.2); }
+        .status-error { background: rgba(255, 46, 46, 0.1); color: #ff2e2e; border: 1px solid rgba(255, 46, 46, 0.2); }
+        .status-warning { background: rgba(255, 200, 46, 0.1); color: #ffc82e; border: 1px solid rgba(255, 200, 46, 0.2); }
+        .error-message { font-size: 0.8rem; color: var(--color-error); margin-top: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: var(--radius-sm); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+        .stat-card { padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); box-shadow: var(--shadow-card); }
+        .stat-value { font-size: 2rem; font-weight: 700; color: var(--accent-1); margin: 0.5rem 0; }
+        .stat-label { color: var(--text-muted); font-size: 0.9rem; }
+        .functions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+        .function-card { text-decoration: none; color: var(--text-primary); padding: 1.5rem; background: var(--surface-1); border-radius: var(--radius-md); transition: all 0.2s; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-card); }
+        .function-card:hover { border-color: var(--accent-1); transform: translateY(-2px); background: var(--surface-2); }
+        .function-icon { font-size: 2rem; background: var(--surface-2); width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); }
+        .function-info h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+        .function-info p { margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-muted); }
     </style>
     <script>
         (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
+            try { var v = localStorage.getItem('ui.themeMode'); if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch(e) {}
         })();
     </script>
 </head>
@@ -161,13 +46,11 @@
 
         <main class="remote-main">
         <section class="glass-panel" style="max-width: 1400px; padding: 2rem;">
-            <h1 style="margin-bottom: 1.5rem;">Удаленная админка</h1>
-            <p style="color: var(--text-muted); margin-bottom: 2rem;">
-                Управление платформой через удаленные API окружений
-            </p>
+            <h1 class="mb-6">Удаленная админка</h1>
+            <p class="text-muted mb-8">Управление платформой через удаленные API окружений</p>
 
-            <div style="margin-bottom: 2rem;">
-                <h2 style="margin-bottom: 1rem;">Окружения</h2>
+            <div class="mb-8">
+                <h2 class="mb-4">Окружения</h2>
                 <div class="environment-selector">
                     {% for env_key, env_config in environments.items() %}
                     {% set env_status = env_statuses.get(env_key, {}) %}
@@ -176,15 +59,13 @@
                         <input type="hidden" name="environment" value="{{ env_key }}">
                         <div class="env-card {% if env_key == current_environment %}active{% endif %} {% if not env_status.get('configured') %}unavailable{% endif %}" 
                              {% if env_status.get('configured') %}onclick="this.closest('form').submit()"{% endif %}>
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <h3 style="margin: 0;">{{ env_config.name }}</h3>
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="m-0">{{ env_config.name }}</h3>
                                 {% if env_key == current_environment %}
                                 <span style="color: var(--accent-1); font-size: 1.2rem;">✓</span>
                                 {% endif %}
                             </div>
-                            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0.5rem 0;">
-                                {{ env_config.description }}
-                            </p>
+                            <p class="text-muted text-sm my-2">{{ env_config.description }}</p>
                             {% if env_status.get('configured') %}
                                 <div style="margin-top: auto;">
                                 {% if env_status.get('available') %}
@@ -192,9 +73,7 @@
                                 {% else %}
                                     <span class="env-status status-error">● Недоступно</span>
                                     {% if env_status.get('error') %}
-                                        <div class="error-message" title="{{ env_status.error }}">
-                                            {{ env_status.error }}
-                                        </div>
+                                        <div class="error-message" title="{{ env_status.error }}">{{ env_status.error }}</div>
                                     {% endif %}
                                 {% endif %}
                                 </div>
@@ -208,11 +87,11 @@
                     {% endfor %}
                 </div>
                 
-                <div style="margin-top: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-md); display: flex; align-items: center; gap: 1rem;">
+                <div class="mt-4 p-4 rounded-btn flex items-center gap-4" style="background: rgba(255, 255, 255, 0.05);">
                     <span style="font-size: 1.2rem;">💡</span>
-                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0; line-height: 1.4;">
+                    <p class="text-muted text-sm m-0 leading-relaxed">
                         Для добавления нового окружения установите переменные окружения: <br>
-                        <code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px;">ENV_&lt;NAME&gt;_URL</code> и <code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px;">ENV_&lt;NAME&gt;_TOKEN</code>
+                        <code class="px-1.5 py-0.5 rounded" style="background: rgba(0,0,0,0.3);">ENV_&lt;NAME&gt;_URL</code> и <code class="px-1.5 py-0.5 rounded" style="background: rgba(0,0,0,0.3);">ENV_&lt;NAME&gt;_TOKEN</code>
                     </p>
                 </div>
             </div>
@@ -238,47 +117,28 @@
             </div>
             {% endif %}
 
-            <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--stroke-2);">
-                <h2 style="margin-bottom: 1.5rem;">Функции управления</h2>
+            <div class="mt-12 pt-8" style="border-top: 1px solid var(--stroke-2);">
+                <h2 class="mb-6">Функции управления</h2>
                 <div class="functions-grid">
                     <a href="{{ url_for('remote_admin.users_list') }}" class="function-card">
                         <div class="function-icon">👥</div>
-                        <div class="function-info">
-                            <h3>Пользователи</h3>
-                            <p>Управление пользователями</p>
-                        </div>
+                        <div class="function-info"><h3>Пользователи</h3><p>Управление пользователями</p></div>
                     </a>
-                    
                     <a href="{{ url_for('remote_admin.testers') }}" class="function-card">
                         <div class="function-icon">🧪</div>
-                        <div class="function-info">
-                            <h3>Тестеры</h3>
-                            <p>Управление тестерами</p>
-                        </div>
+                        <div class="function-info"><h3>Тестеры</h3><p>Управление тестерами</p></div>
                     </a>
-                    
                     <a href="{{ url_for('remote_admin.permissions') }}" class="function-card">
                         <div class="function-icon">🔐</div>
-                        <div class="function-info">
-                            <h3>Права доступа</h3>
-                            <p>RBAC управление</p>
-                        </div>
+                        <div class="function-info"><h3>Права доступа</h3><p>RBAC управление</p></div>
                     </a>
-                    
                     <a href="{{ url_for('remote_admin.audit_logs') }}" class="function-card">
                         <div class="function-icon">📋</div>
-                        <div class="function-info">
-                            <h3>Логи действий</h3>
-                            <p>Аудит и мониторинг</p>
-                        </div>
+                        <div class="function-info"><h3>Логи действий</h3><p>Аудит и мониторинг</p></div>
                     </a>
-                    
                     <a href="{{ url_for('remote_admin.maintenance') }}" class="function-card">
                         <div class="function-icon">🔧</div>
-                        <div class="function-info">
-                            <h3>Тех. работы</h3>
-                            <p>Режим обслуживания</p>
-                        </div>
+                        <div class="function-info"><h3>Тех. работы</h3><p>Режим обслуживания</p></div>
                     </a>
                 </div>
             </div>
@@ -289,7 +149,6 @@
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
     <script>
-        // Загружаем статистику для текущего окружения
         {% if env_statuses.get(current_environment, {}).get('available') %}
         (function() {
             var statIds = ['stat-users', 'stat-active-users', 'stat-total-logs', 'stat-today-logs'];

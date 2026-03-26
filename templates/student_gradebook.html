@@ -1,51 +1,28 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Журнал · {{ student.name }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
-  {% include '_ux_enhancements.html' %}
-  {% if csrf_token %}
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-  {% endif %}
-  <style>
+{% extends 'base.html' %}
+{% block title %}Журнал · {{ student.name }} · BooStudy{% endblock %}
+{% set active_page = 'students' %}
+
+{% block head_css %}
+<style>
     .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
     @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
-    .entry { padding: 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); display: grid; gap: .6rem; }
-    .entry:hover { border-color: rgba(0,255,213,0.35); box-shadow: var(--shadow-soft); }
-    .badge { display: inline-flex; align-items: center; gap: .4rem; padding: .25rem .6rem; border-radius: 999px; font-size: .85rem; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.04); }
-    .mini { font-size: .9rem; color: var(--text-muted); }
+    .entry { padding: 1rem; border-radius: 20px; background: var(--color-bg-surface-alt); display: grid; gap: .6rem; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06); }
+    .entry:hover { box-shadow: 0 8px 30px rgba(123, 92, 255, 0.12); }
+    .badge { display: inline-flex; align-items: center; gap: .4rem; padding: .25rem .6rem; border-radius: 999px; font-size: .85rem; border: 1px solid var(--color-stroke); background: var(--color-bg-surface); }
+    .mini { font-size: .9rem; color: var(--color-text-muted); }
     details > summary { cursor: pointer; list-style: none; }
     details > summary::-webkit-details-marker { display: none; }
-    .summary-btn { display: inline-flex; gap: .5rem; align-items: center; padding: .55rem .8rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.03); color: var(--text-primary); }
-    .summary-btn:hover { border-color: rgba(0,255,213,0.35); }
-  </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body>
-  <div class="app-layout">
-    {% set active_page = 'students' %}
-    {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+    .summary-btn { display: inline-flex; gap: .5rem; align-items: center; padding: .55rem .8rem; border-radius: 12px; border: 1px solid var(--color-stroke); background: var(--color-bg-surface); color: var(--color-text-primary); }
+    .summary-btn:hover { border-color: rgba(123, 92, 255, 0.35); }
+</style>
+{% endblock %}
 
-    <section class="glass-panel" style="margin-bottom: 1.25rem;">
-      <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+{% block content %}
+    <section class="glass-panel mb-5">
+      <div class="flex justify-between items-start gap-4 flex-wrap">
         <div>
           <p class="hero-eyebrow">оценивание</p>
-          <h1 class="hero-title" style="margin-bottom: .25rem;">Журнал · {{ student.name }}</h1>
+          <h1 class="hero-title mb-1">Журнал · {{ student.name }}</h1>
           <div class="mini">Единая лента оценок (уроки / работы / ручные записи).</div>
         </div>
         <div class="hero-actions">
@@ -66,14 +43,14 @@
         </div>
 
         {% if entries and entries|length > 0 %}
-          <div style="display:grid; gap: 1rem; margin-top: 1rem;">
+          <div class="grid gap-4 mt-4" style="grid-template-columns: 1fr;">
             {% set kind_labels = {'manual': 'Ручная', 'lesson': 'Урок', 'assignment': 'Работа'} %}
             {% set category_labels = {'homework': 'ДЗ', 'classwork': 'КР', 'exam': 'Проверочная', 'test': 'Тест'} %}
             {% for e in entries %}
               {% set kind = (e.kind or 'manual')|lower %}
               <div class="entry">
-                <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: .75rem; flex-wrap: wrap;">
-                  <div style="display:flex; gap: .6rem; align-items: center; flex-wrap: wrap;">
+                <div class="flex justify-between items-start gap-3 flex-wrap">
+                  <div class="flex gap-2 items-center flex-wrap">
                     <span class="badge">{{ kind_labels.get(kind, kind) }}</span>
                     {% if e.category %}
                       {% set cat = (e.category or '')|lower %}
@@ -81,7 +58,7 @@
                     {% endif %}
                     <span class="badge">{{ e.created_at.strftime('%d.%m.%Y %H:%M') if e.created_at else '—' }}</span>
                   </div>
-                  <div style="display:flex; gap: .6rem; align-items: center; flex-wrap: wrap;">
+                  <div class="flex gap-2 items-center flex-wrap">
                     {% if e.score is not none and e.max_score %}
                       <span class="badge">Баллы: {{ e.score }}/{{ e.max_score }}</span>
                       <span class="badge">
@@ -95,22 +72,22 @@
                   </div>
                 </div>
 
-                <div style="font-weight: 800;">{{ e.title }}</div>
+                <div class="font-extrabold">{{ e.title }}</div>
                 {% if e.comment %}
-                  <div class="mini" style="white-space: pre-line;">{{ e.comment }}</div>
+                  <div class="mini whitespace-pre-line">{{ e.comment }}</div>
                 {% endif %}
 
                 {% if can_edit %}
                   <details>
                     <summary class="summary-btn">Редактировать / удалить</summary>
-                    <div style="margin-top: .75rem; padding: 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: var(--surface-2);">
+                    <div class="mt-3 p-4 rounded-card border border-stroke bg-bg-surface-alt">
                       <form method="POST" action="{{ url_for('students.student_gradebook_update', student_id=student.student_id, entry_id=e.entry_id) }}" data-no-ajax="1">
                         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                         <div class="neo-field">
                           <label class="neo-label">Название *</label>
                           <input class="neo-input" name="title" value="{{ e.title }}" required>
                         </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
+                        <div class="grid gap-3 mt-3" style="grid-template-columns: 1fr 1fr;">
                           <div class="neo-field">
                             <label class="neo-label">Категория</label>
                             <input class="neo-input" name="category" value="{{ e.category or '' }}" placeholder="homework / exam / ...">
@@ -158,15 +135,15 @@
                           </div>
                           {% endif %}
                         </div>
-                        <div class="neo-field" style="margin-top: .9rem;">
+                        <div class="neo-field mt-3">
                           <label class="neo-label">Комментарий</label>
                           <textarea class="neo-input" name="comment" rows="3">{{ e.comment or '' }}</textarea>
                         </div>
-                        <div style="display:flex; gap: .6rem; margin-top: 1rem; flex-wrap: wrap;">
+                        <div class="flex gap-2 mt-4 flex-wrap">
                           <button type="submit" class="neo-button accent">Сохранить</button>
                         </div>
                       </form>
-                      <form method="POST" action="{{ url_for('students.student_gradebook_delete', student_id=student.student_id, entry_id=e.entry_id) }}" data-no-ajax="1" style="margin-top: .75rem;">
+                      <form method="POST" action="{{ url_for('students.student_gradebook_delete', student_id=student.student_id, entry_id=e.entry_id) }}" data-no-ajax="1" class="mt-3">
                         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                         <button type="submit" class="neo-button danger" onclick="return confirm('Удалить запись журнала?')">Удалить</button>
                       </form>
@@ -177,7 +154,7 @@
             {% endfor %}
           </div>
         {% else %}
-          <div class="empty-state" style="padding: 2.5rem 1rem;">
+          <div class="empty-state px-4 py-10">
             <p>Записей пока нет.</p>
           </div>
         {% endif %}
@@ -192,7 +169,7 @@
         </div>
 
         {% if can_edit %}
-          <form method="POST" action="{{ url_for('students.student_gradebook_create', student_id=student.student_id) }}" data-no-ajax="1" style="margin-top: 1rem;">
+          <form method="POST" action="{{ url_for('students.student_gradebook_create', student_id=student.student_id) }}" data-no-ajax="1" class="mt-4">
             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
             <div class="neo-field">
               <label class="neo-label">Тип</label>
@@ -202,11 +179,11 @@
                 <option value="assignment">Работа</option>
               </select>
             </div>
-            <div class="neo-field" style="margin-top: .9rem;">
+            <div class="neo-field mt-3">
               <label class="neo-label">Название *</label>
               <input class="neo-input" name="title" placeholder="Например: Итог за модуль 1" required>
             </div>
-            <div class="neo-field" style="margin-top: .9rem;">
+            <div class="neo-field mt-3">
               <label class="neo-label">Категория</label>
               <input class="neo-input" name="category" list="gradebookCategoryOptions" placeholder="ДЗ / КР / Проверочная / ...">
               <datalist id="gradebookCategoryOptions">
@@ -216,7 +193,7 @@
                 <option value="test">Тест</option>
               </datalist>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
+            <div class="grid gap-3 mt-3" style="grid-template-columns: 1fr 1fr;">
               <div class="neo-field">
                 <label class="neo-label">Баллы</label>
                 <input class="neo-input" type="number" name="score">
@@ -234,12 +211,12 @@
                 <input class="neo-input" type="number" name="weight" value="1">
               </div>
             </div>
-            <div class="neo-field" style="margin-top: .9rem;">
+            <div class="neo-field mt-3">
               <label class="neo-label">Комментарий</label>
               <textarea class="neo-input" name="comment" rows="4" placeholder="Критерии, что улучшить, типичные ошибки..."></textarea>
             </div>
 
-            <div class="neo-field" style="margin-top: .9rem;">
+            <div class="neo-field mt-3">
               <label class="neo-label">Привязка к уроку (опционально)</label>
               <select class="neo-select" name="lesson_id">
                 <option value="">—</option>
@@ -247,10 +224,10 @@
                   <option value="{{ l.lesson_id }}">{{ l.lesson_date.strftime('%d.%m.%Y') if l.lesson_date else '—' }} · {{ l.topic or 'Урок' }}</option>
                 {% endfor %}
               </select>
-              <div class="mini" style="margin-top: .35rem;">Если выбрано — лучше ставить тип `lesson`.</div>
+              <div class="mini mt-1">Если выбрано — лучше ставить тип `lesson`.</div>
             </div>
 
-            <div class="neo-field" style="margin-top: .9rem;">
+            <div class="neo-field mt-3">
               <label class="neo-label">Привязка к сдаче (опционально)</label>
               <select class="neo-select" name="submission_id">
                 <option value="">—</option>
@@ -258,24 +235,18 @@
                   <option value="{{ s.submission_id }}">{{ s.assignment.title if s.assignment else 'Работа' }} · {{ s.status }}</option>
                 {% endfor %}
               </select>
-              <div class="mini" style="margin-top: .35rem;">Если выбрано — лучше ставить тип `assignment`.</div>
+              <div class="mini mt-1">Если выбрано — лучше ставить тип `assignment`.</div>
             </div>
 
-            <div style="margin-top: 1rem;">
-              <button type="submit" class="neo-button accent" style="width: 100%;">Добавить</button>
+            <div class="mt-4">
+              <button type="submit" class="neo-button accent w-full">Добавить</button>
             </div>
           </form>
         {% else %}
-          <div style="padding: 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: var(--surface-2); margin-top: 1rem;">
+          <div class="p-4 rounded-card border border-stroke bg-bg-surface-alt mt-4">
             <div class="mini">Редактирование журнала доступно только преподавателю/админу.</div>
           </div>
         {% endif %}
       </aside>
     </div>
-  </main>
-    </div>
-</div>
-
-</body>
-</html>
-
+{% endblock %}
