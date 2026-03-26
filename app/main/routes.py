@@ -398,6 +398,7 @@ def dashboard():
     try:
         now = moscow_now()
         week_ago = now - timedelta(days=7)
+        prev_week_start = now - timedelta(days=14)
         
         recent_completed_query = Lesson.query.filter(
             Lesson.status == 'completed',
@@ -433,6 +434,38 @@ def dashboard():
         logger.warning(f"Error getting recent lessons statistics: {e}")
         recent_lessons = 0
         lessons_with_homework = 0
+
+    # ── Deltas for dashboard KPIs (match mock “+N”) ──
+    students_delta_7d = 0
+    completed_lessons_delta_7d = 0
+    try:
+        # Students growth: created in last 7 days minus previous 7 days.
+        qs_students = Student.query
+        if base_is_active is not None:
+            qs_students = qs_students.filter(Student.is_active == base_is_active)
+        if not scope.get('can_see_all') and scope.get('student_ids'):
+            qs_students = qs_students.filter(Student.user_id.in_(scope['student_ids']))
+        elif not scope.get('can_see_all'):
+            qs_students = qs_students.filter(False)
+
+        students_last_7 = qs_students.filter(Student.created_at >= week_ago, Student.created_at <= now).count()
+        students_prev_7 = qs_students.filter(Student.created_at >= prev_week_start, Student.created_at < week_ago).count()
+        students_delta_7d = max(0, int(students_last_7) - int(students_prev_7))
+    except Exception as e:
+        logger.warning(f"Error building students delta: {e}")
+        students_delta_7d = 0
+
+    try:
+        # Completed lessons growth: completed in last 7 days minus previous 7 days.
+        q_completed = Lesson.query.filter(Lesson.status == 'completed')
+        if accessible_student_ids is not None:
+            q_completed = q_completed.filter(Lesson.student_id.in_(accessible_student_ids))
+        completed_last_7 = q_completed.filter(Lesson.lesson_date >= week_ago, Lesson.lesson_date <= now).count()
+        completed_prev_7 = q_completed.filter(Lesson.lesson_date >= prev_week_start, Lesson.lesson_date < week_ago).count()
+        completed_lessons_delta_7d = max(0, int(completed_last_7) - int(completed_prev_7))
+    except Exception as e:
+        logger.warning(f"Error building completed lessons delta: {e}")
+        completed_lessons_delta_7d = 0
 
     review_lesson_tasks_count = 0
     review_submissions_count = 0
@@ -494,8 +527,10 @@ def dashboard():
                          show_archive=show_archive,
                          my_tutors=my_tutors,
                          total_students=total_students,
+                         students_delta_7d=students_delta_7d,
                          total_lessons=total_lessons,
                          completed_lessons=completed_lessons,
+                         completed_lessons_delta_7d=completed_lessons_delta_7d,
                          planned_lessons=planned_lessons,
                          in_progress_lessons=in_progress_lessons,
                          cancelled_lessons=cancelled_lessons,

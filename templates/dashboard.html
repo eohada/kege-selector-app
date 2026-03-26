@@ -8,7 +8,7 @@
 
     {# ── HERO + BENTO STATS ── #}
     <div class="flex flex-col lg:flex-row gap-6">
-        <div class="lg:w-1/3 tactile-card flex flex-col justify-between" style="border-radius:28px;padding:2rem;">
+        <div class="lg:w-1/3 bg-white rounded-[28px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between">
             <div>
                 <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-2">Ученики</h1>
                 <p class="text-slate-500 font-medium text-sm leading-relaxed">
@@ -16,31 +16,21 @@
                 </p>
             </div>
             {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
-            <a href="{{ url_for('students.student_new') }}" class="neo-button accent cta mt-8">
+            <a href="{{ url_for('students.student_new') }}"
+               class="mt-8 w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md flex items-center justify-center gap-2 active:translate-y-1">
                 <i class="ph-bold ph-user-plus text-lg"></i> Новый ученик
             </a>
-            {% endif %}
-            {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
-            <div class="flex flex-wrap gap-2 mt-4">
-                <a href="{{ url_for('main.export_data') }}" class="neo-button sm">
-                    <i class="ph-bold ph-export text-sm"></i> Экспорт
-                </a>
-                <a href="{{ url_for('main.import_data') }}" class="neo-button sm">
-                    <i class="ph-bold ph-download-simple text-sm"></i> Импорт
-                </a>
-                <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost sm">
-                    <i class="ph-bold ph-database text-sm"></i> Бэкап
-                </a>
-            </div>
             {% endif %}
         </div>
 
         <div class="lg:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {# Review queue bento #}
-            <a href="{{ url_for('lessons.review_queue') }}" class="tactile-card--purple flex flex-col justify-between group cursor-pointer hover:shadow-tactile-hover transition-all" style="border-radius:28px;padding:1.5rem;border:1px solid rgba(139,92,255,0.5);border-bottom:4px solid #5B3BC7;background:linear-gradient(135deg,#8E70FF,#6A4CE5);color:#fff;box-shadow:0 10px 30px -5px rgba(15,23,42,0.08);">
+
+            {# Очередь ревью — как в макете #}
+            <a href="{{ url_for('lessons.review_queue') }}"
+               class="bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-[28px] p-6 border border-purple-400/50 border-b-[4px] border-b-purple-600 shadow-tactile text-white flex flex-col justify-between group cursor-pointer hover:shadow-tactile-hover transition-all">
                 <div class="flex justify-between items-start">
-                    <div class="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg" style="border:1px solid rgba(255,255,255,0.1);">
-                        <span class="w-2 h-2 bg-[#FF9F1C] rounded-full animate-pulse"></span>
+                    <div class="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+                        <span class="w-2 h-2 bg-boo-accent rounded-full animate-pulse"></span>
                         <span class="text-xs font-bold tracking-wide uppercase">Очередь ревью</span>
                     </div>
                     <i class="ph-fill ph-files text-2xl text-purple-200 group-hover:text-white transition-colors"></i>
@@ -59,42 +49,55 @@
                 </div>
             </a>
 
-            {# Next lesson / Groups bento #}
-            {% if next_lesson is defined and next_lesson %}
-            <div class="tactile-card flex flex-col justify-between cursor-pointer hover:shadow-tactile-hover transition-all group" style="border-radius:28px;">
+            {# Ближайший урок — как в макете (fallback без данных) #}
+            <a href="{{ url_for('schedule.schedule') }}"
+               class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between cursor-pointer hover:shadow-tactile-hover transition-all group">
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg uppercase tracking-wide">Ближайший урок</span>
-                    <i class="ph-fill ph-video-camera text-2xl text-[#06B6D4] group-hover:scale-110 transition-transform"></i>
+                    <i class="ph-fill ph-video-camera text-2xl text-boo-cyan group-hover:scale-110 transition-transform"></i>
                 </div>
                 <div class="mt-6">
-                    <h3 class="text-xl font-black text-slate-900 mb-1">{{ next_lesson.title }}</h3>
-                    <p class="text-sm font-bold text-slate-500 mb-4 flex items-center gap-1">
-                        <i class="ph-bold ph-clock text-[#FF9F1C]"></i> {{ next_lesson.time_display }}
-                    </p>
+                    {% if next_lesson is defined and next_lesson %}
+                        <h3 class="text-xl font-black text-slate-900 mb-1">{{ next_lesson.title }}</h3>
+                        <p class="text-sm font-bold text-slate-500 mb-0 flex items-center gap-1">
+                            <i class="ph-bold ph-clock text-boo-accent"></i> {{ next_lesson.time_display }}
+                        </p>
+                    {% else %}
+                        <h3 class="text-xl font-black text-slate-900 mb-1">Нет ближайших уроков</h3>
+                        <p class="text-sm font-bold text-slate-500 mb-0 flex items-center gap-1">
+                            <i class="ph-bold ph-clock text-boo-accent"></i> Запланируйте занятие в расписании
+                        </p>
+                    {% endif %}
+                </div>
+            </a>
+
+            {# KPI: Активные ученики (как отдельная карточка) #}
+            <div class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between">
+                <div class="flex items-start justify-between">
+                    <i class="ph-fill ph-users-three text-2xl text-boo-cyan"></i>
+                    {% if students_delta_7d is defined %}
+                    <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">+{{ students_delta_7d }}</span>
+                    {% endif %}
+                </div>
+                <div class="mt-6">
+                    <div class="text-5xl font-black tracking-tight text-slate-900">{{ total_students }}</div>
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mt-1">активных учеников</div>
                 </div>
             </div>
-            {% else %}
-            <div class="tactile-card flex flex-col justify-between" style="border-radius:28px;">
-                <div class="flex justify-between items-start">
-                    <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg uppercase tracking-wide">Быстрая статистика</span>
-                    <i class="ph-fill ph-chart-bar text-2xl text-[#06B6D4]"></i>
+
+            {# KPI: Проведено уроков (как отдельная карточка) #}
+            <div class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between">
+                <div class="flex items-start justify-between">
+                    <i class="ph-fill ph-lightning text-2xl text-boo-accent"></i>
+                    {% if completed_lessons_delta_7d is defined %}
+                    <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">+{{ completed_lessons_delta_7d }}</span>
+                    {% endif %}
                 </div>
-                <div class="mt-6 grid grid-cols-3 gap-4">
-                    <div>
-                        <div class="text-2xl font-black text-slate-900">{{ total_students }}</div>
-                        <div class="text-xs font-bold text-slate-400 mt-0.5">учеников</div>
-                    </div>
-                    <div>
-                        <div class="text-2xl font-black text-slate-900">{{ planned_lessons }}</div>
-                        <div class="text-xs font-bold text-slate-400 mt-0.5">уроков</div>
-                    </div>
-                    <div>
-                        <div class="text-2xl font-black text-slate-900">{{ groups_count }}</div>
-                        <div class="text-xs font-bold text-slate-400 mt-0.5">групп</div>
-                    </div>
+                <div class="mt-6">
+                    <div class="text-5xl font-black tracking-tight text-slate-900">{{ completed_lessons }}</div>
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wide mt-1">проведённых уроков</div>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 
@@ -121,41 +124,46 @@
     {% endif %}
 
     {# ── FILTERS (Segmented + Search) ── #}
-    <form method="GET" action="{{ url_for('main.dashboard') }}">
-        <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
-        <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div class="flex items-center gap-3 w-full md:w-auto">
-                <div class="segmented-control w-full md:w-auto">
-                    <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query) }}" class="segmented-btn {% if not show_archive and not category_filter %}active{% endif %}">Все ({{ total_students }})</a>
-                    <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category='ЕГЭ') }}" class="segmented-btn {% if category_filter == 'ЕГЭ' %}active{% endif %}">ЕГЭ</a>
-                    <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category='ОГЭ') }}" class="segmented-btn {% if category_filter == 'ОГЭ' %}active{% endif %}">ОГЭ</a>
-                    <a href="{{ url_for('main.dashboard', show_archive='true', search=search_query) }}" class="segmented-btn {% if show_archive %}active{% endif %}">Архив</a>
-                </div>
-            </div>
-            <div class="flex w-full md:w-96 relative">
-                <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="text" name="search" value="{{ search_query }}" placeholder="Поиск ученика..." class="neo-input pl-11 pr-12">
-                <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#7B5CFF] transition-colors p-1 bg-transparent border-none cursor-pointer">
-                    <i class="ph-bold ph-faders text-lg"></i>
-                </button>
-            </div>
+    <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div class="bg-slate-200/50 p-1.5 rounded-xl border border-slate-200 inline-flex w-full md:w-auto">
+            <a href="{{ url_for('main.dashboard', search=search_query, show_archive='false') }}"
+               class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if not show_archive and not category_filter %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %}">
+                Все ({{ total_students }})
+            </a>
+            <a href="{{ url_for('main.dashboard', search=search_query, show_archive='false', category='ЕГЭ') }}"
+               class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if category_filter == 'ЕГЭ' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %}">
+                ЕГЭ ({{ ege_students }})
+            </a>
+            <a href="{{ url_for('main.dashboard', search=search_query, show_archive='false', category='ОГЭ') }}"
+               class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if category_filter == 'ОГЭ' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %}">
+                ОГЭ ({{ oge_students }})
+            </a>
+            <a href="{{ url_for('main.dashboard', search=search_query, show_archive='true') }}"
+               class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if show_archive %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %}">
+                Архив ({{ archived_students_count }})
+            </a>
         </div>
-    </form>
+
+        <form method="GET" action="{{ url_for('main.dashboard') }}" class="flex w-full md:w-96 relative">
+            <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
+            {% if category_filter %}<input type="hidden" name="category" value="{{ category_filter }}">{% endif %}
+            <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" name="search" value="{{ search_query }}" placeholder="Поиск ученика (Ctrl+F)"
+                   class="w-full bg-white border border-slate-200 border-b-2 border-b-slate-300 rounded-xl pl-11 pr-12 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:border-b-boo-primary transition-colors shadow-sm">
+            <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-boo-primary transition-colors p-1 bg-transparent border-none cursor-pointer" title="Фильтры">
+                <i class="ph-bold ph-faders text-lg"></i>
+            </button>
+        </form>
+    </div>
 
     {# ── STUDENTS GRID ── #}
     {% if students %}
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
-        <a href="{{ url_for('students.student_new') }}" class="student-card--cta">
-            <i class="ph-bold ph-user-plus text-3xl mb-2 opacity-40"></i>
-            <p class="text-sm font-extrabold m-0">Новый ученик</p>
-            <p class="text-xs text-slate-400 mt-0.5">Создать карточку</p>
-        </a>
-        {% endif %}
-
         {% for student in students %}
         <div class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %} {% if student.has_overdue_hw is defined and student.has_overdue_hw %}student-card--alert{% endif %}"
-             data-student-id="{{ student.student_id }}">
+             data-student-id="{{ student.student_id }}"
+             x-data="{ open: false }"
+             @click.outside="open = false">
 
             <div class="flex justify-between items-start mb-5">
                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="flex items-center gap-4 no-underline" style="color:inherit;">
@@ -178,11 +186,34 @@
                         {% endif %}
                     </div>
                 </a>
-                {% if student.has_overdue_hw is defined and student.has_overdue_hw %}
-                <div class="w-8 h-8 rounded-full bg-red-50 text-[#FF6B6B] flex items-center justify-center" style="border:1px solid rgba(255,107,107,0.2);">
-                    <i class="ph-fill ph-warning text-lg"></i>
+                <div class="flex items-center gap-2">
+                    {% if student.has_overdue_hw is defined and student.has_overdue_hw %}
+                    <div class="w-8 h-8 rounded-full bg-red-50 text-[#FF6B6B] flex items-center justify-center" style="border:1px solid rgba(255,107,107,0.2);">
+                        <i class="ph-fill ph-warning text-lg"></i>
+                    </div>
+                    {% endif %}
+
+                    <div class="relative">
+                        <button type="button"
+                                class="w-9 h-9 bg-white border border-slate-200 text-slate-400 rounded-lg hover:text-slate-900 hover:bg-slate-50 transition-colors flex justify-center items-center shadow-sm"
+                                @click.prevent.stop="open = !open"
+                                aria-label="Действия">
+                            <i class="ph-bold ph-dots-three text-xl"></i>
+                        </button>
+                        <div x-cloak x-show="open" x-transition
+                             class="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-tactile p-1 z-20">
+                            <a class="dock-mega-link" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
+                                <i class="ph-bold ph-house text-base text-slate-400"></i> Профиль
+                            </a>
+                            <a class="dock-mega-link" href="{{ url_for('students.student_info', student_id=student.student_id) }}">
+                                <i class="ph-bold ph-file-text text-base text-slate-400"></i> Инфо
+                            </a>
+                            <a class="dock-mega-link" href="{{ url_for('students.student_analytics', student_id=student.student_id) }}">
+                                <i class="ph-bold ph-chart-line-up text-base text-slate-400"></i> Статистика
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                {% endif %}
             </div>
 
             <div class="flex flex-wrap gap-2 mb-5">
@@ -221,21 +252,6 @@
                 <div class="text-xs text-slate-500 leading-relaxed">"{{ student.description[:120] }}{% if student.description|length > 120 %}…{% endif %}"</div>
                 {% else %}
                 <div class="text-xs text-slate-400 italic">Нет данных</div>
-                {% endif %}
-            </div>
-
-            {# Quick actions #}
-            <div class="student-actions">
-                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="student-action-btn">
-                    <i class="ph-bold ph-chat-teardrop text-sm"></i> Профиль
-                </a>
-                <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="student-action-btn">
-                    <i class="ph-bold ph-file-text text-sm"></i> Инфо
-                </a>
-                {% if student.student_id %}
-                <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="student-action-btn" style="flex:0 0 36px;max-width:36px;">
-                    <i class="ph-bold ph-chart-line-up text-sm"></i>
-                </a>
                 {% endif %}
             </div>
         </div>

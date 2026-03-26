@@ -15,6 +15,25 @@
     <p class="hero-subtitle">Эта страница помогает выявить различия между production и sandbox окружениями</p>
 </section>
 
+{% if current_user and (current_user.is_admin() or current_user.is_creator()) %}
+<section class="glass-panel mb-6">
+    <p class="hero-eyebrow">сервис</p>
+    <h2 class="text-lg font-extrabold m-0 mb-3">Экспорт / Импорт / Бэкап</h2>
+    <p class="text-sm text-text-muted m-0 mb-4">Сервисные операции вынесены из дашборда сюда, чтобы не засорять рабочий экран.</p>
+    <div class="flex flex-wrap gap-3">
+        <a href="{{ url_for('main.export_data') }}" class="neo-button accent">
+            {{ ui_icon('action.export', 'sm', decorative=true) }} Экспорт данных
+        </a>
+        <a href="{{ url_for('main.import_data') }}" class="neo-button outline">
+            {{ ui_icon('action.import', 'sm', decorative=true) }} Импорт данных
+        </a>
+        <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost">
+            {{ ui_icon('action.backup', 'sm', decorative=true) }} Бэкап БД
+        </a>
+    </div>
+</section>
+{% endif %}
+
 {% if diagnostics_data.errors %}
 <section class="glass-panel mb-6" style="border-left: 3px solid #FF6B6B;">
     <h2 class="text-error mb-4">{{ ui_icon('action.close', 'sm', decorative=true) }}Обнаружены ошибки:</h2>

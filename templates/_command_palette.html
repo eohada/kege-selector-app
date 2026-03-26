@@ -1,11 +1,12 @@
 {# Command Palette — Ctrl+K Global Search #}
 <div id="cmdPalette" class="cmd-palette-overlay" onclick="if(event.target===this)this.classList.remove('active');">
-    <div class="cmd-palette" x-data="cmdPalette()" @keydown.escape.window="close($el)">
+    <div class="cmd-palette" x-data="cmdPalette()" @keydown.escape.window="close()"
+         @keydown.arrow-down.prevent="move(1)" @keydown.arrow-up.prevent="move(-1)" @keydown.enter.prevent="goActive()">
         <input class="cmd-palette-input"
                type="text"
                placeholder="Поиск по платформе..."
                x-model="query"
-               @input="search()"
+               @input="onInput()"
                autofocus>
         <div class="cmd-palette-body">
             <template x-if="!query">
@@ -34,19 +35,71 @@
                     {% endif %}
                 </div>
             </template>
-            <template x-if="query && results.length === 0 && !loading">
+            <template x-if="query && flatResults().length === 0 && !loading">
                 <div class="empty-state" style="padding:2rem;">
                     <div style="font-size:2rem;opacity:0.3;">🔍</div>
                     <p style="color:#94A3B8;font-size:0.875rem;margin-top:0.5rem;">Ничего не найдено</p>
                 </div>
             </template>
-            <template x-if="results.length > 0">
+            <template x-if="loading">
+                <div class="empty-state" style="padding:1.5rem;">
+                    <div class="loading-spinner" style="margin:0 auto;"></div>
+                    <p style="color:#94A3B8;font-size:0.875rem;margin-top:0.75rem;">Ищем…</p>
+                </div>
+            </template>
+
+            <template x-if="query && flatResults().length > 0">
                 <div>
-                    <template x-for="r in results" :key="r.url">
-                        <a :href="r.url" class="cmd-palette-item">
-                            <i class="ph-bold ph-magnifying-glass text-base text-slate-400"></i>
-                            <span x-text="r.title"></span>
-                        </a>
+                    <template x-if="actions.length > 0">
+                        <div>
+                            <div class="cmd-palette-group-title">Действия</div>
+                            <template x-for="(r, idx) in actions" :key="r.url">
+                                <a :href="r.url" class="cmd-palette-item" :class="isActive('actions', idx) ? 'active' : ''"
+                                   @mouseenter="setActive('actions', idx)">
+                                    <i class="ph-bold ph-lightning text-base text-slate-400"></i>
+                                    <span x-text="r.title"></span>
+                                </a>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="students.length > 0">
+                        <div>
+                            <div class="cmd-palette-group-title">Ученики</div>
+                            <template x-for="(r, idx) in students" :key="r.url">
+                                <a :href="r.url" class="cmd-palette-item" :class="isActive('students', idx) ? 'active' : ''"
+                                   @mouseenter="setActive('students', idx)">
+                                    <i class="ph-bold ph-user text-base text-slate-400"></i>
+                                    <span x-text="r.title"></span>
+                                </a>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="lessons.length > 0">
+                        <div>
+                            <div class="cmd-palette-group-title">Уроки</div>
+                            <template x-for="(r, idx) in lessons" :key="r.url">
+                                <a :href="r.url" class="cmd-palette-item" :class="isActive('lessons', idx) ? 'active' : ''"
+                                   @mouseenter="setActive('lessons', idx)">
+                                    <i class="ph-bold ph-video-camera text-base text-slate-400"></i>
+                                    <span x-text="r.title"></span>
+                                </a>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template x-if="tasks.length > 0">
+                        <div>
+                            <div class="cmd-palette-group-title">Задачи</div>
+                            <template x-for="(r, idx) in tasks" :key="r.url">
+                                <a :href="r.url" class="cmd-palette-item" :class="isActive('tasks', idx) ? 'active' : ''"
+                                   @mouseenter="setActive('tasks', idx)">
+                                    <i class="ph-bold ph-file-text text-base text-slate-400"></i>
+                                    <span x-text="r.title"></span>
+                                </a>
+                            </template>
+                        </div>
                     </template>
                 </div>
             </template>
@@ -72,19 +125,118 @@ document.addEventListener('keydown', function(e) {
 function cmdPalette() {
     return {
         query: '',
-        results: [],
         loading: false,
-        close(el) {
+        // grouped results
+        actions: [],
+        students: [],
+        lessons: [],
+        tasks: [],
+        // keyboard selection
+        activeGroup: null,
+        activeIndex: -1,
+        _debounceTimer: null,
+        // static actions (role-aware) + filtered by query
+        allActions: (function() {
+            const a = [];
+            {% if current_user and current_user.is_authenticated %}
+            a.push({ title: 'Ученики', url: "{{ url_for('main.dashboard') }}" });
+            a.push({ title: 'Расписание', url: "{{ url_for('schedule.schedule') }}" });
+            {% if has_permission(current_user, 'assignment.grade') %}
+            a.push({ title: 'Очередь проверки', url: "{{ url_for('lessons.review_queue') }}" });
+            {% endif %}
+            a.push({ title: 'Тренажёр', url: "{{ url_for('trainer.trainer_v2') }}" });
+            a.push({ title: 'Генератор задач', url: "{{ url_for('task_generator.task_generator') }}" });
+            a.push({ title: 'Профиль', url: "{{ url_for('auth.user_profile') }}" });
+            {% endif %}
+            return a;
+        })(),
+        close() {
             document.getElementById('cmdPalette').classList.remove('active');
+            this.query = '';
+            this.actions = []; this.students = []; this.lessons = []; this.tasks = [];
+            this.activeGroup = null; this.activeIndex = -1;
+        },
+        onInput() {
+            const self = this;
+            clearTimeout(self._debounceTimer);
+            self._debounceTimer = setTimeout(function() { self.search(); }, 180);
+        },
+        flatResults() {
+            return [].concat(this.actions, this.students, this.lessons, this.tasks);
+        },
+        setActive(group, idx) {
+            this.activeGroup = group;
+            this.activeIndex = idx;
+        },
+        isActive(group, idx) {
+            return this.activeGroup === group && this.activeIndex === idx;
+        },
+        move(dir) {
+            const order = ['actions','students','lessons','tasks'];
+            const groups = {
+                actions: this.actions,
+                students: this.students,
+                lessons: this.lessons,
+                tasks: this.tasks,
+            };
+            const available = order.filter(g => (groups[g] || []).length > 0);
+            if (available.length === 0) return;
+
+            if (!this.activeGroup) {
+                this.activeGroup = available[0];
+                this.activeIndex = 0;
+                return;
+            }
+
+            const curList = groups[this.activeGroup] || [];
+            let idx = this.activeIndex + dir;
+            if (idx >= 0 && idx < curList.length) { this.activeIndex = idx; return; }
+
+            const gIdx = available.indexOf(this.activeGroup);
+            const nextG = available[(gIdx + (dir > 0 ? 1 : -1) + available.length) % available.length];
+            this.activeGroup = nextG;
+            this.activeIndex = dir > 0 ? 0 : (groups[nextG].length - 1);
+        },
+        goActive() {
+            const groups = { actions: this.actions, students: this.students, lessons: this.lessons, tasks: this.tasks };
+            const list = groups[this.activeGroup] || [];
+            const item = list[this.activeIndex];
+            if (item && item.url) window.location.href = item.url;
         },
         search() {
-            var self = this;
-            if (!self.query || self.query.length < 2) { self.results = []; return; }
+            const self = this;
+            const q = (self.query || '').trim();
+            self.activeGroup = null; self.activeIndex = -1;
+            if (!q || q.length < 2) {
+                self.actions = []; self.students = []; self.lessons = []; self.tasks = [];
+                self.loading = false;
+                return;
+            }
+
+            // Filter actions
+            const qq = q.toLowerCase();
+            self.actions = (self.allActions || []).filter(x => (x.title || '').toLowerCase().includes(qq)).slice(0, 6);
+
             self.loading = true;
-            fetch('/api/search?q=' + encodeURIComponent(self.query))
-                .then(function(r) { return r.ok ? r.json() : {results:[]}; })
-                .then(function(d) { self.results = d.results || []; })
-                .catch(function() { self.results = []; })
+            fetch('/api/global-search?q=' + encodeURIComponent(q))
+                .then(function(r) { return r.ok ? r.json() : { success:false, results:{students:[],lessons:[],tasks:[]} }; })
+                .then(function(d) {
+                    const res = (d && d.results) ? d.results : { students:[], lessons:[], tasks:[] };
+                    self.students = (res.students || []).map(function(s) {
+                        const badge = s.platform_id ? ('ID: ' + s.platform_id) : '';
+                        return { title: (s.name || 'Ученик') + (badge ? ' · ' + badge : ''), url: s.url };
+                    });
+                    self.lessons = (res.lessons || []).map(function(l) {
+                        const date = l.date ? (' · ' + l.date) : '';
+                        return { title: (l.topic || 'Урок') + ' · ' + (l.student_name || '') + date, url: l.url };
+                    });
+                    self.tasks = (res.tasks || []).map(function(t) {
+                        const num = t.task_number ? ('№' + t.task_number + ' ') : '';
+                        const sid = t.site_task_id ? (' · ' + t.site_task_id) : '';
+                        return { title: num + 'Задача' + sid, url: t.url };
+                    });
+                })
+                .catch(function() { self.students = []; self.lessons = []; self.tasks = []; })
                 .finally(function() { self.loading = false; });
         }
     };

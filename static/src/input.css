@@ -162,10 +162,11 @@
 
   .dock-wrapper {
     @apply fixed top-0 w-full z-50 pointer-events-none;
-    padding: 1rem 1.5rem 0;
+    /* Align with `.app-content` horizontal padding */
+    padding: 1rem 1rem 0;
   }
   @media (min-width: 1024px) {
-    .dock-wrapper { padding: 1.25rem 2rem 0; }
+    .dock-wrapper { padding: 1.25rem 2.5rem 0; }
   }
 
   .dock {
@@ -234,17 +235,38 @@
   /* Mega-menu dropdown */
   .dock-mega { @apply relative; }
   .dock-mega-panel {
-    @apply hidden absolute z-50 animate-slide-down;
+    /* Keep it in the layout (no display:none) to avoid “jump” */
+    @apply absolute z-50;
     top: calc(100% + 0.75rem);
-    left: 50%; transform: translateX(-50%);
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
     min-width: 520px;
     background: #FFFFFF;
     border: 1px solid #E2E8F0;
     border-radius: 20px;
     padding: 1.25rem;
     box-shadow: 0 20px 60px rgba(15,23,42,0.12);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
   }
-  .dock-mega:hover .dock-mega-panel { @apply block; }
+  /* Hover bridge so panel doesn't close on cursor move */
+  .dock-mega-panel::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -0.75rem;
+    height: 0.75rem;
+  }
+  .dock-mega:hover .dock-mega-panel,
+  .dock-mega:focus-within .dock-mega-panel {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
   .dock-mega-group-title {
     @apply font-extrabold uppercase;
     font-size: 0.65rem;
@@ -261,6 +283,7 @@
     transition: all 0.12s ease;
   }
   .dock-mega-link:hover { background: #F8FAFC; color: #0F172A; }
+  [x-cloak] { display: none !important; }
 
   /* Dock right */
   .dock-actions { @apply flex items-center gap-2; padding-right: 0.25rem; }
@@ -843,6 +866,12 @@
   .mobile-menu-toggle span { @apply block; width: 20px; height: 2px; background: #64748B; border-radius: 2px; }
   .mobile-menu-toggle:hover { @apply opacity-70; }
   @media (min-width: 768px) { .mobile-menu-toggle { @apply hidden; } }
+  /* On desktop, never show the offcanvas (prevents “mystery BooStudy block” on the right). */
+  @media (min-width: 768px) {
+    .mobile-menu-overlay { display: none !important; }
+    .mobile-menu { display: none !important; transform: translateX(100%) !important; }
+    .mobile-menu.active { display: none !important; }
+  }
   .mobile-menu-header { @apply flex items-center justify-between pb-4 mb-4; border-bottom: 1px solid #F1F5F9; }
   .mobile-menu-close {
     @apply flex items-center justify-center bg-transparent border-none cursor-pointer;
