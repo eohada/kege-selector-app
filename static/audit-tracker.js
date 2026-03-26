@@ -31,17 +31,17 @@
             return null;
         }
         
-        let testerName = localStorage.getItem('tester_name');  
-        if (!testerName) {  
-            testerName = prompt('Введи своё имя для тестирования:');  
-            if (testerName && testerName.trim()) {  
-                testerName = testerName.trim();  
-                localStorage.setItem('tester_name', testerName);  
-            } else {  
-                testerName = 'Anonymous';  
+        // Release behavior: no blocking prompts on any page.
+        // If a tester name is needed, it can be set manually via localStorage key `tester_name`.
+        try {
+            const testerName = localStorage.getItem('tester_name');
+            if (testerName && String(testerName).trim()) {
+                return String(testerName).trim();
             }
+        } catch (e) {
+            // Storage can be blocked by browser privacy settings; fall back silently.
         }
-        return testerName;  
+        return 'Anonymous';
     }
 
     function sendAuditEvent(action, entity, entityId, status, metadata, durationMs) {

@@ -33,6 +33,12 @@ def legal_privacy():
     return render_template('legal_privacy.html')
 
 
+@main_bp.route('/favicon.ico')
+def favicon():
+    # Prevent noisy 404s in console. We reuse the existing logo as a favicon.
+    return redirect(url_for('static', filename='icons/BooStudyLogo1-Photoroom.png'))
+
+
 @main_bp.route('/legal/accept', methods=['POST'])
 @login_required
 def legal_accept():

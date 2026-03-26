@@ -181,7 +181,7 @@ function initStudentCards() {
                     loading.hide(loaderId); 
                 }
             }
-        });
+        }
     });
 }
 

@@ -901,11 +901,11 @@
   }
   .profile-cover { @apply h-40 relative; background: linear-gradient(135deg, #7B5CFF, #9B85FF); border-radius: 26px 26px 0 0; }
   .profile-avatar-big {
-    @apply w-[88px] h-[88px] rounded-2xl object-cover absolute;
-    border: 4px solid #FFFFFF;
-    box-shadow: 0 4px 12px rgba(15,23,42,0.1);
-    bottom: -44px; left: 2rem;
+    /* Used by multiple legacy templates as a container, so avoid absolute positioning. */
+    @apply overflow-hidden flex items-center justify-center;
+    border-radius: 16px;
   }
+  .profile-avatar-big img { @apply w-full h-full object-cover; }
   .profile-info { padding: 3.5rem 2rem 1.5rem; }
   .profile-username { @apply font-extrabold; font-size: 1.4rem; color: #0F172A; }
   .profile-role-badge {
