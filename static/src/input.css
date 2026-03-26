@@ -127,7 +127,8 @@
   h1,h2,h3,h4,h5,h6 { @apply font-sans font-bold; color: var(--color-text-primary); line-height: 1.25; }
   code,pre,kbd,samp { @apply font-mono; }
   a { color: #7B5CFF; text-decoration: none; transition: color 0.15s ease; }
-  a:hover { color: #6A4CE5; }
+  /* Do NOT recolor all links on hover: it breaks “card links” (e.g. purple bento). */
+  a:hover { text-decoration: underline; }
   ::selection { background-color: var(--color-accent-soft); color: #6A4CE5; }
   :focus-visible { outline: 2px solid #7B5CFF; outline-offset: 2px; border-radius: 8px; }
   img, svg { @apply max-w-full h-auto; }
@@ -318,7 +319,7 @@
   /* Profile dropdown (reused from topbar) */
   .profile-dropdown { @apply relative; }
   .profile-dropdown-content {
-    @apply hidden absolute z-50 animate-slide-down;
+    @apply absolute z-50;
     min-width: 200px;
     background: #FFFFFF;
     top: calc(100% + 0.5rem); right: 0;
@@ -326,9 +327,27 @@
     border: 1px solid #E2E8F0;
     padding: 0.35rem;
     box-shadow: 0 20px 60px rgba(15,23,42,0.12);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+  }
+  .profile-dropdown-content::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -0.5rem;
+    height: 0.5rem;
   }
   .profile-dropdown:hover .profile-dropdown-content,
-  .profile-dropdown-content:hover { @apply block; }
+  .profile-dropdown:focus-within .profile-dropdown-content {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
   .profile-item {
     @apply flex items-center gap-2 no-underline font-semibold;
     padding: 0.5rem 0.65rem; font-size: 0.85rem;

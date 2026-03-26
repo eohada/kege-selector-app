@@ -23,7 +23,7 @@
 <main class="trainer-v2-shell{% if zen_mode %} is-zen{% endif %}">
     <nav class="breadcrumbs mb-4 flex items-center justify-between px-2">
         <div class="flex items-center gap-2 text-sm text-text-muted">
-            <a href="{{ url_for('trainer_v2_page') if url_for is defined else '#' }}" class="hover:text-text-primary transition-colors">Тренажёр</a>
+            <a href="{{ url_for('trainer.trainer_v2') }}" class="hover:text-text-primary transition-colors">Тренажёр</a>
             <span class="opacity-40">/</span>
             <span id="tv2BreadcrumbTaskNum">—</span>
             <span class="opacity-40">/</span>
