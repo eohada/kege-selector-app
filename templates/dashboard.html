@@ -1,160 +1,165 @@
 {% extends 'base.html' %}
-{% block title %}Dashboard · BooStudy{% endblock %}
+{% block title %}Ученики · BooStudy{% endblock %}
 
 {% set active_page = 'dashboard' %}
 
 {% block content %}
+<div class="space-y-8">
 
-        {# ── Hero Card ── #}
-        <section class="bg-bg-surface p-5 lg:p-6" style="border-radius:16px; border:2px solid var(--color-stroke); border-bottom-width:4px;">
-            <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                <div class="min-w-0">
-                    <p class="hero-eyebrow">панель управления</p>
-                    <h1 class="hero-title">BooStudy</h1>
-                    <p class="hero-subtitle">Ученики, уроки и прогресс — всё в одном месте.</p>
-                    {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
-                    <div class="flex flex-wrap gap-2 mt-3">
-                        <a href="{{ url_for('main.export_data') }}" class="neo-button accent sm">
-                            {{ ui_icon('action.export', 'sm', decorative=true) }}
-                            Экспорт
-                        </a>
-                        <a href="{{ url_for('main.import_data') }}" class="neo-button outline sm">
-                            {{ ui_icon('action.import', 'sm', decorative=true) }}
-                            Импорт
-                        </a>
-                        <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost sm">
-                            {{ ui_icon('action.backup', 'sm', decorative=true) }}
-                            Бэкап БД
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="flex flex-wrap gap-2 shrink-0">
-                    <div class="bento-card purple flex items-center gap-2">
-                        <span class="text-xl font-black leading-none" style="color:#7B5CFF;">{{ total_students }}</span>
-                        <span class="text-[0.7rem] font-bold text-text-muted leading-tight">активных<br>учеников</span>
-                    </div>
-                    <div class="bento-card green flex items-center gap-2">
-                        <span class="text-xl font-black leading-none" style="color:#059669;">{{ planned_lessons }}</span>
-                        <span class="text-[0.7rem] font-bold text-text-muted leading-tight">запланировано<br>уроков</span>
-                    </div>
-                    <div class="bento-card orange flex items-center gap-2">
-                        <span class="text-xl font-black leading-none" style="color:#D97706;">{{ completed_lessons }}</span>
-                        <span class="text-[0.7rem] font-bold text-text-muted leading-tight">проведено<br>уроков</span>
-                    </div>
-                </div>
+    {# ── HERO + BENTO STATS ── #}
+    <div class="flex flex-col lg:flex-row gap-6">
+        <div class="lg:w-1/3 tactile-card flex flex-col justify-between" style="border-radius:28px;padding:2rem;">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-2">Ученики</h1>
+                <p class="text-slate-500 font-medium text-sm leading-relaxed">
+                    Управление потоком. У вас {{ total_students }} активн{{ 'ых' if total_students != 1 else 'ый' }} ученик{{ 'ов' if total_students != 1 else '' }} в этом месяце.
+                </p>
             </div>
-        </section>
-
-        {# ── Tutors Section ── #}
-        {% if my_tutors %}
-        <section class="mt-5">
-            <p class="hero-eyebrow mb-2">мой преподаватель{% if my_tutors|length > 1 %}и{% endif %}</p>
-            <div class="flex flex-wrap gap-3">
-                {% for tutor in my_tutors %}
-                <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="flex items-center gap-3 bg-bg-surface p-3 hover:border-accent no-underline" style="border-radius:14px; border:2px solid var(--color-stroke); border-bottom-width:3px; transition:border-color 0.12s ease; color:inherit;">
-                    <div class="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-accent-soft flex items-center justify-center font-extrabold text-sm text-accent" style="border:2px solid var(--color-stroke);">
-                        {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="" class="w-full h-full object-cover">{% else %}{{ tutor.username[0]|upper }}{% endif %}
-                    </div>
-                    <div class="min-w-0">
-                        <div class="font-extrabold text-sm leading-snug text-text-primary">
-                            {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}{{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}{% else %}{{ tutor.username }}{% endif %}
-                        </div>
-                        <div class="text-xs text-text-muted mt-0.5 font-semibold">{{ tutor.get_role_display() }} · Открыть →</div>
-                    </div>
+            {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
+            <a href="{{ url_for('students.student_new') }}" class="neo-button accent cta mt-8">
+                <i class="ph-bold ph-user-plus text-lg"></i> Новый ученик
+            </a>
+            {% endif %}
+            {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
+            <div class="flex flex-wrap gap-2 mt-4">
+                <a href="{{ url_for('main.export_data') }}" class="neo-button sm">
+                    <i class="ph-bold ph-export text-sm"></i> Экспорт
                 </a>
-                {% endfor %}
+                <a href="{{ url_for('main.import_data') }}" class="neo-button sm">
+                    <i class="ph-bold ph-download-simple text-sm"></i> Импорт
+                </a>
+                <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost sm">
+                    <i class="ph-bold ph-database text-sm"></i> Бэкап
+                </a>
             </div>
-        </section>
-        {% endif %}
-
-        {# ── Quick Actions — Bento Tiles ── #}
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
-            <div class="bento-card purple">
-                <p class="text-xs font-extrabold text-text-secondary mb-0.5">На проверку (классная)</p>
-                <p class="text-3xl font-black m-0 leading-none" style="color:#7B5CFF;">{{ review_lesson_tasks_count }}</p>
-                <a href="{{ url_for('lessons.review_queue', source='lessons', status='submitted') }}" class="inline-block mt-2 text-xs font-extrabold text-accent hover:underline">Открыть →</a>
-            </div>
-            <div class="bento-card green">
-                <p class="text-xs font-extrabold text-text-secondary mb-0.5">На проверку (работы)</p>
-                <p class="text-3xl font-black m-0 leading-none" style="color:#059669;">{{ review_submissions_count }}</p>
-                <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="inline-block mt-2 text-xs font-extrabold hover:underline" style="color:#059669;">Открыть →</a>
-            </div>
-            <div class="bento-card orange">
-                <p class="text-xs font-extrabold text-text-secondary mb-0.5">Группы</p>
-                <p class="text-3xl font-black m-0 leading-none" style="color:#D97706;">{{ groups_count }}</p>
-                <a href="{{ url_for('groups.groups_list') }}" class="inline-block mt-2 text-xs font-extrabold hover:underline" style="color:#D97706;">Открыть →</a>
-            </div>
+            {% endif %}
         </div>
 
-        {# ── Filters ── #}
-        <section class="filters-panel mt-5">
-            <form method="GET" action="{{ url_for('main.dashboard') }}" class="filters-grid">
-                <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
-                <div class="neo-field">
-                    <label class="neo-label">Поиск <span class="keyboard-hint"><kbd>Ctrl</kbd>+<kbd>F</kbd></span></label>
-                    <input type="text" name="search" value="{{ search_query }}" class="neo-input" placeholder="Имя или ID ученика">
+        <div class="lg:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {# Review queue bento #}
+            <a href="{{ url_for('lessons.review_queue') }}" class="tactile-card--purple flex flex-col justify-between group cursor-pointer hover:shadow-tactile-hover transition-all" style="border-radius:28px;padding:1.5rem;border:1px solid rgba(139,92,255,0.5);border-bottom:4px solid #5B3BC7;background:linear-gradient(135deg,#8E70FF,#6A4CE5);color:#fff;box-shadow:0 10px 30px -5px rgba(15,23,42,0.08);">
+                <div class="flex justify-between items-start">
+                    <div class="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg" style="border:1px solid rgba(255,255,255,0.1);">
+                        <span class="w-2 h-2 bg-[#FF9F1C] rounded-full animate-pulse"></span>
+                        <span class="text-xs font-bold tracking-wide uppercase">Очередь ревью</span>
+                    </div>
+                    <i class="ph-fill ph-files text-2xl text-purple-200 group-hover:text-white transition-colors"></i>
                 </div>
-                <div class="neo-field">
-                    <label class="neo-label">Категория</label>
-                    <select name="category" class="neo-select">
-                        <option value="">Все категории</option>
-                        <option value="ЕГЭ" {% if category_filter == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
-                        <option value="ОГЭ" {% if category_filter == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
-                        <option value="ЛЕВЕЛАП" {% if category_filter == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option>
-                        <option value="ПРОГРАММИРОВАНИЕ" {% if category_filter == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
-                    </select>
+                <div class="mt-6">
+                    <div class="flex items-baseline gap-2 mb-3">
+                        <span class="text-5xl font-black tracking-tight">{{ (review_lesson_tasks_count|default(0)) + (review_submissions_count|default(0)) }}</span>
+                        <span class="text-sm font-semibold text-purple-200">работ ждут проверки</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs font-bold text-purple-200">
+                            {{ review_lesson_tasks_count|default(0) }} классных · {{ review_submissions_count|default(0) }} самостоятельных
+                        </div>
+                        <i class="ph-bold ph-arrow-right text-xl group-hover:translate-x-1 transition-transform"></i>
+                    </div>
                 </div>
-                <div class="filters-actions">
-                    <button type="submit" class="neo-button accent sm">
-                        {{ ui_icon('action.search', 'sm', decorative=true) }}
-                        Найти
-                    </button>
-                    {% if search_query or category_filter %}
-                    <a href="{{ url_for('main.dashboard', show_archive='true' if show_archive else 'false') }}" class="neo-button ghost sm">Сбросить</a>
-                    {% endif %}
-                </div>
-            </form>
-            <div class="mt-3 flex gap-2 items-center">
-                <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category=category_filter) }}"
-                   class="neo-button sm {% if not show_archive %}accent{% else %}ghost{% endif %}">
-                    {{ ui_icon('nav.students', 'sm', decorative=true) }}
-                    Активные ({{ total_students }})
-                </a>
-                <a href="{{ url_for('main.dashboard', show_archive='true', search=search_query, category=category_filter) }}"
-                   class="neo-button sm {% if show_archive %}accent{% else %}ghost{% endif %}">
-                    {{ ui_icon('nav.archive', 'sm', decorative=true) }}
-                    Архив ({{ archived_students_count }})
-                </a>
-            </div>
-        </section>
+            </a>
 
-        {# ── Students Grid ── #}
-        <section class="mt-5">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <p class="hero-eyebrow mb-0.5">{% if show_archive %}архивные ученики{% else %}активные ученики{% endif %}</p>
-                    <h2 class="text-lg font-extrabold m-0">{{ students|length }} в подборке</h2>
+            {# Next lesson / Groups bento #}
+            {% if next_lesson is defined and next_lesson %}
+            <div class="tactile-card flex flex-col justify-between cursor-pointer hover:shadow-tactile-hover transition-all group" style="border-radius:28px;">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg uppercase tracking-wide">Ближайший урок</span>
+                    <i class="ph-fill ph-video-camera text-2xl text-[#06B6D4] group-hover:scale-110 transition-transform"></i>
                 </div>
-                {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
-                <a href="{{ url_for('students.student_new') }}" class="neo-button accent sm">{{ ui_icon('action.plus', 'sm', decorative=true) }} Добавить</a>
-                {% endif %}
+                <div class="mt-6">
+                    <h3 class="text-xl font-black text-slate-900 mb-1">{{ next_lesson.title }}</h3>
+                    <p class="text-sm font-bold text-slate-500 mb-4 flex items-center gap-1">
+                        <i class="ph-bold ph-clock text-[#FF9F1C]"></i> {{ next_lesson.time_display }}
+                    </p>
+                </div>
             </div>
+            {% else %}
+            <div class="tactile-card flex flex-col justify-between" style="border-radius:28px;">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg uppercase tracking-wide">Быстрая статистика</span>
+                    <i class="ph-fill ph-chart-bar text-2xl text-[#06B6D4]"></i>
+                </div>
+                <div class="mt-6 grid grid-cols-3 gap-4">
+                    <div>
+                        <div class="text-2xl font-black text-slate-900">{{ total_students }}</div>
+                        <div class="text-xs font-bold text-slate-400 mt-0.5">учеников</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-900">{{ planned_lessons }}</div>
+                        <div class="text-xs font-bold text-slate-400 mt-0.5">уроков</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-900">{{ groups_count }}</div>
+                        <div class="text-xs font-bold text-slate-400 mt-0.5">групп</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
 
-            {% if students %}
-            <div class="students-grid">
-                {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
-                <a href="{{ url_for('students.student_new') }}" class="student-card student-card--cta">
-                    <div class="text-2xl mb-1 opacity-40">+</div>
-                    <p class="text-sm font-extrabold m-0">Новый ученик</p>
-                    <p class="text-xs text-text-muted mt-0.5">Создать карточку</p>
-                </a>
-                {% endif %}
-                {% for student in students %}
-                <div class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %}"
-                   data-student-id="{{ student.student_id }}">
-                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="student-card__main-link">
-                    <div class="student-card__head">
+    {# ── Tutors (for students) ── #}
+    {% if my_tutors %}
+    <div>
+        <p class="hero-eyebrow mb-2">мой преподаватель{% if my_tutors|length > 1 %}и{% endif %}</p>
+        <div class="flex flex-wrap gap-3">
+            {% for tutor in my_tutors %}
+            <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="tactile-card flex items-center gap-3 no-underline" style="padding:0.85rem 1.15rem;border-radius:16px;color:inherit;">
+                <div class="student-avatar" style="width:40px;height:40px;border-radius:12px;font-size:0.85rem;">
+                    {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="">{% else %}{{ tutor.username[0]|upper }}{% endif %}
+                </div>
+                <div class="min-w-0">
+                    <div class="font-extrabold text-sm leading-snug" style="color:#0F172A;">
+                        {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}{{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}{% else %}{{ tutor.username }}{% endif %}
+                    </div>
+                    <div class="text-xs text-slate-400 mt-0.5 font-semibold">{{ tutor.get_role_display() }}</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── FILTERS (Segmented + Search) ── #}
+    <form method="GET" action="{{ url_for('main.dashboard') }}">
+        <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
+        <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <div class="segmented-control w-full md:w-auto">
+                    <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query) }}" class="segmented-btn {% if not show_archive and not category_filter %}active{% endif %}">Все ({{ total_students }})</a>
+                    <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category='ЕГЭ') }}" class="segmented-btn {% if category_filter == 'ЕГЭ' %}active{% endif %}">ЕГЭ</a>
+                    <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category='ОГЭ') }}" class="segmented-btn {% if category_filter == 'ОГЭ' %}active{% endif %}">ОГЭ</a>
+                    <a href="{{ url_for('main.dashboard', show_archive='true', search=search_query) }}" class="segmented-btn {% if show_archive %}active{% endif %}">Архив</a>
+                </div>
+            </div>
+            <div class="flex w-full md:w-96 relative">
+                <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" name="search" value="{{ search_query }}" placeholder="Поиск ученика..." class="neo-input pl-11 pr-12">
+                <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#7B5CFF] transition-colors p-1 bg-transparent border-none cursor-pointer">
+                    <i class="ph-bold ph-faders text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </form>
+
+    {# ── STUDENTS GRID ── #}
+    {% if students %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
+        <a href="{{ url_for('students.student_new') }}" class="student-card--cta">
+            <i class="ph-bold ph-user-plus text-3xl mb-2 opacity-40"></i>
+            <p class="text-sm font-extrabold m-0">Новый ученик</p>
+            <p class="text-xs text-slate-400 mt-0.5">Создать карточку</p>
+        </a>
+        {% endif %}
+
+        {% for student in students %}
+        <div class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %} {% if student.has_overdue_hw is defined and student.has_overdue_hw %}student-card--alert{% endif %}"
+             data-student-id="{{ student.student_id }}">
+
+            <div class="flex justify-between items-start mb-5">
+                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="flex items-center gap-4 no-underline" style="color:inherit;">
+                    <div class="relative">
                         <div class="student-avatar {% if show_archive %}student-avatar--archived{% endif %}">
                             {% if student.user and student.user.avatar_url %}
                                 <img src="{{ student.user.avatar_url }}" alt="">
@@ -162,91 +167,117 @@
                                 {{ student.name[0].upper() }}
                             {% endif %}
                         </div>
-                        <div class="min-w-0">
-                            <p class="student-name m-0">{{ student.name }}{% if show_archive %} <span class="opacity-60 text-xs">(архив)</span>{% endif %}</p>
-                            {% if student.platform_id %}
-                            <p class="student-meta student-platform-id m-0">ID: {{ student.platform_id }}</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap gap-1 mt-1">
-                        {% if student.category %}
-                        <span class="student-tag">{{ student.category }}</span>
-                        {% endif %}
-                        {% if student.school_class %}
-                        <span class="student-tag student-class">{{ student.school_class }} класс</span>
+                        {% if not show_archive %}
+                        <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white" style="background:#06B6D4;"></div>
                         {% endif %}
                     </div>
-                    {% if student.description %}
-                    <p class="text-xs text-text-muted mt-1 m-0 leading-relaxed">
-                        "{{ student.description[:100] }}{% if student.description|length > 100 %}…{% endif %}"
-                    </p>
-                    {% endif %}
-                    <div class="student-insights">
-                        {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.goal_text %}
-                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}Цель: {{ student.goal_text }}</div>
-                        {% elif student.category == 'ЛЕВЕЛАП' and student.goal_text %}
-                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}Цель: {{ student.goal_text }}</div>
-                        {% elif student.target_score %}
-                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}{% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Цель{% endif %}: {{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</div>
-                        {% endif %}
-                        {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
-                        <div>{{ ui_icon('action.clock', 'sm', decorative=true) }}Срок: {{ student.deadline }}</div>
-                        {% endif %}
-                        {% if student.school_class %}
-                        <div>{{ ui_icon('action.school', 'sm', decorative=true) }}Класс: {{ student.school_class }}</div>
-                        {% endif %}
-                        {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.programming_language %}
-                        <div>Язык: {{ student.programming_language }}</div>
-                        {% endif %}
-                        {% if student.diagnostic_level %}
-                        <div>{{ ui_icon('nav.stats', 'sm', decorative=true) }}Диагностика: <span>{{ student.diagnostic_level }}</span></div>
+                    <div>
+                        <h3 class="student-name m-0">{{ student.name }}{% if show_archive %} <span class="opacity-60 text-xs">(архив)</span>{% endif %}</h3>
+                        {% if student.platform_id %}
+                        <p class="student-meta m-0 mt-0.5">ID: {{ student.platform_id }}</p>
                         {% endif %}
                     </div>
-                    </a>
-                    <div class="mt-1.5 pt-1.5" style="border-top: 1px solid var(--color-stroke);">
-                        <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost sm" style="font-size:0.75rem;">Профиль ученика →</a>
-                    </div>
+                </a>
+                {% if student.has_overdue_hw is defined and student.has_overdue_hw %}
+                <div class="w-8 h-8 rounded-full bg-red-50 text-[#FF6B6B] flex items-center justify-center" style="border:1px solid rgba(255,107,107,0.2);">
+                    <i class="ph-fill ph-warning text-lg"></i>
                 </div>
-                {% endfor %}
+                {% endif %}
             </div>
 
-            {% if pagination.pages > 1 %}
-            <div class="pagination">
-                {% if pagination.has_prev %}
-                <a href="{{ url_for('main.dashboard', page=pagination.prev_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">‹ Назад</a>
-                {% else %}
-                <span class="pagination-btn disabled">‹ Назад</span>
+            <div class="flex flex-wrap gap-2 mb-5">
+                {% if student.category %}
+                <span class="student-tag {% if student.category == 'ЕГЭ' %}tag-ege{% elif student.category == 'ОГЭ' %}tag-oge{% endif %}">{{ student.category }}</span>
                 {% endif %}
-                <span class="text-sm font-bold text-text-muted">{{ pagination.page }} / {{ pagination.pages }}</span>
-                {% if pagination.has_next %}
-                <a href="{{ url_for('main.dashboard', page=pagination.next_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">Вперёд ›</a>
-                {% else %}
-                <span class="pagination-btn disabled">Вперёд ›</span>
+                {% if student.school_class %}
+                <span class="student-tag tag-class">{{ student.school_class }} класс</span>
                 {% endif %}
             </div>
-            {% endif %}
-            {% else %}
-            <div class="empty-state">
-                <div class="empty-state-icon">
-                    {% if show_archive %}
-                        {{ ui_icon('nav.archive', 'md', decorative=true, extra_class='ui-icon--only') }}
-                    {% else %}
-                        {{ ui_icon('nav.students', 'md', decorative=true, extra_class='ui-icon--only') }}
+
+            {# Progress section #}
+            <div class="student-progress mb-4">
+                {% if student.target_score %}
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                        {% if student.category == 'ОГЭ' %}Подготовка{% else %}База знаний{% endif %}
+                    </span>
+                    {% if student.diagnostic_level %}
+                    <span class="text-base font-black text-slate-900">{{ student.diagnostic_level }}%</span>
                     {% endif %}
                 </div>
-                <h3 class="empty-state-title">{% if show_archive %}Архив пуст{% else %}Пока нет учеников{% endif %}</h3>
-                <p class="empty-state-description">{% if show_archive %}В архиве пока нет учеников{% else %}Добавьте первого ученика, чтобы начать работу{% endif %}</p>
-                {% if not show_archive %}
-                <div class="empty-state-actions">
-                    {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
-                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent">{{ ui_icon('action.plus', 'sm', decorative=true) }} Добавить ученика</a>
-                    {% endif %}
+                {% if student.diagnostic_level %}
+                <div class="progress-bar-track mb-3">
+                    <div class="progress-bar-fill" style="width:{{ student.diagnostic_level }}%"></div>
                 </div>
                 {% endif %}
+                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                    <i class="ph-fill ph-target text-[#06B6D4] text-base"></i>
+                    Цель: <span class="text-slate-900">{{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</span>
+                </div>
+                {% elif student.goal_text %}
+                <div class="text-xs font-bold text-slate-500 mb-1">Цель:</div>
+                <div class="text-sm font-semibold text-slate-800">{{ student.goal_text }}</div>
+                {% elif student.description %}
+                <div class="text-xs text-slate-500 leading-relaxed">"{{ student.description[:120] }}{% if student.description|length > 120 %}…{% endif %}"</div>
+                {% else %}
+                <div class="text-xs text-slate-400 italic">Нет данных</div>
+                {% endif %}
+            </div>
+
+            {# Quick actions #}
+            <div class="student-actions">
+                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="student-action-btn">
+                    <i class="ph-bold ph-chat-teardrop text-sm"></i> Профиль
+                </a>
+                <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="student-action-btn">
+                    <i class="ph-bold ph-file-text text-sm"></i> Инфо
+                </a>
+                {% if student.student_id %}
+                <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="student-action-btn" style="flex:0 0 36px;max-width:36px;">
+                    <i class="ph-bold ph-chart-line-up text-sm"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if pagination.pages > 1 %}
+    <div class="pagination">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('main.dashboard', page=pagination.prev_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">‹ Назад</a>
+        {% else %}
+        <span class="pagination-btn disabled">‹ Назад</span>
+        {% endif %}
+        <span class="text-sm font-bold text-slate-400">{{ pagination.page }} / {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+        <a href="{{ url_for('main.dashboard', page=pagination.next_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">Вперёд ›</a>
+        {% else %}
+        <span class="pagination-btn disabled">Вперёд ›</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="tactile-card" style="border-radius:28px;">
+        <div class="empty-state">
+            <div class="text-5xl mb-4 opacity-30">
+                <i class="ph-fill ph-{% if show_archive %}archive{% else %}users-three{% endif %}"></i>
+            </div>
+            <h3 class="empty-state-title">{% if show_archive %}Архив пуст{% else %}Пока нет учеников{% endif %}</h3>
+            <p class="empty-state-description">{% if show_archive %}В архиве пока нет учеников{% else %}Добавьте первого ученика, чтобы начать работу{% endif %}</p>
+            {% if not show_archive and current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
+            <div class="empty-state-actions">
+                <a href="{{ url_for('students.student_new') }}" class="neo-button accent">
+                    <i class="ph-bold ph-user-plus text-lg"></i> Добавить ученика
+                </a>
             </div>
             {% endif %}
-        </section>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -255,12 +286,4 @@
     <script src="{{ url_for('static', filename='dashboard-ajax.js') }}"></script>
     <script src="{{ url_for('static', filename='filter-storage.js') }}"></script>
     <script src="{{ url_for('static', filename='filter-state-manager.js') }}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const profileContainer = document.querySelector('.profile-container.theme-creator');
-            if (!profileContainer) {
-                document.body.classList.remove('creator-theme-active');
-            }
-        });
-    </script>
 {% endblock %}

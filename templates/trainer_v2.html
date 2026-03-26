@@ -6,9 +6,6 @@
 {% block body_attrs %}data-cinema-scene="trainer"{% endblock %}
 
 {% block head_css %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
 <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
@@ -18,10 +15,9 @@
 {% block body %}
 {% if not zen_mode %}
 <div class="app-layout">
-    {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+    {% include '_dock_nav.html' %}
+    <main class="app-main">
+        <div class="app-content">
 {% endif %}
 
 <main class="trainer-v2-shell{% if zen_mode %} is-zen{% endif %}">
@@ -111,8 +107,8 @@
 </main>
 
 {% if not zen_mode %}
-        </main>
-    </div>
+        </div>
+    </main>
 </div>
 {% endif %}
 {% endblock %}

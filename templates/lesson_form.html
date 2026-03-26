@@ -1,125 +1,190 @@
-{% extends 'base.html' %}
-{% block title %}{{ title }} · {{ student.name }}{% endblock %}
-{% block head_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<style>
-    .form-hero {
-        margin-bottom: 2rem;
-    }
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} · {{ student.name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
     
-    .form-section {
-        background: var(--surface-1);
-        border: 1px solid var(--stroke-1);
-        border-radius: var(--radius-lg);
-        padding: 2rem;
-        margin-bottom: 2rem;
-    }
-    
-    .form-section-title {
-        font-size: 1.3em;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 1.5rem;
-        padding-bottom: 0.8rem;
-        border-bottom: 1px solid var(--stroke-1);
-    }
-    
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-    }
-    
-    .form-grid-full {
-        grid-column: 1 / -1;
-    }
-    
-    .student-context {
-        background: var(--surface-1);
-        border: 1px solid var(--stroke-1);
-        border-radius: var(--radius-lg);
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-    
-    .student-context h3 {
-        color: var(--text-primary);
-        margin: 0;
-        font-weight: 700;
-    }
-    
-    .tasks-preview {
-        background: var(--surface-1);
-        border: 1px solid var(--stroke-1);
-        border-radius: var(--radius-lg);
-        padding: 2rem;
-        margin-top: 2rem;
-    }
-    
-    .tasks-preview-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-    }
-    
-    .tasks-preview-title {
-        font-size: 1.3em;
-        font-weight: 700;
-        color: var(--text-primary);
-    }
-    
-    .task-preview-card {
-        background: var(--surface-2);
-        border: 1px solid var(--stroke-1);
-        border-radius: var(--radius-sm);
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .task-preview-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-    }
-    
-    .task-preview-number {
-        font-weight: 700;
-        color: var(--accent-1);
-    }
-    
-    .task-preview-content {
-        margin-top: 0.8em;
-        padding: 0.8em;
-        background: var(--surface-3);
-        border-radius: var(--radius-sm);
-        font-size: 0.9em;
-        max-height: 200px;
-        overflow-y: auto;
-    }
-    
-    .task-preview-answer {
-        margin-top: 0.5em;
-        padding: 0.5em;
-        background: rgba(0, 254, 202, 0.12);
-        border-left: 3px solid var(--success);
-        border-radius: var(--radius-sm);
-        font-size: 0.9em;
-    }
-</style>
-{% endblock %}
-{% block head_js %}
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-{% endblock %}
-{% set active_page = 'dashboard' %}
-{% block content %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .form-hero {
+            margin-bottom: 2rem;
+        }
+        
+        .form-section {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .form-section-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid var(--stroke-1);
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .form-grid-full {
+            grid-column: 1 / -1;
+        }
+        
+        .student-context {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .student-context h3 {
+            color: var(--text-primary);
+            margin: 0;
+            font-weight: 700;
+        }
+        
+        .tasks-preview {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .tasks-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .tasks-preview-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .task-preview-card {
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .task-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .task-preview-number {
+            font-weight: 700;
+            color: var(--accent-1);
+        }
+        
+        .task-preview-content {
+            margin-top: 0.8em;
+            padding: 0.8em;
+            background: var(--surface-3);
+            border-radius: var(--radius-sm);
+            font-size: 0.9em;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .task-preview-answer {
+            margin-top: 0.5em;
+            padding: 0.5em;
+            background: rgba(0, 254, 202, 0.12);
+            border-left: 3px solid var(--success);
+            border-radius: var(--radius-sm);
+            font-size: 0.9em;
+        }
+    </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
+        {% set active_local = (active_lesson.lesson_date|to_tz(tz_name)) %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_local.strftime('%d.%m.%Y %H:%M') if active_local else '—' }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
+            </form>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('profile.user', 'sm', decorative=true) }}Профиль</a>
+        </div>
+    </div>
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    {% endif %}
+
+    <div class="app-layout">
+        {% set active_page = 'dashboard' %}
+        {% include '_dock_nav.html' %}
+    <main class="app-main">
+        <div class="app-content">
+        <main class="app-content">
+
         <section class="glass-panel student-context">
             <h3>{{ ui_icon('profile.user', 'sm', decorative=true) }} Ученик: {{ student.name }}</h3>
             <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Вернуться к профилю</a>
@@ -147,8 +212,7 @@
         </section>
         {% endif %}
 
-        <form method="POST"
-              hx-post="" hx-target="body" hx-swap="outerHTML" hx-indicator=".loading-overlay">
+        <form method="POST">
             {{ form.hidden_tag() }}
             
             <section class="form-section">
@@ -357,15 +421,20 @@
             {% endif %}
         </section>
         {% endif %}
-{% endblock %}
-{% block scripts_extra %}
+    </main>
+    </div>
+</div>
+    
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', () => { // Прячем блок ДЗ для вводного урока
             const typeSelect = document.getElementById('lesson_type');
+            // Ищем секцию ДЗ по data-section="homework" - это должна быть только секция с домашним заданием
             const homeworkSection = document.querySelector('section[data-section="homework"]');
             const homeworkField = document.getElementById('homework');
             const homeworkStatusField = document.getElementById('homework_status');
             
+            // Проверяем наличие элементов, но не блокируем выполнение, если секция ДЗ не найдена
             if (!typeSelect) return;
             if (!homeworkSection || !homeworkStatusField) {
                 console.warn('Секция ДЗ не найдена, функционал скрытия ДЗ для вводного урока недоступен');
@@ -378,22 +447,28 @@
 
             function syncHomeworkVisibility() {
                 const isIntroductory = typeSelect.value === 'introductory';
+                // Показываем/скрываем ТОЛЬКО секцию ДЗ, не трогая другие секции
                 if (isIntroductory) {
                     homeworkSection.style.display = 'none';
+                    // Очищаем поля ДЗ при выборе вводного урока
                     if (homeworkField) homeworkField.value = '';
                     if (homeworkStatusField.value !== 'not_assigned') {
                         lastAssignedStatus = homeworkStatusField.value;
                     }
                     homeworkStatusField.value = 'not_assigned';
                 } else {
+                    // Показываем секцию ДЗ при выборе другого типа урока
                     homeworkSection.style.display = '';
+                    // Восстанавливаем предыдущий статус, если был 'not_assigned'
                     if (homeworkStatusField.value === 'not_assigned' && lastAssignedStatus !== 'not_assigned') {
                         homeworkStatusField.value = lastAssignedStatus;
                     }
                 }
             }
 
+            // Инициализируем при загрузке страницы
             syncHomeworkVisibility();
+            // Отслеживаем изменения типа урока
             typeSelect.addEventListener('change', syncHomeworkVisibility);
         });
     </script>
@@ -413,4 +488,43 @@
             }
         });
     </script>
-{% endblock %}
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
+</body>
+</html>

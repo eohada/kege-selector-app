@@ -1,77 +1,196 @@
-{% extends 'base.html' %}
-{% block title %}{{ assignment.title }} - Просмотр работы{% endblock %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ assignment.title }} - Просмотр работы</title>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    <style>
+        .page-hero {
+            background: radial-gradient(900px 420px at 14% 10%, rgba(0, 255, 213, 0.10), transparent 60%),
+                        radial-gradient(900px 420px at 85% 20%, rgba(31, 123, 255, 0.10), transparent 55%);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .hero-top {
+            display:flex;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+        .hero-title {
+            font-size: 2.05rem;
+            font-weight: 900;
+            margin: 0.35rem 0 0 0;
+            letter-spacing: -0.01em;
+            line-height: 1.15;
+        }
+        .hero-meta {
+            margin-top: 0.8rem;
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border-radius: 999px;
+            padding: 0.25rem 0.55rem;
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            font-weight: 900;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+        }
+        .pill--danger { border-color: rgba(255, 77, 107, 0.55); background: rgba(255, 77, 107, 0.10); }
+        .pill--success { border-color: rgba(45, 212, 191, 0.55); background: rgba(45, 212, 191, 0.10); }
+        .pill--warning { border-color: rgba(255, 179, 71, 0.55); background: rgba(255, 179, 71, 0.10); }
+        .pill--accent { border-color: rgba(0, 255, 213, 0.55); background: rgba(0, 255, 213, 0.10); }
+        .meta-strong { color: var(--text-primary); font-weight: 900; }
 
-{% block head_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<style>
-    .page-hero {
-        background: radial-gradient(900px 420px at 14% 10%, rgba(0, 255, 213, 0.10), transparent 60%),
-                    radial-gradient(900px 420px at 85% 20%, rgba(31, 123, 255, 0.10), transparent 55%);
-        border-radius: var(--radius-card);
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        box-shadow: var(--shadow-card);
-    }
-    .hero-top { display:flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
-    .hero-title { font-size: 2.05rem; font-weight: 900; margin: 0.35rem 0 0 0; letter-spacing: -0.01em; line-height: 1.15; }
-    .hero-meta { margin-top: 0.8rem; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; color: var(--color-text-muted); font-size: 0.95rem; }
-    .pill { display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.25rem 0.55rem; border: 1px solid var(--color-stroke); background: rgba(255,255,255,0.02); font-weight: 900; font-size: 0.82rem; color: var(--color-text-primary); }
-    .pill--danger { border-color: rgba(255, 77, 107, 0.55); background: rgba(255, 77, 107, 0.10); }
-    .pill--success { border-color: rgba(45, 212, 191, 0.55); background: rgba(45, 212, 191, 0.10); }
-    .pill--warning { border-color: rgba(255, 179, 71, 0.55); background: rgba(255, 179, 71, 0.10); }
-    .pill--accent { border-color: rgba(0, 255, 213, 0.55); background: rgba(0, 255, 213, 0.10); }
-    .meta-strong { color: var(--color-text-primary); font-weight: 900; }
+        .kpi-grid {
+            margin-top: 1.1rem;
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        @media (max-width: 980px) {
+            .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        .kpi {
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            border-radius: var(--radius-lg);
+            padding: 0.9rem 1rem;
+        }
+        .kpi-label { color: var(--text-muted); font-weight: 800; font-size: 0.9rem; }
+        .kpi-value { margin-top: 0.35rem; font-size: 1.35rem; font-weight: 900; }
 
-    .kpi-grid { margin-top: 1.1rem; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.75rem; }
-    @media (max-width: 980px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    .kpi { background: rgba(255,255,255,0.02); border-radius: var(--radius-card); padding: 0.9rem 1rem; box-shadow: var(--shadow-card); }
-    .kpi-label { color: var(--color-text-muted); font-weight: 800; font-size: 0.9rem; }
-    .kpi-value { margin-top: 0.35rem; font-size: 1.35rem; font-weight: 900; }
+        .layout {
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 1rem;
+            align-items: start;
+        }
+        @media (max-width: 980px) {
+            .layout { grid-template-columns: 1fr; }
+        }
 
-    .layout { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 1rem; align-items: start; }
-    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+        .card {
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-1);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+        }
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 900;
+            margin: 0;
+        }
+        .card-sub {
+            color: var(--text-muted);
+            margin-top: 0.4rem;
+            line-height: 1.5;
+        }
 
-    .card { background: var(--color-bg-surface); border-radius: var(--radius-card); padding: 1rem; box-shadow: var(--shadow-card); }
-    .card-title { font-size: 1.2rem; font-weight: 900; margin: 0; }
-    .card-sub { color: var(--color-text-muted); margin-top: 0.4rem; line-height: 1.5; }
+        .filters {
+            margin-top: 0.9rem;
+            display: grid;
+            grid-template-columns: 1fr 1.1fr auto;
+            gap: 0.75rem;
+            align-items: end;
+        }
+        @media (max-width: 980px) {
+            .filters { grid-template-columns: 1fr; }
+        }
+        .filter-label { color: var(--text-muted); font-weight: 800; font-size: 0.9rem; margin-bottom: 0.35rem; display:block; }
 
-    .filters { margin-top: 0.9rem; display: grid; grid-template-columns: 1fr 1.1fr auto; gap: 0.75rem; align-items: end; }
-    @media (max-width: 980px) { .filters { grid-template-columns: 1fr; } }
-    .filter-label { color: var(--color-text-muted); font-weight: 800; font-size: 0.9rem; margin-bottom: 0.35rem; display:block; }
+        .submissions {
+            margin-top: 0.9rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+        .sub-card {
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            border-radius: var(--radius-lg);
+            padding: 0.9rem 1rem;
+        }
+        .sub-head {
+            display:flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+        .sub-name { font-weight: 900; }
+        .sub-meta { margin-top: 0.35rem; color: var(--text-muted); font-size: 0.92rem; display:flex; gap: .65rem; flex-wrap: wrap; align-items: center; }
+        .status-badge { border-radius: 999px; padding: 0.25rem 0.55rem; font-weight: 900; font-size: 0.82rem; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); }
+        .status-assigned { border-color: rgba(255,255,255,0.18); }
+        .status-in_progress { border-color: rgba(31,123,255,0.45); background: rgba(31,123,255,0.12); }
+        .status-submitted { border-color: rgba(0,255,213,0.55); background: rgba(0,255,213,0.10); }
+        .status-late { border-color: rgba(255,179,71,0.55); background: rgba(255,179,71,0.10); }
+        .status-graded { border-color: rgba(45,212,191,0.55); background: rgba(45,212,191,0.10); }
+        .status-returned { border-color: rgba(255,179,71,0.55); background: rgba(255,179,71,0.10); }
 
-    .submissions { margin-top: 0.9rem; display: grid; gap: 0.75rem; }
-    .sub-card { background: rgba(255,255,255,0.02); border-radius: var(--radius-card); padding: 0.9rem 1rem; box-shadow: var(--shadow-card); }
-    .sub-head { display:flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; align-items: flex-start; }
-    .sub-name { font-weight: 900; }
-    .sub-meta { margin-top: 0.35rem; color: var(--color-text-muted); font-size: 0.92rem; display:flex; gap: .65rem; flex-wrap: wrap; align-items: center; }
-    .status-badge { border-radius: 999px; padding: 0.25rem 0.55rem; font-weight: 900; font-size: 0.82rem; border: 1px solid var(--color-stroke); background: rgba(255,255,255,0.02); }
-    .status-assigned { border-color: rgba(255,255,255,0.18); }
-    .status-in_progress { border-color: rgba(31,123,255,0.45); background: rgba(31,123,255,0.12); }
-    .status-submitted { border-color: rgba(0,255,213,0.55); background: rgba(0,255,213,0.10); }
-    .status-late { border-color: rgba(255,179,71,0.55); background: rgba(255,179,71,0.10); }
-    .status-graded { border-color: rgba(45,212,191,0.55); background: rgba(45,212,191,0.10); }
-    .status-returned { border-color: rgba(255,179,71,0.55); background: rgba(255,179,71,0.10); }
+        .task-list { margin-top: 0.9rem; display: grid; gap: 0.75rem; }
+        .task {
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            border-radius: var(--radius-lg);
+            padding: 0.9rem 1rem;
+        }
+        .task-head { display:flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; align-items: flex-start; }
+        .task-title { font-weight: 900; color: var(--text-primary); }
+        .task-sub { color: var(--text-muted); font-size: 0.92rem; margin-top: 0.3rem; }
+        .task-body { margin-top: 0.75rem; line-height: 1.8; }
+        details.task-details > summary {
+            list-style: none;
+            cursor: pointer;
+            display:flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: .6rem;
+        }
+        details.task-details > summary::-webkit-details-marker { display:none; }
+        .summary-hint { color: var(--text-muted); font-weight: 800; }
+    </style>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+</head>
+<body>
+    <div class="app-layout">
+        {% set active_page = 'assignments' %}
+        {% include '_dock_nav.html' %}
+    <main class="app-main">
+        <div class="app-content">
+        <main class="app-content">
 
-    .task-list { margin-top: 0.9rem; display: grid; gap: 0.75rem; }
-    .task { background: rgba(255,255,255,0.02); border-radius: var(--radius-card); padding: 0.9rem 1rem; box-shadow: var(--shadow-card); }
-    .task-head { display:flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; align-items: flex-start; }
-    .task-title { font-weight: 900; color: var(--color-text-primary); }
-    .task-sub { color: var(--color-text-muted); font-size: 0.92rem; margin-top: 0.3rem; }
-    .task-body { margin-top: 0.75rem; line-height: 1.8; }
-    details.task-details > summary { list-style: none; cursor: pointer; display:flex; justify-content: space-between; align-items: center; gap: .6rem; }
-    details.task-details > summary::-webkit-details-marker { display:none; }
-    .summary-hint { color: var(--color-text-muted); font-weight: 800; }
-</style>
-{% endblock %}
-
-{% block head_js %}
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-{% endblock %}
-
-{% set active_page = 'assignments' %}
-
-{% block content %}
+        <main style="margin-top: 1.25rem;">
             <section class="page-hero">
                 <div class="hero-top">
                     <div style="min-width: 0;">
@@ -103,7 +222,7 @@
                             {{ ui_icon('action.copy', 'sm') }} Дублировать
                         </button>
                         {% if assignment.is_active %}
-                        <button type="button" class="neo-button ghost" onclick="archiveAssignment({{ assignment.assignment_id }})" style="color: var(--color-error); display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <button type="button" class="neo-button ghost" onclick="archiveAssignment({{ assignment.assignment_id }})" style="color: var(--danger); display: inline-flex; align-items: center; gap: 0.4rem;">
                             {{ ui_icon('nav.archive', 'sm') }} В архив
                         </button>
                         {% endif %}
@@ -115,12 +234,30 @@
                 </div>
 
                 <div class="kpi-grid">
-                    <div class="kpi"><div class="kpi-label">Нужно проверить</div><div class="kpi-value">{{ (counts.needs_grading if counts is defined else 0) }}</div></div>
-                    <div class="kpi"><div class="kpi-label">Сдано</div><div class="kpi-value">{{ (counts.submitted if counts is defined else 0) }}</div></div>
-                    <div class="kpi"><div class="kpi-label">На доработке</div><div class="kpi-value">{{ (counts.returned if counts is defined else 0) }}</div></div>
-                    <div class="kpi"><div class="kpi-label">В процессе</div><div class="kpi-value">{{ (counts.in_progress if counts is defined else 0) }}</div></div>
-                    <div class="kpi"><div class="kpi-label">Назначено</div><div class="kpi-value">{{ (counts.assigned if counts is defined else 0) }}</div></div>
-                    <div class="kpi"><div class="kpi-label">Проверено</div><div class="kpi-value">{{ (counts.graded if counts is defined else 0) }}</div></div>
+                    <div class="kpi">
+                        <div class="kpi-label">Нужно проверить</div>
+                        <div class="kpi-value">{{ (counts.needs_grading if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Сдано</div>
+                        <div class="kpi-value">{{ (counts.submitted if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">На доработке</div>
+                        <div class="kpi-value">{{ (counts.returned if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">В процессе</div>
+                        <div class="kpi-value">{{ (counts.in_progress if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Назначено</div>
+                        <div class="kpi-value">{{ (counts.assigned if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Проверено</div>
+                        <div class="kpi-value">{{ (counts.graded if counts is defined else 0) }}</div>
+                    </div>
                 </div>
             </section>
 
@@ -145,8 +282,12 @@
                             <input class="neo-input" id="student" name="student" value="{{ student_query }}" placeholder="Поиск по имени…">
                         </div>
                         <div style="display:flex; gap:.6rem; justify-content:flex-end; flex-wrap:wrap;">
-                            <button type="submit" class="neo-button accent"><i class="fas fa-filter ui-icon ui-icon--sm"></i> Применить</button>
-                            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button outline" style="text-decoration:none;"><i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> Сброс</a>
+                            <button type="submit" class="neo-button accent">
+                                <i class="fas fa-filter ui-icon ui-icon--sm"></i> Применить
+                            </button>
+                            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button outline" style="text-decoration:none;">
+                                <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> Сброс
+                            </a>
                         </div>
                     </form>
 
@@ -159,9 +300,13 @@
                             <input type="hidden" name="source" value="assignments">
                             <input type="hidden" name="assignment_type" value="{{ assignment.assignment_type }}">
                             <input type="hidden" name="student" value="">
-                            <button type="submit" class="neo-button ghost" style="color: var(--color-warning);"><i class="fas fa-undo ui-icon ui-icon--sm"></i> Вернуть все сданные на доработку</button>
+                            <button type="submit" class="neo-button ghost" style="color: var(--warning);">
+                                <i class="fas fa-undo ui-icon ui-icon--sm"></i> Вернуть все сданные на доработку
+                            </button>
                         </form>
-                        <div style="color: var(--color-text-muted); font-size: 0.92rem; line-height: 1.45;">Массовое действие применяется только к сдачам со статусом «Сдано».</div>
+                        <div style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.45;">
+                            Массовое действие применяется только к сдачам со статусом «Сдано».
+                        </div>
                     </div>
                     {% endif %}
 
@@ -190,23 +335,36 @@
                                             {% endif %}
                                         </div>
                                     </div>
+
                                     <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:flex-end;">
-                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="neo-button outline sm" style="text-decoration:none;">Открыть</a>
+                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="neo-button outline sm" style="text-decoration:none;">
+                                            Открыть
+                                        </a>
                                         {% if submission.status in ['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW'] %}
-                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="neo-button accent sm" style="text-decoration:none;">Проверить</a>
+                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="neo-button accent sm" style="text-decoration:none;">
+                                            Проверить
+                                        </a>
                                         {% endif %}
                                     </div>
                                 </div>
+
                                 {% if submission.status == 'GRADED' and submission.total_score is not none and submission.max_score is not none %}
-                                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--color-stroke); display:flex; justify-content: space-between; gap: .75rem; flex-wrap: wrap; align-items:center;">
-                                    <div style="color: var(--color-text-muted);">Итог: <span class="meta-strong">{{ submission.total_score }}/{{ submission.max_score }}</span></div>
-                                    <span class="pill pill--success">{{ "%.1f"|format(submission.percentage or 0) }}%</span>
+                                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--stroke-1); display:flex; justify-content: space-between; gap: .75rem; flex-wrap: wrap; align-items:center;">
+                                    <div style="color: var(--text-muted);">
+                                        Итог:
+                                        <span class="meta-strong">{{ submission.total_score }}/{{ submission.max_score }}</span>
+                                    </div>
+                                    <span class="pill pill--success">
+                                        {{ "%.1f"|format(submission.percentage or 0) }}%
+                                    </span>
                                 </div>
                                 {% endif %}
                             </div>
                             {% endfor %}
                         {% else %}
-                            <div style="margin-top: 0.9rem; color: var(--color-text-muted);">По текущим фильтрам сдач нет.</div>
+                            <div style="margin-top: 0.9rem; color: var(--text-muted);">
+                                По текущим фильтрам сдач нет.
+                            </div>
                         {% endif %}
                     </div>
                 </section>
@@ -233,63 +391,113 @@
                                         <span class="summary-hint">Открыть</span>
                                     </div>
                                 </summary>
-                                <div class="task-body">{{ task.task.content_html|sanitize_html }}</div>
+                                <div class="task-body">
+                                    {{ task.task.content_html|sanitize_html }}
+                                </div>
                             </details>
                         </div>
                         {% endfor %}
                     </div>
                 </section>
             </div>
-{% endblock %}
+        </main>
+    </main>
+    </div>
+</div>
 
-{% block scripts_extra %}
     <script>
         (function () {
             'use strict';
+
             const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') || { getAttribute: () => null }).getAttribute('content') || '';
 
             function toastAny(type, msg) {
-                try { const t = (window.toast || (typeof toast !== 'undefined' ? toast : null)); if (!t) return; if (type === 'success') t.success(msg); else if (type === 'warning') t.warning(msg); else if (type === 'info') t.info(msg); else t.error(msg); } catch (e) {}
+                try {
+                    const t = (window.toast || (typeof toast !== 'undefined' ? toast : null));
+                    if (!t) return;
+                    if (type === 'success') t.success(msg);
+                    else if (type === 'warning') t.warning(msg);
+                    else if (type === 'info') t.info(msg);
+                    else t.error(msg);
+                } catch (e) {}
             }
 
             async function postJson(url, payload) {
                 const headers = { 'Content-Type': 'application/json' };
                 if (CSRF_TOKEN) headers['X-CSRFToken'] = CSRF_TOKEN;
-                const res = await fetch(url, { method: 'POST', headers, body: payload ? JSON.stringify(payload) : JSON.stringify({}), credentials: 'same-origin' });
-                let data = null; try { data = await res.json(); } catch (e) { data = null; }
+
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: payload ? JSON.stringify(payload) : JSON.stringify({}),
+                    credentials: 'same-origin',
+                });
+
+                let data = null;
+                try { data = await res.json(); } catch (e) { data = null; }
                 return { ok: res.ok, status: res.status, data };
             }
 
             window.archiveAssignment = async function (assignmentId) {
                 try {
                     if (!assignmentId) return;
-                    if (!window.confirm('Архивировать работу?')) return;
-                    const { ok, data } = await postJson('/assignments/' + encodeURIComponent(String(assignmentId)) + '/archive', {});
-                    if (!ok || !data || !data.success) { toastAny('error', (data && data.error) ? data.error : 'Не удалось архивировать.'); return; }
+                    const confirmed = window.confirm('Архивировать работу? Она исчезнет из активного списка (но останется в архиве).');
+                    if (!confirmed) return;
+
+                    const url = '/assignments/' + encodeURIComponent(String(assignmentId)) + '/archive';
+                    const { ok, data } = await postJson(url, {});
+                    if (!ok || !data || !data.success) {
+                        toastAny('error', (data && data.error) ? data.error : 'Не удалось архивировать.');
+                        return;
+                    }
                     toastAny('success', 'Работа отправлена в архив.');
                     window.location.href = '/assignments?status=archived&archived=1';
-                } catch (e) { toastAny('error', 'Ошибка архивации.'); }
+                } catch (e) {
+                    toastAny('error', 'Ошибка архивации.');
+                }
             };
 
             window.duplicateAssignment = async function (assignmentId) {
                 try {
                     if (!assignmentId) return;
-                    if (!window.confirm('Создать копию работы и назначить тем же ученикам (дедлайн +7 дней)?')) return;
-                    const { ok, data } = await postJson('/assignments/' + encodeURIComponent(String(assignmentId)) + '/duplicate', {});
-                    if (!ok || !data || !data.success) { toastAny('error', (data && data.error) ? data.error : 'Не удалось создать копию.'); return; }
+                    const confirmed = window.confirm('Создать копию работы и назначить тем же ученикам (дедлайн +7 дней)?');
+                    if (!confirmed) return;
+
+                    const url = '/assignments/' + encodeURIComponent(String(assignmentId)) + '/duplicate';
+                    const { ok, data } = await postJson(url, {});
+                    if (!ok || !data || !data.success) {
+                        toastAny('error', (data && data.error) ? data.error : 'Не удалось создать копию.');
+                        return;
+                    }
+                    const newId = data.assignment_id;
                     toastAny('success', 'Копия создана. Открываю…');
-                    if (data.assignment_id) { window.location.href = '/assignments/' + encodeURIComponent(String(data.assignment_id)); } else { window.location.reload(); }
-                } catch (e) { toastAny('error', 'Ошибка при создании копии.'); }
+                    if (newId) {
+                        window.location.href = '/assignments/' + encodeURIComponent(String(newId));
+                    } else {
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    toastAny('error', 'Ошибка при создании копии.');
+                }
             };
         })();
 
+        // Initialize KaTeX
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof renderMathInElement !== 'undefined') {
                 renderMathInElement(document.body, {
-                    delimiters: [{left: '$$', right: '$$', display: true},{left: '$', right: '$', display: false},{left: '\\(', right: '\\)', display: false},{left: '\\[', right: '\\]', display: true}],
-                    throwOnError: false, trust: true, ignoreClass: 'katex'
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false,
+                    trust: true,
+                    ignoreClass: 'katex'
                 });
             }
         });
     </script>
-{% endblock %}
+</body>
+</html>

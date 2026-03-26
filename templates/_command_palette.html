@@ -1,0 +1,92 @@
+{# Command Palette — Ctrl+K Global Search #}
+<div id="cmdPalette" class="cmd-palette-overlay" onclick="if(event.target===this)this.classList.remove('active');">
+    <div class="cmd-palette" x-data="cmdPalette()" @keydown.escape.window="close($el)">
+        <input class="cmd-palette-input"
+               type="text"
+               placeholder="Поиск по платформе..."
+               x-model="query"
+               @input="search()"
+               autofocus>
+        <div class="cmd-palette-body">
+            <template x-if="!query">
+                <div>
+                    <div class="cmd-palette-group-title">Быстрые действия</div>
+                    {% if current_user and current_user.is_authenticated %}
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
+                    <a href="{{ url_for('main.dashboard') }}" class="cmd-palette-item">
+                        <i class="ph-bold ph-users-three text-base text-slate-400"></i> Перейти к ученикам
+                    </a>
+                    <a href="{{ url_for('schedule.schedule') }}" class="cmd-palette-item">
+                        <i class="ph-bold ph-calendar-blank text-base text-slate-400"></i> Расписание
+                    </a>
+                    {% if has_permission(current_user, 'assignment.grade') %}
+                    <a href="{{ url_for('lessons.review_queue') }}" class="cmd-palette-item">
+                        <i class="ph-bold ph-tray text-base text-slate-400"></i> Очередь проверки
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('task_generator.task_generator') }}" class="cmd-palette-item">
+                        <i class="ph-bold ph-magic-wand text-base text-slate-400"></i> Генератор задач
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.user_profile') }}" class="cmd-palette-item">
+                        <i class="ph-bold ph-user text-base text-slate-400"></i> Мой профиль
+                    </a>
+                    {% endif %}
+                </div>
+            </template>
+            <template x-if="query && results.length === 0 && !loading">
+                <div class="empty-state" style="padding:2rem;">
+                    <div style="font-size:2rem;opacity:0.3;">🔍</div>
+                    <p style="color:#94A3B8;font-size:0.875rem;margin-top:0.5rem;">Ничего не найдено</p>
+                </div>
+            </template>
+            <template x-if="results.length > 0">
+                <div>
+                    <template x-for="r in results" :key="r.url">
+                        <a :href="r.url" class="cmd-palette-item">
+                            <i class="ph-bold ph-magnifying-glass text-base text-slate-400"></i>
+                            <span x-text="r.title"></span>
+                        </a>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        var el = document.getElementById('cmdPalette');
+        el.classList.toggle('active');
+        if (el.classList.contains('active')) {
+            setTimeout(function() {
+                var inp = el.querySelector('.cmd-palette-input');
+                if (inp) inp.focus();
+            }, 50);
+        }
+    }
+});
+
+function cmdPalette() {
+    return {
+        query: '',
+        results: [],
+        loading: false,
+        close(el) {
+            document.getElementById('cmdPalette').classList.remove('active');
+        },
+        search() {
+            var self = this;
+            if (!self.query || self.query.length < 2) { self.results = []; return; }
+            self.loading = true;
+            fetch('/api/search?q=' + encodeURIComponent(self.query))
+                .then(function(r) { return r.ok ? r.json() : {results:[]}; })
+                .then(function(d) { self.results = d.results || []; })
+                .catch(function() { self.results = []; })
+                .finally(function() { self.loading = false; });
+        }
+    };
+}
+</script>

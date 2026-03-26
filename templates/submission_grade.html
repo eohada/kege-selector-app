@@ -1,54 +1,211 @@
-{% extends 'base.html' %}
-{% block title %}Проверка работы - {{ assignment.title }}{% endblock %}
-
-{% block head_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<style>
-    .grade-header {
-        background: var(--color-bg-surface);
-        border-radius: var(--radius-card);
-        padding: 2rem;
-        margin-bottom: 1.5rem;
-        box-shadow: var(--shadow-card);
-    }
-    .grade-header h1 { font-size: 2em; font-weight: 800; margin-bottom: 1rem; }
-    .student-info { display: flex; gap: 2rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-stroke); }
-    .task-card { background: var(--color-bg-surface); border-radius: var(--radius-card); padding: 1.5rem 1.75rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-card); }
-    .task-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-stroke); }
-    .task-content { margin-bottom: 1.25rem; line-height: 1.8; padding-right: 0.5rem; }
-    .answer-section { background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin-top: 1rem; margin-bottom: 0; min-height: 0; }
-    .score-input-group { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
-    .score-input { width: 80px; padding: 0.5rem; border: 2px solid var(--color-stroke); border-radius: var(--radius-sm); font-size: 1.1em; font-weight: 700; text-align: center; }
-    .score-input:focus { outline: none; border-color: var(--color-accent); }
-    .max-score { color: var(--color-text-muted); }
-    .comment-input { width: 100%; min-height: 80px; padding: 0.75rem; border: 2px solid var(--color-stroke); border-radius: var(--radius-sm); font-family: inherit; resize: vertical; margin-top: 0.5rem; }
-    .feedback-section { margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--color-stroke); }
-    .submit-section { position: sticky; bottom: 0; width: 100%; max-width: 100%; box-sizing: border-box; background: var(--color-bg-surface); border-radius: var(--radius-card); padding: 1.5rem 1.75rem; margin-top: 2rem; margin-left: 0; margin-right: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; box-shadow: var(--shadow-card); }
-    .total-score { font-size: 1.5em; font-weight: 800; color: var(--color-accent); }
-    .student-answer-value { display: block; min-height: 0; padding: 0.5rem 0.75rem; white-space: pre-wrap; background: var(--color-bg-surface); border-radius: var(--radius-sm); border: 1px solid var(--color-stroke); font-size: 1rem; line-height: 1.5; margin-top: 0.35rem; }
-    .grade-page-inner { padding: 0 0 2rem; max-width: 100%; overflow: visible; }
-    #grade-form { width: 100%; max-width: 100%; overflow: visible; }
-    .task-card .answer-section { margin-top: 1rem; }
-    #grade-form .comment-input { min-height: 60px; }
-    button:disabled.neo-button { opacity: 0.6; cursor: not-allowed; }
-</style>
-{% endblock %}
-
-{% block head_js %}
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-{% endblock %}
-
-{% set active_page = 'assignments' %}
-
-{% block content %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка работы - {{ assignment.title }}</title>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
+    {% include '_ux_enhancements.html' %}
+    
+    <style>
+        .grade-header {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .grade-header h1 {
+            font-size: 2em;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+        
+        .student-info {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--stroke-1);
+        }
+        
+        .task-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--stroke-1);
+        }
+        
+        .task-content {
+            margin-bottom: 1.25rem;
+            line-height: 1.8;
+            padding-right: 0.5rem;
+        }
+        
+        .answer-section {
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            padding: 1rem 1.25rem;
+            margin-top: 1rem;
+            margin-bottom: 0;
+            min-height: 0;
+        }
+        
+        .score-input-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .score-input {
+            width: 80px;
+            padding: 0.5rem;
+            border: 2px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            font-size: 1.1em;
+            font-weight: 700;
+            text-align: center;
+        }
+        
+        .score-input:focus {
+            outline: none;
+            border-color: var(--accent-1);
+        }
+        
+        .max-score {
+            color: var(--text-muted);
+        }
+        
+        .comment-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 0.75rem;
+            border: 2px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            resize: vertical;
+            margin-top: 0.5rem;
+        }
+        
+        .feedback-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--stroke-1);
+        }
+        
+        .submit-section {
+            position: sticky;
+            bottom: 0;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem 1.75rem;
+            margin-top: 2rem;
+            margin-left: 0;
+            margin-right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .total-score {
+            font-size: 1.5em;
+            font-weight: 800;
+            color: var(--accent-1);
+        }
+        /* Компактный блок ответа ученика — не растягивать по высоте */
+        .student-answer-value {
+            display: block;
+            min-height: 0;
+            padding: 0.5rem 0.75rem;
+            white-space: pre-wrap;
+            background: var(--surface-1);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--stroke-1);
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-top: 0.35rem;
+        }
+        /* Отступы страницы проверки */
+        .grade-page-inner {
+            padding: 0 0 2rem;
+            max-width: 100%;
+            overflow: visible;
+        }
+        #grade-form {
+            width: 100%;
+            max-width: 100%;
+            overflow: visible;
+        }
+        .grade-header {
+            margin-bottom: 1.5rem;
+        }
+        .task-card .answer-section {
+            margin-top: 1rem;
+        }
+        #grade-form .comment-input {
+            min-height: 60px;
+        }
+        button:disabled.neo-button {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+</head>
+<body>
+    <div class="app-layout">
+        {% set active_page = 'assignments' %}
+        {% include '_dock_nav.html' %}
+    <main class="app-main">
+        <div class="app-content">
+        <main class="app-content">
         <div class="grade-page-inner">
         <p style="margin-bottom: 1.25rem;"><a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.5rem 1rem; font-weight: 600;">{{ ui_icon('action.chevron_left', 'sm') }} К работе</a></p>
 
         <div class="grade-header">
             <h1 style="margin-bottom: 1rem;">{{ assignment.title }}</h1>
-            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--color-bg-surface-alt); border-radius: var(--radius-card); border: 1px solid var(--color-stroke);">
-                <span style="font-size: 0.9em; color: var(--color-text-muted); font-weight: 600;">Статус работы:</span>
+            <!-- Итоговый статус работы — крупно и заметно -->
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                <span style="font-size: 0.9em; color: var(--text-muted); font-weight: 600;">Статус работы:</span>
                 <span class="status-badge status-{{ submission.status.lower() }}{% if display_status_class %} {{ display_status_class }}{% endif %}" style="padding: 0.4rem 0.9rem; border-radius: 999px; font-weight: 700; font-size: 0.95em;">
                     {% if display_status_label %}{{ display_status_label }}
                     {% elif submission.status == 'ASSIGNED' %}Назначено
@@ -63,20 +220,38 @@
                 {% if submission.is_overtime %}<span style="padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.8em; font-weight: 600; background: rgba(245, 158, 11, 0.2); color: #f59e0b;">С превышением времени</span>{% endif %}
             </div>
             <div class="student-info" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.25rem; align-items: start;">
-                <div><div style="font-size: 0.85em; color: var(--color-text-muted); margin-bottom: 0.2rem;">Ученик</div><div style="font-weight: 700; font-size: 1.1em;">{{ submission.student.name }}</div></div>
-                {% if assignment.deadline %}<div><div style="font-size: 0.85em; color: var(--color-text-muted); margin-bottom: 0.2rem;">Дедлайн</div><div style="font-weight: 600;">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div></div>{% endif %}
-                {% if submission.submitted_at %}<div><div style="font-size: 0.85em; color: var(--color-text-muted); margin-bottom: 0.2rem;">Сдано</div><div style="font-weight: 600;">{{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</div></div>{% endif %}
-                <div><div style="font-size: 0.85em; color: var(--color-text-muted); margin-bottom: 0.2rem;">Попытки</div><div style="font-weight: 600;">{{ attempts_used }} / {{ effective_max_attempts }}{% if attempts_per_task %} <span style="font-size: 0.8em; color: var(--color-text-muted);">(по заданию)</span>{% endif %}</div></div>
+                <div>
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.2rem;">Ученик</div>
+                    <div style="font-weight: 700; font-size: 1.1em;">{{ submission.student.name }}</div>
+                </div>
+                {% if assignment.deadline %}
+                <div>
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.2rem;">Дедлайн</div>
+                    <div style="font-weight: 600;">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
+                </div>
+                {% endif %}
+                {% if submission.submitted_at %}
+                <div>
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.2rem;">Сдано</div>
+                    <div style="font-weight: 600;">{{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</div>
+                </div>
+                {% endif %}
+                <div>
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.2rem;">Попытки</div>
+                    <div style="font-weight: 600;">{{ attempts_used }} / {{ effective_max_attempts }}{% if attempts_per_task %} <span style="font-size: 0.8em; color: var(--text-muted);">(по заданию)</span>{% endif %}</div>
+                </div>
             </div>
         </div>
-
+        
         <form id="grade-form">
             {% for task_item in tasks_data %}
             <div class="task-card" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
                     <div>
-                        <div style="font-size: 1.2em; font-weight: 700; color: var(--color-accent);">Задание {{ loop.index }}</div>
-                        <div style="font-size: 0.9em; color: var(--color-text-muted); margin-top: 0.25rem;">
+                        <div style="font-size: 1.2em; font-weight: 700; color: var(--accent-1);">
+                            Задание {{ loop.index }}
+                        </div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">
                             Максимальный балл: {{ task_item.assignment_task.max_score }}
                             {% if attempts_per_task and task_item.max_attempts_for_task is defined %}
                             <span style="margin-left: 0.5rem;">· Попытки по заданию: {{ task_item.task_attempts_used }} / {{ task_item.max_attempts_for_task }}</span>
@@ -84,38 +259,45 @@
                         </div>
                     </div>
                     {% if task_item.assignment_task.requires_manual_grading %}
-                    <span class="badge" style="background: var(--color-warning); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm);">Ручная проверка</span>
+                    <span class="badge" style="background: var(--warning); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm);">
+                        Ручная проверка
+                    </span>
                     {% else %}
-                    <span class="badge" style="background: var(--color-success); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm);">Авто-проверка</span>
+                    <span class="badge" style="background: var(--success); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm);">
+                        Авто-проверка
+                    </span>
                     {% endif %}
                 </div>
-
+                
                 <div class="task-content">
-                    {% if task_item.task and task_item.task.content_html %}{{ task_item.task.content_html|task_content_absolute_urls|sanitize_html }}{% else %}<p style="color: var(--color-text-muted);">Текст задания недоступен.</p>{% endif %}
+                    {% if task_item.task and task_item.task.content_html %}{{ task_item.task.content_html|task_content_absolute_urls|sanitize_html }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
                 </div>
-
+                
                 <div class="answer-section">
                     <div style="font-weight: 600; margin-bottom: 0.25rem;">Ответ ученика:</div>
                     <div class="student-answer-value">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
                     {% set effective_answer = task_item.assignment_task.answer_override or (task_item.task.answer if task_item.task else '') %}
                     {% if effective_answer %}
                     <div style="margin-top: 0.75rem;">
-                        <div style="font-size: 0.9em; font-weight: 600; color: var(--color-text-muted); margin-bottom: 0.2rem;">Правильный ответ:</div>
+                        <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Правильный ответ:</div>
                         <div class="student-answer-value" style="background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.4);">{{ effective_answer }}</div>
                     </div>
                     {% endif %}
                     {% if task_item.answer and task_item.answer.student_code %}
                     <div style="margin-top: 0.75rem;">
-                        <div style="font-size: 0.9em; font-weight: 600; color: var(--color-text-muted); margin-bottom: 0.2rem;">Код ученика (Python){% if task_item.answer.student_code_saved_at %} — сохранён {{ task_item.answer.student_code_saved_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}:</div>
-                        <pre class="student-code-block" style="margin: 0; padding: 0.75rem; background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: var(--radius-sm); font-size: 0.85rem; font-family: 'Consolas', 'Monaco', monospace; white-space: pre-wrap; word-break: break-word; max-height: 20rem; overflow: auto;">{{ task_item.answer.student_code }}</pre>
+                        <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Код ученика (Python){% if task_item.answer.student_code_saved_at %} — сохранён {{ task_item.answer.student_code_saved_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}:</div>
+                        <pre class="student-code-block" style="margin: 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; font-family: 'Consolas', 'Monaco', monospace; white-space: pre-wrap; word-break: break-word; max-height: 20rem; overflow: auto;">{{ task_item.answer.student_code }}</pre>
                     </div>
                     {% endif %}
                     {% if task_item.answer and task_item.answer.files %}
                     <div style="margin-top: 0.75rem;">
-                        <div style="font-size: 0.9em; font-weight: 600; color: var(--color-text-muted); margin-bottom: 0.4rem;">Прикреплённые файлы ученика:</div>
+                        <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem;">Прикреплённые файлы ученика:</div>
                         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                             {% for file_info in task_item.answer.files %}
-                            <a href="{{ file_info.url if file_info is mapping else file_info }}" target="_blank" download class="neo-button outline sm" style="display: inline-flex; align-items: center; gap: 0.35rem; text-decoration: none; font-size: 0.85rem;">
+                            <a href="{{ file_info.url if file_info is mapping else file_info }}"
+                               target="_blank" download
+                               class="neo-button outline sm"
+                               style="display: inline-flex; align-items: center; gap: 0.35rem; text-decoration: none; font-size: 0.85rem;">
                                 {{ ui_icon('action.backup', 'sm') }}
                                 {{ file_info.name if file_info is mapping and file_info.name else 'Скачать файл' }}
                             </a>
@@ -124,30 +306,50 @@
                     </div>
                     {% endif %}
                     {% if task_item.answer and task_item.answer.is_correct is not none %}
-                    <div style="margin-top: 0.75rem; padding: 0.5rem; background: {% if task_item.answer.is_correct %}var(--color-success){% else %}var(--color-error){% endif %}; color: white; border-radius: var(--radius-sm); font-weight: 600;">
+                    <div style="margin-top: 0.75rem; padding: 0.5rem; background: {% if task_item.answer.is_correct %}var(--success){% else %}var(--danger){% endif %}; color: white; border-radius: var(--radius-sm); font-weight: 600;">
                         {% if task_item.answer.is_correct %}{{ ui_icon('action.check', 'sm') }} Правильно{% else %}{{ ui_icon('action.close', 'sm') }} Неправильно{% endif %}
                         (Авто-проверка: {{ task_item.answer.score }}/{{ task_item.assignment_task.max_score }})
                     </div>
                     {% endif %}
-
+                    
                     <div class="score-input-group">
                         <label style="font-weight: 600;">Балл:</label>
-                        <input type="number" class="score-input" name="score_{{ task_item.assignment_task.assignment_task_id }}" value="{{ task_item.answer.score if task_item.answer and task_item.answer.score is not none else task_item.assignment_task.max_score if task_item.answer and task_item.answer.is_correct else 0 }}" min="0" max="{{ task_item.assignment_task.max_score }}" data-max="{{ task_item.assignment_task.max_score }}" required>
+                        <input 
+                            type="number" 
+                            class="score-input" 
+                            name="score_{{ task_item.assignment_task.assignment_task_id }}"
+                            value="{{ task_item.answer.score if task_item.answer and task_item.answer.score is not none else task_item.assignment_task.max_score if task_item.answer and task_item.answer.is_correct else 0 }}"
+                            min="0"
+                            max="{{ task_item.assignment_task.max_score }}"
+                            data-max="{{ task_item.assignment_task.max_score }}"
+                            required
+                        >
                         <span class="max-score">/ {{ task_item.assignment_task.max_score }}</span>
                     </div>
-
+                    
                     <div style="margin-top: 1rem;">
                         <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Комментарий к задаче:</label>
-                        <p style="font-size: 0.85em; color: var(--color-text-muted); margin: 0 0 0.5rem 0;">Ученик увидит этот комментарий при выполнении. Можно сохранить кнопкой «Сохранить комментарии» без завершения проверки.</p>
-                        <textarea class="comment-input" name="comment_{{ task_item.assignment_task.assignment_task_id }}" placeholder="Например: обратите внимание на единицы измерения; подсказка к заданию...">{{ task_item.answer.teacher_comment if task_item.answer and task_item.answer.teacher_comment else '' }}</textarea>
+                        <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.5rem 0;">Ученик увидит этот комментарий при выполнении. Можно сохранить кнопкой «Сохранить комментарии» без завершения проверки.</p>
+                        <textarea 
+                            class="comment-input"
+                            name="comment_{{ task_item.assignment_task.assignment_task_id }}"
+                            placeholder="Например: обратите внимание на единицы измерения; подсказка к заданию..."
+                        >{{ task_item.answer.teacher_comment if task_item.answer and task_item.answer.teacher_comment else '' }}</textarea>
                     </div>
                 </div>
             </div>
             {% endfor %}
-
+            
             <div class="feedback-section">
-                <label style="font-weight: 700; font-size: 1.1em; display: block; margin-bottom: 0.75rem;">Общий комментарий к работе:</label>
-                <textarea id="teacher-feedback" class="comment-input" style="min-height: 120px;" placeholder="Напишите общий комментарий к работе ученика...">{{ submission.teacher_feedback if submission.teacher_feedback else '' }}</textarea>
+                <label style="font-weight: 700; font-size: 1.1em; display: block; margin-bottom: 0.75rem;">
+                    Общий комментарий к работе:
+                </label>
+                <textarea 
+                    id="teacher-feedback"
+                    class="comment-input"
+                    style="min-height: 120px;"
+                    placeholder="Напишите общий комментарий к работе ученика..."
+                >{{ submission.teacher_feedback if submission.teacher_feedback else '' }}</textarea>
             </div>
 
             {% if rubric_template %}
@@ -155,26 +357,43 @@
             <div class="feedback-section">
                 <div style="display:flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
                     <div style="font-weight: 800; font-size: 1.1em;">Рубрика: {{ rubric_template.title }}</div>
-                    <div style="color: var(--color-text-muted);">Критерии для единообразной проверки (чек-лист).</div>
+                    <div style="color: var(--text-muted);">Критерии для единообразной проверки (чек-лист).</div>
                 </div>
                 <div style="display:grid; gap: .75rem; margin-top: .9rem;">
                     {% for it in (rubric_template.items or []) %}
                       {% if it and it.get('key') %}
                         {% set key = it.get('key') %}
                         {% set val = rsc.get(key, {}) if rsc else {} %}
-                        <div style="padding: 1rem; border: 1px solid var(--color-stroke); border-radius: var(--radius-card); background: rgba(255,255,255,0.02);">
+                        <div style="padding: 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
                             <div style="display:flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
                                 <div style="min-width: 0;">
                                     <div style="font-weight: 800;">{{ it.get('title') }}</div>
-                                    {% if it.get('description') %}<div style="color: var(--color-text-muted); margin-top: .25rem; white-space: pre-line;">{{ it.get('description') }}</div>{% endif %}
+                                    {% if it.get('description') %}
+                                      <div style="color: var(--text-muted); margin-top: .25rem; white-space: pre-line;">{{ it.get('description') }}</div>
+                                    {% endif %}
                                 </div>
                                 <div style="display:flex; gap: .5rem; align-items: center; flex-wrap: wrap;">
-                                    {% if it.get('max_score') is not none %}<span style="color: var(--color-text-muted);">макс: {{ it.get('max_score') }}</span>{% endif %}
-                                    <input class="neo-input rubric-score-input" style="width: 110px;" type="number" min="0" {% if it.get('max_score') is not none %}max="{{ it.get('max_score') }}"{% endif %} data-key="{{ key }}" data-max="{{ it.get('max_score') if it.get('max_score') is not none else '' }}" value="{{ val.get('score') if val and val.get('score') is not none else '' }}" placeholder="балл">
+                                    {% if it.get('max_score') is not none %}
+                                      <span style="color: var(--text-muted);">макс: {{ it.get('max_score') }}</span>
+                                    {% endif %}
+                                    <input
+                                      class="neo-input rubric-score-input"
+                                      style="width: 110px;"
+                                      type="number"
+                                      min="0"
+                                      {% if it.get('max_score') is not none %}max="{{ it.get('max_score') }}"{% endif %}
+                                      data-key="{{ key }}"
+                                      data-max="{{ it.get('max_score') if it.get('max_score') is not none else '' }}"
+                                      value="{{ val.get('score') if val and val.get('score') is not none else '' }}"
+                                      placeholder="балл">
                                 </div>
                             </div>
                             <div style="margin-top: .75rem;">
-                                <textarea class="comment-input rubric-comment-input" data-key="{{ key }}" placeholder="Комментарий по критерию (опционально)">{{ val.get('comment') if val and val.get('comment') else '' }}</textarea>
+                                <textarea
+                                  class="comment-input rubric-comment-input"
+                                  data-key="{{ key }}"
+                                  placeholder="Комментарий по критерию (опционально)"
+                                >{{ val.get('comment') if val and val.get('comment') else '' }}</textarea>
                             </div>
                         </div>
                       {% endif %}
@@ -182,34 +401,50 @@
                 </div>
             </div>
             {% endif %}
-
+            
             <div class="submit-section">
                 <div>
-                    <div style="font-size: 0.9em; color: var(--color-text-muted); margin-bottom: 0.25rem;">Итоговый балл</div>
+                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">Итоговый балл</div>
                     <div class="total-score" id="total-score">0 / {{ submission.max_score or 0 }}</div>
                 </div>
                 {% if not can_submit_grade %}
-                <p style="color: var(--color-text-muted); margin: 0; align-self: center;">
+                <p style="color: var(--text-muted); margin: 0; align-self: center;">
                     {% if display_status_label %}Время истекло или дедлайн прошёл. Ученик не нажал «Сдать работу».
                     {% else %}Работа ещё не сдана учеником.{% endif %}
                 </p>
                 {% endif %}
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
-                    <button type="button" id="save-comments-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;" title="Сохранить комментарии к заданиям.">{{ ui_icon('action.edit', 'sm') }} Сохранить комментарии</button>
-                    <button type="button" id="return-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">{{ ui_icon('action.refresh', 'sm') }} Вернуть на доработку</button>
-                    <button type="button" id="grade-btn" class="neo-button accent" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">{{ ui_icon('action.check', 'sm') }} Завершить проверку</button>
+                    <button type="button" id="save-comments-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;" title="Сохранить комментарии к заданиям. Ученик увидит их при выполнении. Проверку завершать не нужно.">
+                        {{ ui_icon('action.edit', 'sm') }} Сохранить комментарии
+                    </button>
+                    <button type="button" id="return-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        {{ ui_icon('action.refresh', 'sm') }} Вернуть на доработку
+                    </button>
+                    <button type="button" id="grade-btn" class="neo-button accent" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        {{ ui_icon('action.check', 'sm') }} Завершить проверку
+                    </button>
                 </div>
             </div>
         </form>
         </div>
+    </main>
+    </div>
+</div>
 
+    <!-- Модальное окно «Вернуть на доработку»: дедлайн и попытки -->
     <div id="return-revision-modal" class="return-revision-overlay" style="display: none;" aria-hidden="true">
         <div class="return-revision-dialog">
             <div class="return-revision-header">Вернуть на доработку</div>
             <p class="return-revision-message">Ученик сможет исправить ответы и сдать заново. При необходимости укажите новый дедлайн и/или число попыток.</p>
             <div class="return-revision-fields">
-                <div class="return-revision-field"><label for="return-modal-deadline">Новый дедлайн (необязательно)</label><input type="datetime-local" id="return-modal-deadline" class="neo-input" step="60"></div>
-                <div class="return-revision-field"><label for="return-modal-attempts">Максимум попыток (необязательно)</label><input type="number" id="return-modal-attempts" class="neo-input" min="1" placeholder="Оставить текущее"></div>
+                <div class="return-revision-field">
+                    <label for="return-modal-deadline">Новый дедлайн (необязательно)</label>
+                    <input type="datetime-local" id="return-modal-deadline" class="neo-input" step="60">
+                </div>
+                <div class="return-revision-field">
+                    <label for="return-modal-attempts">Максимум попыток (необязательно)</label>
+                    <input type="number" id="return-modal-attempts" class="neo-input" min="1" placeholder="Оставить текущее">
+                </div>
             </div>
             <div class="return-revision-actions">
                 <button type="button" id="return-modal-cancel" class="neo-button ghost">Отмена</button>
@@ -218,52 +453,74 @@
         </div>
     </div>
     <style>
-        .return-revision-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; padding: 1rem; box-sizing: border-box; }
-        .return-revision-dialog { background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: var(--radius-card); padding: 1.5rem 1.75rem; max-width: 420px; width: 100%; box-shadow: var(--shadow-1); }
+        .return-revision-overlay {
+            position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+            padding: 1rem; box-sizing: border-box;
+        }
+        .return-revision-dialog {
+            background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);
+            padding: 1.5rem 1.75rem; max-width: 420px; width: 100%;
+            box-shadow: var(--shadow-1);
+        }
         .return-revision-header { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; }
-        .return-revision-message { color: var(--color-text-muted); font-size: 0.95rem; margin-bottom: 1.25rem; line-height: 1.5; }
+        .return-revision-message { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.25rem; line-height: 1.5; }
         .return-revision-fields { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.25rem; }
         .return-revision-field label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.35rem; }
         .return-revision-field .neo-input { width: 100%; box-sizing: border-box; }
         .return-revision-actions { display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap; }
     </style>
-{% endblock %}
-
-{% block scripts_extra %}
+    
     <script>
     var assignmentDeadline = {% if assignment.deadline %}"{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') }}"{% else %}null{% endif %};
     var assignmentMaxAttempts = {{ assignment.max_attempts_default or 1 }};
     </script>
+    
     <script>
+        // Инициализация KaTeX
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof renderMathInElement !== 'undefined') {
                 renderMathInElement(document.body, {
-                    delimiters: [{left: '$$', right: '$$', display: true},{left: '$', right: '$', display: false},{left: '\\[', right: '\\]', display: true},{left: '\\(', right: '\\)', display: false}],
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\[', right: '\\]', display: true},
+                        {left: '\\(', right: '\\)', display: false}
+                    ],
                     ignoreClass: 'katex'
                 });
             }
         });
-
+        
+        // Подсчет итогового балла
         function updateTotalScore() {
-            let total = 0, maxTotal = 0;
+            let total = 0;
+            let maxTotal = 0;
             document.querySelectorAll('.score-input').forEach(input => {
-                total += parseInt(input.value) || 0;
-                maxTotal += parseInt(input.dataset.max) || 0;
+                const score = parseInt(input.value) || 0;
+                const max = parseInt(input.dataset.max) || 0;
+                total += score;
+                maxTotal += max;
             });
             document.getElementById('total-score').textContent = `${total} / ${maxTotal}`;
         }
-
+        
         document.querySelectorAll('.score-input').forEach(input => {
             input.addEventListener('input', updateTotalScore);
             input.addEventListener('change', function() {
                 const max = parseInt(this.dataset.max) || 0;
-                if (parseInt(this.value) > max) this.value = max;
-                if (parseInt(this.value) < 0) this.value = 0;
+                if (parseInt(this.value) > max) {
+                    this.value = max;
+                }
+                if (parseInt(this.value) < 0) {
+                    this.value = 0;
+                }
                 updateTotalScore();
             });
         });
+        
         updateTotalScore();
-
+        
         function collectRubricScores() {
             const out = {};
             document.querySelectorAll('.rubric-score-input').forEach(input => {
@@ -282,6 +539,7 @@
             return out;
         }
 
+        // Сохранение оценки
         document.getElementById('grade-btn')?.addEventListener('click', function() {
             const scores = [];
             document.querySelectorAll('.score-input').forEach(input => {
@@ -291,71 +549,184 @@
                     comment: document.querySelector(`textarea[name="comment_${input.name.replace('score_', '')}"]`)?.value || ''
                 });
             });
-            const data = { scores, teacher_feedback: document.getElementById('teacher-feedback').value, status: 'GRADED', rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null, rubric_scores: collectRubricScores() };
+            
+            const data = {
+                scores: scores,
+                teacher_feedback: document.getElementById('teacher-feedback').value,
+                status: 'GRADED',
+                rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null,
+                rubric_scores: collectRubricScores()
+            };
+            
             fetch(`{{ url_for('assignments.submission_grade_save', submission_id=submission.submission_id) }}`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify(data)
-            }).then(r => r.json()).then(data => {
-                if (data.success) { if (typeof showToast === 'function') { showToast('✓ Работа успешно проверена!', 'success'); setTimeout(function() { location.reload(); }, 1500); } else { location.reload(); } }
-                else { if (typeof showToast === 'function') { showToast('✕ ' + (data.error || 'Не удалось сохранить оценку'), 'error'); } else { alert('Ошибка: ' + (data.error || 'Не удалось сохранить оценку')); } }
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (typeof showToast === 'function') {
+                        showToast('✓ Работа успешно проверена!', 'success');
+                        setTimeout(function() { location.reload(); }, 1500);
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('✕ ' + (data.error || 'Не удалось сохранить оценку'), 'error');
+                    } else {
+                        alert('Ошибка: ' + (data.error || 'Не удалось сохранить оценку'));
+                    }
+                }
             });
         });
 
+        // Сохранить только комментарии (без завершения проверки) — ученик увидит их при выполнении
         document.getElementById('save-comments-btn')?.addEventListener('click', function() {
             const comments = [];
             document.querySelectorAll('.score-input').forEach(function(input) {
                 const assignmentTaskId = parseInt(input.name.replace('score_', ''), 10);
                 const ta = document.querySelector('textarea[name="comment_' + assignmentTaskId + '"]');
-                comments.push({ assignment_task_id: assignmentTaskId, teacher_comment: (ta && ta.value) ? ta.value.trim() : '' });
+                comments.push({
+                    assignment_task_id: assignmentTaskId,
+                    teacher_comment: (ta && ta.value) ? ta.value.trim() : ''
+                });
             });
-            const data = { comments, teacher_feedback: (document.getElementById('teacher-feedback') && document.getElementById('teacher-feedback').value) ? document.getElementById('teacher-feedback').value.trim() : '' };
+            const data = {
+                comments: comments,
+                teacher_feedback: (document.getElementById('teacher-feedback') && document.getElementById('teacher-feedback').value) ? document.getElementById('teacher-feedback').value.trim() : ''
+            };
             fetch('{{ url_for("assignments.submission_save_comments", submission_id=submission.submission_id) }}', {
-                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify(data)
-            }).then(r => r.json()).then(res => {
-                if (res.success) { if (typeof showToast === 'function') showToast('✓ Комментарии сохранены.', 'success'); else alert('Комментарии сохранены.'); }
-                else { if (typeof showToast === 'function') showToast('✕ ' + (res.error || 'Не удалось сохранить'), 'error'); else alert('Ошибка: ' + (res.error || 'Не удалось сохранить')); }
-            }).catch(function() { if (typeof showToast === 'function') showToast('✕ Ошибка сети', 'error'); });
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.success) {
+                    if (typeof showToast === 'function') {
+                        showToast('✓ Комментарии сохранены. Ученик увидит их при выполнении.', 'success');
+                    } else {
+                        alert('Комментарии сохранены.');
+                    }
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('✕ ' + (res.error || 'Не удалось сохранить'), 'error');
+                    } else {
+                        alert('Ошибка: ' + (res.error || 'Не удалось сохранить'));
+                    }
+                }
+            })
+            .catch(function() {
+                if (typeof showToast === 'function') showToast('✕ Ошибка сети', 'error');
+            });
         });
-
+        
+        // Возврат на доработку — показываем модал с дедлайном и попытками
         var returnModal = document.getElementById('return-revision-modal');
         var returnDeadlineInput = document.getElementById('return-modal-deadline');
         var returnAttemptsInput = document.getElementById('return-modal-attempts');
 
         function openReturnModal() {
-            if (typeof assignmentDeadline !== 'undefined' && assignmentDeadline) returnDeadlineInput.value = assignmentDeadline; else returnDeadlineInput.value = '';
-            if (typeof assignmentMaxAttempts !== 'undefined') returnAttemptsInput.value = assignmentMaxAttempts; else returnAttemptsInput.value = '';
+            if (typeof assignmentDeadline !== 'undefined' && assignmentDeadline) {
+                returnDeadlineInput.value = assignmentDeadline;
+            } else {
+                returnDeadlineInput.value = '';
+            }
+            if (typeof assignmentMaxAttempts !== 'undefined') {
+                returnAttemptsInput.value = assignmentMaxAttempts;
+            } else {
+                returnAttemptsInput.value = '';
+            }
             returnAttemptsInput.placeholder = 'Оставить текущее';
             returnModal.style.display = 'flex';
             returnModal.setAttribute('aria-hidden', 'false');
             returnDeadlineInput.focus();
         }
 
-        function onReturnModalEscape(e) { if (e.key === 'Escape') { closeReturnModal(); document.removeEventListener('keydown', onReturnModalEscape); } }
-        function closeReturnModal() { returnModal.style.display = 'none'; returnModal.setAttribute('aria-hidden', 'true'); document.removeEventListener('keydown', onReturnModalEscape); }
+        function onReturnModalEscape(e) {
+            if (e.key === 'Escape') { closeReturnModal(); document.removeEventListener('keydown', onReturnModalEscape); }
+        }
+        function closeReturnModal() {
+            returnModal.style.display = 'none';
+            returnModal.setAttribute('aria-hidden', 'true');
+            document.removeEventListener('keydown', onReturnModalEscape);
+        }
 
-        document.getElementById('return-btn')?.addEventListener('click', function(e) { e.preventDefault(); openReturnModal(); document.addEventListener('keydown', onReturnModalEscape); });
+        document.getElementById('return-btn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            openReturnModal();
+            document.addEventListener('keydown', onReturnModalEscape);
+        });
+
         document.getElementById('return-modal-cancel')?.addEventListener('click', closeReturnModal);
-        returnModal.addEventListener('click', function(e) { if (e.target === returnModal) closeReturnModal(); });
+        returnModal.addEventListener('click', function(e) {
+            if (e.target === returnModal) closeReturnModal();
+        });
 
         document.getElementById('return-modal-confirm')?.addEventListener('click', function() {
             var scores = [];
             document.querySelectorAll('.score-input').forEach(function(input) {
-                scores.push({ assignment_task_id: parseInt(input.name.replace('score_', ''), 10), score: parseInt(input.value, 10) || 0, comment: (document.querySelector('textarea[name="comment_' + input.name.replace('score_', '') + '"]') || {}).value || '' });
+                scores.push({
+                    assignment_task_id: parseInt(input.name.replace('score_', ''), 10),
+                    score: parseInt(input.value, 10) || 0,
+                    comment: (document.querySelector('textarea[name="comment_' + input.name.replace('score_', '') + '"]') || {}).value || ''
+                });
             });
             var newDeadline = (returnDeadlineInput.value || '').trim();
             var newAttemptsRaw = (returnAttemptsInput.value || '').trim();
             var newMaxAttempts = newAttemptsRaw === '' ? null : (parseInt(newAttemptsRaw, 10) || null);
             if (newMaxAttempts !== null && newMaxAttempts < 1) newMaxAttempts = null;
-            var data = { scores, teacher_feedback: document.getElementById('teacher-feedback').value, status: 'RETURNED', rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null, rubric_scores: collectRubricScores() };
+
+            var data = {
+                scores: scores,
+                teacher_feedback: document.getElementById('teacher-feedback').value,
+                status: 'RETURNED',
+                rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null,
+                rubric_scores: collectRubricScores()
+            };
             if (newDeadline) data.new_deadline = newDeadline;
             if (newMaxAttempts !== null) data.new_max_attempts = newMaxAttempts;
+
             closeReturnModal();
+
             fetch('{{ url_for("assignments.submission_grade_save", submission_id=submission.submission_id) }}', {
-                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }, body: JSON.stringify(data)
-            }).then(r => r.json()).then(res => {
-                if (res.success) { if (typeof showToast === 'function') { showToast('✓ Работа возвращена на доработку!', 'success'); setTimeout(function() { location.reload(); }, 1500); } else { location.reload(); } }
-                else { if (typeof showToast === 'function') showToast('✕ ' + (res.error || 'Не удалось вернуть работу'), 'error'); else alert('Ошибка: ' + (res.error || 'Не удалось вернуть работу')); }
-            }).catch(function() { if (typeof showToast === 'function') showToast('✕ Ошибка сети', 'error'); });
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(res) {
+                if (res.success) {
+                    if (typeof showToast === 'function') {
+                        showToast('✓ Работа возвращена на доработку!', 'success');
+                        setTimeout(function() { location.reload(); }, 1500);
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('✕ ' + (res.error || 'Не удалось вернуть работу'), 'error');
+                    } else {
+                        alert('Ошибка: ' + (res.error || 'Не удалось вернуть работу'));
+                    }
+                }
+            })
+            .catch(function() {
+                if (typeof showToast === 'function') showToast('✕ Ошибка сети', 'error');
+            });
         });
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
-{% endblock %}
+</body>
+</html>

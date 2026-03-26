@@ -1,103 +1,127 @@
-{% extends 'base.html' %}
-{% block title %}Проверка · Задача урока{% endblock %}
-{% block head_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-    .page-hero {
-        background: radial-gradient(900px 420px at 14% 10%, rgba(0, 255, 213, 0.10), transparent 60%),
-                    radial-gradient(900px 420px at 85% 20%, rgba(31, 123, 255, 0.10), transparent 55%);
-        border: 1px solid var(--stroke-1);
-        border-radius: var(--radius-lg);
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-    }
-    .hero-title {
-        font-size: 2.05rem;
-        font-weight: 900;
-        margin: 0.35rem 0 0 0;
-        letter-spacing: -0.01em;
-        line-height: 1.15;
-    }
-    .hero-meta {
-        margin-top: 0.8rem;
-        display: flex;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-        align-items: center;
-        color: var(--text-muted);
-        font-size: 0.95rem;
-    }
-    .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        border-radius: 999px;
-        padding: 0.25rem 0.55rem;
-        border: 1px solid var(--stroke-1);
-        background: rgba(255,255,255,0.02);
-        font-weight: 900;
-        font-size: 0.82rem;
-        color: var(--text-primary);
-    }
-    .layout {
-        display: grid;
-        grid-template-columns: 1.15fr 0.85fr;
-        gap: 1rem;
-        align-items: start;
-    }
-    @media (max-width: 980px) {
-        .layout { grid-template-columns: 1fr; }
-    }
-    .card {
-        border: 1px solid var(--stroke-1);
-        background: var(--surface-1);
-        border-radius: var(--radius-lg);
-        padding: 1rem;
-    }
-    .card-title {
-        font-size: 1.05rem;
-        font-weight: 900;
-        margin: 0;
-    }
-    .task-content pre {
-        background: rgba(0,0,0,0.2);
-        padding: 1rem;
-        border-radius: var(--radius-md);
-        overflow-x: auto;
-    }
-    .correctness-toggle {
-        display: inline-flex;
-        border: 1px solid var(--stroke-1);
-        border-radius: 999px;
-        overflow: hidden;
-        background: rgba(255,255,255,0.02);
-    }
-    .correctness-toggle button {
-        border: none;
-        background: transparent;
-        padding: 0.55rem 0.85rem;
-        cursor: pointer;
-        color: var(--text-primary);
-        font-weight: 900;
-    }
-    .correctness-toggle button.active-correct { background: rgba(0, 254, 202, 0.12); color: var(--success); }
-    .correctness-toggle button.active-incorrect { background: rgba(255, 108, 145, 0.12); color: var(--danger); }
-    .correctness-toggle button.active-none { background: rgba(255,255,255,0.06); color: var(--text-muted); }
-    .muted { color: var(--text-muted); }
-</style>
-{% endblock %}
-{% block head_js %}
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-{% endblock %}
-{% block content %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка · Задача урока</title>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% include '_ux_enhancements.html' %}
+    <style>
+        .page-hero {
+            background: radial-gradient(900px 420px at 14% 10%, rgba(0, 255, 213, 0.10), transparent 60%),
+                        radial-gradient(900px 420px at 85% 20%, rgba(31, 123, 255, 0.10), transparent 55%);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .hero-title {
+            font-size: 2.05rem;
+            font-weight: 900;
+            margin: 0.35rem 0 0 0;
+            letter-spacing: -0.01em;
+            line-height: 1.15;
+        }
+        .hero-meta {
+            margin-top: 0.8rem;
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border-radius: 999px;
+            padding: 0.25rem 0.55rem;
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            font-weight: 900;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 1rem;
+            align-items: start;
+        }
+        @media (max-width: 980px) {
+            .layout { grid-template-columns: 1fr; }
+        }
+        .card {
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-1);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+        }
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 900;
+            margin: 0;
+        }
+        .task-content pre {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            overflow-x: auto;
+        }
+        .correctness-toggle {
+            display: inline-flex;
+            border: 1px solid var(--stroke-1);
+            border-radius: 999px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.02);
+        }
+        .correctness-toggle button {
+            border: none;
+            background: transparent;
+            padding: 0.55rem 0.85rem;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-weight: 900;
+        }
+        .correctness-toggle button.active-correct { background: rgba(0, 254, 202, 0.12); color: var(--success); }
+        .correctness-toggle button.active-incorrect { background: rgba(255, 108, 145, 0.12); color: var(--danger); }
+        .correctness-toggle button.active-none { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+        .muted { color: var(--text-muted); }
+    </style>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+</head>
+<body>
+    <div class="app-layout">
+        {% include '_dock_nav.html' %}
+    <main class="app-main">
+        <div class="app-content">
+        <main class="app-content">
+
         {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
         {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) if lesson and lesson.lesson_date else None %}
         {% set tnum = (lesson_task.task.task_number if lesson_task and lesson_task.task and lesson_task.task.task_number else None) %}
         {% set task_status = ((lesson_task.status or 'pending')|lower) %}
 
-        <div style="margin-top: 1.25rem;">
+        <main style="margin-top: 1.25rem;">
             <section class="page-hero">
                 <div style="display:flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start;">
                     <div style="min-width:0;">
@@ -264,9 +288,11 @@
                     </div>
                 </aside>
             </div>
-        </div>
-{% endblock %}
-{% block scripts_extra %}
+        </main>
+    </main>
+    </div>
+</div>
+
     <script>
         const LESSON_ID = {{ lesson.lesson_id }};
         const LESSON_TASK_ID = {{ lesson_task.lesson_task_id }};
@@ -393,6 +419,7 @@
         renderCorrectness();
         onCommentSelect();
 
+        // Initialize KaTeX
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof renderMathInElement !== 'undefined') {
                 renderMathInElement(document.body, {
@@ -409,4 +436,6 @@
             }
         });
     </script>
-{% endblock %}
+</body>
+</html>
+

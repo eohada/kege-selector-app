@@ -1,11 +1,23 @@
-{% extends 'base.html' %}
-{% block title %}{{ lesson.topic or 'Урок' }}{% endblock %}
-{% block body_attrs %}data-cinema-scene="lesson"{% endblock %}
-{% block head_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
-<style>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ lesson.topic or 'Урок' }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
     .lesson-header {
         margin-bottom: 2rem;
         background: var(--glass-bg);
@@ -443,13 +455,25 @@
         }
     }
     </style>
-{% endblock %}
-{% block head_js %}
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-{% endblock %}
-{% set active_page = None %}
-{% block content %}
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+</head>
+<body data-cinema-scene="lesson">
+    <div class="app-layout">
+        {% set active_page = None %}
+        {% include '_dock_nav.html' %}
+    <main class="app-main">
+        <div class="app-content">
+        <main class="app-content">
         
         <header class="lesson-header glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
@@ -1418,7 +1442,7 @@
             if (typeof io === 'undefined') return;
             var lessonSocket = null;
             try {
-                lessonSocket = io('/lesson', { path: '/socket.io', transports: ['websocket', 'polling'], reconnectionAttempts: 3, timeout: 5000 });
+                lessonSocket = io('/lesson', { path: '/socket.io', transports: ['websocket', 'polling'] });
                 window.lessonSocket = lessonSocket;
                 lessonSocket.on('connect', function() {
                     lessonSocket.emit('join_lesson', { lesson_id: LESSON_ID });
@@ -3380,7 +3404,6 @@
             }
         });
     </script>
-{% endblock %}
-{% block scripts_extra %}
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
-{% endblock %}
+</body>
+</html>

@@ -6,8 +6,9 @@
     <title>{% block title %}BooStudy{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     {% block head_css %}{% endblock %}
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
@@ -34,13 +35,15 @@
 
     <div class="app-layout">
         {% set active_page = active_page | default('') %}
-        {% include '_sidebar.html' %}
-        <div class="app-main">
-            {% include '_topbar.html' %}
-            <main class="app-content">
+
+        {# Floating Navigation Dock #}
+        {% include '_dock_nav.html' %}
+
+        <main class="app-main">
+            <div class="app-content">
                 {% block content %}{% endblock %}
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
     {% endblock %}
 
@@ -95,6 +98,9 @@
     <div id="cinema-root"></div>
     <script src="{{ url_for('static', filename='js/demo_cinema.js') }}?v=9"></script>
     {% endif %}
+
+    {# Command Palette (Ctrl+K) #}
+    {% include '_command_palette.html' %}
 
     <script>
     document.addEventListener('showToast', function(evt) {

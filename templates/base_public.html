@@ -6,7 +6,8 @@
     <title>{% block title %}BooStudy{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
     {% block head_css %}{% endblock %}
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
@@ -27,26 +28,32 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
     {% block body %}
-    <header class="app-topbar">
-        <a href="/" class="flex items-center gap-3 no-underline" style="color: inherit;">
-            <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="BooStudy" class="w-8 h-8 rounded-btn object-contain">
-            <span class="font-extrabold text-accent text-lg">BooStudy</span>
-        </a>
-        <div class="topbar-actions">
-            <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема">
-                <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
-                <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
-                <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
+    <div class="dock-wrapper" style="pointer-events:auto;">
+        <header class="dock">
+            <a href="/" class="dock-brand">
+                <div class="dock-brand-icon">
+                    <i class="ph-fill ph-ghost text-xl"></i>
+                </div>
+                <span class="dock-brand-text">BooStudy</span>
+            </a>
+            <div class="dock-actions">
+                <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема">
+                    <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
+                    <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
+                    <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
+                </div>
+                {% if current_user is defined and current_user.is_authenticated %}
+                <a href="{{ url_for('main.dashboard') }}" class="neo-button accent sm">Панель</a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}" class="neo-button accent sm">Войти</a>
+                {% endif %}
             </div>
-            {% if current_user is defined and current_user.is_authenticated %}
-            <a href="{{ url_for('main.dashboard') }}" class="neo-button accent sm">Панель</a>
-            {% else %}
-            <a href="{{ url_for('auth.login') }}" class="neo-button accent sm">Войти</a>
-            {% endif %}
-        </div>
-    </header>
-    <main class="app-content">
+        </header>
+    </div>
+    <main class="app-main">
+        <div class="app-content">
         {% block content %}{% endblock %}
+        </div>
     </main>
     {% endblock %}
 
