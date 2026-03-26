@@ -1,3 +1,6 @@
+# Node
+node_modules/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -6,7 +9,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
@@ -128,5 +131,5 @@ debug_out/
 # Tailwind CSS standalone CLI
 tailwindcss*.exe
 
-# Tailwind output (generated from static/src/input.css)
-static/dist/
+# Tailwind output — track boostudy.css, ignore source maps
+static/dist/*.map
