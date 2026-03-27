@@ -14,10 +14,36 @@ from core.db_models import QATask
 
 
 def _is_allowed() -> bool:
-    return bool(
-        getattr(current_user, "is_authenticated", False)
-        and (current_user.is_chief_tester() or current_user.is_creator())
-    )
+    if not bool(getattr(current_user, "is_authenticated", False)):
+        return False
+    try:
+        if current_user.is_creator() or current_user.is_chief_tester():
+            return True
+        if hasattr(current_user, "is_tester") and current_user.is_tester():
+            return True
+    except Exception:
+        pass
+    return bool(getattr(current_user, "role", None) == "tester")
+
+
+def _scope() -> dict[str, bool]:
+    """Limited cabinet for tester; full for creator/chief_tester."""
+    try:
+        is_creator = bool(current_user.is_creator())
+        is_chief = bool(current_user.is_chief_tester())
+        is_tester = bool(getattr(current_user, "is_tester", lambda: False)())
+    except Exception:
+        is_creator = bool(getattr(current_user, "role", None) == "creator")
+        is_chief = bool(getattr(current_user, "role", None) == "chief_tester")
+        is_tester = bool(getattr(current_user, "role", None) == "tester")
+    full = is_creator or is_chief
+    return {
+        "full": full,
+        "can_view_team": full,
+        "can_view_logs": full,
+        "can_use_presets": full or is_tester,
+        "can_report_bug": True,
+    }
 
 
 def _require_allowed():
@@ -230,7 +256,13 @@ def _count_bugs_done_last_7d(bug_reports: list[QATask]) -> int:
 def dashboard():
     _require_allowed()
     requested_tab = (request.args.get("tab") or "dashboard").strip().lower()
-    initial_tab = requested_tab if requested_tab in {"dashboard", "tasks", "team", "logs"} else "dashboard"
+    scope = _scope()
+    allowed_tabs = {"dashboard", "tasks"}
+    if scope["can_view_team"]:
+        allowed_tabs.add("team")
+    if scope["can_view_logs"]:
+        allowed_tabs.add("logs")
+    initial_tab = requested_tab if requested_tab in allowed_tabs else "dashboard"
     try:
         tasks = (
             QATask.query.filter(QATask.task_type == "task")
@@ -358,6 +390,7 @@ def dashboard():
         testers=testers,
         workloads=workloads,
         initial_tab=initial_tab,
+        ct_scope=scope,
     )
 
 
@@ -365,6 +398,8 @@ def dashboard():
 @login_required
 def logs_tail():
     _require_allowed()
+    if not _scope().get("can_view_logs"):
+        abort(403)
     lines_limit = request.args.get("lines", type=int) or 120
     lines, state = _read_log_tail(max_lines=lines_limit)
     return jsonify({"ok": state == "ok", "state": state, "lines": lines, "line_count": len(lines)})
@@ -374,6 +409,8 @@ def logs_tail():
 @login_required
 def logs_feed():
     _require_allowed()
+    if not _scope().get("can_view_logs"):
+        abort(403)
     lines_limit = request.args.get("lines", type=int) or 200
     lines, state = _read_log_tail(max_lines=lines_limit)
     entries = []

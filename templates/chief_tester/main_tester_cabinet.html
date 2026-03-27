@@ -220,6 +220,12 @@
     </div>
 
     <div id="tab-team" class="tab-content flex-col gap-6 hidden">
+        {% if not (ct_scope and ct_scope.can_view_team) %}
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+            <div class="text-2xl font-black text-slate-900">Ограниченный доступ</div>
+            <div class="mt-2 text-slate-600 font-medium">Раздел “Команда” доступен только для creator/chief tester.</div>
+        </div>
+        {% else %}
         <div class="flex justify-between items-center mb-4">
             <div>
                 <h2 class="text-3xl font-black text-slate-900 tracking-tight">QA Отдел</h2>
@@ -260,9 +266,16 @@
             <div class="col-span-full rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Тестеры не найдены.</div>
             {% endfor %}
         </div>
+        {% endif %}
     </div>
 
     <div id="tab-logs" class="tab-content flex-col gap-6 hidden">
+        {% if not (ct_scope and ct_scope.can_view_logs) %}
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+            <div class="text-2xl font-black text-slate-900">Ограниченный доступ</div>
+            <div class="mt-2 text-slate-600 font-medium">Раздел “Логи приложения” доступен только для creator/chief tester.</div>
+        </div>
+        {% else %}
         <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-2xl font-black text-slate-900 tracking-tight">Логи приложения</h2>
@@ -299,6 +312,7 @@
             </div>
             <div class="mt-3 text-xs text-slate-500" id="ctLogSelectionInfo">Выбрано логов: 0</div>
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -366,12 +380,16 @@
                 <i class="ph-bold ph-bug text-lg"></i> Баг-трекер
                 <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-boo-coral rounded-full"></span>
             </button>
+            {% if ct_scope and ct_scope.can_view_team %}
             <button onclick="switchTab('team')" id="nav-team" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
                 <i class="ph-bold ph-users-three text-lg"></i> Команда
             </button>
+            {% endif %}
+            {% if ct_scope and ct_scope.can_view_logs %}
             <button onclick="switchTab('logs')" id="nav-logs" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
                 <i class="ph-bold ph-terminal-window text-lg"></i> Логи
             </button>
+            {% endif %}
         </nav>
 
         <div class="flex items-center gap-3 pr-1">
@@ -661,6 +679,7 @@ async function openBugModal() {
     logsPreview.textContent = 'Загрузка...';
     logsSnapshotInput.value = '';
 
+    {% if ct_scope and ct_scope.can_view_logs %}
     try {
         const res = await fetch('{{ url_for("chief_tester.logs_feed") }}?lines=120', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         const data = await res.json();
@@ -677,6 +696,10 @@ async function openBugModal() {
     } catch (e) {
         logsPreview.textContent = 'Не удалось получить логи.';
     }
+    {% else %}
+    logsPreview.textContent = 'Логи недоступны в ограниченном режиме. Прикладывайте RID/скриншот.';
+    logsSnapshotInput.value = '';
+    {% endif %}
 
     setTimeout(async () => {
         try {

@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% from '_ui_icon.html' import ui_icon %}
+
+{% block title %}Баг-репорт #{{ r.id }} · QA{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-[1100px] mx-auto px-4 py-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div>
+            <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">QA · Bug report</div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">#{{ r.id }} — {{ r.title }}</h1>
+            <div class="mt-1 text-sm text-slate-500">
+                <span class="font-mono text-[11px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg">{{ r.status }}</span>
+                {% if r.created_at %} · {{ r.created_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}
+                {% if r.reporter %} · Автор: <span class="font-bold text-slate-700">{{ r.reporter.username }}</span>{% endif %}
+            </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            {% if return_to %}
+            <a class="neo-button ghost" href="{{ return_to }}">← Вернуться</a>
+            {% endif %}
+            <a class="neo-button ghost" href="{{ url_for('qa.bug_reports', return_to=return_to) }}">К списку</a>
+            {% if parsed.rid and (current_user.is_creator() or current_user.is_chief_tester()) %}
+            <a class="neo-button accent" href="{{ url_for('chief_tester.dashboard', tab='logs', rid=parsed.rid) }}">Логи по RID</a>
+            {% endif %}
+            {% if r.context_url %}
+            <a class="neo-button ghost" href="{{ r.context_url }}" target="_blank" rel="noopener">Контекст</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-4">
+            {% if parsed.severity or parsed.environment %}
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3">Классификация</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Severity</div>
+                        <div class="mt-1 font-black text-slate-900">{{ parsed.severity or '—' }}</div>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Environment</div>
+                        <div class="mt-1 font-bold text-slate-900 break-words">{{ parsed.environment or '—' }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if parsed.steps %}
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3">Steps</div>
+                <pre class="whitespace-pre-wrap text-sm text-slate-800 font-medium">{{ parsed.steps }}</pre>
+            </div>
+            {% endif %}
+
+            {% if parsed.expected or parsed.actual %}
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3">Expected / Actual</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Expected</div>
+                        <div class="mt-2 text-sm text-slate-800 whitespace-pre-wrap">{{ parsed.expected or '—' }}</div>
+                    </div>
+                    <div class="rounded-xl bg-red-50/50 border border-red-200 p-3">
+                        <div class="text-[11px] font-extrabold text-red-500 uppercase tracking-widest">Actual</div>
+                        <div class="mt-2 text-sm text-slate-800 whitespace-pre-wrap">{{ parsed.actual or '—' }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if parsed.notes %}
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3">Notes</div>
+                <div class="text-sm text-slate-800 whitespace-pre-wrap">{{ parsed.notes }}</div>
+            </div>
+            {% endif %}
+
+            {% if parsed.logs %}
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                <div class="flex items-center justify-between gap-2 mb-3">
+                    <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Log snapshot</div>
+                    {% if parsed.rid and (current_user.is_creator() or current_user.is_chief_tester()) %}
+                    <a class="text-indigo-600 font-bold text-xs hover:underline" href="{{ url_for('chief_tester.dashboard', tab='logs', rid=parsed.rid) }}">Открыть по RID</a>
+                    {% endif %}
+                </div>
+                <pre class="text-[11px] leading-4 font-mono whitespace-pre-wrap text-slate-800 max-h-[420px] overflow-auto rounded-xl bg-slate-50 border border-slate-200 p-3">{{ parsed.logs }}</pre>
+            </div>
+            {% endif %}
+
+            <details class="bg-white rounded-2xl border border-slate-200 p-5">
+                <summary class="cursor-pointer select-none text-sm font-bold text-slate-700">Показать raw description</summary>
+                <pre class="mt-3 text-[12px] leading-5 font-mono whitespace-pre-wrap text-slate-800">{{ parsed.raw or '' }}</pre>
+            </details>
+        </div>
+
+        <div class="space-y-4">
+            {% if r.screenshot_path %}
+            {% set _scr = r.screenshot_path.replace('static/', '') %}
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3">Screenshot</div>
+                <a href="{{ url_for('static', filename=_scr) }}" target="_blank" rel="noopener">
+                    <img src="{{ url_for('static', filename=_scr) }}" alt="Скриншот" class="w-full rounded-xl border border-slate-200" loading="lazy" onerror="this.style.display='none'">
+                </a>
+            </div>
+            {% endif %}
+
+            {% if parsed.rid %}
+            <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">RID</div>
+                <div class="font-mono text-sm text-slate-900 break-all">{{ parsed.rid }}</div>
+                <div class="mt-2 text-xs text-slate-500">RID автоматически подставляется из `X-Request-ID` последнего запроса на странице.</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

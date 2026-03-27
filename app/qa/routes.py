@@ -11,7 +11,10 @@ from app.models import (
     Lesson, LessonTask, UserSubscription, UserNotification, UserRole,
     RolePermission, moscow_now,
 )
-from core.db_models import QATask, QAComment, FamilyTie
+from core.db_models import (
+    QATask, QAComment, FamilyTie,
+    InviteLink, SchoolGroup, GroupStudent, MaintenanceMode, Answer,
+)
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES
 from app.utils.cross_env_login import build_cross_env_token
 from werkzeug.security import generate_password_hash
@@ -748,6 +751,463 @@ def tabula_rasa():
 
 
 # ==========================================
+# 3.0 PRESETS CATALOG 1–7 (best-effort)
+# ==========================================
+
+def _preset_forbidden():
+    return jsonify({'error': 'Forbidden', 'status': 'error', 'message': 'Forbidden'}), 403
+
+
+def _next(label: str, url: str | None):
+    if not url:
+        return None
+    return {'label': label, 'url': url}
+
+
+def _hash_invite_token(token: str) -> str:
+    import hashlib
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+
+@qa_bp.route('/manipulate/perfectionist_student', methods=['POST'])
+@login_required
+def preset_perfectionist_student():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        pool = _pool_student_profiles()
+        if not pool:
+            return jsonify({'status': 'error', 'message': 'Пул учеников не инициализирован'})
+        user, student = pool[0]
+        now = moscow_now().replace(tzinfo=None)
+        created = 0
+        for i in range(3):
+            a = Assignment(
+                title=f'[QA PRESET] Perfectionist #{i+1}',
+                description='[QA PRESET] Perfectionist student',
+                assignment_type='homework',
+                deadline=now + timedelta(days=7 - i),
+                hard_deadline=False,
+                created_by_id=current_user.id,
+                is_active=True,
+            )
+            db.session.add(a)
+            db.session.flush()
+            sub = Submission(
+                assignment_id=a.assignment_id,
+                student_id=student.student_id,
+                status='GRADED',
+                assigned_at=now - timedelta(days=2),
+                started_at=now - timedelta(days=1),
+                submitted_at=now - timedelta(hours=3),
+                percentage=100,
+                total_score=100,
+                max_score=100,
+                teacher_feedback='[QA PRESET] Отличная работа.',
+            )
+            db.session.add(sub)
+            created += 1
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': f'Готово: {user.username} получил {created} оцененных работ (100%).',
+            'next': _next('Открыть профиль ученика', url_for('students.student_profile', student_id=student.student_id)),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/clean_slate_account', methods=['POST'])
+@login_required
+def preset_clean_slate_account():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        token = uuid.uuid4().hex + uuid.uuid4().hex
+        token = token[:32]
+        link = InviteLink(
+            token_hash=_hash_invite_token(token),
+            email=f'qa_clean_slate_{uuid.uuid4().hex[:6]}@qa.local',
+            role='student',
+            note='[QA PRESET] clean_slate_account',
+            created_by_user_id=current_user.id,
+            created_at=moscow_now(),
+            expires_at=(moscow_now() + timedelta(days=7)).replace(tzinfo=None),
+        )
+        db.session.add(link)
+        db.session.commit()
+        invite_url = url_for('onboarding.invite_accept', token=token, _external=True) if 'onboarding.invite_accept' in current_app.view_functions else url_for('main.index', _external=True)
+        return jsonify({
+            'status': 'success',
+            'message': 'Готово: создан инвайт для онбординга (clean slate).',
+            'next': _next('Открыть инвайт', invite_url),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/broken_work_10mb', methods=['POST'])
+@login_required
+def preset_broken_work_10mb():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        pool = _pool_student_profiles()
+        if not pool:
+            return jsonify({'status': 'error', 'message': 'Пул учеников не инициализирован'})
+        _, student = pool[0]
+        sub = Submission.query.filter_by(student_id=student.student_id).order_by(Submission.created_at.desc()).first()
+        if not sub:
+            a = Assignment(
+                title='[QA PRESET] Broken work seed',
+                description='[QA PRESET] broken_work_10mb',
+                assignment_type='homework',
+                deadline=moscow_now().replace(tzinfo=None) + timedelta(days=3),
+                hard_deadline=False,
+                created_by_id=current_user.id,
+                is_active=True,
+            )
+            db.session.add(a)
+            db.session.flush()
+            sub = Submission(assignment_id=a.assignment_id, student_id=student.student_id, status='SUBMITTED', submitted_at=moscow_now().replace(tzinfo=None))
+            db.session.add(sub)
+            db.session.flush()
+        ans = Answer.query.filter_by(submission_id=sub.submission_id).order_by(Answer.id.desc()).first()
+        if not ans:
+            ans = Answer(submission_id=sub.submission_id)
+            db.session.add(ans)
+            db.session.flush()
+        ans.value = ('X' * 10_000_000)
+        db.session.add(ans)
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': 'Готово: записан payload ~10MB в Answer.value для стресс-теста UI.',
+            'next': _next('Открыть работы/проверку', url_for('lessons.review_queue')),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/deadline_timer_5min', methods=['POST'])
+@login_required
+def preset_deadline_timer_5min():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        now = moscow_now().replace(tzinfo=None)
+        new_deadline = now + timedelta(minutes=5)
+        q = Assignment.query.filter(Assignment.title.ilike('[QA PRESET]%')).filter(Assignment.is_active.is_(True))
+        items = q.order_by(Assignment.assignment_id.desc()).limit(10).all()
+        changed = 0
+        for a in items:
+            a.deadline = new_deadline
+            db.session.add(a)
+            changed += 1
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': f'Готово: сдвинуто дедлайнов: {changed} (через 5 минут).',
+            'next': _next('Открыть задания', url_for('main.dashboard')),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/schedule_marathon_10x15', methods=['POST'])
+@login_required
+def preset_schedule_marathon_10x15():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        _ensure_qa_pool()
+        tutor_user = User.query.filter(User.username.in_([u for u in QA_POOL_USERNAMES if 'tutor' in u])).order_by(User.username.asc()).first()
+        pool = _pool_student_profiles()
+        if not tutor_user or not pool:
+            return jsonify({'status': 'error', 'message': 'Недостаточно данных в пуле QA'})
+        user, student = pool[0]
+        if not Enrollment.query.filter_by(student_id=user.id, tutor_id=tutor_user.id).first():
+            db.session.add(Enrollment(student_id=user.id, tutor_id=tutor_user.id, subject='[QA PRESET] marathon'))
+        start = (moscow_now() + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0, tzinfo=None)
+        created = 0
+        for i in range(10):
+            lesson = Lesson(
+                student_id=student.student_id,
+                lesson_date=start + timedelta(minutes=15 * i),
+                duration=15,
+                lesson_type='regular',
+                status='planned',
+                topic=f'[QA PRESET] Marathon #{i+1}',
+            )
+            db.session.add(lesson)
+            created += 1
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': f'Готово: создано {created} уроков подряд (15 минут).',
+            'next': _next('Открыть расписание', url_for('schedule.schedule')),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/lesson_in_2030', methods=['POST'])
+@login_required
+def preset_lesson_in_2030():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        pool = _pool_student_profiles()
+        if not pool:
+            return jsonify({'status': 'error', 'message': 'Пул учеников не инициализирован'})
+        _, student = pool[0]
+        dt = moscow_now().replace(tzinfo=None).replace(year=2030, month=1, day=10, hour=12, minute=0, second=0, microsecond=0)
+        lesson = Lesson(student_id=student.student_id, lesson_date=dt, duration=60, lesson_type='regular', status='planned', topic='[QA PRESET] Lesson in 2030')
+        db.session.add(lesson)
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': 'Готово: создан урок в 2030 году.',
+            'next': _next('Открыть расписание', url_for('schedule.schedule')),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/subscription_end_yesterday', methods=['POST'])
+@login_required
+def preset_subscription_end_yesterday():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        now = moscow_now().replace(tzinfo=None)
+        sub = UserSubscription.query.filter_by(user_id=current_user.id).order_by(UserSubscription.ends_at.desc().nullslast()).first()
+        if not sub:
+            sub = UserSubscription(user_id=current_user.id, status='expired', ends_at=now - timedelta(days=1))
+        sub.status = 'expired'
+        sub.ends_at = now - timedelta(days=1)
+        db.session.add(sub)
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': 'Готово: подписка закончилась вчера (paywall regression).',
+            'next': _next('Открыть дашборд', url_for('main.dashboard')),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/invite_generator_10', methods=['POST'])
+@login_required
+def preset_invite_generator_10():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        created = 0
+        for _ in range(10):
+            token = uuid.uuid4().hex + uuid.uuid4().hex
+            token = token[:32]
+            link = InviteLink(
+                token_hash=_hash_invite_token(token),
+                email=f'qa_invite_{uuid.uuid4().hex[:6]}@qa.local',
+                role='student',
+                note='[QA PRESET] invite_generator_10',
+                created_by_user_id=current_user.id,
+                created_at=moscow_now(),
+                expires_at=(moscow_now() + timedelta(days=7)).replace(tzinfo=None),
+            )
+            db.session.add(link)
+            created += 1
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': f'Готово: создано инвайтов: {created}.',
+            'next': _next('Открыть список инвайтов', url_for('onboarding.invites_list')) if 'onboarding.invites_list' in current_app.view_functions else _next('Открыть пул профилей', url_for('qa.pool')),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/create_cluster_group', methods=['POST'])
+@login_required
+def preset_create_cluster_group():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        pool = _pool_student_profiles()
+        if len(pool) < 1:
+            return jsonify({'status': 'error', 'message': 'Пул учеников не инициализирован'})
+        g = SchoolGroup(title=f'[QA PRESET] Cluster group {uuid.uuid4().hex[:6]}', owner_user_id=current_user.id)
+        db.session.add(g)
+        db.session.flush()
+        attached = 0
+        for (u, s) in pool[:5]:
+            db.session.add(GroupStudent(group_id=g.group_id, student_id=s.student_id, added_by_user_id=current_user.id))
+            attached += 1
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': f'Готово: создана группа и добавлено учеников: {attached}.',
+            'next': _next('Открыть пул профилей', url_for('qa.pool')),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/mass_homework_to_group', methods=['POST'])
+@login_required
+def preset_mass_homework_to_group():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        group = SchoolGroup.query.order_by(SchoolGroup.group_id.desc()).first()
+        if not group:
+            return jsonify({'status': 'error', 'message': 'Сначала создайте группу пресетом create_cluster_group'})
+        student_ids = [gs.student_id for gs in GroupStudent.query.filter_by(group_id=group.group_id).all()]
+        if not student_ids:
+            return jsonify({'status': 'error', 'message': 'В группе нет учеников'})
+        now = moscow_now().replace(tzinfo=None)
+        a = Assignment(
+            title=f'[QA PRESET] Group HW {group.title}',
+            description='[QA PRESET] mass_homework_to_group',
+            assignment_type='homework',
+            deadline=now + timedelta(days=2),
+            hard_deadline=False,
+            created_by_id=current_user.id,
+            is_active=True,
+        )
+        db.session.add(a)
+        db.session.flush()
+        created = 0
+        for sid in student_ids:
+            db.session.add(Submission(assignment_id=a.assignment_id, student_id=sid, status='ASSIGNED', assigned_at=now))
+            created += 1
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': f'Готово: создано ДЗ и назначено ученикам группы: {created}.',
+            'next': _next('Открыть очередь проверки', url_for('lessons.review_queue')),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/stress_trainer_infinite_loop', methods=['POST'])
+@login_required
+def preset_stress_trainer_infinite_loop():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        pool = _pool_student_profiles()
+        if not pool:
+            return jsonify({'status': 'error', 'message': 'Пул учеников не инициализирован'})
+        _, student = pool[0]
+        sub = Submission.query.filter_by(student_id=student.student_id).order_by(Submission.created_at.desc()).first()
+        if not sub:
+            return jsonify({'status': 'error', 'message': 'Нет submission для ученика. Создайте работу/сдачу.'})
+        ans = Answer.query.filter_by(submission_id=sub.submission_id).order_by(Answer.id.desc()).first()
+        if not ans:
+            ans = Answer(submission_id=sub.submission_id)
+        ans.student_code = "while True:\n    print('test')\n"
+        db.session.add(ans)
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': 'Готово: записан stress-case код (while True) в Answer.student_code.',
+            'next': _next('Открыть работы/проверку', url_for('lessons.review_queue')),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/reset_streak', methods=['POST'])
+@login_required
+def preset_reset_streak():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        # Best-effort: fields may not exist in current schema
+        changed = False
+        for field in ('streak', 'streak_days', 'current_streak', 'daily_streak'):
+            if hasattr(current_user, field):
+                try:
+                    setattr(current_user, field, 0)
+                    changed = True
+                except Exception:
+                    pass
+        if changed:
+            db.session.add(current_user)
+            db.session.commit()
+            msg = 'Готово: стрик сброшен (best-effort).'
+        else:
+            msg = 'No-op: в модели пользователя нет полей streak. (best-effort)'
+        return jsonify({'status': 'success', 'message': msg})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/system_cache_clear', methods=['POST'])
+@login_required
+def preset_system_cache_clear():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    # Best-effort: if there is no cache layer, do a no-op but keep it explicit
+    return jsonify({'status': 'success', 'message': 'Cache clear: no-op (в проекте не настроен отдельный cache backend).'})
+
+
+@qa_bp.route('/manipulate/maintenance_enable', methods=['POST'])
+@login_required
+def preset_maintenance_enable():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        row = MaintenanceMode.query.order_by(MaintenanceMode.id.desc()).first()
+        if not row:
+            row = MaintenanceMode(is_enabled=True)
+        row.is_enabled = True
+        db.session.add(row)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Maintenance mode включён.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/nuke_test_data', methods=['POST'])
+@login_required
+def preset_nuke_test_data():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return _preset_forbidden()
+    try:
+        # Best-effort cleanup by marker prefix
+        deleted_inv = InviteLink.query.filter(InviteLink.note.ilike('[QA PRESET]%')).delete(synchronize_session=False)
+        deleted_groups = SchoolGroup.query.filter(SchoolGroup.title.ilike('[QA PRESET]%')).delete(synchronize_session=False)
+        deleted_assign = Assignment.query.filter(Assignment.title.ilike('[QA PRESET]%')).delete(synchronize_session=False)
+        deleted_lessons = Lesson.query.filter(Lesson.topic.ilike('[QA PRESET]%')).delete(synchronize_session=False)
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'message': f'Готово: удалено InviteLink={deleted_inv}, Groups={deleted_groups}, Assignments={deleted_assign}, Lessons={deleted_lessons} (best-effort).',
+            'next': _next('Открыть пул профилей', url_for('qa.pool')),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+# ==========================================
 # 3.1 УПРАВЛЕНИЕ ТЕСТЕРАМИ (Chief Tester / Creator)
 # ==========================================
 
@@ -1099,6 +1559,113 @@ def bug_reports():
     can_edit = current_user.is_creator()
     return_to = (request.args.get('return_to') or '').strip()
     return render_template('qa/bug_reports.html', reports=reports, can_edit=can_edit, return_to=return_to)
+
+
+def _extract_rid(description: str | None) -> str | None:
+    if not description:
+        return None
+    txt = description
+    for key in ('RID:', 'RID=', 'rid:', 'rid='):
+        if key in txt:
+            tail = txt.split(key, 1)[1].strip()
+            rid = (tail.split()[0] if tail else '').strip()
+            if rid:
+                return rid
+    return None
+
+
+def _parse_bug_description(description: str | None) -> dict:
+    """
+    Parse a stable template body into sections.
+    Headers supported: Severity:, Environment:, Steps:, Expected:, Actual:, Notes:, --- LOG SNAPSHOT ---
+    """
+    desc = (description or '').strip()
+    sections = {
+        'rid': _extract_rid(desc),
+        'severity': None,
+        'environment': None,
+        'steps': None,
+        'expected': None,
+        'actual': None,
+        'notes': None,
+        'logs': None,
+        'raw': desc,
+    }
+    if not desc:
+        return sections
+
+    # Split logs snapshot first
+    if '--- LOG SNAPSHOT ---' in desc:
+        before, after = desc.split('--- LOG SNAPSHOT ---', 1)
+        sections['logs'] = after.strip() or None
+        body = before.strip()
+    else:
+        body = desc
+
+    # Simple line-based fields
+    lines = body.splitlines()
+    i = 0
+    def collect_block(start_idx: int) -> tuple[str, int]:
+        buf = []
+        j = start_idx
+        while j < len(lines):
+            line = lines[j]
+            if line.strip() in ('Steps:', 'Expected:', 'Actual:', 'Notes:'):
+                break
+            if line.startswith('Severity:') or line.startswith('Environment:') or line.startswith('RID:') or line.startswith('RID='):
+                # next scalar header
+                break
+            buf.append(line)
+            j += 1
+        return ("\n".join(buf).strip(), j)
+
+    while i < len(lines):
+        line = lines[i].strip()
+        if line.lower().startswith('severity:'):
+            sections['severity'] = line.split(':', 1)[1].strip() or None
+            i += 1
+            continue
+        if line.lower().startswith('environment:'):
+            sections['environment'] = line.split(':', 1)[1].strip() or None
+            i += 1
+            continue
+        if line.startswith('Steps:'):
+            block, i2 = collect_block(i + 1)
+            sections['steps'] = block or None
+            i = i2
+            continue
+        if line.startswith('Expected:'):
+            block, i2 = collect_block(i + 1)
+            sections['expected'] = block or None
+            i = i2
+            continue
+        if line.startswith('Actual:'):
+            block, i2 = collect_block(i + 1)
+            sections['actual'] = block or None
+            i = i2
+            continue
+        if line.startswith('Notes:'):
+            block, i2 = collect_block(i + 1)
+            sections['notes'] = block or None
+            i = i2
+            continue
+        i += 1
+
+    return sections
+
+
+@qa_bp.route('/bug-reports/<int:task_id>')
+@login_required
+def bug_report_detail(task_id: int):
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
+        return "Access denied", 403
+    r = QATask.query.get_or_404(task_id)
+    if r.task_type != 'bug_report':
+        return "Not a bug report", 404
+    parsed = _parse_bug_description(getattr(r, 'description', None))
+    return_to = (request.args.get('return_to') or '').strip()
+    can_edit = current_user.is_creator()
+    return render_template('qa/bug_report_detail.html', r=r, parsed=parsed, return_to=return_to, can_edit=can_edit)
 
 
 @qa_bp.route('/bug-reports/<int:task_id>/status', methods=['POST'])

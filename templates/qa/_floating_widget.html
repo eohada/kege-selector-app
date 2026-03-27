@@ -1,547 +1,377 @@
-<style>
-    .qa-fab {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: rgba(18, 18, 24, 0.9);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 71, 87, 0.4);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.4), 0 0 15px rgba(255, 71, 87, 0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #ff6b81;
-        cursor: pointer;
-        z-index: 10001;
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .qa-fab:hover {
-        transform: scale(1.05);
-        box-shadow: 0 12px 28px rgba(0,0,0,0.5), 0 0 25px rgba(255, 71, 87, 0.3);
-        background: rgba(18, 18, 24, 1);
-    }
-    .qa-fab svg { width: 24px; height: 24px; }
+{% set _qa_is_elevated = (current_user.is_creator() or current_user.is_chief_tester() or current_user.is_admin() or current_user.is_chief_admin()) if current_user.is_authenticated else false %}
 
-    .qa-god-widget {
-        position: fixed;
-        bottom: 90px;
-        right: 24px;
-        background: rgba(18, 18, 24, 0.95);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        color: var(--text-primary);
-        width: 320px;
-        max-height: 80vh;
-        border-radius: var(--radius-lg);
-        border: 1px solid rgba(255, 71, 87, 0.3);
-        box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 20px 50px -10px rgba(0,0,0,0.7);
-        z-index: 10000;
-        display: none;
-        flex-direction: column;
-        overflow: hidden;
-        transform-origin: bottom right;
-        animation: qa-pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    @keyframes qa-pop-in {
-        from { opacity: 0; transform: scale(0.9) translateY(10px); }
-        to { opacity: 1; transform: scale(1) translateY(0); }
-    }
-
-    .qa-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        background: rgba(255, 71, 87, 0.1);
-        border-bottom: 1px solid rgba(255, 71, 87, 0.2);
-        font-weight: 600;
-        font-size: 13px;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        color: #ff6b81;
-    }
-
-    .qa-body { padding: 0; overflow-y: auto; }
-    .qa-content-pad { padding: 16px; }
-
-    .qa-btn {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-        padding: 10px 12px;
-        margin-bottom: 8px;
-        background: var(--surface-2);
-        color: var(--text-primary);
-        border: 1px solid var(--color-stroke);
-        border-radius: var(--radius-md);
-        cursor: pointer;
-        font-size: 13px;
-        text-align: left;
-        transition: all 0.2s ease;
-    }
-    .qa-btn:hover {
-        background: var(--surface-3);
-        border-color: rgba(255,255,255,0.2);
-    }
-
-    .qa-accordion { border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .qa-accordion-header {
-        padding: 12px 16px;
-        background: rgba(255,255,255,0.02);
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .qa-accordion-header:hover { background: rgba(255,255,255,0.05); color: #fff; }
-    .qa-accordion-content { display: none; padding: 12px 16px; background: rgba(0,0,0,0.2); }
-    .qa-accordion.active .qa-accordion-content { display: block; }
-    .qa-accordion.active .qa-accordion-header { color: #fff; }
-    .qa-accordion-icon { transition: transform 0.2s; }
-    .qa-accordion.active .qa-accordion-icon { transform: rotate(180deg); }
-
-    .qa-user-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-    .qa-user-row form { flex-grow: 1; }
-    .qa-user-btn {
-        width: 100%;
-        padding: 6px 10px;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: var(--radius-sm);
-        color: var(--text-muted);
-        font-size: 12px;
-        text-align: left;
-        cursor: pointer;
-        transition: all 0.15s;
-    }
-    .qa-user-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-
-    .qa-modal-overlay {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.6);
-        backdrop-filter: blur(5px);
-        z-index: 10002;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        transition: opacity 0.2s;
-    }
-    .qa-modal-overlay.open { display: flex; opacity: 1; }
-    .qa-modal {
-        background: var(--surface-1);
-        width: 500px;
-        max-width: 90vw;
-        border-radius: var(--radius-lg);
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        transform: scale(0.95);
-        transition: transform 0.2s;
-        display: flex;
-        flex-direction: column;
-    }
-    .qa-modal-overlay.open .qa-modal { transform: scale(1); }
-    .qa-modal-header { padding: 16px; border-bottom: 1px solid var(--color-stroke); display: flex; justify-content: space-between; align-items: center; }
-    .qa-modal-body { padding: 16px; overflow-y: auto; max-height: 70vh; }
-    .qa-screenshot-preview {
-        margin-top: 10px;
-        width: 100%;
-        height: 150px;
-        border: 1px dashed rgba(255,255,255,0.2);
-        border-radius: var(--radius-md);
-        background-size: cover;
-        background-position: center;
-        position: relative;
-    }
-    .qa-input {
-        width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
-        border-radius: var(--radius-sm); color: #fff; margin-bottom: 12px; font-size: 13px;
-    }
-</style>
-
-<div class="qa-fab" onclick="toggleQAWidget()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+<div class="fixed bottom-6 right-6 z-[10001]">
+    <button id="qaFab" type="button" onclick="toggleQAWidget()" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-lg border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0 flex items-center justify-center hover:bg-indigo-700 transition-colors">
+        <i class="ph-bold ph-shield-check text-2xl"></i>
+    </button>
 </div>
 
-<div class="qa-god-widget" id="qaWidget">
-    <div class="qa-header">
-        <span>QA God Mode</span>
-        <button onclick="toggleQAWidget()" style="background:none; border:none; color:inherit; cursor:pointer;">✕</button>
-    </div>
-    
-    <div class="qa-body">
-        <div class="qa-content-pad">
-            <div class="text-xs text-muted mb-1">Current Session:</div>
-            <div class="font-medium text-sm">
-                {{ current_user.username }} 
-                <span class="opacity-50">(#{{ current_user.id }})</span>
+<div id="qaWidget" class="fixed bottom-24 right-6 z-[10000] hidden w-[360px] max-w-[92vw] max-h-[78vh]">
+    <div class="bg-white rounded-2xl border border-slate-200 border-b-[4px] border-b-slate-300 shadow-2xl overflow-hidden flex flex-col">
+        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center">
+                    <i class="ph-fill ph-radar text-lg"></i>
+                </div>
+                <div class="leading-tight">
+                    <div class="text-xs font-extrabold uppercase tracking-widest text-slate-500">QA</div>
+                    <div class="text-sm font-black text-slate-900">Инструменты тестирования</div>
+                </div>
             </div>
-            {% if session.get('impersonator_id') %}
-            <div class="mt-2">
-                <form action="{{ url_for('qa.revert_impersonation') }}" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-                    <button type="submit" class="qa-btn" style="background: rgba(255, 71, 87, 0.1); color: #ff6b81; border-color: rgba(255, 71, 87, 0.3); justify-content: center;">
-                        Вернуться в свой аккаунт
-                    </button>
+            <button type="button" class="text-slate-500 hover:text-slate-900" onclick="toggleQAWidget()">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
+        </div>
+
+        <div class="p-4 border-b border-slate-100">
+            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Сессия</div>
+            <div class="mt-1 flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="text-sm font-black text-slate-900 truncate">{{ current_user.username }}</div>
+                    <div class="text-xs font-mono text-slate-400">#{{ current_user.id }}</div>
+                </div>
+                {% if session.get('impersonator_id') %}
+                <form action="{{ url_for('qa.revert_impersonation') }}" method="POST" data-no-ajax class="shrink-0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="px-3 py-2 rounded-xl bg-red-100 text-red-700 border border-red-200 text-xs font-bold hover:bg-red-200">Выйти</button>
                 </form>
-            </div>
-            {% endif %}
-        </div>
-
-        <div class="qa-accordion">
-            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
-                Профили пула
-                <span class="qa-accordion-icon">▼</span>
-            </div>
-            <div class="qa-accordion-content">
-                <div class="mb-2 text-xs text-muted">Ученики</div>
-                {% for un in ['qa_pool_student_1', 'qa_pool_student_2', 'qa_pool_student_3'] %}
-                <div class="qa-user-row">
-                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-                        <input type="hidden" name="username" value="{{ un }}">
-                        <button type="submit" class="qa-user-btn">👤 {{ un.replace('qa_pool_', '').replace('_', ' ').title() }}</button>
-                    </form>
-                </div>
-                {% endfor %}
-                
-                <div class="mt-3 mb-2 text-xs text-muted">Преподаватели</div>
-                {% for un in ['qa_pool_tutor_1', 'qa_pool_tutor_2', 'qa_pool_tutor_3'] %}
-                <div class="qa-user-row">
-                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-                        <input type="hidden" name="username" value="{{ un }}">
-                        <button type="submit" class="qa-user-btn">👨‍🏫 {{ un.replace('qa_pool_', '').replace('_', ' ').title() }}</button>
-                    </form>
-                </div>
-                {% endfor %}
-                
-                <div class="mt-3 mb-2 text-xs text-muted">Родители</div>
-                {% for un in ['qa_pool_parent_1', 'qa_pool_parent_2', 'qa_pool_parent_3'] %}
-                <div class="qa-user-row">
-                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-                        <input type="hidden" name="username" value="{{ un }}">
-                        <button type="submit" class="qa-user-btn">👪 {{ un.replace('qa_pool_', '').replace('_', ' ').title() }}</button>
-                    </form>
-                </div>
-                {% endfor %}
-                
-                <div class="mt-3 mb-2 text-xs text-muted">Администратор</div>
-                <div class="qa-user-row">
-                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-                        <input type="hidden" name="username" value="qa_pool_admin_1">
-                        <button type="submit" class="qa-user-btn">🛡️ Qa Pool Admin 1</button>
-                    </form>
-                </div>
-                
-                <div class="mt-3">
-                    <a href="{{ url_for('qa.pool') }}" class="qa-btn no-underline" style="justify-content: center; font-size: 11px;">
-                        ⚙️ Управление привязками
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="qa-accordion">
-            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
-                Окружение
-                <span class="qa-accordion-icon">▼</span>
-            </div>
-            <div class="qa-accordion-content">
-                {% if config.get('SANDBOX_URL') and not config.get('IS_SANDBOX') %}
-                <a href="{{ url_for('qa.cross_env_redirect', target='sandbox') }}" class="qa-btn no-underline">🧪 Перейти в песочницу</a>
-                {% endif %}
-                {% if config.get('PROD_URL') and config.get('IS_SANDBOX') %}
-                <a href="{{ url_for('qa.cross_env_redirect', target='prod') }}" class="qa-btn no-underline">🚀 Перейти на прод</a>
-                {% endif %}
-                {% if not (config.get('SANDBOX_URL') or config.get('PROD_URL')) %}
-                <div class="qa-btn" style="opacity: 0.7; cursor: default;">Настройте PROD_URL / SANDBOX_URL</div>
                 {% endif %}
             </div>
         </div>
 
-        <div class="qa-accordion">
-            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
-                Инструменты
-                <span class="qa-accordion-icon">▼</span>
-            </div>
-            <div class="qa-accordion-content">
-                <button class="qa-btn" onclick="openBugModal()">🐞 Создать баг-репорт</button>
-                {% if current_user.is_chief_tester() or current_user.is_creator() %}
-                <a href="{{ url_for('chief_tester.dashboard', tab='dashboard') }}" class="qa-btn no-underline">🧭 Кабинет главного тестировщика</a>
-                <a href="{{ url_for('chief_tester.dashboard', tab='tasks') }}" class="qa-btn no-underline">🗂️ Кабинет: Баг-трекер</a>
-                <a href="{{ url_for('chief_tester.dashboard', tab='logs') }}" class="qa-btn no-underline">🧾 Кабинет: Логи</a>
+        <div class="p-3 overflow-auto">
+            <div class="space-y-2">
+                <button type="button" onclick="openQABugModal()" class="w-full px-4 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-bug"></i> Создать баг-репорт
+                </button>
+
+                <details class="rounded-xl border border-slate-200 bg-white">
+                    <summary class="cursor-pointer select-none px-4 py-3 flex items-center justify-between">
+                        <span class="text-xs font-extrabold uppercase tracking-widest text-slate-500">Быстрые ссылки</span>
+                        <i class="ph-bold ph-caret-down text-slate-400"></i>
+                    </summary>
+                    <div class="px-4 pb-4 space-y-2">
+                        {% if current_user.is_creator() or current_user.is_chief_tester() %}
+                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-800 no-underline" href="{{ url_for('chief_tester.dashboard', tab='dashboard') }}">Кабинет главного тестировщика</a>
+                        {% endif %}
+                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-800 no-underline" href="{{ url_for('qa.board') }}">QA доска</a>
+                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-800 no-underline" href="{{ url_for('qa.bug_reports') }}">Список багов</a>
+                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-800 no-underline" href="{{ url_for('qa.pool') }}">Пул профилей</a>
+                    </div>
+                </details>
+
+                {% if _qa_is_elevated %}
+                <details class="rounded-xl border border-slate-200 bg-white">
+                    <summary class="cursor-pointer select-none px-4 py-3 flex items-center justify-between">
+                        <span class="text-xs font-extrabold uppercase tracking-widest text-slate-500">Имперсонация</span>
+                        <i class="ph-bold ph-caret-down text-slate-400"></i>
+                    </summary>
+                    <div class="px-4 pb-4 space-y-2">
+                        <form class="flex items-center gap-2" onsubmit="qaImpersonationSearch(event)">
+                            <input id="qaImpersonateQ" type="text" class="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="username / id" autocomplete="off">
+                            <button type="submit" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold">Поиск</button>
+                        </form>
+                        <div id="qaImpersonateResults" class="hidden rounded-xl border border-slate-200 bg-white shadow-sm p-2"></div>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            {% for un in ['qa_pool_student_1','qa_pool_student_2','qa_pool_student_3','qa_pool_tutor_1','qa_pool_tutor_2','qa_pool_tutor_3'] %}
+                            <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="username" value="{{ un }}">
+                                <button type="submit" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-800 text-left">{{ un }}</button>
+                            </form>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </details>
                 {% endif %}
-                <a href="{{ url_for('qa.board') }}" class="qa-btn no-underline">📋 Канбан-доска</a>
-                <a href="{{ url_for('qa.bug_reports') }}" class="qa-btn no-underline">🐛 Список багов</a>
-                <a href="{{ url_for('qa.pool') }}" class="qa-btn no-underline">⚙️ Привязки профилей</a>
-                {% if current_user.is_chief_tester() or current_user.is_creator() %}
-                <a href="{{ url_for('qa.testers') }}" class="qa-btn no-underline">👥 Управление тестерами</a>
-                {% endif %}
-            </div>
-        </div>
 
-        <div class="qa-accordion">
-            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
-                Манипуляторы (ученик)
-                <span class="qa-accordion-icon">▼</span>
-            </div>
-            <div class="qa-accordion-content">
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pass_assignment')">✅ Сдать ДЗ на 100%</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/fail_assignment')">❌ Провалить ДЗ (0%)</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pass_assignment_half')">📊 ДЗ на 50%</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/reset_lesson_progress')">🔄 Сбросить прогресс урока</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/expire_subscription')">⏱️ Истечение подписки (пэйвол)</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/mock_notifications')">🔔 5 тестовых уведомлений</button>
-            </div>
-        </div>
-
-        <div class="qa-accordion">
-            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
-                Манипуляторы (преподаватель)
-                <span class="qa-accordion-icon">▼</span>
-            </div>
-            <div class="qa-accordion-content">
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/bulk_approve')">✅ Одобрить все ДЗ</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/bulk_reject')">↩️ Отклонить все ДЗ</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/inject_submission')">➕ Подкинуть ДЗ на проверку</button>
-            </div>
-        </div>
-
-        <div class="qa-accordion">
-            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
-                Пресеты
-                <span class="qa-accordion-icon">▼</span>
-            </div>
-            <div class="qa-accordion-content">
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/generate_debtor')">🧑‍🎓 Сгенерировать должника</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/overwhelm_reviews')">📥 Завалить проверками</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/break_schedule')">🗓️ Сломать расписание</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/god_mode_30d')">👑 Выдать God Mode (30д)</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/tabula_rasa')" style="border-color: rgba(255,100,100,0.4); color: #ff8888;">🗑️ Tabula Rasa (с чистого листа)</button>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pay_course')">💳 Имитировать оплату</button>
+                <details class="rounded-xl border border-slate-200 bg-white" open>
+                    <summary class="cursor-pointer select-none px-4 py-3 flex items-center justify-between">
+                        <span class="text-xs font-extrabold uppercase tracking-widest text-slate-500">Пресеты 1–7</span>
+                        <i class="ph-bold ph-caret-down text-slate-400"></i>
+                    </summary>
+                    <div class="px-4 pb-4 space-y-3">
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Group 1</div>
+                        <div class="space-y-2">
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/perfectionist_student')">Perfectionist student</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/clean_slate_account')">Clean slate account</button>
+                        </div>
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 2</div>
+                        <div class="space-y-2">
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/broken_work_10mb')">Broken work (10MB)</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/deadline_timer_5min')">Deadline timer (5min)</button>
+                        </div>
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 3</div>
+                        <div class="space-y-2">
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/schedule_marathon_10x15')">Schedule marathon (10×15)</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/lesson_in_2030')">Lesson in 2030</button>
+                        </div>
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 4</div>
+                        <div class="space-y-2">
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/subscription_end_yesterday')">Subscription end вчера</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/invite_generator_10')">Invite generator ×10</button>
+                        </div>
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 5</div>
+                        <div class="space-y-2">
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/create_cluster_group')">Create cluster group</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/mass_homework_to_group')">Mass homework to group</button>
+                        </div>
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 6</div>
+                        <div class="space-y-2">
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/stress_trainer_infinite_loop')">Stress trainer: infinite loop</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/reset_streak')">Reset streak</button>
+                        </div>
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 7</div>
+                        <div class="space-y-2">
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/system_cache_clear')">System cache clear</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/maintenance_enable')">Maintenance enable</button>
+                            <button type="button" class="qa-preset-btn !border-red-200 !bg-red-50 hover:!bg-red-100 !text-red-700" onclick="qaRunPreset('/qa/manipulate/nuke_test_data')">Nuke test data</button>
+                        </div>
+                    </div>
+                </details>
             </div>
         </div>
     </div>
 </div>
 
-<div class="qa-modal-overlay" id="bugModalOverlay">
-    <div class="qa-modal">
-        <div class="qa-modal-header">
-            <h3 class="text-base font-semibold">Новый баг-репорт</h3>
-            <button onclick="closeBugModal()" style="background:none; border:none; color:rgba(255,255,255,0.5); cursor:pointer;">✕</button>
+<div id="qaBugModal" class="fixed inset-0 z-[10002] hidden items-center justify-center bg-slate-900/50 px-4">
+    <div class="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-black text-slate-900">Новый баг-репорт</h3>
+            <button type="button" class="text-slate-500 hover:text-slate-900" onclick="closeQABugModal()"><i class="ph-bold ph-x text-xl"></i></button>
         </div>
-        <div class="qa-modal-body">
-            <form id="bugReportForm" onsubmit="submitBugReport(event)">
-                <input type="hidden" name="context_url" id="bugContextUrl">
-                <input type="hidden" name="screenshot" id="bugScreenshotData">
-                <input type="hidden" name="logs_snapshot" id="bugLogsSnapshot">
-                <input type="hidden" name="request_id" id="bugRequestId">
-                <input type="text" class="qa-input" name="title" placeholder="Краткая суть бага" required>
-                <select class="qa-input" name="severity">
+        <form id="qaBugForm" class="space-y-3">
+            <input type="hidden" name="context_url" id="qaBugContextUrl">
+            <input type="hidden" name="screenshot" id="qaBugScreenshotData">
+            <input type="hidden" name="logs_snapshot" id="qaBugLogsSnapshot">
+            <input type="hidden" name="request_id" id="qaBugRequestId">
+
+            <input type="text" name="title" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900" placeholder="Краткая суть бага" required>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <select name="severity" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900">
                     <option value="medium">Severity: medium</option>
                     <option value="low">Severity: low</option>
                     <option value="high">Severity: high</option>
                     <option value="critical">Severity: critical</option>
                 </select>
-                <input type="text" class="qa-input" name="environment" placeholder="Окружение (prod/sandbox/local, браузер, устройство)">
-                <textarea class="qa-input" name="steps" rows="4" placeholder="Шаги воспроизведения (1..N)"></textarea>
-                <textarea class="qa-input" name="expected" rows="2" placeholder="Ожидаемое поведение"></textarea>
-                <textarea class="qa-input" name="actual" rows="2" placeholder="Фактическое поведение"></textarea>
-                <textarea class="qa-input" name="description" rows="2" placeholder="Доп. комментарии (необязательно)"></textarea>
-                
-                <div class="text-xs text-muted mb-1.5">Скриншот (автоматически):</div>
-                <div class="qa-screenshot-preview" id="bugScreenshotPreview" style="position:relative; min-height:120px;">
-                    <img id="bugScreenshotImg" alt="Скриншот" style="max-width:100%; max-height:180px; width:auto; height:auto; border-radius:8px; display:none;">
-                    <span id="bugScreenshotPlaceholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:rgba(255,255,255,0.4); font-size:12px;">Загрузка...</span>
-                </div>
-                
-                <div class="mt-4 flex gap-2.5">
-                    <button type="submit" class="qa-btn" style="justify-content:center; background:var(--accent-1); border:none;">Отправить</button>
-                    <button type="button" class="qa-btn" onclick="closeBugModal()" style="justify-content:center; width:auto;">Отмена</button>
-                </div>
-            </form>
-        </div>
+                <input type="text" name="environment" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Окружение (prod/sandbox/local + браузер)">
+            </div>
+            <textarea name="steps" rows="4" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Шаги воспроизведения (1..N)"></textarea>
+            <textarea name="expected" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Ожидаемое поведение"></textarea>
+            <textarea name="actual" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Фактическое поведение"></textarea>
+            <textarea name="description" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Доп. комментарии (необязательно)"></textarea>
+
+            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+                <div class="text-xs font-bold text-slate-500 mb-2">Скриншот (авто):</div>
+                <img id="qaBugScreenshotImg" class="max-h-48 rounded-lg border border-slate-200 hidden" alt="preview">
+                <div id="qaBugScreenshotPlaceholder" class="text-xs text-slate-400">Готовим скриншот...</div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700">Отправить</button>
+                <button type="button" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm" onclick="closeQABugModal()">Отмена</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <script>
-    function toggleQAWidget() {
-        const w = document.getElementById('qaWidget');
-        w.style.display = (w.style.display === 'flex') ? 'none' : 'flex';
-    }
+function toggleQAWidget() {
+    const w = document.getElementById('qaWidget');
+    if (!w) return;
+    w.classList.toggle('hidden');
+}
 
-    function openBugModal() {
-        toggleQAWidget();
+function getCsrf() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
+
+function toastOk(msg) {
+    if (window.toast?.success) window.toast.success(msg);
+    else alert(msg);
+}
+function toastErr(msg) {
+    if (window.toast?.error) window.toast.error(msg);
+    else alert(msg);
+}
+
+async function qaRunPreset(endpoint) {
+    try {
+        const res = await fetch(endpoint, { method: 'POST', headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            toastErr(data?.error || data?.message || `Forbidden/Ошибка (${res.status})`);
+            return;
+        }
+        if (data.status !== 'success') {
+            toastErr(data?.error || data?.message || 'Ошибка выполнения пресета');
+            return;
+        }
+        const msg = data.message || 'Готово';
+        if (data.next && data.next.url) {
+            if (window.showConfirmModal) {
+                showConfirmModal({
+                    title: 'Пресет выполнен',
+                    message: `${msg}\n\nДальше: ${data.next.label || 'Открыть экран проверки'}`,
+                    confirmText: 'Открыть',
+                    cancelText: 'Остаться',
+                    confirmClass: 'accent',
+                    onConfirm: () => { window.location.href = data.next.url; }
+                });
+            } else {
+                if (confirm(`${msg}\n\nОткрыть: ${data.next.label || 'экран проверки'}?`)) window.location.href = data.next.url;
+            }
+        } else {
+            toastOk(msg);
+            setTimeout(() => location.reload(), 600);
+        }
+    } catch (e) {
+        toastErr('Ошибка сети');
+    }
+}
+
+async function openQABugModal() {
+    try { document.getElementById('qaBugRequestId').value = window.__last_request_id || localStorage.getItem('last_request_id') || ''; } catch (e) {}
+    const modal = document.getElementById('qaBugModal');
+    const placeholder = document.getElementById('qaBugScreenshotPlaceholder');
+    const img = document.getElementById('qaBugScreenshotImg');
+    if (!modal || !placeholder || !img) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.getElementById('qaBugContextUrl').value = window.location.href;
+    placeholder.textContent = 'Готовим скриншот...';
+    img.classList.add('hidden');
+    document.getElementById('qaBugLogsSnapshot').value = '';
+
+    {% if current_user.is_creator() or current_user.is_chief_tester() %}
+    try {
+        fetch('/chief-tester/logs/feed?lines=80', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                const entries = Array.isArray(data.entries) ? data.entries : [];
+                const text = entries.slice(-30).map(e => `[${e.ts}] RID=${e.request_id || '-'} | ${e.actor} | ${e.action} | ${e.page} | ${e.result}`).join('\n');
+                document.getElementById('qaBugLogsSnapshot').value = text;
+            })
+            .catch(() => {});
+    } catch (e) {}
+    {% endif %}
+
+    setTimeout(async () => {
         try {
-            const rid = window.__last_request_id || localStorage.getItem('last_request_id') || '';
-            document.getElementById('bugRequestId').value = rid;
-        } catch (e) {}
-        var placeholder = document.getElementById('bugScreenshotPlaceholder');
-        var imgEl = document.getElementById('bugScreenshotImg');
-        if (imgEl) { imgEl.style.display = 'none'; imgEl.removeAttribute('src'); }
-        if (placeholder) placeholder.textContent = 'Загрузка...';
-        setTimeout(function() {
-            var viewportOpts = {
+            const canvas = await html2canvas(document.body, {
                 scrollX: -window.scrollX,
                 scrollY: -window.scrollY,
                 windowWidth: document.documentElement.clientWidth,
                 windowHeight: document.documentElement.clientHeight,
                 useCORS: true,
                 allowTaint: true
-            };
-            html2canvas(document.body, viewportOpts).then(function(canvas) {
-                var w = canvas.width, h = canvas.height;
-                if (w < 50 || h < 50) {
-                    return html2canvas(document.body, { useCORS: true, allowTaint: true });
-                }
-                return Promise.resolve(canvas);
-            }).catch(function() {
-                return html2canvas(document.body, { useCORS: true, allowTaint: true });
-            }).then(function(canvas) {
-                var maxW = 1200;
-                var w = canvas.width, h = canvas.height;
-                if (w > maxW) {
-                    var c2 = document.createElement('canvas');
-                    c2.width = maxW;
-                    c2.height = Math.round(h * maxW / w);
-                    var ctx = c2.getContext('2d');
-                    ctx.drawImage(canvas, 0, 0, w, h, 0, 0, c2.width, c2.height);
-                    canvas = c2;
-                }
-                var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
-                document.getElementById('bugScreenshotData').value = dataUrl;
-                document.getElementById('bugContextUrl').value = window.location.href;
-                if (imgEl) {
-                    imgEl.src = dataUrl;
-                    imgEl.style.display = 'block';
-                }
-                if (placeholder) placeholder.style.display = 'none';
-                // attach latest logs snapshot if available (QA lead/cabinet can provide richer)
-                {% if current_user.is_creator() or current_user.is_chief_tester() %}
-                try {
-                    fetch('/chief-tester/logs/feed?lines=80', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                        .then(r => r.json())
-                        .then(data => {
-                            const entries = Array.isArray(data.entries) ? data.entries : [];
-                            const text = entries.slice(-30).map(e => `[${e.ts}] RID=${e.request_id || '-'} | ${e.actor} | ${e.action} | ${e.page} | ${e.result}`).join('\n');
-                            document.getElementById('bugLogsSnapshot').value = text;
-                        })
-                        .catch(() => {});
-                } catch (e) {}
-                {% endif %}
-                document.getElementById('bugModalOverlay').classList.add('open');
-            }).catch(function(err) {
-                console.error("Screenshot failed:", err);
-                document.getElementById('bugScreenshotData').value = '';
-                document.getElementById('bugContextUrl').value = window.location.href;
-                if (placeholder) placeholder.textContent = 'Скриншот недоступен. Опишите баг текстом.';
-                if (imgEl) imgEl.style.display = 'none';
-                document.getElementById('bugModalOverlay').classList.add('open');
             });
-        }, 300);
-    }
-
-    function closeBugModal() {
-        document.getElementById('bugModalOverlay').classList.remove('open');
-    }
-
-    function submitBugReport(e) {
-        e.preventDefault();
-        const btn = e.target.querySelector('button[type="submit"]');
-        const originalText = btn.innerText;
-        btn.innerText = 'Отправка...';
-        btn.disabled = true;
-
-        const formData = new FormData(e.target);
-        // Compose a stable bug report body (template fields + optional comments)
-        const sev = (formData.get('severity') || '').toString();
-        const env = (formData.get('environment') || '').toString();
-        const steps = (formData.get('steps') || '').toString();
-        const expected = (formData.get('expected') || '').toString();
-        const actual = (formData.get('actual') || '').toString();
-        const notes = (formData.get('description') || '').toString();
-        const logs = (formData.get('logs_snapshot') || '').toString();
-
-        let body = '';
-        const rid = (formData.get('request_id') || '').toString().trim();
-        if (rid) body += `RID: ${rid}\n`;
-        if (sev) body += `Severity: ${sev}\n`;
-        if (env) body += `Environment: ${env}\n`;
-        if (steps) body += `\nSteps:\n${steps}\n`;
-        if (expected) body += `\nExpected:\n${expected}\n`;
-        if (actual) body += `\nActual:\n${actual}\n`;
-        if (notes) body += `\nNotes:\n${notes}\n`;
-        if (logs) body += `\n--- LOG SNAPSHOT ---\n${logs}\n`;
-        formData.set('description', body.trim());
-        
-        fetch('/qa/bug-report', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(function(res) {
-            if (res.status === 413) {
-                return res.text().then(function() { return { success: false, error: 'Скриншот слишком большой. Попробуйте описать баг текстом без скрина.' }; });
-            }
-            return res.json().then(function(data) { return data; }).catch(function() { return { success: false, error: 'Неверный ответ сервера' }; });
-        })
-        .then(function(data) {
-            if (data && data.success) {
-                if (typeof toast !== 'undefined') toast.success('Баг-репорт отправлен!');
-                else alert('Баг-репорт отправлен!');
-                closeBugModal();
-                e.target.reset();
+            let dataUrl = '';
+            try { dataUrl = canvas.toDataURL('image/jpeg', 0.75); } catch (e) { dataUrl = ''; }
+            document.getElementById('qaBugScreenshotData').value = dataUrl;
+            if (dataUrl) {
+                img.src = dataUrl;
+                img.classList.remove('hidden');
+                placeholder.textContent = '';
             } else {
-                var msg = (data && data.error) ? data.error : 'Ошибка отправки';
-                if (typeof toast !== 'undefined') toast.error(msg); else alert(msg);
+                placeholder.textContent = 'Скриншот недоступен.';
             }
-        })
-        .catch(function(err) {
-            console.error(err);
-            var msg = 'Ошибка сети или сервера. Проверьте соединение.';
-            if (typeof toast !== 'undefined') toast.error(msg); else alert(msg);
-        })
-        .finally(() => {
-            btn.innerText = originalText;
-            btn.disabled = false;
-        });
-    }
+        } catch (e) {
+            placeholder.textContent = 'Скриншот недоступен.';
+        }
+    }, 200);
+}
 
-    function manipulateState(endpoint) {
-        fetch(endpoint, { 
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if(data.status === 'success') {
-                if(typeof toast !== 'undefined') toast.success(data.message);
-                else alert(`✅ ${data.message}`);
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                alert(`❌ Ошибка: ${data.error}`);
-            }
-        })
-        .catch(function(err) {
-            if (window.toast && window.toast.error) window.toast.error('Ошибка сети: ' + err.message);
-            else alert('Ошибка сети: ' + err.message);
-        });
+function closeQABugModal() {
+    const modal = document.getElementById('qaBugModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+document.getElementById('qaBugForm')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Отправка...';
+
+    const data = new FormData(form);
+    const sev = (data.get('severity') || '').toString();
+    const env = (data.get('environment') || '').toString();
+    const steps = (data.get('steps') || '').toString();
+    const expected = (data.get('expected') || '').toString();
+    const actual = (data.get('actual') || '').toString();
+    const notes = (data.get('description') || '').toString();
+    const logs = (data.get('logs_snapshot') || '').toString();
+    const rid = (data.get('request_id') || '').toString().trim();
+
+    let body = '';
+    if (rid) body += `RID: ${rid}\n`;
+    if (sev) body += `Severity: ${sev}\n`;
+    if (env) body += `Environment: ${env}\n`;
+    if (steps) body += `\nSteps:\n${steps}\n`;
+    if (expected) body += `\nExpected:\n${expected}\n`;
+    if (actual) body += `\nActual:\n${actual}\n`;
+    if (notes) body += `\nNotes:\n${notes}\n`;
+    if (logs) body += `\n--- LOG SNAPSHOT ---\n${logs}\n`;
+    data.set('description', body.trim());
+
+    try {
+        const res = await fetch('/qa/bug-report', { method: 'POST', body: data, headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' } });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok && json.success) {
+            toastOk('Баг-репорт отправлен');
+            closeQABugModal();
+            form.reset();
+        } else {
+            toastErr(json.error || 'Ошибка отправки');
+        }
+    } catch (e) {
+        toastErr('Ошибка сети');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
     }
+});
+
+async function qaImpersonationSearch(ev) {
+    if (ev) ev.preventDefault();
+    const q = document.getElementById('qaImpersonateQ')?.value?.trim() || '';
+    const box = document.getElementById('qaImpersonateResults');
+    if (!box) return;
+    if (!q) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+    try {
+        const res = await fetch(`{{ url_for("chief_tester.users_search") }}?q=${encodeURIComponent(q)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await res.json().catch(() => ({}));
+        const items = Array.isArray(data.items) ? data.items : [];
+        if (!items.length) {
+            box.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">Ничего не найдено</div>';
+            box.classList.remove('hidden');
+            return;
+        }
+        box.innerHTML = items.map(i => `
+            <form method="POST" action="/qa/impersonate/${i.id}" class="flex items-center justify-between gap-2 rounded-lg hover:bg-slate-50 px-2 py-2" data-no-ajax>
+                <input type="hidden" name="csrf_token" value="${getCsrf()}">
+                <div class="min-w-0">
+                    <div class="text-xs font-bold text-slate-900 truncate">${i.username} <span class="text-slate-400">#${i.id}</span></div>
+                    <div class="text-[11px] text-slate-500 truncate">${i.role}${i.student_name ? ` • ${i.student_name}` : ''}</div>
+                </div>
+                <button class="shrink-0 px-2 py-1 rounded-md border border-slate-200 text-[11px] font-bold text-slate-700" type="submit">Войти как</button>
+            </form>
+        `).join('');
+        box.classList.remove('hidden');
+    } catch (e) {
+        box.innerHTML = '<div class="px-3 py-2 text-xs text-red-500">Ошибка поиска</div>';
+        box.classList.remove('hidden');
+    }
+}
 </script>
+
+<style>
+/* small helper for widget preset buttons */
+.qa-preset-btn{width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgb(226 232 240);background:rgb(248 250 252);font-weight:700;font-size:13px;text-align:left;color:rgb(15 23 42);transition:background .15s}
+.qa-preset-btn:hover{background:rgb(241 245 249)}
+</style>
