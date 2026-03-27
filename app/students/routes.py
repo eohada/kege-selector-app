@@ -417,7 +417,15 @@ def student_profile(student_id):
             except Exception as e:
                 logger.warning(f"Ошибка загрузки преподавателей для ученика: {e}")
         
-        return render_template('student_profile.html', 
+        force_view = (request.args.get('view') or '').strip().lower()
+        if force_view == 'student':
+            template_name = 'student_profile.html'
+        elif current_user.is_student() or current_user.is_parent():
+            template_name = 'student_profile.html'
+        else:
+            template_name = 'student_profile_teacher.html'
+
+        return render_template(template_name,
                                student=student, 
                                student_user=student_user_obj,
                                student_subscription=student_subscription,
@@ -1972,7 +1980,11 @@ def student_delete(student_id):
         )
 
         flash(f'Ошибка при удалении ученика: {str(e)}', 'error')
-    return redirect(url_for('students.students_list'))
+    next_url = (request.form.get('next') or request.args.get('next') or '').strip()
+    if next_url.startswith('/') and not next_url.startswith('//'):
+        return redirect(next_url)
+
+    return redirect(url_for('main.dashboard'))
 
 @students_bp.route('/student/<int:student_id>/archive', methods=['POST'])
 @login_required

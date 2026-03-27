@@ -56,6 +56,7 @@
     }
     .demo-toggle-row label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; color: var(--color-text-muted); user-select: none; }
     .demo-toggle-row input[type="checkbox"] { accent-color: rgba(251, 191, 36, 0.8); width: 16px; height: 16px; }
+    /* delete confirmations use the global confirm modal (static/confirm-modal.js) */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; }
     .modal-overlay.active { display: flex; }
     .modal-box { background: var(--color-bg-surface); border: 1px solid var(--color-stroke-strong); border-radius: 20px; padding: 2rem; max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
@@ -158,7 +159,10 @@
                                     {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                                     <button type="submit" class="btn-action-sm">В архив</button>
                                 </form>
-                                <button type="button" class="btn-action-sm danger" onclick="confirmDelete({{ student.student_id }}, '{{ student.name|e }}')">Удалить</button>
+                                <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" class="inline">
+                                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                    <button type="submit" class="btn-action-sm danger">Удалить</button>
+                                </form>
                                 {% endif %}
                             </div>
                         </div>
@@ -218,7 +222,10 @@
                                     {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                                     <button type="submit" class="btn-action-sm">Восстановить</button>
                                 </form>
-                                <button type="button" class="btn-action-sm danger" onclick="confirmDelete({{ student.student_id }}, '{{ student.name|e }}')">Удалить</button>
+                                <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" class="inline">
+                                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                    <button type="submit" class="btn-action-sm danger">Удалить</button>
+                                </form>
                                 {% endif %}
                             </div>
                         </div>
@@ -232,20 +239,6 @@
 {% endblock %}
 
 {% block scripts_extra %}
-    <div class="modal-overlay" id="deleteModal">
-        <div class="modal-box">
-            <h3>Удалить ученика?</h3>
-            <p>Вы уверены, что хотите удалить ученика <strong id="deleteStudentName"></strong>? Все связанные данные (уроки, задания, статистика) будут безвозвратно удалены.</p>
-            <div class="modal-actions">
-                <button class="neo-button ghost" onclick="closeDeleteModal()">Отмена</button>
-                <form method="POST" id="deleteStudentForm" style="margin: 0;">
-                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <button type="submit" class="neo-button accent" style="background: #FF6B6B; border-color: #FF6B6B;">Удалить</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <div class="modal-overlay" id="deleteAllDemoModal">
         <div class="modal-box">
             <h3>Удалить всех демо-учеников?</h3>
@@ -266,14 +259,6 @@
             if (this.checked) { url.searchParams.set('show_demo', '1'); } else { url.searchParams.delete('show_demo'); }
             window.location.href = url.toString();
         });
-
-        function confirmDelete(studentId, studentName) {
-            document.getElementById('deleteStudentName').textContent = studentName;
-            document.getElementById('deleteStudentForm').action = '/student/' + studentId + '/delete';
-            document.getElementById('deleteModal').classList.add('active');
-        }
-
-        function closeDeleteModal() { document.getElementById('deleteModal').classList.remove('active'); }
         function confirmDeleteAllDemo() { document.getElementById('deleteAllDemoModal').classList.add('active'); }
 
         document.querySelectorAll('.modal-overlay').forEach(function(modal) {

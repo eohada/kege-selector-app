@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% set active_page = 'dashboard' %}
+{% block title %}{{ student.name }} · Ученик · BooStudy{% endblock %}
+{% block body_class %}layout-teacher{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6">
+    <section class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col lg:flex-row gap-6 items-start justify-between">
+        <div class="flex items-start gap-4 min-w-0">
+            <div class="w-14 h-14 rounded-2xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm shrink-0 overflow-hidden">
+                {% if student_user and student_user.avatar_url %}
+                    <img src="{{ student_user.avatar_url }}" alt="" class="w-full h-full object-cover">
+                {% else %}
+                    <span class="text-2xl font-black">{{ (student.name or '—')[0]|upper }}</span>
+                {% endif %}
+            </div>
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <a href="{{ url_for('students.students_list') }}" class="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors inline-flex items-center gap-1.5">
+                        <i class="ph-bold ph-arrow-left"></i> К ученикам
+                    </a>
+                    {% if student.platform_id %}
+                        <span class="text-xs font-bold text-slate-400">ID: {{ student.platform_id }}</span>
+                    {% endif %}
+                </div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight mt-2 truncate">{{ student.name }}</h1>
+                <div class="flex gap-2 flex-wrap mt-2">
+                    {% if student_user and student_user.is_demo_user %}
+                        <span class="px-2.5 py-1 rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200 text-[10px] font-extrabold uppercase tracking-wider">Демо</span>
+                    {% endif %}
+                    {% if student.school_class %}
+                        <span class="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 text-[10px] font-extrabold uppercase tracking-wider">{{ student.school_class }} класс</span>
+                    {% endif %}
+                    {% if student.category %}
+                        <span class="px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-700 border border-cyan-100 text-[10px] font-extrabold uppercase tracking-wider">{{ student.category }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+            <a href="{{ url_for('students.student_profile', student_id=student.student_id, view='student') }}"
+               class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-sm transition-colors border border-slate-200 flex items-center gap-2 shadow-sm">
+                <i class="ph-bold ph-eye"></i> Вид ученика
+            </a>
+            <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
+               class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-sm transition-colors border border-slate-200 flex items-center gap-2 shadow-sm">
+                <i class="ph-bold ph-chart-line-up"></i> Статистика
+            </a>
+            <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}"
+               class="px-6 py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex items-center gap-2 active:translate-y-1 active:border-b-0">
+                <i class="ph-bold ph-plus"></i> Новый урок
+            </a>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section class="lg:col-span-2 bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile overflow-hidden">
+            <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Лента уроков</div>
+                    <div class="text-xl font-extrabold text-slate-900 tracking-tight mt-1">Уроки</div>
+                </div>
+                <div class="text-sm font-bold text-slate-500">{{ lessons|length if lessons is defined and lessons else 0 }}</div>
+            </div>
+
+            <div class="p-6">
+                {% if lessons %}
+                    <div class="space-y-3">
+                        {% for lesson in lessons %}
+                            <div class="p-4 rounded-2xl border border-slate-200 hover:border-purple-200 hover:bg-purple-50/30 transition-colors flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <a href="{{ url_for('lessons.lesson_view', lesson_id=lesson.lesson_id) }}" class="font-extrabold text-slate-900 hover:text-boo-primary transition-colors truncate">
+                                            {{ lesson.topic or ('Урок #' ~ lesson.lesson_id) }}
+                                        </a>
+                                        <span class="text-xs font-bold text-slate-400">#{{ lesson.lesson_id }}</span>
+                                        {% if lesson.status %}
+                                            <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider
+                                                {% if lesson.status == 'planned' %}bg-orange-50 text-orange-700 border border-orange-100
+                                                {% elif lesson.status == 'in_progress' %}bg-purple-50 text-boo-primary border border-purple-100
+                                                {% elif lesson.status == 'completed' %}bg-emerald-50 text-emerald-700 border border-emerald-100
+                                                {% else %}bg-slate-50 text-slate-600 border border-slate-200{% endif %}">
+                                                {{ lesson.status }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-sm text-slate-500 font-medium mt-1">
+                                        {% if lesson.lesson_date %}{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}
+                                        {% if lesson.duration %} · {{ lesson.duration }} мин{% endif %}
+                                        {% if lesson.lesson_type %} · {{ lesson.lesson_type }}{% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-2 flex-wrap justify-end">
+                                    <a class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-boo-primary hover:border-purple-200 text-sm font-bold transition-colors shadow-sm"
+                                       href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}">
+                                        <i class="ph-bold ph-pencil-simple"></i>
+                                    </a>
+                                    <form method="POST" action="{{ url_for('lessons.lesson_delete', lesson_id=lesson.lesson_id) }}" class="inline">
+                                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                        <button type="submit" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 text-sm font-bold transition-colors shadow-sm">
+                                            <i class="ph-bold ph-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% if lesson.status == 'planned' %}
+                                        <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=lesson.lesson_id) }}" class="inline">
+                                            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                            <button type="submit" class="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 text-sm font-bold transition-colors">
+                                                Начать
+                                            </button>
+                                        </form>
+                                    {% elif lesson.status == 'in_progress' %}
+                                        <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=lesson.lesson_id) }}" class="inline">
+                                            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                            <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-sm font-bold transition-colors">
+                                                Завершить
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="p-10 text-center">
+                        <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-200 mx-auto flex items-center justify-center text-slate-400">
+                            <i class="ph-bold ph-calendar-blank text-2xl"></i>
+                        </div>
+                        <div class="text-lg font-black text-slate-900 mt-4">Уроков пока нет</div>
+                        <div class="text-slate-500 font-medium mt-1">Создайте первый урок для ученика.</div>
+                        <div class="mt-5">
+                            <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}"
+                               class="inline-flex items-center gap-2 px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 active:translate-y-1 active:border-b-0">
+                                <i class="ph-bold ph-plus"></i> Новый урок
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile overflow-hidden">
+            <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">В работе</div>
+                <div class="text-xl font-extrabold text-slate-900 tracking-tight mt-1">Активные работы</div>
+            </div>
+            <div class="p-6 space-y-3">
+                {% if active_submissions %}
+                    {% for sub in active_submissions[:6] %}
+                        <a href="{{ url_for('assignments.submission_view', submission_id=sub.submission_id) }}"
+                           class="block p-4 rounded-2xl border border-slate-200 hover:border-purple-200 hover:bg-purple-50/30 transition-colors">
+                            <div class="text-sm font-extrabold text-slate-900 line-clamp-2">
+                                {{ sub.assignment.title if sub.assignment else ('Работа #' ~ sub.submission_id) }}
+                            </div>
+                            <div class="text-xs font-bold text-slate-400 mt-1">
+                                {{ sub.status }}
+                            </div>
+                        </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-slate-500 font-medium">Нет активных работ.</div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+

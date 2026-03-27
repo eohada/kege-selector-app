@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Расписание · URep{% endblock %}
 {% block body_attrs %}data-csrf-token="{{ csrf_token() if csrf_token else '' }}" data-cinema-scene="schedule"{% endblock %}
+{% block body_class %}layout-teacher{% endblock %}
 {% block head_css %}
 <style>
         .schedule-hero { margin-bottom: 2rem; }
@@ -408,193 +409,188 @@
 {% endblock %}
 {% set active_page = 'schedule' %}
 {% block content %}
+        <main class="flex-1 pt-0 pb-8 flex justify-center h-full">
+            <div class="w-full max-w-[1600px] flex gap-6 h-full">
+                <div class="flex-1 flex flex-col min-w-0 h-full">
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-1">Твой календарь успеха</h1>
+                            <p class="text-slate-500 font-medium text-sm flex items-center gap-2">
+                                <i class="ph-fill ph-check-circle text-boo-cyan"></i>
+                                На этой неделе запланировано {{ agenda|length if agenda else 0 }} уроков
+                            </p>
+                        </div>
+                        {% if can_manage_schedule %}
+                        <button type="button" onclick="openNewLessonModal()"
+                                class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex items-center gap-2 active:translate-y-1 active:border-b-0">
+                            <i class="ph-bold ph-plus text-lg"></i> Новый урок
+                        </button>
+                        {% endif %}
+                    </div>
 
-        <section class="glass-panel schedule-hero">
-            <div>
-                <p class="hero-eyebrow">календарь занятий</p>
-                <h1 class="hero-title">Расписание</h1>
-                <p class="hero-subtitle">
-                    {% if can_manage_schedule %}
-                    Клик по сетке — создать урок. Перетащи урок — перенести. В инспекторе — быстрые статусы.
-                    {% else %}
-                    Просмотр уроков по вашим правам (ученик — свои, родитель — дети, преподаватель — свои ученики).
-                    {% endif %}
-                </p>
-            </div>
-        </section>
+                    <div class="bg-white rounded-2xl p-2 border border-slate-200 border-b-[3px] border-b-slate-300 shadow-tactile mb-6 flex flex-wrap gap-3 items-center justify-between">
+                        <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200/50">
+                            <button class="px-5 py-1.5 {% if view_mode != 'agenda' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('week')">Неделя</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'agenda' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('agenda')">Список</button>
+                        </div>
 
-        <section class="glass-panel schedule-shell" id="cinema-nearest-lesson">
-            <div class="schedule-controls">
-                <div class="week-range">{{ week_label }}</div>
-                <div class="nav-buttons">
-                    <button class="round-btn" data-week-offset="{{ week_offset - 1 }}" onclick="navigateWeek(this.dataset.weekOffset)" title="Предыдущая неделя">
-                        <span style="font-weight:900;">‹</span>
-                    </button>
-                    <button class="round-btn" onclick="navigateWeek(0)" title="Текущая неделя">
-                        <span style="font-weight:900;">•</span>
-                    </button>
-                    <button class="round-btn" data-week-offset="{{ week_offset + 1 }}" onclick="navigateWeek(this.dataset.weekOffset)" title="Следующая неделя">
-                        <span style="font-weight:900;">›</span>
-                    </button>
-                </div>
-                <div class="schedule-filters">
-                    <details class="actions-menu">
-                        <summary class="neo-button outline" style="height: 44px; display:inline-flex; align-items:center;">Действия</summary>
-                        <div class="actions-menu-panel">
-                            <a href="{{ url_for('schedule.schedule_export_ics', timezone=timezone) }}" class="neo-button outline sm" style="justify-content: center; text-decoration:none;">
-                                Экспорт .ics
-                            </a>
-                            {% if can_manage_schedule %}
-                            <button class="neo-button outline sm" type="button" onclick="openTemplatesModal()">Автоплан</button>
-                            <button class="neo-button accent sm" type="button" onclick="applyTemplates()">Сгенерировать неделю</button>
+                        <div class="flex items-center gap-4">
+                            <button class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-boo-primary transition-all" data-week-offset="{{ week_offset - 1 }}" onclick="navigateWeek(this.dataset.weekOffset)"><i class="ph-bold ph-caret-left"></i></button>
+                            <h2 class="text-lg font-extrabold text-slate-900 tracking-tight w-72 text-center">{{ week_label }}</h2>
+                            <button class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-boo-primary transition-all" data-week-offset="{{ week_offset + 1 }}" onclick="navigateWeek(this.dataset.weekOffset)"><i class="ph-bold ph-caret-right"></i></button>
+                        </div>
+
+                        <div class="flex items-center gap-2 pr-2 flex-wrap">
+                            <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200/50">
+                                <button class="px-4 py-1.5 {% if timezone == 'moscow' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('moscow')">МСК</button>
+                                <button class="px-4 py-1.5 {% if timezone == 'tomsk' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('tomsk')">Томск</button>
+                            </div>
+                            <select id="statusFilter" class="neo-select" onchange="applyFilters()" style="min-width: 160px;">
+                                <option value="">Все статусы</option>
+                                {% for status in statuses %}
+                                <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
+                                    {% if status == 'planned' %}Запланирован{% elif status == 'in_progress' %}Идет сейчас{% elif status == 'completed' %}Проведен{% elif status == 'cancelled' %}Отменен{% else %}{{ status }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <select id="categoryFilter" class="neo-select" onchange="applyFilters()" style="min-width: 160px;">
+                                <option value="">Все категории</option>
+                                {% for category in categories %}
+                                <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if students and students|length > 1 %}
+                            <select id="studentFilter" class="neo-select" onchange="applyFilters()" style="min-width: 220px;">
+                                <option value="">Все ученики</option>
+                                {% for s in students %}
+                                <option value="{{ s.student_id }}" {% if student_filter and student_filter == s.student_id %}selected{% endif %}>{{ s.name }}</option>
+                                {% endfor %}
+                            </select>
                             {% endif %}
                         </div>
-                    </details>
-                    <div class="timezone-toggle" style="gap:.25rem;">
-                        <button class="{% if view_mode == 'week' %}active{% endif %}" onclick="switchView('week')">Неделя</button>
-                        <button class="{% if view_mode == 'agenda' %}active{% endif %}" onclick="switchView('agenda')">Список</button>
                     </div>
-                    <div class="timezone-toggle">
-                        <button class="{% if timezone == 'moscow' %}active{% endif %}" onclick="switchTimezone('moscow')">МСК</button>
-                        <button class="{% if timezone == 'tomsk' %}active{% endif %}" onclick="switchTimezone('tomsk')">Томск</button>
-                    </div>
-                    <select id="statusFilter" class="neo-select" onchange="applyFilters()" style="min-width: 160px;">
-                        <option value="">Все статусы</option>
-                        {% for status in statuses %}
-                        <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
-                            {% if status == 'planned' %}Запланирован{% elif status == 'in_progress' %}Идет сейчас{% elif status == 'completed' %}Проведен{% elif status == 'cancelled' %}Отменен{% else %}{{ status }}{% endif %}
-                        </option>
-                        {% endfor %}
-                    </select>
-                    <select id="categoryFilter" class="neo-select" onchange="applyFilters()" style="min-width: 160px;">
-                        <option value="">Все категории</option>
-                        {% for category in categories %}
-                        <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
-                        {% endfor %}
-                    </select>
-                    {% if students and students|length > 1 %}
-                    <select id="studentFilter" class="neo-select" onchange="applyFilters()" style="min-width: 220px;">
-                        <option value="">Все ученики</option>
-                        {% for s in students %}
-                        <option value="{{ s.student_id }}" {% if student_filter and student_filter == s.student_id %}selected{% endif %}>{{ s.name }}</option>
-                        {% endfor %}
-                    </select>
-                    {% endif %}
-                </div>
-            </div>
 
-            {% if view_mode == 'agenda' %}
-            <div class="glass-panel" style="margin-top: 1rem;">
-                <div class="panel-head">
-                    <div>
-                        <div class="hero-eyebrow">список</div>
-                        <div style="font-size:1.15rem; font-weight:900;">Уроки недели</div>
-                    </div>
-                </div>
-                <div style="display:grid; gap:.75rem; margin-top: 1rem;">
-                    {% for a in agenda %}
-                    <div style="padding:.9rem 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap; align-items: center;">
-                        <div style="min-width:0;">
-                            <div style="font-weight:900;">{{ a.date_human }} · {{ a.time }}</div>
-                            <div style="color: var(--text-muted); margin-top:.25rem;">
-                                <strong>{{ a.student_name }}</strong>
-                                {% if a.topic %} · {{ a.topic }}{% endif %}
-                                · {{ a.duration }} мин
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:.5rem; flex-wrap: wrap;">
-                            <a class="neo-button outline sm" href="{{ a.lesson_url }}">Открыть урок</a>
-                            <a class="neo-button ghost sm" href="{{ a.profile_url }}">Профиль</a>
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="empty-state" style="padding: 2rem 1rem;"><p>На этой неделе нет уроков.</p></div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% else %}
-            <div class="schedule-layout" data-schedule-root
-                 data-slot-minutes="{{ slot_minutes }}"
-                 data-start-hour="{{ day_start_hour }}"
-                 data-end-hour="{{ day_end_hour }}"
-                 data-total-slots="{{ total_slots }}"
-                 data-px-per-slot="28"
-                 data-timezone="{{ timezone }}"
-                 data-week-offset="{{ week_offset }}"
-                 data-can-manage="{{ '1' if can_manage_schedule else '0' }}"
-                 data-reschedule-url-tpl="{{ url_for('schedule.schedule_reschedule_lesson', lesson_id=0) }}"
-                 data-set-status-url-tpl="{{ url_for('schedule.schedule_set_status', lesson_id=0) }}"
-                 data-update-url-tpl="{{ url_for('schedule.schedule_update_lesson', lesson_id=0) }}"
-                 data-delete-url-tpl="{{ url_for('schedule.schedule_delete_lesson', lesson_id=0) }}"
-                 data-icon-regular="{{ url_for('static', filename='icons/sprite.svg') }}#nav-schedule"
-                 data-icon-exam="{{ url_for('static', filename='icons/sprite.svg') }}#nav-stats"
-                 data-icon-intro="{{ url_for('static', filename='icons/sprite.svg') }}#nav-help">
-
-                <div class="schedule-grid-wrap">
-                    <div class="schedule-grid-head">
-                        <div class="time-head">Время</div>
-                        {% for day in week_days %}
-                        <div class="day-head">
-                            <div class="dn">{{ day.strftime('%a') }}</div>
-                            <div class="dd">{{ day.strftime('%d') }}</div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <div id="scheduleGrid">
-                        <div class="time-col">
-                            {% for label in time_labels %}
-                            <div class="time-label">{{ label }}</div>
-                            {% endfor %}
-                        </div>
-                        {% for day_index in range(7) %}
-                        {% set day = week_days[day_index] %}
-                        <div class="day-col" data-day="{{ day.isoformat() }}" data-day-index="{{ day_index }}" data-events='{{ day_events[day_index]|tojson }}'>
-                            <div class="day-col__body"></div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <aside class="glass-panel schedule-inspector" id="lessonInspector">
-                    <div class="panel-head">
-                        <div>
-                            <div class="hero-eyebrow">инспектор</div>
-                            <div style="font-size:1.15rem; font-weight:900;" id="lessonInspectorTitle">Выбери урок</div>
-                        </div>
-                        <button class="neo-button ghost" type="button" id="lessonInspectorClose">Закрыть</button>
-                    </div>
-                    <div class="schedule-inspector__body" id="lessonInspectorBody">
-                        <div style="display:grid; gap: .85rem;">
-                            <div style="color: var(--text-muted);">
-                                {% if can_manage_schedule %}
-                                Кликни по уроку, чтобы увидеть детали и быстрые действия. Перетаскивание работает прямо на сетке.
-                                {% else %}
-                                Кликни по уроку, чтобы увидеть детали.
-                                {% endif %}
-                            </div>
-                            <div style="border-top: 1px solid var(--stroke-1); padding-top: .85rem;">
-                                <div class="hero-eyebrow">на этой неделе</div>
-                                <div style="display:grid; gap:.6rem; margin-top:.6rem;">
-                                    {% for a in (agenda_week_sidebar if agenda_week_sidebar is defined else agenda) %}
-                                      <a href="{{ a.lesson_url }}" style="text-decoration:none; color:inherit;">
-                                        <div style="padding:.75rem .85rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02);">
-                                          <div style="font-weight:900;">{{ a.date_human }} · {{ a.time }}</div>
-                                          <div style="color: var(--text-muted); margin-top:.25rem; font-size:.92rem;">
-                                            {{ a.student_name }}{% if a.topic %} · {{ a.topic }}{% endif %}
-                                          </div>
+                    {% if view_mode == 'agenda' %}
+                        <div class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">список</div>
+                            <div class="text-xl font-extrabold text-slate-900 tracking-tight mt-1">Уроки недели</div>
+                            <div class="mt-4 space-y-3">
+                                {% for a in agenda %}
+                                    <div class="p-4 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <div class="font-extrabold text-slate-900">{{ a.date_human }} · {{ a.time }}</div>
+                                            <div class="text-slate-500 font-medium text-sm mt-1">
+                                                <strong>{{ a.student_name }}</strong>{% if a.topic %} · {{ a.topic }}{% endif %} · {{ a.duration }} мин
+                                            </div>
                                         </div>
-                                      </a>
-                                    {% else %}
-                                      <div class="empty-state" style="padding: 1rem;"><p>Нет уроков.</p></div>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <a class="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors" href="{{ a.lesson_url }}">Открыть урок</a>
+                                            <a class="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:text-boo-primary hover:border-purple-200 transition-colors" href="{{ a.profile_url }}">Профиль</a>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div class="text-slate-500 font-medium">На этой неделе нет уроков.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="flex-1 bg-white rounded-3xl border border-slate-200 shadow-tactile flex flex-col overflow-hidden relative"
+                             data-schedule-root
+                             data-slot-minutes="{{ slot_minutes }}"
+                             data-start-hour="{{ day_start_hour }}"
+                             data-end-hour="{{ day_end_hour }}"
+                             data-total-slots="{{ total_slots }}"
+                             data-px-per-slot="28"
+                             data-timezone="{{ timezone }}"
+                             data-week-offset="{{ week_offset }}"
+                             data-can-manage="{{ '1' if can_manage_schedule else '0' }}"
+                             data-reschedule-url-tpl="{{ url_for('schedule.schedule_reschedule_lesson', lesson_id=0) }}"
+                             data-set-status-url-tpl="{{ url_for('schedule.schedule_set_status', lesson_id=0) }}"
+                             data-update-url-tpl="{{ url_for('schedule.schedule_update_lesson', lesson_id=0) }}"
+                             data-delete-url-tpl="{{ url_for('schedule.schedule_delete_lesson', lesson_id=0) }}"
+                             data-icon-regular="{{ url_for('static', filename='icons/sprite.svg') }}#nav-schedule"
+                             data-icon-exam="{{ url_for('static', filename='icons/sprite.svg') }}#nav-stats"
+                             data-icon-intro="{{ url_for('static', filename='icons/sprite.svg') }}#nav-help">
+
+                            <div class="schedule-grid-head grid grid-cols-8 border-b border-slate-100 bg-slate-50/50">
+                                <div class="p-4 border-r border-slate-100/50 text-center flex flex-col justify-center">
+                                    <i class="ph-fill ph-clock text-slate-300 text-xl"></i>
+                                </div>
+                                {% for day in week_days %}
+                                <div class="p-4 {% if not loop.last %}border-r border-slate-100/50{% endif %} text-center">
+                                    <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{{ day.strftime('%a') }}</div>
+                                    <div class="text-2xl font-black text-slate-700">{{ day.strftime('%d') }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="flex-1 overflow-y-auto hide-scroll relative">
+                                <div id="scheduleGrid" class="grid grid-cols-8 relative">
+                                    <div class="border-r border-slate-100/50 relative bg-white z-10 time-col">
+                                        {% for label in time_labels %}
+                                        <div class="h-14 border-b border-slate-100 flex justify-center pt-2 time-label"><span class="text-xs font-bold text-slate-400">{{ label }}</span></div>
+                                        {% endfor %}
+                                    </div>
+                                    {% for day_index in range(7) %}
+                                    {% set day = week_days[day_index] %}
+                                    <div class="{% if not loop.last %}border-r border-slate-100/50{% endif %} relative bg-white day-col"
+                                         data-day="{{ day.isoformat() }}" data-day-index="{{ day_index }}" data-events='{{ day_events[day_index]|tojson }}'>
+                                        <div class="day-col__body"></div>
+                                    </div>
                                     {% endfor %}
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </aside>
+                    {% endif %}
+                </div>
+
+                <div class="w-96 flex flex-col h-full shrink-0">
+                    <aside class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full relative overflow-hidden schedule-inspector" id="lessonInspector">
+                        <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+                            <div class="flex justify-between items-start mb-4">
+                                <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Инспектор урока</h2>
+                                <button class="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 hover:shadow-sm transition-all" type="button" id="lessonInspectorClose"><i class="ph-bold ph-x"></i></button>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 rounded-2xl bg-purple-100 text-boo-primary flex items-center justify-center border border-purple-200 shadow-sm">
+                                    <i class="ph-bold ph-math-operations text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="lessonInspectorTitle">Выбери урок</h3>
+                                    <div class="text-slate-500 font-bold text-sm mt-1">
+                                        {% if can_manage_schedule %}Клик по уроку — редактирование.{% else %}Клик по уроку — детали.{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-6 space-y-5 hide-scroll schedule-inspector__body" id="lessonInspectorBody">
+                            <div class="text-slate-500 font-medium">
+                                {% if can_manage_schedule %}
+                                    Кликни по уроку, чтобы увидеть детали и быстрые действия. Перетаскивание работает прямо на сетке.
+                                {% else %}
+                                    Кликни по уроку, чтобы увидеть детали.
+                                {% endif %}
+                            </div>
+                            <div class="border-t border-slate-200 pt-5">
+                                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">на этой неделе</div>
+                                <div class="mt-3 space-y-2">
+                                    {% for a in (agenda_week_sidebar if agenda_week_sidebar is defined else agenda) %}
+                                        <a href="{{ a.lesson_url }}" class="block no-underline">
+                                            <div class="p-3 rounded-2xl border border-slate-200 hover:border-purple-200 hover:bg-purple-50/30 transition-colors">
+                                                <div class="font-extrabold text-slate-900 text-sm">{{ a.date_human }} · {{ a.time }}</div>
+                                                <div class="text-slate-500 font-medium text-sm mt-1">{{ a.student_name }}{% if a.topic %} · {{ a.topic }}{% endif %}</div>
+                                            </div>
+                                        </a>
+                                    {% else %}
+                                        <div class="text-slate-500 font-medium">Нет уроков.</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
             </div>
-            {% endif %}
-        </section>
+        </main>
 
     {% if can_manage_schedule %}
     <div class="modal" id="createLessonModal">
@@ -726,6 +722,17 @@
 {% block scripts_extra %}
     <script>
         const currentTimezone = '{{ timezone }}';
+        const weekDaysIso = [{% for d in week_days %}"{{ d.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}];
+
+        function openNewLessonModal() {
+            const modal = document.getElementById('createLessonModal');
+            const dateEl = document.getElementById('modalLessonDate');
+            const timeEl = document.getElementById('modalLessonTime');
+            if (!modal || !dateEl || !timeEl) return;
+            dateEl.value = (weekDaysIso && weekDaysIso.length ? weekDaysIso[0] : '');
+            timeEl.value = '18:00';
+            modal.classList.add('active');
+        }
 
         function applyFilters() {
             const params = new URLSearchParams();
