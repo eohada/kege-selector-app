@@ -25,13 +25,22 @@ def _require_allowed():
 
 
 def _get_testers():
-    q = (
-        User.query.join(UserRole, UserRole.user_id == User.id, isouter=True)
-        .filter(or_(User.role.in_(["tester", "chief_tester"]), UserRole.role.in_(["tester", "chief_tester"])))
-        .distinct()
-        .order_by(User.username.asc())
-    )
-    return q.all()
+    try:
+        q = (
+            User.query.join(UserRole, UserRole.user_id == User.id, isouter=True)
+            .filter(or_(User.role.in_(["tester", "chief_tester"]), UserRole.role.in_(["tester", "chief_tester"])))
+            .distinct()
+            .order_by(User.username.asc())
+        )
+        return q.all()
+    except Exception:
+        # Fallback for legacy DB states where user_roles table/data is inconsistent.
+        current_app.logger.exception("chief_tester._get_testers failed, using role-only fallback")
+        return (
+            User.query.filter(User.role.in_(["tester", "chief_tester"]))
+            .order_by(User.username.asc())
+            .all()
+        )
 
 
 def _status_label(status: str | None) -> str:
@@ -100,118 +109,136 @@ def _read_log_tail(max_lines: int = 120) -> tuple[list[str], str]:
 @login_required
 def dashboard():
     _require_allowed()
-    tasks = (
-        QATask.query.filter(QATask.task_type == "task")
-        .order_by(QATask.created_at.desc())
-        .limit(600)
-        .all()
-    )
-    bug_reports = (
-        QATask.query.filter(QATask.task_type == "bug_report")
-        .order_by(QATask.created_at.desc())
-        .limit(120)
-        .all()
-    )
+    try:
+        tasks = (
+            QATask.query.filter(QATask.task_type == "task")
+            .order_by(QATask.created_at.desc())
+            .limit(600)
+            .all()
+        )
+        bug_reports = (
+            QATask.query.filter(QATask.task_type == "bug_report")
+            .order_by(QATask.created_at.desc())
+            .limit(120)
+            .all()
+        )
 
-    stats = {
-        "todo": sum(1 for t in tasks if (t.status or "todo") == "todo"),
-        "in_progress": sum(1 for t in tasks if (t.status or "") == "in_progress"),
-        "review": sum(1 for t in tasks if (t.status or "") == "review"),
-        "done": sum(1 for t in tasks if (t.status or "") == "done"),
-        "total": len(tasks),
-        "critical": sum(1 for t in tasks if (t.priority or "") == "critical"),
-        "bugs_open": sum(1 for b in bug_reports if (b.status or "new") in ("new", "in_progress", "review")),
-        "bugs_done_7d": QATask.query.filter(
-            QATask.task_type == "bug_report",
-            QATask.status == "done",
-            QATask.created_at >= (datetime.utcnow() - timedelta(days=7)),
-        ).count(),
-    }
-
-    testers = _get_testers()
-    assignee_ids = set()
-    for t in tasks:
-        if isinstance(getattr(t, "assignee_ids", None), list):
-            assignee_ids.update(x for x in (t.assignee_ids or []) if x)
-        elif getattr(t, "assignee_id", None):
-            assignee_ids.add(t.assignee_id)
-    assignee_map = {u.id: u for u in User.query.filter(User.id.in_(assignee_ids)).all()} if assignee_ids else {}
-
-    task_cards = []
-    columns = {"todo": [], "in_progress": [], "review": [], "done": []}
-    for t in tasks[:240]:
-        badge_cls, prio_text = _priority_badge(t.priority)
-        item = {
-            "id": t.id,
-            "title": t.title,
-            "status": (t.status or "todo"),
-            "status_label": _status_label(t.status),
-            "priority": (t.priority or "medium"),
-            "priority_label": _priority_label(t.priority),
-            "priority_badge_cls": badge_cls,
-            "priority_badge_text": prio_text,
-            "context_url": t.context_url,
-            "created_at": t.created_at,
-            "assignees": [
-                assignee_map[aid]
-                for aid in (t.assignee_ids or ([t.assignee_id] if t.assignee_id else []))
-                if aid in assignee_map
-            ],
+        stats = {
+            "todo": sum(1 for t in tasks if (t.status or "todo") == "todo"),
+            "in_progress": sum(1 for t in tasks if (t.status or "") == "in_progress"),
+            "review": sum(1 for t in tasks if (t.status or "") == "review"),
+            "done": sum(1 for t in tasks if (t.status or "") == "done"),
+            "total": len(tasks),
+            "critical": sum(1 for t in tasks if (t.priority or "") == "critical"),
+            "bugs_open": sum(1 for b in bug_reports if (b.status or "new") in ("new", "in_progress", "review")),
+            "bugs_done_7d": QATask.query.filter(
+                QATask.task_type == "bug_report",
+                QATask.status == "done",
+                QATask.created_at >= (datetime.utcnow() - timedelta(days=7)),
+            ).count(),
         }
-        task_cards.append(item)
-        if item["status"] in columns:
-            columns[item["status"]].append(item)
 
-    activity = []
-    recent_bugs = (
-        QATask.query.filter(QATask.task_type == "bug_report")
-        .order_by(QATask.created_at.desc())
-        .limit(12)
-        .all()
-    )
-    for b in recent_bugs:
-        reporter_name = getattr(getattr(b, "reporter", None), "username", None) or "Unknown"
-        sev = _priority_label(b.priority)
-        activity.append(
-            {
-                "title": b.title or f"BUG #{b.id}",
-                "tag": sev,
-                "status": _status_label(b.status or "new"),
-                "reporter": reporter_name,
-                "created_at": b.created_at,
-                "code": f"#BUG-{b.id}",
-            }
-        )
+        testers = _get_testers()
+        assignee_ids = set()
+        for t in tasks:
+            if isinstance(getattr(t, "assignee_ids", None), list):
+                assignee_ids.update(x for x in (t.assignee_ids or []) if x)
+            elif getattr(t, "assignee_id", None):
+                assignee_ids.add(t.assignee_id)
+        assignee_map = {u.id: u for u in User.query.filter(User.id.in_(assignee_ids)).all()} if assignee_ids else {}
 
-    workloads = []
-    for u in testers:
-        ids = [u.id]
-        in_work = sum(
-            1
-            for t in tasks
-            if (t.status or "") in ("todo", "in_progress", "review")
-            and (
-                (u.id == t.assignee_id)
-                or (isinstance(getattr(t, "assignee_ids", None), list) and u.id in (t.assignee_ids or []))
-            )
-        )
-        done = sum(
-            1
-            for t in tasks
-            if (t.status or "") == "done"
-            and (
-                (u.id == t.assignee_id)
-                or (isinstance(getattr(t, "assignee_ids", None), list) and u.id in (t.assignee_ids or []))
-            )
-        )
-        workloads.append(
-            {
-                "user": u,
-                "in_work": in_work,
-                "done": done,
-                "efficiency": "Высокая" if done >= max(1, in_work) else ("Средняя" if done > 0 else "Низкая"),
+        task_cards = []
+        columns = {"todo": [], "in_progress": [], "review": [], "done": []}
+        for t in tasks[:240]:
+            badge_cls, prio_text = _priority_badge(t.priority)
+            item = {
+                "id": t.id,
+                "title": t.title,
+                "status": (t.status or "todo"),
+                "status_label": _status_label(t.status),
+                "priority": (t.priority or "medium"),
+                "priority_label": _priority_label(t.priority),
+                "priority_badge_cls": badge_cls,
+                "priority_badge_text": prio_text,
+                "context_url": t.context_url,
+                "created_at": t.created_at,
+                "assignees": [
+                    assignee_map[aid]
+                    for aid in (t.assignee_ids or ([t.assignee_id] if t.assignee_id else []))
+                    if aid in assignee_map
+                ],
             }
+            task_cards.append(item)
+            if item["status"] in columns:
+                columns[item["status"]].append(item)
+
+        activity = []
+        recent_bugs = (
+            QATask.query.filter(QATask.task_type == "bug_report")
+            .order_by(QATask.created_at.desc())
+            .limit(12)
+            .all()
         )
+        for b in recent_bugs:
+            reporter_name = getattr(getattr(b, "reporter", None), "username", None) or "Unknown"
+            sev = _priority_label(b.priority)
+            activity.append(
+                {
+                    "title": b.title or f"BUG #{b.id}",
+                    "tag": sev,
+                    "status": _status_label(b.status or "new"),
+                    "reporter": reporter_name,
+                    "created_at": b.created_at,
+                    "code": f"#BUG-{b.id}",
+                }
+            )
+
+        workloads = []
+        for u in testers:
+            in_work = sum(
+                1
+                for t in tasks
+                if (t.status or "") in ("todo", "in_progress", "review")
+                and (
+                    (u.id == t.assignee_id)
+                    or (isinstance(getattr(t, "assignee_ids", None), list) and u.id in (t.assignee_ids or []))
+                )
+            )
+            done = sum(
+                1
+                for t in tasks
+                if (t.status or "") == "done"
+                and (
+                    (u.id == t.assignee_id)
+                    or (isinstance(getattr(t, "assignee_ids", None), list) and u.id in (t.assignee_ids or []))
+                )
+            )
+            workloads.append(
+                {
+                    "user": u,
+                    "in_work": in_work,
+                    "done": done,
+                    "efficiency": "Высокая" if done >= max(1, in_work) else ("Средняя" if done > 0 else "Низкая"),
+                }
+            )
+    except Exception:
+        current_app.logger.exception("chief_tester.dashboard failed")
+        flash("Раздел QA временно недоступен: данные повреждены или не синхронизированы. Показываю безопасный режим.", "error")
+        stats = {
+            "todo": 0,
+            "in_progress": 0,
+            "review": 0,
+            "done": 0,
+            "total": 0,
+            "critical": 0,
+            "bugs_open": 0,
+            "bugs_done_7d": 0,
+        }
+        task_cards = []
+        columns = {"todo": [], "in_progress": [], "review": [], "done": []}
+        activity = []
+        testers = _get_testers()
+        workloads = []
 
     return render_template(
         "chief_tester/main_tester_cabinet.html",

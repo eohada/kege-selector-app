@@ -903,7 +903,9 @@
 
   /* ═══════════════ CONFIRM DIALOG ═══════════════ */
 
-  .confirm-modal {
+  .confirm-modal { @apply hidden; }
+  .confirm-modal.active { @apply fixed inset-0 z-[220] flex items-center justify-center px-4; background: rgba(15,23,42,0.4); }
+  .confirm-modal-content {
     background: #FFFFFF;
     @apply animate-slide-up w-full;
     padding: 1.5rem; max-width: 420px;
@@ -911,7 +913,6 @@
     border: 1px solid #E2E8F0;
     box-shadow: 0 20px 60px rgba(15,23,42,0.15);
   }
-  .confirm-modal.active { @apply fixed inset-0 z-[100] flex items-center justify-center; background: rgba(15,23,42,0.4); }
   .confirm-modal-title { @apply font-extrabold mb-3; font-size: 1.05rem; color: #0F172A; }
   .confirm-modal-message { @apply mb-5; font-size: 0.9rem; line-height: 1.55; color: #475569; }
   .confirm-modal-actions { @apply flex gap-3 justify-end; }
