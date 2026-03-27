@@ -1526,6 +1526,7 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
         _add_col = _make_safe_add_column(inspector, is_postgres)
         _add_col('Tasks', 'course_id', 'INTEGER')
         _add_col('TheoryBlocks', 'course_id', 'INTEGER')
+        _add_col('TheoryBlocks', 'pdf_path', 'VARCHAR(500)')
         _add_col('StudentTheoryAccess', 'course_id', 'INTEGER')
         _add_col('StudentTaskStatistics', 'course_id', 'INTEGER')
         _add_col('Assignments', 'exam_course_id', 'INTEGER')
