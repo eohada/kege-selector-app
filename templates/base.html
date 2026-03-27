@@ -86,7 +86,24 @@
     {% endwith %}
 
     {% if current_user is defined and current_user.is_authenticated %}
-        {% if current_user.role in ['chief_tester', 'creator', 'chief_admin', 'tester', 'admin'] or session.get('impersonator_id') %}
+        {% set _qa_widget_allowed = false %}
+        {% if session.get('impersonator_id') %}
+            {% set _qa_widget_allowed = true %}
+        {% else %}
+            {# Some users rely on role helpers / roles table, not `current_user.role` #}
+            {% if (current_user.is_creator() if current_user.is_creator is defined else false)
+                or (current_user.is_chief_tester() if current_user.is_chief_tester is defined else false)
+                or (current_user.is_tester() if current_user.is_tester is defined else false)
+                or (current_user.is_admin() if current_user.is_admin is defined else false)
+                or (current_user.is_chief_admin() if current_user.is_chief_admin is defined else false)
+            %}
+                {% set _qa_widget_allowed = true %}
+            {% endif %}
+            {% if not _qa_widget_allowed and current_user.role in ['chief_tester', 'creator', 'chief_admin', 'tester', 'admin'] %}
+                {% set _qa_widget_allowed = true %}
+            {% endif %}
+        {% endif %}
+        {% if _qa_widget_allowed %}
             {% include 'qa/_floating_widget.html' %}
         {% endif %}
     {% endif %}
