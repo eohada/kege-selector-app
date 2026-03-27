@@ -955,6 +955,8 @@ def bug_report():
     context_url = request.args.get('context_url') or request.form.get('context_url') or ''
     target_user_id = request.args.get('target_user_id') or request.form.get('target_user_id') or ''
     
+    return_to = (request.args.get('return_to') or request.form.get('return_to') or '').strip()
+
     if request.method == 'POST':
         title = (request.form.get('title') or '').strip() or 'Баг с страницы'
         description = (request.form.get('description') or '').strip()
@@ -1001,9 +1003,11 @@ def bug_report():
                  return jsonify({'success': True, 'redirect': url_for('qa.bug_reports')})
             
             flash('Баг-репорт создан. Создатель увидит его в разделе «Баг-репорты».', 'success')
+            if return_to:
+                return redirect(return_to)
             return redirect(url_for('qa.bug_reports'))
             
-    return render_template('qa/bug_report.html', context_url=context_url, target_user_id=target_user_id)
+    return render_template('qa/bug_report.html', context_url=context_url, target_user_id=target_user_id, return_to=return_to)
 
 
 @qa_bp.route('/bug-reports')
@@ -1014,7 +1018,8 @@ def bug_reports():
         return "Access denied", 403
     reports = QATask.query.filter(QATask.task_type == 'bug_report').order_by(QATask.created_at.desc()).all()
     can_edit = current_user.is_creator()
-    return render_template('qa/bug_reports.html', reports=reports, can_edit=can_edit)
+    return_to = (request.args.get('return_to') or '').strip()
+    return render_template('qa/bug_reports.html', reports=reports, can_edit=can_edit, return_to=return_to)
 
 
 @qa_bp.route('/bug-reports/<int:task_id>/status', methods=['POST'])

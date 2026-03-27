@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime, timedelta
 
@@ -113,6 +114,73 @@ def _read_log_tail(max_lines: int = 120) -> tuple[list[str], str]:
         return lines[-max_lines:], "ok"
     except Exception:
         return [], "error"
+
+
+def _status_text(value) -> str:
+    if value is None:
+        return "unknown"
+    if isinstance(value, bool):
+        return "success" if value else "failed"
+    if isinstance(value, int):
+        if 200 <= value < 400:
+            return "success"
+        if value >= 500:
+            return "error"
+        if value >= 400:
+            return "failed"
+        return str(value)
+    s = str(value).strip()
+    if not s:
+        return "unknown"
+    return s
+
+
+def _action_text(event: str | None, method: str | None, url: str | None, message: str | None) -> str:
+    e = (event or "").strip()
+    if e == "http_request":
+        return f"{(method or 'REQUEST').upper()} {(url or '/')}"
+    if e:
+        return e
+    return (message or "action").strip()
+
+
+def _parse_log_line(line: str) -> dict | None:
+    try:
+        obj = json.loads(line)
+    except Exception:
+        return None
+    if not isinstance(obj, dict):
+        return None
+
+    actor = "system"
+    user_id = obj.get("user_id")
+    role = obj.get("role")
+    if user_id:
+        actor = f"user#{user_id}{f' ({role})' if role else ''}"
+    elif role:
+        actor = f"role:{role}"
+
+    event = obj.get("event")
+    method = obj.get("method")
+    url = obj.get("url")
+    message = obj.get("message")
+    action = _action_text(event, method, url, message)
+    status = _status_text(obj.get("status"))
+    ts = obj.get("timestamp") or ""
+
+    return {
+        "ts": ts,
+        "actor": actor,
+        "action": action,
+        "page": url or "-",
+        "result": status,
+        "request_id": obj.get("request_id"),
+        "method": method,
+        "url": url,
+        "event": event,
+        "message": message,
+        "raw": line,
+    }
 
 
 def _iter_assignee_ids(task: QATask) -> list[int]:
@@ -298,6 +366,28 @@ def logs_tail():
     lines_limit = request.args.get("lines", type=int) or 120
     lines, state = _read_log_tail(max_lines=lines_limit)
     return jsonify({"ok": state == "ok", "state": state, "lines": lines, "line_count": len(lines)})
+
+
+@chief_tester_bp.route("/logs/feed")
+@login_required
+def logs_feed():
+    _require_allowed()
+    lines_limit = request.args.get("lines", type=int) or 200
+    lines, state = _read_log_tail(max_lines=lines_limit)
+    entries = []
+    for ln in lines:
+        parsed = _parse_log_line(ln)
+        if parsed:
+            entries.append(parsed)
+    return jsonify(
+        {
+            "ok": state == "ok",
+            "state": state,
+            "entries": entries[-lines_limit:],
+            "entry_count": len(entries),
+            "line_count": len(lines),
+        }
+    )
 
 
 @chief_tester_bp.route("/users/search")

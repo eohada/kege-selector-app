@@ -145,6 +145,30 @@
                 {% endfor %}
             </div>
         </div>
+
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
+            <h3 class="text-xl font-black text-slate-900 mb-4">Процесс взаимодействия ролей</h3>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="text-xs font-extrabold uppercase tracking-widest text-slate-500 mb-2">Creator</div>
+                    <div class="text-sm font-bold text-slate-900 mb-2">Управляет приоритетами и доступами</div>
+                    <div class="text-xs text-slate-600 mb-3">Ставит цели, смотрит критичные баги, корректирует ресурсы команды.</div>
+                    <button type="button" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold" onclick="switchTab('team')">Открыть команду</button>
+                </div>
+                <div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+                    <div class="text-xs font-extrabold uppercase tracking-widest text-indigo-600 mb-2">Chief Tester</div>
+                    <div class="text-sm font-bold text-slate-900 mb-2">Оркестрирует тестирование</div>
+                    <div class="text-xs text-slate-600 mb-3">Гоняет пресеты, распределяет задачи, подтверждает воспроизводимость ошибок.</div>
+                    <button type="button" class="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold" onclick="switchTab('tasks')">Открыть баг-трекер</button>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="text-xs font-extrabold uppercase tracking-widest text-slate-500 mb-2">Tester</div>
+                    <div class="text-sm font-bold text-slate-900 mb-2">Проверяет сценарии и заводит баги</div>
+                    <div class="text-xs text-slate-600 mb-3">Запускает кейсы, фиксирует шаги и прикладывает логи/скриншоты в отчёт.</div>
+                    <button type="button" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold" onclick="openBugModal()">Завести баг</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="tab-tasks" class="tab-content flex-col h-full hidden">
@@ -243,11 +267,25 @@
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-2xl font-black text-slate-900 tracking-tight">Логи приложения</h2>
                 <div class="flex items-center gap-2">
+                    <button type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm" onclick="attachSelectedLogsToBug()">Прикрепить к багу</button>
                     <button type="button" class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm" onclick="refreshLogs()">Обновить</button>
                 </div>
             </div>
-            <p class="text-slate-500 text-sm mb-4">Live tail файла <span class="font-mono">logs/app.log</span>.</p>
-            <pre id="ctLogOutput" class="bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 p-4 text-xs font-mono h-[560px] overflow-auto">Загрузка логов...</pre>
+            <p class="text-slate-500 text-sm mb-4">Формат: <span class="font-mono">кто</span> / <span class="font-mono">действие</span> / <span class="font-mono">страница</span> / <span class="font-mono">результат</span> / <span class="font-mono">время</span>.</p>
+            <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                <div class="grid grid-cols-12 bg-slate-50 text-[11px] uppercase font-extrabold tracking-wider text-slate-500 border-b border-slate-200">
+                    <div class="col-span-1 p-2 text-center">#</div>
+                    <div class="col-span-2 p-2">Кто</div>
+                    <div class="col-span-3 p-2">Действие</div>
+                    <div class="col-span-3 p-2">Страница</div>
+                    <div class="col-span-1 p-2">Результат</div>
+                    <div class="col-span-2 p-2">Время</div>
+                </div>
+                <div id="ctLogTable" class="max-h-[560px] overflow-auto divide-y divide-slate-100">
+                    <div class="p-4 text-sm text-slate-500">Загрузка логов...</div>
+                </div>
+            </div>
+            <div class="mt-3 text-xs text-slate-500" id="ctLogSelectionInfo">Выбрано логов: 0</div>
         </div>
     </div>
 </div>
@@ -350,6 +388,7 @@
 const tabs = ['dashboard', 'tasks', 'team', 'logs'];
 let logsTimer = null;
 let logsLastText = '';
+let logsSelected = [];
 const initialTabFromServer = '{{ initial_tab|default("dashboard") }}';
 
 function updateTabUrl(tabId) {
@@ -425,22 +464,90 @@ function startLogsPolling() {
 }
 
 async function refreshLogs() {
-    const el = document.getElementById('ctLogOutput');
-    if (!el) return;
+    const table = document.getElementById('ctLogTable');
+    if (!table) return;
     try {
-        const res = await fetch('{{ url_for("chief_tester.logs_tail") }}?lines=180', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const res = await fetch('{{ url_for("chief_tester.logs_feed") }}?lines=200', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         const data = await res.json();
-        if (!data || !Array.isArray(data.lines)) return;
-        const text = data.lines.join('\n');
+        if (!data || !Array.isArray(data.entries)) return;
+        const text = JSON.stringify(data.entries.map(x => x.request_id));
         if (text !== logsLastText) {
-            const nearBottom = (el.scrollTop + el.clientHeight + 120) >= el.scrollHeight;
-            el.textContent = text || 'Файл логов пуст.';
+            renderLogsRows(data.entries);
             logsLastText = text;
-            if (nearBottom) el.scrollTop = el.scrollHeight;
         }
     } catch (e) {
-        el.textContent = 'Ошибка чтения логов.';
+        table.innerHTML = '<div class="p-4 text-sm text-red-500">Ошибка чтения логов.</div>';
     }
+}
+
+function safeText(v) {
+    return (v || '').toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function shortTs(v) {
+    if (!v) return '-';
+    try {
+        const d = new Date(v);
+        if (Number.isNaN(d.getTime())) return v;
+        return d.toLocaleString('ru-RU', { hour12: false });
+    } catch (e) {
+        return v;
+    }
+}
+
+function renderLogsRows(entries) {
+    const table = document.getElementById('ctLogTable');
+    if (!table) return;
+    if (!entries.length) {
+        table.innerHTML = '<div class="p-4 text-sm text-slate-500">Логи не найдены.</div>';
+        return;
+    }
+    const selectedSet = new Set(logsSelected);
+    table.innerHTML = entries.map((e, idx) => {
+        const key = `${e.ts}|${e.request_id || ''}|${e.action || ''}|${e.page || ''}`;
+        const checked = selectedSet.has(key) ? 'checked' : '';
+        const resultClass = (e.result || '').includes('success') ? 'text-green-600' : ((e.result || '').includes('error') || (e.result || '').includes('failed')) ? 'text-red-600' : 'text-slate-600';
+        return `
+            <label class="grid grid-cols-12 items-center text-xs hover:bg-slate-50 cursor-pointer">
+                <div class="col-span-1 p-2 text-center"><input type="checkbox" data-log-key="${safeText(key)}" ${checked} onchange="toggleLogSelection(this)"></div>
+                <div class="col-span-2 p-2 font-semibold text-slate-800 truncate" title="${safeText(e.actor)}">${safeText(e.actor)}</div>
+                <div class="col-span-3 p-2 text-slate-700 truncate" title="${safeText(e.action)}">${safeText(e.action)}</div>
+                <div class="col-span-3 p-2 text-slate-500 truncate" title="${safeText(e.page)}">${safeText(e.page)}</div>
+                <div class="col-span-1 p-2 font-bold ${resultClass}">${safeText(e.result)}</div>
+                <div class="col-span-2 p-2 text-slate-500">${safeText(shortTs(e.ts))}</div>
+            </label>
+        `;
+    }).join('');
+    updateLogSelectionInfo();
+}
+
+function toggleLogSelection(input) {
+    const key = input.getAttribute('data-log-key');
+    if (!key) return;
+    if (input.checked) {
+        if (!logsSelected.includes(key)) logsSelected.push(key);
+    } else {
+        logsSelected = logsSelected.filter(x => x !== key);
+    }
+    updateLogSelectionInfo();
+}
+
+function updateLogSelectionInfo() {
+    const el = document.getElementById('ctLogSelectionInfo');
+    if (!el) return;
+    el.textContent = `Выбрано логов: ${logsSelected.length}`;
+}
+
+function attachSelectedLogsToBug() {
+    if (!logsSelected.length) {
+        if (window.toast) window.toast.warning('Выберите хотя бы один лог');
+        else alert('Выберите хотя бы один лог');
+        return;
+    }
+    window.__ctSelectedLogs = logsSelected.slice();
+    if (window.toast) window.toast.success('Логи прикреплены, откройте форму баг-репорта');
+    else alert('Логи прикреплены, откройте форму баг-репорта');
+    openBugModal();
 }
 
 async function searchImpersonation(ev) {
@@ -497,9 +604,16 @@ async function openBugModal() {
     logsSnapshotInput.value = '';
 
     try {
-        const res = await fetch('{{ url_for("chief_tester.logs_tail") }}?lines=50', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const res = await fetch('{{ url_for("chief_tester.logs_feed") }}?lines=120', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         const data = await res.json();
-        const text = (data.lines || []).join('\n');
+        const entries = Array.isArray(data.entries) ? data.entries : [];
+        let selected = [];
+        if (Array.isArray(window.__ctSelectedLogs) && window.__ctSelectedLogs.length) {
+            const selectedSet = new Set(window.__ctSelectedLogs);
+            selected = entries.filter(e => selectedSet.has(`${e.ts}|${e.request_id || ''}|${e.action || ''}|${e.page || ''}`));
+        }
+        const source = selected.length ? selected : entries.slice(-30);
+        const text = source.map(e => `[${e.ts}] ${e.actor} | ${e.action} | ${e.page} | ${e.result}`).join('\n');
         logsSnapshotInput.value = text;
         logsPreview.textContent = text || 'Логи пустые.';
     } catch (e) {

@@ -13,6 +13,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="context_url" value="{{ context_url }}">
             <input type="hidden" name="target_user_id" value="{{ target_user_id }}">
+            <input type="hidden" name="return_to" value="{{ return_to }}">
             <div class="mb-3">
                 <label for="title" class="neo-label">Заголовок</label>
                 <input type="text" class="neo-input w-full" id="title" name="title" value="Баг с страницы">
@@ -26,7 +27,7 @@
             {% endif %}
             <div class="flex gap-4 mt-6">
                 <button type="submit" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать</button>
-                <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Отмена</a>
+                <a href="{{ return_to or url_for('qa.board') }}" class="neo-button ghost">Отмена</a>
             </div>
         </form>
     </div>
