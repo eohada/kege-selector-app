@@ -1,0 +1,566 @@
+{% extends 'base.html' %}
+{% set active_page = 'chief_tester_dashboard' %}
+{% block title %}BooStudy - QA Command Center{% endblock %}
+{% block body_class %}layout-chief-tester{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-[1400px] mx-auto h-full">
+    <div id="tab-dashboard" class="tab-content active flex-col gap-6">
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
+                <i class="ph-fill ph-shield-check text-[250px] text-indigo-600"></i>
+            </div>
+            <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-3">
+                    <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-extrabold rounded-lg uppercase tracking-wider border border-green-200 flex items-center gap-1.5">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Системы в норме
+                    </span>
+                    <span class="text-xs font-bold text-slate-400 font-mono">v. 2.4.1 (Stable)</span>
+                </div>
+                <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Контроль качества</h1>
+                <p class="text-slate-500 font-medium text-lg">Сводка по багам, тестам и стабильности платформы за последние 24 часа.</p>
+            </div>
+
+            <button type="button" onclick="openBugModal()" class="relative z-10 shrink-0 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0">
+                <i class="ph-bold ph-bug text-xl"></i> Зарепортить баг
+            </button>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-6">
+            <div class="w-full lg:w-1/3 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col">
+                <h3 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="ph-fill ph-magic-wand text-indigo-500 text-lg"></i> Быстрые пресеты
+                </h3>
+                <div class="space-y-3 flex-1 h-64 overflow-y-auto pr-2 hide-scroll">
+                    <button onclick="runPreset('/qa/manipulate/generate_debtor')" class="w-full p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
+                        <div class="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center text-slate-500 group-hover:text-indigo-600">
+                            <i class="ph-bold ph-user-plus text-lg"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900 text-sm">Сгенерировать должника</div>
+                            <div class="text-[11px] font-medium text-slate-500">Юзер с 3+ просроченными ДЗ</div>
+                        </div>
+                    </button>
+
+                    <button onclick="runPreset('/qa/manipulate/overwhelm_reviews')" class="w-full p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
+                        <div class="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center text-slate-500 group-hover:text-indigo-600">
+                            <i class="ph-bold ph-tray-arrow-down text-lg"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900 text-sm">Завалить проверками</div>
+                            <div class="text-[11px] font-medium text-slate-500">20 работ в очередь на ревью</div>
+                        </div>
+                    </button>
+
+                    <button onclick="runPreset('/qa/manipulate/break_schedule')" class="w-full p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
+                        <div class="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center text-slate-500 group-hover:text-boo-coral">
+                            <i class="ph-bold ph-calendar-x text-lg"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900 text-sm">Сломать расписание</div>
+                            <div class="text-[11px] font-medium text-slate-500">Коллизия слотов уроков</div>
+                        </div>
+                    </button>
+
+                    <button onclick="runPreset('/qa/manipulate/god_mode_30d')" class="w-full p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
+                        <div class="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center text-slate-500 group-hover:text-boo-accent">
+                            <i class="ph-bold ph-crown text-lg"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900 text-sm">Выдать God Mode</div>
+                            <div class="text-[11px] font-medium text-slate-500">Апгрейд тарифа на 30 дней</div>
+                        </div>
+                    </button>
+
+                    <button onclick="runPreset('/qa/manipulate/tabula_rasa')" class="w-full p-3 bg-slate-50 hover:bg-slate-100 border border-red-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
+                        <div class="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center text-slate-500 group-hover:text-boo-coral">
+                            <i class="ph-bold ph-trash text-lg"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-boo-coral text-sm">Очистить тестовые данные</div>
+                            <div class="text-[11px] font-medium text-slate-500">Удаляет всех фейков из БД</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="w-full lg:w-2/3 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="bg-slate-50 rounded-[24px] border border-slate-200 p-5 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Открыто багов</div>
+                        <i class="ph-fill ph-bug text-slate-400"></i>
+                    </div>
+                    <div class="text-3xl font-black text-slate-900">{{ stats.bugs_open }}</div>
+                </div>
+                <div class="bg-red-50/50 rounded-[24px] border border-red-200 p-5 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="text-[10px] font-extrabold text-boo-coral uppercase tracking-widest">Критичные</div>
+                        <i class="ph-fill ph-warning text-boo-coral animate-pulse"></i>
+                    </div>
+                    <div class="text-3xl font-black text-slate-900">{{ stats.critical }}</div>
+                </div>
+                <div class="bg-purple-50 rounded-[24px] border border-purple-200 p-5 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="text-[10px] font-extrabold text-boo-primary uppercase tracking-widest">QA Review</div>
+                        <i class="ph-fill ph-git-pull-request text-boo-primary"></i>
+                    </div>
+                    <div class="text-3xl font-black text-slate-900">{{ stats.review }}</div>
+                </div>
+                <div class="bg-green-50 rounded-[24px] border border-green-200 p-5 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="text-[10px] font-extrabold text-green-600 uppercase tracking-widest">Закрыто (7д)</div>
+                        <i class="ph-fill ph-check-circle text-green-500"></i>
+                    </div>
+                    <div class="text-3xl font-black text-slate-900">{{ stats.bugs_done_7d }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex-1">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-black text-slate-900">Последняя активность</h3>
+            </div>
+            <div class="space-y-3">
+                {% for e in activity[:8] %}
+                <div class="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-300 transition-colors">
+                    <div class="w-10 h-10 rounded-lg bg-red-100 text-boo-coral flex items-center justify-center shrink-0">
+                        <i class="ph-bold ph-bug text-lg"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-bold text-slate-900 text-sm truncate">{{ e.title }}</span>
+                            <span class="px-2 py-0.5 bg-red-100 text-boo-coral text-[10px] font-extrabold rounded uppercase">{{ e.tag }}</span>
+                        </div>
+                        <div class="text-xs font-medium text-slate-500 flex items-center gap-2">
+                            <span class="font-mono text-[10px] bg-slate-200 px-1 rounded">{{ e.code }}</span>
+                            • Нашел: <span class="font-bold text-slate-700">{{ e.reporter }}</span>
+                        </div>
+                    </div>
+                    <div class="hidden sm:flex px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-500 shadow-sm">
+                        {{ e.status }}
+                    </div>
+                </div>
+                {% else %}
+                <div class="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Пока нет событий активности.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-tasks" class="tab-content flex-col h-full hidden">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-black text-slate-900 tracking-tight">Доска задач</h2>
+            <div class="flex gap-2">
+                <button class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-sm flex items-center gap-2" type="button" onclick="location.href='{{ url_for('qa.board') }}'">
+                    <i class="ph-bold ph-funnel"></i> Открыть full board
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 flex gap-6 overflow-x-auto pb-4 hide-scroll">
+            {% set cols = [('todo','To Do','bg-slate-300','text-slate-500'),('in_progress','In Progress','bg-indigo-400','text-indigo-500'),('review','QA Review','bg-orange-400','text-boo-accent'),('done','Done','bg-green-400','text-green-600')] %}
+            {% for key, label, dot, text_cls in cols %}
+            <div class="w-80 shrink-0 flex flex-col gap-4">
+                <div class="flex justify-between items-center px-1">
+                    <h3 class="font-extrabold {{ text_cls }} uppercase tracking-widest text-xs flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full {{ dot }}"></span> {{ label }} ({{ task_columns[key]|length }})
+                    </h3>
+                </div>
+                {% for t in task_columns[key][:20] %}
+                <div class="bg-white p-4 rounded-[20px] border border-slate-200 border-b-4 border-b-slate-300 shadow-sm hover:shadow-tactile transition-all">
+                    <div class="flex gap-2 mb-3">
+                        <span class="{{ t.priority_badge_cls }} px-2 py-0.5 rounded text-[10px] font-bold uppercase">{{ t.priority_badge_text }}</span>
+                    </div>
+                    <h4 class="font-bold text-slate-900 text-sm leading-tight mb-3">{{ t.title }}</h4>
+                    <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                        <span class="font-mono text-[10px] text-slate-400">#B-{{ t.id }}</span>
+                        {% if t.assignees %}
+                        <div class="flex -space-x-1.5">
+                            {% for a in t.assignees[:3] %}
+                            <div class="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700 flex items-center justify-center" title="{{ a.username }}">{{ (a.username or '?')[0]|upper }}</div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 border-dashed flex items-center justify-center text-slate-400"><i class="ph-bold ph-user-plus text-[10px]"></i></div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="h-32 border-2 border-slate-200 border-dashed rounded-[20px] bg-slate-50/50 flex items-center justify-center text-slate-400 font-bold text-sm">
+                    Нет карточек
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="tab-team" class="tab-content flex-col gap-6 hidden">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h2 class="text-3xl font-black text-slate-900 tracking-tight">QA Отдел</h2>
+                <p class="text-slate-500 font-medium">Управление доступом и распределение нагрузки на тестировщиков.</p>
+            </div>
+            <button class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2" onclick="location.href='{{ url_for('qa.testers') }}'" type="button">
+                <i class="ph-bold ph-user-plus"></i> Управление
+            </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for row in workloads %}
+            <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-xl border border-slate-200 shadow-sm bg-slate-50 text-slate-700 font-black flex items-center justify-center">{{ row.user.username[0]|upper }}</div>
+                        <div>
+                            <h4 class="font-black text-slate-900 leading-tight">{{ row.user.username }}</h4>
+                            <span class="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest">{{ (row.user.role or 'tester')|replace('_',' ') }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-4">
+                    <div class="text-xs font-bold text-slate-500 mb-1">Зона ответственности</div>
+                    <div class="font-bold text-slate-900 text-sm">QA задачи платформы</div>
+                </div>
+                <div class="flex justify-between items-end border-t border-slate-100 pt-4 mt-auto">
+                    <div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase">В работе</div>
+                        <div class="font-black text-slate-900">{{ row.in_work }} бага</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] font-bold text-slate-400 uppercase">Эффективность</div>
+                        <div class="font-black {% if row.efficiency == 'Высокая' %}text-green-500{% elif row.efficiency == 'Средняя' %}text-boo-accent{% else %}text-boo-coral{% endif %}">{{ row.efficiency }}</div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-full rounded-2xl border border-dashed border-slate-300 p-8 text-center text-slate-500">Тестеры не найдены.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="tab-logs" class="tab-content flex-col gap-6 hidden">
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight">Логи приложения</h2>
+                <div class="flex items-center gap-2">
+                    <button type="button" class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm" onclick="refreshLogs()">Обновить</button>
+                </div>
+            </div>
+            <p class="text-slate-500 text-sm mb-4">Live tail файла <span class="font-mono">logs/app.log</span>.</p>
+            <pre id="ctLogOutput" class="bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 p-4 text-xs font-mono h-[560px] overflow-auto">Загрузка логов...</pre>
+        </div>
+    </div>
+</div>
+
+<div id="ctBugModal" class="fixed inset-0 z-[110] hidden items-center justify-center bg-slate-900/50 px-4">
+    <div class="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-black text-slate-900">Новый баг-репорт</h3>
+            <button type="button" class="text-slate-500 hover:text-slate-900" onclick="closeBugModal()"><i class="ph-bold ph-x text-xl"></i></button>
+        </div>
+        <form id="ctBugForm" class="space-y-3">
+            <input type="text" name="title" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900" placeholder="Краткая суть бага" required>
+            <textarea name="description" rows="4" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Описание и шаги воспроизведения"></textarea>
+            <input type="hidden" name="context_url" id="ctBugContextUrl">
+            <input type="hidden" name="screenshot" id="ctBugScreenshot">
+            <input type="hidden" name="target_user_id" id="ctBugTargetUserId">
+            <input type="hidden" name="logs_snapshot" id="ctBugLogsSnapshot">
+
+            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+                <div class="text-xs font-bold text-slate-500 mb-2">Скриншот (авто):</div>
+                <img id="ctBugScreenshotPreview" class="max-h-48 rounded-lg border border-slate-200 hidden" alt="preview">
+                <div id="ctBugScreenshotPlaceholder" class="text-xs text-slate-400">Готовим скриншот...</div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div class="text-xs font-bold text-slate-500 mb-2">Снапшот логов (tail):</div>
+                <pre id="ctBugLogsPreview" class="text-[11px] leading-4 max-h-28 overflow-auto text-slate-700 font-mono whitespace-pre-wrap">Загрузка...</pre>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700">Отправить</button>
+                <button type="button" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm" onclick="closeBugModal()">Отмена</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block body %}
+<div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none flex justify-center">
+    <header class="w-full max-w-[1400px] bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+        <div class="flex items-center gap-3 pl-2 cursor-pointer group">
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm group-hover:scale-105 transition-all">
+                <i class="ph-fill ph-radar text-2xl"></i>
+            </div>
+            <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooQA</span>
+        </div>
+
+        <nav class="hidden md:flex items-center gap-1 bg-slate-100/60 p-1 rounded-xl border border-slate-200/50">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-5 py-2 bg-white text-indigo-600 shadow-sm border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                <i class="ph-bold ph-squares-four text-lg"></i> Дашборд
+            </button>
+            <button onclick="switchTab('tasks')" id="nav-tasks" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative">
+                <i class="ph-bold ph-bug text-lg"></i> Баг-трекер
+                <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-boo-coral rounded-full"></span>
+            </button>
+            <button onclick="switchTab('team')" id="nav-team" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                <i class="ph-bold ph-users-three text-lg"></i> Команда
+            </button>
+            <button onclick="switchTab('logs')" id="nav-logs" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                <i class="ph-bold ph-terminal-window text-lg"></i> Логи
+            </button>
+        </nav>
+
+        <div class="flex items-center gap-3 pr-1">
+            <div class="hidden lg:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-200 transition-colors group relative">
+                <i class="ph-fill ph-mask-happy text-slate-500 group-hover:text-indigo-600 transition-colors"></i>
+                <form class="flex items-center gap-2" onsubmit="searchImpersonation(event)">
+                    <input id="ctImpersonateQ" type="text" placeholder="Смотреть как..." class="w-36 bg-transparent outline-none text-xs font-bold text-slate-600" autocomplete="off">
+                </form>
+                <button type="button" class="text-slate-400 text-xs" onclick="searchImpersonation()">Поиск</button>
+                <div id="ctImpersonateResults" class="hidden absolute top-11 right-0 w-[340px] max-h-80 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg p-2 z-20"></div>
+            </div>
+
+            {% if session.get('impersonator_id') %}
+            <form method="POST" action="{{ url_for('qa.revert_impersonation') }}" data-no-ajax>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="px-3 py-1.5 bg-red-100 text-red-700 rounded-xl text-xs font-bold border border-red-200" type="submit">Выйти из симуляции</button>
+            </form>
+            {% endif %}
+
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+            <div class="flex items-center gap-2 pl-2">
+                <div class="text-right hidden sm:block">
+                    <div class="text-xs font-black text-slate-900">{{ current_user.username }}</div>
+                    <div class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">QA Lead</div>
+                </div>
+                <div class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-indigo-50 text-indigo-700 font-black flex items-center justify-center">{{ current_user.username[0]|upper }}</div>
+            </div>
+        </div>
+    </header>
+</div>
+
+{{ super() }}
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script>
+const tabs = ['dashboard', 'tasks', 'team', 'logs'];
+let logsTimer = null;
+let logsLastText = '';
+
+function switchTab(tabId) {
+    const activeNavClass = 'px-5 py-2 bg-white text-indigo-600 shadow-sm border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
+    const inactiveNavClass = 'px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
+
+    tabs.forEach(id => {
+        const content = document.getElementById(`tab-${id}`);
+        const btn = document.getElementById(`nav-${id}`);
+        if (!content || !btn) return;
+        if (id === tabId) {
+            content.classList.remove('hidden');
+            content.classList.add('active');
+            btn.className = activeNavClass;
+        } else {
+            content.classList.add('hidden');
+            content.classList.remove('active');
+            btn.className = inactiveNavClass;
+        }
+    });
+
+    if (tabId === 'logs') {
+        startLogsPolling();
+    } else {
+        stopLogsPolling();
+    }
+}
+
+function getCsrf() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
+
+async function runPreset(endpoint) {
+    try {
+        const res = await fetch(endpoint, { method: 'POST', headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+            if (window.toast) window.toast.success(data.message || 'Готово');
+            else alert(data.message || 'Готово');
+            setTimeout(() => location.reload(), 900);
+        } else {
+            const msg = data.error || data.message || 'Ошибка выполнения пресета';
+            if (window.toast) window.toast.error(msg);
+            else alert(msg);
+        }
+    } catch (e) {
+        if (window.toast) window.toast.error('Ошибка сети');
+        else alert('Ошибка сети');
+    }
+}
+
+function stopLogsPolling() {
+    if (logsTimer) {
+        clearInterval(logsTimer);
+        logsTimer = null;
+    }
+}
+
+function startLogsPolling() {
+    refreshLogs();
+    stopLogsPolling();
+    logsTimer = setInterval(refreshLogs, 2500);
+}
+
+async function refreshLogs() {
+    const el = document.getElementById('ctLogOutput');
+    if (!el) return;
+    try {
+        const res = await fetch('{{ url_for("chief_tester.logs_tail") }}?lines=180', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await res.json();
+        if (!data || !Array.isArray(data.lines)) return;
+        const text = data.lines.join('\n');
+        if (text !== logsLastText) {
+            const nearBottom = (el.scrollTop + el.clientHeight + 120) >= el.scrollHeight;
+            el.textContent = text || 'Файл логов пуст.';
+            logsLastText = text;
+            if (nearBottom) el.scrollTop = el.scrollHeight;
+        }
+    } catch (e) {
+        el.textContent = 'Ошибка чтения логов.';
+    }
+}
+
+async function searchImpersonation(ev) {
+    if (ev) ev.preventDefault();
+    const q = document.getElementById('ctImpersonateQ')?.value?.trim() || '';
+    const box = document.getElementById('ctImpersonateResults');
+    if (!box) return;
+    if (!q) {
+        box.classList.add('hidden');
+        box.innerHTML = '';
+        return;
+    }
+    try {
+        const res = await fetch(`{{ url_for("chief_tester.users_search") }}?q=${encodeURIComponent(q)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await res.json();
+        const items = Array.isArray(data.items) ? data.items : [];
+        if (!items.length) {
+            box.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">Ничего не найдено</div>';
+            box.classList.remove('hidden');
+            return;
+        }
+        box.innerHTML = items.map(i => `
+            <form method="POST" action="/qa/impersonate/${i.id}" class="flex items-center justify-between gap-2 rounded-lg hover:bg-slate-50 px-2 py-2" data-no-ajax>
+                <input type="hidden" name="csrf_token" value="${getCsrf()}">
+                <div class="min-w-0">
+                    <div class="text-xs font-bold text-slate-900 truncate">${i.username} <span class="text-slate-400">#${i.id}</span></div>
+                    <div class="text-[11px] text-slate-500 truncate">${i.role}${i.student_name ? ` • ${i.student_name}` : ''}</div>
+                </div>
+                <button class="shrink-0 px-2 py-1 rounded-md border border-slate-200 text-[11px] font-bold text-slate-700" type="submit">Войти как</button>
+            </form>
+        `).join('');
+        box.classList.remove('hidden');
+    } catch (e) {
+        box.innerHTML = '<div class="px-3 py-2 text-xs text-red-500">Ошибка поиска</div>';
+        box.classList.remove('hidden');
+    }
+}
+
+async function openBugModal() {
+    const modal = document.getElementById('ctBugModal');
+    const context = document.getElementById('ctBugContextUrl');
+    const screenshotInput = document.getElementById('ctBugScreenshot');
+    const logsSnapshotInput = document.getElementById('ctBugLogsSnapshot');
+    const logsPreview = document.getElementById('ctBugLogsPreview');
+    const placeholder = document.getElementById('ctBugScreenshotPlaceholder');
+    const img = document.getElementById('ctBugScreenshotPreview');
+    if (!modal || !context || !screenshotInput || !logsSnapshotInput || !logsPreview || !placeholder || !img) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    context.value = window.location.href;
+    placeholder.textContent = 'Готовим скриншот...';
+    img.classList.add('hidden');
+    logsPreview.textContent = 'Загрузка...';
+    logsSnapshotInput.value = '';
+
+    try {
+        const res = await fetch('{{ url_for("chief_tester.logs_tail") }}?lines=50', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const data = await res.json();
+        const text = (data.lines || []).join('\n');
+        logsSnapshotInput.value = text;
+        logsPreview.textContent = text || 'Логи пустые.';
+    } catch (e) {
+        logsPreview.textContent = 'Не удалось получить логи.';
+    }
+
+    setTimeout(async () => {
+        try {
+            const canvas = await html2canvas(document.body, {
+                scrollX: -window.scrollX,
+                scrollY: -window.scrollY,
+                windowWidth: document.documentElement.clientWidth,
+                windowHeight: document.documentElement.clientHeight,
+                useCORS: true,
+                allowTaint: true
+            });
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+            screenshotInput.value = dataUrl;
+            img.src = dataUrl;
+            img.classList.remove('hidden');
+            placeholder.textContent = '';
+        } catch (e) {
+            placeholder.textContent = 'Скриншот недоступен.';
+        }
+    }, 200);
+}
+
+function closeBugModal() {
+    const modal = document.getElementById('ctBugModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+document.getElementById('ctBugForm')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Отправка...';
+    const data = new FormData(form);
+    const desc = (data.get('description') || '').toString();
+    const logs = (data.get('logs_snapshot') || '').toString();
+    if (logs) {
+        data.set('description', `${desc}\n\n--- LOG SNAPSHOT ---\n${logs}`);
+    }
+
+    try {
+        const res = await fetch('/qa/bug-report', {
+            method: 'POST',
+            body: data,
+            headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+            if (window.toast) window.toast.success('Баг-репорт отправлен');
+            else alert('Баг-репорт отправлен');
+            closeBugModal();
+        } else {
+            const msg = json.error || 'Ошибка отправки';
+            if (window.toast) window.toast.error(msg);
+            else alert(msg);
+        }
+    } catch (err) {
+        if (window.toast) window.toast.error('Ошибка сети');
+        else alert('Ошибка сети');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
+});
+</script>
+{% endblock %}
+

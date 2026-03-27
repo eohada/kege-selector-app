@@ -2,6 +2,7 @@ import base64
 import os
 import time
 import uuid
+from datetime import timedelta
 from flask import Blueprint, session, redirect, url_for, request, flash, jsonify, render_template, current_app
 from flask_login import login_required, current_user, login_user
 from app.models import db
@@ -97,6 +98,17 @@ def _ensure_qa_pool():
             created.append(username)
     db.session.commit()
     return created
+
+
+def _pool_student_profiles():
+    _ensure_qa_pool()
+    student_users = User.query.filter(
+        User.username.in_([u for u in QA_POOL_USERNAMES if 'student' in u])
+    ).order_by(User.username.asc()).all()
+    user_ids = [u.id for u in student_users]
+    student_profiles = Student.query.filter(Student.user_id.in_(user_ids)).all() if user_ids else []
+    by_user = {s.user_id: s for s in student_profiles}
+    return [(u, by_user.get(u.id)) for u in student_users if by_user.get(u.id)]
 
 
 @qa_bp.route('/impersonate-as-role', methods=['POST'])
@@ -251,6 +263,28 @@ def pay_course():
             db.session.add(UserSubscription(user_id=current_user.id, status='active'))
         db.session.commit()
         return jsonify({'status': 'success', 'message': 'Имитация оплаты: подписка активна.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/god_mode_30d', methods=['POST'])
+@login_required
+def god_mode_30d():
+    if not is_qa_authorized():
+        return jsonify({'error': 'Forbidden'}), 403
+    try:
+        now = moscow_now()
+        sub = UserSubscription.query.filter_by(user_id=current_user.id).order_by(UserSubscription.ends_at.desc().nullslast()).first()
+        if sub:
+            sub.status = 'active'
+            sub.ends_at = now + timedelta(days=30)
+            db.session.add(sub)
+        else:
+            sub = UserSubscription(user_id=current_user.id, status='active', ends_at=now + timedelta(days=30))
+            db.session.add(sub)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Выдан God Mode на 30 дней.'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -474,6 +508,156 @@ def inject_submission():
         return jsonify({'error': str(e)}), 500
 
 
+@qa_bp.route('/manipulate/generate_debtor', methods=['POST'])
+@login_required
+def generate_debtor():
+    """Создает ученика-должника: минимум 3 просроченных ДЗ."""
+    if not is_qa_authorized():
+        return jsonify({'error': 'Forbidden'}), 403
+    try:
+        pool = _pool_student_profiles()
+        if not pool:
+            return jsonify({'status': 'error', 'message': 'Пул учеников не инициализирован'})
+
+        user, student = pool[0]
+        now = moscow_now().replace(tzinfo=None)
+        created = 0
+        for i in range(3):
+            lesson_dt = now - timedelta(days=7 + i)
+            lesson = Lesson(
+                student_id=student.student_id,
+                lesson_date=lesson_dt,
+                duration=60,
+                lesson_type='regular',
+                status='planned',
+                topic=f'[QA PRESET] Долг #{i + 1}'
+            )
+            db.session.add(lesson)
+            db.session.flush()
+
+            assignment = Assignment(
+                title=f'[QA PRESET] ДЗ просрочено #{i + 1}',
+                description='Сгенерировано пресетом "Сгенерировать должника"',
+                assignment_type='homework',
+                deadline=lesson_dt - timedelta(days=1),
+                hard_deadline=False,
+                created_by_id=current_user.id,
+                lesson_id=lesson.lesson_id,
+                is_active=True,
+            )
+            db.session.add(assignment)
+            db.session.flush()
+
+            submission = Submission(
+                assignment_id=assignment.assignment_id,
+                student_id=student.student_id,
+                status='LATE',
+                assigned_at=lesson_dt - timedelta(days=2),
+                started_at=lesson_dt - timedelta(days=1, hours=4),
+                submitted_at=lesson_dt - timedelta(hours=1),
+                is_late=True,
+            )
+            db.session.add(submission)
+            created += 1
+
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': f'Готово: создан должник {user.username} с {created} просроченными ДЗ.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/overwhelm_reviews', methods=['POST'])
+@login_required
+def overwhelm_reviews():
+    """Заполняет очередь проверки 20 работами."""
+    if not is_qa_authorized():
+        return jsonify({'error': 'Forbidden'}), 403
+    try:
+        pool = _pool_student_profiles()
+        if not pool:
+            return jsonify({'status': 'error', 'message': 'Пул учеников не инициализирован'})
+
+        now = moscow_now().replace(tzinfo=None)
+        statuses = ['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW']
+        created = 0
+        for i in range(20):
+            user, student = pool[i % len(pool)]
+            status = statuses[i % len(statuses)]
+            deadline = now - timedelta(hours=(i % 6) + 1) if status in ('LATE', 'NEEDS_MANUAL_REVIEW') else now + timedelta(hours=12)
+            assignment = Assignment(
+                title=f'[QA PRESET] Очередь ревью #{i + 1}',
+                description='Сгенерировано пресетом "Завалить проверками"',
+                assignment_type='homework',
+                deadline=deadline,
+                hard_deadline=False,
+                created_by_id=current_user.id,
+                is_active=True,
+            )
+            db.session.add(assignment)
+            db.session.flush()
+
+            submission = Submission(
+                assignment_id=assignment.assignment_id,
+                student_id=student.student_id,
+                status=status,
+                assigned_at=now - timedelta(days=1),
+                started_at=now - timedelta(hours=8),
+                submitted_at=now - timedelta(minutes=(i + 1) * 3),
+                is_late=(status == 'LATE'),
+            )
+            db.session.add(submission)
+            created += 1
+
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': f'Готово: в очередь добавлено {created} работ.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@qa_bp.route('/manipulate/break_schedule', methods=['POST'])
+@login_required
+def break_schedule():
+    """Создает коллизию: два урока на одно время для одного преподавателя."""
+    if not is_qa_authorized():
+        return jsonify({'error': 'Forbidden'}), 403
+    try:
+        _ensure_qa_pool()
+        tutor_user = User.query.filter(
+            User.username.in_([u for u in QA_POOL_USERNAMES if 'tutor' in u])
+        ).order_by(User.username.asc()).first()
+        pool = _pool_student_profiles()
+        if not tutor_user or len(pool) < 2:
+            return jsonify({'status': 'error', 'message': 'Недостаточно данных в пуле QA'})
+
+        student_pairs = pool[:2]
+        for su, _ in student_pairs:
+            if not Enrollment.query.filter_by(student_id=su.id, tutor_id=tutor_user.id).first():
+                db.session.add(Enrollment(student_id=su.id, tutor_id=tutor_user.id, subject='QA schedule collision'))
+
+        dt = (moscow_now() + timedelta(days=2)).replace(hour=18, minute=0, second=0, microsecond=0, tzinfo=None)
+        created_ids = []
+        for _, sp in student_pairs:
+            lesson = Lesson(
+                student_id=sp.student_id,
+                lesson_date=dt,
+                duration=60,
+                lesson_type='regular',
+                status='planned',
+                topic='[QA PRESET] Коллизия слотов',
+            )
+            db.session.add(lesson)
+            db.session.flush()
+            created_ids.append(lesson.lesson_id)
+
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': f'Создана коллизия слотов (уроки #{created_ids[0]} и #{created_ids[1]} на {dt:%d.%m %H:%M}).'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
 @qa_bp.route('/manipulate/tabula_rasa', methods=['POST'])
 @login_required
 def tabula_rasa():
@@ -484,11 +668,22 @@ def tabula_rasa():
         pool_users = User.query.filter(User.username.in_(QA_POOL_USERNAMES)).all()
         user_ids = [u.id for u in pool_users]
         student_ids = [s.student_id for s in Student.query.filter(Student.user_id.in_(user_ids)).all()]
+        assignment_ids = [r[0] for r in db.session.query(Submission.assignment_id).filter(Submission.student_id.in_(student_ids)).distinct().all()] if student_ids else []
         deleted_subs = Submission.query.filter(Submission.student_id.in_(student_ids)).delete(synchronize_session=False) if student_ids else 0
+        if assignment_ids:
+            AssignmentTask.query.filter(AssignmentTask.assignment_id.in_(assignment_ids)).delete(synchronize_session=False)
+            Assignment.query.filter(Assignment.assignment_id.in_(assignment_ids)).delete(synchronize_session=False)
+        Assignment.query.filter(Assignment.title.ilike('[QA PRESET]%')).delete(synchronize_session=False)
         UserSubscription.query.filter(UserSubscription.user_id.in_(user_ids)).delete(synchronize_session=False)
         UserNotification.query.filter(UserNotification.user_id.in_(user_ids)).delete(synchronize_session=False)
         if student_ids:
             Lesson.query.filter(Lesson.student_id.in_(student_ids)).delete(synchronize_session=False)
+        Enrollment.query.filter(
+            Enrollment.student_id.in_(user_ids) | Enrollment.tutor_id.in_(user_ids)
+        ).delete(synchronize_session=False)
+        FamilyTie.query.filter(
+            FamilyTie.student_id.in_(user_ids) | FamilyTie.parent_id.in_(user_ids)
+        ).delete(synchronize_session=False)
         db.session.commit()
         return jsonify({'status': 'success', 'message': f'Tabula Rasa: очищены подписки, уведомления, уроки и сдачи для {len(pool_users)} профилей пула.'})
     except Exception as e:
@@ -759,6 +954,10 @@ def bug_report():
     if request.method == 'POST':
         title = (request.form.get('title') or '').strip() or 'Баг с страницы'
         description = (request.form.get('description') or '').strip()
+        logs_snapshot = (request.form.get('logs_snapshot') or '').strip()
+        if logs_snapshot:
+            safe_snapshot = logs_snapshot[:12000]
+            description = (description + '\n\n--- LOG SNAPSHOT ---\n' + safe_snapshot).strip()
         screenshot_data = request.form.get('screenshot') # Base64 string
         
         screenshot_path = None

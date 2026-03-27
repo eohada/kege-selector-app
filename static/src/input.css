@@ -177,6 +177,21 @@
     @apply max-w-[1600px] mx-auto p-0;
   }
 
+  /* ═══════════════ CHIEF TESTER LAYOUT (standalone command center) ═══════════════ */
+  .layout-chief-tester .dock-wrapper {
+    display: none;
+  }
+  .layout-chief-tester .app-main {
+    @apply pt-32 pb-16 px-6 lg:px-8;
+  }
+  .layout-chief-tester .app-content {
+    @apply max-w-[1400px] mx-auto p-0;
+  }
+  .layout-chief-tester .qa-fab,
+  .layout-chief-tester .qa-god-widget {
+    display: none !important;
+  }
+
   /* ═══════════════ UTILITIES ═══════════════ */
 
   .hide-scroll::-webkit-scrollbar { display: none; }

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime
+import os
+from datetime import datetime, timedelta
 
-from flask import abort, flash, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 
 from app.chief_tester import chief_tester_bp
-from app.models import User, UserRole, db
+from app.models import Student, User, UserRole, db
 from core.db_models import QATask
 
 
@@ -33,26 +34,240 @@ def _get_testers():
     return q.all()
 
 
+def _status_label(status: str | None) -> str:
+    mapping = {
+        "todo": "To Do",
+        "in_progress": "In Progress",
+        "review": "QA Review",
+        "done": "Done",
+    }
+    return mapping.get((status or "").strip().lower(), status or "To Do")
+
+
+def _priority_label(priority: str | None) -> str:
+    mapping = {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "Critical",
+    }
+    return mapping.get((priority or "").strip().lower(), priority or "Medium")
+
+
+def _priority_badge(priority: str | None) -> tuple[str, str]:
+    p = (priority or "medium").strip().lower()
+    if p == "critical":
+        return "bg-red-100 text-red-600", "Critical"
+    if p == "high":
+        return "bg-orange-100 text-orange-600", "High"
+    if p == "low":
+        return "bg-blue-100 text-blue-700", "Low"
+    return "bg-slate-100 text-slate-600", "Medium"
+
+
+def _read_log_tail(max_lines: int = 120) -> tuple[list[str], str]:
+    max_lines = max(20, min(int(max_lines or 120), 500))
+    try:
+        root = os.path.abspath(current_app.root_path)
+        log_path = os.path.abspath(os.path.join(root, "..", "logs", "app.log"))
+        if not log_path.endswith(os.path.join("logs", "app.log")):
+            return [], "invalid_path"
+        if not os.path.exists(log_path):
+            return [], "missing"
+
+        chunk_size = 8192
+        with open(log_path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            file_size = f.tell()
+            data = b""
+            pos = file_size
+            while pos > 0 and data.count(b"\n") <= (max_lines + 2):
+                read_size = min(chunk_size, pos)
+                pos -= read_size
+                f.seek(pos)
+                data = f.read(read_size) + data
+                if len(data) > (2 * 1024 * 1024):
+                    break
+
+        lines = data.decode("utf-8", errors="replace").splitlines()
+        return lines[-max_lines:], "ok"
+    except Exception:
+        return [], "error"
+
+
 @chief_tester_bp.route("/")
 @chief_tester_bp.route("/dashboard")
 @login_required
 def dashboard():
     _require_allowed()
-
     tasks = (
         QATask.query.filter(QATask.task_type == "task")
         .order_by(QATask.created_at.desc())
-        .limit(200)
+        .limit(600)
         .all()
     )
+    bug_reports = (
+        QATask.query.filter(QATask.task_type == "bug_report")
+        .order_by(QATask.created_at.desc())
+        .limit(120)
+        .all()
+    )
+
     stats = {
-        "todo": sum(1 for t in tasks if t.status == "todo"),
-        "in_progress": sum(1 for t in tasks if t.status == "in_progress"),
-        "review": sum(1 for t in tasks if t.status == "review"),
-        "done": sum(1 for t in tasks if t.status == "done"),
+        "todo": sum(1 for t in tasks if (t.status or "todo") == "todo"),
+        "in_progress": sum(1 for t in tasks if (t.status or "") == "in_progress"),
+        "review": sum(1 for t in tasks if (t.status or "") == "review"),
+        "done": sum(1 for t in tasks if (t.status or "") == "done"),
         "total": len(tasks),
+        "critical": sum(1 for t in tasks if (t.priority or "") == "critical"),
+        "bugs_open": sum(1 for b in bug_reports if (b.status or "new") in ("new", "in_progress", "review")),
+        "bugs_done_7d": QATask.query.filter(
+            QATask.task_type == "bug_report",
+            QATask.status == "done",
+            QATask.created_at >= (datetime.utcnow() - timedelta(days=7)),
+        ).count(),
     }
-    return render_template("chief_tester/dashboard.html", stats=stats)
+
+    testers = _get_testers()
+    assignee_ids = set()
+    for t in tasks:
+        if isinstance(getattr(t, "assignee_ids", None), list):
+            assignee_ids.update(x for x in (t.assignee_ids or []) if x)
+        elif getattr(t, "assignee_id", None):
+            assignee_ids.add(t.assignee_id)
+    assignee_map = {u.id: u for u in User.query.filter(User.id.in_(assignee_ids)).all()} if assignee_ids else {}
+
+    task_cards = []
+    columns = {"todo": [], "in_progress": [], "review": [], "done": []}
+    for t in tasks[:240]:
+        badge_cls, prio_text = _priority_badge(t.priority)
+        item = {
+            "id": t.id,
+            "title": t.title,
+            "status": (t.status or "todo"),
+            "status_label": _status_label(t.status),
+            "priority": (t.priority or "medium"),
+            "priority_label": _priority_label(t.priority),
+            "priority_badge_cls": badge_cls,
+            "priority_badge_text": prio_text,
+            "context_url": t.context_url,
+            "created_at": t.created_at,
+            "assignees": [
+                assignee_map[aid]
+                for aid in (t.assignee_ids or ([t.assignee_id] if t.assignee_id else []))
+                if aid in assignee_map
+            ],
+        }
+        task_cards.append(item)
+        if item["status"] in columns:
+            columns[item["status"]].append(item)
+
+    activity = []
+    recent_bugs = (
+        QATask.query.filter(QATask.task_type == "bug_report")
+        .order_by(QATask.created_at.desc())
+        .limit(12)
+        .all()
+    )
+    for b in recent_bugs:
+        reporter_name = getattr(getattr(b, "reporter", None), "username", None) or "Unknown"
+        sev = _priority_label(b.priority)
+        activity.append(
+            {
+                "title": b.title or f"BUG #{b.id}",
+                "tag": sev,
+                "status": _status_label(b.status or "new"),
+                "reporter": reporter_name,
+                "created_at": b.created_at,
+                "code": f"#BUG-{b.id}",
+            }
+        )
+
+    workloads = []
+    for u in testers:
+        ids = [u.id]
+        in_work = sum(
+            1
+            for t in tasks
+            if (t.status or "") in ("todo", "in_progress", "review")
+            and (
+                (u.id == t.assignee_id)
+                or (isinstance(getattr(t, "assignee_ids", None), list) and u.id in (t.assignee_ids or []))
+            )
+        )
+        done = sum(
+            1
+            for t in tasks
+            if (t.status or "") == "done"
+            and (
+                (u.id == t.assignee_id)
+                or (isinstance(getattr(t, "assignee_ids", None), list) and u.id in (t.assignee_ids or []))
+            )
+        )
+        workloads.append(
+            {
+                "user": u,
+                "in_work": in_work,
+                "done": done,
+                "efficiency": "Высокая" if done >= max(1, in_work) else ("Средняя" if done > 0 else "Низкая"),
+            }
+        )
+
+    return render_template(
+        "chief_tester/main_tester_cabinet.html",
+        stats=stats,
+        task_cards=task_cards,
+        task_columns=columns,
+        activity=activity,
+        testers=testers,
+        workloads=workloads,
+    )
+
+
+@chief_tester_bp.route("/logs/tail")
+@login_required
+def logs_tail():
+    _require_allowed()
+    lines_limit = request.args.get("lines", type=int) or 120
+    lines, state = _read_log_tail(max_lines=lines_limit)
+    return jsonify({"ok": state == "ok", "state": state, "lines": lines, "line_count": len(lines)})
+
+
+@chief_tester_bp.route("/users/search")
+@login_required
+def users_search():
+    _require_allowed()
+    q = (request.args.get("q") or "").strip()
+    if len(q) < 1:
+        return jsonify({"items": []})
+
+    users_q = User.query
+    if q.isdigit():
+        users_q = users_q.filter(User.id == int(q))
+    else:
+        like = f"%{q}%"
+        users_q = users_q.filter(or_(User.username.ilike(like), User.email.ilike(like)))
+
+    users = users_q.order_by(User.id.desc()).limit(20).all()
+    user_ids = [u.id for u in users]
+    student_rows = Student.query.filter(Student.user_id.in_(user_ids)).all() if user_ids else []
+    student_map = {s.user_id: s for s in student_rows}
+
+    items = []
+    for u in users:
+        s = student_map.get(u.id)
+        role = u.role or (u.roles()[0] if u.roles() else "unknown")
+        items.append(
+            {
+                "id": u.id,
+                "username": u.username,
+                "email": u.email,
+                "role": role,
+                "student_id": getattr(s, "student_id", None),
+                "student_name": getattr(s, "name", None),
+            }
+        )
+    return jsonify({"items": items})
 
 
 @chief_tester_bp.route("/tasks")
