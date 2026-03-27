@@ -57,6 +57,14 @@
             {% if r.description %}
             <p class="text-sm text-muted mb-2 whitespace-pre-wrap">{{ r.description }}</p>
             {% endif %}
+            {% if r.description and 'RID=' in r.description %}
+            {% set _rid = (r.description.split('RID=')[1].split()[0] if 'RID=' in r.description else '') %}
+            {% if _rid %}
+            <div class="report-actions">
+                <a class="neo-button ghost sm" href="{{ url_for('chief_tester.dashboard', tab='logs', rid=_rid) }}">Логи по RID</a>
+            </div>
+            {% endif %}
+            {% endif %}
             {% if can_edit %}
             <div class="report-actions">
                 <span class="text-xs text-muted">Сменить статус:</span>

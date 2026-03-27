@@ -25,10 +25,30 @@ QA_POOL_USERNAMES = [
     'qa_pool_admin_1',
 ]
 
+def _get_roles() -> list[str]:
+    try:
+        roles = getattr(current_user, 'roles', lambda: [])() or []
+        base = getattr(current_user, 'role', None)
+        if base and base not in roles:
+            roles.append(base)
+        return [r for r in roles if r]
+    except Exception:
+        base = getattr(current_user, 'role', None)
+        return [base] if base else []
+
+
+def require_qa(*allowed_roles: str, allow_impersonation: bool = True) -> bool:
+    if not getattr(current_user, 'is_authenticated', False):
+        return False
+    if allow_impersonation and 'impersonator_id' in session:
+        return True
+    roles = set(_get_roles())
+    return any(r in roles for r in allowed_roles)
+
+
 def is_qa_authorized():
     """Проверка прав: Chief Tester, Creator, Chief Admin или уже в режиме подмены."""
-    roles = getattr(current_user, 'roles', lambda: [])() or [getattr(current_user, 'role', None)]
-    return any(r in roles for r in ['chief_tester', 'creator', 'chief_admin', 'tester', 'admin']) or 'impersonator_id' in session
+    return require_qa('chief_tester', 'creator', 'chief_admin', 'tester', 'admin')
 
 # ==========================================
 # 1. IMPERSONATION (Тумблер ролей)
@@ -37,7 +57,7 @@ def is_qa_authorized():
 @qa_bp.route('/impersonate/<int:target_user_id>', methods=['POST'])
 @login_required
 def impersonate(target_user_id):
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         flash('У вас нет прав для этого действия', 'error')
         return redirect(request.referrer or url_for('main.index'))
 
@@ -115,7 +135,7 @@ def _pool_student_profiles():
 @login_required
 def impersonate_as_role():
     """Вход под пользователем из пула (по username) или создание одноразового темп-юзера."""
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     payload = request.get_json(silent=True) or {}
     if not isinstance(payload, dict):
@@ -184,7 +204,7 @@ def impersonate_as_role():
 @qa_bp.route('/factory/tutor-students', methods=['POST'])
 @login_required
 def factory_tutor_students():
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
 
     try:
@@ -220,7 +240,7 @@ def factory_tutor_students():
 @qa_bp.route('/manipulate/pass_assignment', methods=['POST'])
 @login_required
 def pass_assignment():
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
 
     try:
@@ -251,7 +271,7 @@ def pass_assignment():
 @qa_bp.route('/manipulate/pay_course', methods=['POST'])
 @login_required
 def pay_course():
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         sub = UserSubscription.query.filter_by(user_id=current_user.id).first()
@@ -271,7 +291,7 @@ def pay_course():
 @qa_bp.route('/manipulate/god_mode_30d', methods=['POST'])
 @login_required
 def god_mode_30d():
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         now = moscow_now()
@@ -306,7 +326,7 @@ def _get_current_student_submission():
 @login_required
 def fail_assignment():
     """Провалить текущее ДЗ (0 баллов / RETURNED) — проверка кнопки «Пересдать» и блока разбора."""
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         student, sub = _get_current_student_submission()
@@ -328,7 +348,7 @@ def fail_assignment():
 @login_required
 def pass_assignment_half():
     """Выполнить ДЗ наполовину (50%)."""
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         student, sub = _get_current_student_submission()
@@ -351,7 +371,7 @@ def pass_assignment_half():
 @login_required
 def reset_lesson_progress():
     """Сбросить прогресс текущего урока — урок снова «не пройден»."""
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         student = Student.query.filter_by(user_id=current_user.id).first()
@@ -380,7 +400,7 @@ def reset_lesson_progress():
 @login_required
 def expire_subscription():
     """Имитировать истечение подписки — проверка пэйвола."""
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         for sub in UserSubscription.query.filter_by(user_id=current_user.id).all():
@@ -398,7 +418,7 @@ def expire_subscription():
 @login_required
 def mock_notifications():
     """Накидать 5 тестовых уведомлений — проверка колокольчика."""
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         import random
@@ -423,7 +443,7 @@ def mock_notifications():
 @login_required
 def bulk_approve():
     """Одобрить все висящие ДЗ (преподаватель) — очередь проверки с высшим баллом."""
-    if not is_qa_authorized():
+    if not require_qa('tutor', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         from app.auth.rbac_utils import get_user_scope
@@ -449,7 +469,7 @@ def bulk_approve():
 @login_required
 def bulk_reject():
     """Отклонить все висящие ДЗ с шаблонным комментарием."""
-    if not is_qa_authorized():
+    if not require_qa('tutor', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         from app.auth.rbac_utils import get_user_scope
@@ -475,7 +495,7 @@ def bulk_reject():
 @login_required
 def inject_submission():
     """Подкинуть себе новое ДЗ на проверку (как будто ученик только что сдал)."""
-    if not is_qa_authorized():
+    if not require_qa('tutor', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         from app.auth.rbac_utils import get_user_scope
@@ -512,7 +532,7 @@ def inject_submission():
 @login_required
 def generate_debtor():
     """Создает ученика-должника: минимум 3 просроченных ДЗ."""
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         pool = _pool_student_profiles()
@@ -561,7 +581,16 @@ def generate_debtor():
             created += 1
 
         db.session.commit()
-        return jsonify({'status': 'success', 'message': f'Готово: создан должник {user.username} с {created} просроченными ДЗ.'})
+        return jsonify(
+            {
+                'status': 'success',
+                'message': f'Готово: создан должник {user.username} с {created} просроченными ДЗ.',
+                'next': {
+                    'label': 'Открыть профиль должника',
+                    'url': url_for('students.student_profile', student_id=student.student_id),
+                }
+            }
+        )
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -571,7 +600,7 @@ def generate_debtor():
 @login_required
 def overwhelm_reviews():
     """Заполняет очередь проверки 20 работами."""
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         pool = _pool_student_profiles()
@@ -610,7 +639,16 @@ def overwhelm_reviews():
             created += 1
 
         db.session.commit()
-        return jsonify({'status': 'success', 'message': f'Готово: в очередь добавлено {created} работ.'})
+        return jsonify(
+            {
+                'status': 'success',
+                'message': f'Готово: в очередь добавлено {created} работ.',
+                'next': {
+                    'label': 'Открыть очередь проверки',
+                    'url': url_for('lessons.review_queue'),
+                }
+            }
+        )
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -620,7 +658,7 @@ def overwhelm_reviews():
 @login_required
 def break_schedule():
     """Создает коллизию: два урока на одно время для одного преподавателя."""
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         _ensure_qa_pool()
@@ -652,7 +690,16 @@ def break_schedule():
             created_ids.append(lesson.lesson_id)
 
         db.session.commit()
-        return jsonify({'status': 'success', 'message': f'Создана коллизия слотов (уроки #{created_ids[0]} и #{created_ids[1]} на {dt:%d.%m %H:%M}).'})
+        return jsonify(
+            {
+                'status': 'success',
+                'message': f'Создана коллизия слотов (уроки #{created_ids[0]} и #{created_ids[1]} на {dt:%d.%m %H:%M}).',
+                'next': {
+                    'label': 'Открыть расписание',
+                    'url': url_for('schedule.schedule'),
+                }
+            }
+        )
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -662,7 +709,7 @@ def break_schedule():
 @login_required
 def tabula_rasa():
     """Пресет: с чистого листа — стереть прогресс/оплаты/уведомления у всех 10 профилей пула."""
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
     try:
         pool_users = User.query.filter(User.username.in_(QA_POOL_USERNAMES)).all()
@@ -685,7 +732,16 @@ def tabula_rasa():
             FamilyTie.student_id.in_(user_ids) | FamilyTie.parent_id.in_(user_ids)
         ).delete(synchronize_session=False)
         db.session.commit()
-        return jsonify({'status': 'success', 'message': f'Tabula Rasa: очищены подписки, уведомления, уроки и сдачи для {len(pool_users)} профилей пула.'})
+        return jsonify(
+            {
+                'status': 'success',
+                'message': f'Tabula Rasa: очищены подписки, уведомления, уроки и сдачи для {len(pool_users)} профилей пула.',
+                'next': {
+                    'label': 'Открыть пул профилей',
+                    'url': url_for('qa.pool'),
+                }
+            }
+        )
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -765,7 +821,7 @@ def testers_permissions(user_id):
 @login_required
 def pool():
     """Страница управления тестовыми профилями: привязка учеников к преподавателям, родителей к ученикам."""
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return "Access denied", 403
     _ensure_qa_pool()
     pool_users = User.query.filter(User.username.in_(QA_POOL_USERNAMES)).order_by(User.username).all()
@@ -788,7 +844,7 @@ def pool():
 @qa_bp.route('/pool/enrollment', methods=['POST'])
 @login_required
 def pool_enrollment_add():
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return "Access denied", 403
     student_id = request.form.get('student_id', type=int)
     tutor_id = request.form.get('tutor_id', type=int)
@@ -807,7 +863,7 @@ def pool_enrollment_add():
 @qa_bp.route('/pool/enrollment/<int:enrollment_id>/delete', methods=['POST'])
 @login_required
 def pool_enrollment_delete(enrollment_id):
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return "Access denied", 403
     e = Enrollment.query.get_or_404(enrollment_id)
     db.session.delete(e)
@@ -819,7 +875,7 @@ def pool_enrollment_delete(enrollment_id):
 @qa_bp.route('/pool/family-tie', methods=['POST'])
 @login_required
 def pool_family_tie_add():
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return "Access denied", 403
     parent_id = request.form.get('parent_id', type=int)
     student_id = request.form.get('student_id', type=int)
@@ -838,7 +894,7 @@ def pool_family_tie_add():
 @qa_bp.route('/pool/family-tie/<int:tie_id>/delete', methods=['POST'])
 @login_required
 def pool_family_tie_delete(tie_id):
-    if not is_qa_authorized():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         return "Access denied", 403
     t = FamilyTie.query.get_or_404(tie_id)
     db.session.delete(t)
@@ -854,7 +910,7 @@ def pool_family_tie_delete(tie_id):
 @qa_bp.route('/board')
 @login_required
 def board():
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return "Access denied", 403
     tasks = QATask.query.filter(QATask.task_type == 'task').order_by(QATask.created_at.desc()).all()
     testers = User.query.filter(User.role.in_(['chief_tester', 'tester'])).all()
@@ -878,7 +934,7 @@ def board():
 def task_set_status(task_id):
     """Смена статуса задачи на доске. Может Creator, Chief Tester или любой из исполнителей."""
     try:
-        if not is_qa_authorized():
+        if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
             return jsonify({'error': 'Forbidden'}), 403
         task = QATask.query.get_or_404(task_id)
         if task.task_type != 'task':
@@ -950,7 +1006,7 @@ def task_assign(task_id):
 @qa_bp.route('/bug-report', methods=['GET', 'POST'])
 @login_required
 def bug_report():
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return "Access denied", 403
     context_url = request.args.get('context_url') or request.form.get('context_url') or ''
     target_user_id = request.args.get('target_user_id') or request.form.get('target_user_id') or ''
@@ -960,7 +1016,27 @@ def bug_report():
     if request.method == 'POST':
         title = (request.form.get('title') or '').strip() or 'Баг с страницы'
         description = (request.form.get('description') or '').strip()
+        severity = (request.form.get('severity') or '').strip().lower() or None
+        environment = (request.form.get('environment') or '').strip() or None
+        steps = (request.form.get('steps') or '').strip() or None
+        expected = (request.form.get('expected') or '').strip() or None
+        actual = (request.form.get('actual') or '').strip() or None
         logs_snapshot = (request.form.get('logs_snapshot') or '').strip()
+        if any([severity, environment, steps, expected, actual]):
+            parts = []
+            if severity:
+                parts.append(f"Severity: {severity}")
+            if environment:
+                parts.append(f"Environment: {environment}")
+            if steps:
+                parts.append(f"\nSteps:\n{steps}")
+            if expected:
+                parts.append(f"\nExpected:\n{expected}")
+            if actual:
+                parts.append(f"\nActual:\n{actual}")
+            if description:
+                parts.append(f"\nNotes:\n{description}")
+            description = "\n".join(parts).strip()
         if logs_snapshot:
             safe_snapshot = logs_snapshot[:12000]
             description = (description + '\n\n--- LOG SNAPSHOT ---\n' + safe_snapshot).strip()
@@ -992,7 +1068,7 @@ def bug_report():
                 target_user_id=int(target_user_id) if target_user_id and str(target_user_id).isdigit() else None,
                 reporter_id=current_user.id,
                 status='new',
-                priority='high',
+                priority=(severity if severity in ('low','medium','high','critical') else 'high'),
                 task_type='bug_report',
                 screenshot_path=screenshot_path
             )
@@ -1014,7 +1090,7 @@ def bug_report():
 @login_required
 def bug_reports():
     """Список баг-репортов. Creator может менять статус, Tester — только просмотр."""
-    if not is_qa_authorized():
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return "Access denied", 403
     reports = QATask.query.filter(QATask.task_type == 'bug_report').order_by(QATask.created_at.desc()).all()
     can_edit = current_user.is_creator()

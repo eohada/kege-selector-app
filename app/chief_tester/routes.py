@@ -171,6 +171,8 @@ def _parse_log_line(line: str) -> dict | None:
     return {
         "ts": ts,
         "actor": actor,
+        "user_id": user_id,
+        "role": role,
         "action": action,
         "page": url or "-",
         "result": status,
@@ -379,6 +381,41 @@ def logs_feed():
         parsed = _parse_log_line(ln)
         if parsed:
             entries.append(parsed)
+
+    request_id = (request.args.get("request_id") or "").strip()
+    role = (request.args.get("role") or "").strip()
+    user_id = request.args.get("user_id", type=int)
+    url_q = (request.args.get("url") or "").strip()
+    result = (request.args.get("result") or "").strip()
+    q = (request.args.get("q") or "").strip().lower()
+
+    def match(e: dict) -> bool:
+        if request_id and str(e.get("request_id") or "") != request_id:
+            return False
+        if role and str(e.get("role") or "") != role:
+            return False
+        if user_id and int(e.get("user_id") or 0) != int(user_id):
+            return False
+        if url_q and (url_q not in str(e.get("page") or "")):
+            return False
+        if result and (result not in str(e.get("result") or "")):
+            return False
+        if q:
+            hay = " ".join(
+                [
+                    str(e.get("actor") or ""),
+                    str(e.get("action") or ""),
+                    str(e.get("page") or ""),
+                    str(e.get("result") or ""),
+                    str(e.get("request_id") or ""),
+                ]
+            ).lower()
+            if q not in hay:
+                return False
+        return True
+
+    if any([request_id, role, user_id, url_q, result, q]):
+        entries = [e for e in entries if match(e)]
     return jsonify(
         {
             "ok": state == "ok",

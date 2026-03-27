@@ -345,8 +345,19 @@
             <form id="bugReportForm" onsubmit="submitBugReport(event)">
                 <input type="hidden" name="context_url" id="bugContextUrl">
                 <input type="hidden" name="screenshot" id="bugScreenshotData">
+                <input type="hidden" name="logs_snapshot" id="bugLogsSnapshot">
                 <input type="text" class="qa-input" name="title" placeholder="Краткая суть бага" required>
-                <textarea class="qa-input" name="description" rows="3" placeholder="Описание и шаги воспроизведения..."></textarea>
+                <select class="qa-input" name="severity">
+                    <option value="medium">Severity: medium</option>
+                    <option value="low">Severity: low</option>
+                    <option value="high">Severity: high</option>
+                    <option value="critical">Severity: critical</option>
+                </select>
+                <input type="text" class="qa-input" name="environment" placeholder="Окружение (prod/sandbox/local, браузер, устройство)">
+                <textarea class="qa-input" name="steps" rows="4" placeholder="Шаги воспроизведения (1..N)"></textarea>
+                <textarea class="qa-input" name="expected" rows="2" placeholder="Ожидаемое поведение"></textarea>
+                <textarea class="qa-input" name="actual" rows="2" placeholder="Фактическое поведение"></textarea>
+                <textarea class="qa-input" name="description" rows="2" placeholder="Доп. комментарии (необязательно)"></textarea>
                 
                 <div class="text-xs text-muted mb-1.5">Скриншот (автоматически):</div>
                 <div class="qa-screenshot-preview" id="bugScreenshotPreview" style="position:relative; min-height:120px;">
@@ -412,6 +423,19 @@
                     imgEl.style.display = 'block';
                 }
                 if (placeholder) placeholder.style.display = 'none';
+                // attach latest logs snapshot if available (QA lead/cabinet can provide richer)
+                {% if current_user.is_creator() or current_user.is_chief_tester() %}
+                try {
+                    fetch('/chief-tester/logs/feed?lines=80', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                        .then(r => r.json())
+                        .then(data => {
+                            const entries = Array.isArray(data.entries) ? data.entries : [];
+                            const text = entries.slice(-30).map(e => `[${e.ts}] RID=${e.request_id || '-'} | ${e.actor} | ${e.action} | ${e.page} | ${e.result}`).join('\n');
+                            document.getElementById('bugLogsSnapshot').value = text;
+                        })
+                        .catch(() => {});
+                } catch (e) {}
+                {% endif %}
                 document.getElementById('bugModalOverlay').classList.add('open');
             }).catch(function(err) {
                 console.error("Screenshot failed:", err);
@@ -436,6 +460,24 @@
         btn.disabled = true;
 
         const formData = new FormData(e.target);
+        // Compose a stable bug report body (template fields + optional comments)
+        const sev = (formData.get('severity') || '').toString();
+        const env = (formData.get('environment') || '').toString();
+        const steps = (formData.get('steps') || '').toString();
+        const expected = (formData.get('expected') || '').toString();
+        const actual = (formData.get('actual') || '').toString();
+        const notes = (formData.get('description') || '').toString();
+        const logs = (formData.get('logs_snapshot') || '').toString();
+
+        let body = '';
+        if (sev) body += `Severity: ${sev}\n`;
+        if (env) body += `Environment: ${env}\n`;
+        if (steps) body += `\nSteps:\n${steps}\n`;
+        if (expected) body += `\nExpected:\n${expected}\n`;
+        if (actual) body += `\nActual:\n${actual}\n`;
+        if (notes) body += `\nNotes:\n${notes}\n`;
+        if (logs) body += `\n--- LOG SNAPSHOT ---\n${logs}\n`;
+        formData.set('description', body.trim());
         
         fetch('/qa/bug-report', {
             method: 'POST',

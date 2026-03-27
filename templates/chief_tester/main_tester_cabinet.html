@@ -272,6 +272,18 @@
                 </div>
             </div>
             <p class="text-slate-500 text-sm mb-4">Формат: <span class="font-mono">кто</span> / <span class="font-mono">действие</span> / <span class="font-mono">страница</span> / <span class="font-mono">результат</span> / <span class="font-mono">время</span>.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-2 mb-3">
+                <input id="ctLogFilterQ" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Поиск (actor/action/url/request_id)" oninput="debouncedRefreshLogs()">
+                <input id="ctLogFilterRequestId" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="request_id" oninput="debouncedRefreshLogs()">
+                <input id="ctLogFilterUserId" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="user_id" oninput="debouncedRefreshLogs()">
+                <input id="ctLogFilterUrl" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="url содержит" oninput="debouncedRefreshLogs()">
+                <select id="ctLogFilterResult" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" onchange="refreshLogs()">
+                    <option value="">Любой результат</option>
+                    <option value="success">success</option>
+                    <option value="failed">failed</option>
+                    <option value="error">error</option>
+                </select>
+            </div>
             <div class="rounded-2xl border border-slate-200 overflow-hidden">
                 <div class="grid grid-cols-12 bg-slate-50 text-[11px] uppercase font-extrabold tracking-wider text-slate-500 border-b border-slate-200">
                     <div class="col-span-1 p-2 text-center">#</div>
@@ -298,7 +310,19 @@
         </div>
         <form id="ctBugForm" class="space-y-3">
             <input type="text" name="title" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900" placeholder="Краткая суть бага" required>
-            <textarea name="description" rows="4" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Описание и шаги воспроизведения"></textarea>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <select name="severity" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900">
+                    <option value="medium">Severity: medium</option>
+                    <option value="low">Severity: low</option>
+                    <option value="high">Severity: high</option>
+                    <option value="critical">Severity: critical</option>
+                </select>
+                <input type="text" name="environment" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Окружение (prod/sandbox/local + браузер)">
+            </div>
+            <textarea name="steps" rows="4" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Шаги воспроизведения (1..N)"></textarea>
+            <textarea name="expected" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Ожидаемое поведение"></textarea>
+            <textarea name="actual" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Фактическое поведение"></textarea>
+            <textarea name="description" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Доп. комментарии (необязательно)"></textarea>
             <input type="hidden" name="context_url" id="ctBugContextUrl">
             <input type="hidden" name="screenshot" id="ctBugScreenshot">
             <input type="hidden" name="target_user_id" id="ctBugTargetUserId">
@@ -390,6 +414,7 @@ let logsTimer = null;
 let logsLastText = '';
 let logsSelected = [];
 const initialTabFromServer = '{{ initial_tab|default("dashboard") }}';
+let logsRefreshTimer = null;
 
 function updateTabUrl(tabId) {
     try {
@@ -436,9 +461,22 @@ async function runPreset(endpoint) {
         const res = await fetch(endpoint, { method: 'POST', headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' } });
         const data = await res.json();
         if (res.ok && data.status === 'success') {
-            if (window.toast) window.toast.success(data.message || 'Готово');
-            else alert(data.message || 'Готово');
-            setTimeout(() => location.reload(), 900);
+            const msg = data.message || 'Готово';
+            if (data.next && data.next.url) {
+                showConfirmModal({
+                    title: 'Пресет выполнен',
+                    message: `${msg}\n\nДальше: ${data.next.label || 'Открыть экран проверки'}`,
+                    confirmText: 'Открыть',
+                    cancelText: 'Остаться',
+                    confirmClass: 'accent',
+                    onConfirm: () => { window.location.href = data.next.url; },
+                    onCancel: () => { setTimeout(() => location.reload(), 250); }
+                });
+            } else {
+                if (window.toast) window.toast.success(msg);
+                else alert(msg);
+                setTimeout(() => location.reload(), 900);
+            }
         } else {
             const msg = data.error || data.message || 'Ошибка выполнения пресета';
             if (window.toast) window.toast.error(msg);
@@ -467,7 +505,19 @@ async function refreshLogs() {
     const table = document.getElementById('ctLogTable');
     if (!table) return;
     try {
-        const res = await fetch('{{ url_for("chief_tester.logs_feed") }}?lines=200', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const params = new URLSearchParams();
+        params.set('lines', '200');
+        const q = document.getElementById('ctLogFilterQ')?.value?.trim() || '';
+        const rid = document.getElementById('ctLogFilterRequestId')?.value?.trim() || '';
+        const uid = document.getElementById('ctLogFilterUserId')?.value?.trim() || '';
+        const urlq = document.getElementById('ctLogFilterUrl')?.value?.trim() || '';
+        const resv = document.getElementById('ctLogFilterResult')?.value?.trim() || '';
+        if (q) params.set('q', q);
+        if (rid) params.set('request_id', rid);
+        if (uid) params.set('user_id', uid);
+        if (urlq) params.set('url', urlq);
+        if (resv) params.set('result', resv);
+        const res = await fetch(`{{ url_for("chief_tester.logs_feed") }}?${params.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         const data = await res.json();
         if (!data || !Array.isArray(data.entries)) return;
         const text = JSON.stringify(data.entries.map(x => x.request_id));
@@ -478,6 +528,11 @@ async function refreshLogs() {
     } catch (e) {
         table.innerHTML = '<div class="p-4 text-sm text-red-500">Ошибка чтения логов.</div>';
     }
+}
+
+function debouncedRefreshLogs() {
+    if (logsRefreshTimer) clearTimeout(logsRefreshTimer);
+    logsRefreshTimer = setTimeout(refreshLogs, 250);
 }
 
 function safeText(v) {
@@ -514,7 +569,10 @@ function renderLogsRows(entries) {
                 <div class="col-span-3 p-2 text-slate-700 truncate" title="${safeText(e.action)}">${safeText(e.action)}</div>
                 <div class="col-span-3 p-2 text-slate-500 truncate" title="${safeText(e.page)}">${safeText(e.page)}</div>
                 <div class="col-span-1 p-2 font-bold ${resultClass}">${safeText(e.result)}</div>
-                <div class="col-span-2 p-2 text-slate-500">${safeText(shortTs(e.ts))}</div>
+                <div class="col-span-2 p-2 text-slate-500 flex items-center justify-between gap-2">
+                    <span>${safeText(shortTs(e.ts))}</span>
+                    ${e.request_id ? `<a class="text-indigo-600 font-bold hover:underline" href="${safeText(`{{ url_for('chief_tester.dashboard', tab='logs') }}&rid=` + encodeURIComponent(e.request_id))}">RID</a>` : ``}
+                </div>
             </label>
         `;
     }).join('');
@@ -613,7 +671,7 @@ async function openBugModal() {
             selected = entries.filter(e => selectedSet.has(`${e.ts}|${e.request_id || ''}|${e.action || ''}|${e.page || ''}`));
         }
         const source = selected.length ? selected : entries.slice(-30);
-        const text = source.map(e => `[${e.ts}] ${e.actor} | ${e.action} | ${e.page} | ${e.result}`).join('\n');
+        const text = source.map(e => `[${e.ts}] RID=${e.request_id || '-'} | ${e.actor} | ${e.action} | ${e.page} | ${e.result}`).join('\n');
         logsSnapshotInput.value = text;
         logsPreview.textContent = text || 'Логи пустые.';
     } catch (e) {
@@ -656,11 +714,23 @@ document.getElementById('ctBugForm')?.addEventListener('submit', async function 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Отправка...';
     const data = new FormData(form);
-    const desc = (data.get('description') || '').toString();
+    const sev = (data.get('severity') || '').toString();
+    const env = (data.get('environment') || '').toString();
+    const steps = (data.get('steps') || '').toString();
+    const expected = (data.get('expected') || '').toString();
+    const actual = (data.get('actual') || '').toString();
+    const notes = (data.get('description') || '').toString();
     const logs = (data.get('logs_snapshot') || '').toString();
-    if (logs) {
-        data.set('description', `${desc}\n\n--- LOG SNAPSHOT ---\n${logs}`);
-    }
+
+    let body = '';
+    if (sev) body += `Severity: ${sev}\n`;
+    if (env) body += `Environment: ${env}\n`;
+    if (steps) body += `\nSteps:\n${steps}\n`;
+    if (expected) body += `\nExpected:\n${expected}\n`;
+    if (actual) body += `\nActual:\n${actual}\n`;
+    if (notes) body += `\nNotes:\n${notes}\n`;
+    if (logs) body += `\n--- LOG SNAPSHOT ---\n${logs}\n`;
+    data.set('description', body.trim());
 
     try {
         const res = await fetch('/qa/bug-report', {
@@ -695,6 +765,18 @@ document.getElementById('ctBugForm')?.addEventListener('submit', async function 
     } catch (e) {}
     if (!tabs.includes(tab)) tab = 'dashboard';
     switchTab(tab);
+
+    // Deep-link filters like ?tab=logs&rid=...
+    try {
+        const u = new URL(window.location.href);
+        const rid = (u.searchParams.get('rid') || '').trim();
+        if (rid) {
+            const input = document.getElementById('ctLogFilterRequestId');
+            if (input) input.value = rid;
+            switchTab('logs');
+            refreshLogs();
+        }
+    } catch (e) {}
 })();
 </script>
 {% endblock %}
