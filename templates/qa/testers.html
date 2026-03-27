@@ -32,7 +32,12 @@
             <div class="text-xs text-muted uppercase tracking-widest">QA</div>
             <h1 class="text-2xl font-bold">Управление тестерами</h1>
         </div>
-        <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Канбан</a>
+        <div class="flex gap-2">
+            {% if return_to %}
+            <a href="{{ return_to }}" class="neo-button ghost">← Вернуться в QA кабинет</a>
+            {% endif %}
+            <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Канбан</a>
+        </div>
     </div>
 
     <div class="glass-panel">

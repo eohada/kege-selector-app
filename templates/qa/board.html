@@ -36,6 +36,9 @@
             <h1 class="text-2xl font-bold">Канбан-доска</h1>
         </div>
         <div class="flex gap-3 items-center">
+            {% if return_to %}
+            <a href="{{ return_to }}" class="neo-button ghost">← Вернуться в QA кабинет</a>
+            {% endif %}
             <a href="{{ url_for('qa.bug_reports') }}" class="neo-button ghost">Баг-репорты</a>
             {% if current_user.is_creator() %}
             <a href="{{ url_for('qa.task_new') }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Новая задача</a>

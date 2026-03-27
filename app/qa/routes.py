@@ -702,8 +702,10 @@ def testers():
     if not current_user.is_chief_tester() and not current_user.is_creator():
         return "Access denied", 403
     testers_list = User.query.filter(User.role.in_(['tester', 'chief_tester'])).order_by(User.username).all()
+    return_to = (request.args.get('return_to') or '').strip()
     return render_template('qa/testers.html', testers_list=testers_list,
-                           all_permissions=ALL_PERMISSIONS, permission_categories=PERMISSION_CATEGORIES)
+                           all_permissions=ALL_PERMISSIONS, permission_categories=PERMISSION_CATEGORIES,
+                           return_to=return_to)
 
 
 @qa_bp.route('/testers/create', methods=['POST'])
@@ -865,8 +867,10 @@ def board():
         elif getattr(t, 'assignee_id', None):
             assignee_ids.add(t.assignee_id)
     assignee_map = {u.id: u for u in User.query.filter(User.id.in_(assignee_ids)).all()} if assignee_ids else {}
+    return_to = (request.args.get('return_to') or '').strip()
     return render_template('qa/board.html', tasks=tasks, testers=testers, assignee_map=assignee_map,
-                           can_edit_status=can_edit_status, can_edit_assignee=can_edit_assignee)
+                           can_edit_status=can_edit_status, can_edit_assignee=can_edit_assignee,
+                           return_to=return_to)
 
 
 @qa_bp.route('/tasks/<int:task_id>/status', methods=['POST'])

@@ -278,7 +278,9 @@
             <div class="qa-accordion-content">
                 <button class="qa-btn" onclick="openBugModal()">🐞 Создать баг-репорт</button>
                 {% if current_user.is_chief_tester() or current_user.is_creator() %}
-                <a href="{{ url_for('chief_tester.dashboard') }}" class="qa-btn no-underline">🧭 Кабинет главного тестировщика</a>
+                <a href="{{ url_for('chief_tester.dashboard', tab='dashboard') }}" class="qa-btn no-underline">🧭 Кабинет главного тестировщика</a>
+                <a href="{{ url_for('chief_tester.dashboard', tab='tasks') }}" class="qa-btn no-underline">🗂️ Кабинет: Баг-трекер</a>
+                <a href="{{ url_for('chief_tester.dashboard', tab='logs') }}" class="qa-btn no-underline">🧾 Кабинет: Логи</a>
                 {% endif %}
                 <a href="{{ url_for('qa.board') }}" class="qa-btn no-underline">📋 Канбан-доска</a>
                 <a href="{{ url_for('qa.bug_reports') }}" class="qa-btn no-underline">🐛 Список багов</a>
@@ -322,6 +324,10 @@
                 <span class="qa-accordion-icon">▼</span>
             </div>
             <div class="qa-accordion-content">
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/generate_debtor')">🧑‍🎓 Сгенерировать должника</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/overwhelm_reviews')">📥 Завалить проверками</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/break_schedule')">🗓️ Сломать расписание</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/god_mode_30d')">👑 Выдать God Mode (30д)</button>
                 <button class="qa-btn" onclick="manipulateState('/qa/manipulate/tabula_rasa')" style="border-color: rgba(255,100,100,0.4); color: #ff8888;">🗑️ Tabula Rasa (с чистого листа)</button>
                 <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pay_course')">💳 Имитировать оплату</button>
             </div>

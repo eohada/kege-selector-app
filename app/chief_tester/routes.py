@@ -159,6 +159,8 @@ def _count_bugs_done_last_7d(bug_reports: list[QATask]) -> int:
 @login_required
 def dashboard():
     _require_allowed()
+    requested_tab = (request.args.get("tab") or "dashboard").strip().lower()
+    initial_tab = requested_tab if requested_tab in {"dashboard", "tasks", "team", "logs"} else "dashboard"
     try:
         tasks = (
             QATask.query.filter(QATask.task_type == "task")
@@ -285,6 +287,7 @@ def dashboard():
         activity=activity,
         testers=testers,
         workloads=workloads,
+        initial_tab=initial_tab,
     )
 
 
