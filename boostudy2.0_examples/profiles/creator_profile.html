@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Профиль Создателя</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты Golos Text -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Golos Text"', 'sans-serif'] },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            admin: '#0F172A',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                        'avatar': '0 8px 32px -4px rgba(123, 92, 255, 0.25)',
+                    },
+                    animation: {
+                        'blob': 'blob 15s infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        
+        /* УНИКАЛЬНАЯ АНИМАЦИЯ ФОНА СОЗДАТЕЛЯ (Phantom Particles) */
+        .phantom-particle {
+            position: fixed;
+            bottom: -100px;
+            background: radial-gradient(circle, rgba(123,92,255,0.15) 0%, rgba(123,92,255,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            animation: floatUp infinite linear;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.8); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-120vh) scale(1.5); opacity: 0; }
+        }
+        
+        /* Настройки индивидуальных частиц для хаотичности */
+        .particle-1 { left: 10%; width: 150px; height: 150px; animation-duration: 25s; animation-delay: 0s; }
+        .particle-2 { left: 25%; width: 80px; height: 80px; animation-duration: 18s; animation-delay: 4s; }
+        .particle-3 { left: 45%; width: 200px; height: 200px; animation-duration: 30s; animation-delay: 2s; }
+        .particle-4 { left: 65%; width: 100px; height: 100px; animation-duration: 22s; animation-delay: 8s; }
+        .particle-5 { left: 85%; width: 170px; height: 170px; animation-duration: 28s; animation-delay: 5s; }
+        .particle-6 { left: 50%; width: 60px; height: 60px; animation-duration: 15s; animation-delay: 10s; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- АНИМИРОВАННЫЙ МАГИЧЕСКИЙ ФОН (Ethereal Background) -->
+    <!-- Мягкие плавающие ауры -->
+    <div class="fixed top-[-10%] left-[-10%] w-96 h-96 bg-purple-400/20 rounded-full mix-blend-multiply filter blur-[100px] animate-blob z-0 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-cyan-400/10 rounded-full mix-blend-multiply filter blur-[120px] animate-blob z-0 pointer-events-none" style="animation-delay: 4s;"></div>
+    
+    <!-- Поднимающиеся частицы (Снежинки/Пыль) -->
+    <div class="phantom-particle particle-1"></div>
+    <div class="phantom-particle particle-2"></div>
+    <div class="phantom-particle particle-3"></div>
+    <div class="phantom-particle particle-4"></div>
+    <div class="phantom-particle particle-5"></div>
+    <div class="phantom-particle particle-6"></div>
+
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-8 pointer-events-none">
+        <header class="w-full max-w-[1400px] mx-auto bg-white/80 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm hover:scale-105 transition-transform">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Главное меню (Сжатое для админа) -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/60 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-users-three text-lg"></i> Ученики
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative">
+                    <i class="ph-bold ph-tray text-lg"></i> Проверка
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-boo-coral rounded-full animate-pulse"></span>
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white hover:shadow-sm transition-all">
+                    <i class="ph-bold ph-bell text-xl"></i>
+                </button>
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200">
+                    <!-- Запасной Фолбэк для аватара в хедере -->
+                    <img src="demo_creator_avatar.jpg" onerror="this.src='https://api.dicebear.com/7.x/notionists/svg?seed=creator'" alt="Аватар" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm object-cover bg-slate-100">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <!-- z-10 чтобы контент был поверх фоновых частиц -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-16 px-6 lg:px-8 relative z-10">
+        <div class="w-full max-w-[1200px] mx-auto flex flex-col gap-6">
+
+            <!-- КНОПКА НАЗАД -->
+            <div class="flex items-center gap-2 text-slate-400 font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/50 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-slate-200/50 shadow-sm">
+                <i class="ph-bold ph-arrow-left"></i> На главную
+            </div>
+
+            <!-- ПРЕМИАЛЬНЫЙ HERO-БЛОК ПРОФИЛЯ -->
+            <div class="bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col relative overflow-hidden">
+                
+                <!-- Cover Image (Баннер) -->
+                <!-- Жесткий фон bg-slate-900 спасет дизайн, если картинка не загрузится -->
+                <div class="w-full h-48 sm:h-64 bg-slate-900 relative overflow-hidden group flex items-center justify-center">
+                    <img src="demo_creator_cover.jpg" onerror="this.style.display='none'" alt="Cover" class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700 absolute inset-0 z-0">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10 pointer-events-none"></div>
+                    
+                    <!-- Кнопка смены обложки -->
+                    <button class="absolute top-4 right-4 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/20 z-20 shadow-sm">
+                        <i class="ph-bold ph-camera text-lg"></i> Обложка
+                    </button>
+                </div>
+
+                <!-- Блок с аватаром и инфо -->
+                <div class="px-6 sm:px-10 pb-8 relative">
+                    
+                    <!-- Аватар (Жестко зафиксированные размеры, чтобы не сломало верстку) -->
+                    <div class="absolute -top-16 sm:-top-20 left-6 sm:left-10 w-32 h-32 sm:w-40 sm:h-40 rounded-[28px] shadow-avatar bg-slate-100 border-[6px] border-white flex items-center justify-center overflow-hidden shrink-0 z-20">
+                        <img src="demo_creator_avatar.jpg" onerror="this.src='https://api.dicebear.com/7.x/notionists/svg?seed=creator&backgroundColor=0F172A'" alt="Аватар Создателя" class="w-full h-full object-cover">
+                    </div>
+                    
+                    <!-- Индикатор онлайна (Вынесен за пределы overflow-hidden) -->
+                    <div class="absolute top-10 sm:top-12 left-[120px] sm:left-[160px] w-6 h-6 sm:w-8 sm:h-8 bg-green-500 rounded-full border-[4px] border-white shadow-sm z-30" title="В сети"></div>
+
+                    <!-- Инфо профиля (Отступ mt-20 гарантирует, что аватар не налезет на текст) -->
+                    <div class="mt-20 sm:mt-24 flex flex-col md:flex-row md:justify-between md:items-start gap-6">
+                        <div class="flex-1 min-w-0">
+                            <h1 class="text-4xl font-black text-slate-900 tracking-tight truncate">creator</h1>
+                            <p class="text-slate-500 font-medium text-lg italic mt-1 font-serif">"слеп, но не глуп"</p>
+                            
+                            <!-- Уникальные бейджи ролей -->
+                            <div class="flex flex-wrap items-center gap-2 mt-5">
+                                <span class="px-3.5 py-1.5 bg-slate-900 text-white text-xs font-extrabold rounded-xl shadow-md border border-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                                    <i class="ph-fill ph-crown text-boo-accent text-sm"></i> Создатель
+                                </span>
+                                <span class="px-3.5 py-1.5 bg-purple-50 text-purple-700 text-xs font-extrabold rounded-xl border border-purple-200/60 shadow-sm">
+                                    Главный тестировщик
+                                </span>
+                                <span class="px-3.5 py-1.5 bg-cyan-50 text-cyan-700 text-xs font-extrabold rounded-xl border border-cyan-200/60 shadow-sm">
+                                    Графический дизайнер
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Действия с профилем -->
+                        <div class="shrink-0 pt-2">
+                            <button class="px-6 py-3.5 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold transition-all flex items-center gap-2 shadow-sm border border-slate-200 hover:shadow-md">
+                                <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- СПЛИТ КОНТЕНТА: О СЕБЕ И ИНСТРУМЕНТЫ -->
+            <div class="flex flex-col lg:flex-row gap-6">
+                
+                <!-- ЛЕВАЯ КОЛОНКА (Учетная запись) -->
+                <div class="w-full lg:w-1/2 flex flex-col gap-6">
+                    <div class="bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex-1">
+                        <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <i class="ph-fill ph-user text-lg"></i> Учетная запись
+                        </h2>
+
+                        <!-- Блок "О себе" -->
+                        <div class="mb-8">
+                            <h3 class="text-sm font-bold text-slate-900 mb-3">О СЕБЕ</h3>
+                            <div class="text-sm text-slate-600 font-medium leading-relaxed space-y-3 bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-inner-soft">
+                                <p>Инноватор в сфере EdTech и практикующий IT-наставник.</p>
+                                <p>Специалист, который не просто учит коду, а создает среду для его изучения.</p>
+                                <p>Путь от репетитора до разработчика собственной платформы позволил автоматизировать рутину и сфокусироваться на главном — прогрессе ученика.</p>
+                                <p>В обучении информатике и математике делает ставку на алгоритмическое мышление и использование современных инструментов разработки, подготавливая студентов к реальным вызовам цифрового мира.</p>
+                            </div>
+                        </div>
+
+                        <!-- Детали аккаунта (Grid) -->
+                        <div class="flex flex-col gap-1">
+                            <div class="flex justify-between items-center py-3 border-b border-slate-100">
+                                <span class="text-sm font-bold text-slate-500">ID аккаунта</span>
+                                <span class="text-sm font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">#777</span>
+                            </div>
+                            <div class="flex justify-between items-center py-3 border-b border-slate-100">
+                                <span class="text-sm font-bold text-slate-500">Логин</span>
+                                <span class="text-sm font-bold text-slate-900">creator</span>
+                            </div>
+                            <div class="flex justify-between items-center py-3 border-b border-slate-100">
+                                <span class="text-sm font-bold text-slate-500">Дата регистрации</span>
+                                <span class="text-sm font-bold text-slate-900">05.12.2025</span>
+                            </div>
+                            <div class="flex justify-between items-center py-3">
+                                <span class="text-sm font-bold text-slate-500">Последняя активность</span>
+                                <span class="text-sm font-bold text-slate-900 flex items-center gap-2 bg-green-50 px-2.5 py-1 rounded-lg border border-green-100 text-green-700">
+                                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Онлайн
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ПРАВАЯ КОЛОНКА (Command Center / Быстрые действия) -->
+                <div class="w-full lg:w-1/2 flex flex-col gap-6">
+                    
+                    <div class="bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+                        <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <i class="ph-fill ph-terminal-window text-lg"></i> Быстрые действия
+                        </h2>
+
+                        <!-- Сетка админских инструментов -->
+                        <div class="grid grid-cols-2 gap-3 mb-8">
+                            <!-- Активный инструмент стилизован под "включенный" -->
+                            <button class="py-4 px-4 bg-boo-cyan text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border-b-[3px] border-b-cyan-700 active:translate-y-[2px] active:border-b-0 transition-all text-sm group">
+                                <i class="ph-bold ph-calendar-blank text-lg group-hover:scale-110 transition-transform"></i> Расписание
+                            </button>
+                            
+                            <!-- Остальные инструменты -->
+                            <button class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 transition-all text-sm group">
+                                <i class="ph-bold ph-users text-lg group-hover:text-boo-primary transition-colors"></i> Ученики
+                            </button>
+                            
+                            <button class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 transition-all text-sm group">
+                                <i class="ph-bold ph-files text-lg group-hover:text-boo-primary transition-colors"></i> Работы
+                            </button>
+                            
+                            <button class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 transition-all text-sm group">
+                                <i class="ph-bold ph-check-square-offset text-lg group-hover:text-boo-primary transition-colors"></i> Проверка
+                            </button>
+                            
+                            <button class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 transition-all text-sm group">
+                                <i class="ph-bold ph-bell-ringing text-lg group-hover:text-boo-primary transition-colors"></i> Напоминания
+                            </button>
+                            
+                            <button class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 transition-all text-sm group">
+                                <i class="ph-bold ph-books text-lg group-hover:text-boo-primary transition-colors"></i> Библиотека
+                            </button>
+
+                            <button class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 transition-all text-sm group">
+                                <i class="ph-bold ph-game-controller text-lg group-hover:text-boo-primary transition-colors"></i> Тренажёр
+                            </button>
+
+                            <button class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 transition-all text-sm group">
+                                <i class="ph-bold ph-list-numbers text-lg group-hover:text-boo-primary transition-colors"></i> Рубрики
+                            </button>
+
+                            <button class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 transition-all text-sm group">
+                                <i class="ph-bold ph-credit-card text-lg group-hover:text-boo-primary transition-colors"></i> Тарифы
+                            </button>
+
+                            <button class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 transition-all text-sm group">
+                                <i class="ph-bold ph-star text-lg group-hover:text-boo-primary transition-colors"></i> Подписки
+                            </button>
+                        </div>
+
+                        <!-- Синхронизация и Выход -->
+                        <div class="space-y-3">
+                            <button class="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold flex justify-center items-center gap-2 shadow-md transition-all text-sm border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0">
+                                <i class="ph-bold ph-calendar-plus text-lg"></i> Синхронизация календаря
+                            </button>
+                            
+                            <button class="w-full py-4 bg-red-50 hover:bg-red-100 text-boo-coral rounded-xl font-bold flex justify-center items-center gap-2 shadow-sm border border-red-200 transition-all text-sm">
+                                <i class="ph-bold ph-sign-out text-lg"></i> Выйти из аккаунта
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>

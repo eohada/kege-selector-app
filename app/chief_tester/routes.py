@@ -7,7 +7,8 @@ from flask_login import current_user, login_required
 from sqlalchemy import or_
 
 from app.chief_tester import chief_tester_bp
-from app.models import QATask, User, UserRole, db
+from app.models import User, UserRole, db
+from core.db_models import QATask
 
 
 def _is_allowed() -> bool:
