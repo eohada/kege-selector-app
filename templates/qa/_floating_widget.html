@@ -205,7 +205,7 @@
                 <div class="mb-2 text-xs text-muted">Ученики</div>
                 {% for un in ['qa_pool_student_1', 'qa_pool_student_2', 'qa_pool_student_3'] %}
                 <div class="qa-user-row">
-                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
+                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
                         <input type="hidden" name="username" value="{{ un }}">
                         <button type="submit" class="qa-user-btn">👤 {{ un.replace('qa_pool_', '').replace('_', ' ').title() }}</button>
@@ -216,7 +216,7 @@
                 <div class="mt-3 mb-2 text-xs text-muted">Преподаватели</div>
                 {% for un in ['qa_pool_tutor_1', 'qa_pool_tutor_2', 'qa_pool_tutor_3'] %}
                 <div class="qa-user-row">
-                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
+                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
                         <input type="hidden" name="username" value="{{ un }}">
                         <button type="submit" class="qa-user-btn">👨‍🏫 {{ un.replace('qa_pool_', '').replace('_', ' ').title() }}</button>
@@ -227,7 +227,7 @@
                 <div class="mt-3 mb-2 text-xs text-muted">Родители</div>
                 {% for un in ['qa_pool_parent_1', 'qa_pool_parent_2', 'qa_pool_parent_3'] %}
                 <div class="qa-user-row">
-                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
+                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
                         <input type="hidden" name="username" value="{{ un }}">
                         <button type="submit" class="qa-user-btn">👪 {{ un.replace('qa_pool_', '').replace('_', ' ').title() }}</button>
@@ -237,7 +237,7 @@
                 
                 <div class="mt-3 mb-2 text-xs text-muted">Администратор</div>
                 <div class="qa-user-row">
-                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
+                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
                         <input type="hidden" name="username" value="qa_pool_admin_1">
                         <button type="submit" class="qa-user-btn">🛡️ Qa Pool Admin 1</button>
@@ -277,6 +277,9 @@
             </div>
             <div class="qa-accordion-content">
                 <button class="qa-btn" onclick="openBugModal()">🐞 Создать баг-репорт</button>
+                {% if current_user.is_chief_tester() or current_user.is_creator() %}
+                <a href="{{ url_for('chief_tester.dashboard') }}" class="qa-btn no-underline">🧭 Кабинет главного тестировщика</a>
+                {% endif %}
                 <a href="{{ url_for('qa.board') }}" class="qa-btn no-underline">📋 Канбан-доска</a>
                 <a href="{{ url_for('qa.bug_reports') }}" class="qa-btn no-underline">🐛 Список багов</a>
                 <a href="{{ url_for('qa.pool') }}" class="qa-btn no-underline">⚙️ Привязки профилей</a>

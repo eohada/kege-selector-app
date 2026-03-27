@@ -105,16 +105,36 @@ def impersonate_as_role():
     """Вход под пользователем из пула (по username) или создание одноразового темп-юзера."""
     if not is_qa_authorized():
         return jsonify({'error': 'Forbidden'}), 403
-    username = (request.form.get('username') or '').strip()
+    payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        payload = {}
+    username = (
+        (request.form.get('username') or '') or
+        (request.values.get('username') or '') or
+        (payload.get('username') or '')
+    ).strip()
     if username and username in QA_POOL_USERNAMES:
         u = User.query.filter_by(username=username).first()
+        if not u:
+            try:
+                _ensure_qa_pool()
+                u = User.query.filter_by(username=username).first()
+            except Exception as e:
+                current_app.logger.exception("QA pool creation failed: %s", e)
+                return jsonify({'error': 'Не удалось инициализировать пул QA-профилей'}), 500
         if u:
             if 'impersonator_id' not in session:
                 session['impersonator_id'] = current_user.id
             login_user(u)
             flash(f'Вход под: {u.username}', 'success')
             return redirect(request.referrer or url_for('main.index'))
-    role = (request.form.get('role') or '').strip().lower()
+        return jsonify({'error': 'QA-профиль из пула не найден. Откройте /qa/pool для диагностики.'}), 404
+
+    role = (
+        (request.form.get('role') or '') or
+        (request.values.get('role') or '') or
+        (payload.get('role') or '')
+    ).strip().lower()
     if role not in ('student', 'tutor', 'parent'):
         return jsonify({'error': 'Укажите role или username из пула'}), 400
     try:

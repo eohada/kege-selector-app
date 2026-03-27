@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Расписание (Tactile Bento)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Golos Text"', 'sans-serif'] },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                        'lesson': '0 4px 12px rgba(123, 92, 255, 0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        
+        /* Скрываем скролл для сетки расписания, но оставляем функционал */
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <div class="fixed top-0 w-full z-50 pt-5 px-8 pointer-events-none">
+        <header class="w-full max-w-[1600px] mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto">
+            <div class="flex items-center gap-3 pl-2">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100"><i class="ph-fill ph-ghost text-2xl"></i></div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900">BooStudy</span>
+            </div>
+            <nav class="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2"><i class="ph-bold ph-users-three text-lg"></i> Ученики</a>
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2"><i class="ph-bold ph-calendar-blank text-lg"></i> Расписание</a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative"><i class="ph-bold ph-tray text-lg"></i> Проверка <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-boo-coral rounded-full"></span></a>
+            </nav>
+            <div class="flex items-center gap-3 pr-1">
+                <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Felix&backgroundColor=F3F0FF" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-purple-50">
+            </div>
+        </header>
+    </div>
+
+    <main class="flex-1 pt-32 pb-8 px-8 lg:px-12 flex justify-center h-full">
+        <div class="w-full max-w-[1600px] flex gap-6 h-full">
+            
+            <div class="flex-1 flex flex-col min-w-0 h-full">
+                
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-1">Твой календарь успеха</h1>
+                        <p class="text-slate-500 font-medium text-sm flex items-center gap-2">
+                            <i class="ph-fill ph-check-circle text-boo-cyan"></i> На этой неделе запланировано 12 уроков
+                        </p>
+                    </div>
+                    <button class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex items-center gap-2 active:translate-y-1 active:border-b-0">
+                        <i class="ph-bold ph-plus text-lg"></i> Новый урок
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-2xl p-2 border border-slate-200 border-b-[3px] border-b-slate-300 shadow-tactile mb-6 flex items-center justify-between">
+                    
+                    <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200/50">
+                        <button class="px-5 py-1.5 text-slate-500 font-bold text-sm rounded-lg hover:text-slate-900 transition-colors">День</button>
+                        <button class="px-5 py-1.5 bg-white text-slate-900 shadow-sm font-bold text-sm rounded-lg border border-slate-200/50">Неделя</button>
+                        <button class="px-5 py-1.5 text-slate-500 font-bold text-sm rounded-lg hover:text-slate-900 transition-colors">Месяц</button>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                        <button class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-boo-primary transition-all"><i class="ph-bold ph-caret-left"></i></button>
+                        <h2 class="text-lg font-extrabold text-slate-900 tracking-tight w-56 text-center">23 — 29 Марта 2026</h2>
+                        <button class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-boo-primary transition-all"><i class="ph-bold ph-caret-right"></i></button>
+                    </div>
+
+                    <div class="flex items-center gap-2 pr-2">
+                        <div class="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm text-slate-600 flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors">
+                            <i class="ph-bold ph-funnel"></i> Все статусы <i class="ph-bold ph-caret-down text-slate-400 text-xs"></i>
+                        </div>
+                        <div class="px-4 py-2 bg-purple-50 border border-purple-100 rounded-xl font-bold text-sm text-boo-primary flex items-center gap-2 cursor-pointer hover:bg-purple-100 transition-colors">
+                            <i class="ph-bold ph-globe"></i> Время: МСК <i class="ph-bold ph-caret-down text-purple-300 text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-white rounded-3xl border border-slate-200 shadow-tactile flex flex-col overflow-hidden relative">
+                    
+                    <div class="grid grid-cols-8 border-b border-slate-100 bg-slate-50/50">
+                        <div class="p-4 border-r border-slate-100/50 text-center flex flex-col justify-center">
+                            <i class="ph-fill ph-clock text-slate-300 text-xl"></i>
+                        </div>
+                        <div class="p-4 border-r border-slate-100/50 text-center bg-purple-50/50 relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-boo-primary"></div>
+                            <div class="text-xs font-bold text-boo-primary uppercase tracking-widest mb-1">Пн</div>
+                            <div class="text-2xl font-black text-slate-900">23</div>
+                        </div>
+                        <div class="p-4 border-r border-slate-100/50 text-center"><div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Вт</div><div class="text-2xl font-black text-slate-700">24</div></div>
+                        <div class="p-4 border-r border-slate-100/50 text-center"><div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Ср</div><div class="text-2xl font-black text-slate-700">25</div></div>
+                        <div class="p-4 border-r border-slate-100/50 text-center"><div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Чт</div><div class="text-2xl font-black text-slate-700">26</div></div>
+                        <div class="p-4 border-r border-slate-100/50 text-center"><div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Пт</div><div class="text-2xl font-black text-slate-700">27</div></div>
+                        <div class="p-4 border-r border-slate-100/50 text-center opacity-70"><div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Сб</div><div class="text-2xl font-black text-slate-700">28</div></div>
+                        <div class="p-4 text-center opacity-70"><div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Вс</div><div class="text-2xl font-black text-slate-700">29</div></div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto hide-scroll relative">
+                        <div class="absolute top-[35%] left-0 w-full border-t-2 border-dashed border-boo-accent z-20 pointer-events-none flex items-center">
+                            <div class="bg-boo-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-r-md -mt-3">13:30</div>
+                            <div class="w-2 h-2 rounded-full bg-boo-accent -ml-1 -mt-3"></div>
+                        </div>
+
+                        <div class="grid grid-cols-8 relative h-[800px]">
+                            <div class="border-r border-slate-100/50 relative bg-white z-10">
+                                <div class="h-24 border-b border-slate-100 flex justify-center pt-2"><span class="text-xs font-bold text-slate-400">10:00</span></div>
+                                <div class="h-24 border-b border-slate-100 flex justify-center pt-2"><span class="text-xs font-bold text-slate-400">11:00</span></div>
+                                <div class="h-24 border-b border-slate-100 flex justify-center pt-2"><span class="text-xs font-bold text-slate-400">12:00</span></div>
+                                <div class="h-24 border-b border-slate-100 flex justify-center pt-2"><span class="text-xs font-bold text-slate-400">13:00</span></div>
+                                <div class="h-24 border-b border-slate-100 flex justify-center pt-2"><span class="text-xs font-bold text-slate-400">14:00</span></div>
+                                <div class="h-24 border-b border-slate-100 flex justify-center pt-2"><span class="text-xs font-bold text-slate-400">15:00</span></div>
+                            </div>
+                            
+                            <div class="border-r border-slate-100/50 relative bg-purple-50/20 group"><div class="absolute inset-0 border-b border-slate-100/50 pointer-events-none step-lines h-24"></div></div>
+                            <div class="border-r border-slate-100/50 relative group"></div>
+                            <div class="border-r border-slate-100/50 relative group"></div>
+                            <div class="border-r border-slate-100/50 relative group"></div>
+                            <div class="border-r border-slate-100/50 relative group"></div>
+                            <div class="border-r border-slate-100/50 bg-slate-50/30"></div>
+                            <div class="bg-slate-50/30"></div>
+
+                            <div class="absolute top-[48px] left-[12.5%] w-[12.5%] h-[96px] p-1.5 z-10">
+                                <div class="w-full h-full bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-2xl p-3 text-white shadow-lesson cursor-pointer hover:scale-[1.02] hover:-translate-y-1 transition-all flex flex-col justify-between border-b-4 border-b-purple-800">
+                                    <div class="flex justify-between items-start">
+                                        <div class="font-bold text-sm leading-tight text-white">10:30<br><span class="text-purple-200 text-xs font-semibold">1 ч 00 мин</span></div>
+                                        <div class="w-6 h-6 rounded-md bg-white/20 flex items-center justify-center backdrop-blur-sm"><i class="ph-bold ph-code text-white"></i></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-purple-100 mb-0.5">ОГЭ Информ.</div>
+                                        <div class="text-sm font-extrabold text-white flex items-center gap-1.5 truncate">
+                                            <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Alex" class="w-4 h-4 rounded-full bg-purple-200"> Александр
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="absolute top-[384px] left-[50%] w-[12.5%] h-[120px] p-1.5 z-10">
+                                <div class="w-full h-full bg-white rounded-2xl p-3 text-slate-900 shadow-lesson cursor-pointer hover:scale-[1.02] transition-all flex flex-col justify-between border border-purple-300 border-b-4 border-b-boo-primary ring-2 ring-purple-200 ring-offset-2">
+                                    <div class="flex justify-between items-start">
+                                        <div class="font-bold text-sm leading-tight">14:00<br><span class="text-slate-400 text-xs font-semibold">1 ч 30 мин</span></div>
+                                        <div class="w-2 h-2 rounded-full bg-boo-accent mt-1 animate-pulse"></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-500 mb-0.5">ЕГЭ Математ.</div>
+                                        <div class="text-sm font-extrabold text-slate-900 flex items-center gap-1.5 truncate">
+                                            <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Max" class="w-4 h-4 rounded-full bg-slate-100"> test
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="absolute top-[192px] left-[37.5%] w-[12.5%] h-[96px] p-1.5 z-0 opacity-0 hover:opacity-100 transition-opacity">
+                                <div class="w-full h-full border-2 border-dashed border-purple-300 bg-purple-50/50 rounded-2xl flex items-center justify-center cursor-pointer">
+                                    <i class="ph-bold ph-plus text-purple-400 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-96 flex flex-col h-full shrink-0">
+                <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full relative overflow-hidden">
+                    
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+                        <div class="flex justify-between items-start mb-4">
+                            <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Инспектор урока</h2>
+                            <button class="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 hover:shadow-sm transition-all"><i class="ph-bold ph-x"></i></button>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-2xl bg-purple-100 text-boo-primary flex items-center justify-center border border-purple-200 shadow-sm">
+                                <i class="ph-bold ph-math-operations text-2xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-2xl font-black text-slate-900 tracking-tight">test</h3>
+                                <div class="flex items-center gap-1.5 text-sm font-bold text-slate-500 mt-1">
+                                    <span class="w-2 h-2 bg-boo-accent rounded-full"></span> Запланирован
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-6 space-y-5 hide-scroll">
+                        
+                        <div class="flex gap-4">
+                            <div class="flex-1 space-y-2">
+                                <label class="text-xs font-bold text-slate-500 ml-1">Дата</label>
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between hover:border-boo-primary transition-colors cursor-pointer shadow-sm">
+                                    <span class="font-bold text-slate-900 text-sm">26 Мар 2026</span>
+                                    <i class="ph-bold ph-calendar-blank text-slate-400"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 space-y-2">
+                                <label class="text-xs font-bold text-slate-500 ml-1">Время</label>
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between hover:border-boo-primary transition-colors cursor-pointer shadow-sm">
+                                    <span class="font-bold text-slate-900 text-sm">14:00</span>
+                                    <i class="ph-bold ph-clock text-slate-400"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 ml-1">Длительность (мин)</label>
+                            <input type="number" value="90" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary transition-colors shadow-sm">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 ml-1">Ученик</label>
+                            <div class="bg-white border border-slate-200 rounded-xl p-2 flex items-center justify-between shadow-sm cursor-pointer hover:border-boo-primary transition-colors">
+                                <div class="flex items-center gap-3 pl-2">
+                                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Max" class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200">
+                                    <span class="font-bold text-slate-900 text-sm">test (ID: 10452)</span>
+                                </div>
+                                <i class="ph-bold ph-caret-down text-slate-400 pr-2"></i>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 ml-1">Тема урока</label>
+                            <div class="relative">
+                                <i class="ph-bold ph-text-t absolute left-4 top-3.5 text-slate-400"></i>
+                                <input type="text" placeholder="Введите тему (опционально)" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary transition-colors shadow-sm">
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 ml-1">Тип занятия</label>
+                            <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200/50">
+                                <button class="py-2 bg-white text-slate-900 font-bold text-xs rounded-lg shadow-sm border border-slate-200/50 flex items-center justify-center gap-1.5"><i class="ph-bold ph-video-camera text-boo-primary"></i> Онлайн</button>
+                                <button class="py-2 text-slate-500 font-bold text-xs rounded-lg hover:text-slate-900 transition-colors flex items-center justify-center gap-1.5"><i class="ph-bold ph-chalkboard-teacher"></i> Офлайн</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-6 border-t border-slate-100 bg-white space-y-3">
+                        <button class="w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex justify-center items-center gap-2 active:translate-y-1 active:border-b-0 text-sm">
+                            <i class="ph-bold ph-floppy-disk text-lg"></i> Сохранить изменения
+                        </button>
+                        <div class="flex gap-3">
+                            <button class="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm">
+                                Профиль
+                            </button>
+                            <button class="flex-1 py-3 bg-red-50 border border-red-100 text-boo-coral rounded-xl font-bold hover:bg-red-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm">
+                                <i class="ph-bold ph-trash"></i> Удалить
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>

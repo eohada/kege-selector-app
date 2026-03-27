@@ -144,6 +144,9 @@ function cmdPalette() {
             {% if has_permission(current_user, 'assignment.grade') %}
             a.push({ title: 'Очередь проверки', url: "{{ url_for('lessons.review_queue') }}" });
             {% endif %}
+            {% if current_user.is_chief_tester() or current_user.is_creator() %}
+            a.push({ title: 'Кабинет главного тестировщика', url: "{{ url_for('chief_tester.dashboard') }}" });
+            {% endif %}
             a.push({ title: 'Тренажёр', url: "{{ url_for('trainer.trainer_v2') }}" });
             a.push({ title: 'Генератор задач', url: "{{ url_for('task_generator.task_generator') }}" });
             a.push({ title: 'Профиль', url: "{{ url_for('auth.user_profile') }}" });

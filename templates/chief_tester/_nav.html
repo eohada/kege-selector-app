@@ -1,0 +1,32 @@
+{% from '_ui_icon.html' import ui_icon %}
+
+<style>
+  .task-badge {
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.10);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 4px;
+  }
+</style>
+
+<div class="flex justify-between items-center mb-8 pb-4">
+  <div>
+    <div class="text-xs text-muted uppercase tracking-widest">Chief Tester</div>
+    <h1 class="text-2xl font-bold">{{ ct_title or 'Кабинет' }}</h1>
+  </div>
+  <div class="flex gap-2 items-center flex-wrap">
+    <a class="neo-button ghost {% if request.endpoint in ['chief_tester.dashboard'] %}accent{% endif %}"
+       href="{{ url_for('chief_tester.dashboard') }}">{{ ui_icon('action.home', 'sm', decorative=true) }} Дашборд</a>
+    <a class="neo-button ghost {% if request.endpoint in ['chief_tester.tasks_list', 'chief_tester.task_new', 'chief_tester.task_edit'] %}accent{% endif %}"
+       href="{{ url_for('chief_tester.tasks_list') }}">{{ ui_icon('action.list', 'sm', decorative=true) }} Задачи</a>
+    <a class="neo-button ghost {% if request.endpoint in ['chief_tester.testers'] %}accent{% endif %}"
+       href="{{ url_for('chief_tester.testers') }}">{{ ui_icon('action.users', 'sm', decorative=true) }} Тестеры</a>
+  </div>
+</div>
+

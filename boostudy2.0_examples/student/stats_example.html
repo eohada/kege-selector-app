@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Статистика и Аналитика</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты Golos Text -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Golos Text"', 'sans-serif'] },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: flex; animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-8 pointer-events-none">
+        <header class="w-full max-w-[1400px] mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all">
+            
+            <div class="flex items-center gap-3 pl-2">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Главное меню -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-house text-lg"></i> Комната
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-list-checks text-lg"></i> Задания
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-book-open-text text-lg"></i> Теория
+                </a>
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2 relative">
+                    <i class="ph-bold ph-chart-line-up text-lg"></i> Статистика
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 rounded-lg border border-orange-100 hidden sm:flex">
+                    <i class="ph-fill ph-fire text-boo-accent text-lg"></i>
+                    <span class="text-sm font-extrabold text-orange-600">5</span>
+                </div>
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 cursor-pointer">
+                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Student&backgroundColor=06B6D4" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-cyan-50">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-16 px-6 lg:px-8">
+        <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-8">
+
+            <!-- ШАПКА И ИНТЕРАКТИВНЫЕ ТАБЫ -->
+            <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile relative overflow-hidden">
+                <i class="ph-bold ph-chart-bar absolute -right-10 -bottom-10 text-[200px] text-slate-50 pointer-events-none"></i>
+                <div class="relative z-10">
+                    <div class="flex items-center gap-3 text-slate-400 font-bold text-sm mb-3 hover:text-boo-primary cursor-pointer w-fit transition-colors">
+                        <i class="ph-bold ph-arrow-left"></i> В профиль
+                    </div>
+                    <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Твоя аналитика</h1>
+                    <p class="text-slate-500 font-medium text-lg">
+                        Следи за прогрессом и находи слабые места. Цифры не врут.
+                    </p>
+                </div>
+
+                <!-- Кнопки переключения вкладок -->
+                <div class="relative z-10 bg-slate-100/80 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50">
+                    <button id="btn-skills" onclick="switchTab('skills')" class="px-6 py-2.5 bg-white text-slate-900 rounded-lg font-bold text-sm shadow-sm border border-slate-200/50 flex items-center gap-2 whitespace-nowrap transition-all">
+                        Навыки и Темы
+                    </button>
+                    <button id="btn-exam" onclick="switchTab('exam')" class="px-6 py-2.5 text-slate-500 hover:text-slate-900 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2">
+                        Аналитика ЕГЭ <span class="bg-purple-100 text-boo-primary px-2 py-0.5 rounded-md text-[10px] uppercase tracking-widest">Прогноз</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- ВКЛАДКА 1: НАВЫКИ И ТЕМЫ                   -->
+            <!-- ========================================== -->
+            <div id="tab-skills" class="tab-content active flex-col gap-8">
+                
+                <!-- Метрики успеваемости (4 карточки) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest">Выполнение работ</div>
+                            <i class="ph-fill ph-checks text-xl text-boo-cyan"></i>
+                        </div>
+                        <div class="text-4xl font-black text-slate-900">92%</div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest">GPA по ДЗ</div>
+                            <i class="ph-fill ph-star text-xl text-boo-accent"></i>
+                        </div>
+                        <div class="text-4xl font-black text-slate-900">4.8 <span class="text-lg text-slate-400">/ 5</span></div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest">GPA по пробникам</div>
+                            <i class="ph-fill ph-exam text-xl text-boo-primary"></i>
+                        </div>
+                        <div class="text-4xl font-black text-slate-900">4.2 <span class="text-lg text-slate-400">/ 5</span></div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest">Проведено уроков</div>
+                            <i class="ph-fill ph-video-camera text-xl text-slate-400"></i>
+                        </div>
+                        <div class="text-4xl font-black text-slate-900">34</div>
+                    </div>
+                </div>
+
+                <!-- Графики: Динамика и Навыки -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- ГРАФИК УСПЕВАЕМОСТИ -->
+                    <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col relative">
+                        <div class="flex justify-between items-start mb-8">
+                            <div>
+                                <h3 class="text-2xl font-black text-slate-900 mb-1">Динамика успеваемости</h3>
+                                <p class="text-sm font-medium text-slate-500">Изменение процента выполнения работ по месяцам</p>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 relative mt-4 h-48">
+                            <div class="absolute inset-0 flex flex-col justify-between">
+                                <div class="border-b border-slate-100 w-full h-0"></div>
+                                <div class="border-b border-slate-100 w-full h-0"></div>
+                                <div class="border-b border-slate-100 w-full h-0"></div>
+                                <div class="border-b border-slate-100 w-full h-0"></div>
+                                <div class="border-b border-slate-200 w-full h-0"></div>
+                            </div>
+                            <div class="absolute -left-2 inset-y-0 flex flex-col justify-between items-end text-[10px] font-bold text-slate-400 py-1">
+                                <span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span>
+                            </div>
+                            <svg class="absolute inset-0 h-full w-full pl-8" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                <defs>
+                                    <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#7B5CFF" stop-opacity="0.3"></stop>
+                                        <stop offset="100%" stop-color="#7B5CFF" stop-opacity="0"></stop>
+                                    </linearGradient>
+                                </defs>
+                                <path d="M0,80 C20,70 40,30 60,40 C80,50 90,20 100,10 L100,100 L0,100 Z" fill="url(#gradient)"></path>
+                                <path d="M0,80 C20,70 40,30 60,40 C80,50 90,20 100,10" fill="none" stroke="#7B5CFF" stroke-width="3" stroke-linecap="round"></path>
+                                <circle cx="0" cy="80" r="4" fill="#FFFFFF" stroke="#7B5CFF" stroke-width="2"></circle>
+                                <circle cx="60" cy="40" r="4" fill="#FFFFFF" stroke="#7B5CFF" stroke-width="2"></circle>
+                                <circle cx="100" cy="10" r="5" fill="#7B5CFF" stroke="#FFFFFF" stroke-width="2" class="animate-pulse"></circle>
+                            </svg>
+                            <div class="absolute -bottom-6 left-8 right-0 flex justify-between text-[10px] font-bold text-slate-400">
+                                <span>Сен</span><span>Окт</span><span>Ноя</span><span>Дек</span><span>Янв</span><span>Фев</span>
+                            </div>
+                            <div class="absolute right-0 top-0 -mt-2 bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg">
+                                Февраль: 92%
+                                <div class="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- КАРТА НАВЫКОВ -->
+                    <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col">
+                        <div class="mb-6">
+                            <h3 class="text-2xl font-black text-slate-900 mb-1">Уровень владения темами</h3>
+                            <p class="text-sm font-medium text-slate-500">Оценка на основе твоих ответов (Топ-4 темы)</p>
+                        </div>
+                        <div class="space-y-5 mt-2">
+                            <div>
+                                <div class="flex justify-between text-sm mb-2"><span class="font-extrabold text-slate-800">Алгебра логики (№2, 15)</span><span class="font-black text-boo-cyan">95%</span></div>
+                                <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner"><div class="h-full bg-boo-cyan rounded-full" style="width: 95%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm mb-2"><span class="font-extrabold text-slate-800">Программирование (№16, 23)</span><span class="font-black text-boo-primary">80%</span></div>
+                                <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner"><div class="h-full bg-boo-primary rounded-full" style="width: 80%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm mb-2"><span class="font-extrabold text-slate-800">Электронные таблицы (№3, 9)</span><span class="font-black text-boo-accent">65%</span></div>
+                                <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner"><div class="h-full bg-boo-accent rounded-full" style="width: 65%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm mb-2"><span class="font-extrabold text-slate-800">Графы и пути (№1, 13)</span><span class="font-black text-boo-coral">35%</span></div>
+                                <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner"><div class="h-full bg-boo-coral rounded-full" style="width: 35%"></div></div>
+                            </div>
+                        </div>
+                        <button class="mt-auto pt-6 w-full text-sm font-bold text-boo-primary hover:text-boo-primaryHover transition-colors flex items-center justify-center gap-1.5">
+                            Развернуть все темы <i class="ph-bold ph-caret-down"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ТАБЛИЦА РЕЙТИНГОВ -->
+                <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <h3 class="text-2xl font-black text-slate-900 mb-2">Рейтинги по узлам знаний</h3>
+                            <p class="text-sm font-medium text-slate-500 max-w-2xl">
+                                ELO-рейтинг (как в играх). Решаешь сложные задачи — рейтинг растет. Ошибаешься в простых — падает. Старт: 1000.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto pb-4">
+                        <div class="min-w-[800px]">
+                            <div class="grid grid-cols-12 gap-4 px-6 py-3 border-b border-slate-200 text-xs font-extrabold text-slate-400 uppercase tracking-widest">
+                                <div class="col-span-5">Тема (№ ЕГЭ)</div>
+                                <div class="col-span-2">Код узла</div>
+                                <div class="col-span-3 text-center">Твой Рейтинг</div>
+                                <div class="col-span-2 text-right">Стрик</div>
+                            </div>
+
+                            <div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-slate-100 hover:bg-slate-50 transition-colors items-center group">
+                                <div class="col-span-5 flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100"><i class="ph-bold ph-code text-lg"></i></div>
+                                    <span class="font-extrabold text-slate-900 text-sm group-hover:text-boo-primary transition-colors">Анализ алгоритмов (№15)</span>
+                                </div>
+                                <div class="col-span-2"><span class="bg-slate-100 text-slate-500 font-mono text-xs px-2 py-1 rounded-md border border-slate-200">ALGO-BASIC</span></div>
+                                <div class="col-span-3 flex items-center justify-center">
+                                    <div class="flex items-center gap-2"><span class="text-lg font-black text-boo-cyan">1450</span><i class="ph-bold ph-trend-up text-green-500 text-xs"></i></div>
+                                </div>
+                                <div class="col-span-2 flex justify-end">
+                                    <div class="flex items-center gap-1.5 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-100 text-xs font-bold text-orange-600"><i class="ph-fill ph-fire"></i> 12 дн.</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-12 gap-4 px-6 py-4 border-b border-slate-100 hover:bg-slate-50 transition-colors items-center group">
+                                <div class="col-span-5 flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-100"><i class="ph-bold ph-graph text-lg"></i></div>
+                                    <span class="font-extrabold text-slate-900 text-sm group-hover:text-blue-500 transition-colors">Графы и пути (№1, 13)</span>
+                                </div>
+                                <div class="col-span-2"><span class="bg-slate-100 text-slate-500 font-mono text-xs px-2 py-1 rounded-md border border-slate-200">GRAPH-PATH</span></div>
+                                <div class="col-span-3 flex items-center justify-center">
+                                    <div class="flex items-center gap-2"><span class="text-lg font-black text-slate-700">980</span><i class="ph-bold ph-trend-down text-boo-coral text-xs"></i></div>
+                                </div>
+                                <div class="col-span-2 flex justify-end"><span class="text-slate-400 font-bold text-xs">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- ВКЛАДКА 2: АНАЛИТИКА ЕГЭ                   -->
+            <!-- ========================================== -->
+            <div id="tab-exam" class="tab-content flex-col gap-8">
+                
+                <!-- ПРОГНОЗ БАЛЛА (Огромный Hero) -->
+                <div class="bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-[32px] p-10 border border-purple-400/50 border-b-[4px] border-b-purple-700 shadow-tactile text-white flex flex-col justify-center items-center text-center relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
+                    <div class="absolute top-[-50%] left-[-10%] w-[800px] h-[800px] bg-white/10 rounded-full blur-[100px] group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
+                    
+                    <div class="relative z-10 w-full max-w-2xl">
+                        <span class="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 text-xs font-bold tracking-widest uppercase inline-block mb-6 shadow-sm">
+                            Прогноз балла на ЕГЭ
+                        </span>
+                        
+                        <div class="flex items-center justify-center gap-4 mb-4">
+                            <h2 class="text-8xl md:text-9xl font-black tracking-tighter drop-shadow-md">22</h2>
+                            <div class="text-left">
+                                <span class="text-3xl md:text-4xl font-bold text-purple-200 block">/ 29</span>
+                                <span class="text-sm md:text-base font-semibold text-purple-200 uppercase tracking-widest">первичных</span>
+                            </div>
+                        </div>
+                        
+                        <p class="text-xl md:text-2xl font-bold text-white mb-8 bg-white/10 inline-block px-6 py-2 rounded-2xl border border-white/20">
+                            ≈ <span class="text-boo-accent drop-shadow-md">78 тестовых баллов</span> (по шкале ФИПИ)
+                        </p>
+                        
+                        <p class="text-sm text-purple-100 font-medium opacity-90">
+                            Считается по твоим рейтингам по темам: для каждой темы оценивается вероятность верного ответа, умножается на балл задания и суммируется.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- РАДАР НАВЫКОВ (Вместо пустого поля) -->
+                    <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col items-center">
+                        <div class="w-full mb-6">
+                            <h3 class="text-2xl font-black text-slate-900 mb-1">Радар навыков (КЕГЭ)</h3>
+                            <p class="text-sm font-medium text-slate-500">По осям — макротемы. Чем шире пятно, тем лучше.</p>
+                        </div>
+                        
+                        <!-- SVG Радар -->
+                        <div class="relative w-72 h-72 my-4">
+                            <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-md">
+                                <!-- Сетка радара (октагон) -->
+                                <polygon points="100,10 163,37 190,100 163,163 100,190 37,163 10,100 37,37" fill="none" stroke="#E2E8F0" stroke-width="1"/>
+                                <polygon points="100,32 148,53 168,100 148,147 100,168 52,147 32,100 52,53" fill="none" stroke="#E2E8F0" stroke-width="1"/>
+                                <polygon points="100,55 132,68 145,100 132,132 100,145 68,132 55,100 68,68" fill="none" stroke="#E2E8F0" stroke-width="1"/>
+                                <!-- Оси -->
+                                <line x1="100" y1="100" x2="100" y2="10" stroke="#CBD5E1" stroke-width="1"/>
+                                <line x1="100" y1="100" x2="163" y2="37" stroke="#CBD5E1" stroke-width="1"/>
+                                <line x1="100" y1="100" x2="190" y2="100" stroke="#CBD5E1" stroke-width="1"/>
+                                <line x1="100" y1="100" x2="163" y2="163" stroke="#CBD5E1" stroke-width="1"/>
+                                <line x1="100" y1="100" x2="100" y2="190" stroke="#CBD5E1" stroke-width="1"/>
+                                <line x1="100" y1="100" x2="37" y2="163" stroke="#CBD5E1" stroke-width="1"/>
+                                <line x1="100" y1="100" x2="10" y2="100" stroke="#CBD5E1" stroke-width="1"/>
+                                <line x1="100" y1="100" x2="37" y2="37" stroke="#CBD5E1" stroke-width="1"/>
+                                
+                                <!-- Данные ученика (полигон) -->
+                                <polygon points="100,20 150,45 170,100 120,130 100,145 60,140 40,100 60,60" fill="rgba(123, 92, 255, 0.4)" stroke="#7B5CFF" stroke-width="3" stroke-linejoin="round"/>
+                                
+                                <!-- Точки данных -->
+                                <circle cx="100" cy="20" r="4" fill="#7B5CFF" stroke="#FFF" stroke-width="2"/>
+                                <circle cx="150" cy="45" r="4" fill="#7B5CFF" stroke="#FFF" stroke-width="2"/>
+                                <circle cx="170" cy="100" r="4" fill="#7B5CFF" stroke="#FFF" stroke-width="2"/>
+                                <circle cx="120" cy="130" r="4" fill="#7B5CFF" stroke="#FFF" stroke-width="2"/>
+                                <circle cx="100" cy="145" r="4" fill="#7B5CFF" stroke="#FFF" stroke-width="2"/>
+                                <circle cx="60" cy="140" r="4" fill="#7B5CFF" stroke="#FFF" stroke-width="2"/>
+                                <circle cx="40" cy="100" r="4" fill="#7B5CFF" stroke="#FFF" stroke-width="2"/>
+                                <circle cx="60" cy="60" r="4" fill="#7B5CFF" stroke="#FFF" stroke-width="2"/>
+                            </svg>
+                            
+                            <!-- Подписи (Абсолютное позиционирование) -->
+                            <div class="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">Алгебра</div>
+                            <div class="absolute top-8 -right-8 text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">Таблицы</div>
+                            <div class="absolute top-1/2 -right-12 -translate-y-1/2 text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">Графы</div>
+                            <div class="absolute bottom-8 -right-8 text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">Игры</div>
+                            <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">Прога 1ч</div>
+                            <div class="absolute bottom-8 -left-12 text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">Прога 2ч</div>
+                            <div class="absolute top-1/2 -left-16 -translate-y-1/2 text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">Кодирование</div>
+                            <div class="absolute top-8 -left-6 text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">Word</div>
+                        </div>
+                    </div>
+
+                    <!-- ВЫПОЛНЕНИЕ ПО НОМЕРАМ (Grid) -->
+                    <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col">
+                        <div class="mb-6">
+                            <h3 class="text-2xl font-black text-slate-900 mb-1">Процент выполнения по номерам</h3>
+                            <p class="text-sm font-medium text-slate-500">Готовность к каждому из 27 заданий ЕГЭ</p>
+                        </div>
+                        
+                        <!-- Сетка 27 заданий -->
+                        <div class="grid grid-cols-6 sm:grid-cols-7 gap-2">
+                            <!-- Высокий % (Зеленый) -->
+                            <div class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№1: 95%">1</div>
+                            <div class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№2: 90%">2</div>
+                            <div class="aspect-square rounded-xl bg-green-400 text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№3: 85%">3</div>
+                            <div class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№4: 100%">4</div>
+                            <div class="aspect-square rounded-xl bg-green-400 text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№5: 80%">5</div>
+                            <!-- Средний % (Оранжевый) -->
+                            <div class="aspect-square rounded-xl bg-boo-accent text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№6: 60%">6</div>
+                            <div class="aspect-square rounded-xl bg-boo-accent text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№7: 55%">7</div>
+                            <div class="aspect-square rounded-xl bg-green-400 text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№8: 75%">8</div>
+                            <div class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№9: 90%">9</div>
+                            <div class="aspect-square rounded-xl bg-boo-accent text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№10: 65%">10</div>
+                            <!-- Низкий % (Красный) -->
+                            <div class="aspect-square rounded-xl bg-boo-coral text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№11: 30%">11</div>
+                            <div class="aspect-square rounded-xl bg-boo-coral text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№12: 20%">12</div>
+                            <div class="aspect-square rounded-xl bg-green-400 text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№13: 85%">13</div>
+                            <div class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№14: 95%">14</div>
+                            <div class="aspect-square rounded-xl bg-boo-accent text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№15: 50%">15</div>
+                            <div class="aspect-square rounded-xl bg-boo-coral text-white font-bold flex items-center justify-center shadow-sm cursor-help" title="№16: 15%">16</div>
+                            <!-- Не решал (Серый) -->
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№17: Нет данных">17</div>
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№18: Нет данных">18</div>
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№19: Нет данных">19</div>
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№20: Нет данных">20</div>
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№21: Нет данных">21</div>
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№22: Нет данных">22</div>
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№23: Нет данных">23</div>
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№24: Нет данных">24</div>
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№25: Нет данных">25</div>
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№26: Нет данных">26</div>
+                            <div class="aspect-square rounded-xl bg-slate-100 text-slate-400 font-bold flex items-center justify-center border border-slate-200 border-dashed cursor-help" title="№27: Нет данных">27</div>
+                        </div>
+                        
+                        <div class="flex items-center gap-4 mt-6 text-xs font-bold text-slate-500">
+                            <div class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-green-500 block"></span> Хорошо</div>
+                            <div class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-boo-accent block"></span> Средне</div>
+                            <div class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-boo-coral block"></span> Слабо</div>
+                            <div class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-slate-200 block"></span> Нет данных</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Скрипт для переключения вкладок -->
+    <script>
+        function switchTab(tabId) {
+            // Получаем кнопки и контент
+            const btnSkills = document.getElementById('btn-skills');
+            const btnExam = document.getElementById('btn-exam');
+            const tabSkills = document.getElementById('tab-skills');
+            const tabExam = document.getElementById('tab-exam');
+
+            // Сбрасываем стили кнопок (неактивное состояние)
+            const inactiveClass = 'px-6 py-2.5 text-slate-500 hover:text-slate-900 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2';
+            const activeClass = 'px-6 py-2.5 bg-white text-slate-900 rounded-lg font-bold text-sm shadow-sm border border-slate-200/50 flex items-center gap-2 whitespace-nowrap transition-all';
+
+            btnSkills.className = inactiveClass;
+            btnExam.className = inactiveClass;
+
+            // Скрываем все вкладки
+            tabSkills.classList.remove('active');
+            tabExam.classList.remove('active');
+
+            // Активируем нужную
+            if (tabId === 'skills') {
+                btnSkills.className = activeClass;
+                tabSkills.classList.add('active');
+            } else {
+                btnExam.className = activeClass;
+                tabExam.classList.add('active');
+                
+                // Чтобы тег "Прогноз" внутри кнопки остался красивым, добавляем его заново
+                btnExam.innerHTML = 'Аналитика ЕГЭ <span class="bg-purple-100 text-boo-primary px-2 py-0.5 rounded-md text-[10px] uppercase tracking-widest">Прогноз</span>';
+            }
+        }
+    </script>
+</body>
+</html>

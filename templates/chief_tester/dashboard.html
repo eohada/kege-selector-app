@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Chief Tester · Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+  {% set ct_title = 'Дашборд' %}
+  {% include 'chief_tester/_nav.html' %}
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div class="neo-card p-4">
+      <div class="text-xs text-muted uppercase tracking-widest">Всего</div>
+      <div class="text-2xl font-bold mt-1">{{ stats.total }}</div>
+    </div>
+    <div class="neo-card p-4">
+      <div class="text-xs text-muted uppercase tracking-widest">To Do</div>
+      <div class="text-2xl font-bold mt-1" style="color:#ff9f43;">{{ stats.todo }}</div>
+    </div>
+    <div class="neo-card p-4">
+      <div class="text-xs text-muted uppercase tracking-widest">In Progress</div>
+      <div class="text-2xl font-bold mt-1" style="color:#00f2ff;">{{ stats.in_progress }}</div>
+    </div>
+    <div class="neo-card p-4">
+      <div class="text-xs text-muted uppercase tracking-widest">Review</div>
+      <div class="text-2xl font-bold mt-1" style="color:#bc13fe;">{{ stats.review }}</div>
+    </div>
+    <div class="neo-card p-4">
+      <div class="text-xs text-muted uppercase tracking-widest">Done</div>
+      <div class="text-2xl font-bold mt-1" style="color:#00ff9d;">{{ stats.done }}</div>
+    </div>
+  </div>
+
+  <div class="mt-6 flex gap-3 flex-wrap">
+    <a href="{{ url_for('chief_tester.task_new') }}" class="neo-button accent">➕ Новая задача</a>
+    <a href="{{ url_for('chief_tester.tasks_list') }}" class="neo-button ghost">📋 Список задач</a>
+    <a href="{{ url_for('chief_tester.testers') }}" class="neo-button ghost">👥 Управление тестерами</a>
+  </div>
+</div>
+{% endblock %}
+

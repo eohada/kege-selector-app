@@ -1,292 +1,204 @@
-<style>
-    .theory-n6 {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        line-height: 1.6;
-        color: var(--text-primary, #e1e1e1);
-        max-width: 760px;
-        margin: 0 auto;
-        padding: 0;
-    }
-
-    .theory-n6 h1 {
-        font-size: 2.1rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin-bottom: 1.5rem;
-        color: var(--text-primary, #ffffff);
-    }
-
-    .theory-n6 h2 {
-        font-size: 1.4rem;
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        margin-top: 2.25rem;
-        margin-bottom: 1rem;
-        border-bottom: 1px solid var(--stroke-1, #333);
-        padding-bottom: 0.6rem;
-    }
-
-    .theory-n6 h3 {
-        font-size: 1.15rem;
-        font-weight: 600;
-        margin-top: 1.75rem;
-        margin-bottom: 0.85rem;
-    }
-
-    .theory-n6 p {
-        margin-bottom: 1.1rem;
-        color: var(--text-primary, #e1e1e1);
-    }
-
-    .theory-n6 ul, .theory-n6 ol {
-        margin-bottom: 1.2rem;
-        padding-left: 1.4rem;
-        color: var(--text-primary, #e1e1e1);
-    }
-
-    .theory-n6 li {
-        margin-bottom: 0.4rem;
-    }
-
-    .theory-n6 figure {
-        margin: 1.75rem 0;
-        padding: 0;
-    }
-
-    .theory-n6 .svg-container {
-        display: flex;
-        justify-content: center;
-        margin: 2rem 0;
-        background-color: var(--surface-2, #1e1e1e);
-        border: 1px solid var(--stroke-1, #333);
-        border-radius: 12px;
-        padding: 40px 25px;
-        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
-        overflow-x: auto;
-    }
-
-    .theory-n6 figcaption {
-        margin-top: 0.65rem;
-        font-size: 0.9rem;
-        color: var(--text-muted, #999);
-        text-align: center;
-    }
-
-    .theory-n6 .highlight {
-        background-color: var(--surface-2, #1e1e1e);
-        padding: 1.25rem 1.5rem;
-        border-radius: 12px;
-        margin: 1.75rem 0;
-        border: 1px solid var(--stroke-1, #333);
-    }
-
-    .theory-n6 .highlight p:last-child {
-        margin-bottom: 0;
-    }
-
-    .theory-n6 .step {
-        display: inline-block;
-        font-weight: 600;
-        color: var(--accent-1, #00ffd5);
-        background-color: rgba(0, 255, 213, 0.08);
-        padding: 2px 8px;
-        border-radius: 999px;
-        font-size: 0.85rem;
-        margin-right: 0.4rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .theory-n6 .answer {
-        display: inline-block;
-        font-size: 1.05rem;
-        font-weight: 600;
-        color: var(--text-primary, #fff);
-        background-color: var(--surface-2, #1e1e1e);
-        padding: 0.75rem 1.4rem;
-        border-radius: 999px;
-        margin-top: 0.9rem;
-        border: 1px solid var(--stroke-1, #333);
-    }
-    
-    .theory-n6 pre {
-        background-color: var(--surface-2, #1e1e1e);
-        border: 1px solid var(--stroke-1, #333);
-        padding: 1.25rem;
-        border-radius: 12px;
-        overflow-x: auto;
-        font-family: 'Consolas', 'Monaco', monospace;
-        font-size: 0.95rem;
-        color: var(--text-primary, #e1e1e1);
-        margin: 1.5rem 0;
-        line-height: 1.5;
-    }
-
-    .theory-n6 code {
-        font-family: 'Consolas', 'Monaco', monospace;
-        background-color: var(--surface-2, #1e1e1e);
-        padding: 0.15rem 0.4rem;
-        border-radius: 4px;
-        font-size: 0.9em;
-        color: var(--accent-1, #00ffd5);
-        border: 1px solid var(--stroke-1, #333);
-    }
-
-    .theory-n6 pre code {
-        background-color: transparent;
-        padding: 0;
-        border: none;
-        color: inherit;
-    }
-    
-    .theory-n6 table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 1.5rem 0;
-        background-color: var(--surface-2, #1e1e1e);
-        border-radius: 8px;
-        overflow: hidden;
-        font-size: 0.9rem;
-    }
-    
-    .theory-n6 th, .theory-n6 td {
-        border: 1px solid var(--stroke-1, #333);
-        padding: 10px 15px;
-        text-align: left;
-    }
-    
-    .theory-n6 th {
-        background-color: rgba(0, 255, 213, 0.1);
-        font-weight: 600;
-        color: var(--accent-1, #00ffd5);
-    }
-</style>
-
-<article class="theory-n6">
-    <h1>Решение задания №6 ЕГЭ по информатике: Черепаха с Python</h1>
-
-    <section>
-        <h2>Описание задачи</h2>
-        <p>Задание №6 из ЕГЭ по информатике направлено на проверку навыков работы с простейшими алгоритмами управления исполнителями. Это базовое задание, на решение которого отводится около 4 минут. Исполнитель «Черепаха» перемещается по плоскости с декартовой системой координат. </p>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #2d3436;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .card {
+            background: #fff;
+            padding: 35px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+        h1 {
+            color: #0984e3;
+            text-align: center;
+            font-size: 2.2em;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #74b9ff;
+            display: inline-block;
+            width: 100%;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2d3436;
+            background: #dfe6e9;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-top: 35px;
+        }
+        h3 {
+            color: #d63031;
+            margin-top: 25px;
+            border-bottom: 1px dashed #fab1a0;
+            display: inline-block;
+        }
+        code {
+            font-family: 'Fira Code', 'Consolas', monospace;
+            background: #f1f2f6;
+            padding: 3px 6px;
+            border-radius: 4px;
+            color: #e84393;
+            font-weight: bold;
+        }
+        pre {
+            background: #2d3436;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            position: relative;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .comment { color: #636e72; font-style: italic; }
+        .func { color: #55efc4; }
+        .key { color: #fab1a0; }
+        .num { color: #fdcb6e; }
         
-        <p><strong>Важные начальные условия Черепахи:</strong></p>
-        <ul>
-            <li>Находится в точке с координатами <code>(0, 0)</code>. </li>
-            <li>Её голова направлена <strong>вдоль положительного направления оси OY (вверх)</strong>. </li>
-            <li>Хвост по умолчанию опущен, она оставляет след при движении. </li>
-        </ul>
-    </section>
+        .grid-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .note {
+            background: #fff9db;
+            border-left: 5px solid #fcc419;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .warning {
+            background: #fff5f5;
+            border-left: 5px solid #ff6b6b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th { background-color: #f8f9fa; color: #0984e3; }
+    </style>
+    <title>ЕГЭ Информатика: Задание 6 (Черепашка)</title>
+</head>
+<body>
 
-    <section>
-        <h2>Словарь команд Черепахи</h2>
-        <p>Для перевода алгоритма из условия задачи в рабочий код мы будем использовать стандартную библиотеку <code>turtle</code> в Python. Вот как команды из ЕГЭ переводятся на язык Python:</p>
-        
-        <table>
-            <tr><th>Команда в КИМ</th><th>Код на Python</th><th>Описание</th></tr>
-            <tr><td>Поднять хвост</td><td><code>penup()</code></td><td>Перестает рисовать линию, перемещается без следа. </td></tr>
-            <tr><td>Опустить хвост</td><td><code>pendown()</code></td><td>Начинает оставлять след (режим рисования). </td></tr>
-            <tr><td>Вперёд n</td><td><code>forward(n * k)</code></td><td>Идет вперед на n шагов. <strong>Обязательно умножаем на масштаб k!</strong> </td></tr>
-            <tr><td>Назад n</td><td><code>backward(n * k)</code></td><td>Идет назад на n шагов. Умножаем на масштаб k. </td></tr>
-            <tr><td>Направо m</td><td><code>right(m)</code></td><td>Поворот по часовой стрелке на m градусов. <strong>Углы на k НЕ умножаются!</strong> </td></tr>
-            <tr><td>Налево m</td><td><code>left(m)</code></td><td>Поворот против часовой стрелки на m градусов. </td></tr>
-            <tr><td>Повтори c [ ... ]</td><td><code>for i in range(c):</code></td><td>Цикл для повторения команд c раз. </td></tr>
-        </table>
-    </section>
+<div class="card">
+    <h1>Задание 6: Алгоритмы для Исполнителей (Turtle)</h1>
 
-    <section>
-        <h2>Разбор типовой задачи из демоверсии ФИПИ</h2>
-        
-        <div class="highlight">
-            <p><strong>Алгоритм для черепахи:</strong><br>
-            Повтори 2 [Вперёд 21 Направо 90 Вперёд 27 Направо 90] <br>
-            Поднять хвост <br>
-            Вперёд 9 Направо 90 Вперёд 10 Налево 90 <br>
-            Опустить хвост <br>
-            Повтори 2 [Вперёд 86 Направо 90 Вперёд 47 Направо 90] <br>
-            <br>
-            <strong>Задача:</strong> Определите, сколько целочисленных точек находится внутри области пересечения двух фигур, построенных по описанному алгоритму, включая точки на границах. </p>
-        </div>
+    <p>Задание 6 проверяет навыки анализа геометрических фигур, создаваемых алгоритмом. В Python это задание решается с помощью встроенной библиотеки <code>turtle</code>. Основная цель — определить количество целочисленных точек внутри или на границе фигуры.</p>
 
-        <h3><span class="step">Шаг 1</span> Настройка холста и Черепахи</h3>
-        <p>Начинаем код с подключения библиотеки, задания размеров окна и установки начального направления черепашки вверх. Для удобства масштабирования задаем коэффициент <code>k = 10</code>. Обязательно используем <code>tracer(0)</code>, чтобы фигура рисовалась мгновенно. </p>
+    <h2>1. Подготовка холста и базовая настройка</h2>
+    <p>Для корректного решения на ЕГЭ важно учитывать, что стандартная Черепашка смотрит <strong>вправо (на восток)</strong>, а в задачах она часто должна смотреть <strong>вверх (на север)</strong>.</p>
+    
+    <pre><code><span class="key">from</span> turtle <span class="key">import</span> *
 
-<pre><code>from turtle import *
+<span class="func">tracer</span>(<span class="num">0</span>)  <span class="comment"># Отключает анимацию (рисует мгновенно)</span>
+<span class="func">left</span>(<span class="num">90</span>)   <span class="comment"># Поворот вверх, чтобы соответствовать условию задач</span>
+k = <span class="num">30</span>      <span class="comment"># Масштаб (Scale) — увеличиваем рисунок в 30 раз</span></code></pre>
 
-screensize(2000, 2000)
-shape("turtle")
-k = 10
+    <h2>2. Основные команды исполнителя</h2>
+    <table>
+        <tr>
+            <th>Команда</th>
+            <th>Описание</th>
+        </tr>
+        <tr>
+            <td><code>forward(n * k)</code></td>
+            <td>Пройти вперед на n шагов (с учетом масштаба k)</td>
+        </tr>
+        <tr>
+            <td><code>back(n * k)</code></td>
+            <td>Пройти назад</td>
+        </tr>
+        <tr>
+            <td><code>right(angle)</code></td>
+            <td>Поворот по часовой стрелке на угол</td>
+        </tr>
+        <tr>
+            <td><code>left(angle)</code></td>
+            <td>Поворот против часовой стрелки</td>
+        </tr>
+        <tr>
+            <td><code>penup() / pendown()</code></td>
+            <td>Поднять/опустить хвост (не рисовать/рисовать линию)</td>
+        </tr>
+    </table>
 
-left(90)
-tracer(0)
-pendown()</code></pre>
+    <div class="warning">
+        <strong>Внимание:</strong> Все перемещения <code>forward</code>, <code>back</code> и <code>goto</code> обязательно умножаются на коэффициент <code>k</code>. Углы поворота умножать <strong>нельзя</strong>!
+    </div>
 
-        <h3><span class="step">Шаг 2</span> Рисование первой фигуры</h3>
-        <p>Реализуем первый цикл из алгоритма. Черепашка нарисует прямоугольник со сторонами 21 и 27. </p>
+    <h2>3. Отрисовка сетки точек</h2>
+    <p>Чтобы посчитать количество точек с целыми координатами, необходимо нарисовать их поверх основной фигуры.</p>
+    <pre><code><span class="func">penup</span>()
+<span class="key">for</span> x <span class="key">in</span> <span class="func">range</span>(-<span class="num">20</span>, <span class="num">20</span>):
+    <span class="key">for</span> y <span class="key">in</span> <span class="func">range</span>(-<span class="num">20</span>, <span class="num">20</span>):
+        <span class="func">goto</span>(x * k, y * k)
+        <span class="func">dot</span>(<span class="num">3</span>, <span class="string">'blue'</span>) <span class="comment"># Рисуем точку размером 3</span>
+<span class="func">update</span>() <span class="comment"># Принудительно обновляем экран, если tracer(0)</span></code></pre>
 
-<pre><code>for i in range(2):
-    forward(21 * k)
-    right(90)
-    forward(27 * k)
-    right(90)</code></pre>
+    <h2>4. Алгоритм решения задачи</h2>
+    <ol>
+        <li>Импортируем всё из <code>turtle</code>.</li>
+        <li>Устанавливаем <code>tracer(0)</code> для скорости.</li>
+        <li>Задаем масштаб <code>k</code> (обычно 20–40, в зависимости от координат в задаче).</li>
+        <li>Переписываем цикл из условия задачи (используем <code>for</code>).</li>
+        <li>Поднимаем перо и рисуем сетку из точек вложенным циклом.</li>
+        <li>Считаем точки визуально или (если область сложная) проверяем принадлежность математически.</li>
+    </ol>
 
-        <h3><span class="step">Шаг 3</span> Перемещение и вторая фигура</h3>
-        <p>Поднимаем хвост, чтобы перескочить на новую позицию без рисования линий, выполняем команды смещения и снова опускаем перо. Затем рисуем второй (более вытянутый) прямоугольник. </p>
+    <div class="note">
+        <strong>Совет по оптимизации:</strong> Если область очень большая, вместо визуального подсчета используйте списки координат или логические условия <code>if</code>, чтобы проверить, попадает ли точка <code>(x, y)</code> в заданные границы.
+    </div>
 
-<pre><code>penup()
-forward(9 * k)
-right(90)
-forward(10 * k)
-left(90)
-pendown()
+    <h2>5. Полный шаблон кода для ЕГЭ</h2>
+    <pre><code><span class="key">from</span> turtle <span class="key">import</span> *
 
-for i in range(2):
-    forward(86 * k)
-    right(90)
-    forward(47 * k)
-    right(90)</code></pre>
+k = <span class="num">30</span>
+<span class="func">tracer</span>(<span class="num">0</span>)
+<span class="func">left</span>(<span class="num">90</span>)
+<span class="func">down</span>()
 
-        <h3><span class="step">Шаг 4</span> Отрисовка сетки точек</h3>
-        <p>Чтобы посчитать точки с целыми координатами внутри пересечения, необходимо замостить рабочую область точками. Вложенные циклы <code>for</code> перебирают координаты <code>x</code> и <code>y</code>. </p>
+<span class="comment"># Пример алгоритма из задачи:</span>
+<span class="key">for</span> i <span class="key">in</span> <span class="func">range</span>(<span class="num">7</span>):
+    <span class="func">forward</span>(<span class="num">10</span> * k)
+    <span class="func">right</span>(<span class="num">120</span>)
 
-<pre><code>penup()
-for x in range(-10, 60):
-    for y in range(-10, 100):
-        goto(x * k, y * k)
-        dot(3, "red")
+<span class="func">penup</span>()
+<span class="key">for</span> x <span class="key">in</span> <span class="func">range</span>(-<span class="num">5</span>, <span class="num">15</span>):
+    <span class="key">for</span> y <span class="key">in</span> <span class="func">range</span>(-<span class="num">15</span>, <span class="num">5</span>):
+        <span class="func">goto</span>(x * k, y * k)
+        <span class="func">dot</span>(<span class="num">4</span>, <span class="string">'red'</span>)
 
-done()</code></pre>
+<span class="func">done</span>() <span class="comment"># Чтобы окно не закрывалось</span></code></pre>
 
-        <h3>Визуализация результата и подсчет</h3>
-        <p>Математически, область пересечения двух отрисованных фигур — это прямоугольник. Считаем точки внутри пересечения двух фигур, включая границы. </p>
+    <h2>6. Чек-лист проверки</h2>
+    <ul>
+        <li>Умножен ли каждый шаг <code>forward</code> на <code>k</code>?</li>
+        <li>Выставлено ли начальное направление (<code>left(90)</code>)?</li>
+        <li>Достаточно ли большой диапазон в циклах <code>range</code> для отрисовки всех точек?</li>
+        <li>Включен ли <code>tracer(0)</code> для моментального вывода?</li>
+        <li>Внимательно ли прочитано условие: нужно считать точки <strong>внутри</strong> или <strong>на границе</strong> тоже?</li>
+    </ul>
+</div>
 
-        <figure>
-            <div class="svg-container">
-                <svg viewBox="0 0 320 260" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <pattern id="dotGrid" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-                            <circle cx="5" cy="5" r="1.5" fill="#ff4757" opacity="0.8"/>
-                        </pattern>
-                    </defs>
-
-                    <rect x="0" y="0" width="320" height="260" fill="url(#dotGrid)"/>
-
-                    <line x1="65" y1="0" x2="65" y2="260" stroke="var(--text-primary, #fff)" stroke-width="1.5" opacity="0.4"/>
-                    <line x1="0" y1="165" x2="320" y2="165" stroke="var(--text-primary, #fff)" stroke-width="1.5" opacity="0.4"/>
-
-                    <rect x="65" y="45" width="170" height="120" fill="transparent" stroke="var(--text-primary, #fff)" stroke-width="2"/>
-
-                    <path d="M 65,175 Q 65,190 80,190 L 140,190 Q 150,190 150,200 Q 150,190 160,190 L 220,190 Q 235,190 235,175" fill="none" stroke="var(--text-primary, #fff)" stroke-width="2.5"/>
-                    <text x="150" y="230" text-anchor="middle" font-size="22" font-weight="bold" fill="var(--text-primary, #fff)">18</text>
-
-                    <path d="M 245,45 Q 260,45 260,60 L 260,95 Q 260,105 270,105 Q 260,105 260,115 L 260,150 Q 260,165 245,165" fill="none" stroke="var(--text-primary, #fff)" stroke-width="2.5"/>
-                    <text x="285" y="112" text-anchor="start" font-size="22" font-weight="bold" fill="var(--text-primary, #fff)">13</text>
-                </svg>
-            </div>
-            <figcaption>Математически точная модель: в области пересечения ровно матрица точек 18x13.</figcaption>
-        </figure>
-
-        <p>По оси X точки идут от 10 до 27 (длина отрезка 17, итого 18 точек). По оси Y точки идут от 9 до 21 (длина отрезка 12, итого 13 точек). Перемножаем: <code>18 * 13 = 234</code>. </p>
-
-        <div class="answer">Ответ: 234 </div>
-    </section>
-
-</article>
+</body>
+</html>

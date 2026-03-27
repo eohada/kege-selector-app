@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Chief Tester · Testers{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+  {% set ct_title = 'Тестеры' %}
+  {% include 'chief_tester/_nav.html' %}
+
+  <div class="neo-card p-0 overflow-hidden">
+    <div class="p-4 border-b" style="border-color: var(--color-stroke);">
+      <div class="text-xs text-muted">Всего: <strong>{{ testers_list|length }}</strong></div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="neo-table w-full">
+        <thead>
+          <tr>
+            <th class="text-left">Пользователь</th>
+            <th class="text-left">Роли</th>
+            <th class="text-left">Статус</th>
+            <th class="text-left">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in testers_list %}
+          <tr>
+            <td>
+              <div class="font-medium">{{ u.username }}</div>
+              <div class="text-xs text-muted">#{{ u.id }}</div>
+            </td>
+            <td class="text-sm">
+              {% for r in (u.roles() or []) %}
+                <span class="task-badge">{{ r }}</span>
+              {% endfor %}
+            </td>
+            <td>
+              {% if u.is_active %}
+                <span class="task-badge" style="color:#00ff9d;">active</span>
+              {% else %}
+                <span class="task-badge" style="color:#ff6b81;">disabled</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="POST" action="{{ url_for('chief_tester.tester_toggle_active', user_id=u.id) }}" style="display:inline;" data-no-ajax>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="neo-button ghost sm" type="submit">{% if u.is_active %}⛔ Отключить{% else %}✅ Включить{% endif %}</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted p-6">Нет тестеров</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

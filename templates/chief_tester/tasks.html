@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Chief Tester · Tasks{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+  {% set ct_title = 'Задачи' %}
+  {% include 'chief_tester/_nav.html' %}
+
+  <div class="neo-card p-4">
+    <form method="GET" action="{{ url_for('chief_tester.tasks_list') }}" class="flex gap-3 flex-wrap items-end">
+      <div style="min-width: 180px;">
+        <div class="neo-label">Статус</div>
+        <select name="status" class="neo-input">
+          <option value="">Все</option>
+          <option value="todo" {% if filters.status == 'todo' %}selected{% endif %}>To Do</option>
+          <option value="in_progress" {% if filters.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+          <option value="review" {% if filters.status == 'review' %}selected{% endif %}>Review</option>
+          <option value="done" {% if filters.status == 'done' %}selected{% endif %}>Done</option>
+        </select>
+      </div>
+      <div style="min-width: 240px; flex: 1;">
+        <div class="neo-label">Поиск</div>
+        <input name="q" class="neo-input" placeholder="заголовок…" value="{{ filters.q or '' }}">
+      </div>
+      <div style="min-width: 220px;">
+        <div class="neo-label">Исполнитель</div>
+        <select name="assignee_id" class="neo-input">
+          <option value="">Все</option>
+          {% for u in testers %}
+            <option value="{{ u.id }}" {% if filters.assignee_id == u.id %}selected{% endif %}>{{ u.username }}{% if not u.is_active %} (off){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button class="neo-button accent" type="submit">Фильтр</button>
+        <a class="neo-button ghost" href="{{ url_for('chief_tester.tasks_list') }}">Сброс</a>
+        <a class="neo-button ghost" href="{{ url_for('chief_tester.task_new') }}">➕ Новая</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="mt-5 neo-card p-0 overflow-hidden">
+    <div class="p-4 border-b" style="border-color: var(--color-stroke);">
+      <div class="text-xs text-muted">Найдено: <strong>{{ tasks|length }}</strong></div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="neo-table w-full">
+        <thead>
+          <tr>
+            <th class="text-left">#</th>
+            <th class="text-left">Задача</th>
+            <th class="text-left">Статус</th>
+            <th class="text-left">Приоритет</th>
+            <th class="text-left">Исполнители</th>
+            <th class="text-left">Дедлайн</th>
+            <th class="text-left">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tasks %}
+          <tr>
+            <td class="text-muted">#{{ t.id }}</td>
+            <td>
+              <div class="font-medium">{{ t.title }}</div>
+              {% if t.context_url %}
+                <div class="text-xs mt-1"><a href="{{ t.context_url }}" target="_blank" class="no-underline" style="color:#00f2ff;">🔗 Контекст</a></div>
+              {% endif %}
+            </td>
+            <td><span class="task-badge">{{ t.status or 'todo' }}</span></td>
+            <td><span class="task-badge">{{ t.priority or 'medium' }}</span></td>
+            <td>
+              {% set _aids = (t.assignee_ids or ([t.assignee_id] if t.assignee_id else [])) %}
+              {% if _aids %}
+                {% for aid in _aids %}
+                  {% if assignee_map.get(aid) %}
+                    <span class="task-badge" title="{{ assignee_map[aid].username }}">{{ assignee_map[aid].username }}</span>
+                  {% else %}
+                    <span class="task-badge">#{{ aid }}</span>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="text-sm">
+              {% if t.deadline %}{{ t.deadline.strftime('%d.%m.%Y %H:%M') }}{% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="flex gap-2 flex-wrap">
+              <a class="neo-button ghost sm" href="{{ url_for('chief_tester.task_edit', task_id=t.id) }}">✏️</a>
+              <form method="POST" action="{{ url_for('chief_tester.task_delete', task_id=t.id) }}" onsubmit="return confirm('Удалить задачу #{{ t.id }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="neo-button danger sm" type="submit">🗑️</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted p-6">Задач нет</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

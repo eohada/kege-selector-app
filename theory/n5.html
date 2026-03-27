@@ -1,249 +1,166 @@
-<style>
-    .theory-n5 {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        line-height: 1.6;
-        color: var(--text-primary, #e1e1e1);
-        max-width: 760px;
-        margin: 0 auto;
-        padding: 0;
-    }
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f7f6;
+        }
+        .container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+            border-left: 5px solid #3498db;
+            padding-left: 15px;
+        }
+        h3 {
+            color: #16a085;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        pre {
+            background-color: #2d3436;
+            color: #dfe6e9;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            line-height: 1.4;
+        }
+        .important {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .example-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            background-color: #fbfeff;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        .keyword { color: #fab1a0; }
+        .func { color: #81ecec; }
+        .comment { color: #636e72; }
+        .string { color: #55efc4; }
+    </style>
+    <title>Теория ЕГЭ Информатика: Задание 5</title>
+</head>
+<body>
 
-    .theory-n5 h1 {
-        font-size: 2.1rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin-bottom: 1.5rem;
-        color: var(--text-primary, #ffffff);
-    }
+<div class="container">
+    <h1>Задание 5: Анализ и построение алгоритмов</h1>
 
-    .theory-n5 h2 {
-        font-size: 1.4rem;
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        margin-top: 2.25rem;
-        margin-bottom: 1rem;
-        border-bottom: 1px solid var(--stroke-1, #333);
-        padding-bottom: 0.6rem;
-    }
+    <p>Задание 5 проверяет умение формально исполнять алгоритмы, описанные на естественном языке, и анализировать их результаты. Чаще всего алгоритм связан с преобразованием чисел из десятичной системы в двоичную и выполнением действий над строками.</p>
 
-    .theory-n5 h3 {
-        font-size: 1.15rem;
-        font-weight: 600;
-        margin-top: 1.75rem;
-        margin-bottom: 0.85rem;
-    }
-
-    .theory-n5 p {
-        margin-bottom: 1.1rem;
-        color: var(--text-primary, #e1e1e1);
-    }
-
-    .theory-n5 ul, .theory-n5 ol {
-        margin-bottom: 1.2rem;
-        padding-left: 1.4rem;
-        color: var(--text-primary, #e1e1e1);
-    }
-
-    .theory-n5 li {
-        margin-bottom: 0.4rem;
-    }
-
-    .theory-n5 figure {
-        margin: 1.75rem 0;
-        padding: 0;
-    }
-
-    .theory-n5 img {
-        max-width: 100%;
-        height: auto;
-        display: block;
-        border-radius: 12px;
-        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.18);
-        background-color: var(--surface-2, #1e1e1e);
-    }
-
-    [data-theme="dark"] .theory-n5 img {
-        opacity: 0.9;
-        transition: opacity 0.25s ease;
-    }
-
-    [data-theme="dark"] .theory-n5 img:hover {
-        opacity: 1;
-    }
-
-    .theory-n5 figcaption {
-        margin-top: 0.65rem;
-        font-size: 0.9rem;
-        color: var(--text-muted, #999);
-        text-align: center;
-    }
-
-    .theory-n5 .highlight {
-        background-color: var(--surface-2, #1e1e1e);
-        padding: 1.25rem 1.5rem;
-        border-radius: 12px;
-        margin: 1.75rem 0;
-        border: 1px solid var(--stroke-1, #333);
-    }
-
-    .theory-n5 .highlight p:last-child {
-        margin-bottom: 0;
-    }
-
-    .theory-n5 .step {
-        display: inline-block;
-        font-weight: 600;
-        color: var(--accent-1, #00ffd5);
-        background-color: rgba(0, 255, 213, 0.08);
-        padding: 2px 8px;
-        border-radius: 999px;
-        font-size: 0.85rem;
-        margin-right: 0.4rem;
-        margin-bottom: 0.25rem;
-    }
-
-    .theory-n5 .answer {
-        display: inline-block;
-        font-size: 1.05rem;
-        font-weight: 600;
-        color: var(--text-primary, #fff);
-        background-color: var(--surface-2, #1e1e1e);
-        padding: 0.75rem 1.4rem;
-        border-radius: 999px;
-        margin-top: 0.9rem;
-        border: 1px solid var(--stroke-1, #333);
-    }
+    <h2>1. Основы работы с системами счисления в Python</h2>
+    <p>Для решения задания программным методом необходимо быстро переводить числа между системами счисления.</p>
     
-    .theory-n5 pre {
-        background-color: var(--surface-2, #1e1e1e);
-        border: 1px solid var(--stroke-1, #333);
-        padding: 1.25rem;
-        border-radius: 12px;
-        overflow-x: auto;
-        font-family: 'Consolas', 'Monaco', monospace;
-        font-size: 0.95rem;
-        color: var(--text-primary, #e1e1e1);
-        margin: 1.5rem 0;
-        line-height: 1.4;
-    }
+    <h3>Встроенные функции перевода (10 → n):</h3>
+    <ul>
+        <li><code>bin(n)</code> — перевод в <strong>двоичную</strong> (возвращает строку вида <code>'0b1010'</code>).</li>
+        <li><code>oct(n)</code> — перевод в <strong>восьмеричную</strong> (возвращает строку вида <code>'0o12'</code>).</li>
+        <li><code>hex(n)</code> — перевод в <strong>шестнадцатеричную</strong> (возвращает строку вида <code>'0xa'</code>).</li>
+    </ul>
 
-    .theory-n5 code {
-        font-family: 'Consolas', 'Monaco', monospace;
-        background-color: var(--surface-2, #1e1e1e);
-        padding: 0.15rem 0.4rem;
-        border-radius: 4px;
-        font-size: 0.9em;
-        color: var(--accent-1, #00ffd5);
-        border: 1px solid var(--stroke-1, #333);
-    }
+    <div class="important">
+        <strong>Важно:</strong> Все эти функции добавляют технический префикс (0b, 0o, 0x). Чтобы получить чистое значение, используйте срез <code>[2:]</code>:
+        <br><code>s = bin(n)[2:]</code>
+    </div>
 
-    .theory-n5 pre code {
-        background-color: transparent;
-        padding: 0;
-        border: none;
-        color: inherit;
-    }
-</style>
+    <h3>Обратный перевод (n → 10):</h3>
+    <p>Используется функция <code>int(string, base)</code>, где <code>string</code> — число в виде строки, а <code>base</code> — основание системы.</p>
+    <pre><code>n = <span class="func">int</span>(<span class="string">'1010'</span>, <span class="keyword">2</span>)  <span class="comment"># Результат: 10</span>
+n = <span class="func">int</span>(<span class="string">'AF1'</span>, <span class="keyword">16</span>)   <span class="comment"># Результат: 2801</span></code></pre>
 
-<article class="theory-n5">
-    <h1>Задание №5 ЕГЭ по информатике: Исполнение алгоритмов</h1>
+    <h2>2. Методы строк для алгоритмов</h2>
+    <p>Алгоритмы в задании 5 часто требуют манипуляций с "цифрами" записи числа:</p>
+    <ul>
+        <li><strong>Подсчет единиц:</strong> <code>s.count('1')</code> — критически важно для условий четности суммы цифр в двоичной записи.</li>
+        <li><strong>Добавление в конец:</strong> <code>s += '10'</code> или <code>s = s + '0'</code>.</li>
+        <li><strong>Замена:</strong> <code>s.replace('1', '0')</code> (заменяет все единицы на нули).</li>
+    </ul>
+
+    <h2>3. Типовой алгоритм решения</h2>
+    <p>Обычно решение сводится к перебору чисел <code>N</code> в цикле <code>for</code>:</p>
+    <div class="example-box">
+        <pre><code><span class="keyword">for</span> n <span class="keyword">in</span> <span class="func">range</span>(<span class="keyword">1</span>, <span class="keyword">1000</span>):
+    s = <span class="func">bin</span>(n)[<span class="keyword">2</span>:] <span class="comment"># Шаг 1: перевод в 2-ичную</span>
     
-    <figure>
-        <img src="https://itchief.ru/assets/images/python/ege-5/cover.webp" alt="Обложка задания 5 ЕГЭ по информатике" onerror="this.src='https://placehold.co/760x400/1e1e1e/00ffd5?text=Задание+5+ЕГЭ'">
-    </figure>
-
-    <section>
-        <h2>Описание задачи</h2>
-        <p>Задание №5 из ЕГЭ по информатике направлено на проверку навыков выполнения простейших алгоритмов. Это базовое задание, на решение которого отводится около 4 минут. Суть задачи обычно сводится к тому, что некий алгоритм принимает натуральное число <code>N</code>, преобразует его в новую систему счисления (чаще всего в двоичную), производит манипуляции со строкой и переводит результат обратно в десятичное число <code>R</code>. </p>
-    </section>
-
-    <section>
-        <h2>Базовые операции в Python для 5 задания</h2>
+    <span class="comment"># Шаг 2: модификация по условию (например, сумма цифр)</span>
+    <span class="keyword">if</span> s.<span class="func">count</span>(<span class="string">'1'</span>) % <span class="keyword">2</span> == <span class="keyword">0</span>:
+        s = s + <span class="string">'0'</span>
+    <span class="keyword">else</span>:
+        s = s + <span class="string">'1'</span>
         
-        <h3>1. Перевод в двоичную запись и обратно</h3>
-        <p>Для перевода числа в двоичную систему используется встроенная функция <code>bin()</code>. Она возвращает строку вида <code>'0b101'</code>, где <code>'0b'</code> — технический префикс. Чтобы избавиться от него, мы применяем срез <code>[2:]</code>. </p>
-        <pre><code>n = 5
-s = bin(n)[2:] # Результат: '101'</code></pre>
-        
-        <p>Для обратного преобразования строки с двоичной записью в десятичное число используется функция <code>int(строка, основание)</code>. </p>
-        <pre><code>r = int('101', 2) # Результат: 5</code></pre>
-
-        <h3>2. Проверка на четность</h3>
-        <p>Для проверки четности используется остаток от деления на 2 (<code>% 2</code>). </p>
-        <pre><code>if n % 2 == 0:
-    # Действия для четных чисел else:
-    # Действия для нечетных чисел </code></pre>
-    </section>
-
-    <section>
-        <h2>Продвинутые техники (Мастхэв для ЕГЭ)</h2>
-
-        <h3>Гайд по срезам (Slices)</h3>
-        <p>Срезы в Python — это мощный инструмент для извлечения части строки (или списка). Общий синтаксис среза выглядит так: <code>строка[start:stop:step]</code>.</p>
-        <ul>
-            <li><code>start</code> — индекс, с которого начинается срез (включительно).</li>
-            <li><code>stop</code> — индекс, на котором срез заканчивается (<strong>не включительно</strong>).</li>
-            <li><code>step</code> — шаг, с которым извлекаются элементы.</li>
-        </ul>
-        <p><strong>Примеры использования:</strong></p>
-        <pre><code>s = "0123456789"
-print(s[2:])    # "23456789" (от индекса 2 до конца)
-print(s[:4])    # "0123" (от начала до индекса 4, не включая 4)
-print(s[-2:])   # "89" (два последних символа)
-print(s[:-1])   # "012345678" (вся строка кроме последнего символа)
-print(s[::-1])  # "9876543210" (строка задом наперед, шаг -1)</code></pre>
-
-        <h3>Перевод в любую систему счисления (Кастомная функция)</h3>
-        <p>Если в задании просят перевести число не в двоичную, а, например, в 7-ичную, 3-ичную или 5-ичную систему, встроенных функций не хватит. Нужно написать свою функцию на основе математического деления "уголком".</p>
-        <pre><code>def perevod(n):
-    t = ''
-    while n > 0:
-        t += str(n % 7)  # Получаем остаток (младшую цифру)
-        n //= 7          # Отсекаем обработанный разряд
-    return t[::-1]       # Разворачиваем строку с помощью среза</code></pre>
-        <p><em>Объяснение:</em> Мы в цикле делим число <code>n</code> на основание системы (в данном случае 7). Остаток от деления — это очередная цифра нового числа. Но так как при делении столбиком мы получаем цифры с конца (от младших к старшим), итоговую строку <code>t</code> перед возвратом обязательно нужно <strong>перевернуть задом наперед</strong> с помощью среза <code>[::-1]</code>.</p>
-
-        <h3>Подсчет суммы цифр в строке: sum(map(int, s))</h3>
-        <p>Иногда по условию задачи требуется найти сумму цифр в получившемся числе или строке. Чтобы не писать громоздкие циклы, используется элегантная конструкция <code>sum(map(int, s))</code>.</p>
-        <pre><code>N2 = "101102"
-c = sum(map(int, N2)) # Результат: 5</code></pre>
-        <p><em>Как это работает:</em> Функция <code>map(int, N2)</code> берёт строку <code>N2</code>, разбивает её на отдельные символы ('1', '0', '1'...) и к каждому применяет функцию <code>int()</code>, превращая их в числа. Затем функция <code>sum()</code> просто складывает получившийся набор чисел.</p>
-    </section>
-
-    <section>
-        <h2>Разбор типовой задачи</h2>
-        
-        <div class="highlight">
-            <p><strong>Условие:</strong> Алгоритм принимает натуральное число N. Сначала определяется его двоичная запись. Затем:<br>
-            • Если N чётное, в начало записи добавляется "10". <br>
-            • Если N нечётное, в начало добавляется "1", а в конец "01". <br>
-            Найдите минимальное натуральное число N, для которого результат R больше 516. </p>
-        </div>
-
-        <h3>Решение на Python:</h3>
-        <p>Код выполняет последовательный перебор чисел, применяя алгоритм и проверяя выполнение условия R > 516. Такой подход гарантирует нахождение минимального значения. </p>
-
-        <pre><code>def transform(num):
-    binary = bin(num)[2:]
+    r = <span class="func">int</span>(s, <span class="keyword">2</span>) <span class="comment"># Шаг 3: перевод обратно в 10-ичную</span>
     
-    if num % 2 == 0:
-        result = "10" + binary
-    else:
-        result = "1" + binary + "01"
-        
-    return int(result, 2)
+    <span class="keyword">if</span> r > <span class="keyword">43</span>: <span class="comment"># Шаг 4: проверка условия</span>
+        <span class="func">print</span>(n)
+        <span class="keyword">break</span></code></pre>
+    </div>
 
-n = 1
-while True:
-    r = transform(n)
-    if r > 516:
-        print("Минимальное число n:", n)
-        break
-    n += 1</code></pre>
+    <h2>4. Продвинутые техники: Произвольные системы счисления</h2>
+    <p>Если в задании требуется перевести число в систему счисления, отличную от 2, 8 или 16 (например, в 3-ичную или 7-ичную), встроенных функций не хватит. В этом случае необходимо написать собственную функцию на основе алгоритма деления с остатком.</p>
 
-        <p>После запуска программы вычисляется минимальное значение N, для которого R > 516. Результат: N = 65. </p>
+    <h3>Собственная функция перевода (на примере 7-ичной системы):</h3>
+    <p>Алгоритм последовательно берет остатки от деления и записывает их в строку, после чего разворачивает её.</p>
+    <pre><code><span class="keyword">def</span> <span class="func">perevod</span>(n):
+    t = <span class="string">''</span>
+    <span class="keyword">while</span> n > <span class="keyword">0</span>:
+        t += <span class="func">str</span>(n % <span class="keyword">7</span>) <span class="comment"># Добавляем остаток</span>
+        n //= <span class="keyword">7</span>          <span class="comment"># Целочисленное деление</span>
+    <span class="keyword">return</span> t[::<span class="keyword">-1</span>]      <span class="comment"># Разворачиваем строку</span></code></pre>
 
-        <div class="answer">Ответ: 65 </div>
-    </section>
+    <h3>Работа со срезами для разворота строки:</h3>
+    <p>В Python строки являются неизменяемыми последовательностями, и для их инверсии (разворота) удобнее всего использовать <strong>срез с отрицательным шагом</strong>.</p>
+    <ul>
+        <li>Синтаксис среза: <code>[start:stop:step]</code></li>
+        <li><code>t[::-1]</code> — это сокращенная запись, которая означает: "взять всю строку от начала до конца с шагом -1".</li>
+    </ul>
+    <div class="important">
+        При делении "в столбик" мы получаем цифры числа в обратном порядке (от младших к старшим). Именно поэтому использование <code>[::-1]</code> в функции перевода является обязательным для получения корректного результата.
+    </div>
 
-</article>
+    <h2>5. Чек-лист перед запуском кода</h2>
+    <ul>
+        <li>Проверен ли диапазон <code>range</code> (достаточно ли он велик)?</li>
+        <li>Удален ли префикс <code>[2:]</code> при использовании <code>bin/oct/hex</code>?</li>
+        <li>Правильно ли определено условие: найти <strong>минимальное N</strong> (нужен <code>break</code>) или <strong>минимальное R</strong> (нужен список результатов)?</li>
+        <li>В ту ли систему счисления переводит <code>int(s, base)</code> в конце алгоритма?</li>
+    </ul>
+</div>
+
+</body>
+</html>

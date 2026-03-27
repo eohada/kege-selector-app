@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Мои Задания</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты Golos Text -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Golos Text"', 'sans-serif'] },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-8 pointer-events-none">
+        <header class="w-full max-w-[1400px] mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all">
+            
+            <div class="flex items-center gap-3 pl-2">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Главное меню -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-house text-lg"></i> Комната
+                </a>
+                <!-- АКТИВНЫЙ ПУНКТ: ЗАДАНИЯ -->
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2 relative">
+                    <i class="ph-bold ph-list-checks text-lg"></i> Задания
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-boo-coral rounded-full animate-pulse"></span>
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-book-open-text text-lg"></i> Теория
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-chart-line-up text-lg"></i> Статистика
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 rounded-lg border border-orange-100 hidden sm:flex">
+                    <i class="ph-fill ph-fire text-boo-accent text-lg"></i>
+                    <span class="text-sm font-extrabold text-orange-600">5</span>
+                </div>
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 cursor-pointer">
+                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Student&backgroundColor=06B6D4" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-cyan-50">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-16 px-6 lg:px-8">
+        <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-8">
+
+            <!-- ШАПКА И ФИЛЬТРЫ -->
+            <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+                <div>
+                    <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Твои задания</h1>
+                    <p class="text-slate-500 font-medium text-lg">
+                        Решай задачи, получай баллы и повышай свой скилл. 
+                    </p>
+                </div>
+
+                <!-- Табы состояний -->
+                <div class="bg-slate-100/80 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50">
+                    <button class="px-6 py-2.5 bg-white text-slate-900 rounded-lg font-bold text-sm shadow-sm border border-slate-200/50 flex items-center gap-2 whitespace-nowrap">
+                        В работе <span class="bg-boo-coral text-white px-2 py-0.5 rounded-md text-xs">2</span>
+                    </button>
+                    <button class="px-6 py-2.5 text-slate-500 hover:text-slate-900 rounded-lg font-bold text-sm transition-colors whitespace-nowrap flex items-center gap-2">
+                        На проверке <span class="bg-purple-100 text-boo-primary px-2 py-0.5 rounded-md text-xs">1</span>
+                    </button>
+                    <button class="px-6 py-2.5 text-slate-500 hover:text-slate-900 rounded-lg font-bold text-sm transition-colors whitespace-nowrap">
+                        Завершённые
+                    </button>
+                </div>
+            </div>
+
+            <!-- СЕКЦИЯ 1: ГОРЯЩИЕ И ТЕКУЩИЕ ДЕДЛАЙНЫ (Работы с дедлайном) -->
+            <div>
+                <h3 class="text-xl font-extrabold text-slate-900 mb-5 flex items-center gap-2">
+                    <i class="ph-fill ph-clock-countdown text-boo-accent"></i> Работы с дедлайном
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- КАРТОЧКА 1: ГОРИТ (Коралловый акцент) -->
+                    <div class="bg-white rounded-[28px] border border-red-200 border-b-[4px] border-b-boo-coral shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 group relative">
+                        <!-- Декоративный блик -->
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-red-50 rounded-bl-[100px] -z-0 opacity-50 pointer-events-none"></div>
+                        
+                        <div class="relative z-10 flex-1 flex flex-col">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="px-2.5 py-1 bg-red-50 text-boo-coral text-[10px] font-extrabold rounded-lg uppercase tracking-wider border border-red-100">
+                                    Домашнее задание
+                                </span>
+                                <div class="flex items-center gap-1.5 text-boo-coral text-xs font-bold bg-white px-2 py-1 rounded-lg border border-red-100 shadow-sm">
+                                    <i class="ph-fill ph-fire animate-pulse"></i> Сдать сегодня!
+                                </div>
+                            </div>
+                            
+                            <h4 class="text-xl font-black text-slate-900 leading-tight mb-2 group-hover:text-boo-coral transition-colors">Вариант №5 (Первая часть)</h4>
+                            <p class="text-sm font-medium text-slate-500 mb-6 flex-1 line-clamp-2">
+                                Пробный вариант из 12 задач первой части. Обязательно к выполнению для допуска к вебинару.
+                            </p>
+                            
+                            <!-- Прогресс, если ученик начал, но не закончил -->
+                            <div class="mb-5">
+                                <div class="flex justify-between items-end mb-2">
+                                    <span class="text-xs font-bold text-slate-400">Прогресс выполнения</span>
+                                    <span class="text-sm font-black text-slate-700">8 / 12</span>
+                                </div>
+                                <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-boo-coral rounded-full" style="width: 66%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="relative z-10 pt-4 border-t border-slate-100">
+                            <button class="w-full py-3.5 bg-boo-coral text-white rounded-xl font-bold hover:bg-red-500 transition-all flex justify-center items-center gap-2 shadow-sm text-sm border-b-[3px] border-b-red-700 active:translate-y-[2px] active:border-b-0">
+                                Продолжить решение <i class="ph-bold ph-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- КАРТОЧКА 2: ОБЫЧНАЯ РАБОТА (Фиолетовый акцент) -->
+                    <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 group">
+                        
+                        <div class="flex-1 flex flex-col">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="px-2.5 py-1 bg-boo-cyanLight text-boo-cyan text-[10px] font-extrabold rounded-lg uppercase tracking-wider border border-cyan-100/50">
+                                    Пробник
+                                </span>
+                                <div class="flex items-center gap-1.5 text-slate-500 text-xs font-bold">
+                                    <i class="ph-bold ph-calendar-blank"></i> До 15 апреля
+                                </div>
+                            </div>
+                            
+                            <h4 class="text-xl font-black text-slate-900 leading-tight mb-2 group-hover:text-boo-primary transition-colors">Итоговый мартовский пробник</h4>
+                            <p class="text-sm font-medium text-slate-500 mb-6 flex-1 line-clamp-2">
+                                Полный вариант из 27 задач. На выполнение выделено 3 часа 55 минут.
+                            </p>
+                            
+                            <!-- Награда за выполнение -->
+                            <div class="mb-5 flex items-center gap-2 bg-orange-50/50 border border-orange-100/50 rounded-xl p-3">
+                                <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm text-boo-accent"><i class="ph-fill ph-coin text-lg"></i></div>
+                                <div>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase">Награда</div>
+                                    <div class="text-sm font-black text-slate-700">+100 XP и бейдж</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-slate-100">
+                            <button class="w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0">
+                                Начать <i class="ph-bold ph-play"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- КАРТОЧКА 3: НА ПРОВЕРКЕ (Заблокированное состояние) -->
+                    <div class="bg-purple-50/30 rounded-[28px] border border-purple-200 border-b-[4px] border-b-purple-300 shadow-tactile p-6 flex flex-col">
+                        
+                        <div class="flex-1 flex flex-col opacity-80">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="px-2.5 py-1 bg-purple-100 text-boo-primary text-[10px] font-extrabold rounded-lg uppercase tracking-wider border border-purple-200/50">
+                                    Домашнее задание
+                                </span>
+                                <div class="flex items-center gap-1.5 text-boo-primary text-xs font-bold">
+                                    <i class="ph-bold ph-hourglass-high"></i> Ждет оценки
+                                </div>
+                            </div>
+                            
+                            <h4 class="text-xl font-black text-slate-900 leading-tight mb-2">Задача 27: Алгоритмы (Часть 2)</h4>
+                            <p class="text-sm font-medium text-slate-500 mb-6 flex-1">
+                                Файл с кодом на Python успешно загружен.
+                            </p>
+                            
+                            <!-- Статус у наставника -->
+                            <div class="mb-5 flex items-center gap-3 bg-white border border-purple-100 rounded-xl p-3 shadow-sm">
+                                <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Creator&backgroundColor=7B5CFF" class="w-8 h-8 rounded-lg">
+                                <div>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase">Статус</div>
+                                    <div class="text-xs font-black text-slate-700">На проверке у Михаила</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-purple-100/50">
+                            <button class="w-full py-3 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm text-sm">
+                                <i class="ph-bold ph-eye"></i> Посмотреть ответы
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- СЕКЦИЯ 2: ИДЕАЛЬНОЕ ПУСТОЕ СОСТОЯНИЕ (Вместо старой серой плашки) -->
+            <div class="mt-8">
+                <h3 class="text-xl font-extrabold text-slate-900 mb-5 flex items-center gap-2 opacity-50">
+                    <i class="ph-fill ph-chalkboard-teacher text-slate-400"></i> Задания по занятиям (Классные работы)
+                </h3>
+                
+                <!-- То самое Empty State -->
+                <div class="w-full bg-white rounded-[32px] border-2 border-slate-200 border-dashed p-12 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                    <!-- Забавный фон -->
+                    <div class="absolute inset-0 bg-slate-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                    
+                    <div class="relative z-10 w-28 h-28 bg-cyan-50 rounded-[32px] rotate-3 flex items-center justify-center mb-6 border-4 border-white shadow-lg group-hover:-translate-y-2 group-hover:rotate-6 transition-all duration-500">
+                        <i class="ph-fill ph-ghost text-[64px] text-boo-cyan"></i>
+                        <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md">
+                            <i class="ph-fill ph-check-circle text-green-500 text-3xl"></i>
+                        </div>
+                    </div>
+                    
+                    <h2 class="relative z-10 text-2xl font-black text-slate-900 tracking-tight mb-3">Здесь пока абсолютно чисто!</h2>
+                    <p class="relative z-10 text-slate-500 font-medium max-w-md mx-auto leading-relaxed">
+                        Ты выполнил все задания по прошедшим урокам. Новые задания появятся здесь после твоего следующего вебинара. Отличная работа! 🚀
+                    </p>
+                    
+                    <button class="relative z-10 mt-8 px-6 py-3 bg-slate-100 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-200 transition-colors flex items-center gap-2 shadow-sm">
+                        <i class="ph-bold ph-calendar-blank"></i> Посмотреть расписание
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>
