@@ -104,6 +104,45 @@ def _read_log_tail(max_lines: int = 120) -> tuple[list[str], str]:
         return [], "error"
 
 
+def _iter_assignee_ids(task: QATask) -> list[int]:
+    raw = getattr(task, "assignee_ids", None)
+    ids: list[int] = []
+    if isinstance(raw, list):
+        for x in raw:
+            if isinstance(x, int):
+                ids.append(x)
+            elif isinstance(x, str) and x.isdigit():
+                ids.append(int(x))
+    elif isinstance(raw, int):
+        ids.append(raw)
+    elif isinstance(raw, str) and raw.isdigit():
+        ids.append(int(raw))
+
+    single = getattr(task, "assignee_id", None)
+    if isinstance(single, int):
+        ids.append(single)
+    elif isinstance(single, str) and single.isdigit():
+        ids.append(int(single))
+
+    return sorted(set(i for i in ids if i))
+
+
+def _count_bugs_done_last_7d(bug_reports: list[QATask]) -> int:
+    # Compare in Python with timezone-safe normalization to tolerate mixed legacy rows.
+    cutoff = (datetime.utcnow() - timedelta(days=7)).replace(tzinfo=None)
+    total = 0
+    for b in bug_reports:
+        if (b.status or "").strip().lower() != "done":
+            continue
+        created = getattr(b, "created_at", None)
+        if not created:
+            continue
+        created_naive = created.replace(tzinfo=None) if getattr(created, "tzinfo", None) else created
+        if created_naive >= cutoff:
+            total += 1
+    return total
+
+
 @chief_tester_bp.route("/")
 @chief_tester_bp.route("/dashboard")
 @login_required
@@ -131,20 +170,13 @@ def dashboard():
             "total": len(tasks),
             "critical": sum(1 for t in tasks if (t.priority or "") == "critical"),
             "bugs_open": sum(1 for b in bug_reports if (b.status or "new") in ("new", "in_progress", "review")),
-            "bugs_done_7d": QATask.query.filter(
-                QATask.task_type == "bug_report",
-                QATask.status == "done",
-                QATask.created_at >= (datetime.utcnow() - timedelta(days=7)),
-            ).count(),
+            "bugs_done_7d": _count_bugs_done_last_7d(bug_reports),
         }
 
         testers = _get_testers()
         assignee_ids = set()
         for t in tasks:
-            if isinstance(getattr(t, "assignee_ids", None), list):
-                assignee_ids.update(x for x in (t.assignee_ids or []) if x)
-            elif getattr(t, "assignee_id", None):
-                assignee_ids.add(t.assignee_id)
+            assignee_ids.update(_iter_assignee_ids(t))
         assignee_map = {u.id: u for u in User.query.filter(User.id.in_(assignee_ids)).all()} if assignee_ids else {}
 
         task_cards = []
@@ -162,11 +194,7 @@ def dashboard():
                 "priority_badge_text": prio_text,
                 "context_url": t.context_url,
                 "created_at": t.created_at,
-                "assignees": [
-                    assignee_map[aid]
-                    for aid in (t.assignee_ids or ([t.assignee_id] if t.assignee_id else []))
-                    if aid in assignee_map
-                ],
+                "assignees": [assignee_map[aid] for aid in _iter_assignee_ids(t) if aid in assignee_map],
             }
             task_cards.append(item)
             if item["status"] in columns:
@@ -200,8 +228,7 @@ def dashboard():
                 for t in tasks
                 if (t.status or "") in ("todo", "in_progress", "review")
                 and (
-                    (u.id == t.assignee_id)
-                    or (isinstance(getattr(t, "assignee_ids", None), list) and u.id in (t.assignee_ids or []))
+                    u.id in _iter_assignee_ids(t)
                 )
             )
             done = sum(
@@ -209,8 +236,7 @@ def dashboard():
                 for t in tasks
                 if (t.status or "") == "done"
                 and (
-                    (u.id == t.assignee_id)
-                    or (isinstance(getattr(t, "assignee_ids", None), list) and u.id in (t.assignee_ids or []))
+                    u.id in _iter_assignee_ids(t)
                 )
             )
             workloads.append(
