@@ -102,6 +102,10 @@
             {% if not _qa_widget_allowed and current_user.role in ['chief_tester', 'creator', 'chief_admin', 'tester', 'admin'] %}
                 {% set _qa_widget_allowed = true %}
             {% endif %}
+            {# Allow QA-pool accounts to report bugs in-place even if role=student/tutor/parent #}
+            {% if not _qa_widget_allowed and (current_user.is_qa_pool if current_user.is_qa_pool is defined else false) %}
+                {% set _qa_widget_allowed = true %}
+            {% endif %}
         {% endif %}
         {% if _qa_widget_allowed %}
             {% include 'qa/_floating_widget.html' %}

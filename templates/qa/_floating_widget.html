@@ -1,4 +1,5 @@
 {% set _qa_is_elevated = (current_user.is_creator() or current_user.is_chief_tester() or current_user.is_admin() or current_user.is_chief_admin()) if current_user.is_authenticated else false %}
+{% set _qa_is_pool = (current_user.is_qa_pool if current_user.is_qa_pool is defined else false) %}
 
 <div class="fixed bottom-6 right-6 z-[10001]">
     <button id="qaFab" type="button" onclick="toggleQAWidget()" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-lg border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0 flex items-center justify-center hover:bg-indigo-700 transition-colors">
@@ -85,6 +86,7 @@
                 </details>
                 {% endif %}
 
+                {% if not _qa_is_pool %}
                 <details class="rounded-xl border border-slate-200 bg-white" open>
                     <summary class="cursor-pointer select-none px-4 py-3 flex items-center justify-between">
                         <span class="text-xs font-extrabold uppercase tracking-widest text-slate-500">Пресеты 1–7</span>
@@ -129,6 +131,7 @@
                         </div>
                     </div>
                 </details>
+                {% endif %}
             </div>
         </div>
     </div>
