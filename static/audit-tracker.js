@@ -224,6 +224,13 @@
         args[1] = options;
         
         return originalFetch.apply(this, args).then(response => {
+            try {
+                const rid = response && response.headers ? response.headers.get('X-Request-ID') : null;
+                if (rid) {
+                    window.__last_request_id = rid;
+                    try { localStorage.setItem('last_request_id', rid); } catch (e) {}
+                }
+            } catch (e) {}
             const durationMs = Date.now() - startTime;
             const status = response.ok ? 'success' : 'error';
 

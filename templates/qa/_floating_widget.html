@@ -346,6 +346,7 @@
                 <input type="hidden" name="context_url" id="bugContextUrl">
                 <input type="hidden" name="screenshot" id="bugScreenshotData">
                 <input type="hidden" name="logs_snapshot" id="bugLogsSnapshot">
+                <input type="hidden" name="request_id" id="bugRequestId">
                 <input type="text" class="qa-input" name="title" placeholder="Краткая суть бага" required>
                 <select class="qa-input" name="severity">
                     <option value="medium">Severity: medium</option>
@@ -383,6 +384,10 @@
 
     function openBugModal() {
         toggleQAWidget();
+        try {
+            const rid = window.__last_request_id || localStorage.getItem('last_request_id') || '';
+            document.getElementById('bugRequestId').value = rid;
+        } catch (e) {}
         var placeholder = document.getElementById('bugScreenshotPlaceholder');
         var imgEl = document.getElementById('bugScreenshotImg');
         if (imgEl) { imgEl.style.display = 'none'; imgEl.removeAttribute('src'); }
@@ -470,6 +475,8 @@
         const logs = (formData.get('logs_snapshot') || '').toString();
 
         let body = '';
+        const rid = (formData.get('request_id') || '').toString().trim();
+        if (rid) body += `RID: ${rid}\n`;
         if (sev) body += `Severity: ${sev}\n`;
         if (env) body += `Environment: ${env}\n`;
         if (steps) body += `\nSteps:\n${steps}\n`;

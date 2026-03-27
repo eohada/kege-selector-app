@@ -1016,6 +1016,7 @@ def bug_report():
     if request.method == 'POST':
         title = (request.form.get('title') or '').strip() or 'Баг с страницы'
         description = (request.form.get('description') or '').strip()
+        request_id = (request.form.get('request_id') or '').strip() or None
         severity = (request.form.get('severity') or '').strip().lower() or None
         environment = (request.form.get('environment') or '').strip() or None
         steps = (request.form.get('steps') or '').strip() or None
@@ -1024,6 +1025,8 @@ def bug_report():
         logs_snapshot = (request.form.get('logs_snapshot') or '').strip()
         if any([severity, environment, steps, expected, actual]):
             parts = []
+            if request_id:
+                parts.append(f"RID: {request_id}")
             if severity:
                 parts.append(f"Severity: {severity}")
             if environment:

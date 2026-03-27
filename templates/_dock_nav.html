@@ -78,7 +78,7 @@
                 <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
             </a>
             {% endif %}
-            {% if current_user.is_creator() or current_user.is_chief_tester() %}
+            {% if current_user.is_creator() or current_user.is_chief_tester() or current_user.is_tester() %}
             <a href="{{ url_for('chief_tester.dashboard') }}" class="dock-nav-item {% if active_page == 'chief_tester_dashboard' %}active{% endif %}">
                 <i class="ph-bold ph-radar text-lg"></i> QA Отдел
             </a>
