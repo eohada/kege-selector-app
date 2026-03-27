@@ -211,6 +211,22 @@
                             <a class="dock-mega-link" href="{{ url_for('students.student_analytics', student_id=student.student_id) }}">
                                 <i class="ph-bold ph-chart-line-up text-base text-slate-400"></i> Статистика
                             </a>
+                            {% if current_user.is_creator() or current_user.is_admin() %}
+                            <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" class="m-0">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="next" value="{{ request.full_path }}">
+                                <button type="submit" class="dock-mega-link w-full text-left bg-transparent border-none">
+                                    <i class="ph-bold ph-archive text-base text-slate-400"></i> {% if show_archive %}Восстановить{% else %}В архив{% endif %}
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" class="m-0">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="next" value="{{ request.full_path }}">
+                                <button type="submit" class="dock-mega-link w-full text-left bg-transparent border-none text-red-600 hover:text-red-700">
+                                    <i class="ph-bold ph-trash text-base"></i> Удалить пользователя
+                                </button>
+                            </form>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
