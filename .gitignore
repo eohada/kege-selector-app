@@ -117,6 +117,9 @@ telegram-task-tracker-bot/
 # Visual audit (локальные учётные данные для скрипта)
 visual_audit_ids.json
 
+# Tailwind standalone binary (downloaded locally)
+tools/tailwindcss/tailwindcss.exe
+
 # Экспорт для fine-tuning (генерируется скриптом)
 exports/*.jsonl
 exports/*.csv

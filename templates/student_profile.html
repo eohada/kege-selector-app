@@ -1,444 +1,283 @@
 {% extends 'base.html' %}
-{% block title %}{{ student.name }} · Профиль · BooStudy{% endblock %}
+{% block title %}Комната · {{ student.name }} · BooStudy{% endblock %}
 {% set active_page = 'student_profile' %}
 
-{% block head_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-    .lesson-feed-item {
-        display: grid;
-        grid-template-columns: 60px 1fr auto;
-        gap: 1.5rem;
-        padding: 1.2rem;
-        border-bottom: 1px solid var(--color-stroke);
-        transition: background 0.2s, transform 0.2s;
-        align-items: center;
-        text-decoration: none;
-        color: inherit;
-    }
-    .lesson-feed-item:last-child { border-bottom: none; }
-    .lesson-feed-item:hover { background: var(--color-bg-surface-alt); transform: translateX(4px); }
-    .lesson-date-badge {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        width: 56px; height: 56px; background: rgba(255, 255, 255, 0.03); border-radius: 16px;
-        border: 1px solid var(--color-stroke); color: var(--color-text-muted); line-height: 1;
-    }
-    .lesson-date-day { font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 2px; }
-    .lesson-date-month { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    .lesson-info { min-width: 0; }
-    .lesson-title { font-weight: 700; font-size: 1.1rem; color: var(--color-text-primary); margin-bottom: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lesson-meta { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.85rem; color: var(--color-text-muted); align-items: center; }
-    .lesson-meta span { display: flex; align-items: center; gap: 0.4rem; }
-    .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-    .status-dot.planned { background-color: var(--color-text-muted); box-shadow: 0 0 5px rgba(255, 255, 255, 0.2); }
-    .status-dot.in_progress { background-color: #7B5CFF; box-shadow: 0 0 8px #7B5CFF; }
-    .status-dot.completed { background-color: #20C997; box-shadow: 0 0 8px #20C997; }
-    .status-badge--late { font-size: 0.75em; padding: 0.15rem 0.45rem; border-radius: 999px; background: rgba(255, 180, 0, 0.15); color: #e6a700; border: 1px solid rgba(255, 180, 0, 0.35); margin-left: 0.35rem; }
-    .lessons-remaining--danger { color: #FF6B6B; }
-    .lessons-remaining--warning { color: #FFB347; }
-    .lessons-remaining--ok { color: #7B5CFF; }
-    .active-lesson-card {
-        background: linear-gradient(135deg, rgba(123, 92, 255, 0.05), rgba(32, 201, 151, 0.05));
-        border: 1px solid #7B5CFF;
-        position: relative; overflow: hidden;
-    }
-    .active-lesson-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #7B5CFF; }
-    .profile-header-simple { display: flex; align-items: center; gap: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--color-stroke); margin-bottom: 2rem; }
-    .profile-avatar-simple { width: 100px; height: 100px; border-radius: 50%; background: var(--color-bg-surface-alt); border: 2px solid var(--color-stroke-strong); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 700; color: var(--color-text-muted); overflow: hidden; }
-    .profile-avatar-simple img { width: 100%; height: 100%; object-fit: cover; }
-    .profile-info-simple h1 { margin: 0 0 0.5rem 0; font-size: 2.2rem; letter-spacing: -0.02em; }
-    .profile-stats-row { display: flex; gap: 1.5rem; color: var(--color-text-muted); font-size: 0.9rem; }
-    .profile-stats-row div { display: flex; align-items: center; gap: 0.5rem; }
-    .profile-stats-row strong { color: var(--color-text-primary); }
-    .profile-header-simple .hero-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; align-items: center; max-width: 640px; flex: 0 0 auto; }
-    .profile-header-simple .hero-actions.student-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; align-items: stretch; max-width: 720px; }
-    .profile-header-simple .hero-actions.student-actions .neo-button { width: 100%; justify-content: center; white-space: nowrap; }
-    @media (max-width: 768px) {
-        .lesson-feed-item { grid-template-columns: 1fr; gap: 1rem; }
-        .lesson-date-badge { flex-direction: row; width: auto; height: auto; padding: 0.4rem 0.8rem; gap: 0.5rem; background: transparent; border: none; justify-content: flex-start; }
-        .lesson-date-day { font-size: 1rem; margin: 0; }
-        .profile-header-simple { flex-direction: column; text-align: center; gap: 1rem; }
-        .profile-stats-row { justify-content: center; flex-wrap: wrap; }
-        .profile-header-simple .hero-actions { justify-content: center; max-width: 100%; }
-        .profile-header-simple .hero-actions.student-actions { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 900px) { .profile-grid-responsive { grid-template-columns: 1fr !important; } }
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; }
-    .modal-overlay.active { display: flex; }
-    .modal-box { background: var(--color-bg-surface); border: 1px solid var(--color-stroke-strong); border-radius: 20px; padding: 2rem; max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-    .modal-box h3 { margin: 0 0 0.75rem 0; font-size: 1.15rem; }
-    .modal-box p { color: var(--color-text-muted); margin: 0 0 1.5rem 0; line-height: 1.5; }
-    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
-</style>
-{% endblock %}
-
 {% block content %}
+{% set first_name = (student.name.split(' ')[0] if student and student.name else 'ученик') %}
+{% set total_lessons = (lessons|length if lessons is defined and lessons else 0) %}
+{% set completed_lessons = ((lessons|selectattr('status','equalto','completed')|list)|length if lessons is defined and lessons else 0) %}
+{% set progress_pct = ( (completed_lessons * 100 / total_lessons)|round|int if total_lessons > 0 else 0) %}
+{% set mentor = (tutors_list[0] if tutors_list and tutors_list|length > 0 else None) %}
+{% set upcoming = (upcoming_lessons[0] if upcoming_lessons and upcoming_lessons|length > 0 else None) %}
+{% set active_cnt = (active_submissions|length if active_submissions is defined and active_submissions else 0) %}
 
-        <div class="profile-card theme-student mb-8">
-            <div class="profile-cover"></div>
-            <div class="profile-header">
-                <div class="profile-identity">
-                    <div class="profile-avatar-wrapper" style="width: 120px; height: 120px;">
-                        <div class="profile-avatar-big" style="font-size: 2.6rem;">
-                            {% if student_user and student_user.avatar_url %}
-                                <img src="{{ student_user.avatar_url }}" alt="Аватар">
-                            {% else %}
-                                {{ student.name[0]|upper }}
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="profile-info min-w-0">
-                        <div class="profile-role-badge">Комната ученика</div>
-                        <h1 class="truncate">{{ student.name }}</h1>
-                        <div class="flex gap-2 flex-wrap mt-1">
-                            {% if student_user and student_user.is_demo_user %}
-                            <span class="status-badge" style="background: rgba(251, 191, 36, 0.15); color: rgba(251, 191, 36, 0.95); border-color: rgba(251, 191, 36, 0.35);">Демо</span>
-                            {% endif %}
-                            {% if student.school_class %}<span class="status-badge status-info opacity-80">{{ student.school_class }} класс</span>{% endif %}
-                            {% if student.target_score %}<span class="status-badge status-info opacity-80">Цель: {{ student.target_score }}</span>{% endif %}
-                            {% if student.platform_id %}<span class="status-badge status-info opacity-75">ID: {{ student.platform_id }}</span>{% endif %}
-                        </div>
-                    </div>
-                </div>
-                <div class="hero-actions {% if current_user.is_student() or current_user.is_parent() %}student-actions{% endif %}">
-                    <a href="{% if current_user.is_student() and student.user_id == current_user.id %}{{ url_for('auth.user_profile') }}{% else %}{{ url_for('students.student_info', student_id=student.student_id) }}{% endif %}" class="neo-button ghost">
-                        <i class="fas fa-user ui-icon ui-icon--sm"></i> Профиль ученика
-                    </a>
-                    {% if not current_user.is_student() and not current_user.is_parent() %}
-                    <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent">
-                        <i class="fas fa-plus ui-icon ui-icon--sm"></i> Новый урок
-                    </a>
-                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button outline">
-                        <i class="fas fa-pen ui-icon ui-icon--sm"></i> Ред.
-                    </a>
-                    {% endif %}
-                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline">
-                        <i class="fas fa-chart-line ui-icon ui-icon--sm"></i> Статистика
-                    </a>
-                    <a href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}" class="neo-button ghost">
-                        <i class="fas fa-route ui-icon ui-icon--sm"></i> Траектория
-                    </a>
-                    {% if current_user.is_creator() or current_user.is_admin() %}
-                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" class="inline">
-                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                        <button type="submit" class="neo-button ghost text-text-muted">
-                            <i class="fas fa-archive ui-icon ui-icon--sm"></i> {% if student.is_active %}В архив{% else %}Восстановить{% endif %}
-                        </button>
-                    </form>
-                    <button type="button" class="neo-button ghost" style="color: rgba(239, 68, 68, 0.85);" onclick="document.getElementById('deleteModal').classList.add('active')">
-                        <i class="fas fa-trash ui-icon ui-icon--sm"></i> Удалить
-                    </button>
-                    {% endif %}
-                </div>
-            </div>
+<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
 
-            {% if student_subscription %}
-            <div class="glass-panel mt-4 p-4">
-                <div class="hero-eyebrow">доступ</div>
-                {% if student_subscription.subscription and student_subscription.plan %}
-                    <div class="flex gap-2 flex-wrap items-center mt-1">
-                        <span class="status-badge status-info opacity-95">{{ student_subscription.label }}</span>
-                        <span class="status-badge status-info opacity-80">Тариф: <strong>{{ student_subscription.plan.title }}</strong></span>
-                        {% if student_subscription.ends_at_utc %}
-                            <span class="status-badge status-info opacity-80">До: <strong>{{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</strong></span>
+    <!-- ВЕРХНИЙ РЯД (Hero & Mentor) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- ГЛАВНАЯ КАРТОЧКА -->
+        <div class="lg:col-span-2 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col justify-between relative overflow-hidden group">
+            <i class="ph-fill ph-ghost absolute -right-10 -bottom-10 text-[200px] text-slate-50 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-700 pointer-events-none"></i>
+
+            <div class="relative z-10 flex justify-between items-start mb-12 gap-6">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 mb-3 flex-wrap">
+                        <span class="px-3 py-1 bg-boo-cyanLight text-boo-cyan text-xs font-extrabold rounded-lg uppercase tracking-wider border border-cyan-100/50">
+                            {{ 'ЕГЭ Информатика' if (student.category or '')|upper != 'ОГЭ' else 'ОГЭ Информатика' }}
+                        </span>
+                        {% if student.school_class %}
+                        <span class="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg border border-slate-200/50">
+                            {{ student.school_class }} класс
+                        </span>
+                        {% endif %}
+                        {% if student_user and student_user.is_demo_user %}
+                        <span class="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-extrabold rounded-lg uppercase tracking-wider border border-orange-100/70">
+                            Демо
+                        </span>
                         {% endif %}
                     </div>
 
-                    {% if student_subscription.lessons_remaining is not none %}
-                        {% if student_subscription.lessons_remaining <= 2 %}{% set lessons_remaining_class = 'lessons-remaining--danger' %}
-                        {% elif student_subscription.lessons_remaining <= 5 %}{% set lessons_remaining_class = 'lessons-remaining--warning' %}
-                        {% else %}{% set lessons_remaining_class = 'lessons-remaining--ok' %}{% endif %}
-                        <div class="mt-2 flex items-center gap-2">
-                            <span class="text-text-muted">Осталось уроков:</span>
-                            <div class="manual-lesson-counter flex items-center gap-2">
-                                {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
-                                    <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student_user.id if student_user else '' }}', -1)" title="Уменьшить" style="padding: 0 0.4rem;">-</button>
-                                {% endif %}
-                                <span class="lessons-remaining-val {{ lessons_remaining_class }}" style="font-size: 1.5rem; font-weight: 900;">
-                                    {{ student_subscription.lessons_remaining }}
-                                </span>
-                                {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
-                                    <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student_user.id if student_user else '' }}', 1)" title="Увеличить" style="padding: 0 0.4rem;">+</button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% elif student_subscription.seconds_left is not none %}
-                        {% set days_left = (student_subscription.seconds_left // 86400) %}
-                        {% set hours_left = ((student_subscription.seconds_left % 86400) // 3600) %}
-                        <div class="mt-2 text-text-muted">
-                            Осталось: <strong class="text-text-primary">{{ days_left }}д {{ hours_left }}ч</strong>
-                        </div>
+                    <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Привет, {{ first_name }}!</h1>
+                    <p class="text-slate-500 font-medium text-lg">
+                        {% if student.deadline %}До экзамена: {{ student.deadline }}{% else %}Продолжаем двигаться к твоей цели.{% endif %}
+                    </p>
+                </div>
+
+                <div class="shrink-0 hidden sm:flex items-center gap-2">
+                    <a href="{{ url_for('auth.user_profile') if (current_user.is_student() and student.user_id == current_user.id) else url_for('students.student_info', student_id=student.student_id) }}"
+                       class="px-4 py-2.5 bg-slate-100/70 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/50 no-underline">
+                        <i class="ph-bold ph-user text-lg text-slate-500"></i> Профиль
+                    </a>
+                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
+                       class="px-4 py-2.5 bg-white text-boo-primary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/60 shadow-sm no-underline">
+                        <i class="ph-bold ph-chart-line-up text-lg"></i> Статистика
+                    </a>
+                </div>
+            </div>
+
+            <!-- Траектория и Прогресс -->
+            <div class="relative z-10 bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                <div class="flex justify-between items-end mb-3 gap-4">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                        <i class="ph-fill ph-target text-boo-primary text-xl"></i>
+                        Твоя траектория: {{ student.target_score if student.target_score is not none else '—' }} баллов
+                    </h3>
+                    <span class="text-2xl font-black text-slate-900">{{ progress_pct }}%</span>
+                </div>
+
+                <div class="w-full h-4 bg-slate-200 rounded-full overflow-hidden mb-4 border border-slate-200/50">
+                    <div class="h-full bg-gradient-to-r from-boo-primary to-boo-cyan rounded-full relative" style="width: {{ progress_pct }}%">
+                        <div class="absolute inset-0 bg-white/20 w-full" style="background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between text-sm font-bold text-slate-400">
+                    <span>Завершено уроков: {{ completed_lessons }}</span>
+                    <span>Всего уроков: {{ total_lessons }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- КАРТОЧКА НАСТАВНИКА -->
+        <div class="bg-gradient-to-b from-[#F9F7FF] to-white rounded-[32px] border border-purple-200 border-b-[4px] border-b-purple-300 shadow-tactile p-8 flex flex-col justify-between hover:shadow-tactile-hover transition-shadow relative overflow-hidden">
+            <div class="relative z-10">
+                <div class="flex justify-between items-start mb-6">
+                    <h3 class="font-extrabold text-slate-400 text-xs uppercase tracking-widest">Твой наставник</h3>
+                    {% if student_subscription and student_subscription.label %}
+                    <span class="px-2.5 py-1.5 bg-gradient-to-r from-fuchsia-100 to-purple-100 text-fuchsia-700 text-[10px] font-extrabold rounded-lg flex items-center gap-1 border border-fuchsia-200/50 shadow-sm uppercase">
+                        <i class="ph-fill ph-crown text-fuchsia-500"></i> {{ student_subscription.label }}
+                    </span>
+                    {% else %}
+                    <span class="px-2.5 py-1.5 bg-slate-100 text-slate-500 text-[10px] font-extrabold rounded-lg flex items-center gap-1 border border-slate-200/50 shadow-sm uppercase">
+                        <i class="ph-fill ph-shield-check text-slate-400"></i> Доступ
+                    </span>
                     {% endif %}
-                {% elif student_subscription.status == 'expired' %}
-                    <div class="mt-1 font-black text-error">
-                        {% if student_subscription.lessons_remaining is not none and student_subscription.lessons_remaining <= 0 %}
-                            Уроки закончились
+                </div>
+
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="relative">
+                        {% if mentor and mentor.avatar_url %}
+                        <img src="{{ mentor.avatar_url }}" class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm bg-purple-100 object-cover" alt="Аватар наставника">
                         {% else %}
-                            Подписка истекла
-                        {% endif %}
-                    </div>
-                    {% if student_subscription.ends_at_utc %}
-                    <div class="mt-1 text-text-muted">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
-                    {% endif %}
-                {% else %}
-                    <div class="mt-1 text-text-muted">Тариф не задан (legacy).</div>
-                {% endif %}
-            </div>
-            {% endif %}
-
-            {% if tutors_list %}
-            <div class="glass-panel mt-4 p-4">
-                <div class="hero-eyebrow">преподаватель{% if tutors_list|length > 1 %}и{% endif %}</div>
-                <div class="flex flex-wrap gap-4 mt-2 items-center">
-                    {% for tutor in tutors_list %}
-                    <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="flex items-center gap-3 px-3 py-2 bg-bg-surface-alt rounded-btn shadow-card no-underline text-inherit hover:shadow-card-hover transition-shadow">
-                        <div class="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 bg-bg-surface-alt flex items-center justify-center font-bold">
-                            {% if tutor.avatar_url %}
-                                <img src="{{ tutor.avatar_url }}" alt="" class="w-full h-full object-cover">
-                            {% else %}
-                                {{ tutor.username[0]|upper }}
-                            {% endif %}
+                        <div class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm bg-purple-100 flex items-center justify-center text-boo-primary font-black text-2xl">
+                            {{ (mentor.username[0]|upper) if mentor else '—' }}
                         </div>
-                        <div class="min-w-0">
-                            <div class="font-bold truncate">
-                                {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}
-                                    {{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}
+                        {% endif %}
+                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" title="Онлайн"></div>
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="text-xl font-black text-slate-900 truncate">
+                            {% if mentor %}
+                                {% if mentor.profile and (mentor.profile.first_name or mentor.profile.last_name) %}
+                                    {{ mentor.profile.first_name or '' }} {{ mentor.profile.last_name or '' }}
                                 {% else %}
-                                    {{ tutor.username }}
+                                    {{ mentor.username }}
                                 {% endif %}
-                            </div>
-                            <div class="text-sm text-text-muted">Профиль →</div>
-                        </div>
-                    </a>
-                    {% endfor %}
+                            {% else %}
+                                Наставник не назначен
+                            {% endif %}
+                        </h4>
+                        <p class="text-sm font-semibold text-slate-500 mt-0.5 truncate">
+                            {% if mentor %}@{{ mentor.username }}{% else %}—{% endif %}
+                        </p>
+                    </div>
                 </div>
-            </div>
-            {% endif %}
 
-            {% if student.goal_text %}
-            <div class="bg-bg-surface-alt p-4 rounded-btn mt-4 shadow-card">
-                <span class="hero-eyebrow block mb-2">Глобальная цель</span>
-                <p class="m-0 leading-relaxed">{{ student.goal_text }}</p>
-            </div>
-            {% endif %}
-        </div>
-
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;" class="profile-grid-responsive">
-            {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
-
-            <div class="flex flex-col gap-6">
-
-                {% if in_progress_lesson %}
-                <section class="glass-panel active-lesson-card">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <div class="hero-eyebrow text-accent">Текущий урок</div>
-                            <h2 class="mt-2" style="font-size: 1.8rem;">{{ in_progress_lesson.topic or 'Без темы' }}</h2>
-                        </div>
-                        <span class="status-badge status-info" style="background: rgba(123, 92, 255, 0.15); color: #7B5CFF; border-color: rgba(123, 92, 255, 0.3);">LIVE</span>
+                {% if student_subscription and student_subscription.subscription and student_subscription.plan %}
+                <div class="bg-white/70 border border-purple-100 rounded-2xl p-4 shadow-sm">
+                    <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Тариф</div>
+                    <div class="text-sm font-black text-slate-900 mt-0.5">{{ student_subscription.plan.title }}</div>
+                    <div class="text-xs font-bold text-slate-500 mt-1">
+                        {% if student_subscription.ends_at_utc %}До {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}{% else %}—{% endif %}
                     </div>
-
-                    <div class="flex gap-8 mb-6 text-text-muted text-sm">
-                        {% set in_progress_local = (in_progress_lesson.lesson_date|to_tz(tz_name)) %}
-                        <div><i class="far fa-clock"></i> Начало: {{ in_progress_local.strftime('%H:%M') if in_progress_local else '—' }}</div>
-                        <div><i class="fas fa-hourglass-half"></i> Длительность: {{ in_progress_lesson.duration }} мин</div>
-                    </div>
-
-                    <div class="flex gap-4">
-                        <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=in_progress_lesson.lesson_id) }}" class="neo-button accent px-8">
-                            Войти в класс
-                        </a>
-                        {% if not current_user.is_student() and not current_user.is_parent() %}
-                        <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=in_progress_lesson.lesson_id) }}">
-                             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                             <input type="hidden" name="topic" value="{{ in_progress_lesson.topic }}">
-                            <button type="submit" class="neo-button outline">Завершить урок</button>
-                        </form>
-                        {% endif %}
-                    </div>
-                </section>
-                {% endif %}
-
-                <section class="glass-panel">
-                    <h3 class="form-section-title mb-4" style="border-bottom: none;"><i class="fas fa-tasks ui-icon"></i> Задания</h3>
-                    <p class="text-text-muted text-sm m-0 mb-4">Работы с дедлайном и задания по занятиям (ДЗ, классная, проверочная) — в одном месте.</p>
-                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button accent">
-                        Открыть все задания
-                    </a>
-                    {% if active_submissions and active_submissions|length > 0 %}
-                    <div class="mt-4 pt-4 border-t border-stroke">
-                        <div class="text-sm text-text-muted mb-2">Срочно (с дедлайном):</div>
-                        {% for submission in active_submissions[:3] %}
-                        <div class="flex justify-between items-center gap-3 py-2">
-                            <span class="font-semibold truncate">{{ submission.assignment.title }}</span>
-                            <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="neo-button ghost text-sm" style="padding: 0.35rem 0.75rem; white-space: nowrap;">Открыть</a>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </section>
-
-                <section class="glass-panel">
-                    <details class="profile-details">
-                        <summary>
-                            Лента занятий
-                            <span class="status-badge status-info opacity-75">{{ lessons|length }}</span>
-                        </summary>
-                        <div class="profile-details-body">
-                            <p class="text-text-muted text-sm m-0 mb-4">По клику — страница занятия с вкладками ДЗ, классная работа и проверочная.</p>
-                            <div class="flex justify-between items-center mb-5 gap-4 flex-wrap">
-                                <div class="text-text-muted text-sm">Фильтр</div>
-                                <select id="lessonFilter" class="neo-select" style="width: auto; padding: 0.5rem 2rem 0.5rem 1rem; font-size: 0.9rem;">
-                                    <option value="all">Все занятия</option>
-                                    <option value="planned">Предстоящие</option>
-                                    <option value="completed">Прошедшие</option>
-                                </select>
-                            </div>
-
-                            <div id="lessonsContainer">
-                        {% for lesson in lessons %}
-                        {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) %}
-                        <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="lesson-feed-item" data-status="{{ lesson.status }}">
-                            <div class="lesson-date-badge">
-                                <span class="lesson-date-day">{{ lesson_local.strftime('%d') if lesson_local else '—' }}</span>
-                                <span class="lesson-date-month">{{ lesson_local.strftime('%b') if lesson_local else '—' }}</span>
-                            </div>
-                            <div class="lesson-info">
-                                <div class="lesson-title">{{ lesson.topic or 'Тема не определена' }}</div>
-                                <div class="lesson-meta">
-                                    <span>
-                                        <span class="status-dot {{ lesson.status }}"></span>
-                                        {% if lesson.status == 'completed' %}Проведён{% elif lesson.status == 'in_progress' %}Идёт{% else %}Запланирован{% endif %}
-                                        {% if lesson.student_late %}<span class="status-badge status-badge--late" title="Ученик опоздал">Опоздание</span>{% endif %}
-                                    </span>
-                                    <span><i class="far fa-clock"></i> {{ lesson_local.strftime('%H:%M') if lesson_local else '—' }}</span>
-                                    {% if lesson.content %}<span><i class="fas fa-book"></i> Конспект</span>{% endif %}
-                                </div>
-                            </div>
-                            <div class="neo-button ghost" style="padding: 0.5rem; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-chevron-right"></i>
-                            </div>
-                        </a>
-                        {% endfor %}
-
-                        {% if not lessons %}
-                        <div class="empty-state px-4 py-12">
-                            <div style="font-size: 2.5rem; margin-bottom: 1rem;">📅</div>
-                            <p>История занятий пуста</p>
-                        </div>
-                        {% endif %}
-                            </div>
-                        </div>
-                    </details>
-                </section>
-            </div>
-
-            <div class="flex flex-col gap-6">
-                <section class="glass-panel">
-                    <h3 class="form-section-title mb-4" style="font-size: 1.1rem;"><i class="fas fa-info-circle ui-icon"></i> Информация</h3>
-                    <div class="flex flex-col gap-4">
-                        {% if student.category %}
-                        <div class="flex justify-between border-b border-stroke pb-3">
-                            <span class="text-text-muted">Категория</span>
-                            <span class="font-semibold">{{ student.category }}</span>
-                        </div>
-                        {% endif %}
-                        {% if student.overall_rating %}
-                        <div class="flex justify-between border-b border-stroke pb-3">
-                            <span class="text-text-muted">Уровень</span>
-                            <span class="font-semibold">{{ student.overall_rating }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-                </section>
-
-                {% if parents_info %}
-                <section class="glass-panel">
-                    <h3 class="form-section-title mb-4" style="font-size: 1.1rem;"><i class="fas fa-users ui-icon"></i> Связи</h3>
-                    {% for parent in parents_info %}
-                    <div class="mb-4 pb-4 border-b border-stroke">
-                        <div class="font-semibold mb-1">{{ parent.name }}</div>
-                        <div class="text-sm text-text-muted flex items-center gap-2">
-                            <i class="fas fa-phone"></i> {{ parent.phone or '—' }}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </section>
-                {% endif %}
-
-                {% if student.notes %}
-                <section class="glass-panel">
-                    <h3 class="form-section-title mb-4" style="font-size: 1.1rem;"><i class="fas fa-sticky-note ui-icon"></i> Заметки</h3>
-                    <div class="text-sm leading-relaxed text-text-muted whitespace-pre-line">
-                        {{ student.notes }}
-                    </div>
-                </section>
+                </div>
                 {% endif %}
             </div>
-        </div>
-{% endblock %}
 
-{% block scripts_extra %}
-    <script>
-        async function updateLessonsRemaining(userId, delta) {
-            if (!userId) return;
-            try {
-                const url = `/api/user/${userId}/lessons-remaining`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
-                    body: JSON.stringify({ delta: delta })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        const countEl = document.querySelector('.lessons-remaining-val');
-                        if (countEl) countEl.innerText = data.new_count;
-                        if (window.toast) window.toast.success('Количество уроков обновлено');
-                    } else {
-                        if (window.toast) window.toast.error(data.error || 'Ошибка');
-                    }
-                } else {
-                    const err = await response.json();
-                    if (window.toast) window.toast.error(err.error || 'Ошибка сети');
-                }
-            } catch (err) {
-                console.error(err);
-                if (window.toast) window.toast.error('Ошибка соединения');
-            }
-        }
-
-        document.getElementById('lessonFilter').addEventListener('change', function(e) {
-            const status = e.target.value;
-            const items = document.querySelectorAll('.lesson-feed-item');
-            items.forEach(item => {
-                if (status === 'all') { item.style.display = 'grid'; }
-                else {
-                    const itemStatus = item.getAttribute('data-status');
-                    item.style.display = (status === itemStatus) ? 'grid' : 'none';
-                }
-            });
-        });
-
-        document.getElementById('deleteModal')?.addEventListener('click', function(e) {
-            if (e.target === this) this.classList.remove('active');
-        });
-    </script>
-
-    {% if current_user.is_creator() or current_user.is_admin() %}
-    <div class="modal-overlay" id="deleteModal">
-        <div class="modal-box">
-            <h3>Удалить ученика?</h3>
-            <p>Вы уверены, что хотите удалить ученика <strong>{{ student.name }}</strong>? Все связанные данные (уроки, задания, статистика) будут безвозвратно удалены.</p>
-            <div class="modal-actions">
-                <button class="neo-button ghost" onclick="document.getElementById('deleteModal').classList.remove('active')">Отмена</button>
-                <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" style="margin: 0;">
-                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <button type="submit" class="neo-button accent" style="background: #FF6B6B; border-color: #FF6B6B;">Удалить</button>
-                </form>
+            <div class="space-y-3 relative z-10 mt-6">
+                <a href="{{ url_for('students.student_chat', student_id=student.student_id) }}"
+                   class="w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm border-b-[3px] border-b-purple-800 active:translate-y-1 active:border-b-0 text-sm no-underline">
+                    <i class="ph-bold ph-chat-circle-text text-lg"></i> Написать в чат
+                </a>
+                <a href="{{ url_for('students.student_call_request', student_id=student.student_id) }}"
+                   class="w-full py-3.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
+                    <i class="ph-bold ph-calendar-plus text-lg"></i> Записаться на созвон
+                </a>
             </div>
         </div>
     </div>
-    {% endif %}
+
+    <!-- НИЖНИЙ РЯД (Action Items) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <div class="bg-white rounded-[32px] border {% if active_cnt > 0 %}border-red-200 border-b-boo-coral{% else %}border-slate-200 border-b-slate-300{% endif %} border-b-[4px] shadow-tactile p-6 flex flex-col hover:-translate-y-1 transition-transform duration-300">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-12 h-12 rounded-2xl {% if active_cnt > 0 %}bg-red-50 text-boo-coral border-red-100{% else %}bg-slate-50 text-slate-400 border-slate-200{% endif %} flex items-center justify-center border">
+                    <i class="ph-fill {% if active_cnt > 0 %}ph-warning-circle{% else %}ph-check-circle{% endif %} text-2xl"></i>
+                </div>
+                <span class="bg-slate-900 text-white font-black text-sm px-3 py-1 rounded-full shadow-sm">{{ active_cnt }} работ</span>
+            </div>
+
+            <h3 class="text-2xl font-black text-slate-900 mb-2">{% if active_cnt > 0 %}Сдать ДЗ{% else %}Всё сдано{% endif %}</h3>
+            <p class="text-sm font-medium text-slate-500 mb-6 flex-1">
+                {% if active_cnt > 0 %}
+                    У тебя есть активные работы. Проверь дедлайны и продолжай решение.
+                {% else %}
+                    Нет активных работ. Можно повторить теорию или порешать тренажёр.
+                {% endif %}
+            </p>
+
+            <a href="{{ url_for('assignments.submissions_list') }}"
+               class="w-full py-3 {% if active_cnt > 0 %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-slate-900 hover:bg-slate-800 border-b-black{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm text-sm border-b-[3px] active:translate-y-1 active:border-b-0 no-underline">
+                Перейти к заданиям <i class="ph-bold ph-arrow-right"></i>
+            </a>
+        </div>
+
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 transition-transform duration-300">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-12 h-12 rounded-2xl bg-cyan-50 text-boo-cyan flex items-center justify-center border border-cyan-100">
+                    <i class="ph-fill ph-video-camera text-2xl"></i>
+                </div>
+                <span class="bg-slate-100 text-slate-600 font-bold text-xs px-2.5 py-1 rounded-lg border border-slate-200/50 uppercase tracking-wide">
+                    {% if upcoming and upcoming.lesson_date %}{{ upcoming.lesson_date.strftime('%d.%m') }}{% else %}—{% endif %}
+                </span>
+            </div>
+
+            <h3 class="text-2xl font-black text-slate-900 mb-2">
+                {% if upcoming and upcoming.topic %}{{ upcoming.topic }}{% elif in_progress_lesson and in_progress_lesson.topic %}{{ in_progress_lesson.topic }}{% else %}Следующий урок{% endif %}
+            </h3>
+            <div class="text-sm font-bold text-slate-500 mb-6 flex-1 flex flex-col gap-2">
+                <span class="flex items-center gap-2"><i class="ph-bold ph-clock text-boo-primary"></i>
+                    {% if upcoming and upcoming.lesson_date %}{{ upcoming.lesson_date.strftime('%H:%M') }}{% else %}—{% endif %}
+                    — {% if upcoming and upcoming.duration %}{{ upcoming.duration }} мин{% else %}—{% endif %}
+                </span>
+                <span class="flex items-center gap-2"><i class="ph-bold ph-chalkboard-teacher text-slate-400"></i> Онлайн</span>
+            </div>
+
+            {% if upcoming %}
+            <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=upcoming.lesson_id) }}"
+               class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 shadow-sm text-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 no-underline">
+                Открыть урок
+            </a>
+            {% else %}
+            <div class="w-full py-3 bg-slate-100 text-slate-500 rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-200">
+                Уроков пока нет
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 transition-transform duration-300">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-12 h-12 rounded-2xl bg-orange-50 text-boo-accent flex items-center justify-center border border-orange-100">
+                    <i class="ph-fill ph-game-controller text-2xl"></i>
+                </div>
+            </div>
+
+            <h3 class="text-2xl font-black text-slate-900 mb-2">Тренажёр</h3>
+            <p class="text-sm font-medium text-slate-500 mb-6 flex-1">
+                Закрепи теорию практикой. Решай задачи каждый день, чтобы улучшать результат.
+            </p>
+
+            {% if has_permission(current_user, 'trainer.use') %}
+            <a href="{{ url_for('trainer.trainer_v2') }}"
+               class="w-full py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 hover:text-boo-primary transition-all flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
+                Подобрать задачу <i class="ph-bold ph-magic-wand text-boo-primary"></i>
+            </a>
+            {% else %}
+            <div class="w-full py-3 bg-slate-100 text-slate-500 rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-200">
+                Тренажёр недоступен
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ЛЕНТА УРОКОВ -->
+    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+        <div class="flex justify-between items-end mb-6 gap-4 flex-wrap">
+            <div>
+                <h3 class="text-2xl font-black text-slate-900 mb-1">Лента уроков</h3>
+                <p class="text-sm font-medium text-slate-500">История занятий и быстрый доступ к материалам.</p>
+            </div>
+        </div>
+
+        {% if other_lessons and other_lessons|length > 0 %}
+        <div class="divide-y divide-slate-100">
+            {% for l in other_lessons[:20] %}
+            <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=l.lesson_id) }}"
+               class="py-4 flex items-center gap-4 hover:bg-slate-50/60 transition-colors rounded-2xl px-3 -mx-3 no-underline">
+                <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
+                    <div class="text-lg font-black text-slate-900">{% if l.lesson_date %}{{ l.lesson_date.strftime('%d') }}{% else %}—{% endif %}</div>
+                    <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">{% if l.lesson_date %}{{ l.lesson_date.strftime('%b') }}{% else %}—{% endif %}</div>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="text-sm font-black text-slate-900 truncate">{{ l.topic or 'Урок' }}</div>
+                    <div class="text-xs font-bold text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-clock text-slate-400"></i> {% if l.lesson_date %}{{ l.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}</span>
+                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-timer text-slate-400"></i> {{ l.duration or 60 }} мин</span>
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full {% if l.status == 'completed' %}bg-green-500{% elif l.status == 'in_progress' %}bg-boo-primary{% else %}bg-slate-400{% endif %}"></span>
+                            {{ 'Завершен' if l.status == 'completed' else ('В процессе' if l.status == 'in_progress' else 'Запланирован') }}
+                        </span>
+                    </div>
+                </div>
+                <div class="shrink-0 text-slate-300">
+                    <i class="ph-bold ph-arrow-right"></i>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="w-full bg-slate-50/50 rounded-[24px] border-2 border-slate-200 border-dashed p-10 text-center">
+            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-4">
+                <i class="ph-fill ph-ghost text-3xl text-slate-300"></i>
+            </div>
+            <h4 class="text-lg font-bold text-slate-900 mb-1">Уроков пока нет</h4>
+            <p class="text-sm font-medium text-slate-500">Когда занятия появятся, они будут отображаться здесь.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
 {% endblock %}
+

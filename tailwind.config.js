@@ -18,6 +18,7 @@ module.exports = {
           primary:      '#7B5CFF',
           primaryHover: '#6A4CE5',
           cyan:         '#06B6D4',
+          cyanLight:    '#ECFEFF',
           coral:        '#FF6B6B',
           accent:       '#FF9F1C',
           textMain:     '#1E293B',
@@ -56,9 +57,10 @@ module.exports = {
         pill:      '999px',
       },
       boxShadow: {
-        tactile:       '0 10px 30px -5px rgba(15, 23, 42, 0.08)',
-        'tactile-hover':'0 20px 40px -10px rgba(15, 23, 42, 0.12)',
+        tactile:       '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+        'tactile-hover':'0 16px 32px -8px rgba(15, 23, 42, 0.12)',
         nav:           '0 4px 20px rgba(15, 23, 42, 0.05)',
+        'inner-soft':  'inset 0 2px 10px rgba(0, 0, 0, 0.02)',
         sm:            '0 1px 3px rgba(15, 23, 42, 0.06)',
         // Legacy aliases
         soft:          '0 10px 30px -5px rgba(15, 23, 42, 0.08)',

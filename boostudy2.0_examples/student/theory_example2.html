@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Теория и База знаний</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты: Golos Text для UI, JetBrains Mono для кода в статьях -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Golos Text"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                        'inner-soft': 'inset 0 2px 10px rgba(0, 0, 0, 0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        
+        /* Анимация переходов */
+        .view-section { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .view-section.active { display: flex; opacity: 1; animation: fadeIn 0.4s ease-out forwards; }
+        
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Типографика внутри статьи */
+        .prose-article h2 { font-size: 1.5rem; font-weight: 800; color: #1E293B; margin-top: 2rem; margin-bottom: 1rem; }
+        .prose-article h3 { font-size: 1.25rem; font-weight: 700; color: #334155; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .prose-article p { margin-bottom: 1rem; line-height: 1.7; color: #475569; }
+        .prose-article ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; color: #475569; }
+        .prose-article li { margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none flex justify-center">
+        <header class="w-full max-w-[1400px] bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer group">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm group-hover:scale-105 transition-all">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Главное меню ученика -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/60 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-house text-lg"></i> Главная
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-list-checks text-lg"></i> Задания
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
+                </a>
+                <!-- АКТИВНЫЙ ПУНКТ -->
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2 relative">
+                    <i class="ph-bold ph-book-open-text text-lg"></i> Теория
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-chart-line-up text-lg"></i> Аналитика
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 rounded-lg border border-orange-100 hidden sm:flex">
+                    <i class="ph-fill ph-fire text-boo-accent text-lg"></i>
+                    <span class="text-sm font-extrabold text-orange-600">3</span>
+                </div>
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 cursor-pointer">
+                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=QaStudent1&backgroundColor=06B6D4" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-cyan-50">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-16 px-6 lg:px-8">
+        <div class="w-full max-w-[1400px] mx-auto relative h-full">
+
+            <!-- ========================================== -->
+            <!-- ВИД 1: КАТАЛОГ (БИБЛИОТЕКА ЗНАНИЙ)         -->
+            <!-- ========================================== -->
+            <div id="view-index" class="view-section active flex-col gap-8">
+                
+                <!-- ШАПКА И УМНЫЙ ПОИСК -->
+                <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                    <div>
+                        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">База знаний</h1>
+                        <p class="text-slate-500 font-medium text-lg">
+                            Вся необходимая теория по темам ЕГЭ. Читай, сохраняй и применяй на практике.
+                        </p>
+                    </div>
+
+                    <!-- Поиск по теории -->
+                    <div class="w-full lg:w-96 relative">
+                        <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                        <input type="text" placeholder="Поиск по темам, функциям..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3.5 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft">
+                        <button class="absolute right-3 top-1/2 -translate-y-1/2 bg-white text-slate-500 p-1.5 rounded-lg border border-slate-200 hover:text-boo-primary transition-colors shadow-sm">
+                            <i class="ph-bold ph-sliders-horizontal"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ТАБЫ ФИЛЬТРАЦИИ -->
+                <div class="flex gap-2 bg-slate-200/50 p-1.5 rounded-xl w-fit border border-slate-200/50">
+                    <button class="px-6 py-2.5 bg-white text-slate-900 rounded-lg font-bold text-sm shadow-sm border border-slate-200/50 flex items-center gap-2 transition-all">
+                        Все модули
+                    </button>
+                    <button class="px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                        <i class="ph-fill ph-bookmark-simple text-boo-accent"></i> Сохраненное
+                    </button>
+                    <button class="px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                        Непрочитанное
+                    </button>
+                </div>
+
+                <!-- СЕТКА МОДУЛЕЙ (Сгруппированные задания) -->
+                <!-- Вместо 27 сухих кнопок делаем логичные категории -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    
+                    <!-- МОДУЛЬ 1: АЛГЕБРА ЛОГИКИ (Кликабельный для перехода) -->
+                    <div onclick="openArticle()" class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden">
+                        <!-- Декоративный фон -->
+                        <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors pointer-events-none"></div>
+                        
+                        <div class="flex justify-between items-start mb-5 relative z-10">
+                            <div class="w-12 h-12 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
+                                <i class="ph-bold ph-intersect text-2xl"></i>
+                            </div>
+                            <span class="bg-white px-2.5 py-1 rounded-lg text-xs font-extrabold text-slate-400 border border-slate-200 shadow-sm flex items-center gap-1.5">
+                                <i class="ph-fill ph-check-circle text-green-500"></i> Изучено
+                            </span>
+                        </div>
+                        
+                        <div class="relative z-10 flex-1">
+                            <h3 class="text-xl font-black text-slate-900 mb-1 group-hover:text-boo-primary transition-colors">Алгебра логики</h3>
+                            <div class="flex flex-wrap gap-1.5 mb-4">
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание 2</span>
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание 15</span>
+                            </div>
+                            <p class="text-sm font-medium text-slate-500 mb-6 line-clamp-2">
+                                Таблицы истинности, законы Де Моргана, отрезки, множества и побитовая конъюнкция.
+                            </p>
+                        </div>
+                        
+                        <!-- Прогресс прочтения модуля -->
+                        <div class="relative z-10 pt-4 border-t border-slate-100">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-slate-400">Прогресс раздела</span>
+                                <span class="text-sm font-black text-slate-700">100%</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-500 rounded-full" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- МОДУЛЬ 2: ПРОГРАММИРОВАНИЕ (БАЗА) -->
+                    <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden">
+                        <div class="absolute -right-6 -top-6 w-32 h-32 bg-blue-50 rounded-full blur-2xl group-hover:bg-blue-100 transition-colors pointer-events-none"></div>
+                        <div class="flex justify-between items-start mb-5 relative z-10">
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-100 group-hover:scale-110 transition-transform">
+                                <i class="ph-bold ph-code text-2xl"></i>
+                            </div>
+                            <span class="bg-white px-2.5 py-1 rounded-lg text-xs font-extrabold text-boo-accent border border-slate-200 shadow-sm flex items-center gap-1.5">
+                                <i class="ph-fill ph-spinner-gap animate-spin"></i> В процессе
+                            </span>
+                        </div>
+                        <div class="relative z-10 flex-1">
+                            <h3 class="text-xl font-black text-slate-900 mb-1 group-hover:text-blue-500 transition-colors">Программирование: Основы</h3>
+                            <div class="flex flex-wrap gap-1.5 mb-4">
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание 6</span>
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание 12</span>
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание 16</span>
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">+ еще 3</span>
+                            </div>
+                            <p class="text-sm font-medium text-slate-500 mb-6 line-clamp-2">
+                                Черепаха, циклы, рекурсия, работа со строками и базовые алгоритмы на Python.
+                            </p>
+                        </div>
+                        <div class="relative z-10 pt-4 border-t border-slate-100">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-slate-400">Прогресс раздела</span>
+                                <span class="text-sm font-black text-slate-700">40%</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-boo-accent rounded-full" style="width: 40%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- МОДУЛЬ 3: ЭЛЕКТРОННЫЕ ТАБЛИЦЫ -->
+                    <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden">
+                        <div class="absolute -right-6 -top-6 w-32 h-32 bg-green-50 rounded-full blur-2xl group-hover:bg-green-100 transition-colors pointer-events-none"></div>
+                        <div class="flex justify-between items-start mb-5 relative z-10">
+                            <div class="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center border border-green-100 group-hover:scale-110 transition-transform">
+                                <i class="ph-bold ph-table text-2xl"></i>
+                            </div>
+                        </div>
+                        <div class="relative z-10 flex-1">
+                            <h3 class="text-xl font-black text-slate-900 mb-1 group-hover:text-green-600 transition-colors">Электронные таблицы</h3>
+                            <div class="flex flex-wrap gap-1.5 mb-4">
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание 3</span>
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание 9</span>
+                            </div>
+                            <p class="text-sm font-medium text-slate-500 mb-6 line-clamp-2">
+                                Базы данных, формулы, функции ВПР, фильтрация и сложная статистика в Excel.
+                            </p>
+                        </div>
+                        <div class="relative z-10 pt-4 border-t border-slate-100">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-slate-400">Прогресс раздела</span>
+                                <span class="text-sm font-black text-slate-700">0%</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-slate-200 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- МОДУЛЬ 4: ГРАФЫ И ПУТИ -->
+                    <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden">
+                        <div class="absolute -right-6 -top-6 w-32 h-32 bg-orange-50 rounded-full blur-2xl group-hover:bg-orange-100 transition-colors pointer-events-none"></div>
+                        <div class="flex justify-between items-start mb-5 relative z-10">
+                            <div class="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center border border-orange-100 group-hover:scale-110 transition-transform">
+                                <i class="ph-bold ph-graph text-2xl"></i>
+                            </div>
+                        </div>
+                        <div class="relative z-10 flex-1">
+                            <h3 class="text-xl font-black text-slate-900 mb-1 group-hover:text-orange-500 transition-colors">Графы и пути</h3>
+                            <div class="flex flex-wrap gap-1.5 mb-4">
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание 1</span>
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание 13</span>
+                            </div>
+                            <p class="text-sm font-medium text-slate-500 mb-6 line-clamp-2">
+                                Матрицы смежности, поиск кратчайшего и длиннейшего пути, избегание узлов.
+                            </p>
+                        </div>
+                        <div class="relative z-10 pt-4 border-t border-slate-100">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-slate-400">Прогресс раздела</span>
+                                <span class="text-sm font-black text-slate-700">0%</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-slate-200 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- ВИД 2: РЕЖИМ ЧТЕНИЯ СТАТЬИ (ARTICLE)       -->
+            <!-- ========================================== -->
+            <div id="view-article" class="view-section flex-col h-full hidden">
+                
+                <!-- Навигация возврата -->
+                <div class="mb-4">
+                    <button onclick="closeArticle()" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm w-fit transition-colors">
+                        <i class="ph-bold ph-arrow-left"></i> Назад в каталог
+                    </button>
+                </div>
+
+                <!-- Контейнер Ридера (Две колонки: Навигация + Статья) -->
+                <div class="flex flex-col lg:flex-row gap-6 h-full min-h-[800px]">
+                    
+                    <!-- ЛЕВЫЙ САЙДБАР (Оглавление) -->
+                    <div class="hidden lg:block w-72 bg-white rounded-[32px] border border-slate-200 shadow-tactile p-6 h-fit sticky top-0 shrink-0">
+                        <div class="flex items-center gap-2 text-[10px] font-extrabold text-boo-primary uppercase tracking-widest mb-4">
+                            <i class="ph-fill ph-intersect"></i> Алгебра логики
+                        </div>
+                        <h4 class="font-black text-slate-900 text-lg mb-6 leading-tight">Содержание модуля</h4>
+                        
+                        <div class="space-y-1">
+                            <!-- Активный пункт -->
+                            <a href="#" class="block px-3 py-2.5 bg-purple-50 text-boo-primary rounded-xl font-bold text-sm border border-purple-100 transition-colors">
+                                1. Законы Де Моргана
+                            </a>
+                            <!-- Пройденный пункт -->
+                            <a href="#" class="flex items-center justify-between px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl font-bold text-sm transition-colors group">
+                                2. Таблицы истинности
+                                <i class="ph-fill ph-check-circle text-green-500 opacity-100"></i>
+                            </a>
+                            <a href="#" class="block px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl font-bold text-sm transition-colors">
+                                3. Побитовая конъюнкция
+                            </a>
+                            <a href="#" class="block px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl font-bold text-sm transition-colors">
+                                4. Отрезки и множества
+                            </a>
+                        </div>
+
+                        <div class="mt-8 pt-6 border-t border-slate-100">
+                            <button class="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-sm">
+                                <i class="ph-bold ph-game-controller text-boo-primary"></i> В тренажёр
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ПРАВАЯ ЧАСТЬ (Сам текст статьи) -->
+                    <div class="flex-1 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:p-12 overflow-y-auto relative">
+                        
+                        <!-- Закладка -->
+                        <button class="absolute top-8 right-8 w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center border border-slate-200 text-slate-400 hover:text-boo-accent hover:bg-orange-50 transition-colors shadow-sm">
+                            <i class="ph-bold ph-bookmark-simple text-xl"></i>
+                        </button>
+
+                        <!-- Заголовок статьи -->
+                        <div class="max-w-3xl mx-auto">
+                            <div class="flex items-center gap-2 mb-4">
+                                <span class="bg-slate-100 text-slate-500 text-xs font-bold px-2.5 py-1 rounded-md border border-slate-200">Задание 15</span>
+                                <span class="text-slate-400 text-xs font-semibold flex items-center gap-1"><i class="ph-fill ph-clock"></i> 5 мин чтения</span>
+                            </div>
+                            <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-8 leading-tight">Законы Де Моргана и преобразование выражений</h1>
+                            
+                            <!-- Главный текст статьи -->
+                            <div class="prose-article">
+                                <p class="text-lg font-medium text-slate-600">
+                                    Для успешного решения 15 задания ЕГЭ необходимо уметь упрощать сложные логические выражения. Два самых важных правила в арсенале — это законы Де Моргана.
+                                </p>
+                                
+                                <!-- Info Bento Block (Заметка) -->
+                                <div class="my-8 bg-cyan-50/50 border border-cyan-200 rounded-[24px] p-6 flex gap-4 shadow-sm">
+                                    <div class="w-10 h-10 shrink-0 bg-white rounded-full flex items-center justify-center border border-cyan-100 text-boo-cyan shadow-sm">
+                                        <i class="ph-fill ph-info text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-900 mb-1">Что нужно запомнить?</h4>
+                                        <p class="text-sm font-medium text-slate-600">Отрицание конъюнкции (И) есть дизъюнкция (ИЛИ) отрицаний, а отрицание дизъюнкции есть конъюнкция отрицаний. Суть в том, что "Не" меняет знак операции на противоположный.</p>
+                                    </div>
+                                </div>
+
+                                <h3>Формулы в математическом виде:</h3>
+                                <ul class="font-mono text-slate-800 font-bold bg-slate-50 p-6 rounded-2xl border border-slate-200/60 shadow-inner-soft mb-8">
+                                    <li class="flex items-center gap-3"><span class="text-boo-primary">¬(A ∧ B)</span> ≡ <span class="text-boo-cyan">¬A ∨ ¬B</span></li>
+                                    <li class="flex items-center gap-3"><span class="text-boo-primary">¬(A ∨ B)</span> ≡ <span class="text-boo-cyan">¬A ∧ ¬B</span></li>
+                                </ul>
+
+                                <h3>Как это программировать на Python?</h3>
+                                <p>В Python логические операции пишутся словами <code>not</code>, <code>and</code>, <code>or</code>. Давайте посмотрим, как выглядит проверка тождественности закона Де Моргана на коде:</p>
+                                
+                                <!-- Стилизованный Code Block (Темная тема внутри статьи - ОК, это классика) -->
+                                <div class="my-6 bg-[#0F172A] rounded-[24px] border border-slate-800 shadow-inner overflow-hidden relative">
+                                    <div class="absolute top-0 left-0 w-full h-8 bg-slate-800/80 flex items-center px-4 border-b border-slate-700">
+                                        <span class="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-widest">Python</span>
+                                    </div>
+                                    <div class="p-6 pt-10 font-mono text-[14px] text-slate-300 leading-relaxed overflow-x-auto">
+<span class="text-purple-400 font-bold">for</span> a <span class="text-purple-400 font-bold">in</span> (<span class="text-orange-400">False</span>, <span class="text-orange-400">True</span>):
+    <span class="text-purple-400 font-bold">for</span> b <span class="text-purple-400 font-bold">in</span> (<span class="text-orange-400">False</span>, <span class="text-orange-400">True</span>):
+        <span class="text-slate-500 italic"># Проверяем левую часть</span>
+        left <span class="text-purple-400">=</span> <span class="text-blue-400 font-bold">not</span> (a <span class="text-blue-400 font-bold">and</span> b)
+        
+        <span class="text-slate-500 italic"># Проверяем правую часть</span>
+        right <span class="text-purple-400">=</span> (<span class="text-blue-400 font-bold">not</span> a) <span class="text-blue-400 font-bold">or</span> (<span class="text-blue-400 font-bold">not</span> b)
+        
+        <span class="text-blue-400">print</span>(left <span class="text-purple-400">==</span> right) <span class="text-slate-500 italic"># Выведет True 4 раза</span>
+                                    </div>
+                                </div>
+                                
+                                <p>Это базовый инструмент, который поможет тебе раскрывать скобки с отрицанием перед тем, как применять другие методы оптимизации в задачах с отрезками.</p>
+                            </div>
+                            
+                            <!-- Действие по завершению чтения -->
+                            <div class="mt-16 pt-10 border-t border-slate-200">
+                                <div class="flex flex-col sm:flex-row items-center justify-between gap-6 bg-slate-50 p-6 rounded-[28px] border border-slate-200">
+                                    <div>
+                                        <h4 class="font-black text-slate-900 text-lg mb-1">Понятно?</h4>
+                                        <p class="text-sm font-medium text-slate-500">Отметь как изученное, чтобы повысить прогресс модуля.</p>
+                                    </div>
+                                    <div class="flex gap-3 w-full sm:w-auto">
+                                        <button class="w-12 h-12 shrink-0 bg-white border border-slate-200 text-slate-400 hover:text-boo-coral hover:bg-red-50 hover:border-red-200 rounded-xl flex items-center justify-center shadow-sm transition-colors" title="Не понятно">
+                                            <i class="ph-bold ph-thumbs-down text-xl"></i>
+                                        </button>
+                                        <button class="flex-1 sm:w-auto px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">
+                                            <i class="ph-bold ph-check-circle text-lg"></i> Отметить как изученное
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Скрипт для переключения экранов -->
+    <script>
+        function openArticle() {
+            document.getElementById('view-index').classList.remove('active');
+            setTimeout(() => {
+                document.getElementById('view-index').style.display = 'none';
+                document.getElementById('view-article').style.display = 'flex';
+                // Небольшая задержка для запуска анимации
+                setTimeout(() => {
+                    document.getElementById('view-article').classList.add('active');
+                }, 10);
+            }, 300);
+        }
+
+        function closeArticle() {
+            document.getElementById('view-article').classList.remove('active');
+            setTimeout(() => {
+                document.getElementById('view-article').style.display = 'none';
+                document.getElementById('view-index').style.display = 'flex';
+                setTimeout(() => {
+                    document.getElementById('view-index').classList.add('active');
+                }, 10);
+            }, 300);
+        }
+    </script>
+</body>
+</html>

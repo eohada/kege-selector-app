@@ -34,6 +34,9 @@
             {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
             {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
             {% if current_student %}
+            <a href="{{ url_for('main.student_dashboard') }}" class="dock-nav-item {% if active_page in ['student_dashboard','dashboard'] %}active{% endif %}">
+                <i class="ph-bold ph-house text-lg"></i> Главная
+            </a>
             {% if sub_allow_lessons %}
             <a href="{{ url_for('students.student_profile', student_id=current_student.student_id) }}" class="dock-nav-item {% if active_page == 'student_profile' %}active{% endif %}">
                 <i class="ph-bold ph-house text-lg"></i> Комната

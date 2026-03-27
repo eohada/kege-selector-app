@@ -568,7 +568,7 @@ def student_dashboard():
         return render_template('student_dashboard.html', student=None, plan_items=[], pending_submissions=[], unread_notifications=0, problem_topics=[], enrollments=[], selected_course_id=None)
 
     from app.students.stats_service import StatsService
-    from app.models import StudentLearningPlanItem, Submission, UserNotification, GradebookEntry, Assignment
+    from app.models import StudentLearningPlanItem, Submission, UserNotification, GradebookEntry, Assignment, Lesson
 
     enrollments = []
     try:
@@ -592,6 +592,15 @@ def student_dashboard():
         ).limit(12).all()
     except Exception:
         plan_items = []
+
+    completion_pct = 0
+    try:
+        total_cnt = StudentLearningPlanItem.query.filter_by(student_id=student.student_id).count()
+        if total_cnt > 0:
+            done_cnt = StudentLearningPlanItem.query.filter_by(student_id=student.student_id, status='done').count()
+            completion_pct = int(round((done_cnt / total_cnt) * 100))
+    except Exception:
+        completion_pct = 0
 
     try:
         sub_query = Submission.query.filter(
@@ -634,6 +643,42 @@ def student_dashboard():
     except Exception:
         recent_grades = []
 
+    total_lessons = None
+    try:
+        total_lessons = Lesson.query.filter_by(student_id=student.student_id).count()
+    except Exception:
+        total_lessons = None
+
+    completed_tasks = 0
+    try:
+        completed_tasks = Submission.query.filter(
+            Submission.student_id == student.student_id,
+            Submission.status.in_(['GRADED', 'AUTO_GRADED'])
+        ).count()
+    except Exception:
+        completed_tasks = 0
+
+    avg_score = '—'
+    try:
+        rows = (
+            GradebookEntry.query
+            .filter(
+                GradebookEntry.student_id == student.student_id,
+                GradebookEntry.score.isnot(None),
+                GradebookEntry.max_score.isnot(None),
+                GradebookEntry.max_score > 0,
+            )
+            .order_by(GradebookEntry.created_at.desc(), GradebookEntry.entry_id.desc())
+            .limit(30)
+            .all()
+        )
+        if rows:
+            pct_vals = [(float(r.score) / float(r.max_score)) * 100.0 for r in rows if r.score is not None and r.max_score]
+            if pct_vals:
+                avg_score = str(int(round(sum(pct_vals) / len(pct_vals))))
+    except Exception:
+        avg_score = '—'
+
     return render_template(
         'student_dashboard.html',
         student=student,
@@ -644,6 +689,10 @@ def student_dashboard():
         recent_grades=recent_grades,
         enrollments=enrollments,
         selected_course_id=selected_course_id,
+        completion_pct=completion_pct,
+        total_lessons=total_lessons,
+        completed_tasks=completed_tasks,
+        avg_score=avg_score,
     )
 
 @main_bp.route('/update-plans')

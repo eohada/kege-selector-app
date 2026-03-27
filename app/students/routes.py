@@ -12,6 +12,8 @@ import csv
 import io
 from flask import Response
 
+from flask_wtf.csrf import validate_csrf, CSRFError
+
 from app.students import students_bp
 from app.students.forms import StudentForm, normalize_school_class
 from app.students.utils import get_sorted_assignments
@@ -35,6 +37,7 @@ from app.models import (
     Submission,
     Assignment,
     StudentCourseEnrollment,
+    CallRequest,
 )
 from app.models import User, FamilyTie, Enrollment
 from app.utils.student_id_manager import assign_platform_id_if_needed
@@ -430,6 +433,95 @@ def student_profile(student_id):
         logger.error(f"Critical error in student_profile: {e}", exc_info=True)
         flash('Произошла ошибка при загрузке профиля ученика.', 'danger')
         return redirect(url_for('main.dashboard'))
+
+
+@students_bp.route('/student/<int:student_id>/chat')
+@login_required
+def student_chat(student_id: int):
+    """Студенческий чат. Используем диалог LessonMessages по ближайшему/последнему уроку."""
+    student = _guard_student_access(student_id)
+
+    now = moscow_now()
+    in_progress = None
+    upcoming = None
+    latest = None
+    try:
+        in_progress = Lesson.query.filter_by(student_id=student.student_id, status='in_progress').order_by(Lesson.lesson_date.desc()).first()
+    except Exception:
+        in_progress = None
+    try:
+        upcoming = (
+            Lesson.query
+            .filter(Lesson.student_id == student.student_id, Lesson.status == 'planned', Lesson.lesson_date >= now)
+            .order_by(Lesson.lesson_date.asc())
+            .first()
+        )
+    except Exception:
+        upcoming = None
+    try:
+        latest = Lesson.query.filter_by(student_id=student.student_id).order_by(Lesson.lesson_date.desc()).first()
+    except Exception:
+        latest = None
+
+    lesson = in_progress or upcoming or latest
+    if not lesson:
+        flash('Пока нет уроков, к которым можно привязать чат.', 'info')
+        return redirect(url_for('students.student_profile', student_id=student.student_id))
+
+    student_user_obj = User.query.get(student.user_id) if getattr(student, 'user_id', None) else None
+    return render_template('student_chat.html', student=student, student_user=student_user_obj, lesson=lesson, active_page='student_profile')
+
+
+@students_bp.route('/student/<int:student_id>/call-request', methods=['GET', 'POST'])
+@login_required
+def student_call_request(student_id: int):
+    """Заявка ученика на созвон/консультацию."""
+    student = _guard_student_access(student_id)
+
+    if request.method == 'POST':
+        try:
+            validate_csrf(request.form.get('csrf_token') or request.headers.get('X-CSRFToken'))
+        except CSRFError:
+            flash('Ошибка безопасности. Обновите страницу и попробуйте снова.', 'error')
+            return redirect(url_for('students.student_call_request', student_id=student.student_id))
+
+        preferred_at = _parse_datetime_local(request.form.get('preferred_at'))
+        message = (request.form.get('message') or '').strip()
+        if len(message) > 4000:
+            message = message[:4000]
+
+        try:
+            req_row = CallRequest(
+                student_id=student.student_id,
+                created_by_user_id=current_user.id,
+                preferred_at=preferred_at,
+                message=message or None,
+                status='new',
+            )
+            db.session.add(req_row)
+            db.session.commit()
+            flash('Заявка отправлена. Наставник увидит её и предложит время.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            logger.error("CallRequest create failed: %s", e, exc_info=True)
+            flash('Не удалось отправить заявку. Попробуйте позже.', 'error')
+
+        return redirect(url_for('students.student_call_request', student_id=student.student_id))
+
+    recent = []
+    try:
+        recent = (
+            CallRequest.query
+            .filter_by(student_id=student.student_id)
+            .order_by(CallRequest.created_at.desc(), CallRequest.id.desc())
+            .limit(10)
+            .all()
+        )
+    except Exception:
+        recent = []
+
+    student_user_obj = User.query.get(student.user_id) if getattr(student, 'user_id', None) else None
+    return render_template('student_call_request.html', student=student, student_user=student_user_obj, recent_requests=recent, active_page='student_profile')
 
 
 @students_bp.route('/student/<int:student_id>/info')

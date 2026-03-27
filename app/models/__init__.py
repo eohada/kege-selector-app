@@ -56,6 +56,7 @@ from core.db_models import (
     UserNotification,
     PendingAssignmentNotification,
     LessonMessage,
+    CallRequest,
     InviteLink,
     ReferralCode,
     ReferralUsage,
@@ -76,6 +77,8 @@ from core.db_models import (
     UserConsent,
     TheoryBlock,
     StudentTheoryAccess,
+    StudentTheoryState,
+    TheoryFeedback,
     StudentCourseEnrollment,
     GradingScale,
 )
@@ -134,6 +137,7 @@ __all__ = [
     'UserNotification',
     'PendingAssignmentNotification',
     'LessonMessage',
+    'CallRequest',
     'InviteLink',
     'ReferralCode',
     'ReferralUsage',
@@ -154,6 +158,8 @@ __all__ = [
     'UserConsent',
     'TheoryBlock',
     'StudentTheoryAccess',
+    'StudentTheoryState',
+    'TheoryFeedback',
     'StudentCourseEnrollment',
     'GradingScale',
 ]

@@ -159,6 +159,15 @@
     .app-content { padding: 2rem 2.5rem; }
   }
 
+  /* ═══════════════ STUDENT LAYOUT (pixel-perfect like examples) ═══════════════ */
+
+  .layout-student .app-main {
+    @apply pt-32 pb-16 px-6 lg:px-8;
+  }
+  .layout-student .app-content {
+    @apply max-w-[1400px] mx-auto p-0;
+  }
+
   /* ═══════════════ FLOATING DOCK (Nav) ═══════════════ */
 
   .dock-wrapper {
@@ -185,6 +194,21 @@
   @media (min-width: 1024px) {
     /* `.app-content` is max 1400px with 2.5rem padding on both sides => inner content width is 1400 - 5rem = 1320px */
     .dock { max-width: calc(1400px - 5rem); }
+  }
+
+  .layout-student .dock-wrapper {
+    @apply pt-5 px-6 lg:px-8 flex justify-center;
+    padding-bottom: 0;
+  }
+  .layout-student .dock {
+    @apply max-w-[1400px];
+    background: rgba(255,255,255,0.90);
+    border-color: rgba(226,232,240,0.8);
+    border-radius: 1rem; /* rounded-2xl */
+    padding: 0.625rem 1rem; /* py-2.5 px-4 */
+  }
+  @media (min-width: 1024px) {
+    .layout-student .dock { max-width: 1400px; }
   }
 
   .dock-brand {

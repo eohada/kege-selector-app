@@ -1507,10 +1507,10 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
     from core.db_models import (
         Course as ExamCourse, CourseTaskTemplate, StudentCourseEnrollment,
         GradingScale, Student, Tasks, TheoryBlock, StudentTheoryAccess,
-        StudentTaskStatistics,
+        StudentTaskStatistics, CallRequest, StudentTheoryState, TheoryFeedback,
     )
     try:
-        for model in [ExamCourse, CourseTaskTemplate, StudentCourseEnrollment, GradingScale]:
+        for model in [ExamCourse, CourseTaskTemplate, StudentCourseEnrollment, GradingScale, CallRequest, StudentTheoryState, TheoryFeedback]:
             tname = model.__tablename__
             if tname.lower() not in [t.lower() for t in table_names]:
                 try:

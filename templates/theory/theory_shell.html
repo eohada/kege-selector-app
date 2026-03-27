@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+{% set active_page = active_page|default('theory') %}
+{% block title %}База знаний · Теория · BooStudy{% endblock %}
+{% block body_attrs %}data-cinema-scene="theory"{% endblock %}
+
+{% block head_css %}
+<style>
+  .view-section { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
+  .view-section.active { display: flex; opacity: 1; animation: fadeIn 0.4s ease-out forwards; }
+  @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+  .prose-article h2 { font-size: 1.5rem; font-weight: 800; color: #1E293B; margin-top: 2rem; margin-bottom: 1rem; }
+  .prose-article h3 { font-size: 1.25rem; font-weight: 700; color: #334155; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+  .prose-article p { margin-bottom: 1rem; line-height: 1.7; color: #475569; }
+  .prose-article ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; color: #475569; }
+  .prose-article li { margin-bottom: 0.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set initial_view = initial_view|default('index') %}
+
+<div class="w-full max-w-[1400px] mx-auto relative h-full">
+
+  <!-- ========================================== -->
+  <!-- ВИД 1: КАТАЛОГ -->
+  <!-- ========================================== -->
+  <div id="view-index" class="view-section {% if initial_view == 'index' %}active{% endif %} flex-col gap-8">
+
+    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+      <div>
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">База знаний</h1>
+        <p class="text-slate-500 font-medium text-lg">Вся необходимая теория по темам. Читай, сохраняй и применяй на практике.</p>
+      </div>
+
+      <div class="w-full lg:w-96 relative">
+        <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+        <input id="theorySearch" type="text" placeholder="Поиск по темам, функциям..."
+               class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3.5 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft">
+        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 bg-white text-slate-500 p-1.5 rounded-lg border border-slate-200 hover:text-boo-primary transition-colors shadow-sm" title="Фильтры">
+          <i class="ph-bold ph-sliders-horizontal"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="flex gap-2 bg-slate-200/50 p-1.5 rounded-xl w-fit border border-slate-200/50">
+      <button type="button" class="theory-filter px-6 py-2.5 bg-white text-slate-900 rounded-lg font-bold text-sm shadow-sm border border-slate-200/50 flex items-center gap-2 transition-all" data-filter="all">
+        Все модули
+      </button>
+      <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="bookmarked">
+        <i class="ph-fill ph-bookmark-simple text-boo-accent"></i> Сохраненное
+      </button>
+      <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="unread">
+        Непрочитанное
+      </button>
+    </div>
+
+    {% if visible and visible|length > 0 %}
+    <div id="theoryGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {% for num, block in visible %}
+      {% set st = (state_by_number.get(num) if state_by_number is defined and state_by_number else {}) %}
+      {% set is_bookmarked = st.get('bookmarked') if st else False %}
+      {% set is_read = st.get('read') if st else False %}
+      {% set href = (url_for('theory.theory_view', task_number=num, course_id=course_id) if course_id else url_for('theory.theory_view', task_number=num)) %}
+
+      <a href="{{ href }}"
+         class="theory-card bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
+         hx-get="{{ href }}?fragment=1"
+         hx-target="#articleContainer"
+         hx-swap="innerHTML"
+         hx-push-url="true"
+         data-task-number="{{ num }}"
+         data-title="{{ (block.title or ('Задание ' ~ num))|lower }}"
+         data-bookmarked="{{ '1' if is_bookmarked else '0' }}"
+         data-read="{{ '1' if is_read else '0' }}">
+
+        <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors pointer-events-none"></div>
+
+        <div class="flex justify-between items-start mb-5 relative z-10 gap-3">
+          <div class="w-12 h-12 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
+            <i class="ph-bold ph-book-open-text text-2xl"></i>
+          </div>
+          <span class="bg-white px-2.5 py-1 rounded-lg text-xs font-extrabold text-slate-400 border border-slate-200 shadow-sm flex items-center gap-1.5">
+            {% if is_read %}
+              <i class="ph-fill ph-check-circle text-green-500"></i> Изучено
+            {% else %}
+              <i class="ph-fill ph-clock text-slate-400"></i> Новое
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="relative z-10 flex-1">
+          <h3 class="text-xl font-black text-slate-900 mb-1 group-hover:text-boo-primary transition-colors">
+            {{ block.title if block and block.title else ('Задание ' ~ num) }}
+          </h3>
+          <div class="flex flex-wrap gap-1.5 mb-4">
+            <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание {{ num }}</span>
+            {% if is_bookmarked %}
+            <span class="bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100">Сохранено</span>
+            {% endif %}
+          </div>
+          <p class="text-sm font-medium text-slate-500 mb-6 line-clamp-2">
+            {% if block and block.content %}
+              {{ (block.content|striptags)|truncate(120, True, '…') }}
+            {% else %}
+              Открой, чтобы прочитать материал.
+            {% endif %}
+          </p>
+        </div>
+
+        <div class="relative z-10 pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">Открыть</div>
+          <i class="ph-bold ph-arrow-right text-slate-300 group-hover:text-boo-primary transition-colors"></i>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="w-full bg-white rounded-[32px] border-2 border-slate-200 border-dashed p-12 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
+      <div class="absolute inset-0 bg-slate-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+      <div class="relative z-10 w-28 h-28 bg-cyan-50 rounded-[32px] rotate-3 flex items-center justify-center mb-6 border-4 border-white shadow-lg">
+        <i class="ph-fill ph-ghost text-[64px] text-boo-cyan"></i>
+      </div>
+      <h2 class="relative z-10 text-2xl font-black text-slate-900 tracking-tight mb-3">Пока нет доступной теории</h2>
+      <p class="relative z-10 text-slate-500 font-medium max-w-md mx-auto leading-relaxed">
+        Обратитесь к преподавателю — он откроет доступ к модулям.
+      </p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ========================================== -->
+  <!-- ВИД 2: СТАТЬЯ -->
+  <!-- ========================================== -->
+  <div id="view-article" class="view-section {% if initial_view == 'article' %}active{% endif %} flex-col gap-8">
+    <div id="articleContainer">
+      {% if initial_view == 'article' and initial_block %}
+        {% include 'theory/_article.html' with context %}
+      {% else %}
+      <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-12 text-center">
+        <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center shadow-sm mx-auto mb-4 border border-slate-200">
+          <i class="ph-fill ph-book-open-text text-3xl text-slate-300"></i>
+        </div>
+        <div class="text-lg font-black text-slate-900 mb-1">Выбери модуль</div>
+        <div class="text-sm font-medium text-slate-500">Открой тему из каталога — статья загрузится здесь.</div>
+        <button type="button" class="mt-6 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 text-sm" onclick="window.__theoryOpenIndex?.()">
+          В каталог <i class="ph-bold ph-arrow-right"></i>
+        </button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+(function() {
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  const courseId = {{ course_id|tojson }};
+  const viewIndex = document.getElementById('view-index');
+  const viewArticle = document.getElementById('view-article');
+  const grid = document.getElementById('theoryGrid');
+  const search = document.getElementById('theorySearch');
+  const filterBtns = Array.from(document.querySelectorAll('.theory-filter'));
+
+  function openIndex(push=true) {
+    viewArticle?.classList.remove('active');
+    viewIndex?.classList.add('active');
+    if (push) history.pushState({}, '', {{ url_for('theory.theory_index', course_id=course_id)|tojson }});
+  }
+  function openArticle(push=false) {
+    viewIndex?.classList.remove('active');
+    viewArticle?.classList.add('active');
+  }
+  window.__theoryOpenIndex = openIndex;
+
+  function setActiveFilter(id) {
+    filterBtns.forEach(b => {
+      if (b.dataset.filter === id) {
+        b.classList.add('bg-white','text-slate-900','shadow-sm','border','border-slate-200/50');
+        b.classList.remove('text-slate-500');
+      } else {
+        b.classList.remove('bg-white','text-slate-900','shadow-sm','border','border-slate-200/50');
+        b.classList.add('text-slate-500');
+      }
+    });
+  }
+
+  function applyFilters() {
+    if (!grid) return;
+    const q = (search?.value || '').trim().toLowerCase();
+    const active = (filterBtns.find(b => b.classList.contains('bg-white'))?.dataset.filter) || 'all';
+    const cards = Array.from(grid.querySelectorAll('.theory-card'));
+    cards.forEach(card => {
+      const title = (card.dataset.title || '');
+      const read = card.dataset.read === '1';
+      const bookmarked = card.dataset.bookmarked === '1';
+      const matchQuery = !q || title.includes(q);
+      let matchFilter = true;
+      if (active === 'bookmarked') matchFilter = bookmarked;
+      else if (active === 'unread') matchFilter = !read;
+      card.style.display = (matchQuery && matchFilter) ? '' : 'none';
+    });
+  }
+
+  filterBtns.forEach(btn => btn.addEventListener('click', () => {
+    setActiveFilter(btn.dataset.filter);
+    applyFilters();
+    try { localStorage.setItem('ui.theory.filter', btn.dataset.filter); } catch(e) {}
+  }));
+  search?.addEventListener('input', applyFilters);
+
+  // Restore filter
+  try {
+    const saved = localStorage.getItem('ui.theory.filter');
+    if (saved && filterBtns.some(b => b.dataset.filter === saved)) setActiveFilter(saved);
+  } catch(e) {}
+  if (!filterBtns.some(b => b.classList.contains('bg-white'))) setActiveFilter('all');
+  applyFilters();
+
+  // Back button should return to catalog
+  window.addEventListener('popstate', () => {
+    if (location.pathname.endsWith('/theory')) openIndex(false);
+  });
+
+  // HTMX swap: open article view and mark read
+  document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.target && evt.target.id === 'articleContainer') {
+      openArticle(false);
+      const article = evt.target.querySelector('[data-theory-article]');
+      const taskNumber = article ? parseInt(article.dataset.taskNumber || '0') : 0;
+      if (taskNumber) {
+        fetch({{ url_for('theory.theory_api_read')|tojson }}, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ task_number: taskNumber, course_id: courseId }),
+        }).catch(() => {});
+        const card = grid?.querySelector(`.theory-card[data-task-number="${taskNumber}"]`);
+        if (card) { card.dataset.read = '1'; }
+      }
+    }
+  });
+
+  // Article actions (bookmark + feedback + back)
+  const articleContainer = document.getElementById('articleContainer');
+  articleContainer?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const root = articleContainer.querySelector('[data-theory-article]');
+    const taskNumber = root ? parseInt(root.dataset.taskNumber || '0') : 0;
+    if (!taskNumber) return;
+
+    if (action === 'back') {
+      e.preventDefault();
+      openIndex(true);
+      return;
+    }
+
+    if (action === 'bookmark') {
+      e.preventDefault();
+      const nextVal = btn.dataset.value !== '1';
+      const r = await fetch({{ url_for('theory.theory_api_bookmark')|tojson }}, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ task_number: taskNumber, course_id: courseId, value: nextVal }),
+      });
+      const data = await r.json().catch(() => null);
+      if (!r.ok || !data || !data.success) { if (window.toast) window.toast.error('Не удалось сохранить'); return; }
+      btn.dataset.value = data.bookmarked ? '1' : '0';
+      btn.innerHTML = data.bookmarked ? '<i class="ph-fill ph-bookmark-simple"></i> Сохранено' : '<i class="ph-bold ph-bookmark-simple"></i> Сохранить';
+      const card = grid?.querySelector(`.theory-card[data-task-number="${taskNumber}"]`);
+      if (card) card.dataset.bookmarked = data.bookmarked ? '1' : '0';
+      applyFilters();
+      return;
+    }
+
+    if (action === 'rate') {
+      e.preventDefault();
+      const rating = parseInt(btn.dataset.rating || '0');
+      const commentEl = articleContainer.querySelector('textarea[name="theory_comment"]');
+      const comment = (commentEl?.value || '').trim();
+      const r = await fetch({{ url_for('theory.theory_api_feedback')|tojson }}, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ task_number: taskNumber, course_id: courseId, rating, comment }),
+      });
+      const data = await r.json().catch(() => null);
+      if (!r.ok || !data || !data.success) { if (window.toast) window.toast.error('Не удалось отправить'); return; }
+      if (window.toast) window.toast.success('Спасибо за фидбек!');
+      articleContainer.querySelectorAll('[data-action="rate"]').forEach(star => {
+        const rVal = parseInt(star.dataset.rating || '0');
+        star.classList.toggle('text-boo-accent', rVal <= rating);
+        star.classList.toggle('text-slate-300', rVal > rating);
+      });
+    }
+  });
+
+  // If opened directly as /theory/<n>, ensure article view is visible
+  {% if initial_view == 'article' %}
+  openArticle(false);
+  {% endif %}
+})();
+</script>
+{% endblock %}
+

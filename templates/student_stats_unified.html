@@ -1,98 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}Статистика - {{ student.name }} · BooStudy{% endblock %}
-{% set active_page = 'dashboard' %}
+{% block title %}Статистика · {{ student.name }} · BooStudy{% endblock %}
+{% set active_page = 'student_analytics' %}
 {% block body_attrs %}data-cinema-scene="analytics"{% endblock %}
 
 {% block head_css %}
 <style>
-    .stats-tabs {
-        display: flex; gap: 0.5rem; margin-bottom: 2rem;
-        border-bottom: 1px solid var(--color-stroke); padding-bottom: 0;
-    }
-    .stats-tab {
-        padding: 0.75rem 1.5rem; background: transparent; border: none;
-        border-bottom: 2px solid transparent; color: var(--color-text-muted);
-        font-family: inherit; font-size: 0.95rem; font-weight: 500;
-        cursor: pointer; transition: all 0.2s ease; position: relative; top: 1px;
-    }
-    .stats-tab:hover { color: var(--color-text-primary); }
-    .stats-tab.active { color: #7B5CFF; border-bottom-color: #7B5CFF; }
-    .stats-tab-content { display: none; }
-    .stats-tab-content.active { display: block; }
-    .charts-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-        gap: 1.5rem; margin-bottom: 2rem; align-items: start;
-    }
-    .charts-grid.charts-grid-full { grid-template-columns: 1fr; }
-    .chart-container { display: flex; flex-direction: column; height: 400px; }
-    .chart-container canvas { flex: 1; max-height: 100%; }
-    .metrics-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem; margin-bottom: 2rem;
-    }
-    .metric-card {
-        background: var(--color-bg-surface-alt); border-radius: 12px; padding: 1.25rem;
-        transition: all 0.2s ease; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06);
-    }
-    .metric-card:hover { box-shadow: 0 8px 30px rgba(123, 92, 255, 0.12); transform: translateY(-2px); }
-    .metric-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); margin-bottom: 0.5rem; }
-    .metric-value { font-size: 2rem; font-weight: 700; color: #7B5CFF; line-height: 1.2; }
-    .metric-delta { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.5rem; }
-    .metric-delta.positive { color: #22c55e; }
-    .metric-delta.negative { color: #ef4444; }
-    @media (max-width: 980px) { .charts-grid { grid-template-columns: 1fr; } .chart-container { height: 320px; } }
-    @media (max-width: 600px) { .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); } }
-    .heatmap-wrapper { overflow-x: auto; margin-top: 1rem; padding: 1rem 0; }
-    .heatmap-container { display: flex; flex-direction: column; gap: 0.5rem; }
-    .heatmap-days-header { display: flex; gap: 0.5rem; align-items: flex-end; margin-left: 60px; }
-    .heatmap-day-header-label { font-size: 0.8rem; color: var(--color-text-muted); width: 20px; text-align: center; font-weight: 500; }
-    .heatmap-main { display: flex; gap: 0.5rem; align-items: flex-start; }
-    .heatmap-months { display: flex; flex-direction: column; gap: 2px; min-width: 60px; }
-    .heatmap-month-label { font-size: 0.8rem; color: var(--color-text-primary); font-weight: 600; height: 20px; display: flex; align-items: center; padding-left: 8px; border-left: 3px solid #7B5CFF; margin-bottom: 2px; }
-    .heatmap-month-spacer { height: 20px; }
-    .heatmap-grid { display: flex; flex-direction: column; gap: 2px; }
-    .heatmap-week { display: flex; gap: 2px; }
-    .heatmap-day { width: 20px; height: 20px; border-radius: 4px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); cursor: pointer; transition: transform 0.1s ease, border-color 0.1s ease; }
-    .heatmap-day:hover { transform: scale(1.3); z-index: 10; position: relative; border-color: #7B5CFF; }
-    .heatmap-day.status-none { background: var(--color-bg-surface-alt); }
-    .heatmap-day.status-completed { background: rgba(32, 201, 151, 0.7); }
-    .heatmap-day.status-canceled-student { background: rgba(255, 107, 107, 0.7); }
-    .heatmap-day.status-canceled-teacher { background: rgba(255, 179, 71, 0.7); }
-    .heatmap-legend { display: flex; align-items: center; gap: 0.75rem; margin-top: 1.5rem; padding: 1rem; background: var(--color-bg-surface-alt); border-radius: 12px; flex-wrap: wrap; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06); }
-    .heatmap-legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--color-text-muted); }
-    .heatmap-legend-label { font-weight: 500; color: var(--color-text-primary); }
-    .punctuality-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
-    .punctuality-item { text-align: center; padding: 1rem; background: var(--color-bg-surface-alt); border-radius: 12px; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06); }
-    .punctuality-value { font-size: 1.5rem; font-weight: 700; color: #7B5CFF; }
-    .punctuality-label { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.25rem; }
-    .analytics-header { margin-bottom: 1.5rem; }
-    .analytics-title { font-size: 1.5rem; margin: 0; color: var(--color-text-primary); }
-    .analytics-loading, .analytics-error { text-align: center; padding: 3rem 2rem; color: var(--color-text-muted); }
-    .analytics-spinner { width: 40px; height: 40px; margin: 0 auto 1rem; border: 3px solid var(--color-stroke); border-top-color: #7B5CFF; border-radius: 50%; animation: analytics-spin 0.8s linear infinite; }
-    @keyframes analytics-spin { to { transform: rotate(360deg); } }
-    .analytics-error p { margin: 0; max-width: 400px; margin-left: auto; margin-right: auto; }
-    .analytics-content { animation: analytics-fade 0.3s ease; }
-    @keyframes analytics-fade { from { opacity: 0; } to { opacity: 1; } }
-    .analytics-score-card { background: linear-gradient(135deg, var(--color-bg-surface-alt) 0%, var(--color-bg-surface) 100%); border-radius: 20px; padding: 2rem; margin-bottom: 2rem; text-align: center; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06); }
-    .analytics-score-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin-bottom: 0.5rem; }
-    .analytics-score-value { font-size: 3rem; font-weight: 800; color: #7B5CFF; line-height: 1.2; }
-    .analytics-score-hint { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.5rem; }
-    .analytics-score-secondary { font-size: 1rem; font-weight: 600; color: var(--color-text-primary); margin-top: 0.25rem; }
-    .analytics-table-legend { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--color-bg-surface-alt); border-radius: 12px; box-shadow: 0 4px 20px rgba(123, 92, 255, 0.06); }
-    .analytics-table-legend span { white-space: nowrap; }
-    .analytics-table-legend strong { color: var(--color-text-primary); font-weight: 600; }
-    .analytics-radar-section { margin-bottom: 2rem; }
-    .analytics-radar-desc { font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 1rem; }
-    .analytics-radar-wrap { max-width: 640px; margin: 0 auto; height: 520px; }
-    .analytics-radar-wrap canvas { display: block; }
-    .analytics-nodes-section { margin-bottom: 2rem; }
-    .analytics-nodes-table-wrap { overflow-x: auto; }
-    .analytics-nodes-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    .analytics-nodes-table th, .analytics-nodes-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--color-stroke); }
-    .analytics-nodes-table th { color: var(--color-text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.04em; }
-    .analytics-nodes-table tbody tr:hover { background: var(--color-bg-surface-alt); }
-    .analytics-nodes-table .rating-cell { font-weight: 600; color: #7B5CFF; }
-    .analytics-nodes-table .code-cell { font-family: monospace; font-size: 0.85em; color: var(--color-text-muted); }
+  .stats-tab-content { display: none; }
+  .stats-tab-content.active { display: flex; }
+  .stats-tab.active { background: #fff; color: #0f172a; box-shadow: 0 1px 3px rgba(15,23,42,0.06); border: 1px solid rgba(226,232,240,0.5); }
 </style>
 {% endblock %}
 
@@ -101,331 +16,314 @@
 {% endblock %}
 
 {% block content %}
-        <section class="glass-panel mb-8">
-            <div class="flex items-center gap-4 mb-4">
-                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">
-                    ← К профилю
-                </a>
-            </div>
-            <p class="hero-eyebrow">статистика и аналитика</p>
-            <h1 class="hero-title">{{ ui_icon('nav.stats', 'md', decorative=true) }} {{ student.name }}</h1>
-        </section>
+<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-8">
 
-        <div class="stats-tabs">
-            <button class="stats-tab active" data-tab="skills" onclick="switchTab('skills', this)">Навыки</button>
-            <button class="stats-tab" data-tab="analytics" onclick="switchTab('analytics', this)">Аналитика ЕГЭ</button>
+  <!-- ШАПКА И ТАБЫ -->
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile relative overflow-hidden">
+    <i class="ph-bold ph-chart-bar absolute -right-10 -bottom-10 text-[200px] text-slate-50 pointer-events-none"></i>
+    <div class="relative z-10">
+      <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="flex items-center gap-3 text-slate-400 font-bold text-sm mb-3 hover:text-boo-primary cursor-pointer w-fit transition-colors no-underline">
+        <i class="ph-bold ph-arrow-left"></i> В профиль
+      </a>
+      <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Твоя аналитика</h1>
+      <p class="text-slate-500 font-medium text-lg">Следи за прогрессом и находи слабые места. Цифры не врут.</p>
+    </div>
+
+    <div class="relative z-10 bg-slate-100/80 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50">
+      <button id="btn-skills" data-tab="skills" onclick="switchTab('skills', this)" class="stats-tab px-6 py-2.5 bg-white text-slate-900 rounded-lg font-bold text-sm shadow-sm border border-slate-200/50 flex items-center gap-2 whitespace-nowrap transition-all">
+        Навыки и Темы
+      </button>
+      <button id="btn-exam" data-tab="exam" onclick="switchTab('exam', this)" class="stats-tab px-6 py-2.5 text-slate-500 hover:text-slate-900 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2">
+        Аналитика ЕГЭ <span class="bg-purple-100 text-boo-primary px-2 py-0.5 rounded-md text-[10px] uppercase tracking-widest">Прогноз</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ВКЛАДКА 1: НАВЫКИ -->
+  <div id="tab-skills" class="stats-tab-content active flex-col gap-8">
+
+    <!-- Метрики -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-start mb-4">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-widest">Выполнение работ</div>
+          <i class="ph-fill ph-checks text-xl text-boo-cyan"></i>
+        </div>
+        <div class="text-4xl font-black text-slate-900">
+          {{ metrics.current_gpa }}%
+        </div>
+        {% if metrics.delta != 0 %}
+        <div class="text-xs font-bold mt-2 {% if metrics.delta > 0 %}text-green-600{% else %}text-boo-coral{% endif %}">
+          {% if metrics.delta > 0 %}+{% endif %}{{ metrics.delta }}% за месяц
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-start mb-4">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-widest">GPA по ДЗ</div>
+          <i class="ph-fill ph-star text-xl text-boo-accent"></i>
+        </div>
+        <div class="text-4xl font-black text-slate-900">{{ gpa_by_type.homework }}%</div>
+      </div>
+
+      <div class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-start mb-4">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-widest">GPA по пробникам</div>
+          <i class="ph-fill ph-exam text-xl text-boo-primary"></i>
+        </div>
+        <div class="text-4xl font-black text-slate-900">{{ gpa_by_type.exam }}%</div>
+      </div>
+
+      <div class="bg-white rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-start mb-4">
+          <div class="text-xs font-bold text-slate-500 uppercase tracking-widest">Проведено уроков</div>
+          <i class="ph-fill ph-video-camera text-xl text-slate-400"></i>
+        </div>
+        <div class="text-4xl font-black text-slate-900">{{ metrics.completed_lessons }}</div>
+        <div class="text-xs font-bold text-slate-500 mt-2">из {{ metrics.total_lessons }}</div>
+      </div>
+    </div>
+
+    <!-- Графики -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col">
+        <div class="mb-6">
+          <h3 class="text-2xl font-black text-slate-900 mb-1">Динамика успеваемости</h3>
+          <p class="text-sm font-medium text-slate-500">Изменение процента выполнения работ по месяцам</p>
+        </div>
+        <div class="relative h-64">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col">
+        <div class="mb-6">
+          <h3 class="text-2xl font-black text-slate-900 mb-1">Карта навыков</h3>
+          <p class="text-sm font-medium text-slate-500">Оценка на основе твоих ответов</p>
+        </div>
+        <div class="relative h-64">
+          <canvas id="skillsChart"></canvas>
+        </div>
+        {% if hide_skills_radar %}
+        <div class="mt-4 text-sm font-medium text-slate-500">
+          Недостаточно данных для карты навыков.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Процент выполнения по номерам -->
+    <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+      <div class="mb-6">
+        <h3 class="text-2xl font-black text-slate-900 mb-1">Процент выполнения по номерам</h3>
+        <p class="text-sm font-medium text-slate-500">Готовность к каждому заданию</p>
+      </div>
+      {% if chart_data %}
+      <div class="relative h-[360px]">
+        <canvas id="statisticsChart"></canvas>
+      </div>
+      {% else %}
+      <div class="w-full bg-slate-50/50 rounded-[24px] border-2 border-slate-200 border-dashed p-12 text-center">
+        <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-4">
+          <i class="ph-fill ph-chart-line-up text-4xl text-slate-300"></i>
+        </div>
+        <h4 class="text-lg font-bold text-slate-900 mb-1">Пока нет данных</h4>
+        <p class="text-sm font-medium text-slate-500">Выполни задания, чтобы увидеть статистику.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if chart_data and can_edit is defined and can_edit %}
+    <!-- Ручное редактирование (для админа/тьютора) -->
+    <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+      <div class="flex justify-between items-end gap-4 flex-wrap">
+        <div>
+          <h3 class="text-2xl font-black text-slate-900 mb-1">Изменить статистику</h3>
+          <p class="text-sm font-medium text-slate-500">Режимы: добавить / установить / вычесть.</p>
+        </div>
+        <button type="button" id="resetAllStats" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 text-sm">
+          Сбросить все
+        </button>
+      </div>
+
+      <div class="mt-6 bg-slate-50 rounded-2xl border border-slate-100 p-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3">Режим</label>
+            <div class="space-y-2 text-sm font-semibold text-slate-700">
+              <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="editMode" value="add" checked> <span>Добавить</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="editMode" value="set"> <span>Установить</span></label>
+              <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="editMode" value="subtract"> <span>Вычесть</span></label>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3">Массово</label>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2">Правильно</label>
+                <input type="number" min="0" step="1" id="bulkCorrect" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner-soft" value="0">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2">Неправильно</label>
+                <input type="number" min="0" step="1" id="bulkIncorrect" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner-soft" value="0">
+              </div>
+            </div>
+            <button type="button" id="bulkApplyBtn" class="mt-3 w-full px-4 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm text-sm">
+              Применить ко всем
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 grid gap-4">
+        {% for item in chart_data %}
+        <div class="stat-edit-item bg-slate-50 rounded-2xl border border-slate-100 p-5" data-task-number="{{ item.task_number }}">
+          <div class="flex items-center justify-between gap-4 flex-wrap">
+            <div class="text-lg font-black text-slate-900">Задание №{{ item.task_number }}</div>
+            <div class="text-sm font-bold text-slate-500">Текущее: {{ item.correct }}/{{ item.total }} ({{ item.percent }}%)</div>
+          </div>
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Правильно</label>
+              <input type="number" min="0" step="1" class="stat-input-correct w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner-soft" value="0">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 mb-2">Неправильно</label>
+              <input type="number" min="0" step="1" class="stat-input-incorrect w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 shadow-inner-soft" value="0">
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end gap-2">
+            <button type="button" class="stat-reset-btn px-4 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm text-sm" data-task-number="{{ item.task_number }}">Сбросить</button>
+            <button type="button" class="stat-save-btn px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" data-task-number="{{ item.task_number }}">Сохранить</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if problem_topics %}
+    <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+      <div class="mb-6">
+        <h3 class="text-2xl font-black text-slate-900 mb-1">Проблемные темы</h3>
+        <p class="text-sm font-medium text-slate-500">Что требует внимания прямо сейчас.</p>
+      </div>
+      <div class="grid gap-4">
+        {% for topic in problem_topics %}
+        <div class="flex items-center justify-between gap-4 flex-wrap p-4 bg-slate-50 rounded-2xl border border-slate-100">
+          <div class="min-w-0">
+            <div class="font-extrabold text-slate-900 truncate">{{ topic.name }}</div>
+            <div class="text-sm font-bold text-slate-500 mt-1">Средний результат: {{ topic.avg_score }}%</div>
+          </div>
+          <a href="{{ url_for('task_generator.task_generator') }}?student_id={{ student.student_id }}" class="px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-sm text-sm no-underline">
+            Создать отработку
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- ВКЛАДКА 2: АНАЛИТИКА -->
+  <div id="tab-exam" class="stats-tab-content flex-col gap-8">
+
+    <div id="analytics-loading" class="bg-white rounded-[32px] p-12 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile text-center">
+      <div class="w-14 h-14 mx-auto mb-4 rounded-full border-4 border-slate-200 border-t-boo-primary animate-spin"></div>
+      <div class="text-sm font-bold text-slate-700">Загрузка аналитики…</div>
+      <div class="text-sm font-medium text-slate-500 mt-1">Собираем прогноз и рейтинги по темам.</div>
+    </div>
+
+    <div id="analytics-error" class="bg-white rounded-[32px] p-12 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile text-center" style="display:none;">
+      <div class="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center shadow-sm mx-auto mb-4 border border-orange-100">
+        <i class="ph-fill ph-warning-circle text-4xl text-boo-accent"></i>
+      </div>
+      <div class="text-lg font-black text-slate-900 mb-2">Не удалось загрузить данные</div>
+      <div class="text-sm font-medium text-slate-500 max-w-xl mx-auto">
+        Убедитесь, что ученик привязан к пользователю и есть проверенные работы.
+      </div>
+    </div>
+
+    <div id="analytics-content" class="flex flex-col gap-8" style="display:none;">
+
+      <!-- HERO ПРОГНОЗ -->
+      <div class="bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-[32px] p-10 border border-purple-400/50 border-b-[4px] border-b-purple-700 shadow-tactile text-white flex flex-col justify-center items-center text-center relative overflow-hidden group">
+        <div class="absolute inset-0 opacity-10 mix-blend-overlay"></div>
+        <div class="absolute top-[-50%] left-[-10%] w-[800px] h-[800px] bg-white/10 rounded-full blur-[100px] group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
+
+        <div class="relative z-10 w-full max-w-2xl">
+          <span class="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 text-xs font-bold tracking-widest uppercase inline-block mb-6 shadow-sm">
+            Прогноз балла на ЕГЭ
+          </span>
+
+          <div class="flex items-center justify-center gap-4 mb-4">
+            <h2 class="text-8xl md:text-9xl font-black tracking-tighter drop-shadow-md" id="analyticsPredictedPrimary">—</h2>
+            <div class="text-left">
+              <span class="text-3xl md:text-4xl font-bold text-purple-200 block">/ <span id="analyticsPredictedPrimaryMax">—</span></span>
+              <span class="text-sm md:text-base font-semibold text-purple-200 uppercase tracking-widest">первичных</span>
+            </div>
+          </div>
+
+          <p class="text-xl md:text-2xl font-bold text-white mb-8 bg-white/10 inline-block px-6 py-2 rounded-2xl border border-white/20">
+            <span id="analyticsPredictedSecondary">—</span>
+          </p>
+
+          <p class="text-sm text-purple-100 font-medium opacity-90">
+            Считается по твоим рейтингам по темам: для каждой темы оценивается вероятность верного ответа, умножается на балл задания и суммируется.
+          </p>
+
+          <!-- legacy (оставляем для совместимости со старым JS) -->
+          <div class="hidden">
+            <div id="analyticsPredictedScore">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col">
+          <div class="mb-6">
+            <h3 class="text-2xl font-black text-slate-900 mb-1">Радар навыков (КЕГЭ)</h3>
+            <p class="text-sm font-medium text-slate-500">По осям — задания. Чем выше, тем сильнее тема.</p>
+          </div>
+          <div class="relative h-[520px]">
+            <canvas id="analyticsRadarChart"></canvas>
+          </div>
         </div>
 
-        <div id="tab-skills" class="stats-tab-content active">
+        <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+          <div class="mb-6">
+            <h3 class="text-2xl font-black text-slate-900 mb-1">Рейтинги по узлам знаний</h3>
+            <p class="text-sm font-medium text-slate-500">ELO-рейтинг по темам (800–2500, старт 1000).</p>
+          </div>
 
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-label">Процент выполнения работ</div>
-                    <div class="metric-value">{{ metrics.current_gpa }}%</div>
-                    {% if metrics.delta != 0 %}
-                    <div class="metric-delta {% if metrics.delta > 0 %}positive{% else %}negative{% endif %}">
-                        {% if metrics.delta > 0 %}+{% endif %}{{ metrics.delta }}% за месяц
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">GPA по ДЗ</div>
-                    <div class="metric-value">{{ gpa_by_type.homework }}%</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">GPA по контрольным</div>
-                    <div class="metric-value">{{ gpa_by_type.exam }}%</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Проведено уроков</div>
-                    <div class="metric-value">{{ metrics.completed_lessons }}</div>
-                    <div class="metric-delta">из {{ metrics.total_lessons }}</div>
-                </div>
+          <div class="overflow-x-auto pb-2">
+            <div class="min-w-[800px]">
+              <div class="grid grid-cols-12 gap-4 px-6 py-3 border-b border-slate-200 text-xs font-extrabold text-slate-400 uppercase tracking-widest">
+                <div class="col-span-5">Тема (№ ЕГЭ)</div>
+                <div class="col-span-2">Код</div>
+                <div class="col-span-2">Рейтинг</div>
+                <div class="col-span-1 text-center">Балл</div>
+                <div class="col-span-2 text-right">Стрик</div>
+              </div>
+
+              <table class="w-full">
+                <tbody id="analyticsNodesBody"></tbody>
+              </table>
             </div>
-
-            <div class="charts-grid {% if hide_skills_radar %}charts-grid-full{% endif %}">
-                <section class="glass-panel">
-                    <div class="panel-head">
-                        <div>
-                            <p class="eyebrow">динамика успеваемости</p>
-                            <h2>Изменение процента выполнения</h2>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="trendChart"></canvas>
-                    </div>
-                </section>
-
-                {% if not hide_skills_radar %}
-                <section class="glass-panel">
-                    <div class="panel-head">
-                        <div>
-                            <p class="eyebrow">карта навыков</p>
-                            <h2>Уровень владения темами</h2>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="skillsChart"></canvas>
-                    </div>
-                </section>
-                {% endif %}
-            </div>
-
-            <section class="glass-panel mb-8" id="section-statistics-chart">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">выполнение заданий</p>
-                        <h2>Процент выполнения по номерам</h2>
-                    </div>
-                </div>
-                {% if chart_data %}
-                <p class="text-text-muted text-sm mt-4">
-                    Показаны только задания, по которым есть выполненные работы (всего: {{ chart_data|length }})
-                </p>
-                <div class="mt-8">
-                    <canvas id="statisticsChart" style="max-height: 400px;"></canvas>
-                </div>
-                {% else %}
-                <p class="text-text-muted text-center p-8">
-                    Нет данных для отображения. Выполните задания, чтобы увидеть статистику.
-                </p>
-                {% endif %}
-            </section>
-
-            {% if chart_data and can_edit is defined and can_edit %}
-            <section class="glass-panel mb-8">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">ручное редактирование</p>
-                        <h2>Изменить статистику</h2>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        <button type="button" id="resetAllStats" class="neo-button" style="font-size: 0.85em; padding: 0.5rem 1rem;">
-                            Сбросить все
-                        </button>
-                    </div>
-                </div>
-                <p class="mt-4 text-text-muted text-sm">
-                    Гибкая система редактирования статистики. Выберите режим редактирования и введите значения для каждого задания.
-                </p>
-
-                <div class="mt-6 p-4 bg-bg-surface-alt rounded-card shadow-card">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                        <div>
-                            <label class="block text-sm mb-3 text-text-muted font-medium">Режим редактирования:</label>
-                            <div class="flex flex-col gap-2">
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="editMode" value="add" checked class="cursor-pointer">
-                                    <span>Добавить</span>
-                                    <small class="text-text-muted text-sm">(прибавить к текущему)</small>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="editMode" value="set" class="cursor-pointer">
-                                    <span>Установить</span>
-                                    <small class="text-text-muted text-sm">(абсолютное значение)</small>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="editMode" value="subtract" class="cursor-pointer">
-                                    <span>Вычесть</span>
-                                    <small class="text-text-muted text-sm">(отнять от текущего)</small>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm mb-3 text-text-muted font-medium">Массовое редактирование:</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: end;">
-                                <div>
-                                    <label class="block text-sm mb-1 text-text-muted">Правильно:</label>
-                                    <input type="number" min="0" step="1" id="bulkCorrect" class="neo-input w-full" value="0" placeholder="0">
-                                </div>
-                                <div>
-                                    <label class="block text-sm mb-1 text-text-muted">Неправильно:</label>
-                                    <input type="number" min="0" step="1" id="bulkIncorrect" class="neo-input w-full" value="0" placeholder="0">
-                                </div>
-                                <div>
-                                    <button type="button" id="bulkApplyBtn" class="neo-button accent whitespace-nowrap">Применить ко всем</button>
-                                </div>
-                            </div>
-                            <small class="block mt-2 text-text-muted text-sm">Значения будут применены ко всем заданиям с выбранным режимом</small>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-8 p-4 bg-bg-surface-alt rounded-card shadow-card" style="border-style: dashed; border: 1px dashed var(--color-stroke);">
-                    <div class="flex items-center gap-4 flex-wrap">
-                        <div style="flex: 1; min-width: 200px;">
-                            <label class="block text-sm mb-2 text-text-muted font-medium">Добавить новое задание:</label>
-                            <input type="number" min="1" max="27" step="1" id="newTaskNumber" class="neo-input w-full" placeholder="Номер задания (1-27)">
-                        </div>
-                        <div style="flex: 1; min-width: 150px;">
-                            <label class="block text-sm mb-2 text-text-muted font-medium">Правильно:</label>
-                            <input type="number" min="0" step="1" id="newTaskCorrect" class="neo-input w-full" value="0" placeholder="0">
-                        </div>
-                        <div style="flex: 1; min-width: 150px;">
-                            <label class="block text-sm mb-2 text-text-muted font-medium">Неправильно:</label>
-                            <input type="number" min="0" step="1" id="newTaskIncorrect" class="neo-input w-full" value="0" placeholder="0">
-                        </div>
-                        <div class="flex items-end">
-                            <button type="button" id="addNewTaskBtn" class="neo-button accent whitespace-nowrap">
-                                {{ ui_icon('action.plus', 'sm', decorative=true) }} Добавить задание
-                            </button>
-                        </div>
-                    </div>
-                    <small class="block mt-3 text-text-muted text-sm">
-                        Добавьте статистику для задания, которого еще нет в списке. После добавления оно появится в списке ниже, и к нему будут добавляться результаты автопроверки.
-                    </small>
-                </div>
-
-                <div class="mt-8">
-                    <div id="statisticsEditor" class="grid gap-4">
-                        {% for item in chart_data %}
-                        <div class="stat-edit-item p-5 bg-bg-surface-alt rounded-card shadow-card" data-task-number="{{ item.task_number }}">
-                            <div class="flex justify-between items-start mb-4 pb-4 border-b border-stroke">
-                                <div>
-                                    <strong style="font-size: 1.1em;">Задание {{ item.task_number }}</strong>
-                                    <div class="text-sm text-text-muted mt-2">
-                                        <div>Итого: <strong>{{ item.correct }}/{{ item.total }}</strong> ({{ item.percent }}%)</div>
-                                        <div class="mt-1">
-                                            Авто: {{ item.auto_correct }}/{{ item.auto_total }}
-                                            {% if item.manual_correct > 0 or item.manual_incorrect > 0 %}
-                                            | Ручное: +{{ item.manual_correct }}/-{{ item.manual_incorrect }}
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                {% if item.manual_correct > 0 or item.manual_incorrect > 0 %}
-                                <button type="button" class="stat-reset-btn neo-button" data-task-number="{{ item.task_number }}" style="font-size: 0.85em; padding: 0.4rem 0.8rem;" title="Сбросить ручные изменения">
-                                    Сбросить
-                                </button>
-                                {% endif %}
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div>
-                                    <label class="block text-sm mb-2 text-text-muted font-medium">
-                                        {{ ui_icon('action.check', 'sm', decorative=true) }} Правильно:
-                                    </label>
-                                    <input type="number" min="0" step="1" class="stat-input-correct neo-input w-full" value="0" placeholder="0">
-                                    {% if item.manual_correct > 0 %}
-                                    <small class="block mt-2 text-text-muted text-sm">Текущее ручное значение: {{ item.manual_correct }}</small>
-                                    {% endif %}
-                                </div>
-                                <div>
-                                    <label class="block text-sm mb-2 text-text-muted font-medium">
-                                        {{ ui_icon('action.close', 'sm', decorative=true) }} Неправильно:
-                                    </label>
-                                    <input type="number" min="0" step="1" class="stat-input-incorrect neo-input w-full" value="0" placeholder="0">
-                                    {% if item.manual_incorrect > 0 %}
-                                    <small class="block mt-2 text-text-muted text-sm">Текущее ручное значение: {{ item.manual_incorrect }}</small>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="mt-4 flex justify-end">
-                                <button type="button" class="neo-button accent stat-save-btn" data-task-number="{{ item.task_number }}">
-                                    {{ ui_icon('action.check', 'sm', decorative=true) }} Сохранить
-                                </button>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </section>
-            {% endif %}
-
-            {% if problem_topics %}
-            <section class="glass-panel mb-8">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">требует внимания</p>
-                        <h2>Проблемные темы</h2>
-                    </div>
-                </div>
-                <div class="mt-6">
-                    <div class="grid gap-4">
-                        {% for topic in problem_topics %}
-                        <div class="flex items-center justify-between p-4 bg-bg-surface-alt rounded-card shadow-card">
-                            <div>
-                                <span class="font-medium">{{ topic.name }}</span>
-                                <span class="text-text-muted ml-4">{{ topic.avg_score }}%</span>
-                            </div>
-                            <a href="{{ url_for('task_generator.task_generator') }}?student_id={{ student.student_id }}" class="neo-button accent">
-                                Создать отработку
-                            </a>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </section>
-            {% endif %}
+          </div>
         </div>
+      </div>
 
-        <div id="tab-analytics" class="stats-tab-content">
-            <div class="analytics-header">
-                <p class="eyebrow">граф знаний · рейтинги по темам</p>
-                <h2 class="analytics-title">Прогноз и навыки по КЕГЭ</h2>
-            </div>
-            <div id="analytics-loading" class="analytics-loading">
-                <div class="analytics-spinner"></div>
-                <p>Загрузка аналитики…</p>
-            </div>
-            <div id="analytics-error" class="analytics-error" style="display: none;">
-                <p>Не удалось загрузить данные. Убедитесь, что ученик привязан к пользователю и есть проверенные работы.</p>
-            </div>
-            <div id="analytics-content" class="analytics-content" style="display: none;">
-                <div class="analytics-score-card">
-                    <div class="analytics-score-label">Прогноз балла на ЕГЭ</div>
-                    <div class="analytics-score-value" id="analyticsPredictedScore">—</div>
-                    <div class="analytics-score-secondary" id="analyticsPredictedSecondary">—</div>
-                    <div class="analytics-score-hint">Считается по твоим рейтингам по темам: для каждой темы оценивается вероятность верного ответа, умножается на балл задания и суммируется. Так получается ожидаемый первичный балл.</div>
-                </div>
-                <section class="glass-panel analytics-radar-section">
-                    <div class="panel-head">
-                        <div>
-                            <p class="eyebrow">рейтинги по темам</p>
-                            <h2>Радар навыков (КЕГЭ)</h2>
-                        </div>
-                    </div>
-                    <p class="analytics-radar-desc">По осям — номера заданий ЕГЭ. Чем выше значение, тем выше твой рейтинг в этой теме. Шкала 800–2500 (старт 1000).</p>
-                    <div class="analytics-radar-wrap">
-                        <canvas id="analyticsRadarChart"></canvas>
-                    </div>
-                </section>
-                <section class="glass-panel analytics-nodes-section">
-                    <div class="panel-head">
-                        <div>
-                            <p class="eyebrow">все темы</p>
-                            <h2>Рейтинги по узлам знаний</h2>
-                        </div>
-                    </div>
-                    <p class="analytics-table-legend">
-                        <span><strong>Код</strong> — внутренний код темы (например, GRAPH-BASICS).</span>
-                        <span><strong>Рейтинг</strong> — твой текущий рейтинг в теме (800–2500, старт 1000).</span>
-                        <span><strong>Балл</strong> — сколько первичных баллов даёт это задание на ЕГЭ (1 или 2).</span>
-                        <span><strong>Стрик</strong> — сколько дней подряд ты решал задачи по этой теме.</span>
-                    </p>
-                    <div class="analytics-nodes-table-wrap">
-                        <table class="analytics-nodes-table" id="analyticsNodesTable">
-                            <thead>
-                                <tr>
-                                    <th>Тема (№ ЕГЭ)</th>
-                                    <th>Код</th>
-                                    <th>Рейтинг</th>
-                                    <th>Балл</th>
-                                    <th>Стрик</th>
-                                </tr>
-                            </thead>
-                            <tbody id="analyticsNodesBody"></tbody>
-                        </table>
-                    </div>
-                </section>
-            </div>
-        </div>
+    </div>
+  </div>
+
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
-    <script>
+<script>
         const STUDENT_ID_FOR_ANALYTICS = {{ student.student_id }};
         let analyticsRadarChartInstance = null;
         let analyticsDataLoaded = false;
@@ -437,7 +335,7 @@
             if (content) content.classList.add('active');
             if (btn) btn.classList.add('active');
             else document.querySelector('.stats-tab[data-tab="' + tabName + '"]')?.classList.add('active');
-            if (tabName === 'analytics' && !analyticsDataLoaded) loadAnalyticsTab();
+            if (tabName === 'exam' && !analyticsDataLoaded) loadAnalyticsTab();
         }
 
         function isCinemaDemo() {
@@ -502,19 +400,25 @@
                     var primary = data.predicted_primary_score != null ? data.predicted_primary_score : 0;
                     var scoreEl = document.getElementById('analyticsPredictedScore');
                     var secondaryEl = document.getElementById('analyticsPredictedSecondary');
+                    var primaryEl = document.getElementById('analyticsPredictedPrimary');
+                    var primaryMaxEl = document.getElementById('analyticsPredictedPrimaryMax');
                     var isOge = data.course_slug && data.course_slug.indexOf('oge') !== -1;
                     if (isOge && data.grading && data.grading.scales) {
                         var maxP = data.grading.max_primary || 19;
                         if (scoreEl) scoreEl.textContent = primary + ' из ' + maxP + ' (первичный)';
+                        if (primaryEl) primaryEl.textContent = String(primary);
+                        if (primaryMaxEl) primaryMaxEl.textContent = String(maxP);
                         var grade = null; var rounded = Math.round(primary);
                         for (var si = 0; si < data.grading.scales.length; si++) { var sc = data.grading.scales[si]; if (rounded >= sc.min && rounded <= sc.max) { grade = sc.grade; break; } }
-                        if (secondaryEl) secondaryEl.textContent = grade != null ? 'Оценка: ' + grade + ' (' + (data.grading.scales.find(function(s){return s.grade===grade;}) || {}).label + ')' : '';
+                        if (secondaryEl) secondaryEl.textContent = grade != null ? ('Оценка: ' + grade) : '—';
                     } else {
                         var maxPrimary = (data.grading && data.grading.max_primary) ? data.grading.max_primary : 29;
                         if (scoreEl) scoreEl.textContent = primary + ' из ' + maxPrimary + ' (первичный)';
+                        if (primaryEl) primaryEl.textContent = String(primary);
+                        if (primaryMaxEl) primaryMaxEl.textContent = String(maxPrimary);
                         var primaryToTest = [0,7,14,21,27,34,39,43,46,50,53,56,59,62,65,68,71,73,76,77,78,80,82,84,86,88,91,93,96,100];
                         var testScore = primary >= 0 && primary <= 29 ? primaryToTest[Math.round(primary)] : null;
-                        if (secondaryEl) secondaryEl.textContent = testScore != null ? '≈ ' + testScore + ' тестовых баллов (по шкале ФИПИ)' : '';
+                        if (secondaryEl) secondaryEl.textContent = testScore != null ? ('≈ ' + testScore + ' тестовых баллов (по шкале ФИПИ)') : '—';
                     }
                     var nodes = data.nodes || [];
                     var accent1 = '#7B5CFF';
@@ -543,7 +447,7 @@
                             var rating = n.rating != null ? Math.round(n.rating) : '—';
                             var pts = n.exam_points != null ? n.exam_points : 1;
                             var streak = n.streak_days != null ? n.streak_days : 0;
-                            return '<tr><td>' + name + num + '</td><td class="code-cell">' + code + '</td><td class="rating-cell">' + rating + '</td><td>' + pts + '</td><td>' + streak + '</td></tr>';
+                            return '<tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors"><td class="px-6 py-4 font-extrabold text-slate-900 text-sm">' + name + num + '</td><td class="px-6 py-4"><span class="bg-slate-100 text-slate-500 font-mono text-xs px-2 py-1 rounded-md border border-slate-200">' + code + '</span></td><td class="px-6 py-4 font-black text-boo-primary">' + rating + '</td><td class="px-6 py-4 text-center font-black text-slate-700">' + pts + '</td><td class="px-6 py-4 text-right">' + (streak ? ('<span class="inline-flex items-center gap-1.5 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-100 text-xs font-bold text-orange-600"><i class="ph-fill ph-fire"></i> ' + streak + ' дн.</span>') : '<span class="text-slate-400 font-bold text-xs">-</span>') + '</td></tr>';
                         }).join('');
                     }
                 })
@@ -668,6 +572,7 @@
                 const mode = getEditMode();
                 document.querySelectorAll('.stat-edit-item').forEach(item => {
                     const ci = item.querySelector('.stat-input-correct'), ii = item.querySelector('.stat-input-incorrect');
+                    if (!ci || !ii) return;
                     if (mode === 'add') { ci.placeholder = 'Добавить'; ii.placeholder = 'Добавить'; }
                     else if (mode === 'set') { ci.placeholder = 'Установить значение'; ii.placeholder = 'Установить значение'; }
                     else if (mode === 'subtract') { ci.placeholder = 'Вычесть'; ii.placeholder = 'Вычесть'; }
@@ -679,8 +584,8 @@
                 btn.addEventListener('click', async function() {
                     const taskNumber = parseInt(this.dataset.taskNumber);
                     const item = this.closest('.stat-edit-item');
-                    const correctInput = item.querySelector('.stat-input-correct'), incorrectInput = item.querySelector('.stat-input-incorrect');
-                    const manualCorrect = parseInt(correctInput.value) || 0, manualIncorrect = parseInt(incorrectInput.value) || 0;
+                    const correctInput = item?.querySelector('.stat-input-correct'), incorrectInput = item?.querySelector('.stat-input-incorrect');
+                    const manualCorrect = parseInt(correctInput?.value) || 0, manualIncorrect = parseInt(incorrectInput?.value) || 0;
                     const editMode = getEditMode();
                     if (editMode !== 'set' && (manualCorrect < 0 || manualIncorrect < 0)) { showTemporaryNotification('Значения должны быть неотрицательными', 'error'); return; }
                     const originalText = this.innerHTML; this.innerHTML = '⏳ Сохранение...'; this.disabled = true;
@@ -688,7 +593,7 @@
                         const response = await fetch(`{{ url_for('students.update_statistics', student_id=student.student_id) }}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken || '' }, body: JSON.stringify({ task_number: taskNumber, mode: editMode, manual_correct: manualCorrect, manual_incorrect: manualIncorrect }) });
                         if (!response.ok) { const errorText = await response.text(); throw new Error(`HTTP ${response.status}: ${errorText}`); }
                         const data = await response.json();
-                        if (data && data.success) { showTemporaryNotification('Статистика успешно обновлена', 'success'); correctInput.value = '0'; incorrectInput.value = '0'; setTimeout(() => { const url = new URL(window.location.href); url.searchParams.set('_t', Date.now()); window.location.href = url.toString(); }, 1000); }
+                        if (data && data.success) { showTemporaryNotification('Статистика успешно обновлена', 'success'); if (correctInput) correctInput.value = '0'; if (incorrectInput) incorrectInput.value = '0'; setTimeout(() => { const url = new URL(window.location.href); url.searchParams.set('_t', Date.now()); window.location.href = url.toString(); }, 1000); }
                         else { showTemporaryNotification(data?.error || 'Ошибка при сохранении', 'error'); this.innerHTML = originalText; this.disabled = false; }
                     } catch (error) { console.error('Ошибка при сохранении статистики:', error); showTemporaryNotification('Ошибка при сохранении: ' + error.message, 'error'); this.innerHTML = originalText; this.disabled = false; }
                 });
@@ -709,31 +614,11 @@
                 });
             });
 
-            const addNewTaskBtn = document.getElementById('addNewTaskBtn');
-            if (addNewTaskBtn) {
-                addNewTaskBtn.addEventListener('click', async function() {
-                    const taskNumberInput = document.getElementById('newTaskNumber'), correctInput = document.getElementById('newTaskCorrect'), incorrectInput = document.getElementById('newTaskIncorrect');
-                    const taskNumber = parseInt(taskNumberInput.value), manualCorrect = parseInt(correctInput.value) || 0, manualIncorrect = parseInt(incorrectInput.value) || 0;
-                    if (!taskNumber || taskNumber < 1 || taskNumber > 27) { showTemporaryNotification('Введите корректный номер задания (1-27)', 'error'); taskNumberInput.focus(); return; }
-                    if (manualCorrect < 0 || manualIncorrect < 0) { showTemporaryNotification('Значения должны быть неотрицательными', 'error'); return; }
-                    if (document.querySelector(`.stat-edit-item[data-task-number="${taskNumber}"]`)) { showTemporaryNotification(`Задание ${taskNumber} уже есть в списке.`, 'error'); taskNumberInput.focus(); return; }
-                    const originalText = this.innerHTML; this.innerHTML = '⏳ Добавление...'; this.disabled = true;
-                    try {
-                        const response = await fetch(`{{ url_for('students.update_statistics', student_id=student.student_id) }}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken || '' }, body: JSON.stringify({ task_number: taskNumber, mode: 'set', manual_correct: manualCorrect, manual_incorrect: manualIncorrect }) });
-                        if (!response.ok) { const errorText = await response.text(); throw new Error(`HTTP ${response.status}: ${errorText}`); }
-                        const data = await response.json();
-                        if (data && data.success) { showTemporaryNotification(`Задание ${taskNumber} успешно добавлено`, 'success'); taskNumberInput.value = ''; correctInput.value = '0'; incorrectInput.value = '0'; setTimeout(() => { const url = new URL(window.location.href); url.searchParams.set('_t', Date.now()); window.location.href = url.toString(); }, 1000); }
-                        else { showTemporaryNotification(data?.error || 'Ошибка при добавлении', 'error'); this.innerHTML = originalText; this.disabled = false; }
-                    } catch (error) { console.error('Ошибка:', error); showTemporaryNotification('Ошибка: ' + error.message, 'error'); this.innerHTML = originalText; this.disabled = false; }
-                });
-                document.getElementById('newTaskNumber')?.addEventListener('keypress', function(e) { if (e.key === 'Enter') { e.preventDefault(); addNewTaskBtn.click(); } });
-            }
-
             const bulkApplyBtn = document.getElementById('bulkApplyBtn');
             if (bulkApplyBtn) {
                 bulkApplyBtn.addEventListener('click', async function() {
-                    const bulkCorrect = parseInt(document.getElementById('bulkCorrect').value) || 0;
-                    const bulkIncorrect = parseInt(document.getElementById('bulkIncorrect').value) || 0;
+                    const bulkCorrect = parseInt(document.getElementById('bulkCorrect')?.value) || 0;
+                    const bulkIncorrect = parseInt(document.getElementById('bulkIncorrect')?.value) || 0;
                     const editMode = getEditMode();
                     if (bulkCorrect === 0 && bulkIncorrect === 0) { showTemporaryNotification('Введите значения', 'error'); return; }
                     if (editMode !== 'set' && (bulkCorrect < 0 || bulkIncorrect < 0)) { showTemporaryNotification('Значения должны быть неотрицательными', 'error'); return; }
@@ -748,7 +633,6 @@
                         } catch (error) { console.error(`Ошибка задания ${taskNumber}:`, error); errorCount++; }
                     }
                     this.innerHTML = originalText; this.disabled = false;
-                    document.getElementById('bulkCorrect').value = '0'; document.getElementById('bulkIncorrect').value = '0';
                     if (errorCount === 0) { showTemporaryNotification(`Успешно применено к ${successCount} заданиям`, 'success'); setTimeout(() => { const url = new URL(window.location.href); url.searchParams.set('_t', Date.now()); window.location.href = url.toString(); }, 1000); }
                     else { showTemporaryNotification(`Применено к ${successCount}, ошибок: ${errorCount}`, 'error'); }
                 });
@@ -768,5 +652,6 @@
                 });
             }
         });
-    </script>
+</script>
 {% endblock %}
+

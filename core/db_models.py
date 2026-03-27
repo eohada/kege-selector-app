@@ -932,6 +932,25 @@ class LessonMessage(db.Model):
     author = db.relationship('User', foreign_keys=[author_user_id])
 
 
+class CallRequest(db.Model):
+    """Заявка ученика на созвон/консультацию."""
+    __tablename__ = 'CallRequests'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+
+    preferred_at = db.Column(db.DateTime, nullable=True)
+    message = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(30), default='new', nullable=False, index=True)  # new|seen|scheduled|closed
+
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
 class LessonWhiteboard(db.Model):
     """Интерактивная доска Miro, привязанная к уроку."""
     __tablename__ = 'LessonWhiteboards'
@@ -1896,6 +1915,49 @@ class StudentTheoryAccess(db.Model):
     __table_args__ = (db.UniqueConstraint('student_id', 'course_id', 'task_number', name='uq_student_theory_access'),)
 
     student = db.relationship('Student', foreign_keys=[student_id])
+    course = db.relationship('Course', foreign_keys=[course_id])
+
+
+class StudentTheoryState(db.Model):
+    """Состояние теории для ученика: закладки/прочитано."""
+    __tablename__ = 'StudentTheoryState'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)
+
+    is_bookmarked = db.Column(db.Boolean, default=False, nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    last_opened_at = db.Column(db.DateTime, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    __table_args__ = (db.UniqueConstraint('student_id', 'course_id', 'task_number', name='uq_student_theory_state'),)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    course = db.relationship('Course', foreign_keys=[course_id])
+
+
+class TheoryFeedback(db.Model):
+    """Фидбек ученика по статье теории: оценка + комментарий."""
+    __tablename__ = 'TheoryFeedback'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)
+
+    rating = db.Column(db.Integer, nullable=True)  # 1..5
+    comment = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    __table_args__ = (db.UniqueConstraint('student_id', 'course_id', 'task_number', name='uq_theory_feedback'),)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    user = db.relationship('User', foreign_keys=[user_id])
     course = db.relationship('Course', foreign_keys=[course_id])
 
 

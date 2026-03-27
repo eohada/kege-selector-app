@@ -28,7 +28,7 @@
     </script>
     {% block head_extra %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
+<body class="{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student{% endif %} {% block body_class %}{% endblock %}" {% block body_attrs %}{% endblock %}>
     {% block body %}
     {% if active_lesson is defined and active_lesson %}
     {% include '_active_lesson_banner.html' %}
