@@ -120,44 +120,9 @@ def _parse_datetime_local(value: str | None):
 @students_bp.route('/students')
 @login_required
 def students_list():
-    """Список всех студентов (активных и архивных)"""
-    scope = get_user_scope(current_user)
-    show_demo = request.args.get('show_demo', '0') == '1'
-
-    base_q = Student.query
-    if scope.get('can_see_all'):
-        active_students = base_q.options(db.joinedload(Student.user)).filter_by(is_active=True).order_by(Student.name).all()
-        archived_students = base_q.options(db.joinedload(Student.user)).filter_by(is_active=False).order_by(Student.name).all()
-    else:
-        allowed_user_ids = list(dict.fromkeys(scope.get('student_ids') or []))
-        if not allowed_user_ids:
-            active_students = []
-            archived_students = []
-        else:
-            scoped_students = Student.query.filter(Student.user_id.in_(allowed_user_ids)).all()
-            allowed_student_ids = [s.student_id for s in scoped_students]
-            if allowed_student_ids:
-                scoped_q = base_q.filter(Student.student_id.in_(allowed_student_ids))
-            else:
-                scoped_q = base_q.filter(False)
-
-            active_students = scoped_q.options(db.joinedload(Student.user)).filter(Student.is_active.is_(True)).order_by(Student.name).all()
-            archived_students = scoped_q.options(db.joinedload(Student.user)).filter(Student.is_active.is_(False)).order_by(Student.name).all()
-
-    def _is_demo(s):
-        return s.user and getattr(s.user, 'is_demo_user', False)
-
-    demo_count = sum(1 for s in active_students if _is_demo(s)) + sum(1 for s in archived_students if _is_demo(s))
-
-    if not show_demo:
-        active_students = [s for s in active_students if not _is_demo(s)]
-        archived_students = [s for s in archived_students if not _is_demo(s)]
-
-    return render_template('students_list.html',
-                         active_students=active_students,
-                         archived_students=archived_students,
-                         show_demo=show_demo,
-                         demo_count=demo_count)
+    """Legacy route kept for compatibility; canonical list is main.dashboard."""
+    params = request.args.to_dict(flat=True)
+    return redirect(url_for('main.dashboard', **params))
 
 @students_bp.route('/student/new', methods=['GET', 'POST'])
 @login_required
@@ -1913,7 +1878,7 @@ def student_delete(student_id):
     """Удаление студента (только creator/admin)"""
     if not (current_user.is_creator() or current_user.is_admin()):
         flash('У вас недостаточно прав для удаления учеников.', 'danger')
-        return redirect(url_for('students.students_list'))
+        return redirect(url_for('main.dashboard'))
 
     try:
         student = Student.query.get_or_404(student_id)
@@ -1992,7 +1957,7 @@ def student_archive(student_id):
     """Архивирование/восстановление студента (только creator/admin)"""
     if not (current_user.is_creator() or current_user.is_admin()):
         flash('У вас недостаточно прав.', 'danger')
-        return redirect(url_for('students.students_list'))
+        return redirect(url_for('main.dashboard'))
 
     student = Student.query.get_or_404(student_id)
     student.is_active = not student.is_active
@@ -2007,7 +1972,7 @@ def student_archive(student_id):
     else:
         flash(f'Ученик {student.name} перемещён в архив.', 'success')
 
-    return redirect(url_for('students.students_list'))
+    return redirect(url_for('main.dashboard'))
 
 
 @students_bp.route('/students/delete-all-demo', methods=['POST'])
@@ -2016,7 +1981,7 @@ def delete_all_demo():
     """Массовое удаление всех демо-учеников и связанных демо-пользователей"""
     if not (current_user.is_creator() or current_user.is_admin()):
         flash('У вас недостаточно прав.', 'danger')
-        return redirect(url_for('students.students_list'))
+        return redirect(url_for('main.dashboard'))
 
     try:
         from app.models import LessonTask, StudentTaskStatistics, GradebookEntry, StudentLearningPlanItem
@@ -2027,7 +1992,7 @@ def delete_all_demo():
 
         if not demo_user_ids:
             flash('Демо-учеников не найдено.', 'info')
-            return redirect(url_for('students.students_list'))
+            return redirect(url_for('main.dashboard'))
 
         demo_students = Student.query.filter(Student.user_id.in_(demo_user_ids)).all()
         demo_student_ids = [s.student_id for s in demo_students]
@@ -2076,7 +2041,7 @@ def delete_all_demo():
         logger.error(f'Ошибка при массовом удалении демо-учеников: {e}')
         flash(f'Ошибка при удалении: {str(e)}', 'error')
 
-    return redirect(url_for('students.students_list'))
+    return redirect(url_for('main.dashboard'))
 
 
 @students_bp.route('/student/<int:student_id>/lesson/new', methods=['GET', 'POST'])

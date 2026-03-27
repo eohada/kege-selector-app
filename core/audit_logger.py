@@ -8,7 +8,7 @@ import base64
 import urllib.parse
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-from flask import request, session, has_request_context
+from flask import request, session, has_request_context, g
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from .db_models import db, AuditLog, Tester, moscow_now
@@ -240,7 +240,8 @@ class AuditLogger:
             'user_agent': request.headers.get('User-Agent'),
             'url': request.url,
             'method': request.method,
-            'referer': request.headers.get('Referer')
+            'referer': request.headers.get('Referer'),
+            'request_id': getattr(g, 'request_id', None) or request.headers.get('X-Request-ID')
         }
 
     def log(self, action: str, entity: Optional[str] = None, entity_id: Optional[int] = None,
@@ -268,6 +269,8 @@ class AuditLogger:
             full_metadata = metadata or {}
             if request_info.get('referer'):
                 full_metadata['referer'] = request_info.get('referer')
+            if request_info.get('request_id'):
+                full_metadata['request_id'] = request_info.get('request_id')
 
             log_data = {
                 'timestamp': moscow_now(),
@@ -285,13 +288,22 @@ class AuditLogger:
                 'session_id': user_info.get('session_id'),
                 'duration_ms': duration_ms,
                 'url': request_info.get('url'),
-                'method': request_info.get('method')
+                'method': request_info.get('method'),
+                'request_id': request_info.get('request_id'),
             }
 
             self.log_queue.put(log_data)
-            logger.debug(
-                f"Audit log queued: {action} by "
-                f"{user_info.get('user_name') or user_info.get('tester_name') or 'Unknown'}"
+            logger.info(
+                "audit_log_queued",
+                extra={
+                    "event": "audit_log_queued",
+                    "action": action,
+                    "status": status,
+                    "entity": entity,
+                    "entity_id": entity_id,
+                    "request_id": request_info.get('request_id'),
+                    "user_id": user_info.get('user_id'),
+                },
             )
         except Exception as e:
             logger.error(f"Error queuing audit log: {e}", exc_info=True)

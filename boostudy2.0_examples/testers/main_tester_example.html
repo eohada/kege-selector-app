@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - QA Command Center</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты Golos Text & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Golos Text"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            qa: '#4F46E5', /* Индиго - технический цвет QA */
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: flex; animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ (С Режимом Хамелеона) -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none flex justify-center">
+        <header class="w-full max-w-[1400px] bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer group">
+                <!-- Иконка QA - Радар/Жук -->
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm group-hover:scale-105 transition-all">
+                    <i class="ph-fill ph-radar text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooQA</span>
+            </div>
+
+            <!-- Главное меню QA -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/60 p-1 rounded-xl border border-slate-200/50">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-5 py-2 bg-white text-indigo-600 shadow-sm border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-squares-four text-lg"></i> Дашборд
+                </button>
+                <button onclick="switchTab('tasks')" id="nav-tasks" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative">
+                    <i class="ph-bold ph-bug text-lg"></i> Баг-трекер
+                    <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-boo-coral rounded-full"></span>
+                </button>
+                <button onclick="switchTab('team')" id="nav-team" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-users-three text-lg"></i> Команда
+                </button>
+                <!-- Доступ к логам сервера -->
+                <button class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-terminal-window text-lg"></i> Логи
+                </button>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <!-- РЕЖИМ ХАМЕЛЕОНА (Имитация ролей) -->
+                <div class="hidden lg:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors group relative" title="Симулировать другой аккаунт">
+                    <i class="ph-fill ph-mask-happy text-slate-500 group-hover:text-indigo-600 transition-colors"></i>
+                    <span class="text-xs font-bold text-slate-600">Смотреть как...</span>
+                    <i class="ph-bold ph-caret-down text-slate-400 text-xs"></i>
+                </div>
+
+                <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+                <div class="flex items-center gap-2 pl-2">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-xs font-black text-slate-900">Chief Tester</div>
+                        <div class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">QA Lead</div>
+                    </div>
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=QA&backgroundColor=4F46E5" alt="QA Avatar" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-indigo-50">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-16 px-6 lg:px-8">
+        <div class="w-full max-w-[1400px] mx-auto h-full">
+
+            <!-- ========================================== -->
+            <!-- ВКЛАДКА 1: ДАШБОРД                         -->
+            <!-- ========================================== -->
+            <div id="tab-dashboard" class="tab-content active flex-col gap-6">
+                
+                <!-- HERO БЛОК: СТАТУС ПЛАТФОРМЫ -->
+                <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 relative overflow-hidden">
+                    <div class="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
+                        <i class="ph-fill ph-shield-check text-[250px] text-indigo-600"></i>
+                    </div>
+                    
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-3 mb-3">
+                            <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-extrabold rounded-lg uppercase tracking-wider border border-green-200 flex items-center gap-1.5">
+                                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Системы в норме
+                            </span>
+                            <span class="text-xs font-bold text-slate-400 font-mono">v. 2.4.1 (Stable)</span>
+                        </div>
+                        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Контроль качества</h1>
+                        <p class="text-slate-500 font-medium text-lg">Сводка по багам, тестам и стабильности платформы за последние 24 часа.</p>
+                    </div>
+
+                    <!-- Глобальная кнопка создания бага -->
+                    <button class="relative z-10 shrink-0 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0">
+                        <i class="ph-bold ph-bug text-xl"></i> Зарепортить баг
+                    </button>
+                </div>
+
+                <!-- РЯД 2: QA ПРЕСЕТЫ И МЕТРИКИ -->
+                <div class="flex flex-col lg:flex-row gap-6">
+                    
+                    <!-- ПРЕСЕТЫ (Макросы тестировщика) -->
+                    <div class="w-full lg:w-1/3 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col">
+                        <h3 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <i class="ph-fill ph-magic-wand text-indigo-500 text-lg"></i> Быстрые пресеты
+                        </h3>
+                        
+                        <div class="space-y-3 flex-1">
+                            <button class="w-full p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left">
+                                <div class="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center text-slate-500 group-hover:text-indigo-600">
+                                    <i class="ph-bold ph-user-plus text-lg"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-slate-900 text-sm">Сгенерировать юзера</div>
+                                    <div class="text-[11px] font-medium text-slate-500">Ученик с 3 просроченными ДЗ</div>
+                                </div>
+                            </button>
+
+                            <button class="w-full p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left">
+                                <div class="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center text-slate-500 group-hover:text-boo-coral">
+                                    <i class="ph-bold ph-warning-octagon text-lg"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-slate-900 text-sm">Сломать расписание</div>
+                                    <div class="text-[11px] font-medium text-slate-500">Создает конфликт слотов (для теста)</div>
+                                </div>
+                            </button>
+
+                            <button class="w-full p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left">
+                                <div class="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center text-slate-500 group-hover:text-boo-cyan">
+                                    <i class="ph-bold ph-database text-lg"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-slate-900 text-sm">Очистить кэш БД</div>
+                                    <div class="text-[11px] font-medium text-slate-500">Сброс Redis на тестовом сервере</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- МЕТРИКИ (Замена старого скучного ряда цифр) -->
+                    <div class="w-full lg:w-2/3 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <!-- Метрика: Всего открыто -->
+                        <div class="bg-slate-50 rounded-[24px] border border-slate-200 p-5 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Открыто багов</div>
+                                <i class="ph-fill ph-bug text-slate-400"></i>
+                            </div>
+                            <div class="text-3xl font-black text-slate-900">24</div>
+                        </div>
+
+                        <!-- Метрика: Критичные -->
+                        <div class="bg-red-50/50 rounded-[24px] border border-red-200 p-5 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="text-[10px] font-extrabold text-boo-coral uppercase tracking-widest">Критичные</div>
+                                <i class="ph-fill ph-warning text-boo-coral animate-pulse"></i>
+                            </div>
+                            <div class="text-3xl font-black text-slate-900">2</div>
+                        </div>
+
+                        <!-- Метрика: На ревью у Создателя -->
+                        <div class="bg-purple-50 rounded-[24px] border border-purple-200 p-5 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="text-[10px] font-extrabold text-boo-primary uppercase tracking-widest">Ревью (Код)</div>
+                                <i class="ph-fill ph-git-pull-request text-boo-primary"></i>
+                            </div>
+                            <div class="text-3xl font-black text-slate-900">5</div>
+                        </div>
+
+                        <!-- Метрика: Исправлено за неделю -->
+                        <div class="bg-green-50 rounded-[24px] border border-green-200 p-5 flex flex-col justify-between">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="text-[10px] font-extrabold text-green-600 uppercase tracking-widest">Закрыто (7д)</div>
+                                <i class="ph-fill ph-check-circle text-green-500"></i>
+                            </div>
+                            <div class="text-3xl font-black text-slate-900">128</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ЖИВАЯ ЛЕНТА БАГОВ (Mini-Tracker) -->
+                <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex-1">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-black text-slate-900">Последняя активность</h3>
+                        <button class="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors">Смотреть все <i class="ph-bold ph-arrow-right"></i></button>
+                    </div>
+
+                    <div class="space-y-3">
+                        <!-- Элемент ленты -->
+                        <div class="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-300 transition-colors cursor-pointer group">
+                            <div class="w-10 h-10 rounded-lg bg-red-100 text-boo-coral flex items-center justify-center shrink-0">
+                                <i class="ph-bold ph-bug text-lg"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-bold text-slate-900 text-sm truncate">Кнопка "Сдать ДЗ" не нажимается на iOS</span>
+                                    <span class="px-2 py-0.5 bg-red-100 text-boo-coral text-[10px] font-extrabold rounded uppercase">Critical</span>
+                                </div>
+                                <div class="text-xs font-medium text-slate-500 flex items-center gap-2">
+                                    <span class="font-mono text-[10px] bg-slate-200 px-1 rounded">#BUG-1042</span>
+                                    • Нашел: <span class="font-bold text-slate-700">Tester Alex</span> • 10 минут назад
+                                </div>
+                            </div>
+                            <div class="hidden sm:flex px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-500 shadow-sm group-hover:text-indigo-600 transition-colors">
+                                In Progress
+                            </div>
+                        </div>
+
+                        <!-- Элемент ленты 2 -->
+                        <div class="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-300 transition-colors cursor-pointer group">
+                            <div class="w-10 h-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center shrink-0">
+                                <i class="ph-bold ph-check text-lg"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-bold text-slate-900 text-sm truncate">Опечатка в теории (Задание 15)</span>
+                                    <span class="px-2 py-0.5 bg-slate-200 text-slate-600 text-[10px] font-extrabold rounded uppercase">Minor</span>
+                                </div>
+                                <div class="text-xs font-medium text-slate-500 flex items-center gap-2">
+                                    <span class="font-mono text-[10px] bg-slate-200 px-1 rounded">#BUG-1041</span>
+                                    • Проверил: <span class="font-bold text-slate-700">Chief Tester</span> • 1 час назад
+                                </div>
+                            </div>
+                            <div class="hidden sm:flex px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg text-xs font-bold text-green-700 shadow-sm">
+                                Fixed
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- ВКЛАДКА 2: БАГ-ТРЕКЕР (KANBAN)             -->
+            <!-- ========================================== -->
+            <div id="tab-tasks" class="tab-content flex-col h-full hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-black text-slate-900 tracking-tight">Доска задач</h2>
+                    <div class="flex gap-2">
+                        <div class="relative hidden sm:block">
+                            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" placeholder="Поиск бага..." class="bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm font-medium focus:border-indigo-500 outline-none shadow-sm">
+                        </div>
+                        <button class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-sm flex items-center gap-2">
+                            <i class="ph-bold ph-funnel"></i> Фильтры
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KANBAN BOARD -->
+                <div class="flex-1 flex gap-6 overflow-x-auto pb-4 hide-scroll">
+                    
+                    <!-- Колонка: TO DO -->
+                    <div class="w-80 shrink-0 flex flex-col gap-4">
+                        <div class="flex justify-between items-center px-1">
+                            <h3 class="font-extrabold text-slate-500 uppercase tracking-widest text-xs flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-slate-300"></span> To Do (2)
+                            </h3>
+                            <button class="text-slate-400 hover:text-slate-900"><i class="ph-bold ph-plus"></i></button>
+                        </div>
+                        
+                        <!-- Карточка бага -->
+                        <div class="bg-white p-4 rounded-[20px] border border-slate-200 border-b-4 border-b-slate-300 shadow-sm hover:shadow-tactile cursor-grab transition-all">
+                            <div class="flex gap-2 mb-3">
+                                <span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">UI/UX</span>
+                                <span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">High</span>
+                            </div>
+                            <h4 class="font-bold text-slate-900 text-sm leading-tight mb-3">Не центрируется стрик в тренажере на мобилках</h4>
+                            <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                                <span class="font-mono text-[10px] text-slate-400">#B-1045</span>
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" class="w-6 h-6 rounded-full bg-slate-100 border border-slate-200" title="Assigned to Alex">
+                            </div>
+                        </div>
+
+                         <div class="bg-white p-4 rounded-[20px] border border-slate-200 border-b-4 border-b-slate-300 shadow-sm hover:shadow-tactile cursor-grab transition-all">
+                            <div class="flex gap-2 mb-3">
+                                <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Logic</span>
+                            </div>
+                            <h4 class="font-bold text-slate-900 text-sm leading-tight mb-3">Ошибка подсчета баллов во 2 части</h4>
+                            <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                                <span class="font-mono text-[10px] text-slate-400">#B-1046</span>
+                                <div class="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 border-dashed flex items-center justify-center text-slate-400"><i class="ph-bold ph-user-plus text-[10px]"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Колонка: IN PROGRESS -->
+                    <div class="w-80 shrink-0 flex flex-col gap-4">
+                        <div class="flex justify-between items-center px-1">
+                            <h3 class="font-extrabold text-indigo-500 uppercase tracking-widest text-xs flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span> In Progress (1)
+                            </h3>
+                        </div>
+                        
+                        <div class="bg-white p-4 rounded-[20px] border border-indigo-200 border-b-4 border-b-indigo-400 shadow-sm hover:shadow-tactile cursor-grab transition-all">
+                            <div class="flex gap-2 mb-3">
+                                <span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Critical</span>
+                            </div>
+                            <h4 class="font-bold text-slate-900 text-sm leading-tight mb-3">Кнопка "Сдать ДЗ" не нажимается на iOS</h4>
+                            <div class="flex justify-between items-center border-t border-slate-100 pt-3">
+                                <span class="font-mono text-[10px] text-slate-400">#B-1042</span>
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=QA" class="w-6 h-6 rounded-full bg-indigo-50 border border-indigo-200" title="You are fixing this">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Колонка: READY FOR REVIEW (Ждут Создателя) -->
+                    <div class="w-80 shrink-0 flex flex-col gap-4">
+                        <div class="flex justify-between items-center px-1">
+                            <h3 class="font-extrabold text-boo-accent uppercase tracking-widest text-xs flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-orange-400"></span> QA Review (0)
+                            </h3>
+                        </div>
+                        
+                        <!-- Empty Drop Zone -->
+                        <div class="h-32 border-2 border-slate-200 border-dashed rounded-[20px] bg-slate-50/50 flex items-center justify-center text-slate-400 font-bold text-sm">
+                            Перетащить сюда
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- ВКЛАДКА 3: КОМАНДА (УПРАВЛЕНИЕ ТЕСТЕРАМИ)  -->
+            <!-- ========================================== -->
+            <div id="tab-team" class="tab-content flex-col gap-6 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="text-3xl font-black text-slate-900 tracking-tight">QA Отдел</h2>
+                        <p class="text-slate-500 font-medium">Управление доступом и распределение нагрузки на тестировщиков.</p>
+                    </div>
+                    <button class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
+                        <i class="ph-bold ph-user-plus"></i> Пригласить
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Карточка тестера -->
+                    <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tester1" class="w-12 h-12 rounded-xl border border-slate-200 shadow-sm bg-slate-50">
+                                <div>
+                                    <h4 class="font-black text-slate-900 leading-tight">Alex.Test</h4>
+                                    <span class="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest">Junior QA</span>
+                                </div>
+                            </div>
+                            <button class="text-slate-400 hover:text-slate-900"><i class="ph-bold ph-dots-three text-xl"></i></button>
+                        </div>
+                        
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-4">
+                            <div class="text-xs font-bold text-slate-500 mb-1">Зона ответственности</div>
+                            <div class="font-bold text-slate-900 text-sm">Тренажёр и База знаний</div>
+                        </div>
+
+                        <div class="flex justify-between items-end border-t border-slate-100 pt-4 mt-auto">
+                            <div>
+                                <div class="text-[10px] font-bold text-slate-400 uppercase">В работе</div>
+                                <div class="font-black text-slate-900">4 бага</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] font-bold text-slate-400 uppercase">Эффективность</div>
+                                <div class="font-black text-green-500">Высокая</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Карточка тестера 2 -->
+                    <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tester2" class="w-12 h-12 rounded-xl border border-slate-200 shadow-sm bg-slate-50">
+                                <div>
+                                    <h4 class="font-black text-slate-900 leading-tight">Maria.Q</h4>
+                                    <span class="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest">Middle QA</span>
+                                </div>
+                            </div>
+                            <button class="text-slate-400 hover:text-slate-900"><i class="ph-bold ph-dots-three text-xl"></i></button>
+                        </div>
+                        
+                        <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-4">
+                            <div class="text-xs font-bold text-slate-500 mb-1">Зона ответственности</div>
+                            <div class="font-bold text-slate-900 text-sm">Мобильная верстка, Расписание</div>
+                        </div>
+
+                        <div class="flex justify-between items-end border-t border-slate-100 pt-4 mt-auto">
+                            <div>
+                                <div class="text-[10px] font-bold text-slate-400 uppercase">В работе</div>
+                                <div class="font-black text-slate-900">1 баг</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] font-bold text-slate-400 uppercase">Эффективность</div>
+                                <div class="font-black text-boo-accent">Средняя</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Скрипт переключения вкладок -->
+    <script>
+        function switchTab(tabId) {
+            // Все табы и кнопки
+            const tabs = ['dashboard', 'tasks', 'team'];
+            const activeNavClass = 'px-5 py-2 bg-white text-indigo-600 shadow-sm border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
+            const inactiveNavClass = 'px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
+
+            tabs.forEach(id => {
+                const content = document.getElementById(`tab-${id}`);
+                const btn = document.getElementById(`nav-${id}`);
+                
+                if (id === tabId) {
+                    content.classList.remove('hidden');
+                    content.classList.add('active');
+                    // Сохраняем уведомление (красную точку) если это баг-трекер
+                    const dot = id === 'tasks' ? '<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-boo-coral rounded-full"></span>' : '';
+                    btn.className = activeNavClass;
+                    btn.innerHTML = btn.innerHTML.replace(/<span.*<\/span>/, '') + dot;
+                } else {
+                    content.classList.add('hidden');
+                    content.classList.remove('active');
+                    const dot = id === 'tasks' ? '<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-boo-coral rounded-full"></span>' : '';
+                    btn.className = inactiveNavClass;
+                    btn.innerHTML = btn.innerHTML.replace(/<span.*<\/span>/, '') + dot;
+                }
+            });
+        }
+    </script>
+</body>
+</html>

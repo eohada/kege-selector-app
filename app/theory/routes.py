@@ -6,15 +6,12 @@ import logging
 import os
 from flask import render_template, request, redirect, url_for, flash, abort, jsonify, current_app
 from flask_login import login_required, current_user
-from flask_wtf.csrf import validate_csrf, CSRFError
 
 from app.theory import theory_bp
 from app.models import (
     db,
     TheoryBlock,
     StudentTheoryAccess,
-    StudentTheoryState,
-    TheoryFeedback,
     Student,
     User,
     Course,
@@ -25,66 +22,6 @@ from app.models import (
 from app.auth.rbac_utils import has_permission
 
 logger = logging.getLogger(__name__)
-
-def _get_current_student_for_user() -> Student | None:
-    if not current_user.is_authenticated:
-        return None
-    if not current_user.is_student():
-        return None
-    st = Student.query.filter_by(user_id=current_user.id).first()
-    if st:
-        return st
-    try:
-        cand = Student.query.get(current_user.id)
-        if cand and getattr(cand, 'user_id', None) is None and cand.student_id == current_user.id:
-            return cand
-    except Exception:
-        pass
-    return None
-
-
-def _build_visible_and_state(course_id: int):
-    task_numbers = _get_course_task_numbers(course_id)
-    blocks = TheoryBlock.query.filter(
-        (TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))
-    ).order_by(TheoryBlock.task_number).all()
-    block_by_number = {b.task_number: b for b in blocks}
-
-    allowed_numbers = set(task_numbers)
-    student = None
-    if current_user.is_student():
-        student = _get_current_student_for_user()
-        if student:
-            allowed_numbers = _get_allowed_task_numbers_for_student(student.student_id, course_id)
-        else:
-            allowed_numbers = set()
-
-    visible = [
-        (num, block_by_number.get(num))
-        for num in task_numbers
-        if num in allowed_numbers and num in block_by_number
-    ]
-
-    state_by_number = {}
-    if student and visible:
-        try:
-            nums = [num for (num, _b) in visible]
-            rows = StudentTheoryState.query.filter(
-                StudentTheoryState.student_id == student.student_id,
-                StudentTheoryState.course_id == course_id,
-                StudentTheoryState.task_number.in_(nums),
-            ).all()
-            state_by_number = {
-                r.task_number: {
-                    'bookmarked': bool(r.is_bookmarked),
-                    'read': bool(r.is_read),
-                }
-                for r in (rows or [])
-            }
-        except Exception:
-            state_by_number = {}
-
-    return visible, state_by_number, student
 
 
 def _get_course_task_numbers(course_id):
@@ -144,22 +81,38 @@ def theory_index():
     if course_id is None:
         flash('Нет доступных курсов. Обратитесь к администратору.', 'warning')
         return render_template(
-            'theory/theory_shell.html',
+            'theory/theory_index.html',
             visible=[],
             course_id=None,
-            state_by_number={},
-            initial_view='index',
             active_page='theory',
         )
 
-    visible, state_by_number, _student = _build_visible_and_state(course_id)
+    task_numbers = _get_course_task_numbers(course_id)
+    blocks = TheoryBlock.query.filter(
+        (TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))
+    ).order_by(TheoryBlock.task_number).all()
+    block_by_number = {b.task_number: b for b in blocks}
+
+    # Для ученика — фильтруем по StudentTheoryAccess
+    allowed_numbers = set(task_numbers)
+    if current_user.is_student():
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if student:
+            allowed_numbers = _get_allowed_task_numbers_for_student(student.student_id, course_id)
+        else:
+            allowed_numbers = set()
+
+    # Показываем только номера, по которым есть блок и доступ
+    visible = [
+        (num, block_by_number.get(num))
+        for num in task_numbers
+        if num in allowed_numbers and num in block_by_number
+    ]
 
     return render_template(
-        'theory/theory_shell.html',
+        'theory/theory_index.html',
         visible=visible,
         course_id=course_id,
-        state_by_number=state_by_number,
-        initial_view='index',
         active_page='theory',
     )
 
@@ -210,153 +163,13 @@ def theory_view(task_number):
     except Exception:
         logger.exception("Failed to load custom theory HTML for task_number=%s", task_number)
 
-    # Student state + feedback
-    student = _get_current_student_for_user()
-    state = {'bookmarked': False, 'read': False}
-    feedback = None
-    try:
-        if student:
-            st_row = StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=course_id, task_number=task_number).first()
-            if st_row:
-                state = {'bookmarked': bool(st_row.is_bookmarked), 'read': bool(st_row.is_read)}
-            feedback = TheoryFeedback.query.filter_by(student_id=student.student_id, course_id=course_id, task_number=task_number).first()
-    except Exception:
-        pass
-
-    is_fragment = (request.args.get('fragment') == '1') or (request.headers.get('HX-Request') == 'true')
-    if is_fragment:
-        return render_template(
-            'theory/_article.html',
-            block=block,
-            course_id=course_id,
-            custom_html=custom_html,
-            state=state,
-            feedback=feedback,
-        )
-
-    visible, state_by_number, _st = _build_visible_and_state(course_id)
     return render_template(
-        'theory/theory_shell.html',
-        visible=visible,
+        'theory/theory_view.html',
+        block=block,
         course_id=course_id,
-        state_by_number=state_by_number,
-        initial_view='article',
-        initial_task_number=task_number,
-        initial_block=block,
-        initial_custom_html=custom_html,
-        initial_state=state,
-        initial_feedback=feedback,
         active_page='theory',
+        custom_html=custom_html,
     )
-
-
-@theory_bp.route('/theory/api/bookmark', methods=['POST'])
-@login_required
-def theory_api_bookmark():
-    if not has_permission(current_user, 'theory.view'):
-        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
-    st = _get_current_student_for_user()
-    if not st:
-        return jsonify({'success': False, 'error': 'Только для ученика'}), 403
-    try:
-        validate_csrf(request.headers.get('X-CSRFToken') or request.form.get('csrf_token'))
-    except CSRFError:
-        return jsonify({'success': False, 'error': 'CSRF'}), 403
-
-    data = request.get_json(silent=True) if request.is_json else request.form
-    task_number = int((data.get('task_number') or 0))
-    course_id = int(data.get('course_id') or _get_default_course_id() or 0) or None
-    value = bool(data.get('value'))
-    if not task_number:
-        return jsonify({'success': False, 'error': 'task_number required'}), 400
-    try:
-        row = StudentTheoryState.query.filter_by(student_id=st.student_id, course_id=course_id, task_number=task_number).first()
-        if not row:
-            row = StudentTheoryState(student_id=st.student_id, course_id=course_id, task_number=task_number)
-            db.session.add(row)
-        row.is_bookmarked = value
-        db.session.commit()
-        return jsonify({'success': True, 'bookmarked': bool(row.is_bookmarked)})
-    except Exception as e:
-        db.session.rollback()
-        logger.error("bookmark failed: %s", e, exc_info=True)
-        return jsonify({'success': False, 'error': 'db_error'}), 500
-
-
-@theory_bp.route('/theory/api/read', methods=['POST'])
-@login_required
-def theory_api_read():
-    if not has_permission(current_user, 'theory.view'):
-        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
-    st = _get_current_student_for_user()
-    if not st:
-        return jsonify({'success': False, 'error': 'Только для ученика'}), 403
-    try:
-        validate_csrf(request.headers.get('X-CSRFToken') or request.form.get('csrf_token'))
-    except CSRFError:
-        return jsonify({'success': False, 'error': 'CSRF'}), 403
-
-    data = request.get_json(silent=True) if request.is_json else request.form
-    task_number = int((data.get('task_number') or 0))
-    course_id = int(data.get('course_id') or _get_default_course_id() or 0) or None
-    if not task_number:
-        return jsonify({'success': False, 'error': 'task_number required'}), 400
-    try:
-        row = StudentTheoryState.query.filter_by(student_id=st.student_id, course_id=course_id, task_number=task_number).first()
-        if not row:
-            row = StudentTheoryState(student_id=st.student_id, course_id=course_id, task_number=task_number)
-            db.session.add(row)
-        row.is_read = True
-        row.last_opened_at = moscow_now().replace(tzinfo=None)
-        db.session.commit()
-        return jsonify({'success': True, 'read': bool(row.is_read)})
-    except Exception as e:
-        db.session.rollback()
-        logger.error("read failed: %s", e, exc_info=True)
-        return jsonify({'success': False, 'error': 'db_error'}), 500
-
-
-@theory_bp.route('/theory/api/feedback', methods=['POST'])
-@login_required
-def theory_api_feedback():
-    if not has_permission(current_user, 'theory.view'):
-        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
-    st = _get_current_student_for_user()
-    if not st:
-        return jsonify({'success': False, 'error': 'Только для ученика'}), 403
-    try:
-        validate_csrf(request.headers.get('X-CSRFToken') or request.form.get('csrf_token'))
-    except CSRFError:
-        return jsonify({'success': False, 'error': 'CSRF'}), 403
-
-    data = request.get_json(silent=True) if request.is_json else request.form
-    task_number = int((data.get('task_number') or 0))
-    course_id = int(data.get('course_id') or _get_default_course_id() or 0) or None
-    rating = data.get('rating')
-    comment = (data.get('comment') or '').strip()
-    try:
-        rating = int(rating) if rating is not None and str(rating).strip() != '' else None
-    except Exception:
-        rating = None
-    if rating is not None and (rating < 1 or rating > 5):
-        return jsonify({'success': False, 'error': 'rating must be 1..5'}), 400
-    if len(comment) > 4000:
-        comment = comment[:4000]
-    if not task_number:
-        return jsonify({'success': False, 'error': 'task_number required'}), 400
-    try:
-        row = TheoryFeedback.query.filter_by(student_id=st.student_id, course_id=course_id, task_number=task_number).first()
-        if not row:
-            row = TheoryFeedback(student_id=st.student_id, user_id=current_user.id, course_id=course_id, task_number=task_number)
-            db.session.add(row)
-        row.rating = rating
-        row.comment = comment or None
-        db.session.commit()
-        return jsonify({'success': True})
-    except Exception as e:
-        db.session.rollback()
-        logger.error("feedback failed: %s", e, exc_info=True)
-        return jsonify({'success': False, 'error': 'db_error'}), 500
 
 
 # --- Управление для тьютора/админа ---

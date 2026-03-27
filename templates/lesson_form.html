@@ -1,528 +1,149 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} · {{ student.name }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    {% include '_ux_enhancements.html' %}
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <style>
-        .form-hero {
-            margin-bottom: 2rem;
-        }
-        
-        .form-section {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
-        
-        .form-section-title {
-            font-size: 1.3em;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.8rem;
-            border-bottom: 1px solid var(--stroke-1);
-        }
-        
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .form-grid-full {
-            grid-column: 1 / -1;
-        }
-        
-        .student-context {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-        
-        .student-context h3 {
-            color: var(--text-primary);
-            margin: 0;
-            font-weight: 700;
-        }
-        
-        .tasks-preview {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            margin-top: 2rem;
-        }
-        
-        .tasks-preview-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-        
-        .tasks-preview-title {
-            font-size: 1.3em;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-        
-        .task-preview-card {
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-sm);
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        .task-preview-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-        
-        .task-preview-number {
-            font-weight: 700;
-            color: var(--accent-1);
-        }
-        
-        .task-preview-content {
-            margin-top: 0.8em;
-            padding: 0.8em;
-            background: var(--surface-3);
-            border-radius: var(--radius-sm);
-            font-size: 0.9em;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .task-preview-answer {
-            margin-top: 0.5em;
-            padding: 0.5em;
-            background: rgba(0, 254, 202, 0.12);
-            border-left: 3px solid var(--success);
-            border-radius: var(--radius-sm);
-            font-size: 0.9em;
-        }
-    </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="{% if active_lesson %}lesson-active{% endif %}">
-    {% if active_lesson %}
-    <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
-    </div>
-    <div class="now-playing-panel" id="lessonMenu">
-        <div class="hero-eyebrow">текущий урок</div>
-        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
-        {% if active_lesson.topic %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
-        {% endif %}
-        {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
-        {% set active_local = (active_lesson.lesson_date|to_tz(tz_name)) %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_local.strftime('%d.%m.%Y %H:%M') if active_local else '—' }}</p>
-        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
-        <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
-            </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('profile.user', 'sm', decorative=true) }}Профиль</a>
+{% extends 'base.html' %}
+{% set active_page = 'dashboard' %}
+{% block title %}{{ title }} · {{ student.name }}{% endblock %}
+{% block body_class %}layout-teacher{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-[1200px] mx-auto space-y-6">
+    <section class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">форма урока</div>
+            <h1 class="text-3xl font-black text-slate-900 tracking-tight mt-1">{{ title }}</h1>
+            <p class="text-slate-500 font-medium text-sm mt-2">Ученик: <span class="font-bold text-slate-700">{{ student.name }}</span></p>
         </div>
-    </div>
-    <script>
-        function toggleLessonMenu() {
-            const menu = document.getElementById('lessonMenu');
-            if (menu) {
-                menu.classList.toggle('active');
-            }
-        }
-        document.addEventListener('click', (event) => {
-            const menu = document.getElementById('lessonMenu');
-            const badge = document.querySelector('.now-playing-pill');
-            if (!menu || !badge) return;
-            if (!menu.contains(event.target) && !badge.contains(event.target)) {
-                menu.classList.remove('active');
-            }
-        });
-    </script>
+        <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}"
+           class="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors inline-flex items-center gap-2">
+            <i class="ph-bold ph-arrow-left"></i> Назад в профиль
+        </a>
+    </section>
+
+    {% if form.errors %}
+    <section class="bg-red-50 rounded-[20px] border border-red-200 p-4">
+        <div class="font-bold text-red-700 mb-2">Ошибки формы:</div>
+        <ul class="text-red-700 text-sm list-disc pl-5 space-y-1">
+            {% for field_name, error_list in form.errors.items() %}
+                {% for error in error_list %}
+                <li>{{ field_name }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </section>
     {% endif %}
 
-    <div class="app-layout">
-        {% set active_page = 'dashboard' %}
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+    <form method="POST" class="space-y-6">
+        {{ form.hidden_tag() }}
 
-        <section class="glass-panel student-context">
-            <h3>{{ ui_icon('profile.user', 'sm', decorative=true) }} Ученик: {{ student.name }}</h3>
-            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Вернуться к профилю</a>
-        </section>
-
-        <section class="glass-panel form-hero">
-            <div>
-                <p class="hero-eyebrow">форма урока</p>
-                <h1 class="hero-title">{{ title }}</h1>
+        <section class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
+            <h2 class="text-lg font-extrabold text-slate-900 mb-4">Основная информация</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="neo-field">
+                    {{ form.exam_course_id.label(class='neo-label') }}
+                    {{ form.exam_course_id(class='neo-select') }}
+                </div>
+                <div class="neo-field">
+                    {{ form.lesson_type.label(class='neo-label') }}
+                    {{ form.lesson_type(class='neo-select') }}
+                </div>
+                <div class="neo-field">
+                    {{ form.timezone.label(class='neo-label') }}
+                    {{ form.timezone(class='neo-select') }}
+                </div>
+                <div class="neo-field">
+                    {{ form.lesson_date.label(class='neo-label') }}
+                    {{ form.lesson_date(class='neo-input') }}
+                </div>
+                <div class="neo-field">
+                    {{ form.duration.label(class='neo-label') }}
+                    {{ form.duration(class='neo-input', placeholder='60') }}
+                </div>
+                <div class="neo-field">
+                    {{ form.status.label(class='neo-label') }}
+                    {{ form.status(class='neo-select') }}
+                </div>
             </div>
         </section>
 
-        {% if form.errors %}
-        <section class="glass-panel" style="border-left: 4px solid var(--danger);">
-            <div style="background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 1rem; color: var(--danger);">
-                <strong style="display: block; margin-bottom: 0.5rem;">{{ ui_icon('action.warning', 'sm') }} Ошибки при заполнении формы:</strong>
-                <ul style="margin: 0.5em 0 0 1.5em; list-style: disc;">
-                {% for field_name, error_list in form.errors.items() %}
-                    {% for error in error_list %}
-                    <li>{{ field_name }}: {{ error }}</li>
-                    {% endfor %}
-                {% endfor %}
-                </ul>
+        <section class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
+            <h2 class="text-lg font-extrabold text-slate-900 mb-4">Содержание урока</h2>
+            <div class="grid grid-cols-1 gap-4">
+                <div class="neo-field">
+                    {{ form.topic.label(class='neo-label') }}
+                    {{ form.topic(class='neo-input', placeholder='Тема урока') }}
+                </div>
+                <div class="neo-field">
+                    {{ form.notes.label(class='neo-label') }}
+                    {{ form.notes(class='neo-input', rows=4, placeholder='Заметки преподавателя') }}
+                </div>
             </div>
         </section>
-        {% endif %}
 
-        <form method="POST">
-            {{ form.hidden_tag() }}
-            
-            <section class="form-section">
-                <div class="form-section-title">{{ ui_icon('nav.schedule', 'sm', decorative=true) }} Основная информация</div>
-                <div class="form-grid">
-                    <div class="neo-field">
-                        {{ form.exam_course_id.label(class='neo-label') }}
-                        {{ form.exam_course_id(class='neo-select') }}
-                        {% if form.exam_course_id.errors %}
-                            <div class="field-error">{{ form.exam_course_id.errors[0] }}</div>
-                        {% endif %}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Выберите программу подготовки (ЕГЭ / ОГЭ) для корректной генерации заданий</small>
-                    </div>
-
-                    <div class="neo-field">
-                        {{ form.lesson_type.label(class='neo-label') }}
-                        {{ form.lesson_type(class='neo-select') }}
-                        {% if form.lesson_type.errors %}
-                            <div class="field-error">{{ form.lesson_type.errors[0] }}</div>
-                        {% endif %}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Выберите тип урока (обычный, проверочный или вводный)</small>
-                    </div>
-                    
-                    <div class="neo-field">
-                        {{ form.timezone.label(class='neo-label') }}
-                        {{ form.timezone(class='neo-select') }}
-                        {% if form.timezone.errors %}
-                            <div class="field-error">{{ form.timezone.errors[0] }}</div>
-                        {% endif %}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Выберите часовой пояс для даты и времени урока</small>
-                    </div>
-                    
-                    <div class="neo-field">
-                        {{ form.lesson_date.label(class='neo-label') }}
-                        {{ form.lesson_date(class='neo-input') }}
-                        {% if form.lesson_date.errors %}
-                            <div class="field-error">{{ form.lesson_date.errors[0] }}</div>
-                        {% endif %}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Дата и время проведения урока (в выбранном часовом поясе)</small>
-                    </div>
-                    
-                    <div class="neo-field">
-                        {{ form.duration.label(class='neo-label') }}
-                        {{ form.duration(class='neo-input', placeholder='60') }}
-                        {% if form.duration.errors %}
-                            <div class="field-error">{{ form.duration.errors[0] }}</div>
-                        {% endif %}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Продолжительность урока в минутах</small>
-                    </div>
-                    
-                    <div class="neo-field">
-                        {{ form.status.label(class='neo-label') }}
-                        {{ form.status(class='neo-select') }}
-                        {% if form.status.errors %}
-                            <div class="field-error">{{ form.status.errors[0] }}</div>
-                        {% endif %}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Текущий статус урока</small>
-                    </div>
+        <section class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6" data-section="homework">
+            <h2 class="text-lg font-extrabold text-slate-900 mb-4">Домашнее задание</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="neo-field md:col-span-2">
+                    {{ form.homework.label(class='neo-label') }}
+                    {{ form.homework(class='neo-input', rows=4, placeholder='Что задано на дом') }}
                 </div>
-            </section>
-            
-            <section class="form-section">
-                <div class="form-section-title">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Содержание урока</div>
-                <div class="form-grid">
-                    <div class="neo-field form-grid-full">
-                        {{ form.topic.label(class='neo-label') }}
-                        {{ form.topic(class='neo-input', placeholder='Например: Алгоритмы, задания 19-21') }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Тема или темы, которые будут изучены</small>
-                    </div>
-                    
-                    <div class="neo-field form-grid-full">
-                        {{ form.notes.label(class='neo-label') }}
-                        {{ form.notes(class='neo-input', placeholder='Дополнительные заметки о уроке...', rows=4) }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Заметки о ходе урока, успехах, проблемах</small>
-                    </div>
+                <div class="neo-field">
+                    {{ form.homework_status.label(class='neo-label') }}
+                    {{ form.homework_status(class='neo-select') }}
                 </div>
-            </section>
-            
-            <section class="form-section" data-section="homework">
-                <div class="form-section-title">{{ ui_icon('nav.assignments', 'sm') }} Домашнее задание</div>
-                <div class="form-grid">
-                    <div class="neo-field form-grid-full">
-                        {{ form.homework.label(class='neo-label') }}
-                        {{ form.homework(class='neo-input', placeholder='Что задано на дом...', rows=4) }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Описание домашнего задания</small>
-                    </div>
-                    
-                    <div class="neo-field">
-                        {{ form.homework_status.label(class='neo-label') }}
-                        {{ form.homework_status(class='neo-select') }}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Статус выполнения домашнего задания</small>
-                    </div>
-                    {% if lesson and lesson.status in ('in_progress', 'completed') %}
-                    <div class="neo-field">
-                        <label class="neo-label" style="display: flex; align-items: center; gap: 0.5rem;">
-                            {{ form.student_late(class='neo-input') }}
-                            {{ form.student_late.label.text }}
-                        </label>
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Отметьте, если ученик пришёл с опозданием</small>
-                    </div>
-                    {% endif %}
-                </div>
-            </section>
-            
-            <section class="form-section">
-                <div class="form-actions" style="display: flex; gap: 1em; justify-content: flex-end; margin-top: 0;">
-                    {% if is_new %}
-                    <button type="submit" class="neo-button outline" name="next" value="homework">Создать → ДЗ</button>
-                    <button type="submit" class="neo-button outline" name="next" value="classwork">Создать → КР</button>
-                    <button type="submit" class="neo-button outline" name="next" value="exam">Создать → Провер.</button>
-                    {% endif %}
-                    {{ form.submit(class='neo-button accent') }}
-                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">Отмена</a>
-                </div>
-            </section>
-        </form>
-        
-        {% if not is_new %}
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Задачи к уроку ученик выполняет на странице занятия (вкладки ДЗ / Классная работа / Проверочная). Либо выдайте тот же набор как <strong>работу с дедлайном</strong> — тогда она появится у ученика в разделе «Задания».</p>
-        <section class="tasks-preview">
-            <div class="tasks-preview-header">
-                <div class="tasks-preview-title">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Домашние задания к уроку</div>
-                <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center;">
-                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;" title="Создаст отдельную работу с дедлайном; ученик увидит её в разделе «Задания»">
-                        📝 Выдать с дедлайном
-                    </a>
-                    <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline">
-                        Открыть страницу занятия →
-                    </a>
-                </div>
-            </div>
-            
-            {% if homework_tasks %}
-            <div>
-                {% for hw_task in homework_tasks[:5] %}
-                <div class="task-preview-card">
-                    <div class="task-preview-header">
-                        <div>
-                            <span class="task-preview-number">Задание {{ hw_task.task.task_number }}</span>
-                            <span style="color: var(--text-muted); font-size: 0.9em; margin-left: 0.5em;">№ {{ hw_task.task.site_task_id }}</span>
-                        </div>
-                        <a href="{{ hw_task.task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.85em; padding: 0.4em 0.8em;">🔗 Открыть</a>
-                    </div>
-                    {% if hw_task.task.content_html %}
-                    <div class="task-preview-content">
-                        {{ hw_task.task.content_html|sanitize_html }}
-                    </div>
-                    {% endif %}
-                    {% if hw_task.student_answer %}
-                    <div class="task-preview-answer">
-                        <strong>Ответ:</strong> {{ hw_task.student_answer }}
-                    </div>
-                    {% endif %}
-                </div>
-                {% endfor %}
-                {% if homework_tasks|length > 5 %}
-                <div style="text-align: center; color: var(--text-muted); font-size: 0.9em; margin-top: 1em;">
-                    И еще {{ homework_tasks|length - 5 }} заданий...
+                {% if lesson and lesson.status in ('in_progress', 'completed') %}
+                <div class="neo-field">
+                    <label class="neo-label flex items-center gap-2">
+                        {{ form.student_late(class='neo-input') }} {{ form.student_late.label.text }}
+                    </label>
                 </div>
                 {% endif %}
             </div>
-            {% else %}
-            <p style="color: var(--text-muted); text-align: center; padding: 2em;">Нет домашних заданий</p>
-            {% endif %}
         </section>
-        
-        <section class="tasks-preview">
-            <div class="tasks-preview-header">
-                <div class="tasks-preview-title">{{ ui_icon('action.school', 'sm', decorative=true) }} Классные работы к уроку</div>
-                <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center;">
-                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='classwork') }}" class="neo-button accent" style="text-decoration:none;" title="Создаст отдельную работу с дедлайном">
-                        📝 Выдать с дедлайном
-                    </a>
-                    <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline">
-                        Открыть страницу занятия →
-                    </a>
-                </div>
-            </div>
-            
-            {% if classwork_tasks %}
-            <div>
-                {% for cw_task in classwork_tasks[:5] %}
-                <div class="task-preview-card">
-                    <div class="task-preview-header">
-                        <div>
-                            <span class="task-preview-number">Задание {{ cw_task.task.task_number }}</span>
-                            <span style="color: var(--text-muted); font-size: 0.9em; margin-left: 0.5em;">№ {{ cw_task.task.site_task_id }}</span>
-                        </div>
-                        <a href="{{ cw_task.task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.85em; padding: 0.4em 0.8em;">🔗 Открыть</a>
-                    </div>
-                    {% if cw_task.task.content_html %}
-                    <div class="task-preview-content">
-                        {{ cw_task.task.content_html|sanitize_html }}
-                    </div>
-                    {% endif %}
-                </div>
-                {% endfor %}
-                {% if classwork_tasks|length > 5 %}
-                <div style="text-align: center; color: var(--text-muted); font-size: 0.9em; margin-top: 1em;">
-                    И еще {{ classwork_tasks|length - 5 }} заданий...
-                </div>
+
+        <section class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
+            <div class="flex flex-wrap justify-end gap-2">
+                {% if is_new %}
+                <button type="submit" class="neo-button outline" name="next" value="homework">Создать -> ДЗ</button>
+                <button type="submit" class="neo-button outline" name="next" value="classwork">Создать -> КР</button>
+                <button type="submit" class="neo-button outline" name="next" value="exam">Создать -> Провер.</button>
                 {% endif %}
+                {{ form.submit(class='neo-button accent') }}
+                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">Отмена</a>
             </div>
-            {% else %}
-            <p style="color: var(--text-muted); text-align: center; padding: 2em;">Нет классных работ</p>
-            {% endif %}
         </section>
-        {% endif %}
-    </main>
-    </div>
+    </form>
 </div>
-    
-    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => { // Прячем блок ДЗ для вводного урока
-            const typeSelect = document.getElementById('lesson_type');
-            // Ищем секцию ДЗ по data-section="homework" - это должна быть только секция с домашним заданием
-            const homeworkSection = document.querySelector('section[data-section="homework"]');
-            const homeworkField = document.getElementById('homework');
-            const homeworkStatusField = document.getElementById('homework_status');
-            
-            // Проверяем наличие элементов, но не блокируем выполнение, если секция ДЗ не найдена
-            if (!typeSelect) return;
-            if (!homeworkSection || !homeworkStatusField) {
-                console.warn('Секция ДЗ не найдена, функционал скрытия ДЗ для вводного урока недоступен');
-                return;
-            }
+{% endblock %}
 
-            let lastAssignedStatus = homeworkStatusField.value !== 'not_assigned'
-                ? homeworkStatusField.value
-                : 'assigned_not_done';
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const typeSelect = document.getElementById('lesson_type');
+        const homeworkSection = document.querySelector('section[data-section="homework"]');
+        const homeworkField = document.getElementById('homework');
+        const homeworkStatusField = document.getElementById('homework_status');
+        if (!typeSelect || !homeworkSection || !homeworkStatusField) return;
 
-            function syncHomeworkVisibility() {
-                const isIntroductory = typeSelect.value === 'introductory';
-                // Показываем/скрываем ТОЛЬКО секцию ДЗ, не трогая другие секции
-                if (isIntroductory) {
-                    homeworkSection.style.display = 'none';
-                    // Очищаем поля ДЗ при выборе вводного урока
-                    if (homeworkField) homeworkField.value = '';
-                    if (homeworkStatusField.value !== 'not_assigned') {
-                        lastAssignedStatus = homeworkStatusField.value;
-                    }
-                    homeworkStatusField.value = 'not_assigned';
-                } else {
-                    // Показываем секцию ДЗ при выборе другого типа урока
-                    homeworkSection.style.display = '';
-                    // Восстанавливаем предыдущий статус, если был 'not_assigned'
-                    if (homeworkStatusField.value === 'not_assigned' && lastAssignedStatus !== 'not_assigned') {
-                        homeworkStatusField.value = lastAssignedStatus;
-                    }
+        let lastAssignedStatus = homeworkStatusField.value !== 'not_assigned'
+            ? homeworkStatusField.value
+            : 'assigned_not_done';
+
+        function syncHomeworkVisibility() {
+            const isIntroductory = typeSelect.value === 'introductory';
+            if (isIntroductory) {
+                homeworkSection.style.display = 'none';
+                if (homeworkField) homeworkField.value = '';
+                if (homeworkStatusField.value !== 'not_assigned') lastAssignedStatus = homeworkStatusField.value;
+                homeworkStatusField.value = 'not_assigned';
+            } else {
+                homeworkSection.style.display = '';
+                if (homeworkStatusField.value === 'not_assigned' && lastAssignedStatus !== 'not_assigned') {
+                    homeworkStatusField.value = lastAssignedStatus;
                 }
             }
+        }
 
-            // Инициализируем при загрузке страницы
-            syncHomeworkVisibility();
-            // Отслеживаем изменения типа урока
-            typeSelect.addEventListener('change', syncHomeworkVisibility);
-        });
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof renderMathInElement !== 'undefined') {
-                renderMathInElement(document.body, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '$', right: '$', display: false},
-                        {left: '\\(', right: '\\)', display: false},
-                        {left: '\\[', right: '\\]', display: true}
-                    ],
-                    throwOnError: false,
-                    trust: true
-                });
-            }
-        });
-    </script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
-    <script>
-        // Конвертируем flash-сообщения в toast-уведомления
-        document.addEventListener('DOMContentLoaded', function() {
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% if category == 'error' or category == 'danger' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.error('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.error('{{ message|e }}');
-                            }
-                        {% elif category == 'warning' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.warning('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.warning('{{ message|e }}');
-                            }
-                        {% elif category == 'info' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.info('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.info('{{ message|e }}');
-                            }
-                        {% else %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.success('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.success('{{ message|e }}');
-                            }
-                        {% endif %}
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        });
-    </script>
-</body>
-</html>
+        syncHomeworkVisibility();
+        typeSelect.addEventListener('change', syncHomeworkVisibility);
+    });
+</script>
+{% endblock %}
+

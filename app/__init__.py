@@ -5,6 +5,7 @@ import os
 import logging
 import threading
 import time
+import uuid
 from flask import Flask
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
@@ -17,6 +18,7 @@ from flask_migrate import Migrate
 from app.models import db
 from core.audit_logger import audit_logger
 from app.models import User, MOSCOW_TZ  # comment
+from app.logging_core import configure_logging
 
 csrf = CSRFProtect()
 login_manager = LoginManager()
@@ -118,6 +120,8 @@ def create_app(config_name=None):
             app.config['SQLALCHEMY_DATABASE_URI'] = demo_db_url
         # иначе оставляем уже установленный DATABASE_URL выше
     
+    logger = configure_logging(base_dir=base_dir, environment=ENVIRONMENT, service_name='boostudy')
+
     csrf.init_app(app)
     db.init_app(app)
     migrate.init_app(app, db)
@@ -178,22 +182,6 @@ def create_app(config_name=None):
             return value.astimezone(tz)  # comment
         return dt  # comment
     
-    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    log_dir = os.path.join(base_dir, 'logs')
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, 'app.log')
-    
-    logging.basicConfig(
-        level=logging.INFO,
-        format=log_format,
-        handlers=[
-            logging.StreamHandler(),  # Вывод в консоль
-            logging.FileHandler(log_file, encoding='utf-8')  # Вывод в файл app.log
-        ]
-    )
-    logger = logging.getLogger(__name__)
-    logger.info("Логирование инициализировано. Логи также сохраняются в файл app.log")
-    
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     logger.info(f"=== Application Initialization ===")
     logger.info(f"Environment: {ENVIRONMENT}")
@@ -232,6 +220,38 @@ def create_app(config_name=None):
     
     logger.info(f"SECRET_KEY set: {'YES' if os.environ.get('SECRET_KEY') else 'NO'}")
     logger.info(f"=== Initialization Complete ===")
+
+    @app.before_request
+    def _attach_request_id():
+        from flask import g, request
+        g.request_started_at = time.perf_counter()
+        incoming = (request.headers.get('X-Request-ID') or '').strip()
+        g.request_id = incoming or uuid.uuid4().hex
+
+    @app.after_request
+    def _log_request(response):
+        from flask import g, request
+        started = getattr(g, 'request_started_at', None)
+        duration_ms = None
+        if started is not None:
+            duration_ms = int((time.perf_counter() - started) * 1000)
+        request_id = getattr(g, 'request_id', None)
+        if request_id:
+            response.headers['X-Request-ID'] = request_id
+
+        logging.getLogger('http.request').info(
+            'http_request',
+            extra={
+                'event': 'http_request',
+                'status': response.status_code,
+                'method': request.method,
+                'url': request.path,
+                'duration_ms': duration_ms,
+                'request_id': request_id,
+                'trace_id': request_id,
+            }
+        )
+        return response
     
     from app.auth import auth_bp
     from app.main import main_bp

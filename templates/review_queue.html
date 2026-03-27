@@ -95,7 +95,6 @@
                 {% for card in assignment_cards %}
                     {% set a = card.assignment %}
                     {% for sub in (card.submissions or []) %}
-                        {% if rendered >= 60 %}{% break %}{% endif %}
                         {% set rendered = rendered + 1 %}
                         {% set is_late = (sub.status or '').upper() in ['LATE'] %}
                         <div class="{% if is_late %}bg-gradient-to-b from-[#FFF5F5] to-white border-red-200 border-b-boo-coral{% else %}bg-white border-slate-200 border-b-slate-300{% endif %} rounded-[24px] border border-b-[4px] shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
@@ -131,7 +130,6 @@
                             </div>
                         </div>
                     {% endfor %}
-                    {% if rendered >= 60 %}{% break %}{% endif %}
                 {% endfor %}
             {% endif %}
 
@@ -140,7 +138,6 @@
                     {% set lesson = item.lesson %}
                     {% set student = item.student %}
                     {% for lt in (item.tasks or []) %}
-                        {% if rendered >= 60 %}{% break %}{% endif %}
                         {% set rendered = rendered + 1 %}
                         {% set tnum = lt.task.task_number if lt.task and lt.task.task_number else None %}
                         <div class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
@@ -177,7 +174,6 @@
                             </div>
                         </div>
                     {% endfor %}
-                    {% if rendered >= 60 %}{% break %}{% endif %}
                 {% endfor %}
             {% endif %}
         </div>

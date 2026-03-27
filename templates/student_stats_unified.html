@@ -25,8 +25,13 @@
       <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="flex items-center gap-3 text-slate-400 font-bold text-sm mb-3 hover:text-boo-primary cursor-pointer w-fit transition-colors no-underline">
         <i class="ph-bold ph-arrow-left"></i> В профиль
       </a>
+      {% if current_user.is_student() and student.user_id == current_user.id %}
       <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Твоя аналитика</h1>
       <p class="text-slate-500 font-medium text-lg">Следи за прогрессом и находи слабые места. Цифры не врут.</p>
+      {% else %}
+      <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Аналитика ученика: {{ student.name }}</h1>
+      <p class="text-slate-500 font-medium text-lg">Прогресс ученика и точки роста по всем ключевым метрикам.</p>
+      {% endif %}
     </div>
 
     <div class="relative z-10 bg-slate-100/80 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50">
