@@ -26,14 +26,25 @@ def _require_allowed():
 
 def _get_testers():
     try:
-        q = (
-            User.query.join(UserRole, UserRole.user_id == User.id, isouter=True)
+        # Postgres may fail DISTINCT over full Users row because it contains JSON fields.
+        # Fetch unique user IDs first, then load users by IDs.
+        id_rows = (
+            db.session.query(User.id)
+            .join(UserRole, UserRole.user_id == User.id, isouter=True)
             .filter(or_(User.role.in_(["tester", "chief_tester"]), UserRole.role.in_(["tester", "chief_tester"])))
             .distinct()
-            .order_by(User.username.asc())
+            .all()
         )
-        return q.all()
+        ids = [r[0] for r in id_rows if r and r[0]]
+        if not ids:
+            return []
+        return User.query.filter(User.id.in_(ids)).order_by(User.username.asc()).all()
     except Exception:
+        # Clear failed transaction state before any fallback query.
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         # Fallback for legacy DB states where user_roles table/data is inconsistent.
         current_app.logger.exception("chief_tester._get_testers failed, using role-only fallback")
         return (
