@@ -1,0 +1,1068 @@
+{
+  "boostudy2.0_examples/prepod/biblioteka.html": [
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-users-three text-lg"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-calendar-blank text-lg"
+    },
+    {
+      "text": "Проверка",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-tray text-lg"
+    },
+    {
+      "text": "Ещё",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-squares-four text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-magnifying-glass text-xl"
+    },
+    {
+      "text": "Добавить материал",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-cloud-arrow-up text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-magnifying-glass"
+    },
+    {
+      "text": "",
+      "title": "Сбросить фильтры",
+      "href": null,
+      "icon": "ph-bold ph-arrow-counter-clockwise"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-dots-three text-xl"
+    },
+    {
+      "text": "Скачать",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-download-simple"
+    },
+    {
+      "text": "",
+      "title": "Скопировать ссылку",
+      "href": null,
+      "icon": "ph-bold ph-link"
+    }
+  ],
+  "boostudy2.0_examples/prepod/classroom_example_prepod.html": [
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-users-three text-lg"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-calendar-blank text-lg"
+    },
+    {
+      "text": "Проверка",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-tray text-lg"
+    },
+    {
+      "text": "Тренажёр",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-game-controller text-lg"
+    },
+    {
+      "text": "Ещё",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-squares-four text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-magnifying-glass text-xl"
+    },
+    {
+      "text": "К списку учеников",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-arrow-left text-lg"
+    },
+    {
+      "text": "Вид ученика",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-mask-happy"
+    },
+    {
+      "text": "Статистика",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-chart-line-up"
+    },
+    {
+      "text": "Новый урок",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus text-lg"
+    },
+    {
+      "text": "Написать в TG",
+      "title": null,
+      "href": null,
+      "icon": "ph-fill ph-telegram-logo text-blue-500 text-lg"
+    },
+    {
+      "text": "Профиль Discord",
+      "title": null,
+      "href": null,
+      "icon": "ph-fill ph-discord-logo text-indigo-500 text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-pencil-simple"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-trash"
+    },
+    {
+      "text": "",
+      "title": "Открыть комнату урока",
+      "href": null,
+      "icon": "ph-bold ph-arrow-square-out"
+    },
+    {
+      "text": "Загрузить старые уроки",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-caret-down"
+    },
+    {
+      "text": "Сохранить",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "В журнал проверок",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-tray"
+    }
+  ],
+  "boostudy2.0_examples/prepod/generator.html": [
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-users-three text-lg"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-calendar-blank text-lg"
+    },
+    {
+      "text": "Проверка",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-tray text-lg"
+    },
+    {
+      "text": "Ещё",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-squares-four text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-magnifying-glass text-xl"
+    },
+    {
+      "text": "Общий генератор",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-caret-down"
+    },
+    {
+      "text": "Старт",
+      "title": null,
+      "href": null,
+      "icon": "ph-fill ph-play text-lg"
+    },
+    {
+      "text": "Стоп",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-stop"
+    },
+    {
+      "text": "источник",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-link"
+    },
+    {
+      "text": "Ответ",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-eye"
+    },
+    {
+      "text": "Принять A",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-check text-lg"
+    },
+    {
+      "text": "Пропустить S",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-minus text-lg text-slate-400"
+    },
+    {
+      "text": "Blacklist B",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-trash text-lg"
+    }
+  ],
+  "boostudy2.0_examples/prepod/gruppi.html": [
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-users-three text-lg"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-calendar-blank text-lg"
+    },
+    {
+      "text": "Проверка",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-tray text-lg"
+    },
+    {
+      "text": "Ещё",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-squares-four text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-magnifying-glass text-xl"
+    },
+    {
+      "text": "Создать группу",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus text-lg"
+    },
+    {
+      "text": "Массовое ДЗ",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-paper-plane-right"
+    },
+    {
+      "text": "",
+      "title": "Настройки",
+      "href": null,
+      "icon": "ph-bold ph-sliders-horizontal"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-dots-three text-xl"
+    },
+    {
+      "text": "Открыть профиль",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-eye"
+    },
+    {
+      "text": "",
+      "title": "Назначить ДЗ группе",
+      "href": null,
+      "icon": "ph-bold ph-paper-plane-right text-lg"
+    },
+    {
+      "text": "Создать первую группу",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus text-lg"
+    }
+  ],
+  "boostudy2.0_examples/prepod/komnata_uroka.html": [
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-users-three text-lg"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-calendar-blank text-lg"
+    },
+    {
+      "text": "Проверка",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-tray text-lg"
+    },
+    {
+      "text": "Ещё",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-squares-four text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-magnifying-glass text-xl"
+    },
+    {
+      "text": "Назад в профиль",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-arrow-left text-lg"
+    },
+    {
+      "text": "Создать ДЗ",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-house-line text-lg"
+    },
+    {
+      "text": "Редактировать",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-pencil-simple text-lg"
+    },
+    {
+      "text": "",
+      "title": "Удалить урок",
+      "href": null,
+      "icon": "ph-bold ph-trash text-lg"
+    },
+    {
+      "text": "Конспект",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-book-open"
+    },
+    {
+      "text": "Классная работа",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-chalkboard-teacher"
+    },
+    {
+      "text": "Материалы",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-paperclip"
+    },
+    {
+      "text": "Заметки ученика",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-note"
+    },
+    {
+      "text": "Диалог",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-chats"
+    },
+    {
+      "text": "Доска",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-presentation-chart"
+    },
+    {
+      "text": "Звонок",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-video-camera"
+    },
+    {
+      "text": "Markdown",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-pencil-simple"
+    },
+    {
+      "text": "Blocks",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-squares-four"
+    },
+    {
+      "text": "Шаблоны",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-stack"
+    },
+    {
+      "text": "Сохранить как шаблон",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-bookmark-simple"
+    },
+    {
+      "text": "Сохранить",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-floppy-disk"
+    },
+    {
+      "text": "B",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "I",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "U",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-text-h"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-quotes"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-list-bullets"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-list-numbers"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-link"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-image"
+    },
+    {
+      "text": "",
+      "title": "Предпросмотр",
+      "href": null,
+      "icon": "ph-bold ph-eye"
+    },
+    {
+      "text": "",
+      "title": "На весь экран",
+      "href": null,
+      "icon": "ph-bold ph-corners-out"
+    },
+    {
+      "text": "Сохранить итог",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-floppy-disk"
+    },
+    {
+      "text": "Настройки заданий",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-gear"
+    },
+    {
+      "text": "Сохранить",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Добавить задания",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus text-lg"
+    },
+    {
+      "text": "Добавить материал",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus"
+    },
+    {
+      "text": "Обновить",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-arrows-clockwise"
+    },
+    {
+      "text": "Отправить",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-paper-plane-right"
+    },
+    {
+      "text": "Создать доску",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus"
+    }
+  ],
+  "boostudy2.0_examples/prepod/new_lesson_example.html": [
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-users-three text-lg"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-calendar-blank text-lg"
+    },
+    {
+      "text": "Инструменты",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-squares-four text-lg"
+    },
+    {
+      "text": "Вернуться к профилю",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-arrow-left text-lg"
+    },
+    {
+      "text": "Создать ДЗ",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus"
+    },
+    {
+      "text": "Создать КР",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus"
+    },
+    {
+      "text": "Проверочная",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus"
+    },
+    {
+      "text": "Отмена",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Сохранить урок",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-floppy-disk text-lg"
+    }
+  ],
+  "boostudy2.0_examples/prepod/shabloni.html": [
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-users-three text-lg"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-calendar-blank text-lg"
+    },
+    {
+      "text": "Проверка",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-tray text-lg"
+    },
+    {
+      "text": "Ещё",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-squares-four text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-magnifying-glass text-xl"
+    },
+    {
+      "text": "Создать шаблон",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus text-lg"
+    },
+    {
+      "text": "Создать вручную",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-pencil-simple text-lg"
+    },
+    {
+      "text": "Добавить новый Создать пустой шаблон ДЗ",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-dots-three text-xl"
+    },
+    {
+      "text": "Сформировать ДЗ",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "",
+      "title": "Редактировать",
+      "href": null,
+      "icon": "ph-bold ph-pencil-simple text-lg"
+    }
+  ],
+  "boostudy2.0_examples/prepod/tarifi.html": [
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-users-three text-lg"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-calendar-blank text-lg"
+    },
+    {
+      "text": "Ещё",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-squares-four text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-magnifying-glass text-xl"
+    },
+    {
+      "text": "База тарифов",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-list-dashes text-lg"
+    },
+    {
+      "text": "Подписки учеников",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-users text-lg"
+    },
+    {
+      "text": "Создать тариф",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-check-circle text-lg"
+    },
+    {
+      "text": "Создать",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Назначить",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Редакт.",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-pencil-simple mr-1"
+    }
+  ],
+  "boostudy2.0_examples/prepod/zadaniya_example.html": [
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-users-three text-lg"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-calendar-blank text-lg"
+    },
+    {
+      "text": "Проверка",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-tray text-lg"
+    },
+    {
+      "text": "Тренажёр",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-game-controller text-lg"
+    },
+    {
+      "text": "QA Отдел",
+      "title": null,
+      "href": "#",
+      "icon": null
+    },
+    {
+      "text": "Ещё",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-squares-four text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-magnifying-glass text-xl"
+    },
+    {
+      "text": "Создать работу",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-plus text-lg"
+    },
+    {
+      "text": "Открыть генератор",
+      "title": null,
+      "href": null,
+      "icon": "ph-fill ph-magic-wand text-lg"
+    },
+    {
+      "text": "Очередь проверки",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-check text-lg"
+    },
+    {
+      "text": "Применить",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Сброс",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Все (20)",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Активные (0)",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Нужно проверить (14)",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "На доработке (0)",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Просрочено (0)",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Готово (6)",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Проверить (1)",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Открыть",
+      "title": null,
+      "href": null,
+      "icon": null
+    },
+    {
+      "text": "Детали",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-arrow-right"
+    },
+    {
+      "text": "Дублировать",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-copy"
+    },
+    {
+      "text": "В архив",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-archive"
+    },
+    {
+      "text": "Открыть работу",
+      "title": null,
+      "href": null,
+      "icon": null
+    }
+  ],
+  "boostudy2.0_examples/profiles/stud_profile_example.html": [
+    {
+      "text": "Главная",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-house text-lg"
+    },
+    {
+      "text": "Задания",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-list-checks text-lg"
+    },
+    {
+      "text": "Тренажёр",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-game-controller text-lg"
+    },
+    {
+      "text": "Аналитика",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-chart-line-up text-lg"
+    },
+    {
+      "text": "Обложка",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-image"
+    },
+    {
+      "text": "",
+      "title": "Настройки",
+      "href": null,
+      "icon": "ph-bold ph-gear text-xl"
+    },
+    {
+      "text": "Редактировать",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-pencil-simple text-lg"
+    },
+    {
+      "text": "Написать сообщение",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-chat-teardrop-dots text-lg"
+    },
+    {
+      "text": "Смотреть все (12)",
+      "title": null,
+      "href": null,
+      "icon": null
+    }
+  ],
+  "boostudy2.0_examples/profiles/creator_profile.html": [
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-users-three text-lg"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-calendar-blank text-lg"
+    },
+    {
+      "text": "Проверка",
+      "title": null,
+      "href": "#",
+      "icon": "ph-bold ph-tray text-lg"
+    },
+    {
+      "text": "",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-bell text-xl"
+    },
+    {
+      "text": "Сменить обложку",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-camera text-lg"
+    },
+    {
+      "text": "Редактировать профиль",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-pencil-simple text-xl"
+    },
+    {
+      "text": "Расписание",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-calendar-blank text-xl group-hover:scale-110 transition-transform"
+    },
+    {
+      "text": "Ученики",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-users text-xl group-hover:text-boo-primary transition-colors"
+    },
+    {
+      "text": "Работы",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-files text-xl group-hover:text-boo-primary transition-colors"
+    },
+    {
+      "text": "Проверка",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-check-square-offset text-xl group-hover:text-boo-primary transition-colors"
+    },
+    {
+      "text": "Напоминания",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-bell-ringing text-xl group-hover:text-boo-primary transition-colors"
+    },
+    {
+      "text": "Библиотека",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-books text-xl group-hover:text-boo-primary transition-colors"
+    },
+    {
+      "text": "Тренажёр",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-game-controller text-xl group-hover:text-boo-primary transition-colors"
+    },
+    {
+      "text": "Рубрикатор",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-tree-structure text-xl group-hover:text-boo-primary transition-colors"
+    },
+    {
+      "text": "Больше инструментов",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-dots-three text-2xl group-hover:text-boo-primary transition-colors"
+    },
+    {
+      "text": "Синхронизация календаря",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-calendar-plus text-xl text-boo-cyan"
+    },
+    {
+      "text": "Выйти из аккаунта",
+      "title": null,
+      "href": null,
+      "icon": "ph-bold ph-sign-out text-xl"
+    }
+  ]
+}

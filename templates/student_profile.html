@@ -56,6 +56,25 @@
                 </div>
             </div>
 
+            {% set tg_username = (student.telegram_username or student.telegram or '') %}
+            {% set tg_username_clean = (tg_username|string).replace('https://t.me/','').replace('http://t.me/','').replace('@','').strip() %}
+            {% set discord_value = (student.discord_id or '').strip() %}
+            {% if tg_username_clean or discord_value %}
+            <div class="relative z-10 mb-4 flex flex-wrap items-center gap-2">
+                {% if tg_username_clean %}
+                <a href="https://t.me/{{ tg_username_clean }}" target="_blank" rel="noopener"
+                   class="px-3 py-2 bg-cyan-50 text-cyan-700 rounded-xl font-bold text-xs border border-cyan-100 inline-flex items-center gap-2 no-underline">
+                    <i class="ph-fill ph-telegram-logo text-base"></i> @{{ tg_username_clean }}
+                </a>
+                {% endif %}
+                {% if discord_value %}
+                <span class="px-3 py-2 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-xs border border-indigo-100 inline-flex items-center gap-2">
+                    <i class="ph-fill ph-discord-logo text-base"></i> {{ discord_value }}
+                </span>
+                {% endif %}
+            </div>
+            {% endif %}
+
             <!-- Траектория и Прогресс -->
             <div class="relative z-10 bg-slate-50 rounded-2xl p-6 border border-slate-100">
                 <div class="flex justify-between items-end mb-3 gap-4">

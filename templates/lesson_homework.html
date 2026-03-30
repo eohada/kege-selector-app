@@ -67,6 +67,11 @@
         color: var(--accent-1);
         border-bottom-color: var(--accent-1);
     }
+    /* В новом эталоне кнопка звонка скрыта до отдельной реализации. */
+    .tab-btn[data-tab="videocall"],
+    #tab-videocall {
+        display: none !important;
+    }
 
     .lesson-presence-bar {
         display: flex;
@@ -1430,7 +1435,7 @@
         const INITIAL_BLOCKS = {{ (content_blocks or [])|tojson }};
         const IS_STUDENT_VIEW = {{ 'true' if is_student_view else 'false' }};
 
-        var TAB_LABELS = { theory: 'Конспект', tasks: 'Задания', materials: 'Материалы', notes: 'Заметки', chat: 'Диалог', whiteboard: 'Доска', videocall: 'Звонок' };
+        var TAB_LABELS = { theory: 'Конспект', tasks: 'Классная работа', materials: 'Материалы', notes: 'Заметки', chat: 'Диалог', whiteboard: 'Доска', videocall: 'Звонок' };
 
         // ----- Real-time комната урока (обновления без перезагрузки, синхронизация вкладок) -----
         (function() {

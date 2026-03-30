@@ -87,6 +87,9 @@
                 <button class="neo-button accent sm" type="button" onclick="applyTemplate({{ t.template_id }}, {{ lesson.lesson_id }})">
                     <i class="fas fa-wand-magic-sparkles"></i> Применить к уроку
                 </button>
+                <button class="neo-button outline sm" type="button" onclick="applyTemplateAndGenerateHomework({{ t.template_id }}, {{ lesson.lesson_id }})">
+                    <i class="fas fa-bolt"></i> Сформировать ДЗ
+                </button>
                 {% else %}
                 <div class="neo-button ghost sm opacity-70">Открой урок и зайди сюда с lesson_id</div>
                 {% endif %}
@@ -123,6 +126,28 @@
             }
             toast.success('Шаблон применён');
             setTimeout(() => location.href = `/lesson/${lessonId}/homework-tasks`, 600);
+        } catch (e) {
+            toast.error('Ошибка сети');
+        }
+    }
+
+    async function applyTemplateAndGenerateHomework(templateId, lessonId) {
+        if (!confirm('Применить шаблон и перейти в генератор ДЗ?')) return;
+        try {
+            const res = await fetch(`/library/lesson-templates/${templateId}/apply`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify({ lesson_id: lessonId, replace_materials: true })
+            });
+            const data = await res.json();
+            if (!data || !data.success) {
+                toast.error((data && data.error) ? data.error : 'Ошибка применения');
+                return;
+            }
+            toast.success('Шаблон применён, открываю генератор ДЗ');
+            setTimeout(() => {
+                location.href = `{{ url_for('task_generator.task_generator') }}?lesson_id=${lessonId}&assignment_type=homework`;
+            }, 500);
         } catch (e) {
             toast.error('Ошибка сети');
         }

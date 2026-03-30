@@ -211,6 +211,8 @@ class Student(db.Model):
     phone = db.Column(db.String(50), nullable=True)
     email = db.Column(db.String(200), nullable=True)
     telegram = db.Column(db.String(100), nullable=True)
+    telegram_username = db.Column(db.String(100), nullable=True)
+    discord_id = db.Column(db.String(100), nullable=True)
     
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('student_profile', uselist=False))
 
@@ -726,6 +728,7 @@ class User(db.Model):
     last_login = db.Column(db.DateTime, nullable=True)
 
     avatar_url = db.Column(db.String(500), nullable=True)
+    cover_url = db.Column(db.String(500), nullable=True)  # Фоновое изображение профиля
     about_me = db.Column(db.Text, nullable=True)
     custom_status = db.Column(db.String(100), nullable=True)
     telegram_link = db.Column(db.String(200), nullable=True)

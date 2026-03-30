@@ -153,3 +153,61 @@ def cover_file(filename: str):
         abort(404)
     return send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)
 
+@uploads_bp.route('/upload/cover', methods=['POST'])
+@login_required
+def upload_cover():
+    from flask import request, jsonify
+    from werkzeug.utils import secure_filename
+    from app.extensions import db
+    
+    if 'cover_file' not in request.files:
+        return jsonify({'success': False, 'error': 'Файл обложки не передан'}), 400
+        
+    file = request.files['cover_file']
+    if not file or not file.filename:
+        return jsonify({'success': False, 'error': 'Пустой файл'}), 400
+        
+    allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+    filename = secure_filename(file.filename)
+    ext = os.path.splitext(filename)[1].lower()
+    
+    if ext not in allowed_extensions:
+        return jsonify({'success': False, 'error': 'Недопустимый формат файла'}), 400
+        
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    if file_size > 8 * 1024 * 1024:
+        return jsonify({'success': False, 'error': 'Файл слишком большой. Максимум 8MB'}), 400
+    file.seek(0)
+        
+    unique_filename = f"cover_{current_user.id}{ext}"
+    cover_upload_root = current_app.config.get('COVER_UPLOAD_ROOT')
+    
+    if cover_upload_root:
+        upload_folder = os.path.abspath(cover_upload_root)
+        cover_url = f"/covers/{unique_filename}"
+    else:
+        app_root = os.path.dirname(current_app.root_path)
+        upload_folder = os.path.join(app_root, 'static', 'uploads', 'covers')
+        upload_folder = os.path.abspath(upload_folder)
+        cover_url = f"/static/uploads/covers/{unique_filename}"
+        
+    os.makedirs(upload_folder, exist_ok=True)
+    if not os.path.isdir(upload_folder):
+        logger.error(f"Failed to create upload folder: {upload_folder}")
+        return jsonify({'success': False, 'error': 'Не удалось сохранить файл'}), 500
+        
+    file_path = os.path.join(upload_folder, unique_filename)
+    file.save(file_path)
+    
+    try:
+        current_user.cover_url = cover_url
+        if getattr(current_user, 'profile', None):
+            current_user.profile.cover_url = cover_url
+        db.session.commit()
+        return jsonify({'success': True, 'cover_url': cover_url})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error saving cover: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Ошибка при сохранении в базу данных'}), 500
+

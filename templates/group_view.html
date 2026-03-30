@@ -90,6 +90,38 @@
                 <button type="submit" class="neo-button accent" style="width: 100%;">Добавить</button>
             </div>
         </form>
+
+        <form method="POST" action="{{ url_for('groups.group_mass_assignment', group_id=group.group_id) }}" data-no-ajax="1" style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+            <div class="neo-field">
+                <label class="neo-label">Массовое ДЗ · источник задач (урок)</label>
+                <select class="neo-select" name="lesson_id" required>
+                    <option value="">— выбрать урок —</option>
+                    {% for l in available_lessons %}
+                    <option value="{{ l.lesson_id }}">#{{ l.lesson_id }} · {{ l.topic or 'Урок' }} · {{ l.lesson_date.strftime('%d.%m.%Y %H:%M') if l.lesson_date else '—' }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="neo-field">
+                <label class="neo-label">Название работы</label>
+                <input class="neo-input" name="title" required placeholder="Например: Массовое ДЗ для группы">
+            </div>
+            <div class="neo-field">
+                <label class="neo-label">Тип</label>
+                <select class="neo-select" name="assignment_type">
+                    <option value="homework" selected>Домашняя</option>
+                    <option value="classwork">Классная</option>
+                    <option value="exam">Проверочная</option>
+                </select>
+            </div>
+            <div class="neo-field">
+                <label class="neo-label">Дедлайн</label>
+                <input class="neo-input" type="datetime-local" name="deadline" required>
+            </div>
+            <div style="margin-top: .75rem;">
+                <button type="submit" class="neo-button outline" style="width: 100%;">Массовая выдача ДЗ</button>
+            </div>
+        </form>
         {% else %}
         <div style="padding: 1rem; border-radius: var(--radius-lg); background: var(--surface-2); margin-top: 1rem;">
             <div style="color: var(--text-muted);">Нет прав на управление группой.</div>

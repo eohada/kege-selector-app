@@ -53,6 +53,41 @@
     {% endif %}
 ">
     {% if current_user %}
+        {% if current_user.is_creator() %}
+        <section class="glass-panel" style="margin-bottom: 1rem; border-radius: 28px; overflow: hidden; border: 1px solid rgba(123,92,255,0.35);">
+            {% set creator_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
+            <div style="position: relative; min-height: 210px; background: linear-gradient(135deg, rgba(123,92,255,0.35), rgba(6,182,212,0.20)); {% if creator_cover %}background-image: linear-gradient(to top, rgba(17,24,39,.4), rgba(17,24,39,.1)), url('{{ creator_cover }}'); background-size: cover; background-position: center;{% endif %}">
+                <button type="button" class="neo-button outline" onclick="openCoverPicker()" style="position:absolute; right: 1rem; top: 1rem; background: rgba(15,23,42,.45); border-color: rgba(255,255,255,.25); color: #fff;">
+                    {{ ui_icon('action.edit', 'sm', decorative=true) }} Сменить обложку
+                </button>
+                <div style="position:absolute; left: 1.2rem; bottom: 1.2rem; display:flex; align-items:end; gap:.9rem;">
+                    <div class="profile-avatar-wrapper {% if current_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if current_user.avatar_url %}data-avatar-url="{{ current_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0"{% endif %}>
+                        <div class="profile-avatar-big" style="width: 88px; height: 88px; border-radius: 18px;">
+                            {% if current_user.avatar_url %}
+                            <img src="{{ current_user.avatar_url }}" alt="Avatar">
+                            {% else %}
+                            {{ current_user.username[0].upper() }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <h2 style="margin:0; font-size: 1.7rem; font-weight: 900; color: #fff;">{{ current_user.username }}</h2>
+                        <div style="margin-top:.35rem; display:flex; gap:.45rem; flex-wrap:wrap;">
+                            {% for role_name in current_user.get_roles_display() %}
+                            <span class="status-badge status-info" style="background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.28); color: #fff;">{{ role_name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 1rem 1.25rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:.6rem;">
+                <a href="{{ url_for('schedule.schedule') }}" class="neo-button accent" style="text-decoration:none; justify-content:center;">{{ ui_icon('nav.schedule', 'sm', decorative=true) }} Расписание</a>
+                <a href="{{ url_for('students.students_list') }}" class="neo-button outline" style="text-decoration:none; justify-content:center;">{{ ui_icon('nav.students', 'sm', decorative=true) }} Ученики</a>
+                <a href="{{ url_for('assignments.assignments_list') }}" class="neo-button outline" style="text-decoration:none; justify-content:center;">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Работы</a>
+                <a href="{{ url_for('library.materials_library') }}" class="neo-button ghost" style="text-decoration:none; justify-content:center;">{{ ui_icon('action.admin', 'sm', decorative=true) }} Библиотека</a>
+            </div>
+        </section>
+        {% endif %}
         <div class="profile-card">
             {% set cover_url = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
             <div class="profile-cover {% if (current_user.is_creator() or use_custom_theme) and cover_url %}has-cover{% endif %}" {% if (current_user.is_creator() or use_custom_theme) and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}></div>
@@ -514,6 +549,13 @@
     function closeEditProfileModal() {
         document.getElementById('editProfileModal').classList.remove('active');
         document.body.style.overflow = '';
+    }
+    function openCoverPicker() {
+        openEditProfileModal();
+        setTimeout(function () {
+            var coverInput = document.getElementById('cover_file');
+            if (coverInput) coverInput.click();
+        }, 80);
     }
 
     document.addEventListener('DOMContentLoaded', () => {

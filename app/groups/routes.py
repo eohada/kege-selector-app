@@ -9,7 +9,7 @@ import io
 from flask import Response
 
 from app.groups import groups_bp
-from app.models import db, SchoolGroup, GroupStudent, Student, User
+from app.models import db, SchoolGroup, GroupStudent, Student, User, Lesson, LessonTask, Assignment, AssignmentTask, Submission
 from app.auth.rbac_utils import has_permission, get_user_scope
 from core.audit_logger import audit_logger
 
@@ -162,7 +162,113 @@ def group_view(group_id: int):
         q = _filter_students_query(q)
         available_students = q.all()
 
-    return render_template('group_view.html', group=group, members=members, can_manage=can_manage, available_students=available_students)
+    group_student_ids = [m.student_id for m in members if m and m.student_id]
+    available_lessons = []
+    if can_manage and group_student_ids:
+        available_lessons = (
+            Lesson.query
+            .filter(Lesson.student_id.in_(group_student_ids))
+            .order_by(Lesson.lesson_date.desc())
+            .limit(100)
+            .all()
+        )
+
+    return render_template(
+        'group_view.html',
+        group=group,
+        members=members,
+        can_manage=can_manage,
+        available_students=available_students,
+        available_lessons=available_lessons,
+    )
+
+
+@groups_bp.route('/groups/<int:group_id>/mass-assignment', methods=['POST'])
+@login_required
+def group_mass_assignment(group_id: int):
+    _guard_groups_manage()
+    group = SchoolGroup.query.get_or_404(group_id)
+    if not _can_access_group(group):
+        abort(403)
+
+    members = GroupStudent.query.filter_by(group_id=group.group_id).all()
+    student_ids = [m.student_id for m in members if m and m.student_id]
+    if not student_ids:
+        flash('В группе нет учеников для массовой выдачи.', 'warning')
+        return redirect(url_for('groups.group_view', group_id=group.group_id))
+
+    lesson_id = request.form.get('lesson_id', type=int)
+    title = (request.form.get('title') or '').strip()
+    assignment_type = (request.form.get('assignment_type') or 'homework').strip().lower()
+    deadline_raw = (request.form.get('deadline') or '').strip()
+
+    if assignment_type not in ('homework', 'classwork', 'exam'):
+        assignment_type = 'homework'
+    if not lesson_id or not title or not deadline_raw:
+        flash('Заполните все поля массовой выдачи: урок, название и дедлайн.', 'danger')
+        return redirect(url_for('groups.group_view', group_id=group.group_id))
+
+    lesson = Lesson.query.get(lesson_id)
+    if not lesson:
+        flash('Выбранный урок не найден.', 'danger')
+        return redirect(url_for('groups.group_view', group_id=group.group_id))
+
+    try:
+        from datetime import datetime
+        deadline = datetime.fromisoformat(deadline_raw)
+    except Exception:
+        flash('Некорректный формат дедлайна.', 'danger')
+        return redirect(url_for('groups.group_view', group_id=group.group_id))
+
+    lesson_task_rows = (
+        LessonTask.query
+        .filter_by(lesson_id=lesson.lesson_id, assignment_type=assignment_type)
+        .all()
+    )
+    if not lesson_task_rows:
+        flash('В выбранном уроке нет задач нужного типа для массовой выдачи.', 'warning')
+        return redirect(url_for('groups.group_view', group_id=group.group_id))
+
+    assignment = Assignment(
+        title=title,
+        description=f'Массовая выдача для группы «{group.title}»',
+        assignment_type=assignment_type,
+        deadline=deadline,
+        created_by_id=current_user.id,
+        lesson_id=lesson.lesson_id,
+        is_active=True,
+    )
+    db.session.add(assignment)
+    db.session.flush()
+
+    for order_idx, lt in enumerate(lesson_task_rows):
+        db.session.add(
+            AssignmentTask(
+                assignment_id=assignment.assignment_id,
+                task_id=lt.task_id,
+                order_index=order_idx,
+            )
+        )
+
+    for sid in student_ids:
+        db.session.add(
+            Submission(
+                assignment_id=assignment.assignment_id,
+                student_id=sid,
+                status='ASSIGNED',
+            )
+        )
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='group_mass_assignment', entity='SchoolGroup', entity_id=group.group_id, error=str(e))
+        flash('Не удалось выполнить массовую выдачу ДЗ.', 'danger')
+        return redirect(url_for('groups.group_view', group_id=group.group_id))
+
+    flash(f'Массовая выдача выполнена: {len(student_ids)} ученикам.', 'success')
+    return redirect(url_for('assignments.assignment_view', assignment_id=assignment.assignment_id))
 
 
 @groups_bp.route('/groups/<int:group_id>/edit', methods=['GET', 'POST'])
