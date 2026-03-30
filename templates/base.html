@@ -86,11 +86,19 @@
     {% endwith %}
 
     {% if current_user is defined and current_user.is_authenticated %}
-    {% set _qa_widget_allowed = true %}
+        {% set _qa_widget_allowed = (
+            (current_user.is_tester() if current_user.is_tester is defined else false)
+            or (current_user.is_chief_tester() if current_user.is_chief_tester is defined else false)
+            or (current_user.is_creator() if current_user.is_creator is defined else false)
+            or (current_user.is_admin() if current_user.is_admin is defined else false)
+            or (current_user.is_chief_admin() if current_user.is_chief_admin is defined else false)
+            or (current_user.is_qa_pool if current_user.is_qa_pool is defined else false)
+            or (session.get('impersonator_id') is not none)
+        ) %}
 
-    {% if _qa_widget_allowed %}
-        {% include 'qa/_floating_widget.html' %}
-    {% endif %}
+        {% if _qa_widget_allowed %}
+            {% include 'qa/_floating_widget.html' %}
+        {% endif %}
     {% endif %}
 
     {% if current_user is defined and current_user.is_authenticated and current_user.is_demo_user %}

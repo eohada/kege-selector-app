@@ -1,15 +1,14 @@
 {% set _qa_is_elevated = (current_user.is_creator() or current_user.is_chief_tester() or current_user.is_admin() or current_user.is_chief_admin()) if current_user.is_authenticated else false %}
 {% set _qa_is_pool = (current_user.is_qa_pool if current_user.is_qa_pool is defined else false) %}
 
-<div class="fixed bottom-6 right-6 z-50" style="position:fixed;bottom:24px;right:24px;z-index:2147483647;pointer-events:auto;">
+<div id="qaDock" class="fixed z-50" style="position:fixed;bottom:24px;right:24px;z-index:2147483647;pointer-events:auto;">
     <button id="qaFab" type="button" onclick="toggleQAWidget()" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-lg border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0 flex items-center justify-center hover:bg-indigo-700 transition-colors" style="pointer-events:auto;">
         <i class="ph-bold ph-shield-check text-2xl"></i>
     </button>
-</div>
 
-<div id="qaWidget" class="fixed bottom-24 right-6 z-50 hidden w-[360px] max-w-[92vw] max-h-[78vh]" style="position:fixed;bottom:96px;right:24px;z-index:2147483646;pointer-events:auto;">
+    <div id="qaWidget" class="absolute bottom-20 right-0 hidden w-[360px] max-w-[92vw] max-h-[78vh]" style="z-index:2147483646;pointer-events:auto;">
     <div class="bg-white rounded-2xl border border-slate-200 border-b-[4px] border-b-slate-300 shadow-2xl overflow-hidden flex flex-col">
-        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div id="qaWidgetDragHandle" class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between cursor-move select-none">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center">
                     <i class="ph-fill ph-radar text-lg"></i>
@@ -89,45 +88,42 @@
                 {% if not _qa_is_pool %}
                 <details class="rounded-xl border border-slate-200 bg-white" open>
                     <summary class="cursor-pointer select-none px-4 py-3 flex items-center justify-between">
-                        <span class="text-xs font-extrabold uppercase tracking-widest text-slate-500">Пресеты 1–7</span>
+                        <span class="text-xs font-extrabold uppercase tracking-widest text-slate-500">Пресеты</span>
                         <i class="ph-bold ph-caret-down text-slate-400"></i>
                     </summary>
                     <div class="px-4 pb-4 space-y-3">
-                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Group 1</div>
+                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Каталог</div>
                         <div class="space-y-2">
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/pass_assignment')">Pass assignment</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/pay_course')">Pay course</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/god_mode_30d')">God mode (30d)</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/fail_assignment')">Fail assignment</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/pass_assignment_half')">Pass assignment (half)</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/reset_lesson_progress')">Reset lesson progress</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/expire_subscription')">Expire subscription</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/mock_notifications')">Mock notifications</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/bulk_approve')">Bulk approve</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/bulk_reject')">Bulk reject</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/inject_submission')">Inject submission</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/generate_debtor')">Generate debtor</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/overwhelm_reviews')">Overwhelm reviews</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/break_schedule')">Break schedule</button>
+                            <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/tabula_rasa')">Tabula rasa</button>
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/perfectionist_student')">Perfectionist student</button>
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/clean_slate_account')">Clean slate account</button>
-                        </div>
-                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 2</div>
-                        <div class="space-y-2">
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/broken_work_10mb')">Broken work (10MB)</button>
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/deadline_timer_5min')">Deadline timer (5min)</button>
-                        </div>
-                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 3</div>
-                        <div class="space-y-2">
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/schedule_marathon_10x15')">Schedule marathon (10×15)</button>
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/lesson_in_2030')">Lesson in 2030</button>
-                        </div>
-                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 4</div>
-                        <div class="space-y-2">
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/subscription_end_yesterday')">Subscription end вчера</button>
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/invite_generator_10')">Invite generator ×10</button>
-                        </div>
-                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 5</div>
-                        <div class="space-y-2">
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/create_cluster_group')">Create cluster group</button>
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/mass_homework_to_group')">Mass homework to group</button>
-                        </div>
-                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 6</div>
-                        <div class="space-y-2">
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/stress_trainer_infinite_loop')">Stress trainer: infinite loop</button>
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/reset_streak')">Reset streak</button>
-                        </div>
-                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest pt-2">Group 7</div>
-                        <div class="space-y-2">
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/system_cache_clear')">System cache clear</button>
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/maintenance_enable')">Maintenance enable</button>
-                            <button type="button" class="qa-preset-btn !border-red-200 !bg-red-50 hover:!bg-red-100 !text-red-700" onclick="qaRunPreset('/qa/manipulate/nuke_test_data')">Nuke test data</button>
+                            <button type="button" class="qa-preset-btn !border-red-200 !bg-red-50 hover:!bg-red-100 !text-red-700" onclick="qaRunDangerPreset('/qa/manipulate/nuke_test_data', 'Nuke test data')">Nuke test data</button>
                         </div>
                     </div>
                 </details>
@@ -135,6 +131,8 @@
             </div>
         </div>
     </div>
+    </div>
+</div>
 </div>
 
 <div id="qaBugModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 px-4" style="z-index:2147483647;">
@@ -199,6 +197,46 @@ function toastErr(msg) {
     else alert(msg);
 }
 
+function qaRunDangerPreset(endpoint, label) {
+    const text = (label || 'Опасный пресет');
+    if (window.showConfirmModal) {
+        showConfirmModal({
+            title: 'Подтверди действие',
+            message: `${text}\n\nТочно выполнить?`,
+            confirmText: 'Выполнить',
+            cancelText: 'Отмена',
+            confirmClass: 'danger',
+            onConfirm: () => qaRunPreset(endpoint)
+        });
+        return;
+    }
+    if (confirm(`${text}\n\nТочно выполнить?`)) qaRunPreset(endpoint);
+}
+
+function qaHideDockForScreenshot(hide) {
+    const dock = document.getElementById('qaDock');
+    if (!dock) return;
+    dock.style.visibility = hide ? 'hidden' : '';
+}
+
+async function qaCaptureScreenshotNow() {
+    qaHideDockForScreenshot(true);
+    await new Promise(r => setTimeout(r, 50));
+    try {
+        const canvas = await html2canvas(document.body, {
+            scrollX: -window.scrollX,
+            scrollY: -window.scrollY,
+            windowWidth: document.documentElement.clientWidth,
+            windowHeight: document.documentElement.clientHeight,
+            useCORS: true,
+            allowTaint: true
+        });
+        return canvas.toDataURL('image/jpeg', 0.75);
+    } finally {
+        qaHideDockForScreenshot(false);
+    }
+}
+
 async function qaRunPreset(endpoint) {
     try {
         const res = await fetch(endpoint, { method: 'POST', headers: { 'X-CSRFToken': getCsrf(), 'X-Requested-With': 'XMLHttpRequest' } });
@@ -240,12 +278,18 @@ async function openQABugModal() {
     const placeholder = document.getElementById('qaBugScreenshotPlaceholder');
     const img = document.getElementById('qaBugScreenshotImg');
     if (!modal || !placeholder || !img) return;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
     document.getElementById('qaBugContextUrl').value = window.location.href;
     placeholder.textContent = 'Готовим скриншот...';
     img.classList.add('hidden');
     document.getElementById('qaBugLogsSnapshot').value = '';
+    document.getElementById('qaBugScreenshotData').value = '';
+
+    // Скриншот ДО открытия модалки, чтобы окно репорта не попало в кадр
+    let dataUrl = '';
+    try { dataUrl = await qaCaptureScreenshotNow(); } catch (e) { dataUrl = ''; }
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
 
     {% if current_user.is_creator() or current_user.is_chief_tester() %}
     try {
@@ -260,30 +304,14 @@ async function openQABugModal() {
     } catch (e) {}
     {% endif %}
 
-    setTimeout(async () => {
-        try {
-            const canvas = await html2canvas(document.body, {
-                scrollX: -window.scrollX,
-                scrollY: -window.scrollY,
-                windowWidth: document.documentElement.clientWidth,
-                windowHeight: document.documentElement.clientHeight,
-                useCORS: true,
-                allowTaint: true
-            });
-            let dataUrl = '';
-            try { dataUrl = canvas.toDataURL('image/jpeg', 0.75); } catch (e) { dataUrl = ''; }
-            document.getElementById('qaBugScreenshotData').value = dataUrl;
-            if (dataUrl) {
-                img.src = dataUrl;
-                img.classList.remove('hidden');
-                placeholder.textContent = '';
-            } else {
-                placeholder.textContent = 'Скриншот недоступен.';
-            }
-        } catch (e) {
-            placeholder.textContent = 'Скриншот недоступен.';
-        }
-    }, 200);
+    if (dataUrl) {
+        document.getElementById('qaBugScreenshotData').value = dataUrl;
+        img.src = dataUrl;
+        img.classList.remove('hidden');
+        placeholder.textContent = '';
+    } else {
+        placeholder.textContent = 'Скриншот недоступен.';
+    }
 }
 
 function closeQABugModal() {
@@ -292,6 +320,76 @@ function closeQABugModal() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 }
+
+(function initQADockDrag() {
+    const dock = document.getElementById('qaDock');
+    const handle = document.getElementById('qaWidgetDragHandle');
+    if (!dock || !handle) return;
+
+    try {
+        const raw = localStorage.getItem('qaDock.pos');
+        if (raw) {
+            const p = JSON.parse(raw);
+            if (typeof p.left === 'number' && typeof p.top === 'number') {
+                dock.style.left = p.left + 'px';
+                dock.style.top = p.top + 'px';
+                dock.style.right = 'auto';
+                dock.style.bottom = 'auto';
+            }
+        }
+    } catch (e) {}
+
+    let dragging = false;
+    let startX = 0, startY = 0, baseLeft = 0, baseTop = 0;
+
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+    function onDown(ev) {
+        const w = document.getElementById('qaWidget');
+        if (!w || w.classList.contains('hidden')) return;
+        dragging = true;
+        const e = ev.touches ? ev.touches[0] : ev;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = dock.getBoundingClientRect();
+        baseLeft = rect.left;
+        baseTop = rect.top;
+        dock.style.right = 'auto';
+        dock.style.bottom = 'auto';
+        dock.style.left = baseLeft + 'px';
+        dock.style.top = baseTop + 'px';
+        ev.preventDefault();
+    }
+
+    function onMove(ev) {
+        if (!dragging) return;
+        const e = ev.touches ? ev.touches[0] : ev;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const dw = dock.offsetWidth || 80;
+        const dh = dock.offsetHeight || 80;
+        const left = clamp(baseLeft + dx, 8, window.innerWidth - dw - 8);
+        const top = clamp(baseTop + dy, 8, window.innerHeight - dh - 8);
+        dock.style.left = left + 'px';
+        dock.style.top = top + 'px';
+    }
+
+    function onUp() {
+        if (!dragging) return;
+        dragging = false;
+        try {
+            const rect = dock.getBoundingClientRect();
+            localStorage.setItem('qaDock.pos', JSON.stringify({ left: rect.left, top: rect.top }));
+        } catch (e) {}
+    }
+
+    handle.addEventListener('mousedown', onDown);
+    handle.addEventListener('touchstart', onDown, { passive: false });
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchend', onUp);
+})();
 
 document.getElementById('qaBugForm')?.addEventListener('submit', async function (e) {
     e.preventDefault();
