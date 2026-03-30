@@ -60,26 +60,30 @@ def is_qa_authorized():
 # 1. IMPERSONATION (Тумблер ролей)
 # ==========================================
 
-@qa_bp.route('/impersonate/<int:target_user_id>', methods=['POST'])
+@qa_bp.route('/impersonate_as_role', methods=['POST'])
 @login_required
-def impersonate(target_user_id):
+def impersonate_as_role():
+    # Твоя проверка прав
     if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
         flash('У вас нет прав для этого действия', 'error')
         return redirect(request.referrer or url_for('main.index'))
 
-    target_user = User.query.get_or_404(target_user_id)
+    # Ловим username из POST-запроса (так прописано в _floating_widget.html)
+    target_username = request.form.get('username')
+    target_user = User.query.filter_by(username=target_username).first_or_404()
 
-    # Запоминаем ID настоящего тестировщика
+    # Твоя защита от двойной симуляции
     if 'impersonator_id' not in session:
         session['impersonator_id'] = current_user.id
 
     login_user(target_user)
-    flash(f'Вы вошли под ролью: {target_user.role}', 'success')
+    flash(f'Вы вошли под аккаунтом: {target_user.username} ({target_user.role})', 'success')
     return redirect(request.referrer or url_for('main.index'))
 
 @qa_bp.route('/revert_impersonation', methods=['POST'])
 @login_required
 def revert_impersonation():
+    # Твоя логика возврата
     impersonator_id = session.pop('impersonator_id', None)
     if not impersonator_id:
         return redirect(url_for('main.index'))
@@ -90,7 +94,6 @@ def revert_impersonation():
         flash('Вы вернулись в свой QA-аккаунт', 'success')
     
     return redirect(request.referrer or url_for('main.index'))
-
 
 def _ensure_qa_pool():
     """Создаёт пул из 3 учеников, 3 преподавателей, 3 родителей, 1 админа (is_qa_pool=True)."""
@@ -1842,33 +1845,3 @@ def manipulate_preset(action):
         current_app.logger.error(f"Ошибка пресета {action}: {e}")
         return jsonify({"success": False, "message": f"Ошибка: {str(e)}"}), 500
 
-@qa_bp.route('/impersonate', methods=['POST'])
-@login_required
-def impersonate_as_role():
-    if not (current_user.is_creator() or current_user.is_chief_tester()):
-        return abort(403)
-        
-    target_username = request.form.get('username')
-    target_user = User.query.filter_by(username=target_username).first()
-    
-    if target_user:
-        # Запоминаем, кто мы на самом деле
-        session['impersonator_id'] = current_user.id 
-        # Подменяем текущую сессию
-        login_user(target_user)
-        flash(f'Вы вошли в режим симуляции пользователя: {target_user.username}', 'info')
-    else:
-        flash('Пользователь не найден.', 'error')
-        
-    return redirect(url_for('main.dashboard'))
-
-@qa_bp.route('/revert-impersonation', methods=['POST'])
-@login_required
-def revert_impersonation():
-    original_id = session.pop('impersonator_id', None)
-    if original_id:
-        original_user = User.query.get(original_id)
-        if original_user:
-            login_user(original_user)
-            flash('Вы вернулись в свой профиль', 'success')
-    return redirect(url_for('chief_tester.dashboard'))
