@@ -212,8 +212,11 @@ def lesson_edit(lesson_id):
 @lessons_bp.route('/lesson/<int:lesson_id>/view')
 @login_required
 def lesson_view(lesson_id):
-    """Просмотр урока (редирект на редактирование)"""
-    return redirect(url_for('lessons.lesson_edit', lesson_id=lesson_id))
+    """Вход в страницу занятия (классная комната)."""
+    mode = (request.args.get('mode') or '').strip().lower()
+    if mode == 'edit':
+        return redirect(url_for('lessons.lesson_edit', lesson_id=lesson_id))
+    return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))
 
 @lessons_bp.route('/lesson/<int:lesson_id>/delete', methods=['POST'])
 @login_required
