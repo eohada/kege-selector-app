@@ -175,7 +175,7 @@
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-3xl font-black text-slate-900 tracking-tight">Доска задач</h2>
             <div class="flex gap-2">
-                <button class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-sm flex items-center gap-2" type="button" onclick="location.href='{{ url_for('qa.board', return_to=url_for('chief_tester.dashboard', tab='tasks')) }}'">
+                <button class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-sm flex items-center gap-2" type="button" data-href="{{ url_for('qa.board', return_to=url_for('chief_tester.dashboard', tab='tasks')) }}" onclick="location.href=this.dataset.href">
                     <i class="ph-bold ph-funnel"></i> Открыть full board
                 </button>
             </div>
@@ -231,7 +231,7 @@
                 <h2 class="text-3xl font-black text-slate-900 tracking-tight">QA Отдел</h2>
                 <p class="text-slate-500 font-medium">Управление доступом и распределение нагрузки на тестировщиков.</p>
             </div>
-            <button class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2" onclick="location.href='{{ url_for('qa.testers', return_to=url_for('chief_tester.dashboard', tab='team')) }}'" type="button">
+            <button class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2" data-href="{{ url_for('qa.testers', return_to=url_for('chief_tester.dashboard', tab='team')) }}" onclick="location.href=this.dataset.href" type="button">
                 <i class="ph-bold ph-user-plus"></i> Управление
             </button>
         </div>
@@ -473,6 +473,7 @@ let logsLastText = '';
 let logsSelected = [];
 const initialTabFromServer = '{{ initial_tab|default("dashboard") }}';
 let logsRefreshTimer = null;
+const canViewLogsFeed = '{{ "1" if (ct_scope and ct_scope.can_view_logs) else "0" }}' === '1';
 
 function updateTabUrl(tabId) {
     try {
@@ -719,27 +720,27 @@ async function openBugModal() {
     logsPreview.textContent = 'Загрузка...';
     logsSnapshotInput.value = '';
 
-    {% if ct_scope and ct_scope.can_view_logs %}
-    try {
-        const res = await fetch('{{ url_for("chief_tester.logs_feed") }}?lines=120', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        const data = await res.json();
-        const entries = Array.isArray(data.entries) ? data.entries : [];
-        let selected = [];
-        if (Array.isArray(window.__ctSelectedLogs) && window.__ctSelectedLogs.length) {
-            const selectedSet = new Set(window.__ctSelectedLogs);
-            selected = entries.filter(e => selectedSet.has(`${e.ts}|${e.request_id || ''}|${e.action || ''}|${e.page || ''}`));
+    if (canViewLogsFeed) {
+        try {
+            const res = await fetch('{{ url_for("chief_tester.logs_feed") }}?lines=120', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await res.json();
+            const entries = Array.isArray(data.entries) ? data.entries : [];
+            let selected = [];
+            if (Array.isArray(window.__ctSelectedLogs) && window.__ctSelectedLogs.length) {
+                const selectedSet = new Set(window.__ctSelectedLogs);
+                selected = entries.filter(e => selectedSet.has(`${e.ts}|${e.request_id || ''}|${e.action || ''}|${e.page || ''}`));
+            }
+            const source = selected.length ? selected : entries.slice(-30);
+            const text = source.map(e => `[${e.ts}] RID=${e.request_id || '-'} | ${e.actor} | ${e.action} | ${e.page} | ${e.result}`).join('\n');
+            logsSnapshotInput.value = text;
+            logsPreview.textContent = text || 'Логи пустые.';
+        } catch (e) {
+            logsPreview.textContent = 'Не удалось получить логи.';
         }
-        const source = selected.length ? selected : entries.slice(-30);
-        const text = source.map(e => `[${e.ts}] RID=${e.request_id || '-'} | ${e.actor} | ${e.action} | ${e.page} | ${e.result}`).join('\n');
-        logsSnapshotInput.value = text;
-        logsPreview.textContent = text || 'Логи пустые.';
-    } catch (e) {
-        logsPreview.textContent = 'Не удалось получить логи.';
+    } else {
+        logsPreview.textContent = 'Логи недоступны в ограниченном режиме. Прикладывайте RID/скриншот.';
+        logsSnapshotInput.value = '';
     }
-    {% else %}
-    logsPreview.textContent = 'Логи недоступны в ограниченном режиме. Прикладывайте RID/скриншот.';
-    logsSnapshotInput.value = '';
-    {% endif %}
 
     setTimeout(async () => {
         try {
@@ -841,6 +842,83 @@ document.getElementById('ctBugForm')?.addEventListener('submit', async function 
         }
     } catch (e) {}
 })();
+</script>
+<script>
+function refreshLogs() {
+    fetch("{{ url_for('chief_tester.logs_feed') }}")
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById('ctLogTable');
+            if (!container) return;
+
+            const logs = (data && (data.logs || data.entries)) || [];
+            if (Array.isArray(logs) && logs.length > 0) {
+                container.innerHTML = logs.map(entry => {
+                    let iconColor = 'text-slate-600 bg-slate-100 border-slate-200';
+                    let iconClass = 'ph-info';
+                    const badge = ((entry.result_badge || entry.result || '') + '').toLowerCase();
+                    if (badge.includes('green') || badge.includes('success')) {
+                        iconColor = 'text-green-600 bg-green-100 border-green-200';
+                        iconClass = 'ph-check';
+                    } else if (badge.includes('red') || badge.includes('error') || badge.includes('failed')) {
+                        iconColor = 'text-red-600 bg-red-100 border-red-200';
+                        iconClass = 'ph-x';
+                    } else if (badge.includes('orange') || badge.includes('warning')) {
+                        iconColor = 'text-orange-600 bg-orange-100 border-orange-200';
+                        iconClass = 'ph-warning';
+                    }
+
+                    const reqId = entry.request_id || '';
+                    const reqIdShort = reqId ? reqId.substring(0, 8) + '...' : 'N/A';
+                    const ts = (entry.ts || '').toString();
+                    const timeOnly = ts.includes(' ') ? ts.split(' ')[1] : ts;
+                    const actionText = entry.action || entry.result_text || entry.result || '-';
+                    const pageText = entry.page || entry.url || '-';
+                    const actorText = entry.actor || 'system';
+
+                    return `
+                    <div class="flex items-start gap-4 p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm border mt-1 ${iconColor}">
+                            <i class="ph-bold ${iconClass}"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-xs text-slate-600 truncate max-w-md">${pageText}</span>
+                                </div>
+                                <span class="text-[11px] font-bold text-slate-400">${timeOnly}</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1.5 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm">
+                                    <span class="text-[11px] font-bold text-slate-700">${actorText}</span>
+                                </div>
+                                <span class="text-slate-300">•</span>
+                                <span class="text-xs font-medium text-slate-800">${actionText}</span>
+                            </div>
+                        </div>
+                        <div class="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end gap-2">
+                            <button onclick="navigator.clipboard.writeText('${reqId}')" class="px-2 py-1 bg-white border border-slate-200 rounded-md text-[10px] font-mono text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-sm transition-colors" title="Копировать Request ID">
+                                <i class="ph-bold ph-copy mr-1"></i> #${reqIdShort}
+                            </button>
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400 font-medium">Логов пока нет</div>';
+            }
+        })
+        .catch(err => console.error("Ошибка загрузки логов:", err));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    refreshLogs();
+    setInterval(() => {
+        const dash = document.getElementById('tab-dashboard');
+        if (dash && dash.classList.contains('active')) {
+            refreshLogs();
+        }
+    }, 5000);
+});
 </script>
 {% endblock %}
 

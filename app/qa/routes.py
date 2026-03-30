@@ -1747,27 +1747,23 @@ def manipulate_preset(action):
         current_app.logger.error(f"Ошибка пресета {action}: {e}")
         return jsonify({"success": False, "message": f"Ошибка: {str(e)}"}), 500
 
-@qa_bp.route('/impersonate_as_role', methods=['POST'])
+
+@qa_bp.route('/impersonate/<int:target_user_id>', methods=['POST'])
 @login_required
-def impersonate_as_role():
-    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+def impersonate(target_user_id):
+    if not (current_user.is_creator() or current_user.is_chief_tester() or getattr(current_user, 'role', '') in ['admin', 'chief_admin']):
         flash('У вас нет прав для этого действия', 'error')
         return redirect(request.referrer or url_for('main.index'))
 
-    target_username = request.form.get('username')
-    target_user = User.query.filter_by(username=target_username).first()
-    
-    if not target_user:
-        flash('Пользователь не найден.', 'error')
-        return redirect(request.referrer or url_for('main.index'))
+    target_user = User.query.get_or_404(target_user_id)
 
+    # Защита от "Матрицы" (симуляции внутри симуляции)
     if 'impersonator_id' not in session:
         session['impersonator_id'] = current_user.id
 
     login_user(target_user)
     flash(f'Вы вошли под аккаунтом: {target_user.username}', 'success')
     return redirect(request.referrer or url_for('main.index'))
-
 
 @qa_bp.route('/revert_impersonation', methods=['POST'])
 @login_required
@@ -1779,6 +1775,6 @@ def revert_impersonation():
     original_user = User.query.get(impersonator_id)
     if original_user:
         login_user(original_user)
-        flash('Вы вернулись в свой QA-аккаунт', 'success')
+        flash('Вы вернулись в свой QA-кабинет', 'success')
     
     return redirect(request.referrer or url_for('main.index'))
