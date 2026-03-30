@@ -3,13 +3,13 @@
 {% set _qa_has_impersonator = (session.get('impersonator_id') is not none) %}
 
 <div id="qaDock" class="fixed z-50" style="position:fixed;bottom:24px;right:24px;z-index:2147483647;pointer-events:auto;">
-    <button id="qaFab" type="button" onclick="toggleQAWidget()" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-lg border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0 flex items-center justify-center hover:bg-indigo-700 transition-colors" style="pointer-events:auto;">
+    <button id="qaFab" type="button" onclick="toggleQAWidget()" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-lg border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0 flex items-center justify-center hover:bg-indigo-700 transition-colors cursor-move" style="pointer-events:auto;">
         <i class="ph-bold ph-shield-check text-2xl"></i>
     </button>
 
     <div id="qaWidget" class="absolute bottom-20 right-0 hidden relative w-[360px] max-w-[92vw] max-h-[78vh] min-w-[320px] min-h-[260px]" style="z-index:2147483646;pointer-events:auto;height:min(78vh,560px);">
     <div class="bg-white rounded-2xl border border-slate-200 border-b-[4px] border-b-slate-300 shadow-2xl overflow-hidden flex flex-col min-h-[240px] h-full">
-        <div id="qaWidgetDragHandle" class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between cursor-move select-none">
+        <div id="qaWidgetDragHandle" class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between select-none">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center">
                     <i class="ph-fill ph-radar text-lg"></i>
@@ -132,7 +132,7 @@
             </div>
         </div>
     </div>
-    <div id="qaWidgetResizeHandle" class="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize opacity-70 hover:opacity-100 flex items-end justify-end select-none" title="Изменить размер">
+    <div id="qaWidgetResizeHandle" class="absolute w-5 h-5 cursor-se-resize opacity-70 hover:opacity-100 flex items-end justify-end select-none" style="right:8px;bottom:8px;z-index:5;" title="Изменить размер">
         <i class="ph-bold ph-corners-out text-slate-400 text-sm"></i>
     </div>
     </div>
@@ -185,7 +185,20 @@
 function toggleQAWidget() {
     const w = document.getElementById('qaWidget');
     if (!w) return;
+    normalizeWidgetSize();
     w.classList.toggle('hidden');
+}
+
+function normalizeWidgetSize() {
+    const widget = document.getElementById('qaWidget');
+    if (!widget) return;
+    const maxW = Math.min(520, Math.max(320, window.innerWidth - 24));
+    const maxH = Math.max(260, window.innerHeight - 24);
+    const rect = widget.getBoundingClientRect();
+    const curW = parseInt(widget.style.width || Math.round(rect.width || 360), 10);
+    const curH = parseInt(widget.style.height || Math.round(rect.height || 560), 10);
+    widget.style.width = Math.max(320, Math.min(maxW, Number.isFinite(curW) ? curW : 360)) + 'px';
+    widget.style.height = Math.max(260, Math.min(maxH, Number.isFinite(curH) ? curH : 560)) + 'px';
 }
 
 function getCsrf() {
@@ -327,7 +340,7 @@ function closeQABugModal() {
 
 (function initQADockDrag() {
     const dock = document.getElementById('qaDock');
-    const handle = document.getElementById('qaWidgetDragHandle');
+    const handle = document.getElementById('qaFab');
     if (!dock || !handle) return;
 
     try {
@@ -344,14 +357,14 @@ function closeQABugModal() {
     } catch (e) {}
 
     let dragging = false;
+    let moved = false;
     let startX = 0, startY = 0, baseLeft = 0, baseTop = 0;
 
     function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
     function onDown(ev) {
-        const w = document.getElementById('qaWidget');
-        if (!w || w.classList.contains('hidden')) return;
         dragging = true;
+        moved = false;
         const e = ev.touches ? ev.touches[0] : ev;
         startX = e.clientX;
         startY = e.clientY;
@@ -370,6 +383,7 @@ function closeQABugModal() {
         const e = ev.touches ? ev.touches[0] : ev;
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
+        if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
         const dw = dock.offsetWidth || 80;
         const dh = dock.offsetHeight || 80;
         const left = clamp(baseLeft + dx, 8, window.innerWidth - dw - 8);
@@ -389,6 +403,13 @@ function closeQABugModal() {
 
     handle.addEventListener('mousedown', onDown);
     handle.addEventListener('touchstart', onDown, { passive: false });
+    handle.addEventListener('click', function (ev) {
+        if (moved) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            moved = false;
+        }
+    }, true);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('mouseup', onUp);
@@ -397,6 +418,8 @@ function closeQABugModal() {
 
 (function initQAWidgetResize() {
     const widget = document.getElementById('qaWidget');
+    normalizeWidgetSize();
+
     const handle = document.getElementById('qaWidgetResizeHandle');
     if (!widget || !handle) return;
 
@@ -420,7 +443,7 @@ function closeQABugModal() {
     function onMove(ev) {
         if (!resizing) return;
         const e = ev.touches ? ev.touches[0] : ev;
-        const maxW = Math.max(320, window.innerWidth - 16);
+        const maxW = Math.min(520, Math.max(320, window.innerWidth - 24));
         const maxH = Math.max(260, window.innerHeight - 16);
         const w = clamp(startW + (e.clientX - startX), 320, maxW);
         const h = clamp(startH + (e.clientY - startY), 260, maxH);
