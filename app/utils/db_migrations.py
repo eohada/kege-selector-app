@@ -717,6 +717,26 @@ def ensure_schema_columns(app):
                     db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN goal_text TEXT'))  # Храним текстовую формулировку цели
                 if 'programming_language' not in student_columns:
                     db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN programming_language VARCHAR(100)'))  # Храним выбранный язык программирования
+                if 'telegram_username' not in student_columns:
+                    try:
+                        if is_postgres:
+                            db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN telegram_username VARCHAR(100)'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE {students_table} ADD COLUMN telegram_username VARCHAR(100)'))
+                        logger.info(f"Added telegram_username to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add telegram_username to {students_table}: {e}")
+                        db.session.rollback()
+                if 'discord_id' not in student_columns:
+                    try:
+                        if is_postgres:
+                            db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN discord_id VARCHAR(100)'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE {students_table} ADD COLUMN discord_id VARCHAR(100)'))
+                        logger.info(f"Added discord_id to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add discord_id to {students_table}: {e}")
+                        db.session.rollback()
                 if 'user_id' not in student_columns:
                     db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN user_id INTEGER REFERENCES "Users"(id)'))
                     logger.info(f"Added user_id column to {students_table}")
@@ -1043,6 +1063,19 @@ def ensure_schema_columns(app):
                             logger.info(f"Added column is_demo_user to {users_table}")
                         except Exception as e:
                             logger.warning(f"Could not add is_demo_user column: {e}")
+
+                    # Обложка профиля на уровне User (ORM: User.cover_url). UserProfiles.cover_url — отдельное поле.
+                    if 'cover_url' not in users_columns:
+                        try:
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN cover_url VARCHAR(500)'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN cover_url VARCHAR(500)'))
+                            logger.info(f"Added column cover_url to {users_table}")
+                            users_columns = users_columns | {'cover_url'}
+                        except Exception as e:
+                            logger.warning(f"Could not add cover_url column: {e}")
+                            db.session.rollback()
                 except Exception as e:
                     logger.warning(f"Error checking/updating Users table columns: {e}")
 
