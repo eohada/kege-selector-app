@@ -86,15 +86,7 @@
     {% endwith %}
 
     {% if current_user is defined and current_user.is_authenticated %}
-    {% set _qa_widget_allowed = false %}
-    
-    {% if session.get('impersonator_id') %}
-        {% set _qa_widget_allowed = true %}
-    {% elif current_user.role in ['chief_tester', 'creator', 'chief_admin', 'tester', 'admin'] %}
-        {% set _qa_widget_allowed = true %}
-    {% elif current_user.is_qa_pool is defined and current_user.is_qa_pool %}
-        {% set _qa_widget_allowed = true %}
-    {% endif %}
+    {% set _qa_widget_allowed = true %}
 
     {% if _qa_widget_allowed %}
         {% include 'qa/_floating_widget.html' %}
