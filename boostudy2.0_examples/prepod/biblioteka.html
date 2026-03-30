@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Библиотека материалов</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты Golos Text -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Golos Text"', 'sans-serif'] },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                        'input': 'inset 0 2px 4px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        
+        /* Кастомный Drag & Drop */
+        .file-drop-area { transition: all 0.3s ease; }
+        .file-drop-area:hover, .file-drop-area.dragover {
+            border-color: var(--tw-colors-boo-primary);
+            background-color: #F5F3FF; /* bg-purple-50 */
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ (Вид Преподавателя/Создателя) -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-8 pointer-events-none">
+        <header class="w-full max-w-[1400px] mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Центральное меню -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-users-three text-lg"></i> Ученики
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-tray text-lg"></i> Проверка
+                </a>
+                <!-- АКТИВНЫЙ ПУНКТ (Ещё -> Библиотека) -->
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2 relative">
+                    <i class="ph-bold ph-squares-four text-lg"></i> Ещё <i class="ph-bold ph-caret-down text-xs ml-1"></i>
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors">
+                    <i class="ph-bold ph-magnifying-glass text-xl"></i>
+                </button>
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 cursor-pointer">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator&backgroundColor=7B5CFF" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-purple-50">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-24 px-6 lg:px-8">
+        <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
+
+            <!-- БЛОК 1: HERO ЗАГОЛОВОК -->
+            <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm relative overflow-hidden flex flex-col">
+                <!-- Декоративные блики -->
+                <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute right-60 bottom-[-50px] w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
+
+                <div class="relative z-10 max-w-4xl">
+                    <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                        <i class="ph-fill ph-books"></i> Контент и библиотека
+                    </div>
+                    <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-3">Библиотека материалов</h1>
+                    <p class="text-slate-600 font-medium text-sm leading-relaxed max-w-3xl">
+                        Храни раздатки, файлы и опоры в одном месте и прикрепляй к любым урокам. Сейчас это приватная библиотека (для твоего аккаунта) — дальше добавим shared и теги.
+                    </p>
+                </div>
+            </div>
+
+            <!-- СПЛИТ КОНТЕНТА: Форма загрузки (Слева) и Мои материалы (Справа) -->
+            <div class="flex flex-col lg:flex-row gap-6 items-start">
+                
+                <!-- ЛЕВАЯ КОЛОНКА: ЗАГРУЗИТЬ НОВЫЙ МАТЕРИАЛ -->
+                <div class="w-full lg:w-1/3 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 sticky top-32">
+                    <h2 class="text-xl font-black text-slate-900 mb-6">Загрузить новый материал</h2>
+
+                    <form class="space-y-6">
+                        <!-- Файл (Drag & Drop Zone) -->
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Файл</label>
+                            
+                            <div class="file-drop-area relative border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 p-6 flex flex-col items-center justify-center text-center cursor-pointer overflow-hidden group">
+                                <input type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required>
+                                <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-200 mb-3 group-hover:scale-110 transition-transform">
+                                    <i class="ph-bold ph-upload-simple text-xl text-boo-primary"></i>
+                                </div>
+                                <p class="text-sm font-bold text-slate-700 mb-1">Выберите файл или перетащите</p>
+                                <p class="text-xs font-medium text-slate-400">PDF, DOCX, PNG, JPG до 50MB</p>
+                            </div>
+                        </div>
+
+                        <!-- Название -->
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Название <span class="text-slate-400 font-medium normal-case tracking-normal">(опционально)</span></label>
+                            <input type="text" placeholder="Напр.: Таблица истинности - шпаргалка" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                        </div>
+
+                        <!-- Теги -->
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Теги <span class="text-slate-400 font-medium normal-case tracking-normal">(через запятую)</span></label>
+                            <input type="text" value="егэ, 24, питон, шпора" placeholder="егэ, 24, питон..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                            
+                            <!-- Визуализация тегов -->
+                            <div class="flex flex-wrap gap-1.5 px-1 pt-1">
+                                <span class="bg-cyan-50 border border-cyan-100 text-cyan-600 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">егэ <i class="ph-bold ph-x cursor-pointer hover:text-cyan-800"></i></span>
+                                <span class="bg-purple-50 border border-purple-100 text-purple-600 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">24 <i class="ph-bold ph-x cursor-pointer hover:text-purple-800"></i></span>
+                                <span class="bg-orange-50 border border-orange-100 text-orange-600 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">питон <i class="ph-bold ph-x cursor-pointer hover:text-orange-800"></i></span>
+                                <span class="bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">шпора <i class="ph-bold ph-x cursor-pointer hover:text-slate-800"></i></span>
+                            </div>
+                        </div>
+
+                        <!-- Описание -->
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Описание <span class="text-slate-400 font-medium normal-case tracking-normal">(опционально)</span></label>
+                            <textarea rows="3" placeholder="Коротко: для чего, когда выдавать, нюансы..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input resize-y"></textarea>
+                        </div>
+
+                        <!-- Кнопка сабмита -->
+                        <div class="pt-2 border-t border-slate-100">
+                            <button type="button" class="w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">
+                                <i class="ph-bold ph-cloud-arrow-up text-lg"></i> Добавить материал
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ПРАВАЯ КОЛОНКА: СПИСОК МАТЕРИАЛОВ -->
+                <div class="w-full lg:w-2/3 flex flex-col gap-6">
+                    
+                    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Мои материалы</h2>
+                            <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">2 шт.</span>
+                        </div>
+
+                        <!-- Панель поиска и фильтров -->
+                        <div class="flex flex-col sm:flex-row gap-3 mb-8">
+                            <div class="relative flex-1">
+                                <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                <input type="text" placeholder="Поиск по названию..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                            </div>
+                            
+                            <div class="flex gap-3 w-full sm:w-auto">
+                                <div class="relative w-full sm:w-40">
+                                    <i class="ph-bold ph-tag absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input type="text" placeholder="Тег" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
+                                </div>
+                                <button class="w-12 h-12 bg-white border border-slate-200 text-boo-primary rounded-xl flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm shrink-0">
+                                    <i class="ph-bold ph-magnifying-glass"></i>
+                                </button>
+                                <button class="w-12 h-12 bg-white border border-slate-200 text-slate-400 rounded-xl flex items-center justify-center hover:bg-slate-50 hover:text-slate-700 transition-colors shadow-sm shrink-0" title="Сбросить фильтры">
+                                    <i class="ph-bold ph-arrow-counter-clockwise"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- СЕТКА МАТЕРИАЛОВ (Заполненный стейт) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                            <!-- Карточка 1: PDF -->
+                            <div class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col group relative">
+                                <div class="p-5 flex-1">
+                                    <!-- Иконка файла и меню -->
+                                    <div class="flex justify-between items-start mb-4">
+                                        <div class="w-12 h-12 rounded-xl bg-red-50 text-red-500 flex items-center justify-center border border-red-100 shadow-sm">
+                                            <i class="ph-fill ph-file-pdf text-2xl"></i>
+                                        </div>
+                                        <button class="text-slate-400 hover:text-slate-700 transition-colors"><i class="ph-bold ph-dots-three text-xl"></i></button>
+                                    </div>
+                                    
+                                    <h3 class="text-lg font-black text-slate-900 mb-2 leading-tight group-hover:text-boo-primary transition-colors line-clamp-2" title="Таблица истинности - шпаргалка">Таблица истинности - шпаргалка</h3>
+                                    
+                                    <!-- Теги -->
+                                    <div class="flex flex-wrap gap-1.5 mb-4">
+                                        <span class="bg-cyan-50 text-cyan-600 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-cyan-100">егэ</span>
+                                        <span class="bg-purple-50 text-purple-600 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-purple-100">24</span>
+                                        <span class="bg-orange-50 text-orange-600 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-orange-100">питон</span>
+                                    </div>
+
+                                    <div class="text-xs font-bold text-slate-400 flex items-center gap-2">
+                                        <i class="ph-bold ph-calendar-blank"></i> 26 марта 2026 • 1.2 MB
+                                    </div>
+                                </div>
+                                
+                                <div class="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-[24px] flex gap-2">
+                                    <button class="flex-1 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                                        <i class="ph-bold ph-download-simple"></i> Скачать
+                                    </button>
+                                    <button class="w-10 h-10 bg-white text-boo-primary border border-purple-200 rounded-lg flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm" title="Скопировать ссылку">
+                                        <i class="ph-bold ph-link"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Карточка 2: Изображение -->
+                            <div class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col group relative">
+                                <div class="p-5 flex-1">
+                                    <div class="flex justify-between items-start mb-4">
+                                        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-100 shadow-sm overflow-hidden relative">
+                                            <!-- Миниатюра (моковая) -->
+                                            <img src="https://images.unsplash.com/photo-1614332287897-cdc485fa562d?q=80&w=100&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-40">
+                                            <i class="ph-fill ph-image text-2xl relative z-10 text-blue-600"></i>
+                                        </div>
+                                        <button class="text-slate-400 hover:text-slate-700 transition-colors"><i class="ph-bold ph-dots-three text-xl"></i></button>
+                                    </div>
+                                    
+                                    <h3 class="text-lg font-black text-slate-900 mb-2 leading-tight group-hover:text-boo-primary transition-colors line-clamp-2">Графы (Визуальная схема)</h3>
+                                    
+                                    <div class="flex flex-wrap gap-1.5 mb-4">
+                                        <span class="bg-cyan-50 text-cyan-600 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-cyan-100">егэ</span>
+                                        <span class="bg-green-50 text-green-600 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-green-100">графы</span>
+                                    </div>
+
+                                    <div class="text-xs font-bold text-slate-400 flex items-center gap-2">
+                                        <i class="ph-bold ph-calendar-blank"></i> 20 марта 2026 • 450 KB
+                                    </div>
+                                </div>
+                                
+                                <div class="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-[24px] flex gap-2">
+                                    <button class="flex-1 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                                        <i class="ph-bold ph-download-simple"></i> Скачать
+                                    </button>
+                                    <button class="w-10 h-10 bg-white text-boo-primary border border-purple-200 rounded-lg flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm" title="Скопировать ссылку">
+                                        <i class="ph-bold ph-link"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- EMPTY STATE (Как на скрине, скрыто для демонстрации карточек, но можно раскомментировать или показывать по условию) -->
+                        <div class="hidden w-full bg-white rounded-[24px] border-2 border-slate-200 border-dashed p-10 lg:p-14 flex-col items-center justify-center text-center mt-6">
+                            <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4 border-2 border-white shadow-sm">
+                                <i class="ph-fill ph-paperclip text-3xl text-slate-400"></i>
+                            </div>
+                            <h3 class="text-lg font-black text-slate-900 tracking-tight mb-1">Пока пусто</h3>
+                            <p class="text-slate-500 font-medium text-sm">
+                                Загрузи первый материал — и он появится здесь.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>
