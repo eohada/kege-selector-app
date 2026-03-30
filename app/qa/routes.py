@@ -106,6 +106,42 @@ def _pool_student_profiles():
     return [(u, by_user.get(u.id)) for u in student_users if by_user.get(u.id)]
 
 
+@qa_bp.route('/impersonate-as-role', methods=['POST'])
+@login_required
+def impersonate_as_role():
+    """
+    Вход под пользователем из QA-пула по username.
+    Нужен для виджета/быстрых переключений ролей в тестировании.
+    """
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    username = (request.form.get('username') or request.values.get('username') or '').strip()
+    if not username:
+        return jsonify({'error': 'username required'}), 400
+
+    if username not in QA_POOL_USERNAMES:
+        return jsonify({'error': 'unknown qa pool username'}), 400
+
+    try:
+        u = User.query.filter_by(username=username).first()
+        if not u:
+            _ensure_qa_pool()
+            u = User.query.filter_by(username=username).first()
+        if not u:
+            return jsonify({'error': 'QA profile not found'}), 404
+
+        if 'impersonator_id' not in session:
+            session['impersonator_id'] = current_user.id
+        login_user(u)
+        flash(f'Вход под: {u.username}', 'success')
+        return redirect(request.referrer or url_for('main.index'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception("impersonate_as_role failed: %s", e)
+        return jsonify({'error': 'failed to impersonate'}), 500
+
+
 
 
 # ==========================================
