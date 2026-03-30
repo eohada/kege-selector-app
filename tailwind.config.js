@@ -60,6 +60,7 @@ module.exports = {
         tactile:       '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
         'tactile-hover':'0 16px 32px -8px rgba(15, 23, 42, 0.12)',
         nav:           '0 4px 20px rgba(15, 23, 42, 0.05)',
+        input:         'inset 0 2px 4px rgba(0, 0, 0, 0.02)',
         'inner-soft':  'inset 0 2px 10px rgba(0, 0, 0, 0.02)',
         sm:            '0 1px 3px rgba(15, 23, 42, 0.06)',
         // Legacy aliases

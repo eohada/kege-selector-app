@@ -7,87 +7,27 @@
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
 <style>
-    .gen-premium-shell { align-items: start; width: 100%; }
-    .gen-start-card { position: static; }
-    .gen-deck-wrap {
-        position: relative;
-        min-height: 520px;
-        min-width: 0;
-        width: 100%;
-    }
-    .gen-deck { position: relative; min-height: 520px; width: 100%; }
+    .gen-premium-shell { align-items: flex-start; width: 100%; }
+    .gen-deck-wrap { position: relative; min-width: 0; width: 100%; }
     .gen-task-card {
-        background: #fff;
-        border-radius: 32px;
-        padding: 1.6rem;
-        border: 1px solid rgb(226 232 240);
-        border-bottom-width: 4px;
-        border-bottom-color: rgb(203 213 225);
-        box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
         transition: transform 240ms ease, opacity 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
-    }
-    [data-theme="dark"] .gen-task-card {
-        background: var(--surface-1);
-        border-color: var(--stroke-1);
-        border-bottom-color: var(--stroke-1);
-    }
-    .gen-task-body code {
-        background-color: #F1F5F9;
-        padding: 2px 6px;
-        border-radius: 6px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-size: 0.9em;
-        font-weight: 700;
-        color: #334155;
-        border: 1px solid #E2E8F0;
-    }
-    [data-theme="dark"] .gen-task-body code {
-        background: var(--surface-2);
-        color: var(--text-primary);
-        border-color: var(--stroke-1);
     }
     .gen-task-card.is-entering { transform: translateY(10px); opacity: 0; }
     .gen-task-card.is-leaving { transform: translateY(-10px); opacity: 0; }
-    .gen-task-top {
-        display: flex; justify-content: space-between; align-items: center;
-        gap: 1rem; padding-bottom: 1rem; margin-bottom: 1rem;
-        border-bottom: 1px solid var(--stroke-1);
-    }
-    .gen-task-badges { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .gen-pill {
-        display: inline-flex; align-items: center; gap: 0.45rem;
-        padding: 0.35rem 0.75rem; border-radius: 999px;
-        border: 1px solid var(--stroke-1); background: var(--surface-2);
-        color: var(--text-muted); font-weight: 600; font-size: 0.9rem;
-    }
-    .gen-task-body { color: var(--text-primary); line-height: 1.75; font-size: 1.02rem; }
-    .gen-task-body img { max-width: 100%; height: auto; border-radius: var(--radius-md); }
     .gen-answer {
-        margin-top: 1.1rem; padding: 1rem; border-radius: var(--radius-md);
-        border: 1px dashed var(--stroke-2); background: rgba(0, 198, 164, 0.06); display: none;
+        margin: 0 2rem 1rem;
+        padding: 1rem 1.25rem;
+        border-radius: 1rem;
+        border: 1px dashed rgb(199 210 254 / 0.6);
+        background: rgb(238 242 255 / 0.35);
+        display: none;
     }
     .gen-answer.is-visible { display: block; }
     .gen-answer-line { margin-top: 0.4rem; }
     .gen-answer-line:first-child { margin-top: 0; }
-    .gen-actions-row { margin-top: 1.2rem; display: flex; gap: 0.65rem; flex-wrap: wrap; }
-    .gen-actions-row .neo-button { flex: 1 1 180px; justify-content: center; }
-    .gen-empty {
-        border: 2px dashed rgb(226 232 240);
-        border-radius: 24px;
-        padding: 2rem;
-        color: #64748b;
-        background: linear-gradient(180deg, rgb(248 250 252), #fff);
-    }
-    [data-theme="dark"] .gen-empty {
-        border-color: var(--stroke-2);
-        color: var(--text-muted);
-        background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
-    }
-    .gen-kbd {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        border: 1px solid var(--stroke-1); background: var(--surface-2);
-        border-radius: 0.5rem; padding: 0.1rem 0.35rem;
-        color: var(--text-primary); font-size: 0.9rem;
+    [data-theme="dark"] .gen-answer {
+        border-color: rgba(129, 140, 248, 0.35);
+        background: rgba(99, 102, 241, 0.08);
     }
 </style>
 {% endblock %}
@@ -96,6 +36,8 @@
 <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
 <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
 {% endblock %}
+
+{% set gen_select_class = 'gen-select w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 h-14 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-1 focus:ring-boo-primary/30 transition-all shadow-input appearance-none cursor-pointer' %}
 
 {% block content %}
 {% set is_homework = (assignment_type == 'homework') %}
@@ -126,8 +68,16 @@
     {% set mode_text = 'Общий генератор' %}
 {% endif %}
 
-<div class="w-full max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(300px,400px)_minmax(0,1fr)] gap-6 items-start gen-premium-shell pb-8">
-    <div class="w-full flex flex-col gap-6 min-w-0 lg:sticky lg:top-28 self-start">
+{% if template_id %}
+    {% set status_headline = 'Редактирование шаблона' %}
+{% elif lesson %}
+    {% set status_headline = ('Урок №' ~ lesson.lesson_id ~ (' — ' ~ lesson.topic if lesson.topic else '')) %}
+{% else %}
+    {% set status_headline = 'Нет привязки к уроку' %}
+{% endif %}
+
+<div class="w-full max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 items-start gen-premium-shell pb-8 px-0">
+    <div class="w-full lg:w-1/3 flex flex-col gap-6 min-w-0 lg:sticky lg:top-28 self-start">
         <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 relative overflow-hidden group">
             <div class="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-purple-50 to-cyan-50 rounded-full blur-3xl opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
             <div class="relative z-10">
@@ -135,21 +85,14 @@
                     <i class="ph-fill ph-magic-wand text-boo-primary"></i> Генератор заданий
                 </div>
                 <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-3 leading-tight">Один поток. Одна задача. Максимум фокуса.</h1>
-                <p class="text-sm font-medium text-slate-500 mb-5 leading-relaxed">
+                <p class="text-sm font-medium text-slate-500 mb-6 leading-relaxed">
                     Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной. Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
                 </p>
-                <div class="rounded-xl bg-slate-50 border border-slate-100 p-3.5 mb-4 space-y-2 text-xs font-medium text-slate-600">
-                    <div class="flex flex-wrap justify-between gap-2 items-center">
-                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Контекст</span>
-                        <span class="font-bold text-slate-800">{{ 'Нет привязки к уроку' if not lesson else ('Урок №' ~ lesson.lesson_id) }}</span>
-                    </div>
-                    <p class="m-0 leading-relaxed text-slate-500">
-                        Горячие клавиши: <span class="gen-kbd">A</span> принять · <span class="gen-kbd">S</span> пропустить · <span class="gen-kbd">B</span> blacklist · <span class="gen-kbd">Space</span> ответ
-                    </p>
-                </div>
                 <div class="pt-4 border-t border-slate-100 flex justify-between items-center gap-2 flex-wrap">
                     <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Режим работы</span>
-                    <span class="text-sm font-bold text-boo-primary">{{ mode_text }}</span>
+                    <button type="button" class="text-sm font-bold text-boo-primary hover:text-boo-primaryHover transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-default font-inherit">
+                        {{ mode_text }} <i class="ph-bold ph-caret-down" aria-hidden="true"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -197,152 +140,200 @@
         </div>
         {% endif %}
 
-    <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 generator-panel gen-start-card">
-        <div class="flex justify-between items-start mb-6 gap-3">
-            <div>
-                <h2 class="text-xl font-black text-slate-900 m-0">Запуск</h2>
-                <p class="text-sm font-medium text-slate-500 m-0 mt-1">Выбери параметры и нажми старт.</p>
-            </div>
-            {% if generator_recipient_ids %}
-            <button type="button" id="genCreateWorkBtnTop" class="neo-button accent shadow-sm">
-                {{ ui_icon('action.check', 'sm') }} Завершить и создать
-            </button>
-            {% endif %}
-        </div>
-        <form id="genStartForm" class="generator-form-grid" onsubmit="return false;">
-            {{ selection_form.hidden_tag() }}
-            {% if all_courses and all_courses|length > 1 %}
-            <div class="neo-field mb-3">
-                <label for="exam_course_id" class="neo-label fw-semibold">Программа подготовки</label>
-                <select id="exam_course_id" name="exam_course_id" class="neo-select" onchange="window.location.href=this.options[this.selectedIndex].dataset.url">
-                    {% for c in all_courses %}
-                    <option value="{{ c.id }}" data-url="{{ url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type, exam_course_id=c.id, template_id=template_id) }}" {% if exam_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% endif %}
-            <div class="neo-field">
-                {{ selection_form.task_type.label(class_='neo-label') }}
-                {{ selection_form.task_type(class_='neo-select', id='taskTypeSelect') }}
-            </div>
-            <div class="generator-actions">
-                <button type="button" class="neo-button accent" id="genStartBtn">
-                    {{ ui_icon('action.play', 'sm', decorative=true) }}Старт
-                </button>
-                <button type="button" class="neo-button ghost" id="genStopBtn" disabled>
-                    {{ ui_icon('action.stop', 'sm', decorative=true) }}Стоп
-                </button>
-            </div>
-            <label class="neo-checkbox mt-1.5">
-                <input id="useSkipped" type="checkbox" class="neo-checkbox-input">
-                <span>включать пропущенные (опционально)</span>
-            </label>
-            <div class="generator-note">
-                Подсказка: кнопки можно прожимать с клавиатуры — <span class="gen-kbd">A</span>/<span class="gen-kbd">S</span>/<span class="gen-kbd">B</span>.
-            </div>
-        </form>
-        <div class="generator-reset mt-6">
-            <details>
-                <summary class="cursor-pointer font-bold">Расширенные действия</summary>
-                <div class="mt-4">
-                    <div class="generator-links mb-4">
-                        <a href="{{ url_for('assignments.assignments_accepted', assignment_type=assignment_type) }}" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Принятые</a>
-                        {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
-                        <button type="button" id="genCreateWorkBtn" class="neo-button outline"><span id="genCreateWorkBtnText">📝 Создать работу</span></button>
-                        {% endif %}
-                        <a href="{{ url_for('assignments.assignments_skipped') }}" class="neo-button ghost">{{ ui_icon('action.minus', 'sm', decorative=true) }}Пропущенные</a>
-                    </div>
-                    <form method="POST"
-                          action="{{ url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('task_generator.task_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('task_generator.task_generator', assignment_type=assignment_type) }}"
-                          class="generator-form-grid generator-reset">
-                        {{ reset_form.hidden_tag() }}
-                        <div class="neo-field">
-                            {{ reset_form.task_type_reset.label(class_='neo-label') }}
-                            {{ reset_form.task_type_reset(class_='neo-select') }}
-                        </div>
-                        <div class="neo-field">
-                            {{ reset_form.reset_type.label(class_='neo-label') }}
-                            {{ reset_form.reset_type(class_='neo-select') }}
-                        </div>
-                        {{ reset_form.reset_submit(class_='neo-button danger') }}
-                    </form>
-                    <form method="POST"
-                          action="{{ url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('task_generator.task_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('task_generator.task_generator', assignment_type=assignment_type) }}"
-                          class="generator-form-grid mt-4">
-                        {{ search_form.hidden_tag() }}
-                        <input type="hidden" name="lesson_id" value="{{ lesson_id or '' }}">
-                        <div class="neo-field">
-                            {{ search_form.task_id.label(class_='neo-label') }}
-                            {{ search_form.task_id(class_='neo-input') }}
-                        </div>
-                        {{ search_form.search_submit(class_='neo-button ghost') }}
-                    </form>
+        <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 generator-panel gen-start-card">
+            <div class="flex justify-between items-start mb-6 gap-3 flex-wrap">
+                <div>
+                    <h2 class="text-xl font-black text-slate-900 m-0">Запуск</h2>
+                    <p class="text-sm font-medium text-slate-500 m-0 mt-1">Выбери параметры и нажми старт.</p>
                 </div>
-            </details>
-        </div>
-    </section>
+                {% if generator_recipient_ids %}
+                <button type="button" id="genCreateWorkBtnTop" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm shadow-md border-b-[3px] border-b-purple-800 border border-transparent hover:bg-boo-primaryHover active:translate-y-[1px] active:border-b-0 transition-all">{{ ui_icon('action.check', 'sm', decorative=true) }}<span id="genCreateWorkBtnTopText">Завершить и создать</span></button>
+                {% endif %}
+            </div>
+
+            <form id="genStartForm" class="space-y-5" onsubmit="return false;">
+                {{ selection_form.hidden_tag() }}
+                {% if all_courses and all_courses|length > 1 %}
+                <div class="space-y-1.5">
+                    <label for="exam_course_id" class="text-[10px] font-black text-slate-400 uppercase tracking-[0.35em] ml-1 block">Программа подготовки</label>
+                    <div class="relative">
+                        <select id="exam_course_id" name="exam_course_id" class="{{ gen_select_class }}" onchange="window.location.href=this.options[this.selectedIndex].dataset.url">
+                            {% for c in all_courses %}
+                            <option value="{{ c.id }}" data-url="{{ url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type, exam_course_id=c.id, template_id=template_id) }}" {% if exam_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+                            {% endfor %}
+                        </select>
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true"></i>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="space-y-1.5">
+                    <label for="taskTypeSelect" class="text-[10px] font-black text-slate-400 uppercase tracking-[0.35em] ml-1 block">Номер задания</label>
+                    <div class="relative">
+                        {{ selection_form.task_type(class_=gen_select_class, id='taskTypeSelect') }}
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true"></i>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" class="flex-1 py-3 min-h-[48px] bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm border border-transparent" id="genStartBtn">
+                        <i class="ph-fill ph-play text-lg" aria-hidden="true"></i> Старт
+                    </button>
+                    <button type="button" class="flex-1 py-3 min-h-[48px] bg-white text-slate-600 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-sm disabled:opacity-45 disabled:pointer-events-none" id="genStopBtn" disabled>
+                        <i class="ph-bold ph-stop" aria-hidden="true"></i> Стоп
+                    </button>
+                </div>
+
+                <label class="flex items-center gap-3 cursor-pointer px-1">
+                    <input id="useSkipped" type="checkbox" class="w-5 h-5 shrink-0 rounded border-slate-300 accent-boo-primary focus:ring-2 focus:ring-boo-primary/30">
+                    <span class="text-sm font-medium text-slate-600">включать пропущенные (опционально)</span>
+                </label>
+
+                <div class="bg-indigo-50/50 border border-indigo-100/80 rounded-xl p-4">
+                    <p class="text-xs font-medium text-slate-600 leading-relaxed m-0">
+                        <span class="font-bold text-indigo-600"><i class="ph-fill ph-lightbulb" aria-hidden="true"></i> Подсказка:</span>
+                        кнопки можно прожимать с клавиатуры —
+                        <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)] ml-0.5">A</kbd> /
+                        <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">S</kbd> /
+                        <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">B</kbd>.
+                    </p>
+                </div>
+
+                <details class="group pt-1">
+                    <summary class="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                        <i class="ph-bold ph-caret-right transition-transform group-open:rotate-90 text-slate-400" aria-hidden="true"></i> Расширенные действия
+                    </summary>
+                    <div class="pl-6 pt-4 space-y-4 border-t border-slate-100 mt-3">
+                        <div class="generator-links flex flex-wrap gap-2">
+                            <a href="{{ url_for('assignments.assignments_accepted', assignment_type=assignment_type) }}" class="neo-button accent inline-flex no-underline">{{ ui_icon('action.check', 'sm', decorative=true, extra_class='ui-icon--only') }} Принятые</a>
+                            {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
+                            <button type="button" id="genCreateWorkBtn" class="neo-button outline"><span id="genCreateWorkBtnText">📝 Создать работу</span></button>
+                            {% endif %}
+                            <a href="{{ url_for('assignments.assignments_skipped') }}" class="neo-button ghost inline-flex no-underline">{{ ui_icon('action.minus', 'sm', decorative=true, extra_class='ui-icon--only') }} Пропущенные</a>
+                        </div>
+                        <form method="POST"
+                              action="{{ url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('task_generator.task_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('task_generator.task_generator', assignment_type=assignment_type) }}"
+                              class="generator-form-grid generator-reset space-y-3">
+                            {{ reset_form.hidden_tag() }}
+                            <div class="neo-field">
+                                {{ reset_form.task_type_reset.label(class_='neo-label') }}
+                                {{ reset_form.task_type_reset(class_='neo-select') }}
+                            </div>
+                            <div class="neo-field">
+                                {{ reset_form.reset_type.label(class_='neo-label') }}
+                                {{ reset_form.reset_type(class_='neo-select') }}
+                            </div>
+                            {{ reset_form.reset_submit(class_='neo-button danger') }}
+                        </form>
+                        <form method="POST"
+                              action="{{ url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('task_generator.task_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('task_generator.task_generator', assignment_type=assignment_type) }}"
+                              class="generator-form-grid space-y-3">
+                            {{ search_form.hidden_tag() }}
+                            <input type="hidden" name="lesson_id" value="{{ lesson_id or '' }}">
+                            <div class="neo-field">
+                                {{ search_form.task_id.label(class_='neo-label') }}
+                                {{ search_form.task_id(class_='neo-input') }}
+                            </div>
+                            {{ search_form.search_submit(class_='neo-button ghost') }}
+                        </form>
+                    </div>
+                </details>
+            </form>
+        </section>
     </div>
 
-    <div class="gen-deck-wrap w-full lg:flex-1 min-w-0">
-    <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 gen-deck" id="genDeck"
+    <div class="w-full lg:w-2/3 flex flex-col gap-6 min-w-0 gen-deck-wrap">
+        <div class="bg-white rounded-[24px] border border-slate-200 shadow-tactile p-6">
+            <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Что уже известно</div>
+            <h2 class="text-2xl font-black text-boo-primary tracking-tight mb-3 break-words" id="genStatusHeadline">{{ status_headline }}</h2>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-100 pt-4">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest shrink-0">Следующий шаг</span>
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-medium text-slate-600">
+                    <span class="flex items-center gap-1.5">
+                        <kbd class="inline-flex items-center justify-center w-5 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">A</kbd> принять
+                    </span>
+                    <span class="text-slate-300 hidden sm:inline" aria-hidden="true">•</span>
+                    <span class="flex items-center gap-1.5">
+                        <kbd class="inline-flex items-center justify-center w-5 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">S</kbd> пропустить
+                    </span>
+                    <span class="text-slate-300 hidden sm:inline" aria-hidden="true">•</span>
+                    <span class="flex items-center gap-1.5">
+                        <kbd class="inline-flex items-center justify-center w-5 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">B</kbd> blacklist
+                    </span>
+                    <span class="text-slate-300 hidden sm:inline" aria-hidden="true">•</span>
+                    <span class="flex items-center gap-1.5">
+                        <kbd class="inline-flex items-center justify-center px-2 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">Space</kbd> ответ
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-6 w-full gen-deck" id="genDeck"
              data-lesson-id="{{ lesson_id or '' }}"
              data-assignment-type="{{ assignment_type }}"
              data-template-id="{{ template_id or '' }}"
+             data-exam-course-id="{{ exam_course_id or '' }}"
              data-recipient-ids="{{ (generator_recipient_ids or []) | tojson }}">
-        <div class="gen-empty" id="genEmpty">
-            <div class="flex gap-3 items-center mb-3">
-                {{ ui_icon('nav.generator', 'md', decorative=true, extra_class='ui-icon--only') }}
-                <div class="font-extrabold text-lg">Готов к запуску</div>
-            </div>
-            Выбери номер задания слева и нажми <strong>Старт</strong>. Дальше ты работаешь в потоке — быстро и без лишних кликов.
-        </div>
 
-        <div class="gen-task-card is-entering" id="genTaskCard" style="display:none;">
-            <div class="gen-task-top">
-                <div class="gen-task-badges">
-                    <span class="gen-pill" id="genTaskBadge">
-                        {{ ui_icon('nav.assignments', 'sm', decorative=true, extra_class='ui-icon--only') }}
-                        <span id="genTaskTitle">Задание</span>
-                    </span>
-                    <a id="genSourceLink" class="gen-pill no-underline" href="#" target="_blank" rel="noopener" style="display:none;">
-                        {{ ui_icon('action.link', 'sm', decorative=true, extra_class='ui-icon--only') }}
-                        источник
-                    </a>
+            <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8" id="genEmpty">
+                <div class="flex gap-3 items-start mb-3">
+                    <div class="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 text-boo-primary">
+                        <i class="ph-fill ph-magic-wand text-2xl" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <div class="font-black text-lg text-slate-900">Готов к запуску</div>
+                        <p class="text-sm font-medium text-slate-500 m-0 mt-2 leading-relaxed">
+                            Выбери номер задания слева и нажми <strong class="text-slate-800">Старт</strong>. Дальше ты работаешь в потоке — быстро и без лишних кликов.
+                        </p>
+                    </div>
                 </div>
-                <button type="button" class="neo-button ghost" id="genToggleAnswerBtn" disabled>
-                    {{ ui_icon('action.eye', 'sm', decorative=true) }}Ответ
-                </button>
             </div>
 
-            <div class="gen-task-body" id="genTaskBody"></div>
-            <div class="gen-answer" id="genAnswer"></div>
-
-            <div class="gen-actions-row">
-                <button type="button" class="neo-button accent" id="genAcceptBtn" disabled>
-                    {{ ui_icon('action.check', 'sm', decorative=true) }}Принять
-                </button>
-                <button type="button" class="neo-button ghost" id="genSkipBtn" disabled>
-                    {{ ui_icon('action.minus', 'sm', decorative=true) }}Пропустить
-                </button>
-                <button type="button" class="neo-button danger" id="genBlacklistBtn" disabled>
-                    {{ ui_icon('action.trash', 'sm', decorative=true) }}Blacklist
-                </button>
-            </div>
-
-            <div class="mt-3" id="genBlacklistPanel" style="display:none;">
-                <div class="neo-field">
-                    <label class="neo-label">Причина (опционально)</label>
-                    <input type="text" class="neo-input" id="genBlacklistReason" placeholder="Например: не по теме / битая разметка / плохой вариант">
-                </div>
-                <div class="gen-actions-row mt-3">
-                    <button type="button" class="neo-button danger" id="genBlacklistConfirmBtn">
-                        {{ ui_icon('nav.archive', 'sm', decorative=true) }}Добавить
+            <div class="gen-task-card is-entering bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col overflow-hidden" id="genTaskCard" style="display:none;">
+                <div class="px-6 sm:px-8 py-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50 rounded-t-[32px]">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-8 h-8 shrink-0 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center shadow-inner tabular-nums" id="genTaskNumber" aria-hidden="true">—</div>
+                        <span id="genTaskTitle" class="sr-only">Задание</span>
+                        <a id="genSourceLink" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-boo-primary transition-colors shadow-sm no-underline shrink-0" href="#" target="_blank" rel="noopener" style="display:none;">
+                            <i class="ph-bold ph-link" aria-hidden="true"></i> источник
+                        </a>
+                    </div>
+                    <button type="button" class="text-sm font-bold text-slate-500 hover:text-boo-primary transition-colors flex items-center gap-1.5 shrink-0 bg-transparent border-0 p-0 cursor-pointer font-inherit disabled:opacity-40 disabled:pointer-events-none" id="genToggleAnswerBtn" disabled>
+                        <i class="ph-bold ph-eye" aria-hidden="true"></i> Ответ
                     </button>
-                    <button type="button" class="neo-button ghost" id="genBlacklistCancelBtn">Отмена</button>
+                </div>
+
+                <div class="task-content text-[15px] leading-relaxed text-slate-800 space-y-4 p-6 sm:p-8 pt-6" id="genTaskBody"></div>
+                <div class="gen-answer" id="genAnswer"></div>
+
+                <div class="p-6 bg-slate-50/30 border-t border-slate-100 rounded-b-[32px] flex flex-col sm:flex-row gap-3">
+                    <button type="button" class="group flex-1 py-4 min-h-[52px] bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm border border-transparent disabled:opacity-45 disabled:pointer-events-none" id="genAcceptBtn" disabled>
+                        <i class="ph-bold ph-check text-lg" aria-hidden="true"></i> Принять
+                        <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-purple-400 border border-purple-300 rounded text-[10px] font-black text-white shadow-[0_2px_0_rgba(107,76,229,1)] ml-1 opacity-70 group-hover:opacity-100">A</kbd>
+                    </button>
+                    <button type="button" class="group flex-1 py-4 min-h-[52px] bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all flex justify-center items-center gap-2 shadow-sm text-sm disabled:opacity-45 disabled:pointer-events-none" id="genSkipBtn" disabled>
+                        <i class="ph-bold ph-minus text-lg text-slate-400" aria-hidden="true"></i> Пропустить
+                        <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-500 shadow-[0_2px_0_rgba(203,213,225,1)] ml-1 opacity-70 group-hover:opacity-100">S</kbd>
+                    </button>
+                    <button type="button" class="group flex-1 py-4 min-h-[52px] bg-boo-coral text-white rounded-xl font-bold hover:bg-red-500 transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-red-700 active:translate-y-[2px] active:border-b-0 text-sm border border-transparent disabled:opacity-45 disabled:pointer-events-none" id="genBlacklistBtn" disabled>
+                        <i class="ph-bold ph-trash text-lg" aria-hidden="true"></i> Blacklist
+                        <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-red-400 border border-red-300 rounded text-[10px] font-black text-white shadow-[0_2px_0_rgba(185,28,28,1)] ml-1 opacity-70 group-hover:opacity-100">B</kbd>
+                    </button>
+                </div>
+
+                <div class="px-6 pb-6 -mt-2" id="genBlacklistPanel" style="display:none;">
+                    <div class="neo-field">
+                        <label class="neo-label" for="genBlacklistReason">Причина (опционально)</label>
+                        <input type="text" class="neo-input" id="genBlacklistReason" placeholder="Например: не по теме / битая разметка / плохой вариант">
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 mt-4">
+                        <button type="button" class="neo-button danger flex-1 justify-center" id="genBlacklistConfirmBtn">
+                            {{ ui_icon('nav.archive', 'sm', decorative=true) }} Добавить
+                        </button>
+                        <button type="button" class="neo-button ghost flex-1 justify-center" id="genBlacklistCancelBtn">Отмена</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
     </div>
 </div>
 {% endblock %}
@@ -359,7 +350,7 @@
         const body = document.getElementById('genTaskBody');
         const answer = document.getElementById('genAnswer');
         const title = document.getElementById('genTaskTitle');
-        const badge = document.getElementById('genTaskBadge');
+        const taskNumEl = document.getElementById('genTaskNumber');
         const sourceLink = document.getElementById('genSourceLink');
 
         const startBtn = document.getElementById('genStartBtn');
@@ -395,12 +386,13 @@
                 if (!Array.isArray(recipientIds)) recipientIds = [];
             } catch (e) {}
             const params = new URLSearchParams(window.location.search);
+            const deckExam = deck.dataset.examCourseId;
             return {
                 lesson_id: deck.dataset.lessonId || null,
                 assignment_type: deck.dataset.assignmentType || 'homework',
                 template_id: deck.dataset.templateId || null,
                 recipient_ids: recipientIds,
-                exam_course_id: params.get('exam_course_id') || deck.dataset.examCourseId || null,
+                exam_course_id: params.get('exam_course_id') || (deckExam && deckExam !== '' ? deckExam : null) || null,
             };
         }
 
@@ -443,18 +435,25 @@
                 empty.style.display = 'block';
                 stopBtn.disabled = true;
                 setButtonsEnabled(false);
+                if (taskNumEl) {
+                    taskNumEl.textContent = '—';
+                    taskNumEl.removeAttribute('title');
+                }
                 return;
             }
 
             empty.style.display = 'none';
-            card.style.display = 'block';
+            card.style.display = 'flex';
 
             const isTriplet = task.is_triplet_19_21 && Array.isArray(task.triplet_answers);
-            title.textContent = isTriplet
+            const titleText = isTriplet
                 ? `Задания 19–21 (тройка) · #${(task.triplet_task_ids || [task.task_id]).join(', #')}`
                 : `Задание ${task.task_number} · #${task.task_id}`;
-            badge.textContent = isTriplet ? '19–21' : String(task.task_number);
-            badge.title = task.site_task_id ? `site_task_id: ${task.site_task_id}` : (isTriplet ? 'Три задания с одним условием' : '');
+            if (title) title.textContent = titleText;
+            if (taskNumEl) {
+                taskNumEl.textContent = isTriplet ? '19–21' : String(task.task_number);
+                taskNumEl.title = task.site_task_id ? `site_task_id: ${task.site_task_id}` : (isTriplet ? 'Три задания с одним условием' : '');
+            }
 
             body.innerHTML = task.content_html || '';
             renderMath(body);
@@ -619,9 +618,9 @@
             const params = new URLSearchParams(window.location.search);
             const returnEdit = params.get('return_edit');
             const label = returnEdit ? '➕ Добавить в работу' : '📝 Создать работу';
-            document.getElementById('genCreateWorkBtnText').textContent = label;
-            const topBtn = document.getElementById('genCreateWorkBtnTop');
-            if (topBtn) topBtn.textContent = label;
+            document.getElementById('genCreateWorkBtnText')?.textContent = label;
+            const topLbl = document.getElementById('genCreateWorkBtnTopText');
+            if (topLbl) topLbl.textContent = label;
         })();
         document.getElementById('genCreateWorkBtnTop')?.addEventListener('click', finishAndCreate);
         document.getElementById('genCreateWorkBtn')?.addEventListener('click', finishAndCreate);

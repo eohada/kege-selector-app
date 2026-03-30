@@ -1303,6 +1303,39 @@
     a { color: #000000 !important; }
   }
 
+  /* Task generator / lesson body — rich task HTML (matches BooStudy 2.0 generator) */
+  .task-content { @apply text-[15px] leading-relaxed text-slate-800; }
+  .task-content > * + * { margin-top: 1rem; }
+  .task-content p { @apply m-0; }
+  .task-content p + p { margin-top: 1rem; }
+  .task-content code {
+    background-color: #F1F5F9;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.9em;
+    font-weight: 700;
+    color: #334155;
+    border: 1px solid #E2E8F0;
+  }
+  .task-content ol { @apply list-decimal list-inside space-y-2 font-medium ml-2 pl-0; }
+  .task-content ul { @apply list-disc list-inside space-y-2 ml-2 pl-0; }
+  .task-content ol ol, .task-content ul ul, .task-content li > ul { @apply mt-2 ml-6; }
+  .task-content table { @apply w-full text-sm border-collapse; }
+  .task-content th, .task-content td { @apply border border-slate-200 px-3 py-2; }
+  .task-content th { @apply bg-slate-50 font-bold text-left; }
+  .task-content img { @apply max-w-full h-auto rounded-xl; }
+  [data-theme="dark"] .task-content { @apply text-slate-100; }
+  [data-theme="dark"] .task-content code {
+    background: var(--color-bg-surface-alt);
+    color: var(--color-text-primary);
+    border-color: rgba(255,255,255,0.1);
+  }
+  [data-theme="dark"] .task-content th, [data-theme="dark"] .task-content td {
+    border-color: rgba(255,255,255,0.1);
+  }
+  [data-theme="dark"] .task-content th { background: rgba(255,255,255,0.06); }
+
   /* ═══════════════ DARK MODE ADJUSTMENTS ═══════════════ */
 
   [data-theme="dark"] .dock {
