@@ -507,12 +507,14 @@ function stopLogsPolling() {
 }
 
 function startLogsPolling() {
-    refreshLogs();
+    if (typeof window.refreshLogsCards === 'function') window.refreshLogsCards();
     stopLogsPolling();
-    logsTimer = setInterval(refreshLogs, 2500);
+    logsTimer = setInterval(() => {
+        if (typeof window.refreshLogsCards === 'function') window.refreshLogsCards();
+    }, 2500);
 }
 
-async function refreshLogs() {
+async function refreshLogsTableOld() {
     const table = document.getElementById('ctLogTable');
     if (!table) return;
     try {
@@ -533,7 +535,7 @@ async function refreshLogs() {
         if (!data || !Array.isArray(data.entries)) return;
         const text = JSON.stringify(data.entries.map(x => x.request_id));
         if (text !== logsLastText) {
-            renderLogsRows(data.entries);
+            renderLogsRowsOld(data.entries);
             logsLastText = text;
         }
     } catch (e) {
@@ -541,9 +543,9 @@ async function refreshLogs() {
     }
 }
 
-function debouncedRefreshLogs() {
+function debouncedRefreshLogsOld() {
     if (logsRefreshTimer) clearTimeout(logsRefreshTimer);
-    logsRefreshTimer = setTimeout(refreshLogs, 250);
+    logsRefreshTimer = setTimeout(refreshLogsTableOld, 250);
 }
 
 function safeText(v) {
@@ -561,7 +563,7 @@ function shortTs(v) {
     }
 }
 
-function renderLogsRows(entries) {
+function renderLogsRowsOld(entries) {
     const table = document.getElementById('ctLogTable');
     if (!table) return;
     if (!entries.length) {
@@ -790,13 +792,13 @@ document.getElementById('ctBugForm')?.addEventListener('submit', async function 
             const input = document.getElementById('ctLogFilterRequestId');
             if (input) input.value = rid;
             switchTab('logs');
-            refreshLogs();
+            if (typeof window.refreshLogsCards === 'function') window.refreshLogsCards();
         }
     } catch (e) {}
 })();
 </script>
 <script>
-function refreshLogs() {
+window.refreshLogsCards = function refreshLogsCards() {
     fetch("{{ url_for('chief_tester.logs_feed') }}")
         .then(res => res.json())
         .then(data => {
@@ -860,14 +862,17 @@ function refreshLogs() {
             }
         })
         .catch(err => console.error("Ошибка загрузки логов:", err));
-}
+};
+
+// совместимость со старым UI (кнопки/вызовы), чтобы был только новый рендер
+window.refreshLogs = window.refreshLogsCards;
 
 document.addEventListener('DOMContentLoaded', () => {
-    refreshLogs();
+    window.refreshLogsCards();
     setInterval(() => {
         const logsTab = document.getElementById('tab-logs');
         if (logsTab && logsTab.classList.contains('active')) {
-            refreshLogs();
+            window.refreshLogsCards();
         }
     }, 5000);
 });
