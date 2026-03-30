@@ -216,7 +216,14 @@ def lesson_view(lesson_id):
     mode = (request.args.get('mode') or '').strip().lower()
     if mode == 'edit':
         return redirect(url_for('lessons.lesson_edit', lesson_id=lesson_id))
-    return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))
+    return lesson_classwork_view(lesson_id)
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/classroom')
+@login_required
+def lesson_classroom_view(lesson_id):
+    """Алиас для входа в классную комнату урока."""
+    return lesson_classwork_view(lesson_id)
 
 @lessons_bp.route('/lesson/<int:lesson_id>/delete', methods=['POST'])
 @login_required
