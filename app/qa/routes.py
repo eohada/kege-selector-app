@@ -60,40 +60,6 @@ def is_qa_authorized():
 # 1. IMPERSONATION (Тумблер ролей)
 # ==========================================
 
-@qa_bp.route('/impersonate_as_role', methods=['POST'])
-@login_required
-def impersonate_as_role():
-    # Твоя проверка прав
-    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
-        flash('У вас нет прав для этого действия', 'error')
-        return redirect(request.referrer or url_for('main.index'))
-
-    # Ловим username из POST-запроса (так прописано в _floating_widget.html)
-    target_username = request.form.get('username')
-    target_user = User.query.filter_by(username=target_username).first_or_404()
-
-    # Твоя защита от двойной симуляции
-    if 'impersonator_id' not in session:
-        session['impersonator_id'] = current_user.id
-
-    login_user(target_user)
-    flash(f'Вы вошли под аккаунтом: {target_user.username} ({target_user.role})', 'success')
-    return redirect(request.referrer or url_for('main.index'))
-
-@qa_bp.route('/revert_impersonation', methods=['POST'])
-@login_required
-def revert_impersonation():
-    # Твоя логика возврата
-    impersonator_id = session.pop('impersonator_id', None)
-    if not impersonator_id:
-        return redirect(url_for('main.index'))
-
-    original_user = User.query.get(impersonator_id)
-    if original_user:
-        login_user(original_user)
-        flash('Вы вернулись в свой QA-аккаунт', 'success')
-    
-    return redirect(request.referrer or url_for('main.index'))
 
 def _ensure_qa_pool():
     """Создаёт пул из 3 учеников, 3 преподавателей, 3 родителей, 1 админа (is_qa_pool=True)."""
@@ -140,70 +106,6 @@ def _pool_student_profiles():
     return [(u, by_user.get(u.id)) for u in student_users if by_user.get(u.id)]
 
 
-@qa_bp.route('/impersonate-as-role', methods=['POST'])
-@login_required
-def impersonate_as_role():
-    """Вход под пользователем из пула (по username) или создание одноразового темп-юзера."""
-    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
-        return jsonify({'error': 'Forbidden'}), 403
-    payload = request.get_json(silent=True) or {}
-    if not isinstance(payload, dict):
-        payload = {}
-    username = (
-        (request.form.get('username') or '') or
-        (request.values.get('username') or '') or
-        (payload.get('username') or '')
-    ).strip()
-    if username and username in QA_POOL_USERNAMES:
-        u = User.query.filter_by(username=username).first()
-        if not u:
-            try:
-                _ensure_qa_pool()
-                u = User.query.filter_by(username=username).first()
-            except Exception as e:
-                current_app.logger.exception("QA pool creation failed: %s", e)
-                return jsonify({'error': 'Не удалось инициализировать пул QA-профилей'}), 500
-        if u:
-            if 'impersonator_id' not in session:
-                session['impersonator_id'] = current_user.id
-            login_user(u)
-            flash(f'Вход под: {u.username}', 'success')
-            return redirect(request.referrer or url_for('main.index'))
-        return jsonify({'error': 'QA-профиль из пула не найден. Откройте /qa/pool для диагностики.'}), 404
-
-    role = (
-        (request.form.get('role') or '') or
-        (request.values.get('role') or '') or
-        (payload.get('role') or '')
-    ).strip().lower()
-    if role not in ('student', 'tutor', 'parent'):
-        return jsonify({'error': 'Укажите role или username из пула'}), 400
-    try:
-        from werkzeug.security import generate_password_hash
-        uid = str(uuid.uuid4())[:6]
-        pwd = generate_password_hash('123456')
-        if role == 'student':
-            u = User(role='student', username=f'qa_temp_student_{uid}', email=f'qa_temp_student_{uid}@qa.local', password_hash=pwd)
-            db.session.add(u)
-            db.session.flush()
-            db.session.add(Student(user_id=u.id, platform_id=f'qa_{uid}', name=f'QA Ученик {uid}'))
-        elif role == 'tutor':
-            u = User(role='tutor', username=f'qa_temp_tutor_{uid}', email=f'qa_temp_tutor_{uid}@qa.local', password_hash=pwd)
-            db.session.add(u)
-            db.session.flush()
-        else:
-            u = User(role='parent', username=f'qa_temp_parent_{uid}', email=f'qa_temp_parent_{uid}@qa.local', password_hash=pwd)
-            db.session.add(u)
-            db.session.flush()
-        db.session.commit()
-        if 'impersonator_id' not in session:
-            session['impersonator_id'] = current_user.id
-        login_user(u)
-        flash(f'Вход под временным: {u.username}', 'success')
-        return redirect(request.referrer or url_for('main.index'))
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
 
 
 # ==========================================
@@ -1845,3 +1747,38 @@ def manipulate_preset(action):
         current_app.logger.error(f"Ошибка пресета {action}: {e}")
         return jsonify({"success": False, "message": f"Ошибка: {str(e)}"}), 500
 
+@qa_bp.route('/impersonate_as_role', methods=['POST'])
+@login_required
+def impersonate_as_role():
+    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+        flash('У вас нет прав для этого действия', 'error')
+        return redirect(request.referrer or url_for('main.index'))
+
+    target_username = request.form.get('username')
+    target_user = User.query.filter_by(username=target_username).first()
+    
+    if not target_user:
+        flash('Пользователь не найден.', 'error')
+        return redirect(request.referrer or url_for('main.index'))
+
+    if 'impersonator_id' not in session:
+        session['impersonator_id'] = current_user.id
+
+    login_user(target_user)
+    flash(f'Вы вошли под аккаунтом: {target_user.username}', 'success')
+    return redirect(request.referrer or url_for('main.index'))
+
+
+@qa_bp.route('/revert_impersonation', methods=['POST'])
+@login_required
+def revert_impersonation():
+    impersonator_id = session.pop('impersonator_id', None)
+    if not impersonator_id:
+        return redirect(url_for('main.index'))
+
+    original_user = User.query.get(impersonator_id)
+    if original_user:
+        login_user(original_user)
+        flash('Вы вернулись в свой QA-аккаунт', 'success')
+    
+    return redirect(request.referrer or url_for('main.index'))
