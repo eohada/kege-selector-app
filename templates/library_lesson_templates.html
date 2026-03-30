@@ -1,110 +1,107 @@
 {% extends 'base.html' %}
 {% set active_page = 'library' %}
 {% block title %}Библиотека · Шаблоны уроков{% endblock %}
-
-{% block head_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-    .lib-hero {
-        background: linear-gradient(135deg, rgba(0, 255, 213, 0.06), rgba(31, 123, 255, 0.06));
-        border-radius: var(--radius-lg);
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-    }
-    .lib-hero h1 { margin: 0.35rem 0 0 0; font-size: 2.15rem; font-weight: 900; }
-    .lib-hero p { margin: 0.65rem 0 0 0; color: var(--text-muted); line-height: 1.45; }
-    .lib-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 0.9rem;
-        margin-top: 1rem;
-    }
-    .lib-card {
-        background: var(--surface-2);
-        border-radius: var(--radius-md);
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.6rem;
-        box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,.08));
-    }
-    .lib-card-title { font-weight: 900; font-size: 1.05rem; }
-    .lib-card-desc { color: var(--text-muted); line-height: 1.45; }
-    .lib-meta { color: var(--text-muted); font-size: 0.9rem; display: flex; gap: 0.75rem; flex-wrap: wrap; }
-    .lib-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; margin-top: 0.25rem; }
-</style>
-{% endblock %}
+{% block body_class %}{{ super() }} bg-boo-bg text-boo-textMain{% endblock %}
 
 {% block content %}
-<section class="lib-hero">
-    <div class="hero-eyebrow">Контент и библиотека</div>
-    <h1>Шаблоны уроков</h1>
-    <p>Шаблон сохраняет структуру комнаты: конспект (Markdown), блоки, материалы (в т.ч. из библиотеки). Можно применить к текущему уроку за 1 клик.</p>
-</section>
+<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 -mt-2">
 
-{% if lesson %}
-<div class="glass-panel p-4 mb-4">
-    <div class="flex justify-between gap-4 items-center flex-wrap">
-        <div>
-            <div class="hero-eyebrow">цель применения</div>
-            <div class="font-black">{{ lesson.topic or 'Урок' }} · {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else '—' }}</div>
+    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
+        <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute right-60 bottom-[-50px] w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="relative z-10 max-w-3xl">
+            <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                <i class="ph-fill ph-books"></i> Библиотека шаблонов
+            </div>
+            <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-3 flex items-center gap-3 flex-wrap">
+                <i class="ph-bold ph-squares-four text-boo-primary"></i> Шаблоны уроков
+            </h1>
+            <p class="text-slate-600 font-medium text-sm leading-relaxed">
+                Шаблон сохраняет структуру комнаты: конспект (Markdown), блоки, материалы (в т.ч. из библиотеки). Можно применить к текущему уроку за один клик.
+            </p>
         </div>
-        <a class="neo-button outline sm" href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}"><i class="fas fa-arrow-left"></i> В урок</a>
+        <div class="relative z-10 flex flex-wrap items-center gap-3 shrink-0">
+            <a href="{{ url_for('library.materials_library') }}" class="px-6 py-3 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
+                <i class="ph-bold ph-books text-lg"></i> Материалы
+            </a>
+        </div>
     </div>
-</div>
-{% endif %}
 
-<section class="glass-panel">
-    <div class="flex justify-between items-end gap-4 flex-wrap">
+    {% if lesson %}
+    <div class="bg-white rounded-[24px] p-5 border border-slate-200 shadow-tactile flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
         <div>
-            <h2 class="m-0 text-lg font-black">Мои шаблоны</h2>
-            <div class="text-text-muted mt-1.5">{{ templates|length }} шт.</div>
+            <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1">Цель применения</div>
+            <div class="font-black text-slate-900">{{ lesson.topic or 'Урок' }} · {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else '—' }}</div>
         </div>
-        <form method="GET" class="flex gap-2.5 items-center flex-wrap">
-            <input class="neo-input min-w-[240px]" name="q" value="{{ q }}" placeholder="Поиск по названию…">
+        <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="px-5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm text-slate-700 hover:bg-slate-100 no-underline inline-flex items-center gap-2">
+            <i class="ph-bold ph-arrow-left"></i> В комнату урока
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-[24px] p-5 border border-slate-200 shadow-tactile flex flex-col md:flex-row gap-4">
+        <form method="GET" class="flex-1 flex flex-col md:flex-row gap-4 w-full">
+            <div class="flex-1 space-y-1.5">
+                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Поиск</label>
+                <div class="relative">
+                    <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                    <input type="text" name="q" value="{{ q or '' }}" placeholder="Название шаблона..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                </div>
+            </div>
             {% if lesson %}<input type="hidden" name="lesson_id" value="{{ lesson.lesson_id }}">{% endif %}
-            <button class="neo-button outline" type="submit"><i class="fas fa-search"></i></button>
-            <a class="neo-button ghost" href="{{ url_for('library.lesson_templates', lesson_id=(lesson.lesson_id if lesson else None)) }}"><i class="fas fa-rotate-left"></i></a>
+            <div class="flex gap-2 items-end">
+                <button type="submit" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm hover:bg-boo-primaryHover shadow-sm">Найти</button>
+                <a href="{{ url_for('library.lesson_templates', lesson_id=(lesson.lesson_id if lesson else None)) }}" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-50 no-underline">Сброс</a>
+            </div>
         </form>
     </div>
 
+    <div class="flex items-center justify-between mb-1">
+        <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+            <i class="ph-fill ph-layout text-boo-primary"></i> Мои шаблоны
+        </h2>
+        <span class="text-xs font-bold text-slate-400 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-sm">{{ templates|length }} шт.</span>
+    </div>
+
     {% if templates and templates|length > 0 %}
-    <div class="lib-cards">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {% for t in templates %}
-        <div class="lib-card">
-            <div class="lib-card-title">{{ t.title }}</div>
-            {% if t.description %}
-            <div class="lib-card-desc">{{ t.description }}</div>
-            {% else %}
-            <div class="lib-card-desc opacity-85">Без описания.</div>
-            {% endif %}
-            <div class="lib-meta">
-                <span><i class="far fa-clock"></i> {{ t.updated_at.strftime('%d.%m.%Y') if t.updated_at else '—' }}</span>
-                <span class="status-badge status-info opacity-85">{{ 'shared' if t.visibility == 'shared' else 'private' }}</span>
+        <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 group">
+            <div class="flex justify-between items-start mb-4">
+                <span class="bg-cyan-50 text-cyan-700 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-cyan-200">
+                    {{ t.visibility or 'private' }}
+                </span>
             </div>
-            <div class="lib-actions">
+            <h3 class="text-lg font-black text-slate-900 mb-2 leading-tight group-hover:text-boo-primary transition-colors">{{ t.title }}</h3>
+            <p class="text-xs font-medium text-slate-500 mb-4 line-clamp-3 min-h-[2.8rem]">
+                {{ t.description or 'Без описания.' }}
+            </p>
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+                Обновлён: {{ t.updated_at.strftime('%d.%m.%Y') if t.updated_at else '—' }}
+            </div>
+            <div class="mt-auto flex flex-col gap-2 pt-4 border-t border-slate-100">
                 {% if lesson %}
-                <button class="neo-button accent sm" type="button" onclick="applyTemplate({{ t.template_id }}, {{ lesson.lesson_id }})">
-                    <i class="fas fa-wand-magic-sparkles"></i> Применить к уроку
+                <button class="w-full py-2.5 bg-boo-primary text-white rounded-xl text-xs font-bold hover:bg-boo-primaryHover transition-colors flex items-center justify-center gap-2 border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0" type="button" onclick="applyTemplate({{ t.template_id }}, {{ lesson.lesson_id }})">
+                    <i class="ph-bold ph-magic-wand"></i> Применить к уроку
                 </button>
-                <button class="neo-button outline sm" type="button" onclick="applyTemplateAndGenerateHomework({{ t.template_id }}, {{ lesson.lesson_id }})">
-                    <i class="fas fa-bolt"></i> Сформировать ДЗ
+                <button class="w-full py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl text-xs font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2" type="button" onclick="applyTemplateAndGenerateHomework({{ t.template_id }}, {{ lesson.lesson_id }})">
+                    <i class="ph-bold ph-bolt"></i> Сформировать ДЗ
                 </button>
                 {% else %}
-                <div class="neo-button ghost sm opacity-70">Открой урок и зайди сюда с lesson_id</div>
+                <div class="text-xs text-slate-500 text-center font-medium py-2">Откройте урок и перейдите сюда с <code class="bg-slate-100 px-1 rounded">?lesson_id=…</code></div>
                 {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div class="glass-panel p-6 text-center mt-4">
-        <div class="text-4xl mb-2">🧩</div>
-        <div class="font-black">Пока нет шаблонов</div>
-        <div class="text-text-muted mt-1.5">Создай шаблон прямо из комнаты урока (кнопка в «Конспекте»).</div>
+    <div class="bg-white rounded-[32px] border-2 border-dashed border-slate-200 p-12 text-center shadow-tactile">
+        <div class="text-5xl mb-4">🧩</div>
+        <h3 class="text-lg font-black text-slate-900 mb-2">Пока нет шаблонов</h3>
+        <p class="text-slate-500 font-medium text-sm max-w-md mx-auto">Создайте шаблон из комнаты урока (раздел «Конспект»).</p>
     </div>
     {% endif %}
-</section>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -146,7 +143,7 @@
             }
             toast.success('Шаблон применён, открываю генератор ДЗ');
             setTimeout(() => {
-                location.href = `{{ url_for('task_generator.task_generator') }}?lesson_id=${lessonId}&assignment_type=homework`;
+                location.href = "{{ url_for('task_generator.task_generator') }}?lesson_id=" + lessonId + "&assignment_type=homework";
             }, 500);
         } catch (e) {
             toast.error('Ошибка сети');

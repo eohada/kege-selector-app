@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Комната · {{ student.name }} · BooStudy{% endblock %}
 {% set active_page = 'student_profile' %}
+{% block body_class %}{{ super() }} bg-boo-bg text-boo-textMain{% endblock %}
 
 {% block content %}
 {% set first_name = (student.name.split(' ')[0] if student and student.name else 'ученик') %}

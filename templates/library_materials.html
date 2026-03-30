@@ -2,196 +2,197 @@
 {% set active_page = 'library' %}
 {% block title %}Библиотека · Материалы{% endblock %}
 
-{% block head_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% block body_class %}{{ super() }} bg-boo-bg text-boo-textMain{% endblock %}
+
+{% block head_extra %}
 <style>
-    .mat-hero {
-        background: linear-gradient(135deg, rgba(0, 255, 213, 0.06), rgba(31, 123, 255, 0.06));
-        border-radius: var(--radius-lg);
-        padding: 1.5rem;
-        margin-bottom: 1rem;
+    .lib-file-drop { transition: all 0.3s ease; }
+    .lib-file-drop:hover, .lib-file-drop.dragover {
+        border-color: #7B5CFF;
+        background-color: #F5F3FF;
     }
-    .mat-hero h1 { margin: 0.35rem 0 0 0; font-size: 2.15rem; font-weight: 900; }
-    .mat-hero p { margin: 0.65rem 0 0 0; color: var(--text-muted); line-height: 1.45; }
-    .mat-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-    @media (max-width: 980px) { .mat-grid { grid-template-columns: 1fr; } }
-    .mat-assets-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 0.9rem;
-    }
-    .mat-asset-card {
-        background: var(--surface-2);
-        border-radius: var(--radius-md);
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.6rem;
-        position: relative;
-        transition: transform 0.2s, background 0.2s;
-        box-shadow: var(--shadow-card, 0 1px 3px rgba(0,0,0,.08));
-    }
-    .mat-asset-card:hover { transform: translateY(-2px); background: rgba(255,255,255,0.04); }
-    .mat-asset-title { font-weight: 900; line-height: 1.25; }
-    .mat-asset-meta { color: var(--text-muted); font-size: 0.9rem; display: flex; gap: 0.65rem; flex-wrap: wrap; }
-    .mat-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-    .mat-tag {
-        padding: 0.18rem 0.5rem;
-        border-radius: 999px;
-        border: 1px solid var(--stroke-1);
-        background: rgba(255,255,255,0.03);
-        color: var(--text-muted);
-        font-size: 0.82rem;
-        font-weight: 700;
-    }
-    .mat-danger-btn {
-        position: absolute;
-        top: 0.75rem;
-        right: 0.75rem;
-        opacity: 0;
-        transition: opacity 0.2s;
-    }
-    .mat-asset-card:hover .mat-danger-btn { opacity: 1; }
-    .field-label { display: block; color: var(--text-muted); font-weight: 800; font-size: 0.9rem; margin-bottom: 0.35rem; }
 </style>
 {% endblock %}
 
 {% block content %}
-<section class="mat-hero">
-    <div class="hero-eyebrow">Контент и библиотека</div>
-    <h1>Библиотека материалов</h1>
-    <p>Храни раздатки, файлы и опоры в одном месте и прикрепляй к любым урокам. Сейчас это приватная библиотека (для твоего аккаунта) — дальше добавим shared и теги.</p>
-</section>
+<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 -mt-2">
 
-<div class="mat-grid">
-    <section class="glass-panel">
-        <div class="flex justify-between items-center gap-4 flex-wrap">
-            <h2 class="m-0 text-lg font-black">Загрузить новый материал</h2>
+    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm relative overflow-hidden flex flex-col">
+        <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute right-60 bottom-[-50px] w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="relative z-10 max-w-4xl">
+            <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                <i class="ph-fill ph-books"></i> Контент и библиотека
+            </div>
+            <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-3">Библиотека материалов</h1>
+            <p class="text-slate-600 font-medium text-sm leading-relaxed max-w-3xl">
+                Храни раздатки, файлы и опоры в одном месте и прикрепляй к любым урокам. Сейчас это приватная библиотека (для твоего аккаунта) — дальше добавим shared и теги.
+            </p>
         </div>
-        <form method="POST" action="{{ url_for('library.materials_upload') }}" enctype="multipart/form-data" class="mt-4">
-            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-            <div class="grid gap-3.5">
-                <div>
-                    <label class="field-label">Файл</label>
-                    <input class="neo-input" type="file" name="file" required>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-6 items-start">
+        <div class="w-full lg:w-1/3 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:sticky lg:top-24 self-start">
+            <h2 class="text-xl font-black text-slate-900 mb-6">Загрузить новый материал</h2>
+            <form method="POST" action="{{ url_for('library.materials_upload') }}" enctype="multipart/form-data" id="lib-upload-form" class="space-y-6">
+                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                <div class="space-y-2">
+                    <label class="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Файл</label>
+                    <div class="lib-file-drop relative border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 p-6 flex flex-col items-center justify-center text-center cursor-pointer overflow-hidden group">
+                        <input type="file" name="file" id="lib-file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required>
+                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-200 mb-3 group-hover:scale-110 transition-transform pointer-events-none">
+                            <i class="ph-bold ph-upload-simple text-xl text-boo-primary"></i>
+                        </div>
+                        <p class="text-sm font-bold text-slate-700 mb-1 pointer-events-none">Выберите файл или перетащите</p>
+                        <p class="text-xs font-medium text-slate-400 pointer-events-none">PDF, DOCX, PNG, JPG до 10MB</p>
+                    </div>
                 </div>
-                <div>
-                    <label class="field-label">Название (опционально)</label>
-                    <input class="neo-input" name="title" placeholder="Напр.: Таблица истинности — шпаргалка">
+                <div class="space-y-2">
+                    <label class="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Название <span class="text-slate-400 font-medium normal-case tracking-normal">(опционально)</span></label>
+                    <input type="text" name="title" placeholder="Напр.: Таблица истинности - шпаргалка" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
                 </div>
-                <div>
-                    <label class="field-label">Теги (через запятую)</label>
-                    <input class="neo-input" name="tags" placeholder="егэ, 24, питон, шпора">
+                <div class="space-y-2">
+                    <label class="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Теги <span class="text-slate-400 font-medium normal-case tracking-normal">(через запятую)</span></label>
+                    <input type="text" name="tags" placeholder="егэ, 24, питон, шпора" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
                 </div>
-                <div>
-                    <label class="field-label">Описание (опционально)</label>
-                    <textarea class="neo-textarea" name="description" placeholder="Коротко: для чего, когда выдавать, нюансы..."></textarea>
+                <div class="space-y-2">
+                    <label class="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Описание <span class="text-slate-400 font-medium normal-case tracking-normal">(опционально)</span></label>
+                    <textarea name="description" rows="3" placeholder="Коротко: для чего, когда выдавать, нюансы..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input resize-y"></textarea>
                 </div>
-                <div class="flex justify-end">
-                    <button class="neo-button accent" type="submit">
-                        <i class="fas fa-cloud-upload-alt ui-icon ui-icon--sm"></i> Добавить
+                <div class="pt-2 border-t border-slate-100">
+                    <button type="submit" class="w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">
+                        <i class="ph-bold ph-cloud-arrow-up text-lg"></i> Добавить материал
                     </button>
                 </div>
-            </div>
-        </form>
-    </section>
-
-    <section class="glass-panel">
-        <div class="flex justify-between items-end gap-4 flex-wrap">
-            <div>
-                <h2 class="m-0 text-lg font-black">Мои материалы</h2>
-                <div class="text-text-muted mt-1.5">{{ assets|length }} шт.</div>
-            </div>
-            <form method="GET" class="flex gap-2.5 items-center flex-wrap">
-                <input class="neo-input min-w-[240px]" name="q" value="{{ q }}" placeholder="Поиск по названию…">
-                <input class="neo-input w-[120px]" name="tag" value="{{ tag }}" placeholder="Тег">
-                <button class="neo-button outline" type="submit"><i class="fas fa-search"></i></button>
-                <a class="neo-button ghost" href="{{ url_for('library.materials_library') }}"><i class="fas fa-rotate-left"></i></a>
             </form>
         </div>
 
-        <div class="mt-4">
-            {% if assets and assets|length > 0 %}
-            <div class="mat-assets-grid">
-                {% for a in assets %}
-                <div class="mat-asset-card">
-                    <form method="POST" action="{{ url_for('library.materials_delete', asset_id=a.asset_id) }}" class="mat-danger-btn">
-                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                        <button type="submit" class="neo-button danger sm" onclick="return confirm('Удалить материал из библиотеки?');">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </form>
-                    <div class="mat-asset-title">{{ a.title }}</div>
-                    <div class="mat-asset-meta">
-                        <span><i class="far fa-file"></i> {{ a.file_name }}</span>
-                        {% if a.file_size %}<span><i class="fas fa-weight-hanging"></i> {{ (a.file_size/1024)|round(0) }} KB</span>{% endif %}
-                    </div>
-                    {% if a.tags and a.tags|length > 0 %}
-                    <div class="mat-tags">
-                        {% for t in a.tags %}
-                        <a class="mat-tag" href="{{ url_for('library.materials_library', tag=t) }}">{{ t }}</a>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    <div class="flex gap-2.5 flex-wrap mt-1">
-                        <a class="neo-button outline sm" href="{{ a.file_url }}" target="_blank">
-                            <i class="fas fa-arrow-up-right-from-square"></i> Открыть
-                        </a>
-                        <a class="neo-button ghost sm" href="{{ a.file_url }}" download>
-                            <i class="fas fa-download"></i> Скачать
-                        </a>
-                    </div>
-                    {% if a.description %}
-                    <div class="text-text-muted text-sm leading-snug mt-1">
-                        {{ a.description }}
-                    </div>
-                    {% endif %}
-                    <details class="mt-2">
-                        <summary class="neo-button ghost sm cursor-pointer">
-                            <i class="fas fa-pen"></i> Редактировать
-                        </summary>
-                        <form method="POST" action="{{ url_for('library.materials_edit', asset_id=a.asset_id) }}" class="mt-2 flex flex-col gap-1.5">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="text" name="title" class="neo-input" value="{{ a.title }}" placeholder="Название" required>
-                            <input type="text" name="description" class="neo-input" value="{{ a.description or '' }}" placeholder="Описание">
-                            <input type="text" name="tags" class="neo-input" value="{{ (a.tags or [])|join(', ') }}" placeholder="Теги через запятую">
-                            <button type="submit" class="neo-button accent sm">Сохранить</button>
-                        </form>
-                    </details>
+        <div class="w-full lg:w-2/3 flex flex-col gap-6">
+            <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black text-slate-900 tracking-tight">Мои материалы</h2>
+                    <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">{{ assets|length }} шт.</span>
                 </div>
-                {% endfor %}
+                <form method="GET" class="flex flex-col sm:flex-row gap-3 mb-8">
+                    <div class="relative flex-1">
+                        <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                        <input type="text" name="q" value="{{ q or '' }}" placeholder="Поиск по названию..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                    </div>
+                    <div class="flex gap-3 w-full sm:w-auto">
+                        <div class="relative w-full sm:w-40">
+                            <i class="ph-bold ph-tag absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" name="tag" value="{{ tag or '' }}" placeholder="Тег" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
+                        </div>
+                        <button type="submit" class="w-12 h-12 bg-white border border-slate-200 text-boo-primary rounded-xl flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm shrink-0" aria-label="Искать">
+                            <i class="ph-bold ph-magnifying-glass"></i>
+                        </button>
+                        <a href="{{ url_for('library.materials_library') }}" class="w-12 h-12 bg-white border border-slate-200 text-slate-400 rounded-xl flex items-center justify-center hover:bg-slate-50 hover:text-slate-700 transition-colors shadow-sm shrink-0" title="Сбросить фильтры">
+                            <i class="ph-bold ph-arrow-counter-clockwise"></i>
+                        </a>
+                    </div>
+                </form>
+
+                {% if assets and assets|length > 0 %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% for a in assets %}
+                    {% set fn = (a.file_name or '')|lower %}
+                    {% set ext = fn.split('.')[-1] if '.' in fn else '' %}
+                    <div class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col group relative">
+                        <div class="p-5 flex-1">
+                            <div class="flex justify-between items-start mb-4">
+                                {% if ext in ['png','jpg','jpeg','gif','webp','svg'] %}
+                                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-100 shadow-sm overflow-hidden relative">
+                                    <i class="ph-fill ph-image text-2xl relative z-10 text-blue-600"></i>
+                                </div>
+                                {% elif ext == 'pdf' %}
+                                <div class="w-12 h-12 rounded-xl bg-red-50 text-red-500 flex items-center justify-center border border-red-100 shadow-sm">
+                                    <i class="ph-fill ph-file-pdf text-2xl"></i>
+                                </div>
+                                {% else %}
+                                <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200 shadow-sm">
+                                    <i class="ph-fill ph-file text-2xl"></i>
+                                </div>
+                                {% endif %}
+                                <form method="POST" action="{{ url_for('library.materials_delete', asset_id=a.asset_id) }}" class="inline" onsubmit="return confirm('Удалить материал из библиотеки?');">
+                                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                    <button type="submit" class="text-slate-400 hover:text-red-500 transition-colors" title="Удалить"><i class="ph-bold ph-trash text-lg"></i></button>
+                                </form>
+                            </div>
+                            <h3 class="text-lg font-black text-slate-900 mb-2 leading-tight group-hover:text-boo-primary transition-colors line-clamp-2" title="{{ a.title }}">{{ a.title }}</h3>
+                            {% if a.tags and a.tags|length > 0 %}
+                            <div class="flex flex-wrap gap-1.5 mb-4">
+                                {% for t in a.tags[:6] %}
+                                {% set c = loop.index0 % 4 %}
+                                <span class="{% if c == 0 %}bg-cyan-50 text-cyan-600 border-cyan-100{% elif c == 1 %}bg-purple-50 text-purple-600 border-purple-100{% elif c == 2 %}bg-orange-50 text-orange-600 border-orange-100{% else %}bg-green-50 text-green-600 border-green-100{% endif %} text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border">{{ t }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="text-xs font-bold text-slate-400 flex items-center gap-2">
+                                <i class="ph-bold ph-calendar-blank"></i>
+                                {% if a.updated_at %}{{ a.updated_at.strftime('%d.%m.%Y') }}{% else %}—{% endif %}
+                                {% if a.file_size %} • {{ (a.file_size / 1024)|round(1) }} KB{% endif %}
+                            </div>
+                            {% if a.description %}
+                            <p class="text-xs text-slate-500 mt-2 line-clamp-2">{{ a.description }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-[24px] flex flex-col gap-2">
+                            <div class="flex gap-2">
+                                <a href="{{ a.file_url }}" target="_blank" rel="noopener" class="flex-1 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center justify-center gap-1.5 no-underline">
+                                    <i class="ph-bold ph-download-simple"></i> Скачать
+                                </a>
+                                <button type="button" class="w-10 h-10 bg-white text-boo-primary border border-purple-200 rounded-lg flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm" title="Скопировать ссылку" data-copy-url="{{ a.file_url }}">
+                                    <i class="ph-bold ph-link"></i>
+                                </button>
+                            </div>
+                            <details class="text-xs">
+                                <summary class="cursor-pointer font-bold text-slate-600 hover:text-boo-primary list-none flex items-center gap-1"><i class="ph-bold ph-pencil-simple"></i> Редактировать</summary>
+                                <form method="POST" action="{{ url_for('library.materials_edit', asset_id=a.asset_id) }}" class="mt-2 space-y-2 p-3 bg-white rounded-xl border border-slate-200">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="text" name="title" value="{{ a.title }}" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" required>
+                                    <input type="text" name="description" value="{{ a.description or '' }}" placeholder="Описание" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                                    <input type="text" name="tags" value="{{ (a.tags or [])|join(', ') }}" placeholder="Теги" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                                    <button type="submit" class="w-full py-2 bg-boo-primary text-white rounded-lg font-bold text-xs">Сохранить</button>
+                                </form>
+                            </details>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="w-full bg-white rounded-[24px] border-2 border-slate-200 border-dashed p-10 lg:p-14 flex flex-col items-center justify-center text-center">
+                    <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4 border-2 border-white shadow-sm">
+                        <i class="ph-fill ph-paperclip text-3xl text-slate-400"></i>
+                    </div>
+                    <h3 class="text-lg font-black text-slate-900 tracking-tight mb-1">Пока пусто</h3>
+                    <p class="text-slate-500 font-medium text-sm">Загрузи первый материал — и он появится здесь.</p>
+                </div>
+                {% endif %}
             </div>
-            {% else %}
-            <div class="glass-panel p-6 text-center">
-                <div class="text-4xl mb-2">📎</div>
-                <div class="font-black">Пока пусто</div>
-                <div class="text-text-muted mt-1.5">Загрузи первый материал — и он появится здесь.</div>
-            </div>
-            {% endif %}
         </div>
-    </section>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts_extra %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('form').forEach(function(form) {
-        if (form.classList.contains('mat-danger-btn') || form.classList.contains('no-protect')) return;
-        form.addEventListener('submit', function() {
-            var btn = form.querySelector('button[type="submit"], input[type="submit"]');
-            if (btn && !btn.disabled) {
-                btn.disabled = true;
-                btn.dataset.originalText = btn.textContent;
-                btn.textContent = 'Сохранение...';
-                setTimeout(function() { btn.disabled = false; btn.textContent = btn.dataset.originalText; }, 8000);
+(function(){
+    var z = document.getElementById('lib-file-input');
+    var drop = z && z.closest('.lib-file-drop');
+    if (drop && z) {
+        ['dragenter','dragover'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add('dragover'); }); });
+        ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('dragover'); }); });
+        drop.addEventListener('drop', function(e){ var f = e.dataTransfer.files; if (f && f[0]) { z.files = f; } });
+    }
+    document.querySelectorAll('[data-copy-url]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            var u = btn.getAttribute('data-copy-url');
+            if (!u) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(u).then(function(){ if (window.toast) toast.success('Ссылка скопирована'); });
             }
         });
     });
-});
+})();
 </script>
 {% endblock %}

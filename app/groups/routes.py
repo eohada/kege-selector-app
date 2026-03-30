@@ -8,6 +8,8 @@ import csv
 import io
 from flask import Response
 
+from sqlalchemy.orm import selectinload
+
 from app.groups import groups_bp
 from app.models import db, SchoolGroup, GroupStudent, Student, User, Lesson, LessonTask, Assignment, AssignmentTask, Submission
 from app.auth.rbac_utils import has_permission, get_user_scope
@@ -90,11 +92,36 @@ def _filter_students_query(q):
 @login_required
 def groups_list():
     _guard_groups_view()
-    q = SchoolGroup.query.order_by(SchoolGroup.updated_at.desc(), SchoolGroup.created_at.desc())
+    q = SchoolGroup.query.options(
+        selectinload(SchoolGroup.students).selectinload(GroupStudent.student).selectinload(Student.user)
+    ).order_by(SchoolGroup.updated_at.desc(), SchoolGroup.created_at.desc())
     if not (current_user.is_admin() or current_user.is_creator()):
         q = q.filter(SchoolGroup.owner_user_id == current_user.id)
+
+    q_text = (request.args.get('q') or '').strip()
+    subject_filter = (request.args.get('subject') or '').strip()
+    if q_text:
+        try:
+            q = q.filter(SchoolGroup.title.ilike(f'%{q_text}%'))
+        except Exception:
+            pass
+    if subject_filter:
+        try:
+            q = q.filter(SchoolGroup.subject.ilike(f'%{subject_filter}%'))
+        except Exception:
+            pass
+
     groups = q.all()
-    return render_template('groups_list.html', groups=groups)
+    active_groups = [g for g in groups if (getattr(g, 'status', None) or '').lower() == 'active']
+    total_members = sum(len(getattr(g, 'students', None) or []) for g in groups)
+    return render_template(
+        'groups_list.html',
+        groups=groups,
+        groups_filter_q=q_text,
+        groups_filter_subject=subject_filter,
+        groups_active_count=len(active_groups),
+        groups_total_members=total_members,
+    )
 
 
 @groups_bp.route('/groups/new', methods=['GET', 'POST'])
