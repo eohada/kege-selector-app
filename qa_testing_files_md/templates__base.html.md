@@ -1,3 +1,8 @@
+# d:\VSCode\kege_selector_app\templates\base.html
+
+**Описание:** Базовый шаблон приложения; подключение QA-виджета и общих скриптов.
+
+`
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -86,25 +91,31 @@
     {% endwith %}
 
     {% if current_user is defined and current_user.is_authenticated %}
-    {% set _qa_widget_allowed = false %}
-    
-    {% if session.get('impersonator_id') %}
-        {% set _qa_widget_allowed = true %}
-    {% else %}
-        {% if current_user.is_creator() or current_user.is_chief_tester() or current_user.is_tester() %}
+        {% set _qa_widget_allowed = false %}
+        {% if session.get('impersonator_id') %}
             {% set _qa_widget_allowed = true %}
+        {% else %}
+            {# Some users rely on role helpers / roles table, not `current_user.role` #}
+            {% if (current_user.is_creator() if current_user.is_creator is defined else false)
+                or (current_user.is_chief_tester() if current_user.is_chief_tester is defined else false)
+                or (current_user.is_tester() if current_user.is_tester is defined else false)
+                or (current_user.is_admin() if current_user.is_admin is defined else false)
+                or (current_user.is_chief_admin() if current_user.is_chief_admin is defined else false)
+            %}
+                {% set _qa_widget_allowed = true %}
+            {% endif %}
+            {% if not _qa_widget_allowed and current_user.role in ['chief_tester', 'creator', 'chief_admin', 'tester', 'admin'] %}
+                {% set _qa_widget_allowed = true %}
+            {% endif %}
+            {# Allow QA-pool accounts to report bugs in-place even if role=student/tutor/parent #}
+            {% if not _qa_widget_allowed and (current_user.is_qa_pool if current_user.is_qa_pool is defined else false) %}
+                {% set _qa_widget_allowed = true %}
+            {% endif %}
         {% endif %}
-        
-        {# Разрешаем QA-пулу #}
-        {% if not _qa_widget_allowed and current_user.is_qa_pool %}
-            {% set _qa_widget_allowed = true %}
+        {% if _qa_widget_allowed %}
+            {% include 'qa/_floating_widget.html' %}
         {% endif %}
     {% endif %}
-
-    {% if _qa_widget_allowed %}
-        {% include 'qa/_floating_widget.html' %}
-    {% endif %}
-{% endif %}
 
     {% if current_user is defined and current_user.is_authenticated and current_user.is_demo_user %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/demo_cinema.css') }}">
@@ -133,3 +144,5 @@
     {% block scripts_extra %}{% endblock %}
 </body>
 </html>
+
+`

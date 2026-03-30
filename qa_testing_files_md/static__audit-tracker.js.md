@@ -1,0 +1,319 @@
+# d:\VSCode\kege_selector_app\static\audit-tracker.js
+
+**Описание:** Трекинг запросов/действий; захват X-Request-ID для корреляции логов.
+
+`
+
+(function() {
+    'use strict';  
+
+    function isUserAuthenticated() {
+
+        return !!document.querySelector('.user-profile-avatar');
+    }
+
+    function getTesterUUID() {
+
+        if (isUserAuthenticated()) {
+            return null;
+        }
+        let testerUUID = localStorage.getItem('tester_uuid');
+        if (!testerUUID) {
+
+            testerUUID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+            localStorage.setItem('tester_uuid', testerUUID);
+        }
+        return testerUUID;
+    }
+
+    function getTesterName() {
+
+        if (isUserAuthenticated()) {
+            return null;
+        }
+        
+        // Release behavior: no blocking prompts on any page.
+        // If a tester name is needed, it can be set manually via localStorage key `tester_name`.
+        try {
+            const testerName = localStorage.getItem('tester_name');
+            if (testerName && String(testerName).trim()) {
+                return String(testerName).trim();
+            }
+        } catch (e) {
+            // Storage can be blocked by browser privacy settings; fall back silently.
+        }
+        return 'Anonymous';
+    }
+
+    function sendAuditEvent(action, entity, entityId, status, metadata, durationMs) {
+
+        if (isUserAuthenticated()) {
+            const headers = {
+                'Content-Type': 'application/json',  
+                'X-CSRFToken': getCSRFToken()  
+            };
+            fetch('/api/audit-log', {  
+                method: 'POST',  
+                headers: headers,
+                body: JSON.stringify({  
+                    action: action,  
+                    entity: entity,  
+                    entity_id: entityId,  
+                    status: status,  
+                    metadata: metadata || {},  
+                    duration_ms: durationMs  
+                })
+            }).catch(err => {  
+                console.error('Error sending audit event:', err);  
+            });
+            return;
+        }
+        
+        const testerName = getTesterName();
+        const testerUUID = getTesterUUID();
+
+        const hasNonASCII = testerName && /[^\x00-\x7F]/.test(testerName);
+        const headers = {
+            'Content-Type': 'application/json',  
+            'X-Tester-UUID': testerUUID,
+            'X-CSRFToken': getCSRFToken()  
+        };
+        if (hasNonASCII && testerName !== 'Anonymous') {
+            headers['X-Tester-Name'] = btoa(encodeURIComponent(testerName));
+            headers['X-Tester-Name-Encoded'] = 'base64';
+        } else if (testerName && testerName !== 'Anonymous') {
+            headers['X-Tester-Name'] = testerName;
+        }
+
+        fetch('/api/audit-log', {  
+            method: 'POST',  
+            headers: headers,
+            body: JSON.stringify({  
+                action: action,  
+                entity: entity,  
+                entity_id: entityId,  
+                status: status,  
+                metadata: metadata || {},  
+                duration_ms: durationMs  
+            })
+        }).catch(err => {  
+            console.error('Error sending audit event:', err);  
+        });
+    }
+
+    function getCSRFToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');  
+        if (meta) {  
+            return meta.getAttribute('content');  
+        }
+        const body = document.body;  
+        if (body && body.dataset && body.dataset.csrfToken) {  
+            return body.dataset.csrfToken;  
+        }
+        return '';  
+    }
+
+    document.addEventListener('click', function(e) {
+        const target = e.target;  
+
+        if (target.closest('form')) {  
+            return;  
+        }
+
+        let entity = null;  
+        let entityId = null;  
+        let action = 'click';  
+        
+        if (target.tagName === 'BUTTON' || target.tagName === 'A') {  
+            const buttonText = target.textContent.trim() || target.getAttribute('aria-label') || target.className;  
+            const href = target.getAttribute('href');  
+
+            if (target.classList.contains('neo-button')) {  
+                if (target.classList.contains('danger')) {  
+                    action = 'click_danger';  
+                } else if (target.classList.contains('accent')) {  
+                    action = 'click_primary';  
+                }
+            }
+
+            sendAuditEvent(  
+                action,  
+                'Button',  
+                null,  
+                'success',  
+                {  
+                    button_text: buttonText,  
+                    href: href,  
+                    class_name: target.className  
+                }
+            );
+        }
+    }, true);  
+
+    document.addEventListener('submit', function(e) {
+        const form = e.target;  
+        if (!form || form.tagName !== 'FORM') {  
+            return;  
+        }
+        
+        const formId = form.id || form.name || 'unknown';  
+        const formAction = form.action || window.location.pathname;  
+        const formMethod = form.method || 'POST';  
+
+        const formData = new FormData(form);  
+        const fieldNames = Array.from(formData.keys());  
+
+        sendAuditEvent(  
+            'form_submit',  
+            'Form',  
+            null,  
+            'success',  
+            {  
+                form_id: formId,  
+                form_action: formAction,  
+                form_method: formMethod,  
+                field_names: fieldNames  
+            }
+        );
+    });
+
+    const originalFetch = window.fetch;  
+    window.fetch = function(...args) {  
+        const startTime = Date.now();  
+        const url = args[0];  
+        const options = args[1] || {};  
+        const method = options.method || 'GET';  
+
+        if (typeof url === 'string' && url.includes('/api/audit-log')) {  
+            return originalFetch.apply(this, args);  
+        }
+
+        let headersObj = {};
+        if (options.headers) {
+            if (options.headers instanceof Headers) {
+
+                options.headers.forEach((value, key) => {
+                    headersObj[key] = value;
+                });
+            } else if (typeof options.headers === 'object') {
+
+                headersObj = { ...options.headers };
+            }
+        }
+
+        if (!isUserAuthenticated()) {
+            const testerName = getTesterName();
+            const testerUUID = getTesterUUID();
+
+            if (testerName && testerName !== 'Anonymous') {
+
+                const hasNonASCII = /[^\x00-\x7F]/.test(testerName);
+                if (hasNonASCII) {
+
+                    headersObj['X-Tester-Name'] = btoa(encodeURIComponent(testerName));
+                    headersObj['X-Tester-Name-Encoded'] = 'base64';
+                } else {
+                    headersObj['X-Tester-Name'] = testerName;
+                }
+            }
+            if (testerUUID) {
+                headersObj['X-Tester-UUID'] = testerUUID;
+            }
+        }
+
+        options.headers = headersObj;
+        args[1] = options;
+        
+        return originalFetch.apply(this, args).then(response => {
+            try {
+                const rid = response && response.headers ? response.headers.get('X-Request-ID') : null;
+                if (rid) {
+                    window.__last_request_id = rid;
+                    try { localStorage.setItem('last_request_id', rid); } catch (e) {}
+                }
+            } catch (e) {}
+            const durationMs = Date.now() - startTime;
+            const status = response.ok ? 'success' : 'error';
+
+            sendAuditEvent(  
+                'ajax_request',  
+                'API',  
+                null,  
+                status,  
+                {  
+                    url: typeof url === 'string' ? url : url.toString(),  
+                    method: method,  
+                    status_code: response.status  
+                },
+                durationMs  
+            );
+            
+            return response;  
+        }).catch(error => {  
+            const durationMs = Date.now() - startTime;  
+
+            sendAuditEvent(  
+                'ajax_error',  
+                'API',  
+                null,  
+                'error',  
+                {  
+                    url: typeof url === 'string' ? url : url.toString(),  
+                    method: method,  
+                    error: error.message  
+                },
+                durationMs  
+            );
+            
+            throw error;  
+        });
+    };
+
+    document.addEventListener('change', function(e) {
+        const target = e.target;  
+        if (target.tagName === 'SELECT' && target.name) {  
+            sendAuditEvent(  
+                'select_change',  
+                'FormField',  
+                null,  
+                'success',  
+                {  
+                    field_name: target.name,  
+                    field_value: target.value  
+                }
+            );
+        }
+    });
+
+    if (document.readyState === 'loading') {  
+        document.addEventListener('DOMContentLoaded', function() {  
+            sendAuditEvent(  
+                'page_loaded',  
+                'Page',  
+                null,  
+                'success',  
+                {  
+                    page_url: window.location.pathname,  
+                    page_title: document.title  
+                }
+            );
+        });
+    } else {  
+        sendAuditEvent(  
+            'page_loaded',  
+            'Page',  
+            null,  
+            'success',  
+            {  
+                page_url: window.location.pathname,  
+                page_title: document.title  
+            }
+        );
+    }
+    
+})();
+`

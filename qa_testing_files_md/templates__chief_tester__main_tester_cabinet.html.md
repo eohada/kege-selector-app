@@ -1,3 +1,8 @@
+# d:\VSCode\kege_selector_app\templates\chief_tester\main_tester_cabinet.html
+
+**Описание:** UI кабинета QA/Chief Tester: табы, логи, баг-репорт, пресеты.
+
+`
 {% extends 'base.html' %}
 {% set active_page = 'chief_tester_dashboard' %}
 {% block title %}BooStudy - QA Command Center{% endblock %}
@@ -306,48 +311,8 @@
                     <div class="col-span-1 p-2">Результат</div>
                     <div class="col-span-2 p-2">Время</div>
                 </div>
-                <div class="flex items-start gap-4 p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors group">
-    
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-green-100 text-green-600 mt-1 shadow-sm border border-green-200">
-                        <i class="ph-bold ph-check"></i>
-                    </div>
-                
-                    <div class="flex-1 min-w-0">
-                        
-                        <div class="flex items-center justify-between mb-1.5">
-                            <div class="flex items-center gap-2">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest bg-blue-100 text-blue-700 border border-blue-200">
-                                    POST
-                                </span>
-                                <span class="font-mono text-xs text-slate-600 truncate max-w-md">
-                                    /qa/manipulate/generate_debtor
-                                </span>
-                            </div>
-                            <span class="text-[11px] font-bold text-slate-400">14:32:01</span>
-                        </div>
-                
-                        <div class="flex items-center gap-3">
-                            <div class="flex items-center gap-1.5 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm">
-                                <div class="w-4 h-4 rounded bg-indigo-100 text-indigo-700 font-bold text-[10px] flex items-center justify-center">
-                                    C
-                                </div>
-                                <span class="text-[11px] font-bold text-slate-700">creator</span>
-                            </div>
-                            
-                            <span class="text-slate-300">•</span>
-                            
-                            <span class="text-xs font-medium text-slate-800">
-                                Сгенерирован ученик-должник (Пресет выполнен)
-                            </span>
-                        </div>
-                    </div>
-                
-                    <div class="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end gap-2">
-                        <button class="px-2 py-1 bg-white border border-slate-200 rounded-md text-[10px] font-mono text-slate-400 hover:text-indigo-600 hover:border-indigo-200 shadow-sm transition-colors" title="Копировать Request ID">
-                            <i class="ph-bold ph-copy mr-1"></i> #req-8f72a
-                        </button>
-                        </div>
-                
+                <div id="ctLogTable" class="max-h-[560px] overflow-auto divide-y divide-slate-100">
+                    <div class="p-4 text-sm text-slate-500">Загрузка логов...</div>
                 </div>
             </div>
             <div class="mt-3 text-xs text-slate-500" id="ctLogSelectionInfo">Выбрано логов: 0</div>
@@ -844,3 +809,5 @@ document.getElementById('ctBugForm')?.addEventListener('submit', async function 
 </script>
 {% endblock %}
 
+
+`

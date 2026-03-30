@@ -1,0 +1,132 @@
+# d:\VSCode\kege_selector_app\templates\qa\bug_reports.html
+
+**Описание:** Список баг-репортов, статусы, переход в detail, RID-ссылка.
+
+`
+{% extends 'base.html' %}
+{% from '_ui_icon.html' import ui_icon %}
+{% set active_page = 'qa_board' %}
+
+{% block title %}Баг-репорты · QA{% endblock %}
+
+{% block head_css %}
+<style>
+    .reports-list { max-width: 900px; }
+    .report-card { background: var(--surface-1); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; box-shadow: var(--shadow-card); }
+    .report-card h4 { margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--text-primary); }
+    .report-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .report-status { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+    .report-status.new { background: #ff9f43; color: #000; }
+    .report-status.in_progress { background: #00f2ff; color: #000; }
+    .report-status.review { background: #bc13fe; color: #fff; }
+    .report-status.done { background: #00ff9d; color: #000; }
+    .report-actions { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .report-actions form { display: inline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+    <div class="flex justify-between items-center mb-8 pb-4">
+        <div>
+            <div class="text-xs text-muted uppercase tracking-widest">QA</div>
+            <h1 class="text-2xl font-bold">Баг-репорты</h1>
+        </div>
+        <div class="flex gap-3">
+            {% if return_to %}
+            <a href="{{ return_to }}" class="neo-button ghost">← Вернуться в QA кабинет</a>
+            {% endif %}
+            <a href="{{ url_for('qa.bug_report', return_to=return_to) }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать баг-репорт</a>
+            <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Канбан</a>
+        </div>
+    </div>
+
+    <div class="reports-list">
+        {% for r in reports %}
+        <div class="report-card">
+            <h4>
+                <a href="{{ url_for('qa.bug_report_detail', task_id=r.id, return_to=return_to) }}" class="no-underline" style="color: inherit;">
+                    #{{ r.id }} — {{ r.title }}
+                </a>
+            </h4>
+            <div class="report-meta">
+                <span class="report-status {{ r.status }}">{{ r.status }}</span>
+                {{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '' }}
+                {% if r.reporter %} · Автор: {{ r.reporter.username }}{% endif %}
+                {% if r.context_url %} · <a href="{{ r.context_url }}" target="_blank" rel="noopener" style="color: #00f2ff;">Контекст</a>{% endif %}
+            </div>
+            {% if r.screenshot_path %}
+            {% set _scr = r.screenshot_path.replace('static/', '') %}
+            <div class="mb-3">
+                <a href="{{ url_for('static', filename=_scr) }}" target="_blank" rel="noopener">
+                    <img src="{{ url_for('static', filename=_scr) }}" alt="Скриншот" class="max-w-[200px] max-h-[150px] rounded-btn" loading="lazy" onerror="this.style.display='none'">
+                </a>
+            </div>
+            {% endif %}
+            {% if r.description %}
+            <p class="text-sm text-muted mb-2 whitespace-pre-wrap">{{ r.description }}</p>
+            {% endif %}
+            {% if r.description and ('RID=' in r.description or 'RID:' in r.description) %}
+            {% set _rid = (r.description.split('RID=')[1].split()[0] if 'RID=' in r.description else (r.description.split('RID:')[1].split()[0] if 'RID:' in r.description else '')) %}
+            {% if _rid %}
+            <div class="report-actions">
+                <a class="neo-button ghost sm" href="{{ url_for('chief_tester.dashboard', tab='logs', rid=_rid) }}">Логи по RID</a>
+            </div>
+            {% endif %}
+            {% endif %}
+            {% if can_edit %}
+            <div class="report-actions">
+                <span class="text-xs text-muted">Сменить статус:</span>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'new', this)" class="neo-button ghost sm">New</button>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'in_progress', this)" class="neo-button ghost sm">In progress</button>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'review', this)" class="neo-button ghost sm">Review</button>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'done', this)" class="neo-button ghost sm">Done</button>
+            </div>
+            {% else %}
+            <p class="text-xs text-muted mt-2">Статус меняет только создатель платформы.</p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="text-center p-12 text-muted">Баг-репортов пока нет. <a href="{{ url_for('qa.bug_report') }}" class="text-accent">Создать</a></div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+function updateStatus(taskId, status, btn) {
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '...';
+    btn.disabled = true;
+
+    fetch(`/qa/bug-reports/${taskId}/status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ status: status })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || 'Не удалось обновить статус'));
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Ошибка сети');
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+</script>
+{% endblock %}
+
+`

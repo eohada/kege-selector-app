@@ -1,0 +1,2005 @@
+# d:\VSCode\kege_selector_app\core\db_models.py
+
+**Описание:** Модели БД, используемые QA-функционалом и пресетами.
+
+`
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime, String, Boolean, Enum as SQLEnum, Text, TypeDecorator
+from sqlalchemy.dialects.postgresql import UUID, JSONB as PG_JSONB
+import json
+import uuid
+
+db = SQLAlchemy()
+
+
+class JSONBCompat(TypeDecorator):
+    """
+    JSON-поле: в PostgreSQL — JSONB (индексируемый), в SQLite — JSON (нет нативного JSONB).
+    Использовать для hints, behavior_flags и других JSON-полей, где в проде нужен JSONB.
+    """
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(PG_JSONB())
+        return dialect.type_descriptor(JSON())
+
+MOSCOW_TZ = ZoneInfo("Europe/Moscow")
+TOMSK_TZ = ZoneInfo("Asia/Tomsk")
+
+def moscow_now():
+    return datetime.now(MOSCOW_TZ)
+
+task_topics = Table('task_topics',
+    db.metadata,
+    Column('task_id', Integer, ForeignKey('Tasks.task_id'), primary_key=True),
+    Column('topic_id', Integer, ForeignKey('Topics.topic_id'), primary_key=True),
+    Column('created_at', DateTime, default=moscow_now)
+)
+
+class Course(db.Model):
+    """Программа подготовки (тип экзамена): ЕГЭ Информатика, ОГЭ Информатика и т.д."""
+    __tablename__ = 'ExamCourses'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    task_templates = db.relationship('CourseTaskTemplate', back_populates='course', lazy=True,
+                                     order_by='CourseTaskTemplate.task_number')
+    grading_scales = db.relationship('GradingScale', back_populates='course', lazy=True)
+    enrollments = db.relationship('StudentCourseEnrollment', back_populates='course', lazy=True)
+
+    def __repr__(self):
+        return f'<Course {self.slug}: {self.title}>'
+
+
+class CourseTaskTemplate(db.Model):
+    """Спецификация: какие номера заданий входят в экзамен и их параметры."""
+    __tablename__ = 'CourseTaskTemplates'
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=False, index=True)
+    task_number = db.Column(db.Integer, nullable=False)
+    max_primary_score = db.Column(db.Integer, default=1, nullable=False)
+    requires_manual_review = db.Column(db.Boolean, default=False, nullable=False)
+    description = db.Column(db.String(300), nullable=True)
+
+    course = db.relationship('Course', back_populates='task_templates')
+
+    __table_args__ = (
+        db.UniqueConstraint('course_id', 'task_number', name='uq_course_task_number'),
+    )
+
+    def __repr__(self):
+        return f'<CourseTaskTemplate course={self.course_id} task={self.task_number}>'
+
+
+class Tasks(db.Model):
+    __tablename__ = 'Tasks'
+    task_id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)
+    # Для заданий 19–21: одна задача на источнике = три задания (19, 20, 21). Связка по task_group_id (например site_task_id).
+    task_group_id = db.Column(db.String(64), nullable=True, index=True)
+    site_task_id = db.Column(db.Text, nullable=True)
+    source_url = db.Column(db.Text, nullable=True)
+    content_html = db.Column(db.Text, nullable=False)
+    answer = db.Column(db.Text, nullable=True)
+    attached_files = db.Column(db.Text, nullable=True)
+    last_scraped = db.Column(db.DateTime, default=moscow_now)
+    knowledge_node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='SET NULL'), nullable=True, index=True)
+
+    # --- Фаза 0: сложность задачи и подсказки ---
+    # difficulty_level: 1–3 = Easy, 4–7 = Medium, 8–10 = Hard; NULL = не размечено (считать Medium)
+    difficulty_level = db.Column(db.Integer, nullable=True, index=True)
+    # hints: лестница подсказок; в PostgreSQL — JSONB (индексируемый), в SQLite — JSON
+    hints = db.Column(JSONBCompat, nullable=True)
+    # source_prototype: путь к эталонному JSON (напр. task_19/medium/task_19_medium.json) для upsert при синхронизации
+    source_prototype = db.Column(db.String(256), nullable=True, index=True)
+
+    # --- Константы маппинга сложности ---
+    DIFFICULTY_EASY_MAX = 3      # 1–3 = Easy
+    DIFFICULTY_MEDIUM_MAX = 7    # 4–7 = Medium
+    DIFFICULTY_HARD_MIN = 8      # 8–10 = Hard
+
+    @property
+    def difficulty_label(self) -> str:
+        """Человекочитаемая метка сложности: Easy / Medium / Hard."""
+        v = self.difficulty_level
+        if v is None or 4 <= v <= 7:
+            return 'medium'
+        if 1 <= v <= 3:
+            return 'easy'
+        if v >= 8:
+            return 'hard'
+        return 'medium'
+
+    def get_elo_rating(self) -> float:
+        """Рейтинг задачи для формул Elo с учётом difficulty_level и base_rating узла."""
+        node = self.knowledge_node
+        base = float(getattr(node, 'base_rating', 1000)) if node else 1000.0
+        label = self.difficulty_label
+        if label == 'easy':
+            return base - 100.0
+        if label == 'hard':
+            return base + 150.0
+        return base  # medium или не размечено
+
+    course = db.relationship('Course', foreign_keys=[course_id], backref='tasks')
+    usage_history = db.relationship('UsageHistory', back_populates='task', lazy=True)
+    skipped_tasks = db.relationship('SkippedTasks', back_populates='task', lazy=True)
+    blacklist_tasks = db.relationship('BlacklistTasks', back_populates='task', lazy=True)
+    topics = db.relationship('Topic', secondary=task_topics, backref='tasks', lazy=True)
+    knowledge_node = db.relationship('KnowledgeNode', foreign_keys=[knowledge_node_id], backref='tasks')
+
+class TaskReview(db.Model):
+    """Результат ручной проверки задания (фундамент для формироватора банка заданий)."""
+    __tablename__ = 'TaskReviews'
+    review_id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, unique=True, index=True)
+
+    status = db.Column(db.String(30), default='new', nullable=False, index=True)
+    notes = db.Column(db.Text, nullable=True)
+
+    reviewer_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+    reviewer = db.relationship('User', foreign_keys=[reviewer_user_id])
+
+
+class TaskSolution(db.Model):
+    """Сгенерированное LLM или ручное решение задания (для просмотра создателем)."""
+    __tablename__ = 'TaskSolutions'
+    solution_id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, unique=True, index=True)
+    solution_text = db.Column(db.Text, nullable=False)
+    source = db.Column(db.String(20), default='llm', nullable=False, index=True)  # llm | manual
+    needs_manual_review = db.Column(db.Boolean, default=False, nullable=False, index=True)  # ответ не совпал с источником
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    task = db.relationship('Tasks', foreign_keys=[task_id], backref=db.backref('task_solution', uselist=False))
+
+
+class Topic(db.Model):
+    """Модель тем (навыков) для тегирования заданий"""
+    __tablename__ = 'Topics'
+    topic_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True, index=True)  # Пример: "Логарифмы", "Пунктуация", "Дроби"
+    description = db.Column(db.Text, nullable=True)  # Описание темы
+    subject_id = db.Column(db.Integer, nullable=True)  # ID предмета (если нужна категоризация)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    def __repr__(self):
+        return f'<Topic {self.name}>'
+
+class UsageHistory(db.Model):
+    __tablename__ = 'UsageHistory'
+    usage_id = db.Column(db.Integer, primary_key=True)
+    task_fk = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False)
+    date_issued = db.Column(db.DateTime, default=moscow_now)
+    session_tag = db.Column(db.Text, nullable=True)
+
+    task = db.relationship('Tasks', back_populates='usage_history')
+
+class SkippedTasks(db.Model):
+    __tablename__ = 'SkippedTasks'
+    skipped_id = db.Column(db.Integer, primary_key=True)
+    task_fk = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False)
+    date_skipped = db.Column(db.DateTime, default=moscow_now)
+    session_tag = db.Column(db.Text, nullable=True)
+
+    task = db.relationship('Tasks', back_populates='skipped_tasks')
+
+class BlacklistTasks(db.Model):
+    __tablename__ = 'BlacklistTasks'
+    blacklist_id = db.Column(db.Integer, primary_key=True)
+    task_fk = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, unique=True)
+    date_added = db.Column(db.DateTime, default=moscow_now)
+    reason = db.Column(db.Text, nullable=True)
+
+    task = db.relationship('Tasks', back_populates='blacklist_tasks')
+
+class Student(db.Model):
+    __tablename__ = 'Students'
+    student_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, unique=True, index=True)  # Прямая связь с User
+    platform_id = db.Column(db.String(100), nullable=True)
+    name = db.Column(db.String(200), nullable=False)
+    phone = db.Column(db.String(50), nullable=True)
+    email = db.Column(db.String(200), nullable=True)
+    telegram = db.Column(db.String(100), nullable=True)
+    
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('student_profile', uselist=False))
+
+    target_score = db.Column(db.Integer, nullable=True)
+    deadline = db.Column(db.String(100), nullable=True)
+
+    diagnostic_level = db.Column(db.String(100), nullable=True)
+    preferences = db.Column(db.Text, nullable=True)
+    strengths = db.Column(db.Text, nullable=True)
+    weaknesses = db.Column(db.Text, nullable=True)
+    overall_rating = db.Column(db.String(50), nullable=True)
+
+    description = db.Column(db.Text, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    category = db.Column(db.String(50), nullable=True)
+    goal_text = db.Column(db.Text, nullable=True)  # Текстовая цель для программирования и ЛЕВЕЛАП
+    programming_language = db.Column(db.String(100), nullable=True)  # Основной язык программирования ученика
+    school_class = db.Column(db.Integer, nullable=True)  # Храним школьный класс ученика (1-11 или None)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    is_active = db.Column(db.Boolean, default=True)
+
+    lessons = db.relationship('Lesson', back_populates='student', lazy=True, cascade='all, delete-orphan')
+    task_statistics = db.relationship('StudentTaskStatistics', back_populates='student', lazy=True, cascade='all, delete-orphan')
+    learning_plan_items = db.relationship('StudentLearningPlanItem', back_populates='student', lazy=True, cascade='all, delete-orphan')
+    diagnostic_checkpoints = db.relationship('StudentDiagnosticCheckpoint', back_populates='student', lazy=True, cascade='all, delete-orphan')
+
+class StudentTaskStatistics(db.Model):
+    """Ручные изменения статистики выполнения заданий для ученика"""
+    __tablename__ = 'StudentTaskStatistics'
+    stat_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False)
+    manual_correct = db.Column(db.Integer, default=0, nullable=False)
+    manual_incorrect = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    __table_args__ = (Index('ix_student_task_statistics', 'student_id', 'course_id', 'task_number', unique=True),)
+
+    student = db.relationship('Student', back_populates='task_statistics')
+    course = db.relationship('Course', foreign_keys=[course_id])
+
+
+class StudentLearningPlanItem(db.Model):
+    """
+    Элемент учебной траектории ученика.
+
+    MVP: привязка к Topic и/или TrajectoryModule + дедлайн + статус + заметки.
+    Статусы: planned | in_progress | done | failed
+    """
+    __tablename__ = 'StudentLearningPlanItems'
+
+    item_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+
+    topic_id = db.Column(db.Integer, db.ForeignKey('Topics.topic_id'), nullable=True, index=True)
+    course_module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
+
+    title = db.Column(db.String(300), nullable=False)  # человекочитаемое название пункта траектории
+    status = db.Column(db.String(20), default='planned', nullable=False, index=True)
+    due_date = db.Column(db.DateTime, nullable=True, index=True)  # дедлайн (обычно MSK)
+    priority = db.Column(db.Integer, default=0, nullable=False, index=True)  # чем больше — тем выше
+    notes = db.Column(db.Text, nullable=True)
+
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    student = db.relationship('Student', back_populates='learning_plan_items')
+    topic = db.relationship('Topic', foreign_keys=[topic_id])
+    course_module = db.relationship('TrajectoryModule', foreign_keys=[course_module_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
+class StudentDiagnosticCheckpoint(db.Model):
+    """
+    Контрольная точка диагностики ученика (входная/промежуточная).
+
+    MVP: сохраняем снимок "дыр" по темам + заметки/рекомендации от преподавателя.
+    """
+    __tablename__ = 'StudentDiagnosticCheckpoints'
+
+    checkpoint_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    kind = db.Column(db.String(30), default='checkpoint', nullable=False, index=True)  # baseline|checkpoint
+    note = db.Column(db.Text, nullable=True)
+    metrics = db.Column(db.JSON, nullable=True)        # summary_metrics (как есть)
+    problem_topics = db.Column(db.JSON, nullable=True) # список слабых тем
+    recommendations = db.Column(db.JSON, nullable=True)  # список рекомендаций/шагов
+
+    created_at = db.Column(db.DateTime, default=moscow_now, index=True)
+
+    student = db.relationship('Student', back_populates='diagnostic_checkpoints')
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
+class SchoolGroup(db.Model):
+    """
+    Группа/класс как сущность (для массовых действий и отчётов).
+
+    Важно: это НЕ расписание. Это просто состав группы.
+    """
+    __tablename__ = 'SchoolGroups'
+
+    group_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    subject = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+    status = db.Column(db.String(30), default='active', nullable=False, index=True)  # active|archived
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    owner = db.relationship('User', foreign_keys=[owner_user_id])
+    students = db.relationship('GroupStudent', back_populates='group', lazy=True, cascade='all, delete-orphan')
+
+
+class GroupStudent(db.Model):
+    """Участник группы (связь группа → Student)."""
+    __tablename__ = 'GroupStudents'
+
+    id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('SchoolGroups.group_id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    added_at = db.Column(db.DateTime, default=moscow_now)
+    added_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+
+    group = db.relationship('SchoolGroup', back_populates='students')
+    student = db.relationship('Student', foreign_keys=[student_id])
+    added_by = db.relationship('User', foreign_keys=[added_by_user_id])
+
+    __table_args__ = (
+        Index('ix_group_students_unique', 'group_id', 'student_id', unique=True),
+    )
+
+
+class LearningTrajectory(db.Model):
+    """Индивидуальная учебная траектория ученика: траектория -> модули -> уроки."""
+    __tablename__ = 'Courses'
+    course_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    title = db.Column(db.String(200), nullable=False)
+    subject = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+    status = db.Column(db.String(30), default='active', nullable=False, index=True)  # active|archived
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+    modules = db.relationship('TrajectoryModule', back_populates='trajectory', lazy=True, cascade='all, delete-orphan')
+
+
+class TrajectoryModule(db.Model):
+    """Модуль учебной траектории (раздел/тема)."""
+    __tablename__ = 'CourseModules'
+    module_id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('Courses.course_id'), nullable=False, index=True)
+
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    trajectory = db.relationship('LearningTrajectory', back_populates='modules')
+    lessons = db.relationship('Lesson', back_populates='course_module', lazy=True)
+
+
+class MaterialAsset(db.Model):
+    """Материал в библиотеке (файлы/раздатки), который можно прикреплять к разным урокам."""
+    __tablename__ = 'MaterialAssets'
+    asset_id = db.Column(db.Integer, primary_key=True)
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    tags = db.Column(db.JSON, nullable=True)  # ["геометрия", "pdf", ...]
+    visibility = db.Column(db.String(20), default='private', nullable=False)  # private|shared
+
+    file_name = db.Column(db.String(300), nullable=False)
+    file_url = db.Column(db.Text, nullable=False)  # публичный URL (через static)
+    storage_path = db.Column(db.Text, nullable=True)  # относительный путь на диске (для защищенной отдачи)
+    file_mime = db.Column(db.String(120), nullable=True)
+    file_size = db.Column(db.Integer, nullable=True)
+
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    owner = db.relationship('User', foreign_keys=[owner_user_id])
+    lesson_links = db.relationship('LessonMaterialLink', back_populates='asset', lazy=True, cascade='all, delete-orphan')
+
+
+class LessonMaterialLink(db.Model):
+    """Связь урока с материалом из библиотеки."""
+    __tablename__ = 'LessonMaterialLinks'
+    link_id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, index=True)
+    asset_id = db.Column(db.Integer, db.ForeignKey('MaterialAssets.asset_id'), nullable=False, index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    order_index = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id])
+    asset = db.relationship('MaterialAsset', back_populates='lesson_links')
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    __table_args__ = (
+        Index('ix_lesson_material_unique', 'lesson_id', 'asset_id', unique=True),
+    )
+
+
+class LessonRoomTemplate(db.Model):
+    """Шаблон комнаты/урока: конспект, блоки, материалы."""
+    __tablename__ = 'LessonRoomTemplates'
+    template_id = db.Column(db.Integer, primary_key=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    payload = db.Column(db.JSON, nullable=False)  # {"content": "...", "content_blocks": [...], "materials": [...], "asset_ids": [...]}
+    visibility = db.Column(db.String(20), default='private', nullable=False)  # private|shared
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
+class RecurringLessonSlot(db.Model):
+    """
+    Шаблон повторяющегося слота урока (автоплан).
+
+    Пример: каждый вторник 18:00 (Tomsk), 60 минут, regular.
+    На основе слотов можно “сгенерировать” уроки на неделю/месяц.
+    """
+    __tablename__ = 'RecurringLessonSlots'
+
+    slot_id = db.Column(db.Integer, primary_key=True)
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)  # кто создал (обычно тьютор)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+
+    weekday = db.Column(db.Integer, nullable=False, index=True)  # 0=Mon..6=Sun
+    time_hhmm = db.Column(db.String(5), nullable=False)          # "HH:MM" в выбранной timezone
+    duration = db.Column(db.Integer, default=60, nullable=False) # minutes
+    lesson_type = db.Column(db.String(50), default='regular', nullable=False)
+    timezone = db.Column(db.String(20), default='moscow', nullable=False)  # moscow|tomsk
+
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    owner = db.relationship('User', foreign_keys=[owner_user_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+
+
+class RubricTemplate(db.Model):
+    """
+    Шаблон рубрики/критериев для проверки.
+
+    items хранится как JSON-список:
+    [{"key":"crit1","title":"Критерий 1","max_score":2,"description":"..."}, ...]
+    """
+    __tablename__ = 'RubricTemplates'
+
+    rubric_id = db.Column(db.Integer, primary_key=True)
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    assignment_type = db.Column(db.String(50), nullable=True, index=True)  # homework|classwork|exam|test|...
+
+    items = db.Column(db.JSON, nullable=False, default=list)
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    owner = db.relationship('User', foreign_keys=[owner_user_id])
+
+
+class Lesson(db.Model):
+    __tablename__ = 'Lessons'
+    lesson_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
+    course_module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
+    exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    lesson_type = db.Column(db.String(50), default='regular')
+    lesson_date = db.Column(db.DateTime, nullable=False)
+    duration = db.Column(db.Integer, default=60)
+    status = db.Column(db.String(50), default='planned')
+    topic = db.Column(db.String(300), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    content = db.Column(db.Text, nullable=True)  # Markdown контент урока (теория)
+    content_blocks = db.Column(db.JSON, nullable=True)  # Конструктор контента (блоки): [{"type":"paragraph",...}, ...]
+    student_notes = db.Column(db.Text, nullable=True)  # Личные заметки ученика
+    materials = db.Column(db.JSON, nullable=True)  # Прикрепленные файлы/материалы [{"name": "...", "url": "...", "type": "..."}]
+    homework = db.Column(db.Text, nullable=True)
+    homework_status = db.Column(db.String(50), default='not_assigned')
+    homework_result_percent = db.Column(db.Integer, nullable=True)
+    homework_result_notes = db.Column(db.Text, nullable=True)
+    review_summaries = db.Column(db.JSON, nullable=True)  # Итоги проверки по типам работ: {"homework": {...}, "classwork": {...}, "exam": {...}}
+    # --- Попытки и режим сдачи ---
+    # По умолчанию для каждого типа работы. NULL/пусто = 1 попытка.
+    homework_max_attempts_default = db.Column(db.Integer, nullable=True)
+    classwork_max_attempts_default = db.Column(db.Integer, nullable=True)
+    exam_max_attempts_default = db.Column(db.Integer, nullable=True)
+
+    # Разрешить ученику "сдавать по заданиям" (вместо/в дополнение к сдаче всей работы).
+    allow_task_submit_homework = db.Column(db.Boolean, default=False, nullable=False)
+    allow_task_submit_classwork = db.Column(db.Boolean, default=False, nullable=False)
+    allow_task_submit_exam = db.Column(db.Boolean, default=False, nullable=False)
+    published_at = db.Column(db.DateTime, nullable=True) # Дата отправки урока/ДЗ ученику
+    student_late = db.Column(db.Boolean, default=False, nullable=False)  # Ученик опоздал на урок
+    started_at = db.Column(db.DateTime, nullable=True)  # Фактическое время начала (для авто-завершения через 1 ч)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    student = db.relationship('Student', back_populates='lessons')
+    course_module = db.relationship('TrajectoryModule', foreign_keys=[course_module_id], back_populates='lessons')
+    exam_course = db.relationship('Course', foreign_keys=[exam_course_id])
+    homework_tasks = db.relationship('LessonTask', back_populates='lesson', lazy=True, cascade='all, delete-orphan')
+
+    @property
+    def homework_assignments(self):
+        return [task for task in self.homework_tasks if (task.assignment_type or 'homework') == 'homework']
+
+    @property
+    def classwork_assignments(self):
+        return [task for task in self.homework_tasks if (task.assignment_type or 'homework') == 'classwork']
+    
+    @property
+    def exam_assignments(self):
+        return [task for task in self.homework_tasks if (task.assignment_type or 'homework') == 'exam']
+
+class LessonTask(db.Model):
+    __tablename__ = 'LessonTasks'
+    lesson_task_id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False)
+    date_assigned = db.Column(db.DateTime, default=moscow_now)
+    notes = db.Column(db.Text, nullable=True)
+    student_answer = db.Column(db.Text, nullable=True)
+    assignment_type = db.Column(db.String(20), default='homework')
+    student_submission = db.Column(db.Text, nullable=True)
+    submission_correct = db.Column(db.Boolean, nullable=True)
+    
+    status = db.Column(db.String(20), default='pending') # pending, submitted, graded, returned
+    submission_files = db.Column(db.JSON, nullable=True) # Список путей к файлам
+    teacher_comment = db.Column(db.Text, nullable=True) # Комментарий преподавателя к задаче
+    # Рейтинг задания в этой работе: 1–3 = лёгкий, 4–7 = средний, 8–10 = сложный. NULL = брать из Task.difficulty_level
+    difficulty_level = db.Column(db.Integer, nullable=True, index=True)
+    # Время, потраченное учеником на это задание (сек). Передаётся с фронта при сдаче или фиксируется на бэке
+    time_spent_sec = db.Column(db.Integer, nullable=True)
+    # Максимум попыток на это задание (переопределение). NULL = брать из Lesson.<type>_max_attempts_default (или 1)
+    max_attempts = db.Column(db.Integer, nullable=True)
+
+    lesson = db.relationship('Lesson', back_populates='homework_tasks')
+    task = db.relationship('Tasks')
+    teacher_comments = db.relationship('LessonTaskTeacherComment', back_populates='lesson_task', lazy=True, cascade='all, delete-orphan')  # comment
+    attempts = db.relationship('LessonTaskAttempt', back_populates='lesson_task', lazy=True, cascade='all, delete-orphan')
+
+    @property
+    def difficulty_label(self) -> str:
+        """Лёгкий / средний / сложный по difficulty_level (для отображения и аналитики)."""
+        v = self.difficulty_level
+        if v is None or 4 <= v <= 7:
+            return 'medium'
+        if 1 <= v <= 3:
+            return 'easy'
+        if v >= 8:
+            return 'hard'
+        return 'medium'
+
+    @property
+    def attempts_used(self) -> int:
+        """Сколько попыток сдачи уже зафиксировано (LessonTaskAttempts)."""
+        try:
+            return len(self.attempts or [])
+        except Exception:
+            return 0
+
+    def get_effective_max_attempts(self) -> int:
+        """
+        Эффективный лимит попыток:
+        - LessonTask.max_attempts (если задано и > 0)
+        - иначе Lesson.<type>_max_attempts_default (если задано и > 0)
+        - иначе 1
+        """
+        try:
+            if self.max_attempts is not None:
+                v = int(self.max_attempts)
+                if v > 0:
+                    return v
+        except Exception:
+            pass
+
+        at = (self.assignment_type or 'homework').strip().lower() or 'homework'
+        lesson = getattr(self, 'lesson', None)
+        lesson_val = None
+        if lesson is not None:
+            key = {
+                'homework': 'homework_max_attempts_default',
+                'classwork': 'classwork_max_attempts_default',
+                'exam': 'exam_max_attempts_default',
+            }.get(at, 'homework_max_attempts_default')
+            lesson_val = getattr(lesson, key, None)
+        try:
+            if lesson_val is not None:
+                v = int(lesson_val)
+                if v > 0:
+                    return v
+        except Exception:
+            pass
+        return 1
+
+    def is_task_submit_allowed(self) -> bool:
+        """Можно ли ученику сдавать именно это задание отдельно (зависит от Lesson и assignment_type)."""
+        at = (self.assignment_type or 'homework').strip().lower() or 'homework'
+        lesson = getattr(self, 'lesson', None)
+        if not lesson:
+            return False
+        flag = {
+            'homework': 'allow_task_submit_homework',
+            'classwork': 'allow_task_submit_classwork',
+            'exam': 'allow_task_submit_exam',
+        }.get(at, 'allow_task_submit_homework')
+        return bool(getattr(lesson, flag, False))
+
+
+class StudentTaskSeen(db.Model):
+    """
+    Глобальный анти-повтор для конкретного ученика (Students.student_id):
+    фиксируем факт того, что задача (Tasks.task_id) уже была выдана/прикреплена,
+    чтобы исключать её из других источников (уроки ↔ тренажёр).
+    """
+    __tablename__ = 'StudentTaskSeen'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, index=True)
+    source = db.Column(db.String(40), nullable=True)  # trainer|lesson:homework|lesson:classwork|...
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+
+    __table_args__ = (
+        Index('ix_student_task_seen_unique', 'student_id', 'task_id', unique=True),
+    )
+
+
+class LessonTaskTeacherComment(db.Model):  # comment
+    """Комментарий преподавателя к конкретному заданию урока (мульти-комментарии с таймстампами)."""  # comment
+    __tablename__ = 'LessonTaskTeacherComments'  # comment
+    comment_id = db.Column(db.Integer, primary_key=True)  # comment
+    lesson_task_id = db.Column(db.Integer, db.ForeignKey('LessonTasks.lesson_task_id'), nullable=False, index=True)  # comment
+    author_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)  # comment
+    body = db.Column(db.Text, nullable=False)  # comment
+    created_at = db.Column(db.DateTime, default=moscow_now)  # comment
+
+    lesson_task = db.relationship('LessonTask', back_populates='teacher_comments')  # comment
+    author = db.relationship('User', foreign_keys=[author_user_id])  # comment
+
+
+class LessonTaskAttempt(db.Model):
+    """
+    Попытка сдачи конкретного задания в классной комнате (LessonTask).
+
+    Создаётся при нажатии "Сдать работу" (и при пересдаче после returned).
+    Хранит снимок ответа и результата автопроверки на момент сдачи.
+    """
+    __tablename__ = 'LessonTaskAttempts'
+
+    attempt_id = db.Column(db.Integer, primary_key=True)
+    lesson_task_id = db.Column(db.Integer, db.ForeignKey('LessonTasks.lesson_task_id'), nullable=False, index=True)
+    attempt_no = db.Column(db.Integer, nullable=False, default=1, index=True)
+
+    submitted_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    student_submission = db.Column(db.Text, nullable=True)
+    submission_files = db.Column(db.JSON, nullable=True)
+    submission_correct = db.Column(db.Boolean, nullable=True)
+
+    status = db.Column(db.String(20), nullable=True)  # submitted/graded/returned
+
+    lesson_task = db.relationship('LessonTask', back_populates='attempts')
+
+    __table_args__ = (
+        Index('ix_lesson_task_attempt_unique', 'lesson_task_id', 'attempt_no', unique=True),
+    )
+
+class User(db.Model):
+    """Модель пользователя для авторизации (расширенная для RBAC)"""
+    __tablename__ = 'Users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(200), unique=True, nullable=True)  # Email для входа (новое поле)
+    password_hash = db.Column(db.String(255), nullable=False)
+    
+    role = db.Column(db.String(50), default='tester', nullable=False)
+    numeric_id = db.Column(db.String(10), nullable=True, index=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    last_login = db.Column(db.DateTime, nullable=True)
+
+    avatar_url = db.Column(db.String(500), nullable=True)
+    about_me = db.Column(db.Text, nullable=True)
+    custom_status = db.Column(db.String(100), nullable=True)
+    telegram_link = db.Column(db.String(200), nullable=True)
+    github_link = db.Column(db.String(200), nullable=True)
+    
+    def get_id(self):
+        return str(self.id)
+    
+    def is_authenticated(self):
+        return True
+    
+    def is_anonymous(self):
+        return False
+    
+    user_roles = db.relationship('UserRole', backref='user', lazy='select', cascade='all, delete-orphan', foreign_keys='UserRole.user_id')
+
+    def roles(self):
+        """Список ролей пользователя (объединение из UserRole; при отсутствии записей — [role])."""
+        if self.user_roles:
+            return [ur.role for ur in self.user_roles]
+        return [self.role] if self.role else []
+
+    def is_admin(self):
+        """Проверка, является ли пользователь администратором или главным администратором"""
+        return 'admin' in self.roles() or 'chief_admin' in self.roles()
+
+    def is_tutor(self):
+        """Проверка, является ли пользователь тьютором (creator также может работать как tutor)"""
+        r = self.roles()
+        return 'tutor' in r or 'creator' in r
+
+    def is_student(self):
+        """Проверка, является ли пользователь учеником"""
+        return 'student' in self.roles()
+
+    def is_parent(self):
+        """Проверка, является ли пользователь родителем"""
+        return 'parent' in self.roles()
+
+    def is_chief_tester(self):
+        return 'chief_tester' in self.roles()
+
+    def is_designer(self):
+        return 'designer' in self.roles()
+
+    def is_chief_admin(self):
+        return 'chief_admin' in self.roles()
+
+    def is_content_maker(self):
+        return 'content_maker' in self.roles()
+
+    def is_tester(self):
+        """Проверка, является ли пользователь тестировщиком (обычным)"""
+        return 'tester' in self.roles()
+
+    def is_creator(self):
+        """Проверка, является ли пользователь создателем"""
+        return 'creator' in self.roles()
+
+    def get_role_display(self):
+        """Возвращает отображаемое название основной роли."""
+        role_map = {
+            'creator': 'Создатель',
+            'chief_admin': 'Главный администратор',
+            'admin': 'Администратор',
+            'chief_tester': 'Главный тестировщик',
+            'content_maker': 'Контент мейкер',
+            'tutor': 'Преподаватель',
+            'designer': 'Графический дизайнер',
+            'tester': 'Тестировщик',
+            'student': 'Ученик',
+            'parent': 'Родитель',
+        }
+        return role_map.get(self.role, self.role)
+
+    def get_roles_display(self):
+        """Возвращает список отображаемых названий всех ролей пользователя."""
+        role_map = {
+            'creator': 'Создатель',
+            'chief_admin': 'Главный администратор',
+            'admin': 'Администратор',
+            'chief_tester': 'Главный тестировщик',
+            'content_maker': 'Контент мейкер',
+            'tutor': 'Преподаватель',
+            'designer': 'Графический дизайнер',
+            'tester': 'Тестировщик',
+            'student': 'Ученик',
+            'parent': 'Родитель',
+        }
+        return [role_map.get(r, r) for r in self.roles()]
+
+    ROLE_STRENGTH_ORDER = ('creator', 'chief_admin', 'admin', 'chief_tester', 'content_maker', 'tutor', 'designer', 'tester', 'student', 'parent')
+
+    def get_primary_role_display(self):
+        """Возвращает отображаемое название «главной» роли (для бейджа у авы): creator > chief_admin > admin > ..."""
+        role_map = {
+            'creator': 'Создатель',
+            'chief_admin': 'Главный администратор',
+            'admin': 'Администратор',
+            'chief_tester': 'Главный тестировщик',
+            'content_maker': 'Контент мейкер',
+            'tutor': 'Преподаватель',
+            'designer': 'Графический дизайнер',
+            'tester': 'Тестировщик',
+            'student': 'Ученик',
+            'parent': 'Родитель',
+        }
+        r = self.roles()
+        if not r:
+            return role_map.get(self.role, self.role or '—')
+        for slug in self.ROLE_STRENGTH_ORDER:
+            if slug in r:
+                return role_map.get(slug, slug)
+        return role_map.get(r[0], r[0])
+    
+    def __repr__(self):
+        return f'<User {self.username} ({self.role})>'
+
+    custom_permissions = db.Column(db.JSON, nullable=True)
+
+    schedule_ics_token = db.Column(db.String(120), nullable=True, unique=True, index=True)
+
+    # QA: пользователь из пула тестовых профилей (3 ученика, 3 препода, 3 родителя, 1 админ)
+    is_qa_pool = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
+    # Демо-пользователь (временный)
+    is_demo_user = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
+class RolePermission(db.Model):
+    __tablename__ = 'RolePermissions'
+    id = db.Column(db.Integer, primary_key=True)
+    role = db.Column(db.String(50), nullable=False)
+    permission_name = db.Column(db.String(100), nullable=False)
+    is_enabled = db.Column(db.Boolean, default=False)
+    
+    __table_args__ = (
+        db.UniqueConstraint('role', 'permission_name', name='uq_role_permission'),
+    )
+
+
+class UserRole(db.Model):
+    """Назначенные роли пользователя (один пользователь может иметь несколько ролей; права объединяются)."""
+    __tablename__ = 'UserRoles'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    role = db.Column(db.String(50), nullable=False, index=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'role', name='uq_user_role'),
+    )
+
+
+class UserNotification(db.Model):
+    """Внутреннее уведомление (in-app)."""
+    __tablename__ = 'UserNotifications'
+
+    notification_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+
+    kind = db.Column(db.String(50), nullable=False, default='generic', index=True)
+    title = db.Column(db.String(300), nullable=False)
+    body = db.Column(db.Text, nullable=True)
+    link_url = db.Column(db.Text, nullable=True)
+    meta = db.Column(db.JSON, nullable=True)
+
+    is_read = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    telegram_sent = db.Column(db.Boolean, default=False, nullable=False, index=True)  # Отправлено ли в Telegram
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('notifications', lazy=True, cascade='all, delete-orphan'))
+
+
+class PendingAssignmentNotification(db.Model):
+    """Отложенные уведомления о прикрепленных заданиях (дебаунс 5 минут)."""
+    __tablename__ = 'PendingAssignmentNotifications'
+
+    pending_id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    assignment_type = db.Column(db.String(50), nullable=False, index=True)  # homework|classwork|exam
+    task_ids = db.Column(db.JSON, nullable=True)
+    link_url = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    last_activity_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('lesson_id', 'assignment_type', name='uq_pending_assignment_notification'),
+    )
+
+
+class LessonMessage(db.Model):
+    """Сообщение в диалоге по уроку (ученик ↔ преподаватель)."""
+    __tablename__ = 'LessonMessages'
+
+    message_id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, index=True)
+    author_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('messages', lazy=True, cascade='all, delete-orphan'))
+    author = db.relationship('User', foreign_keys=[author_user_id])
+
+
+class CallRequest(db.Model):
+    """Заявка ученика на созвон/консультацию."""
+    __tablename__ = 'CallRequests'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+
+    preferred_at = db.Column(db.DateTime, nullable=True)
+    message = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(30), default='new', nullable=False, index=True)  # new|seen|scheduled|closed
+
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
+class LessonWhiteboard(db.Model):
+    """Интерактивная доска Miro, привязанная к уроку."""
+    __tablename__ = 'LessonWhiteboards'
+
+    id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, unique=True, index=True)
+    
+    miro_board_id = db.Column(db.String(100), nullable=False, index=True)  # ID доски в Miro
+    miro_board_url = db.Column(db.String(500), nullable=True)  # Полная ссылка на доску (для редактирования)
+    miro_view_link = db.Column(db.String(500), nullable=True)  # Публичная ссылка для просмотра
+    
+    is_active = db.Column(db.Boolean, default=True, nullable=False)  # Активна ли доска (во время урока = True)
+    allow_student_edit = db.Column(db.Boolean, default=True, nullable=False)  # Может ли ученик редактировать
+    
+    board_name = db.Column(db.String(200), nullable=True)  # Название доски
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('whiteboard', uselist=False, lazy=True))
+
+
+class MiroUserToken(db.Model):
+    """Токены Miro OAuth для пользователей (позволяет редактировать доски в iframe)."""
+    __tablename__ = 'MiroUserTokens'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, unique=True, index=True)
+    
+    access_token = db.Column(db.Text, nullable=False)
+    refresh_token = db.Column(db.Text, nullable=True)
+    token_type = db.Column(db.String(50), default='bearer')
+    
+    expires_at = db.Column(db.DateTime, nullable=True)  # Когда истекает access_token
+    
+    miro_user_id = db.Column(db.String(100), nullable=True)
+    miro_team_id = db.Column(db.String(100), nullable=True)
+    
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    user = db.relationship('User', backref=db.backref('miro_token', uselist=False, lazy=True))
+
+
+class ReferralCode(db.Model):
+    """Реферальный код для демо-версии и отслеживания трафика."""
+    __tablename__ = 'ReferralCodes'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    creator_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    usage_limit = db.Column(db.Integer, nullable=True)  # NULL = безлимитно
+    usage_count = db.Column(db.Integer, default=0, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    note = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    
+    creator = db.relationship('User', foreign_keys=[creator_id], backref='created_referral_codes')
+
+    def __repr__(self):
+        return f'<ReferralCode {self.code} by {self.creator_id}>'
+
+
+class ReferralUsage(db.Model):
+    """Лог использования реферальных кодов при старте демо-версии."""
+    __tablename__ = 'ReferralUsage'
+    id = db.Column(db.Integer, primary_key=True)
+    referral_code_id = db.Column(db.Integer, db.ForeignKey('ReferralCodes.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)  # Демо-пользователь
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    
+    referral_code = db.relationship('ReferralCode', backref='usages')
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def __repr__(self):
+        return f'<ReferralUsage code_id={self.referral_code_id} user_id={self.user_id}>'
+
+
+class InviteLink(db.Model):
+    """
+    Приглашение в систему (онбординг).
+
+    Flow:
+    - тьютор/админ создаёт invite (email + role + optional student_id)
+    - пользователь открывает /invite/<token> и задаёт пароль
+    - invite становится used
+    """
+    __tablename__ = 'InviteLinks'
+
+    invite_id = db.Column(db.Integer, primary_key=True)
+    token_hash = db.Column(db.String(128), nullable=False, unique=True, index=True)
+
+    email = db.Column(db.String(200), nullable=False, index=True)
+    role = db.Column(db.String(50), nullable=False, index=True)  # student|parent|tutor|...
+    note = db.Column(db.Text, nullable=True)
+
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
+
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    expires_at = db.Column(db.DateTime, nullable=True, index=True)
+
+    used_at = db.Column(db.DateTime, nullable=True, index=True)
+    used_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+    used_by = db.relationship('User', foreign_keys=[used_by_user_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+
+
+class Tester(db.Model):
+
+    __tablename__ = 'Testers'
+    tester_id = db.Column(db.String(36), primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    first_seen = db.Column(db.DateTime, default=moscow_now)
+    last_seen = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    ip_address = db.Column(db.String(45), nullable=True)
+    user_agent = db.Column(db.Text, nullable=True)
+    session_id = db.Column(db.String(100), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+
+    audit_logs = db.relationship('AuditLog', back_populates='tester', lazy=True)
+
+    def __repr__(self):
+        return f'<Tester {self.name} ({self.tester_id})>'
+
+class AuditLog(db.Model):
+
+    __tablename__ = 'AuditLog'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)  # Для авторизованных пользователей
+    tester_id = db.Column(db.String(36), db.ForeignKey('Testers.tester_id'), nullable=True, index=True)  # Для неавторизованных (устаревшее)
+    tester_name = db.Column(db.String(100), nullable=True)  # Имя пользователя или тестировщика
+    action = db.Column(db.String(50), nullable=False, index=True)
+    entity = db.Column(db.String(50), nullable=True, index=True)
+    entity_id = db.Column(db.Integer, nullable=True, index=True)
+    status = db.Column(db.String(20), nullable=False, index=True)
+    meta_data = db.Column(db.Text, nullable=True)
+    ip_address = db.Column(db.String(45), nullable=True)
+    user_agent = db.Column(db.Text, nullable=True)
+    session_id = db.Column(db.Text, nullable=True)
+    duration_ms = db.Column(db.Integer, nullable=True)
+    url = db.Column(db.Text, nullable=True)
+    method = db.Column(db.String(10), nullable=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])  # Связь с авторизованным пользователем
+    tester = db.relationship('Tester', back_populates='audit_logs')  # Связь с тестировщиком (устаревшее)
+
+    __table_args__ = (
+        Index('idx_audit_timestamp_tester', 'timestamp', 'tester_id'),
+        Index('idx_audit_action_entity', 'action', 'entity'),
+        Index('idx_audit_status_timestamp', 'status', 'timestamp'),
+    )
+
+    def get_metadata(self):
+
+        if self.meta_data:
+            try:
+                return json.loads(self.meta_data)
+            except:
+                return {}
+        return {}
+
+    def set_metadata(self, data):
+
+        self.meta_data = json.dumps(data, ensure_ascii=False) if data else None
+
+    def __repr__(self):
+        return f'<AuditLog {self.action} {self.entity} by {self.tester_name} at {self.timestamp}>'
+
+class Reminder(db.Model):
+    """Модель напоминаний"""
+    __tablename__ = 'Reminders'
+    reminder_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=True)
+    reminder_time = db.Column(db.DateTime, nullable=True, index=True)  # Может быть None для напоминаний без времени
+    is_completed = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    is_sent = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    
+    user = db.relationship('User', foreign_keys=[user_id])
+    
+    def is_overdue(self):
+        """Проверяет, просрочено ли напоминание"""
+        if self.is_completed or not self.reminder_time:
+            return False
+        now = moscow_now()
+        now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+        reminder_naive = self.reminder_time.replace(tzinfo=None) if self.reminder_time.tzinfo else self.reminder_time
+        return reminder_naive < now_naive
+    
+    def __repr__(self):
+        return f'<Reminder {self.title} at {self.reminder_time}>'
+
+class TaskTemplate(db.Model):
+    """Модель шаблона заданий для библиотеки шаблонов"""
+    __tablename__ = 'TaskTemplates'
+    template_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)  # Название шаблона
+    description = db.Column(db.Text, nullable=True)  # Описание шаблона
+    template_type = db.Column(db.String(20), nullable=False)  # 'homework', 'classwork', 'exam', 'lesson'
+    category = db.Column(db.String(50), nullable=True)  # Категория ученика (ЕГЭ, ОГЭ, ЛЕВЕЛАП, ПРОГРАММИРОВАНИЕ)
+    created_by = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)  # Кто создал шаблон
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    template_tasks = db.relationship('TemplateTask', back_populates='template', lazy=True, cascade='all, delete-orphan')
+    creator = db.relationship('User', foreign_keys=[created_by])
+    
+    def __repr__(self):
+        return f'<TaskTemplate {self.name} ({self.template_type})>'
+
+class TemplateTask(db.Model):
+    """Связь между шаблоном и заданиями"""
+    __tablename__ = 'TemplateTasks'
+    template_task_id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('TaskTemplates.template_id'), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False)
+    order = db.Column(db.Integer, default=0)  # Порядок задания в шаблоне
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    
+    template = db.relationship('TaskTemplate', back_populates='template_tasks')
+    task = db.relationship('Tasks')
+    
+    def __repr__(self):
+        return f'<TemplateTask template_id={self.template_id} task_id={self.task_id}>'
+
+class MaintenanceMode(db.Model):
+    """Модель для управления режимом технических работ"""
+    __tablename__ = 'MaintenanceMode'
+    id = db.Column(db.Integer, primary_key=True)
+    is_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    message = db.Column(db.Text, nullable=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    updated_by = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    
+    updated_by_user = db.relationship('User', foreign_keys=[updated_by])
+    
+    @classmethod
+    def get_status(cls):
+        """Получить текущий статус тех работ"""
+        status = cls.query.first()
+        if not status:
+            status = cls(is_enabled=False, message='Ведутся технические работы. Пожалуйста, зайдите позже.')
+            db.session.add(status)
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        return status
+    
+    @classmethod
+    def is_maintenance_enabled(cls):
+        """Проверить, включен ли режим тех работ"""
+        status = cls.get_status()
+        return status.is_enabled
+
+
+
+class UserProfile(db.Model):
+    """Расширенный профиль пользователя (1-to-1 с User)"""
+    __tablename__ = 'UserProfiles'
+    profile_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), unique=True, nullable=False)
+    
+    first_name = db.Column(db.String(100), nullable=True)
+    last_name = db.Column(db.String(100), nullable=True)
+    middle_name = db.Column(db.String(100), nullable=True)
+    phone = db.Column(db.String(50), nullable=True)  # Для SMS уведомлений
+    telegram_id = db.Column(db.String(100), nullable=True)  # Legacy: username/ссылка
+    timezone = db.Column(db.String(50), default='Europe/Moscow', nullable=False)
+    avatar_url = db.Column(db.String(500), nullable=True)
+    cover_url = db.Column(db.String(500), nullable=True)  # Баннер/обложка профиля (GIF или изображение), для креатора
+
+    telegram_chat_id = db.Column(db.BigInteger, nullable=True, unique=True, index=True)  # Chat ID для отправки уведомлений
+    telegram_link_code = db.Column(db.String(32), nullable=True)  # Одноразовый код привязки
+    telegram_link_code_expires = db.Column(db.DateTime, nullable=True)  # Срок действия кода
+    telegram_notifications_enabled = db.Column(db.Boolean, default=True, nullable=False)  # Включены ли уведомления
+    
+    tg_notify_lesson_reminder = db.Column(db.Boolean, default=True, nullable=False)  # Напоминания об уроках
+    tg_notify_homework_checked = db.Column(db.Boolean, default=True, nullable=False)  # ДЗ проверено
+    tg_notify_homework_returned = db.Column(db.Boolean, default=True, nullable=False)  # ДЗ возвращено на доработку
+    tg_notify_new_message = db.Column(db.Boolean, default=True, nullable=False)  # Новое сообщение от преподавателя
+    tg_notify_lesson_scheduled = db.Column(db.Boolean, default=True, nullable=False)  # Урок запланирован
+    tg_notify_low_lessons = db.Column(db.Boolean, default=True, nullable=False)  # Уроки заканчиваются
+    tg_notify_news = db.Column(db.Boolean, default=True, nullable=False)  # Новости платформы (по умолчанию вкл)
+    
+    tg_notify_referral_used = db.Column(db.Boolean, default=True, nullable=False)  # Новый реферал (для админов)
+    tg_notify_homework_submitted = db.Column(db.Boolean, default=True, nullable=False)  # ДЗ сдано (для учителей)
+    tg_notify_system_errors = db.Column(db.Boolean, default=True, nullable=False)  # Системные ошибки (для админов)
+    
+    internal_notes = db.Column(db.Text, nullable=True)
+    
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    user = db.relationship('User', backref=db.backref('profile', uselist=False), uselist=False)
+    
+    def __repr__(self):
+        return f'<UserProfile {self.user_id}: {self.first_name} {self.last_name}>'
+
+
+class BotAdmin(db.Model):
+    """Администраторы Telegram-бота (управляются из админки платформы)."""
+    __tablename__ = 'BotAdmins'
+    admin_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, unique=True, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    def __repr__(self):
+        return f'<BotAdmin user_id={self.user_id} active={self.is_active}>'
+
+
+class BotErrorReport(db.Model):
+    """Сообщения об ошибках от учеников в Telegram-боте."""
+    __tablename__ = 'BotErrorReports'
+    report_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    telegram_chat_id = db.Column(db.BigInteger, nullable=True, index=True)
+    message = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(32), default='new', nullable=False)  # new|in_progress|answered|closed
+    admin_reply = db.Column(db.Text, nullable=True)
+    admin_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    reply_sent_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    replied_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    admin_user = db.relationship('User', foreign_keys=[admin_user_id])
+
+    def __repr__(self):
+        return f'<BotErrorReport {self.report_id} status={self.status}>'
+
+
+class FamilyTie(db.Model):
+    """Связь между Родителем и Учеником (Many-to-Many)"""
+    __tablename__ = 'FamilyTies'
+    tie_id = db.Column(db.Integer, primary_key=True)
+    
+    parent_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    
+    access_level = db.Column(db.String(50), default='full', nullable=False)
+    is_confirmed = db.Column(db.Boolean, default=False, nullable=False)  # Подтверждение связи
+    
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    parent = db.relationship('User', foreign_keys=[parent_id], backref='parent_children')
+    student = db.relationship('User', foreign_keys=[student_id], backref='student_parents')
+    
+    __table_args__ = (Index('ix_family_tie_unique', 'parent_id', 'student_id', unique=True),)
+    
+    def __repr__(self):
+        return f'<FamilyTie parent:{self.parent_id} -> student:{self.student_id}>'
+
+
+class Enrollment(db.Model):
+    """Учебный контракт: связь Ученик - Тьютор - Предмет"""
+    __tablename__ = 'Enrollments'
+    enrollment_id = db.Column(db.Integer, primary_key=True)
+    
+    student_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    tutor_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    
+    subject = db.Column(db.String(100), nullable=False)
+    
+    status = db.Column(db.String(50), default='active', nullable=False)
+    
+    settings = db.Column(JSON, nullable=True)  # Например, цена часа, особые условия
+    
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    student = db.relationship('User', foreign_keys=[student_id], backref='student_enrollments')
+    tutor = db.relationship('User', foreign_keys=[tutor_id], backref='tutor_enrollments')
+    
+    def __repr__(self):
+        return f'<Enrollment student:{self.student_id} - tutor:{self.tutor_id} ({self.subject})>'
+
+
+
+class TariffGroup(db.Model):
+    """Группа тарифов для ручной сортировки/группировки в UI."""
+    __tablename__ = 'TariffGroups'
+
+    group_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+
+class TariffPlan(db.Model):
+    """Тариф/план (оплата и доступ управляются вручную админом)."""
+    __tablename__ = 'TariffPlans'
+
+    plan_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+    group_id = db.Column(db.Integer, db.ForeignKey('TariffGroups.group_id'), nullable=True, index=True)
+    order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
+
+    price_rub = db.Column(db.Integer, nullable=True)     # цена в рублях (информативно)
+    price_per_lesson_rub = db.Column(db.Integer, nullable=True)  # цена за урок (информативно)
+    period_days = db.Column(db.Integer, nullable=True)   # длительность доступа (информативно)
+    lessons_count = db.Column(db.Integer, nullable=True)  # количество уроков в тарифе
+
+    allow_lessons = db.Column(db.Boolean, nullable=True)   # None => не ограничиваем (backward compatible)
+    allow_trainer = db.Column(db.Boolean, nullable=True)   # None => не ограничиваем (backward compatible)
+
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    group = db.relationship('TariffGroup', foreign_keys=[group_id])
+
+
+class UserSubscription(db.Model):
+    """Подписка пользователя на тариф (выдача доступа вручную)."""
+    __tablename__ = 'UserSubscriptions'
+
+    subscription_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('TariffPlans.plan_id'), nullable=True, index=True)
+
+    status = db.Column(db.String(30), default='active', nullable=False, index=True)  # active|expired|cancelled|paused
+    started_at = db.Column(db.DateTime, nullable=True)
+    ends_at = db.Column(db.DateTime, nullable=True)
+    lessons_remaining = db.Column(db.Integer, nullable=True)  # оставшееся количество уроков
+    note = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    plan = db.relationship('TariffPlan', foreign_keys=[plan_id])
+
+
+class TrainerSession(db.Model):
+    """
+    Сессия/попытка в ИИ-тренажёре.
+
+    Важно: хранится отдельно от LessonTask/Assignments. Используется для истории и (в дальнейшем)
+    для анти-повтора между уроками и тренажёром.
+    """
+    __tablename__ = 'TrainerSessions'
+
+    session_id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
+
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=True, index=True)
+    task_type = db.Column(db.Integer, nullable=True, index=True)
+
+    language = db.Column(db.String(50), default='python', nullable=False)
+    code = db.Column(db.Text, nullable=True)
+
+    analysis = db.Column(db.JSON, nullable=True)
+    tests = db.Column(db.JSON, nullable=True)
+    messages = db.Column(db.JSON, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False, index=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+
+    __table_args__ = (
+        Index('ix_trainer_sessions_user_task_created', 'user_id', 'task_id', 'created_at'),
+    )
+
+
+class TrainerLlmLog(db.Model):
+    """
+    Логи обращений к LLM из тренажёра (через platform proxy).
+
+    Зачем:
+    - отладка качества ответов
+    - сбор датасета/промптов (без ключей!)
+    - диагностика таймаутов/ошибок провайдера
+    """
+    __tablename__ = 'TrainerLlmLogs'
+
+    log_id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
+
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=True, index=True)
+    task_type = db.Column(db.Integer, nullable=True, index=True)
+
+    request_kind = db.Column(db.String(30), default='chat', nullable=False, index=True)  # chat|ping
+    provider = db.Column(db.String(30), nullable=True, index=True)  # gigachat
+    model = db.Column(db.String(120), nullable=True)
+
+    messages = db.Column(db.JSON, nullable=True)
+    answer = db.Column(db.Text, nullable=True)
+    error = db.Column(db.Text, nullable=True)
+
+    duration_ms = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+
+    __table_args__ = (
+        Index('ix_trainer_llm_user_created', 'user_id', 'created_at'),
+    )
+
+
+class UserConsent(db.Model):
+    """Лог согласий (оферта/политика)."""
+    __tablename__ = 'UserConsents'
+
+    consent_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+
+    document_key = db.Column(db.String(60), nullable=False, index=True)  # offer|privacy|...
+    version = db.Column(db.String(40), nullable=False, default='1', index=True)
+    accepted_at = db.Column(db.DateTime, default=moscow_now, index=True)
+
+    ip_address = db.Column(db.Text, nullable=True)
+    user_agent = db.Column(db.Text, nullable=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+
+
+class Assignment(db.Model):
+    """
+    Модель работы (ДЗ/КР/проверочная)
+    Создается учителем и распределяется среди учеников
+    """
+    __tablename__ = 'Assignments'
+    
+    assignment_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(500), nullable=False)  # Название работы
+    description = db.Column(db.Text, nullable=True)  # Описание/инструкции
+    assignment_type = db.Column(db.String(50), nullable=False)  # 'homework', 'classwork', 'exam', 'test'
+    
+    deadline = db.Column(db.DateTime, nullable=False)  # Дедлайн сдачи
+    hard_deadline = db.Column(db.Boolean, default=False)  # Если True - нельзя сдать после дедлайна
+    allow_separate_submission = db.Column(db.Boolean, default=True, nullable=False)  # Разрешить сдавать по одной задаче
+    time_limit_minutes = db.Column(db.Integer, nullable=True)  # Ограничение времени выполнения (для exam/test)
+    time_limit_strict = db.Column(db.Boolean, default=False, nullable=False)  # True: после истечения таймера блокировать сдачу; False: только помечать как не уложился
+    max_attempts_default = db.Column(db.Integer, nullable=True)  # Макс. попыток сдачи по умолчанию (1 если NULL)
+    attempts_per_task = db.Column(db.Boolean, default=False, nullable=False)  # True: попытки считаются на каждое задание; False: на всю работу
+
+    created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True)
+    exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+
+    rubric_template_id = db.Column(db.Integer, db.ForeignKey('RubricTemplates.rubric_id'), nullable=True, index=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)  # Можно ли еще работать с этой работой
+    
+    created_by = db.relationship('User', foreign_keys=[created_by_id], backref='created_assignments')
+    lesson = db.relationship('Lesson', backref='assignments')
+    exam_course = db.relationship('Course', foreign_keys=[exam_course_id])
+    tasks = db.relationship('AssignmentTask', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
+    submissions = db.relationship('Submission', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
+    rubric_template = db.relationship('RubricTemplate', foreign_keys=[rubric_template_id])
+    
+    def get_effective_max_attempts(self) -> int:
+        """Учитывает max_attempts_default работы и переопределение по заданиям (минимум по всем задачам)."""
+        default = max(1, int(self.max_attempts_default or 1))
+        if not self.tasks:
+            return default
+        effective = default
+        for t in self.tasks:
+            task_max = int(t.max_attempts) if getattr(t, 'max_attempts', None) is not None else default
+            effective = min(effective, max(1, task_max))
+        return max(1, effective)
+
+    def get_effective_max_attempts_for_task(self, assignment_task) -> int:
+        """Макс. попыток для конкретного задания: AssignmentTask.max_attempts или max_attempts_default."""
+        default = max(1, int(self.max_attempts_default or 1))
+        if getattr(assignment_task, 'max_attempts', None) is not None:
+            return max(1, int(assignment_task.max_attempts))
+        return default
+
+    def __repr__(self):
+        return f'<Assignment {self.assignment_id}: {self.title} ({self.assignment_type})>'
+
+
+class AssignmentTask(db.Model):
+    """
+    Модель задачи в работе
+    Связывает Assignment с конкретной задачей из базы Tasks
+    """
+    __tablename__ = 'AssignmentTasks'
+    
+    assignment_task_id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('Assignments.assignment_id'), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False)
+    
+    order_index = db.Column(db.Integer, nullable=False, default=0)  # Порядок отображения
+    
+    max_score = db.Column(db.Integer, nullable=False, default=1)  # Максимальный балл за задачу
+    max_attempts = db.Column(db.Integer, nullable=True)  # Переопределение лимита попыток для этого задания (NULL = из Assignment)
+    
+    answer_override = db.Column(db.Text, nullable=True)  # Эталонный ответ для сравнения (если задан — используется вместо task.answer)
+    requires_manual_grading = db.Column(db.Boolean, default=False, nullable=False)  # Требует ли ручной проверки
+    
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    
+    assignment = db.relationship('Assignment', back_populates='tasks')
+    task = db.relationship('Tasks', backref='assignment_tasks')
+    answers = db.relationship('Answer', back_populates='assignment_task', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<AssignmentTask {self.assignment_task_id}: task {self.task_id} in assignment {self.assignment_id}>'
+
+
+class Submission(db.Model):
+    """
+    Модель сдачи работы учеником
+    Создается автоматически при распределении работы (статус ASSIGNED)
+    """
+    __tablename__ = 'Submissions'
+    
+    submission_id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('Assignments.assignment_id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
+    
+    status = db.Column(db.String(50), nullable=False, default='ASSIGNED')  
+    
+    assigned_at = db.Column(db.DateTime, default=moscow_now, nullable=False)  # Когда назначено
+    started_at = db.Column(db.DateTime, nullable=True)  # Когда ученик начал выполнение
+    submitted_at = db.Column(db.DateTime, nullable=True)  # Когда сдано
+    graded_at = db.Column(db.DateTime, nullable=True)  # Когда проверено
+    
+    is_late = db.Column(db.Boolean, default=False, nullable=False)  # Сдано с опозданием
+    is_overtime = db.Column(db.Boolean, default=False, nullable=False)  # Сдано после истечения лимита времени (не уложился в таймер)
+
+    total_score = db.Column(db.Integer, nullable=True)  # Общий балл
+    max_score = db.Column(db.Integer, nullable=True)  # Максимальный возможный балл
+    percentage = db.Column(db.Float, nullable=True)  # Процент выполнения
+    
+    teacher_feedback = db.Column(db.Text, nullable=True)
+
+    rubric_template_id = db.Column(db.Integer, db.ForeignKey('RubricTemplates.rubric_id'), nullable=True, index=True)
+    rubric_scores = db.Column(db.JSON, nullable=True)  # {"crit1": {"score": 1, "comment": "..."}, ...}
+    
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    
+    assignment = db.relationship('Assignment', back_populates='submissions')
+    student = db.relationship('Student', backref='submissions')
+    answers = db.relationship('Answer', back_populates='submission', lazy=True, cascade='all, delete-orphan')
+    attempts = db.relationship('SubmissionAttempt', back_populates='submission', lazy=True, cascade='all, delete-orphan')
+    rubric_template = db.relationship('RubricTemplate', foreign_keys=[rubric_template_id])
+    
+    def __repr__(self):
+        return f'<Submission {self.submission_id}: student {self.student_id}, assignment {self.assignment_id}, status {self.status}>'
+
+
+class Answer(db.Model):
+    """
+    Модель ответа ученика на конкретную задачу
+    """
+    __tablename__ = 'Answers'
+    
+    answer_id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False)
+    assignment_task_id = db.Column(db.Integer, db.ForeignKey('AssignmentTasks.assignment_task_id'), nullable=False)
+    
+    value = db.Column(db.Text, nullable=True)  # Текст ответа или JSON для сложных ответов
+    files = db.Column(JSON, nullable=True)  # Массив путей к прикрепленным файлам
+    
+    is_correct = db.Column(db.Boolean, nullable=True)  # Правильность ответа (для авто-проверки)
+    score = db.Column(db.Integer, nullable=True)  # Балл за ответ
+    max_score = db.Column(db.Integer, nullable=True)  # Максимальный балл (копия из AssignmentTask)
+    
+    teacher_comment = db.Column(db.Text, nullable=True)
+    
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    submitted_separately_at = db.Column(db.DateTime, nullable=True)  # Когда ученик нажал «Сдать задание» по этому ответу (при allow_separate_submission)
+    attempts_used = db.Column(db.Integer, default=0, nullable=False)  # Сколько раз сдавали это задание (при attempts_per_task)
+    student_code = db.Column(db.Text, nullable=True)  # Код ученика в редакторе (Python), для проверки преподавателем
+    student_code_saved_at = db.Column(db.DateTime, nullable=True)  # Когда ученик нажал «Сохранить код»
+
+    submission = db.relationship('Submission', back_populates='answers')
+    assignment_task = db.relationship('AssignmentTask', back_populates='answers')
+    
+    __table_args__ = (
+        db.UniqueConstraint('submission_id', 'assignment_task_id', name='uq_submission_task'),
+    )
+    
+    def __repr__(self):
+        return f'<Answer {self.answer_id}: submission {self.submission_id}, task {self.assignment_task_id}, score {self.score}>'
+
+
+class SubmissionAttempt(db.Model):
+    """
+    Попытка сдачи работы (Submission) в новой системе Assignments.
+
+    MVP: фиксируем факт сдачи и итог (когда есть), чтобы пересдачи не затирали историю.
+    """
+    __tablename__ = 'SubmissionAttempts'
+
+    attempt_id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False, index=True)
+    attempt_no = db.Column(db.Integer, nullable=False, default=1, index=True)
+
+    submitted_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    graded_at = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(50), nullable=True)  # SUBMITTED/GRADED/RETURNED/LATE
+
+    total_score = db.Column(db.Integer, nullable=True)
+    max_score = db.Column(db.Integer, nullable=True)
+    percentage = db.Column(db.Float, nullable=True)
+    teacher_feedback = db.Column(db.Text, nullable=True)
+
+    submission = db.relationship('Submission', back_populates='attempts')
+
+    __table_args__ = (
+        Index('ix_submission_attempt_unique', 'submission_id', 'attempt_no', unique=True),
+    )
+
+
+class SubmissionComment(db.Model):
+    """
+    Комментарии к сдаче работы (чат учитель-ученик)
+    """
+    __tablename__ = 'SubmissionComments'
+    
+    comment_id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    
+    text = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    
+    submission = db.relationship('Submission', backref=db.backref('comments', lazy=True, cascade='all, delete-orphan'))
+    author = db.relationship('User')
+    
+    def __repr__(self):
+        return f'<Comment {self.comment_id}: submission {self.submission_id} by {self.author_id}>'
+
+
+
+class GradebookEntry(db.Model):
+    """
+    Запись журнала оценок (единая сущность).
+
+    Использование:
+    - manual: ручная запись (без привязки)
+    - lesson: итог по уроку (lesson_id)
+    - assignment: итог по работе/сдаче (submission_id)
+
+    score/max_score можно хранить как баллы; percentage — вычислять на UI.
+    """
+    __tablename__ = 'GradebookEntries'
+
+    entry_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+
+    kind = db.Column(db.String(20), nullable=False, default='manual', index=True)  # manual|lesson|assignment
+    category = db.Column(db.String(50), nullable=True, index=True)  # homework|classwork|exam|test|...
+
+    title = db.Column(db.String(500), nullable=False)
+    comment = db.Column(db.Text, nullable=True)
+
+    score = db.Column(db.Integer, nullable=True)
+    max_score = db.Column(db.Integer, nullable=True)
+    grade_text = db.Column(db.String(50), nullable=True)  # например "5", "зачёт", "A"
+    weight = db.Column(db.Integer, default=1, nullable=False)
+
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True, index=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=True, index=True)
+
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    student = db.relationship('Student', foreign_keys=[student_id], backref=db.backref('gradebook_entries', lazy=True, cascade='all, delete-orphan'))
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id])
+    submission = db.relationship('Submission', foreign_keys=[submission_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    __table_args__ = (
+        Index('ix_gradebook_student_kind', 'student_id', 'kind'),
+    )
+
+
+# --- Модуль аналитики (Knowledge Graph, рейтинги, прогноз балла) ---
+
+class Subject(db.Model):
+    """Предмет (корень графа знаний): Информатика КЕГЭ, Математика и т.д."""
+    __tablename__ = 'subjects'
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    name = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    nodes = db.relationship('KnowledgeNode', back_populates='subject', lazy=True)
+
+
+class KnowledgeNode(db.Model):
+    """Узел знаний (тема/навык). Связь с заданием по task_number или через Tasks.knowledge_node_id."""
+    __tablename__ = 'knowledge_nodes'
+    id = db.Column(db.Integer, primary_key=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False, index=True)
+    parent_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id'), nullable=True, index=True)
+
+    name = db.Column(db.String(128), nullable=False)
+    code = db.Column(db.String(32), nullable=False, index=True)
+
+    base_rating = db.Column(db.Integer, default=1000)
+    exam_points = db.Column(db.Integer, default=1)
+    complexity_tier = db.Column(db.String(32), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    subject = db.relationship('Subject', back_populates='nodes')
+    parent = db.relationship('KnowledgeNode', remote_side=[id])
+
+    __table_args__ = (
+        Index('ix_knowledge_nodes_subject_code', 'subject_id', 'code', unique=True),
+    )
+
+
+class UserMastery(db.Model):
+    """Текущий рейтинг ученика по узлу знаний. Обновляется после каждого решения."""
+    __tablename__ = 'user_mastery'
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), primary_key=True)
+    node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='CASCADE'), primary_key=True)
+
+    rating = db.Column(db.Float, default=1000.0, nullable=False)
+    volatility = db.Column(db.Float, default=350.0, nullable=False)
+    streak_days = db.Column(db.Integer, default=0, nullable=False)
+    last_practiced_at = db.Column(db.DateTime, default=moscow_now, nullable=True)
+
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    node = db.relationship('KnowledgeNode', foreign_keys=[node_id])
+
+    __table_args__ = (
+        Index('ix_user_mastery_user_id', 'user_id'),
+    )
+
+
+class AnalyticsEvent(db.Model):
+    """Журнал событий аналитики для аудита и пересчёта при смене алгоритма."""
+    __tablename__ = 'analytics_events'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='CASCADE'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id', ondelete='SET NULL'), nullable=True, index=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id', ondelete='SET NULL'), nullable=True, index=True)
+    answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id', ondelete='SET NULL'), nullable=True, index=True)
+
+    is_correct = db.Column(db.Boolean, nullable=False)
+    task_difficulty = db.Column(db.Integer, nullable=True)   # difficulty_level задачи
+    old_rating = db.Column(db.Float, nullable=True)
+    new_rating = db.Column(db.Float, nullable=True)
+    time_spent_sec = db.Column(db.Integer, nullable=True)    # сколько секунд потратил ученик
+    behavior_flags = db.Column(JSONBCompat, nullable=True)   # в PostgreSQL — JSONB; {"fast_fail": true, "fast_success_hard": true, ...}
+    timestamp = db.Column(db.DateTime, default=moscow_now, nullable=False)
+
+    __table_args__ = (
+        Index('ix_analytics_events_user_timestamp', 'user_id', 'timestamp'),
+        Index('ix_analytics_events_node_timestamp', 'node_id', 'timestamp'),
+    )
+
+
+class QATask(db.Model):
+    __tablename__ = 'qa_tasks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(50), default='todo')  # todo, in_progress, review, done
+    priority = db.Column(db.String(50), default='medium')  # low, medium, high, critical
+
+    # task = задача Creator→Tester (на доске); bug_report = баг от тестера (отдельный список, Creator управляет)
+    task_type = db.Column(db.String(30), default='task', nullable=False, index=True)
+
+    reporter_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    assignee_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    assignee_ids = db.Column(db.JSON, nullable=True)  # список id исполнителей (главный тестер + тестеры)
+
+    context_url = db.Column(db.String(500), nullable=True)
+    target_user_id = db.Column(db.Integer, nullable=True)
+    screenshot_path = db.Column(db.String(500), nullable=True)
+
+    deadline = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    reporter = db.relationship('User', foreign_keys=[reporter_id])
+    assignee = db.relationship('User', foreign_keys=[assignee_id])
+
+class QAComment(db.Model):
+    __tablename__ = 'qa_comments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('qa_tasks.id'), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    author = db.relationship('User', foreign_keys=[author_id])
+
+
+class TheoryBlock(db.Model):
+    """Теоретический блок по заданию экзамена (привязан к course_id + task_number)."""
+    __tablename__ = 'TheoryBlocks'
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=True)
+    content = db.Column(db.Text, nullable=True)
+    pdf_path = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    course = db.relationship('Course', foreign_keys=[course_id])
+    author = db.relationship('User', foreign_keys=[author_id])
+
+    __table_args__ = (
+        db.UniqueConstraint('course_id', 'task_number', name='uq_theory_course_task'),
+    )
+
+
+class StudentTheoryAccess(db.Model):
+    """Запрет/разрешение просмотра теории по номеру задания для конкретного ученика.
+    Если записи нет — доступ разрешён (по умолчанию). can_view=False — запретить просмотр."""
+    __tablename__ = 'StudentTheoryAccess'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)
+    can_view = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    __table_args__ = (db.UniqueConstraint('student_id', 'course_id', 'task_number', name='uq_student_theory_access'),)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    course = db.relationship('Course', foreign_keys=[course_id])
+
+
+class StudentTheoryState(db.Model):
+    """Состояние теории для ученика: закладки/прочитано."""
+    __tablename__ = 'StudentTheoryState'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)
+
+    is_bookmarked = db.Column(db.Boolean, default=False, nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    last_opened_at = db.Column(db.DateTime, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    __table_args__ = (db.UniqueConstraint('student_id', 'course_id', 'task_number', name='uq_student_theory_state'),)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    course = db.relationship('Course', foreign_keys=[course_id])
+
+
+class TheoryFeedback(db.Model):
+    """Фидбек ученика по статье теории: оценка + комментарий."""
+    __tablename__ = 'TheoryFeedback'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)
+
+    rating = db.Column(db.Integer, nullable=True)  # 1..5
+    comment = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    __table_args__ = (db.UniqueConstraint('student_id', 'course_id', 'task_number', name='uq_theory_feedback'),)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    user = db.relationship('User', foreign_keys=[user_id])
+    course = db.relationship('Course', foreign_keys=[course_id])
+
+
+class StudentCourseEnrollment(db.Model):
+    """Подписка ученика на программу подготовки (тип экзамена)."""
+    __tablename__ = 'StudentCourseEnrollments'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=False, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    enrolled_at = db.Column(db.DateTime, default=moscow_now)
+
+    student = db.relationship('Student', foreign_keys=[student_id], backref='course_enrollments')
+    course = db.relationship('Course', back_populates='enrollments')
+
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'course_id', name='uq_student_course_enrollment'),
+    )
+
+    def __repr__(self):
+        return f'<Enrollment student={self.student_id} course={self.course_id}>'
+
+
+class GradingScale(db.Model):
+    """Шкала перевода первичных баллов (ЕГЭ: 0-100, ОГЭ: 2-5)."""
+    __tablename__ = 'GradingScales'
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=False, index=True)
+    min_primary = db.Column(db.Integer, nullable=False)
+    max_primary = db.Column(db.Integer, nullable=False)
+    final_grade = db.Column(db.Integer, nullable=False)
+    label = db.Column(db.String(50), nullable=True)
+
+    course = db.relationship('Course', back_populates='grading_scales')
+
+    def __repr__(self):
+        return f'<GradingScale course={self.course_id} {self.min_primary}-{self.max_primary}={self.final_grade}>'
+
+
+`

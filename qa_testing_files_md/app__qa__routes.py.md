@@ -1,3 +1,8 @@
+# d:\VSCode\kege_selector_app\app\qa\routes.py
+
+**Описание:** Backend QA: RBAC, пресеты, баг-репорты, detail, импersonation, pool.
+
+`
 import base64
 import os
 import time
@@ -18,9 +23,6 @@ from core.db_models import (
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES
 from app.utils.cross_env_login import build_cross_env_token
 from werkzeug.security import generate_password_hash
-from flask import jsonify, current_app, session
-from datetime import datetime, timedelta
-import random
 
 qa_bp = Blueprint('qa', __name__, url_prefix='/qa')
 
@@ -1763,112 +1765,4 @@ def cross_env_redirect():
     login_url = f"{base_url.rstrip('/')}/login?cross_env={token}"
     return redirect(login_url)
 
-@qa_bp.route('/manipulate/<action>', methods=['POST'])
-@login_required
-def manipulate_preset(action):
-    # Разрешаем только Главным Тестерам и Создателю
-    if not (current_user.is_creator() or current_user.is_chief_tester()):
-        return jsonify({"success": False, "message": "Нет прав на макросы"}), 403
-
-    # Определяем, над кем проводим экзекуцию (Симулируемый юзер или текущий)
-    target_user_id = session.get('impersonate_user_id') or current_user.id
-    target_user = User.query.get(target_user_id)
-
-    try:
-        match action:
-            case 'generate_debtor':
-                # Создаем фейкового студента
-                fake_username = f"qa_test_debtor_{random.randint(1000,9999)}"
-                new_user = User(username=fake_username, email=f"{fake_username}@qa.local", role="student")
-                new_user.set_password("testpassword123")
-                db.session.add(new_user)
-                db.session.commit()
-                
-                # Вешаем на него 3 просроченных ДЗ (эмуляция)
-                for i in range(3):
-                    hw = AssignmentTask(
-                        user_id=new_user.id,
-                        title=f"Просроченное ДЗ #{i+1}",
-                        status="todo",
-                        deadline=datetime.utcnow() - timedelta(days=random.randint(1, 5))
-                    )
-                    db.session.add(hw)
-                db.session.commit()
-                return jsonify({"success": True, "message": f"Должник {fake_username} сгенерирован!"})
-
-            case 'overwhelm_reviews':
-                # Заваливаем Создателя/Препода проверками
-                for i in range(20):
-                    sub = Submission(
-                        task_id=1, # ID тестовой задачи
-                        student_id=target_user_id,
-                        status="AWAITING_REVIEW",
-                        content="Тестовый ответ для завала ревью"
-                    )
-                    db.session.add(sub)
-                db.session.commit()
-                return jsonify({"success": True, "message": "Очередь проверок завалена (20 работ)."})
-
-            case 'god_mode_30d':
-                # Выдача админского тарифа симулируемому юзеру
-                sub = UserSubscription.query.filter_by(user_id=target_user_id).first()
-                if not sub:
-                    sub = UserSubscription(user_id=target_user_id)
-                    db.session.add(sub)
-                sub.plan_id = "god_mode"
-                sub.expires_at = datetime.utcnow() + timedelta(days=30)
-                db.session.commit()
-                return jsonify({"success": True, "message": f"Тариф God Mode выдан {target_user.username} на 30 дней."})
-
-            case 'system_cache_clear':
-                # Очистка кэша Flask (Best-Effort без Redis)
-                current_app.cache.clear() # Если используешь flask-caching
-                return jsonify({"success": True, "message": "Системный кэш Flask очищен."})
-
-            case 'tabula_rasa':
-                # Ядерная кнопка (Nuke) - удаляем только тестовые аккаунты
-                test_users = User.query.filter(User.email.endswith('@qa.local')).all()
-                count = len(test_users)
-                for u in test_users:
-                    db.session.delete(u)
-                db.session.commit()
-                return jsonify({"success": True, "message": f"База очищена. Удалено {count} тестовых фейков."})
-
-            case _:
-                return jsonify({"success": False, "message": "Пресет еще не реализован."}), 404
-
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Ошибка пресета {action}: {e}")
-        return jsonify({"success": False, "message": f"Ошибка: {str(e)}"}), 500
-
-@qa_bp.route('/impersonate', methods=['POST'])
-@login_required
-def impersonate_as_role():
-    if not (current_user.is_creator() or current_user.is_chief_tester()):
-        return abort(403)
-        
-    target_username = request.form.get('username')
-    target_user = User.query.filter_by(username=target_username).first()
-    
-    if target_user:
-        # Запоминаем, кто мы на самом деле
-        session['impersonator_id'] = current_user.id 
-        # Подменяем текущую сессию
-        login_user(target_user)
-        flash(f'Вы вошли в режим симуляции пользователя: {target_user.username}', 'info')
-    else:
-        flash('Пользователь не найден.', 'error')
-        
-    return redirect(url_for('main.dashboard'))
-
-@qa_bp.route('/revert-impersonation', methods=['POST'])
-@login_required
-def revert_impersonation():
-    original_id = session.pop('impersonator_id', None)
-    if original_id:
-        original_user = User.query.get(original_id)
-        if original_user:
-            login_user(original_user)
-            flash('Вы вернулись в свой профиль', 'success')
-    return redirect(url_for('chief_tester.dashboard'))
+`
