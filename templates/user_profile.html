@@ -45,6 +45,13 @@
     .profile-container.theme-creator .profile-card--creator-no-dup-header .profile-card-body {
         padding-top: 1.5rem !important;
     }
+    .profile-container.theme-student .profile-card--tactile-student-hero .profile-cover,
+    .profile-container.theme-student .profile-card--tactile-student-hero .profile-header {
+        display: none;
+    }
+    .profile-container.theme-student .profile-card--tactile-student-hero .profile-card-body {
+        padding-top: 1.5rem !important;
+    }
     .profile-content-grid {
         grid-template-columns: minmax(420px, 1.05fr) minmax(380px, 0.95fr);
         gap: 1.25rem; align-items: start; min-width: 0;
@@ -64,7 +71,13 @@
 </style>
 {% endblock %}
 
-{% block body_class %}{% if use_custom_theme %}custom-theme-active{% endif %}{% endblock %}
+{% block body_class %}
+{% if use_custom_theme %}custom-theme-active {% endif %}
+{% if current_user %}
+{% if current_user.is_student() %}layout-student {% elif not current_user.is_parent() %}layout-teacher {% endif %}
+{% endif %}
+bg-boo-bg text-boo-textMain
+{% endblock %}
 
 {% set active_page = None %}
 
@@ -98,6 +111,45 @@
     {% endif %}
 ">
     {% if current_user %}
+        {% if current_user.is_student() %}
+        <div class="w-full max-w-[1400px] mx-auto mb-6">
+            <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
+                <div class="flex items-center gap-4 min-w-0">
+                    <div class="w-16 h-16 rounded-2xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm shrink-0 overflow-hidden font-black text-2xl">
+                        {% if current_user.avatar_url %}
+                        <img src="{{ current_user.avatar_url }}" alt="" class="w-full h-full object-cover">
+                        {% else %}
+                        {{ (current_user.username or '?')[0]|upper }}
+                        {% endif %}
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Мой профиль</div>
+                        <h1 class="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight m-0 mt-1 truncate">{{ current_user.username }}</h1>
+                        <div class="flex flex-wrap items-center gap-2 mt-2">
+                            {% if linked_student and linked_student.platform_id %}
+                            <span class="text-xs font-bold text-slate-400">ID: {{ linked_student.platform_id }}</span>
+                            {% endif %}
+                            <span class="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 text-[10px] font-extrabold uppercase tracking-wider">Уроков: {{ lesson_counts.total if lesson_counts else 0 }}</span>
+                            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold uppercase tracking-wider">Завершено: {{ lesson_counts.completed if lesson_counts else 0 }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 shrink-0">
+                    {% if linked_student %}
+                    <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline inline-flex items-center gap-2">
+                        <i class="ph-bold ph-door-open text-lg"></i> Комната
+                    </a>
+                    <a href="{{ url_for('assignments.submissions_list') }}" class="px-4 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 text-sm no-underline inline-flex items-center gap-2">
+                        <i class="ph-bold ph-tray text-lg text-boo-primary"></i> Задания
+                    </a>
+                    {% endif %}
+                    <button type="button" class="px-4 py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 text-sm inline-flex items-center gap-2" onclick="openEditProfileModal()">
+                        <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
+                    </button>
+                </div>
+            </section>
+        </div>
+        {% endif %}
         {% if current_user.is_creator() %}
         <section class="bg-white/95 backdrop-blur-xl rounded-[32px] border border-purple-200/60 border-b-[4px] border-b-purple-300 mb-6 overflow-hidden shadow-[0_10px_50px_-10px_rgba(123,92,255,0.28)]">
             {% set creator_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
@@ -159,7 +211,7 @@
             </div>
         </section>
         {% endif %}
-        <div class="profile-card {% if current_user.is_creator() %}profile-card--creator-no-dup-header{% endif %}">
+        <div class="profile-card {% if current_user.is_creator() %}profile-card--creator-no-dup-header{% elif current_user.is_student() %}profile-card--tactile-student-hero{% endif %}">
             {% set cover_url = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
             <div class="profile-cover {% if (current_user.is_creator() or use_custom_theme) and cover_url %}has-cover{% endif %}" {% if (current_user.is_creator() or use_custom_theme) and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}></div>
 

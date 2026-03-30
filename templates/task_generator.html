@@ -2,15 +2,20 @@
 {% set active_page = 'generator' %}
 {% block title %}Генератор КЕГЭ{% endblock %}
 
-{% block body_class %}{% if active_lesson %}lesson-active {% endif %}bg-boo-bg text-boo-textMain{% endblock %}
+{% block body_class %}{% if active_lesson %}lesson-active {% endif %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
 <style>
-    .gen-premium-shell { align-items: start; }
+    .gen-premium-shell { align-items: start; width: 100%; }
     .gen-start-card { position: static; }
-    .gen-deck-wrap { position: relative; min-height: 520px; flex: 1 1 auto; min-width: 0; }
-    .gen-deck { position: relative; min-height: 520px; }
+    .gen-deck-wrap {
+        position: relative;
+        min-height: 520px;
+        min-width: 0;
+        width: 100%;
+    }
+    .gen-deck { position: relative; min-height: 520px; width: 100%; }
     .gen-task-card {
         background: #fff;
         border-radius: 32px;
@@ -84,10 +89,6 @@
         border-radius: 0.5rem; padding: 0.1rem 0.35rem;
         color: var(--text-primary); font-size: 0.9rem;
     }
-    @media (max-width: 1024px) {
-        .gen-premium-shell { grid-template-columns: 1fr; }
-        .gen-start-card { position: static; }
-    }
 </style>
 {% endblock %}
 
@@ -125,8 +126,8 @@
     {% set mode_text = 'Общий генератор' %}
 {% endif %}
 
-<div class="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6 items-start gen-premium-shell -mt-1 pb-8">
-    <div class="w-full lg:w-[min(100%,400px)] flex flex-col gap-6 shrink-0 lg:sticky lg:top-24">
+<div class="w-full max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[minmax(300px,400px)_minmax(0,1fr)] gap-6 items-start gen-premium-shell pb-8">
+    <div class="w-full flex flex-col gap-6 min-w-0 lg:sticky lg:top-28 self-start">
         <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 relative overflow-hidden group">
             <div class="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-purple-50 to-cyan-50 rounded-full blur-3xl opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
             <div class="relative z-10">

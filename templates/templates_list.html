@@ -1,28 +1,37 @@
 {% extends 'base.html' %}
 {% set active_page = 'templates' %}
 {% block title %}Библиотека шаблонов{% endblock %}
+{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
 {% block content %}
 {% set can_manage_templates = (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage'))) %}
-<section class="glass-panel mb-8">
-    <div class="flex justify-between items-center mb-4">
-        <div>
-            <p class="hero-eyebrow">библиотека шаблонов</p>
-            <h1 class="hero-title">{{ ui_icon('nav.templates', 'md', decorative=true) }}Шаблоны заданий</h1>
-            <p class="hero-subtitle">Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ</p>
+<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 pb-4">
+<section class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
+    <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="relative z-10 max-w-3xl">
+        <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+            <i class="ph-fill ph-books"></i> Библиотека шаблонов
         </div>
-        {% if can_manage_templates %}
-        <a href="{{ url_for('templates.template_new') }}" class="neo-button accent">{{ ui_icon('action.plus', 'sm', decorative=true) }}Создать шаблон</a>
-        <a href="{{ url_for('templates.template_new', mode='manual') }}" class="neo-button outline ml-4">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Создать вручную</a>
-        {% endif %}
+        <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">Шаблоны заданий</h1>
+        <p class="text-slate-600 font-medium text-sm leading-relaxed">Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ.</p>
     </div>
+    {% if can_manage_templates %}
+    <div class="relative z-10 flex flex-col sm:flex-row gap-3 shrink-0">
+        <a href="{{ url_for('templates.template_new') }}" class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
+            <i class="ph-bold ph-plus text-lg"></i> Создать шаблон
+        </a>
+        <a href="{{ url_for('templates.template_new', mode='manual') }}" class="px-6 py-3.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline">
+            <i class="ph-bold ph-pencil-simple text-lg"></i> Вручную
+        </a>
+    </div>
+    {% endif %}
 </section>
 
-<section class="glass-panel mb-8">
+<section class="bg-white rounded-[24px] p-5 border border-slate-200 shadow-tactile">
     <div class="flex gap-4 flex-wrap">
         <div>
-            <label class="block mb-2 font-semibold text-text-muted">Тип шаблона:</label>
-            <select id="typeFilter" class="filter-select" onchange="applyFilters()">
+            <label class="block mb-2 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Тип шаблона</label>
+            <select id="typeFilter" class="w-full min-w-[200px] bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100" onchange="applyFilters()">
                 <option value="">Все типы</option>
                 <option value="homework" {% if current_type == 'homework' %}selected{% endif %}>Домашние задания</option>
                 <option value="classwork" {% if current_type == 'classwork' %}selected{% endif %}>Классные работы</option>
@@ -31,8 +40,8 @@
             </select>
         </div>
         <div>
-            <label class="block mb-2 font-semibold text-text-muted">Категория:</label>
-            <select id="categoryFilter" class="filter-select" onchange="applyFilters()">
+            <label class="block mb-2 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Категория</label>
+            <select id="categoryFilter" class="w-full min-w-[200px] bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100" onchange="applyFilters()">
                 <option value="">Все категории</option>
                 <option value="ЕГЭ" {% if current_category == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
                 <option value="ОГЭ" {% if current_category == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
@@ -51,7 +60,7 @@
 ] %}
 {% set type_templates = templates_by_type.get(type_key, []) %}
 {% if not current_type or current_type == type_key %}
-<section class="glass-panel mb-8">
+<section class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile mb-8 p-6 lg:p-8">
     <div class="panel-head">
         <div>
             <p class="eyebrow">
@@ -109,6 +118,7 @@
 </section>
 {% endif %}
 {% endfor %}
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
