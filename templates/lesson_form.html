@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }} · {{ student.name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     {% include '_ux_enhancements.html' %}
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -14,25 +15,37 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     <style>
-        .form-hero {
-            margin-bottom: 2rem;
-        }
-        
         .form-section {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
+            background: #fff;
+            border: 1px solid rgb(226 232 240);
+            border-radius: 32px;
+            border-bottom-width: 4px;
+            border-bottom-color: rgb(203 213 225);
+            box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
             padding: 2rem;
-            margin-bottom: 2rem;
+            margin-bottom: 0;
+        }
+        [data-theme="dark"] .form-section {
+            background: var(--surface-1);
+            border-color: var(--stroke-1);
+            border-bottom-color: var(--stroke-1);
         }
         
         .form-section-title {
-            font-size: 1.3em;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.8rem;
-            border-bottom: 1px solid var(--stroke-1);
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #7B5CFF;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0;
+            border-bottom: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        [data-theme="dark"] .form-section-title {
+            color: #c4b5fd;
         }
         
         .form-grid {
@@ -46,30 +59,23 @@
         }
         
         .student-context {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-        
-        .student-context h3 {
-            color: var(--text-primary);
-            margin: 0;
-            font-weight: 700;
+            margin-bottom: 0;
         }
         
         .tasks-preview {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
+            background: #fff;
+            border: 1px solid rgb(226 232 240);
+            border-radius: 32px;
+            border-bottom-width: 4px;
+            border-bottom-color: rgb(203 213 225);
+            box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
             padding: 2rem;
-            margin-top: 2rem;
+            margin-top: 0;
+        }
+        [data-theme="dark"] .tasks-preview {
+            background: var(--surface-1);
+            border-color: var(--stroke-1);
+            border-bottom-color: var(--stroke-1);
         }
         
         .tasks-preview-header {
@@ -123,6 +129,14 @@
             border-radius: var(--radius-sm);
             font-size: 0.9em;
         }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: 0.6;
+            transition: 0.2s;
+        }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
     </style>
     <script>
         (function(){
@@ -134,7 +148,7 @@
         })();
     </script>
 </head>
-<body class="{% if active_lesson %}lesson-active{% endif %}">
+<body class="{% if active_lesson %}lesson-active {% endif %}bg-boo-bg text-boo-textMain">
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
         {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
@@ -180,21 +194,28 @@
     <div class="app-main">
         {% include '_topbar.html' %}
         <main class="app-content">
+        <div class="w-full max-w-[1000px] mx-auto flex flex-col gap-6 pb-8">
 
-        <section class="glass-panel student-context">
-            <h3>{{ ui_icon('profile.user', 'sm', decorative=true) }} Ученик: {{ student.name }}</h3>
-            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Вернуться к профилю</a>
-        </section>
-
-        <section class="glass-panel form-hero">
-            <div>
-                <p class="hero-eyebrow">форма урока</p>
-                <h1 class="hero-title">{{ title }}</h1>
+        <div class="bg-white rounded-[20px] p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 student-context">
+            <div class="flex items-center gap-3">
+                <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name or student.student_id|string)|urlencode }}&backgroundColor=F3F0FF" alt="" class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 shrink-0" width="40" height="40">
+                <div>
+                    <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-tight">Урок для ученика</div>
+                    <div class="font-bold text-slate-900 text-sm">{{ student.name }}</div>
+                </div>
             </div>
-        </section>
+            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="px-4 py-2 bg-slate-50 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 hover:text-boo-primary transition-colors border border-slate-200 flex items-center gap-2 shadow-sm w-fit no-underline">
+                <i class="ph-bold ph-arrow-left text-lg"></i> Вернуться к профилю
+            </a>
+        </div>
+
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 tracking-tight m-0">{{ title }}</h1>
+            <p class="text-slate-500 font-medium text-sm mt-1 mb-0">Запланируйте новое занятие и укажите необходимые детали.</p>
+        </div>
 
         {% if form.errors %}
-        <section class="glass-panel" style="border-left: 4px solid var(--danger);">
+        <section class="form-section" style="border-left: 4px solid var(--danger);">
             <div style="background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 1rem; color: var(--danger);">
                 <strong style="display: block; margin-bottom: 0.5rem;">{{ ui_icon('action.warning', 'sm') }} Ошибки при заполнении формы:</strong>
                 <ul style="margin: 0.5em 0 0 1.5em; list-style: disc;">
@@ -212,7 +233,7 @@
             {{ form.hidden_tag() }}
             
             <section class="form-section">
-                <div class="form-section-title">{{ ui_icon('nav.schedule', 'sm', decorative=true) }} Основная информация</div>
+                <div class="form-section-title"><i class="ph-fill ph-calendar-check text-lg" aria-hidden="true"></i> Планирование</div>
                 <div class="form-grid">
                     <div class="neo-field">
                         {{ form.exam_course_id.label(class='neo-label') }}
@@ -271,7 +292,7 @@
             </section>
             
             <section class="form-section">
-                <div class="form-section-title">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Содержание урока</div>
+                <div class="form-section-title"><i class="ph-fill ph-note text-lg" aria-hidden="true"></i> Содержание урока</div>
                 <div class="form-grid">
                     <div class="neo-field form-grid-full">
                         {{ form.topic.label(class='neo-label') }}
@@ -288,7 +309,7 @@
             </section>
             
             <section class="form-section" data-section="homework">
-                <div class="form-section-title">{{ ui_icon('nav.assignments', 'sm') }} Домашнее задание</div>
+                <div class="form-section-title"><i class="ph-fill ph-house-line text-lg" aria-hidden="true"></i> Домашнее задание</div>
                 <div class="form-grid">
                     <div class="neo-field form-grid-full">
                         {{ form.homework.label(class='neo-label') }}
@@ -417,6 +438,7 @@
             {% endif %}
         </section>
         {% endif %}
+        </div>
     </main>
     </div>
 </div>

@@ -2,26 +2,44 @@
 {% set active_page = 'generator' %}
 {% block title %}Генератор КЕГЭ{% endblock %}
 
-{% block body_class %}{% if active_lesson %}lesson-active{% endif %}{% endblock %}
+{% block body_class %}{% if active_lesson %}lesson-active {% endif %}bg-boo-bg text-boo-textMain{% endblock %}
 
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
 <style>
-    .gen-premium-shell {
-        display: grid;
-        gap: 1.5rem;
-        margin-top: 1.5rem;
-        grid-template-columns: minmax(320px, 1fr) minmax(520px, 2.1fr);
-        align-items: start;
-    }
-    .gen-start-card { position: sticky; top: 1rem; }
+    .gen-premium-shell { align-items: start; }
+    .gen-start-card { position: static; }
+    .gen-deck-wrap { position: relative; min-height: 520px; flex: 1 1 auto; min-width: 0; }
     .gen-deck { position: relative; min-height: 520px; }
     .gen-task-card {
-        background: var(--surface-1);
-        border-radius: var(--radius-lg);
+        background: #fff;
+        border-radius: 32px;
         padding: 1.6rem;
-        box-shadow: var(--shadow-soft);
+        border: 1px solid rgb(226 232 240);
+        border-bottom-width: 4px;
+        border-bottom-color: rgb(203 213 225);
+        box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
         transition: transform 240ms ease, opacity 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+    }
+    [data-theme="dark"] .gen-task-card {
+        background: var(--surface-1);
+        border-color: var(--stroke-1);
+        border-bottom-color: var(--stroke-1);
+    }
+    .gen-task-body code {
+        background-color: #F1F5F9;
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.9em;
+        font-weight: 700;
+        color: #334155;
+        border: 1px solid #E2E8F0;
+    }
+    [data-theme="dark"] .gen-task-body code {
+        background: var(--surface-2);
+        color: var(--text-primary);
+        border-color: var(--stroke-1);
     }
     .gen-task-card.is-entering { transform: translateY(10px); opacity: 0; }
     .gen-task-card.is-leaving { transform: translateY(-10px); opacity: 0; }
@@ -49,8 +67,15 @@
     .gen-actions-row { margin-top: 1.2rem; display: flex; gap: 0.65rem; flex-wrap: wrap; }
     .gen-actions-row .neo-button { flex: 1 1 180px; justify-content: center; }
     .gen-empty {
-        border: 1px dashed var(--stroke-2); border-radius: var(--radius-lg);
-        padding: 2rem; color: var(--text-muted);
+        border: 2px dashed rgb(226 232 240);
+        border-radius: 24px;
+        padding: 2rem;
+        color: #64748b;
+        background: linear-gradient(180deg, rgb(248 250 252), #fff);
+    }
+    [data-theme="dark"] .gen-empty {
+        border-color: var(--stroke-2);
+        color: var(--text-muted);
         background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
     }
     .gen-kbd {
@@ -100,80 +125,82 @@
     {% set mode_text = 'Общий генератор' %}
 {% endif %}
 
-<section class="glass-panel generator-hero">
-    <div>
-        <p class="hero-eyebrow">генератор заданий</p>
-        <h1 class="hero-title">Один поток. Одна задача. Максимум фокуса.</h1>
-        <p class="hero-subtitle">
-            Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной.
-            Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
-        </p>
-        <div class="hero-actions flex items-baseline gap-3 flex-wrap">
-            <span class="hero-eyebrow mb-0">режим работы</span>
-            <span class="text-lg font-semibold text-accent">
-                {{ mode_text }}
-            </span>
-        </div>
-    </div>
-    <div class="generator-context">
-        <div>
-            <p class="hero-eyebrow">что уже известно</p>
-            <div class="hero-metric-value text-xl">
-                {{ 'Нет привязки к уроку' if not lesson else 'Урок #' ~ lesson.lesson_id }}
+<div class="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6 items-start gen-premium-shell -mt-1 pb-8">
+    <div class="w-full lg:w-[min(100%,400px)] flex flex-col gap-6 shrink-0 lg:sticky lg:top-24">
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 relative overflow-hidden group">
+            <div class="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-purple-50 to-cyan-50 rounded-full blur-3xl opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
+            <div class="relative z-10">
+                <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="ph-fill ph-magic-wand text-boo-primary"></i> Генератор заданий
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-3 leading-tight">Один поток. Одна задача. Максимум фокуса.</h1>
+                <p class="text-sm font-medium text-slate-500 mb-5 leading-relaxed">
+                    Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной. Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
+                </p>
+                <div class="rounded-xl bg-slate-50 border border-slate-100 p-3.5 mb-4 space-y-2 text-xs font-medium text-slate-600">
+                    <div class="flex flex-wrap justify-between gap-2 items-center">
+                        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Контекст</span>
+                        <span class="font-bold text-slate-800">{{ 'Нет привязки к уроку' if not lesson else ('Урок №' ~ lesson.lesson_id) }}</span>
+                    </div>
+                    <p class="m-0 leading-relaxed text-slate-500">
+                        Горячие клавиши: <span class="gen-kbd">A</span> принять · <span class="gen-kbd">S</span> пропустить · <span class="gen-kbd">B</span> blacklist · <span class="gen-kbd">Space</span> ответ
+                    </p>
+                </div>
+                <div class="pt-4 border-t border-slate-100 flex justify-between items-center gap-2 flex-wrap">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Режим работы</span>
+                    <span class="text-sm font-bold text-boo-primary">{{ mode_text }}</span>
+                </div>
             </div>
         </div>
-        <div>
-            <p class="hero-eyebrow">следующий шаг</p>
-            <p class="m-0 text-text-muted">
-                Запусти генератор и работай в спокойном темпе. Горячие клавиши: <span class="gen-kbd">A</span> принять · <span class="gen-kbd">S</span> пропустить · <span class="gen-kbd">B</span> blacklist · <span class="gen-kbd">Space</span> ответ
-            </p>
-        </div>
-    </div>
-</section>
 
-{% if lesson and student %}
-<section class="glass-panel generator-mode {{ mode_class }}">
-    <div class="generator-mode__icon"><img src="{{ url_for('static', filename=banner_icon_path) }}" alt="Режим" class="ui-icon ui-icon--md ui-icon--only"></div>
-    <div class="flex-1">
-        <div class="generator-mode__title">Режим {{ mode_label }}</div>
-        <div>
-            <strong>Ученик:</strong> {{ student.name }}
-            {% if lesson.lesson_date %}
-            · <strong>Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
-            {% endif %}
-            {% if lesson.topic %}
-            · <strong>Тема:</strong> {{ lesson.topic }}
-            {% endif %}
+        {% if lesson and student %}
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col gap-4 generator-mode {{ mode_class }}">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
+                    <img src="{{ url_for('static', filename=banner_icon_path) }}" alt="" class="w-7 h-7 object-contain">
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-lg font-black text-slate-900 tracking-tight">Режим {{ mode_label }}</div>
+                    <div class="text-sm font-medium text-slate-600 mt-1">
+                        <strong class="text-slate-800">Ученик:</strong> {{ student.name }}
+                        {% if lesson.lesson_date %}
+                        · <strong class="text-slate-800">Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
+                        {% endif %}
+                        {% if lesson.topic %}
+                        · <strong class="text-slate-800">Тема:</strong> {{ lesson.topic }}
+                        {% endif %}
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2 mb-0 leading-relaxed generator-mode__hint">
+                        {{ 'Все принятые карточки попадут в ДЗ и скроются из будущих выдач для ученика.' if is_homework else 'Все принятые карточки добавляются в работу и не повторяются для ученика.' }}
+                    </p>
+                </div>
+            </div>
+            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) if assignment_type == 'homework' else url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="px-4 py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 text-sm no-underline w-full sm:w-auto">
+                <i class="ph-bold ph-arrow-left"></i> К уроку
+            </a>
         </div>
-        <div class="generator-mode__hint">
-            {{ 'Все принятые карточки попадут в ДЗ и скроются из будущих выдач для ученика.' if is_homework else 'Все принятые карточки добавляются в работу и не повторяются для ученика.' }}
+        {% elif template_id %}
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col gap-4 generator-mode {{ mode_class }}">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 text-boo-primary">
+                    {{ ui_icon('nav.templates', 'md', decorative=true, extra_class='ui-icon--only') }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-lg font-black text-slate-900 tracking-tight">Режим редактирования шаблона</div>
+                    <p class="text-xs text-slate-500 mt-1 mb-0 leading-relaxed generator-mode__hint">Все принятые задания будут добавлены в шаблон.</p>
+                </div>
+            </div>
+            <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="px-4 py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 text-sm no-underline w-full sm:w-auto">
+                <i class="ph-bold ph-arrow-left"></i> К шаблону
+            </a>
         </div>
-    </div>
-    <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) if assignment_type == 'homework' else url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">
-        ← К уроку
-    </a>
-</section>
-{% elif template_id %}
-<section class="glass-panel generator-mode {{ mode_class }}">
-    <div class="generator-mode__icon">{{ ui_icon('nav.templates', 'md', decorative=true, extra_class='ui-icon--only') }}</div>
-    <div class="flex-1">
-        <div class="generator-mode__title">Режим редактирования шаблона</div>
-        <div class="generator-mode__hint">
-            Все принятые задания будут добавлены в шаблон.
-        </div>
-    </div>
-    <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="neo-button ghost">
-        ← К шаблону
-    </a>
-</section>
-{% endif %}
+        {% endif %}
 
-<div class="gen-premium-shell">
-    <section class="glass-panel generator-panel gen-start-card">
-        <div class="flex justify-between items-start mb-6">
+    <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 generator-panel gen-start-card">
+        <div class="flex justify-between items-start mb-6 gap-3">
             <div>
-                <h2>Запуск</h2>
-                <p class="hint m-0">Выбери номер задания и нажми старт.</p>
+                <h2 class="text-xl font-black text-slate-900 m-0">Запуск</h2>
+                <p class="text-sm font-medium text-slate-500 m-0 mt-1">Выбери параметры и нажми старт.</p>
             </div>
             {% if generator_recipient_ids %}
             <button type="button" id="genCreateWorkBtnTop" class="neo-button accent shadow-sm">
@@ -253,8 +280,10 @@
             </details>
         </div>
     </section>
+    </div>
 
-    <section class="glass-panel gen-deck" id="genDeck"
+    <div class="gen-deck-wrap w-full lg:flex-1 min-w-0">
+    <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 gen-deck" id="genDeck"
              data-lesson-id="{{ lesson_id or '' }}"
              data-assignment-type="{{ assignment_type }}"
              data-template-id="{{ template_id or '' }}"
@@ -313,6 +342,7 @@
             </div>
         </div>
     </section>
+    </div>
 </div>
 {% endblock %}
 
