@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Управление тарифами</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты Golos Text -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Golos Text"', 'sans-serif'] },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                        'input': 'inset 0 2px 4px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        
+        /* Стили для кастомного Toggle (Вкл/Выкл) */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #7B5CFF;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #7B5CFF;
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-8 pointer-events-none">
+        <header class="w-full max-w-[1400px] mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Центральное меню -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-users-three text-lg"></i> Ученики
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
+                </a>
+                <!-- АКТИВНЫЙ ПУНКТ (Меню Ещё -> Тарифы) -->
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2 relative">
+                    <i class="ph-bold ph-squares-four text-lg"></i> Ещё <i class="ph-bold ph-caret-down text-xs ml-1"></i>
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors">
+                    <i class="ph-bold ph-magnifying-glass text-xl"></i>
+                </button>
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 cursor-pointer">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator&backgroundColor=7B5CFF" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-purple-50">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-24 px-6 lg:px-8">
+        <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
+
+            <!-- БЛОК 1: HERO ЗАГОЛОВОК И ТАБЫ -->
+            <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm relative overflow-hidden flex flex-col md:flex-row justify-between md:items-end gap-8">
+                <!-- Декоративные блики -->
+                <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute right-60 bottom-[-50px] w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
+
+                <div class="relative z-10 max-w-3xl">
+                    <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                        <i class="ph-fill ph-credit-card"></i> Биллинг и Доступ
+                    </div>
+                    <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-3">Тарифы платформы</h1>
+                    <p class="text-slate-600 font-medium text-sm leading-relaxed max-w-xl">
+                        Создавайте тарифные планы, группируйте их и управляйте доступом учеников к урокам и тренажеру.
+                    </p>
+                </div>
+
+                <!-- Табы переключения -->
+                <div class="relative z-10 bg-white/60 backdrop-blur-md p-1.5 rounded-xl flex border border-white shadow-sm shrink-0 w-full md:w-auto">
+                    <button class="flex-1 md:flex-none px-6 py-2.5 bg-boo-primary text-white rounded-lg font-bold text-sm shadow-md flex justify-center items-center gap-2 whitespace-nowrap transition-all">
+                        <i class="ph-bold ph-list-dashes text-lg"></i> База тарифов
+                    </button>
+                    <button class="flex-1 md:flex-none px-6 py-2.5 text-slate-500 hover:text-slate-900 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex justify-center items-center gap-2">
+                        <i class="ph-bold ph-users text-lg"></i> Подписки учеников
+                    </button>
+                </div>
+            </div>
+
+            <!-- СПЛИТ КОНТЕНТА -->
+            <div class="flex flex-col lg:flex-row gap-6 items-start">
+                
+                <!-- ЛЕВАЯ КОЛОНКА: СОЗДАТЬ ТАРИФ -->
+                <div class="w-full lg:w-[35%] bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 sticky top-32">
+                    <h2 class="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
+                        <i class="ph-fill ph-plus-circle text-boo-primary"></i> Создать новый тариф
+                    </h2>
+
+                    <form class="space-y-5">
+                        <!-- Название -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Название <span class="text-boo-coral">*</span></label>
+                            <input type="text" placeholder="Напр.: Junior (ОГЭ)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                        </div>
+
+                        <!-- Описание -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Описание</label>
+                            <textarea rows="3" placeholder="Что входит в тариф? Уникальные фичи..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input resize-y"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Группа -->
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Группа</label>
+                                <div class="relative">
+                                    <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input appearance-none cursor-pointer">
+                                        <option value="none">— Без группы —</option>
+                                        <option value="1">MENTOR</option>
+                                        <option value="2">Базовые тарифы</option>
+                                        <option value="3">SOLO</option>
+                                        <option value="4">GOD MODE</option>
+                                    </select>
+                                    <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                </div>
+                            </div>
+
+                            <!-- Порядок -->
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Порядок сортировки</label>
+                                <input type="number" value="0" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input text-center">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Цена -->
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Цена (₽)</label>
+                                <div class="relative">
+                                    <input type="number" placeholder="0" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-8 py-3 font-black text-slate-900 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₽</span>
+                                </div>
+                            </div>
+
+                            <!-- Кол-во уроков -->
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Кол-во уроков</label>
+                                <input type="number" placeholder="Напр.: 8" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input text-center">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Цена за урок -->
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Цена за урок (₽)</label>
+                                <input type="number" placeholder="Опц." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input text-center">
+                            </div>
+
+                            <!-- Период -->
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Период (дней)</label>
+                                <input type="number" placeholder="Опц." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input text-center">
+                            </div>
+                        </div>
+
+                        <!-- Модули доступа (Тактильные чекбоксы) -->
+                        <div class="space-y-2 pt-2 border-t border-slate-100">
+                            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Права доступа тарифа</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors shadow-sm has-[:checked]:border-boo-primary has-[:checked]:bg-purple-50 group">
+                                    <div class="w-5 h-5 rounded border border-slate-300 bg-white group-has-[:checked]:border-boo-primary group-has-[:checked]:bg-boo-primary flex items-center justify-center transition-colors">
+                                        <input type="checkbox" class="hidden" checked>
+                                        <i class="ph-bold ph-check text-white text-xs opacity-0 group-has-[:checked]:opacity-100"></i>
+                                    </div>
+                                    <span class="text-sm font-bold text-slate-700 group-has-[:checked]:text-boo-primary">Уроки</span>
+                                </label>
+
+                                <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors shadow-sm has-[:checked]:border-boo-primary has-[:checked]:bg-purple-50 group">
+                                    <div class="w-5 h-5 rounded border border-slate-300 bg-white group-has-[:checked]:border-boo-primary group-has-[:checked]:bg-boo-primary flex items-center justify-center transition-colors">
+                                        <input type="checkbox" class="hidden" checked>
+                                        <i class="ph-bold ph-check text-white text-xs opacity-0 group-has-[:checked]:opacity-100"></i>
+                                    </div>
+                                    <span class="text-sm font-bold text-slate-700 group-has-[:checked]:text-boo-primary">Тренажёр</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Кнопка сабмита -->
+                        <div class="pt-4">
+                            <button type="button" class="w-full py-4 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">
+                                <i class="ph-bold ph-check-circle text-lg"></i> Создать тариф
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ПРАВАЯ КОЛОНКА: СПИСОК ГРУПП И ТАРИФОВ -->
+                <div class="w-full lg:w-[65%] flex flex-col gap-6">
+                    
+                    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 md:p-8">
+                        
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Каталог тарифов</h2>
+                        </div>
+
+                        <!-- ДОБАВЛЕНИЕ ГРУППЫ -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-8 shadow-inner-soft">
+                            <h3 class="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                <i class="ph-bold ph-folder-plus text-lg"></i> Добавить группу тарифов
+                            </h3>
+                            <div class="flex flex-col sm:flex-row gap-3 items-end">
+                                <div class="flex-1 w-full space-y-1.5">
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Название группы</label>
+                                    <input type="text" placeholder="Напр.: ЕГЭ - Базовый" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary shadow-sm">
+                                </div>
+                                <div class="w-full sm:w-24 space-y-1.5">
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Порядок</label>
+                                    <input type="number" value="0" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary shadow-sm text-center">
+                                </div>
+                                <button class="w-full sm:w-auto px-6 py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors shadow-sm text-sm shrink-0">
+                                    Создать
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- СПИСОК ГРУПП И ТАРИФОВ -->
+                        <div class="space-y-6">
+                            
+                            <!-- ГРУППА 1: MENTOR -->
+                            <div class="border border-slate-200 rounded-[24px] overflow-hidden bg-white shadow-sm">
+                                <!-- Шапка группы -->
+                                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 cursor-move" title="Перетащить">
+                                            <i class="ph-bold ph-dots-six-vertical"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-black text-slate-900 text-lg uppercase tracking-wide">MENTOR</h3>
+                                            <div class="text-[10px] font-bold text-slate-400">Порядок: 0 • 2 тарифа</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Toggle Вкл/Выкл -->
+                                    <label class="flex items-center cursor-pointer">
+                                        <div class="relative">
+                                            <input type="checkbox" class="sr-only toggle-checkbox" checked>
+                                            <div class="block bg-slate-200 w-10 h-6 rounded-full transition-colors toggle-label"></div>
+                                            <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
+                                        </div>
+                                        <span class="ml-2 text-xs font-bold text-slate-500">Вкл</span>
+                                    </label>
+                                </div>
+
+                                <!-- Тарифы внутри группы -->
+                                <div class="p-6 grid grid-cols-1 gap-4 bg-white">
+                                    
+                                    <!-- Карточка тарифа (Junior) -->
+                                    <div class="border border-slate-200 rounded-2xl p-5 hover:border-purple-300 transition-colors flex flex-col sm:flex-row gap-5 items-start sm:items-center relative group">
+                                        <!-- Декоративная плашка статуса -->
+                                        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-green-400 rounded-l-2xl"></div>
+                                        
+                                        <div class="flex-1 pl-2">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <h4 class="font-black text-slate-900 text-lg">Junior</h4>
+                                                <span class="bg-slate-100 text-slate-500 text-[10px] font-extrabold px-1.5 py-0.5 rounded">#0</span>
+                                                <span class="bg-green-50 text-green-600 text-[10px] font-extrabold px-2 py-0.5 rounded border border-green-100 uppercase tracking-wider ml-auto sm:ml-0">Active</span>
+                                            </div>
+                                            <div class="text-sm font-bold text-slate-600 mb-2 flex flex-wrap gap-x-3 gap-y-1">
+                                                <span class="text-boo-primary font-black">10 400 ₽</span> 
+                                                <span>•</span> 
+                                                <span>1 300 ₽/урок</span> 
+                                                <span>•</span> 
+                                                <span>8 уроков</span>
+                                            </div>
+                                            <p class="text-xs font-medium text-slate-500 leading-relaxed">
+                                                Базовый пакет - 8 уроков. Входим в ритм, разбираем ошибки, ставим технику. Цена за урок - 1300.
+                                            </p>
+                                        </div>
+
+                                        <!-- Действия -->
+                                        <div class="flex flex-row sm:flex-col gap-2 w-full sm:w-auto shrink-0">
+                                            <button class="flex-1 sm:flex-none px-4 py-2 bg-boo-primary text-white rounded-xl font-bold text-xs hover:bg-boo-primaryHover transition-colors shadow-sm">
+                                                Назначить
+                                            </button>
+                                            <button class="flex-1 sm:flex-none px-4 py-2 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-100 transition-colors">
+                                                <i class="ph-bold ph-pencil-simple mr-1"></i> Редакт.
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Карточка тарифа (Middle) -->
+                                    <div class="border border-slate-200 rounded-2xl p-5 hover:border-purple-300 transition-colors flex flex-col sm:flex-row gap-5 items-start sm:items-center relative group">
+                                        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-green-400 rounded-l-2xl"></div>
+                                        
+                                        <div class="flex-1 pl-2">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <h4 class="font-black text-slate-900 text-lg">Middle</h4>
+                                                <span class="bg-slate-100 text-slate-500 text-[10px] font-extrabold px-1.5 py-0.5 rounded">#1</span>
+                                                <span class="bg-green-50 text-green-600 text-[10px] font-extrabold px-2 py-0.5 rounded border border-green-100 uppercase tracking-wider ml-auto sm:ml-0">Active</span>
+                                            </div>
+                                            <div class="text-sm font-bold text-slate-600 mb-2 flex flex-wrap gap-x-3 gap-y-1">
+                                                <span class="text-boo-primary font-black">18 000 ₽</span> 
+                                                <span>•</span> 
+                                                <span>1 125 ₽/урок</span> 
+                                                <span>•</span> 
+                                                <span>16 уроков</span>
+                                            </div>
+                                            <p class="text-xs font-medium text-slate-500 leading-relaxed">
+                                                Продвинутый пакет. Погружение в сложные темы и регулярная практика.
+                                            </p>
+                                        </div>
+
+                                        <div class="flex flex-row sm:flex-col gap-2 w-full sm:w-auto shrink-0">
+                                            <button class="flex-1 sm:flex-none px-4 py-2 bg-boo-primary text-white rounded-xl font-bold text-xs hover:bg-boo-primaryHover transition-colors shadow-sm">
+                                                Назначить
+                                            </button>
+                                            <button class="flex-1 sm:flex-none px-4 py-2 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-100 transition-colors">
+                                                <i class="ph-bold ph-pencil-simple mr-1"></i> Редакт.
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ГРУППА 2: SOLO -->
+                            <div class="border border-slate-200 rounded-[24px] overflow-hidden bg-white shadow-sm opacity-70 hover:opacity-100 transition-opacity">
+                                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 cursor-move" title="Перетащить">
+                                            <i class="ph-bold ph-dots-six-vertical"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-black text-slate-900 text-lg uppercase tracking-wide">SOLO</h3>
+                                            <div class="text-[10px] font-bold text-slate-400">Порядок: 1 • 0 тарифов</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Toggle Вкл/Выкл (Выключено) -->
+                                    <label class="flex items-center cursor-pointer">
+                                        <div class="relative">
+                                            <input type="checkbox" class="sr-only toggle-checkbox">
+                                            <div class="block bg-slate-200 w-10 h-6 rounded-full transition-colors toggle-label"></div>
+                                            <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
+                                        </div>
+                                        <span class="ml-2 text-xs font-bold text-slate-400">Выкл</span>
+                                    </label>
+                                </div>
+                                <div class="p-6 bg-white text-center">
+                                    <p class="text-sm font-medium text-slate-400">В этой группе пока нет тарифов.</p>
+                                </div>
+                            </div>
+
+                            <!-- ГРУППА 3: GOD MODE -->
+                            <div class="border border-slate-200 rounded-[24px] overflow-hidden bg-white shadow-sm">
+                                <div class="bg-gradient-to-r from-fuchsia-50 to-purple-50 px-6 py-4 border-b border-purple-100 flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-white border border-purple-200 flex items-center justify-center text-purple-400 cursor-move" title="Перетащить">
+                                            <i class="ph-bold ph-dots-six-vertical"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-black text-fuchsia-700 text-lg uppercase tracking-wide flex items-center gap-1.5"><i class="ph-fill ph-crown"></i> GOD MODE</h3>
+                                            <div class="text-[10px] font-bold text-purple-400">Порядок: 2 • 1 тариф</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <label class="flex items-center cursor-pointer">
+                                        <div class="relative">
+                                            <input type="checkbox" class="sr-only toggle-checkbox" checked>
+                                            <div class="block bg-slate-200 w-10 h-6 rounded-full transition-colors toggle-label" style="background-color: #C026D3;"></div>
+                                            <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform" style="transform: translateX(100%);"></div>
+                                        </div>
+                                        <span class="ml-2 text-xs font-bold text-fuchsia-600">Вкл</span>
+                                    </label>
+                                </div>
+
+                                <div class="p-6 grid grid-cols-1 gap-4 bg-white">
+                                    <!-- Карточка тарифа (Ultra) -->
+                                    <div class="border border-purple-200 rounded-2xl p-5 hover:border-purple-400 transition-colors flex flex-col sm:flex-row gap-5 items-start sm:items-center relative group bg-fuchsia-50/30">
+                                        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-fuchsia-500 rounded-l-2xl"></div>
+                                        
+                                        <div class="flex-1 pl-2">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <h4 class="font-black text-slate-900 text-lg">Ultra Pass</h4>
+                                                <span class="bg-white text-slate-500 text-[10px] font-extrabold px-1.5 py-0.5 rounded border border-slate-200">#0</span>
+                                                <span class="bg-green-50 text-green-600 text-[10px] font-extrabold px-2 py-0.5 rounded border border-green-100 uppercase tracking-wider ml-auto sm:ml-0">Active</span>
+                                            </div>
+                                            <div class="text-sm font-bold text-slate-600 mb-2 flex flex-wrap gap-x-3 gap-y-1">
+                                                <span class="text-fuchsia-600 font-black">99 000 ₽</span> 
+                                                <span>•</span> 
+                                                <span>Безлимит уроков</span> 
+                                                <span>•</span> 
+                                                <span>365 дней</span>
+                                            </div>
+                                            <p class="text-xs font-medium text-slate-500 leading-relaxed">
+                                                Полный доступ ко всем материалам, безлимитные консультации и приоритетная проверка ДЗ.
+                                            </p>
+                                        </div>
+
+                                        <div class="flex flex-row sm:flex-col gap-2 w-full sm:w-auto shrink-0">
+                                            <button class="flex-1 sm:flex-none px-4 py-2 bg-fuchsia-600 text-white rounded-xl font-bold text-xs hover:bg-fuchsia-700 transition-colors shadow-sm">
+                                                Назначить
+                                            </button>
+                                            <button class="flex-1 sm:flex-none px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors">
+                                                <i class="ph-bold ph-pencil-simple mr-1"></i> Редакт.
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // Простой скрипт для стилизации toggle-переключателей при клике
+        document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const label = this.closest('label').querySelector('span');
+                const dot = this.closest('label').querySelector('.dot');
+                const bg = this.closest('label').querySelector('.toggle-label');
+                
+                if (this.checked) {
+                    label.textContent = 'Вкл';
+                    label.classList.remove('text-slate-400');
+                    label.classList.add('text-slate-500');
+                    if (this.closest('.bg-gradient-to-r')) {
+                        label.classList.add('text-fuchsia-600');
+                        bg.style.backgroundColor = '#C026D3';
+                    } else {
+                        bg.style.backgroundColor = '#7B5CFF';
+                    }
+                    dot.style.transform = 'translateX(100%)';
+                } else {
+                    label.textContent = 'Выкл';
+                    label.classList.remove('text-slate-500', 'text-fuchsia-600');
+                    label.classList.add('text-slate-400');
+                    bg.style.backgroundColor = '#E2E8F0';
+                    dot.style.transform = 'translateX(0)';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
