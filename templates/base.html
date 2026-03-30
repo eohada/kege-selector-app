@@ -99,12 +99,7 @@
     {% if _qa_widget_allowed %}
         {% include 'qa/_floating_widget.html' %}
     {% endif %}
-{% endif %}
-
-    {% if _qa_widget_allowed %}
-        {% include 'qa/_floating_widget.html' %}
     {% endif %}
-{% endif %}
 
     {% if current_user is defined and current_user.is_authenticated and current_user.is_demo_user %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/demo_cinema.css') }}">
