@@ -216,9 +216,6 @@ def lesson_view(lesson_id):
     mode = (request.args.get('mode') or '').strip().lower()
     if mode == 'edit':
         return redirect(url_for('lessons.lesson_edit', lesson_id=lesson_id))
-    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
-    if lesson.student_id:
-        return redirect(url_for('students.lesson_mode', student_id=lesson.student_id))
     return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))
 
 @lessons_bp.route('/lesson/<int:lesson_id>/delete', methods=['POST'])
