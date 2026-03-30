@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Генератор заданий (Tactile)</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты Golos Text и JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Golos Text"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                        'input': 'inset 0 2px 4px rgba(0,0,0,0.02)',
+                        'key': '0 2px 0 rgba(15, 23, 42, 0.1)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        
+        /* Стили для математики/кода внутри задачи */
+        .task-content code { background-color: #F1F5F9; padding: 2px 6px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; font-weight: 700; color: #334155; border: 1px solid #E2E8F0; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ (Вид Преподавателя/Создателя) -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-8 pointer-events-none">
+        <header class="w-full max-w-[1400px] mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Центральное меню -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-users-three text-lg"></i> Ученики
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-tray text-lg"></i> Проверка
+                </a>
+                <!-- АКТИВНЫЙ ПУНКТ (Меню Ещё -> Генератор) -->
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2">
+                    <i class="ph-bold ph-squares-four text-lg"></i> Ещё <i class="ph-bold ph-caret-down text-xs ml-1"></i>
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors">
+                    <i class="ph-bold ph-magnifying-glass text-xl"></i>
+                </button>
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 cursor-pointer">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator&backgroundColor=7B5CFF" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-purple-50">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-16 px-6 lg:px-8">
+        <div class="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6 items-start">
+
+            <!-- ЛЕВАЯ КОЛОНКА (Инфо + Настройки запуска) -->
+            <div class="w-full lg:w-1/3 flex flex-col gap-6 sticky top-32">
+                
+                <!-- Инфо-карточка (Hero) -->
+                <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 relative overflow-hidden group">
+                    <div class="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-purple-50 to-cyan-50 rounded-full blur-3xl opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
+                    
+                    <div class="relative z-10">
+                        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <i class="ph-fill ph-magic-wand text-boo-primary"></i> Генератор заданий
+                        </div>
+                        <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-3 leading-tight">Один поток. Одна задача. Максимум фокуса.</h1>
+                        <p class="text-sm font-medium text-slate-500 mb-6 leading-relaxed">
+                            Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной. Каждое решение (принять / пропустить / в черный список) сразу двигает тебя к следующей.
+                        </p>
+                        
+                        <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">Режим работы</div>
+                            <button class="text-sm font-bold text-boo-primary hover:text-boo-primaryHover transition-colors flex items-center gap-1">
+                                Общий генератор <i class="ph-bold ph-caret-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Карточка управления (Запуск) -->
+                <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+                    <h2 class="text-xl font-black text-slate-900 mb-1">Запуск</h2>
+                    <p class="text-sm font-medium text-slate-500 mb-6">Выбери параметры и нажми старт.</p>
+
+                    <form class="space-y-5">
+                        <!-- Программа -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Программа подготовки</label>
+                            <div class="relative">
+                                <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input appearance-none cursor-pointer">
+                                    <option value="ege_inf" selected>ЕГЭ Информатика</option>
+                                    <option value="ege_math">ЕГЭ Математика</option>
+                                </select>
+                                <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <!-- Номер задания -->
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Номер задания</label>
+                            <div class="relative">
+                                <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input appearance-none cursor-pointer">
+                                    <option value="5" selected>Задание 5</option>
+                                    <option value="6">Задание 6</option>
+                                    <option value="7">Задание 7</option>
+                                </select>
+                                <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <!-- Кнопки управления генератором -->
+                        <div class="flex gap-2 pt-2">
+                            <button type="button" class="flex-1 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">
+                                <i class="ph-fill ph-play text-lg"></i> Старт
+                            </button>
+                            <button type="button" class="flex-1 py-3 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-sm">
+                                <i class="ph-bold ph-stop"></i> Стоп
+                            </button>
+                        </div>
+
+                        <!-- Чекбокс опций -->
+                        <label class="flex items-center gap-3 cursor-pointer group mt-4 px-1">
+                            <div class="w-5 h-5 rounded border border-slate-300 bg-white group-hover:border-boo-primary flex items-center justify-center transition-colors relative">
+                                <input type="checkbox" class="opacity-0 absolute inset-0 cursor-pointer">
+                            </div>
+                            <span class="text-sm font-medium text-slate-600">включать пропущенные (опционально)</span>
+                        </label>
+
+                        <!-- Подсказка по горячим клавишам -->
+                        <div class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 mt-4">
+                            <p class="text-xs font-medium text-slate-600 leading-relaxed">
+                                <span class="font-bold text-indigo-600"><i class="ph-fill ph-lightbulb"></i> Подсказка:</span> кнопки можно прожимать с клавиатуры — 
+                                <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)] ml-0.5">A</kbd> / 
+                                <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">S</kbd> / 
+                                <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">B</kbd>.
+                            </p>
+                        </div>
+
+                        <!-- Аккордеон (Расширенные действия) -->
+                        <details class="group pt-2">
+                            <summary class="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer select-none">
+                                <i class="ph-bold ph-caret-right transition-transform group-open:rotate-90 text-slate-400"></i> Расширенные действия
+                            </summary>
+                            <div class="pl-6 pt-3 text-xs text-slate-500 font-medium">
+                                Здесь появятся дополнительные фильтры (например, исключить задачи с определенными тегами).
+                            </div>
+                        </details>
+                    </form>
+                </div>
+
+            </div>
+
+            <!-- ПРАВАЯ КОЛОНКА (Статус + Карточка задачи) -->
+            <div class="w-full lg:w-2/3 flex flex-col gap-6">
+                
+                <!-- Статусная панель -->
+                <div class="bg-white rounded-[24px] border border-slate-200 shadow-tactile p-6">
+                    <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Что уже известно</div>
+                    <h2 class="text-2xl font-black text-boo-primary tracking-tight mb-3">Нет привязки к уроку</h2>
+                    
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-100 pt-4">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Следующий шаг</span>
+                        <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-600">
+                            <span class="flex items-center gap-1.5">
+                                <kbd class="inline-flex items-center justify-center w-5 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">A</kbd> принять
+                            </span>
+                            <span class="text-slate-300">•</span>
+                            <span class="flex items-center gap-1.5">
+                                <kbd class="inline-flex items-center justify-center w-5 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">S</kbd> пропустить
+                            </span>
+                            <span class="text-slate-300">•</span>
+                            <span class="flex items-center gap-1.5">
+                                <kbd class="inline-flex items-center justify-center w-5 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">B</kbd> blacklist
+                            </span>
+                            <span class="text-slate-300">•</span>
+                            <span class="flex items-center gap-1.5">
+                                <kbd class="inline-flex items-center justify-center px-2 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">Space</kbd> ответ
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ГЛАВНАЯ КАРТОЧКА ЗАДАЧИ -->
+                <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col">
+                    
+                    <!-- Шапка карточки -->
+                    <div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-[32px]">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center shadow-inner">
+                                5
+                            </div>
+                            <button class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-boo-primary transition-colors flex items-center gap-1.5 shadow-sm">
+                                <i class="ph-bold ph-link"></i> источник
+                            </button>
+                        </div>
+                        
+                        <button class="text-sm font-bold text-slate-500 hover:text-boo-primary transition-colors flex items-center gap-1.5">
+                            <i class="ph-bold ph-eye"></i> Ответ
+                        </button>
+                    </div>
+
+                    <!-- Контент задачи -->
+                    <div class="p-8 task-content text-[15px] leading-relaxed text-slate-800 space-y-4">
+                        <p>На вход алгоритма подаётся натуральное число <code>N</code>. Алгоритм строит по нему новое число <code>R</code> следующим образом.</p>
+                        
+                        <ol class="list-decimal list-inside space-y-2 font-medium ml-2">
+                            <li>Строится двоичная запись числа <code>N</code>.</li>
+                            <li>Далее эта запись обрабатывается по следующему правилу:
+                                <ul class="list-[lower-alpha] list-inside ml-6 mt-2 space-y-2 text-slate-600 font-normal">
+                                    <li>а) если сумма цифр в двоичной записи числа чётная, то к этой записи слева дописывается 10, а затем два правых разряда заменяются на 00;</li>
+                                    <li>б) если сумма цифр в двоичной записи числа нечётная, то к этой записи слева дописывается 11, а затем два правых разряда заменяются на 11.</li>
+                                </ul>
+                            </li>
+                        </ol>
+
+                        <p>Полученная таким образом запись является двоичной записью искомого числа <code>R</code>.</p>
+                        
+                        <p class="text-sm text-slate-500 italic bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            Например, для исходного числа 6<sub>10</sub> = 110<sub>2</sub> результатом является число 10100<sub>2</sub> = 20<sub>10</sub>, а для исходного числа 4<sub>10</sub> = 100<sub>2</sub> результатом является число 11111<sub>2</sub> = 31<sub>10</sub>.
+                        </p>
+
+                        <div class="pt-4 border-t border-slate-100 mt-6">
+                            <p class="font-semibold text-slate-900">
+                                Укажите <span class="text-boo-primary">сумму</span> различных чисел <code>R</code>, кратных 3, которые могут быть получены при обработке всех чисел N на отрезке [100; 200].
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Кнопки действий (Подвал карточки) -->
+                    <div class="p-6 bg-slate-50/30 border-t border-slate-100 rounded-b-[32px] flex flex-col sm:flex-row gap-3">
+                        
+                        <!-- ПРИНЯТЬ (Primary) -->
+                        <button class="flex-1 py-4 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm group">
+                            <i class="ph-bold ph-check text-lg"></i> Принять
+                            <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-purple-400 border border-purple-300 rounded text-[10px] font-black text-white shadow-[0_2px_0_rgba(107,76,229,1)] ml-1 opacity-70 group-hover:opacity-100">A</kbd>
+                        </button>
+                        
+                        <!-- ПРОПУСТИТЬ (Ghost) -->
+                        <button class="flex-1 py-4 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all flex justify-center items-center gap-2 shadow-sm text-sm group">
+                            <i class="ph-bold ph-minus text-lg text-slate-400"></i> Пропустить
+                            <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-500 shadow-[0_2px_0_rgba(203,213,225,1)] ml-1 opacity-70 group-hover:opacity-100">S</kbd>
+                        </button>
+                        
+                        <!-- BLACKLIST (Danger) -->
+                        <button class="flex-1 py-4 bg-boo-coral text-white rounded-xl font-bold hover:bg-red-500 transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-red-700 active:translate-y-[2px] active:border-b-0 text-sm group">
+                            <i class="ph-bold ph-trash text-lg"></i> Blacklist
+                            <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-red-400 border border-red-300 rounded text-[10px] font-black text-white shadow-[0_2px_0_rgba(185,28,28,1)] ml-1 opacity-70 group-hover:opacity-100">B</kbd>
+                        </button>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>

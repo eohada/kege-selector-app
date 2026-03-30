@@ -79,9 +79,6 @@
                 <i class="ph-bold ph-file-text text-lg text-slate-400"></i> Работы
             </a>
             {% endif %}
-            <a href="{{ url_for('reminders.reminders_list') }}" class="nav-link {% if active_page == 'reminders' %}active{% endif %}">
-                <i class="ph-bold ph-bell text-lg text-slate-400"></i> Напоминания
-            </a>
             <a href="{{ url_for('task_generator.task_generator') }}" class="nav-link {% if active_page == 'generator' %}active{% endif %}">
                 <i class="ph-bold ph-magic-wand text-lg text-slate-400"></i> Генератор
             </a>

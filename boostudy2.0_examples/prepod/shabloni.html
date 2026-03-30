@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Шаблоны заданий</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты Golos Text -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Golos Text"', 'sans-serif'] },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                        'input': 'inset 0 2px 4px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ (Вид Преподавателя/Создателя) -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-8 pointer-events-none">
+        <header class="w-full max-w-[1400px] mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Центральное меню -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-users-three text-lg"></i> Ученики
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative">
+                    <i class="ph-bold ph-tray text-lg"></i> Проверка
+                </a>
+                <!-- АКТИВНЫЙ ПУНКТ (Меню Ещё -> Шаблоны) -->
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2">
+                    <i class="ph-bold ph-squares-four text-lg"></i> Ещё <i class="ph-bold ph-caret-down text-xs ml-1"></i>
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors">
+                    <i class="ph-bold ph-magnifying-glass text-xl"></i>
+                </button>
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 cursor-pointer">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator&backgroundColor=7B5CFF" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-purple-50">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-24 px-6 lg:px-8">
+        <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
+
+            <!-- БЛОК 1: HERO ЗАГОЛОВОК -->
+            <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
+                <!-- Декоративные блики -->
+                <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute right-60 bottom-[-50px] w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
+
+                <div class="relative z-10 max-w-3xl">
+                    <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                        <i class="ph-fill ph-books"></i> Библиотека шаблонов
+                    </div>
+                    <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-3 flex items-center gap-3">
+                        <i class="ph-bold ph-squares-four text-boo-primary"></i> Шаблоны заданий
+                    </h1>
+                    <p class="text-slate-600 font-medium text-sm leading-relaxed">
+                        Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ. Выбирай шаблон, и он автоматически прикрепится к новому уроку.
+                    </p>
+                </div>
+
+                <!-- Главные действия -->
+                <div class="relative z-10 flex flex-wrap items-center gap-3 shrink-0">
+                    <button class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">
+                        <i class="ph-bold ph-plus text-lg"></i> Создать шаблон
+                    </button>
+                    
+                    <button class="px-6 py-3 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm text-sm">
+                        <i class="ph-bold ph-pencil-simple text-lg"></i> Создать вручную
+                    </button>
+                </div>
+            </div>
+
+            <!-- БЛОК 2: ПАНЕЛЬ ФИЛЬТРОВ И ПОИСКА -->
+            <div class="bg-white rounded-[24px] p-5 border border-slate-200 shadow-tactile flex flex-col md:flex-row gap-4">
+                
+                <!-- Поиск -->
+                <div class="flex-1 space-y-1.5">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Поиск</label>
+                    <div class="relative">
+                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                        <input type="text" placeholder="Название шаблона..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                    </div>
+                </div>
+
+                <!-- Тип шаблона -->
+                <div class="w-full md:w-56 space-y-1.5">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Тип шаблона</label>
+                    <div class="relative">
+                        <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input appearance-none cursor-pointer">
+                            <option value="all" selected>Все типы</option>
+                            <option value="hw">Домашние задания</option>
+                            <option value="cw">Классные работы</option>
+                            <option value="test">Проверочные</option>
+                        </select>
+                        <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- Категория (Предмет) -->
+                <div class="w-full md:w-64 space-y-1.5">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Категория</label>
+                    <div class="relative">
+                        <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input appearance-none cursor-pointer">
+                            <option value="all" selected>Все категории</option>
+                            <option value="ege_inf">ЕГЭ Информатика</option>
+                            <option value="ege_math">ЕГЭ Математика</option>
+                            <option value="oge_inf">ОГЭ Информатика</option>
+                        </select>
+                        <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- СЕКЦИЯ 1: ДОМАШНИЕ ЗАДАНИЯ (Заполненный стейт) -->
+            <div class="mt-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+                        <i class="ph-fill ph-house-line text-boo-primary"></i> Домашние задания
+                    </h2>
+                    <span class="text-xs font-bold text-slate-400 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-sm">
+                        2 шаблона
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    
+                    <!-- Карточка создания нового (Кнопка) -->
+                    <button class="bg-purple-50/50 hover:bg-purple-50 border-2 border-dashed border-purple-200 rounded-[28px] p-6 flex flex-col items-center justify-center text-center transition-colors min-h-[220px] group">
+                        <div class="w-14 h-14 bg-white border border-purple-100 rounded-full flex items-center justify-center shadow-sm text-boo-primary text-2xl mb-4 group-hover:scale-110 transition-transform">
+                            <i class="ph-bold ph-plus"></i>
+                        </div>
+                        <div class="font-extrabold text-slate-700 mb-1">Добавить новый</div>
+                        <div class="text-xs font-medium text-slate-500">Создать пустой шаблон ДЗ</div>
+                    </button>
+
+                    <!-- Готовый шаблон 1 -->
+                    <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 group">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="bg-cyan-50 text-cyan-700 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-cyan-200">
+                                ЕГЭ Информатика
+                            </span>
+                            <button class="text-slate-400 hover:text-boo-primary transition-colors"><i class="ph-bold ph-dots-three text-xl"></i></button>
+                        </div>
+                        
+                        <h3 class="text-lg font-black text-slate-900 mb-2 leading-tight group-hover:text-boo-primary transition-colors">Алгебра логики (База)</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-4 line-clamp-2">
+                            Набор из 10 базовых задач на построение таблиц истинности и упрощение выражений.
+                        </p>
+
+                        <!-- Предпросмотр заданий (Номера) -->
+                        <div class="mb-6 flex-1">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Состав (10 задач):</div>
+                            <div class="flex flex-wrap gap-1.5">
+                                <span class="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-600">2</span>
+                                <span class="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-600">2</span>
+                                <span class="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-600">2</span>
+                                <span class="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-600">15</span>
+                                <span class="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-600">15</span>
+                                <span class="w-7 h-7 bg-slate-100 border border-slate-200 rounded flex items-center justify-center text-[10px] font-bold text-slate-500">+5</span>
+                            </div>
+                        </div>
+
+                        <!-- Подвал: Кнопки действий -->
+                        <div class="flex gap-2 pt-4 border-t border-slate-100">
+                            <button class="flex-1 py-2.5 bg-boo-primary text-white text-xs font-bold rounded-xl shadow-sm hover:bg-boo-primaryHover transition-colors border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0">
+                                Сформировать ДЗ
+                            </button>
+                            <button class="w-10 h-10 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors" title="Редактировать">
+                                <i class="ph-bold ph-pencil-simple text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Готовый шаблон 2 -->
+                    <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 group">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="bg-cyan-50 text-cyan-700 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-cyan-200">
+                                ЕГЭ Информатика
+                            </span>
+                            <button class="text-slate-400 hover:text-boo-primary transition-colors"><i class="ph-bold ph-dots-three text-xl"></i></button>
+                        </div>
+                        
+                        <h3 class="text-lg font-black text-slate-900 mb-2 leading-tight group-hover:text-boo-primary transition-colors">Фулл пробник (Вариант 1)</h3>
+                        <p class="text-xs font-medium text-slate-500 mb-4 line-clamp-2">
+                            Полный сгенерированный вариант КЕГЭ из 27 задач разного уровня сложности.
+                        </p>
+
+                        <!-- Предпросмотр заданий (Номера) -->
+                        <div class="mb-6 flex-1">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Состав (27 задач):</div>
+                            <div class="flex flex-wrap gap-1.5">
+                                <span class="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-600">1</span>
+                                <span class="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-600">2</span>
+                                <span class="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-600">3</span>
+                                <span class="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-600">4</span>
+                                <span class="w-7 h-7 bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-600">5</span>
+                                <span class="w-7 h-7 bg-slate-100 border border-slate-200 rounded flex items-center justify-center text-[10px] font-bold text-slate-500">+22</span>
+                            </div>
+                        </div>
+
+                        <!-- Подвал: Кнопки действий -->
+                        <div class="flex gap-2 pt-4 border-t border-slate-100">
+                            <button class="flex-1 py-2.5 bg-boo-primary text-white text-xs font-bold rounded-xl shadow-sm hover:bg-boo-primaryHover transition-colors border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0">
+                                Сформировать ДЗ
+                            </button>
+                            <button class="w-10 h-10 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors" title="Редактировать">
+                                <i class="ph-bold ph-pencil-simple text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- СЕКЦИЯ 2: КЛАССНЫЕ РАБОТЫ (Идеальное пустое состояние как на скрине) -->
+            <div class="mt-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-black text-slate-900 flex items-center gap-2 opacity-50">
+                        <i class="ph-fill ph-chalkboard-teacher text-slate-400"></i> Классные работы
+                    </h2>
+                    <span class="text-xs font-bold text-slate-400 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-sm">
+                        0 шаблонов
+                    </span>
+                </div>
+
+                <!-- Empty State (Tactile Bento) -->
+                <div class="bg-white rounded-[32px] border-2 border-dashed border-slate-200 p-12 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:bg-slate-50/50 transition-colors cursor-pointer">
+                    
+                    <!-- Маскот / Иконка -->
+                    <div class="relative z-10 w-20 h-20 bg-slate-100 rounded-[24px] rotate-3 flex items-center justify-center mb-6 border-4 border-white shadow-sm group-hover:-translate-y-2 group-hover:rotate-6 transition-all duration-300">
+                        <i class="ph-fill ph-folder-dashed text-4xl text-slate-400"></i>
+                        <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-boo-primary rounded-full flex items-center justify-center shadow-md border-2 border-white">
+                            <i class="ph-bold ph-plus text-white text-sm"></i>
+                        </div>
+                    </div>
+                    
+                    <h3 class="relative z-10 text-xl font-black text-slate-900 tracking-tight mb-2">Нет шаблонов</h3>
+                    <p class="relative z-10 text-slate-500 font-medium text-sm max-w-sm mx-auto">
+                        Создайте первый шаблон для этого типа, чтобы быстро прикреплять классные работы к новым урокам.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>

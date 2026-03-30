@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Создание урока</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты Golos Text -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Golos Text"', 'sans-serif'] },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                        'input': 'inset 0 2px 4px rgba(0,0,0,0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        
+        /* Сброс стилей для инпутов даты/времени Webkit */
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: 0.6;
+            transition: 0.2s;
+        }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ (Вид Преподавателя) -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-8 pointer-events-none">
+        <header class="w-full max-w-[1000px] mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Центральное меню -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2">
+                    <i class="ph-bold ph-users-three text-lg"></i> Ученики
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-squares-four text-lg"></i> Инструменты
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 cursor-pointer">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Tutor" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-purple-50">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-24 px-6 lg:px-8">
+        <form class="w-full max-w-[1000px] mx-auto flex flex-col gap-6">
+
+            <!-- КОНТЕКСТНАЯ ПЛАШКА УЧЕНИКА -->
+            <div class="bg-white rounded-[20px] p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Matvey" class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200">
+                    <div>
+                        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-tight">Урок для ученика</div>
+                        <div class="font-bold text-slate-900 text-sm">Матвей Иванов</div>
+                    </div>
+                </div>
+                <a href="#" class="px-4 py-2 bg-slate-50 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 hover:text-boo-primary transition-colors border border-slate-200 flex items-center gap-2 shadow-sm w-fit">
+                    <i class="ph-bold ph-arrow-left text-lg"></i> Вернуться к профилю
+                </a>
+            </div>
+
+            <!-- ЗАГОЛОВОК СТРАНИЦЫ -->
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight">Добавить урок</h1>
+                <p class="text-slate-500 font-medium text-sm mt-1">Запланируйте новое занятие и укажите необходимые детали.</p>
+            </div>
+
+            <!-- БЛОК 1: ОСНОВНАЯ ИНФОРМАЦИЯ (Тайминг и формат) -->
+            <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile relative overflow-hidden group">
+                <div class="absolute -right-10 -top-10 text-[150px] text-slate-50 group-hover:scale-110 transition-transform duration-700 pointer-events-none">
+                    <i class="ph-fill ph-calendar-plus"></i>
+                </div>
+                
+                <h2 class="text-xs font-extrabold text-boo-primary uppercase tracking-widest mb-6 flex items-center gap-2 relative z-10">
+                    <i class="ph-fill ph-calendar-check text-lg"></i> Планирование
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+                    
+                    <!-- Программа подготовки -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-500 ml-1">Программа подготовки</label>
+                        <div class="relative">
+                            <i class="ph-fill ph-exam absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                            <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-10 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input appearance-none cursor-pointer">
+                                <option value="ege_inf" selected>ЕГЭ Информатика</option>
+                                <option value="oge_inf">ОГЭ Информатика</option>
+                                <option value="ege_math">ЕГЭ Математика</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <!-- Тип урока -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-500 ml-1">Тип урока</label>
+                        <div class="relative">
+                            <i class="ph-fill ph-chalkboard-teacher absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                            <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-10 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input appearance-none cursor-pointer">
+                                <option value="regular" selected>Обычный урок</option>
+                                <option value="trial">Вводный (Пробный)</option>
+                                <option value="exam">Контрольный (Пробник)</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <!-- Часовой пояс -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-500 ml-1">Часовой пояс</label>
+                        <div class="relative">
+                            <i class="ph-fill ph-globe-hemisphere-west absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                            <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-10 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input appearance-none cursor-pointer">
+                                <option value="Europe/Moscow" selected>Московское время (МСК)</option>
+                                <option value="Asia/Yekaterinburg">Екатеринбург (МСК+2)</option>
+                                <option value="Asia/Tomsk">Томск (МСК+4)</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <!-- Дата и время -->
+                    <div class="space-y-1.5 md:col-span-1">
+                        <label class="block text-xs font-bold text-slate-500 ml-1">Дата и время начала</label>
+                        <div class="relative">
+                            <input type="datetime-local" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Длительность -->
+                    <div class="space-y-1.5 md:col-span-1">
+                        <label class="block text-xs font-bold text-slate-500 ml-1">Длительность (минуты)</label>
+                        <div class="relative">
+                            <i class="ph-fill ph-hourglass-high absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                            <input type="number" value="60" min="15" step="15" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                        </div>
+                    </div>
+
+                    <!-- Статус -->
+                    <div class="space-y-1.5 md:col-span-1">
+                        <label class="block text-xs font-bold text-slate-500 ml-1">Статус занятия</label>
+                        <div class="relative">
+                            <i class="ph-fill ph-toggle-left absolute left-4 top-1/2 -translate-y-1/2 text-boo-accent text-lg"></i>
+                            <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-10 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input appearance-none cursor-pointer">
+                                <option value="planned" selected>Запланирован</option>
+                                <option value="completed">Проведён</option>
+                                <option value="cancelled">Отменён</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- БЛОК 2: СОДЕРЖАНИЕ И ЗАМЕТКИ -->
+            <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+                <h2 class="text-xs font-extrabold text-boo-cyan uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <i class="ph-fill ph-text-t text-lg"></i> Содержание урока
+                </h2>
+
+                <div class="flex flex-col gap-6">
+                    <!-- Тема урока -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-500 ml-1">Тема урока</label>
+                        <div class="relative">
+                            <i class="ph-bold ph-text-h absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                            <input type="text" placeholder="Например: Алгоритмы, задания 19-21" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 font-medium text-slate-900 text-sm focus:outline-none focus:border-boo-cyan focus:ring-2 focus:ring-cyan-100 transition-all shadow-input">
+                        </div>
+                        <p class="text-[11px] font-medium text-slate-400 ml-1 mt-1">Краткое название, которое увидит ученик.</p>
+                    </div>
+
+                    <!-- Внутренние заметки -->
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between items-end">
+                            <label class="block text-xs font-bold text-slate-500 ml-1">Секретные заметки (только для вас)</label>
+                            <i class="ph-fill ph-lock-key text-slate-400 text-sm mr-1" title="Ученик не видит это поле"></i>
+                        </div>
+                        <textarea rows="4" placeholder="Запишите план урока, ссылки на материалы, слабые места ученика..." class="w-full bg-[#FFFBEB] border border-[#FDE68A] rounded-xl px-4 py-3 font-medium text-[#92400E] text-sm focus:outline-none focus:border-[#F59E0B] focus:ring-2 focus:ring-[#FEF3C7] transition-all shadow-input resize-y placeholder-[#FBBF24]"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- БЛОК 3: ДОМАШНЕЕ ЗАДАНИЕ И ПРАКТИКА -->
+            <div class="bg-white rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile mb-16">
+                <h2 class="text-xs font-extrabold text-boo-accent uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <i class="ph-fill ph-house-line text-lg"></i> Домашнее задание
+                </h2>
+
+                <div class="flex flex-col gap-6">
+                    
+                    <!-- Текст ДЗ -->
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-500 ml-1">Описание домашнего задания</label>
+                        <textarea rows="4" placeholder="Напишите, что нужно сделать дома (или прикрепите сгенерированную работу ниже)..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-900 text-sm focus:outline-none focus:border-boo-accent focus:ring-2 focus:ring-orange-100 transition-all shadow-input resize-y"></textarea>
+                    </div>
+
+                    <!-- Статус ДЗ -->
+                    <div class="space-y-1.5 md:w-1/3">
+                        <label class="block text-xs font-bold text-slate-500 ml-1">Статус ДЗ</label>
+                        <div class="relative">
+                            <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-accent focus:ring-2 focus:ring-orange-100 transition-all shadow-input appearance-none cursor-pointer">
+                                <option value="not_assigned" selected>Не задано</option>
+                                <option value="pending">Задано, не выполнено</option>
+                                <option value="submitted">Сдано на проверку</option>
+                                <option value="graded">Оценено</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- FLOATING ACTION BAR (Тулбар внизу экрана) -->
+            <div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[900px] px-4 z-40 pointer-events-none">
+                <div class="bg-white/90 backdrop-blur-xl border border-slate-200 shadow-mega rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 pointer-events-auto ring-1 ring-black/5">
+                    
+                    <!-- Быстрые генерации -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" class="px-4 py-2 bg-purple-50 text-boo-primary hover:bg-purple-100 border border-purple-200 rounded-xl font-bold text-sm transition-colors flex items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-plus"></i> Создать ДЗ
+                        </button>
+                        <button type="button" class="px-4 py-2 bg-purple-50 text-boo-primary hover:bg-purple-100 border border-purple-200 rounded-xl font-bold text-sm transition-colors flex items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-plus"></i> Создать КР
+                        </button>
+                        <button type="button" class="hidden sm:flex px-4 py-2 bg-purple-50 text-boo-primary hover:bg-purple-100 border border-purple-200 rounded-xl font-bold text-sm transition-colors items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-plus"></i> Проверочная
+                        </button>
+                    </div>
+
+                    <!-- Основные действия (Сохранить/Отмена) -->
+                    <div class="flex items-center gap-2 ml-auto">
+                        <button type="button" class="px-4 py-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-bold text-sm transition-colors">
+                            Отмена
+                        </button>
+                        <button type="submit" class="px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">
+                            <i class="ph-bold ph-floppy-disk text-lg"></i> Сохранить урок
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </main>
+
+</body>
+</html>

@@ -135,12 +135,6 @@
             </span>
         </a>
         {% endif %}
-        <a href="{{ url_for('reminders.reminders_list') }}" class="nav-link {% if active_page == 'reminders' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.reminders', 'md', title='Напоминания', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Напоминания</span>
-            </span>
-        </a>
     </div>
 </div>
 {% endif %}
@@ -158,32 +152,10 @@
             </span>
         </a>
         {% endif %}
-        {% if current_user.is_authenticated and has_permission(current_user, 'onboarding.view') %}
-        <a href="{{ url_for('onboarding.invites_list') }}" class="nav-link {% if active_page == 'onboarding' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.groups', 'md', title='Приглашения', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Приглашения</span>
-            </span>
-        </a>
-        {% endif %}
-        {% if current_user.is_authenticated and has_permission(current_user, 'rubrics.manage') %}
-        <a href="{{ url_for('rubrics.rubrics_list') }}" class="nav-link {% if active_page == 'rubrics' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.assignments', 'md', title='Рубрики', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Рубрики</span>
-            </span>
-        </a>
-        {% endif %}
         <a href="{{ url_for('task_generator.task_generator') }}" class="nav-link {% if active_page == 'generator' %}active{% endif %}">
             <span class="nav-link-content">
                 {{ ui_icon('nav.generator', 'md', title='Генератор', extra_class='nav-link-icon') }}
                 <span class="nav-link-label">Генератор</span>
-            </span>
-        </a>
-        <a href="{{ url_for('main.update_plans') }}" class="nav-link {% if active_page == 'plans' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.plans', 'md', title='Планы', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Планы</span>
             </span>
         </a>
         {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage')) %}
@@ -199,14 +171,6 @@
             <span class="nav-link-content">
                 {{ ui_icon('nav.library', 'md', title='Библиотека', extra_class='nav-link-icon') }}
                 <span class="nav-link-label">Библиотека</span>
-            </span>
-        </a>
-        {% endif %}
-        {% if current_user.is_authenticated and has_permission(current_user, 'assets.manage') %}
-        <a href="{{ url_for('designer.assets_manager') }}" class="nav-link {% if active_page == 'assets' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.assets', 'md', title='Ассеты', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Ассеты</span>
             </span>
         </a>
         {% endif %}

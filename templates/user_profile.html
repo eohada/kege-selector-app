@@ -346,15 +346,11 @@
                                 {% if has_permission(current_user, 'assignment.grade') %}
                                 <a href="{{ url_for('lessons.review_queue') }}" class="neo-button outline" style="text-decoration:none;">{{ ui_icon('action.check', 'sm', decorative=true) }} Проверка</a>
                                 {% endif %}
-                                <a href="{{ url_for('reminders.reminders_list') }}" class="neo-button ghost" style="text-decoration:none;">{{ ui_icon('action.clock', 'sm', decorative=true) }} Напоминания</a>
                                 {% if has_permission(current_user, 'lesson.edit') %}
                                 <a href="{{ url_for('library.materials_library') }}" class="neo-button ghost" style="text-decoration:none;">{{ ui_icon('action.admin', 'sm', decorative=true) }} Библиотека</a>
                                 {% endif %}
                                 {% if has_permission(current_user, 'trainer.use') %}
                                 <a href="{{ url_for('trainer.trainer_embed') }}" class="neo-button ghost" style="text-decoration:none;">{{ ui_icon('nav.help', 'sm', decorative=true) }} Тренажёр</a>
-                                {% endif %}
-                                {% if has_permission(current_user, 'rubrics.manage') %}
-                                <a href="{{ url_for('rubrics.rubrics_list') }}" class="neo-button ghost" style="text-decoration:none;">{{ ui_icon('action.test', 'sm', decorative=true) }} Рубрики</a>
                                 {% endif %}
                                 {% if has_permission(current_user, 'billing.manage') %}
                                 <a href="{{ url_for('billing.billing_plans') }}" class="neo-button ghost" style="text-decoration:none;">{{ ui_icon('nav.billing', 'sm', decorative=true) }} Тарифы</a>
