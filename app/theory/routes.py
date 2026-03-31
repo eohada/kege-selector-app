@@ -248,6 +248,10 @@ def theory_view(task_number):
 def _can_manage_theory():
     if not current_user.is_authenticated:
         return False
+    # Creator must always have full access to theory workspace,
+    # even if granular RBAC mapping is missing for this permission.
+    if current_user.is_creator() or current_user.is_tutor() or current_user.is_admin():
+        return True
     return bool(has_permission(current_user, 'theory.manage'))
 
 
@@ -641,7 +645,7 @@ def theory_manage_preview():
 @theory_bp.route('/theory/api/run-code', methods=['POST'])
 @login_required
 def theory_api_run_code():
-    if not has_permission(current_user, 'theory.view'):
+    if not (has_permission(current_user, 'theory.view') or _can_manage_theory()):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
     payload = request.get_json(silent=True) or {}
     lang = (payload.get('lang') or 'python').strip().lower()
