@@ -180,10 +180,10 @@ def _can_manage_theory():
     return bool(has_permission(current_user, 'theory.manage'))
 
 
-@theory_bp.route('/theory/manage')
+@theory_bp.route('/theory/manage', methods=['GET', 'POST'])
 @login_required
 def manage_list():
-    """Список всех блоков теории для редактирования."""
+    """Рабочее пространство теории: сетка + блочный редактор."""
     if not _can_manage_theory():
         flash('Недостаточно прав для управления теорией.', 'danger')
         return redirect(url_for('main.dashboard'))
@@ -205,12 +205,89 @@ def manage_list():
     block_by_number = {b.task_number: b for b in blocks}
     slots = [(num, block_by_number.get(num)) for num in task_numbers]
 
+    def _extract_status(content_value):
+        text = (content_value or '').strip()
+        if text.startswith('<!--status:published-->'):
+            return 'published'
+        if text.startswith('<!--status:draft-->'):
+            return 'draft'
+        if text:
+            return 'published'
+        return 'draft'
+
+    def _with_status_prefix(content_value, status_value):
+        body = (content_value or '').strip()
+        if body.startswith('<!--status:published-->'):
+            body = body[len('<!--status:published-->'):].lstrip()
+        elif body.startswith('<!--status:draft-->'):
+            body = body[len('<!--status:draft-->'):].lstrip()
+        marker = '<!--status:published-->' if status_value == 'published' else '<!--status:draft-->'
+        return f'{marker}\n{body}'.strip()
+
+    if request.method == 'POST':
+        task_number = request.form.get('task_number', type=int)
+        title = (request.form.get('title') or '').strip()
+        content = (request.form.get('content') or '').strip()
+        status = (request.form.get('editor_status') or 'draft').strip().lower()
+        if status not in ('draft', 'published'):
+            status = 'draft'
+
+        if task_number is None or task_number not in task_numbers:
+            flash('Выберите корректный номер задания.', 'danger')
+            return redirect(url_for('theory.manage_list', course_id=course_id))
+
+        block = block_by_number.get(task_number)
+        content_with_status = _with_status_prefix(content, status)
+        default_title = f'Задание {task_number}'
+
+        if block:
+            block.title = title or default_title
+            block.content = content_with_status
+            block.author_id = current_user.id
+        else:
+            block = TheoryBlock(
+                course_id=course_id,
+                task_number=task_number,
+                title=title or default_title,
+                content=content_with_status,
+                author_id=current_user.id,
+            )
+            db.session.add(block)
+
+        db.session.commit()
+        flash('Теория сохранена.' if status == 'draft' else 'Теория опубликована.', 'success')
+        return redirect(url_for('theory.manage_list', course_id=course_id, task_number=task_number))
+
+    selected_task_number = request.args.get('task_number', type=int)
+    if selected_task_number not in task_numbers:
+        selected_task_number = task_numbers[0] if task_numbers else None
+    selected_block = block_by_number.get(selected_task_number) if selected_task_number is not None else None
+
+    grid_states = []
+    existing_count = 0
+    published_count = 0
+    for num in task_numbers:
+        b = block_by_number.get(num)
+        if b is None:
+            grid_states.append({'task_number': num, 'state': 'empty'})
+            continue
+        existing_count += 1
+        state = _extract_status(b.content)
+        if state == 'published':
+            published_count += 1
+        grid_states.append({'task_number': num, 'state': state})
+
     from app.models import Course as ExamCourse
     course = ExamCourse.query.get(course_id) if course_id else None
 
     return render_template(
         'theory/theory_manage_list.html',
         slots=slots,
+        grid_states=grid_states,
+        selected_task_number=selected_task_number,
+        selected_block=selected_block,
+        completion_percent=(int(round((existing_count / len(task_numbers)) * 100)) if task_numbers else 0),
+        published_count=published_count,
         course_id=course_id,
         course=course,
         task_numbers=task_numbers,

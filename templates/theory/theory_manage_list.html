@@ -1,68 +1,218 @@
 {% extends 'base.html' %}
 {% set active_page = active_page|default('theory_manage') %}
-
-{% block title %}Управление теорией · BooStudy{% endblock %}
+{% block title %}Редактор Теории · BooStudy{% endblock %}
 
 {% block head_css %}
 <style>
-    .theory-manage-container { max-width: 1000px; margin: 0 auto; }
-    .hero-actions .neo-button { margin-right: 0.5rem; }
-    .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
-    .slot-card {
-        background: var(--surface-1);
-        border-radius: var(--radius-lg);
-        padding: 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        box-shadow: var(--shadow-card);
-    }
-    .slot-card.has-content { border-left: 3px solid rgba(0, 255, 213, 0.5); }
-    .slot-card-num { font-weight: 700; color: var(--accent-1); }
-    .slot-card-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .theory-editor-block:hover .theory-block-actions { opacity: 1; }
+  .theory-block-actions { opacity: 0; transition: opacity .2s ease; }
+  .theory-placeholder:empty:before { content: attr(data-placeholder); color: #94a3b8; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="theory-manage-container">
-    <section class="dashboard-hero mb-6">
-        <div class="flex justify-between items-center flex-wrap gap-4">
-            <div>
-                <p class="hero-eyebrow">контент для учеников</p>
-                <h1 class="hero-title">Теория по заданиям{% if course %} · {{ course.title }}{% endif %}</h1>
-                <p class="hero-subtitle">Создавайте и редактируйте блоки теории по номерам заданий{% if task_numbers %} (1–{{ task_numbers|length }}){% endif %}.</p>
-            </div>
-            <div class="hero-actions">
-                <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="neo-button ghost">Доступ учеников</a>
-                <a href="{{ url_for('theory.manage_new', course_id=course_id) if course_id else url_for('theory.manage_new') }}" class="neo-button accent">+ Добавить блок</a>
-            </div>
+{% set selected_clean_content = '' %}
+{% if selected_block and selected_block.content %}
+  {% set selected_clean_content = selected_block.content|replace('<!--status:published-->\n','')|replace('<!--status:draft-->\n','')|replace('<!--status:published-->','')|replace('<!--status:draft-->','') %}
+{% endif %}
+<main class="flex-1 pt-6 pb-8 px-6 lg:px-8 h-full flex justify-center">
+  <div class="w-full max-w-[1600px] flex flex-col lg:flex-row gap-6 h-full">
+    <div class="w-full lg:w-[380px] shrink-0 flex flex-col gap-6 h-full">
+      <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col h-full overflow-hidden">
+        <div class="mb-6 shrink-0">
+          <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+            <i class="ph-fill ph-book-open"></i> База знаний
+          </div>
+          <h2 class="text-2xl font-black text-slate-900 tracking-tight mb-4">Навигатор</h2>
+          <div class="relative">
+            <i class="ph-bold ph-exam absolute left-4 top-1/2 -translate-y-1/2 text-boo-primary text-lg"></i>
+            <select id="courseSelector" class="w-full bg-purple-50 border border-purple-100 rounded-xl pl-11 pr-10 py-3 font-bold text-boo-primary text-sm focus:outline-none focus:ring-2 focus:ring-purple-200 appearance-none shadow-sm">
+              <option selected>{{ course.title if course else 'Курс' }}</option>
+            </select>
+            <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none"></i>
+          </div>
         </div>
-    </section>
 
-    <div class="slots-grid">
-        {% for num, block in slots %}
-        <div class="slot-card {% if block %}has-content{% endif %}">
-            <div>
-                <span class="slot-card-num">Задание {{ num }}</span>
-                {% if block and block.title %}
-                <div class="text-sm text-muted">{{ block.title }}</div>
-                {% endif %}
-            </div>
-            <div class="slot-card-actions">
-                {% if block %}
-                <a href="{{ url_for('theory.manage_edit', block_id=block.id) }}" class="neo-button ghost">Изменить</a>
-                <form method="post" action="{{ url_for('theory.manage_delete', block_id=block.id) }}" class="inline" onsubmit="return confirm('Удалить блок теории по заданию {{ num }}?');">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="neo-button danger">Удалить</button>
-                </form>
-                {% else %}
-                <a href="{{ url_for('theory.manage_new', course_id=course_id, task_number=num) if course_id else url_for('theory.manage_new', task_number=num) }}" class="neo-button outline">Создать</a>
-                {% endif %}
-            </div>
+        <div class="flex-1 overflow-y-auto pr-2">
+          <div class="flex justify-between items-end mb-3">
+            <span class="text-xs font-bold text-slate-500">Заполнение базы: <span class="text-slate-900 font-black">{{ completion_percent }}%</span></span>
+          </div>
+          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-6 shadow-inner">
+            <div class="h-full bg-boo-primary rounded-full" style="width: {{ completion_percent }}%;"></div>
+          </div>
+
+          <div class="grid grid-cols-5 gap-2.5">
+            {% for item in grid_states %}
+              {% set num = item.task_number %}
+              {% set st = item.state %}
+              {% set is_active = (selected_task_number == num) %}
+              {% if is_active %}
+                <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-xl bg-boo-primary text-white font-black text-xl flex items-center justify-center shadow-[0_0_0_4px_#FFFFFF,0_0_0_6px_#7B5CFF] border-b-[3px] border-purple-800 scale-105 z-10 transition-all no-underline">{{ num }}</a>
+              {% elif st == 'published' %}
+                <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all no-underline">{{ num }}</a>
+              {% elif st == 'draft' %}
+                <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-xl bg-orange-400 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-orange-600 hover:translate-y-[1px] hover:border-b-[2px] transition-all no-underline">{{ num }}</a>
+              {% else %}
+                <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all no-underline">{{ num }}</a>
+              {% endif %}
+            {% endfor %}
+          </div>
         </div>
-        {% endfor %}
+
+        <div class="mt-4 pt-4 border-t border-slate-100 shrink-0 flex gap-2">
+          <a href="{{ url_for('theory.manage_access_index', course_id=course_id) }}" class="w-full py-3.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 text-sm no-underline">
+            <i class="ph-bold ph-lock-key"></i> Доступ
+          </a>
+          <a href="{{ url_for('theory.manage_new', course_id=course_id) }}" class="w-full py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm no-underline">
+            <i class="ph-bold ph-plus"></i> Новый
+          </a>
+        </div>
+      </section>
     </div>
-</div>
+
+    <section class="flex-1 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden">
+      <form id="theoryEditorForm" method="post" action="{{ url_for('theory.manage_list', course_id=course_id, task_number=selected_task_number) }}" class="contents">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="task_number" value="{{ selected_task_number or '' }}">
+        <input type="hidden" name="editor_status" id="editorStatusInput" value="draft">
+
+        <div class="h-16 px-6 border-b border-slate-100 bg-slate-50/80 backdrop-blur-md flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-3">
+            <span class="bg-boo-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black shadow-sm">{{ selected_task_number or '—' }}</span>
+            <div id="editorStatusBadge" class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm text-xs font-bold text-slate-600">
+              <span class="w-2 h-2 rounded-full bg-boo-accent animate-pulse"></span> Черновик
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" class="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2" onclick="window.toast && window.toast.success('Предпросмотр в процессе разработки')">
+              <i class="ph-bold ph-eye"></i> Предпросмотр
+            </button>
+            <button type="submit" class="px-5 py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[2px] border-b-purple-800 text-sm" onclick="document.getElementById('editorStatusInput').value='published'">
+              <i class="ph-bold ph-paper-plane-right"></i> Опубликовать
+            </button>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-8 lg:px-16 py-12 text-slate-800">
+          <input type="text" name="title" class="w-full text-4xl lg:text-5xl font-black text-slate-900 placeholder-slate-300 bg-transparent border-none outline-none mb-8" value="{{ (selected_block.title if selected_block else ('Задание ' ~ selected_task_number)) if selected_task_number else '' }}" placeholder="Заголовок теории">
+
+          <div class="theory-editor-block relative mb-6 group">
+            <div class="theory-block-actions absolute -left-10 top-0.5 flex gap-1 text-slate-300">
+              <button type="button" class="hover:text-boo-primary hover:bg-purple-50 rounded p-0.5"><i class="ph-bold ph-plus"></i></button>
+              <button type="button" class="hover:text-slate-600 rounded p-0.5 cursor-grab"><i class="ph-bold ph-dots-six-vertical"></i></button>
+            </div>
+            <textarea id="theoryContentInput" name="content" class="w-full min-h-[520px] bg-transparent border-none outline-none text-lg leading-relaxed resize-y">{{ selected_clean_content }}</textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div class="bg-[#0F172A] rounded-[20px] border border-slate-800 overflow-hidden">
+              <div class="flex items-center justify-between px-4 py-2.5 bg-slate-800/80 border-b border-slate-700">
+                <div class="flex items-center gap-2">
+                  <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+                  <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+                  <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+                  <span class="text-xs text-slate-400 ml-1">Python</span>
+                </div>
+                <button type="button" id="runSmartCode" class="text-xs font-bold text-white bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 px-2.5 py-1 rounded-md transition-colors">Run</button>
+              </div>
+              <pre id="smartCodeInput" class="p-4 font-mono text-[13px] text-slate-300 min-h-[140px] overflow-auto">for i in range(1, 4):
+    print(i)</pre>
+              <pre id="smartCodeOutput" class="hidden p-3 border-t border-slate-700 bg-slate-900 text-green-300 text-xs font-mono"></pre>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-[20px] p-5">
+              <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Math & LaTeX</div>
+              <input id="latexInput" type="text" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 font-mono text-xs mb-3" value="\neg(A \land B) \equiv \neg A \lor \neg B">
+              <div id="latexPreview" class="font-serif text-xl text-slate-800 font-bold">¬(A ∧ B) ≡ ¬A ∨ ¬B</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div class="bg-white border border-slate-200 rounded-[20px] p-5">
+              <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Практика (Embed)</div>
+              <div class="flex gap-2">
+                <input id="embedTaskId" type="text" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="ID задачи, например 10452">
+                <button type="button" id="insertEmbedBtn" class="px-3 py-2 bg-boo-primary text-white rounded-lg text-sm font-bold">Вставить</button>
+              </div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-[20px] p-5">
+              <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Callouts</div>
+              <div class="flex gap-2">
+                <button type="button" data-callout="attention" class="callout-btn px-3 py-2 bg-orange-50 text-orange-700 border border-orange-200 rounded-lg text-sm font-bold">Внимание</button>
+                <button type="button" data-callout="tip" class="callout-btn px-3 py-2 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-lg text-sm font-bold">Лайфхак</button>
+                <button type="button" data-callout="danger" class="callout-btn px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-bold">Осторожно</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+(function() {
+  const statusInput = document.getElementById('editorStatusInput');
+  const statusBadge = document.getElementById('editorStatusBadge');
+  const form = document.getElementById('theoryEditorForm');
+  const content = document.getElementById('theoryContentInput');
+  const runBtn = document.getElementById('runSmartCode');
+  const codeInput = document.getElementById('smartCodeInput');
+  const codeOut = document.getElementById('smartCodeOutput');
+  const latexInput = document.getElementById('latexInput');
+  const latexPreview = document.getElementById('latexPreview');
+  const embedBtn = document.getElementById('insertEmbedBtn');
+  const embedTaskId = document.getElementById('embedTaskId');
+  const calloutBtns = Array.from(document.querySelectorAll('.callout-btn'));
+
+  function setDraftState() {
+    if (!statusInput || !statusBadge) return;
+    statusInput.value = 'draft';
+    statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-boo-accent animate-pulse"></span> Черновик';
+  }
+  content && content.addEventListener('input', setDraftState);
+  form && form.addEventListener('submit', () => {
+    if (statusInput.value !== 'published') statusInput.value = 'draft';
+  });
+
+  runBtn && runBtn.addEventListener('click', () => {
+    if (!codeOut || !codeInput) return;
+    codeOut.classList.remove('hidden');
+    codeOut.textContent = '1\n2\n3\n\n[demo-run] Выполнение интерактивного кода доступно в режиме ученика.';
+  });
+
+  latexInput && latexInput.addEventListener('input', () => {
+    if (!latexPreview) return;
+    const raw = latexInput.value || '';
+    latexPreview.textContent = raw
+      .replace(/\\neg/g, '¬')
+      .replace(/\\land/g, '∧')
+      .replace(/\\lor/g, '∨')
+      .replace(/\\equiv/g, '≡');
+  });
+
+  function appendToContent(text) {
+    if (!content) return;
+    const cur = content.value || '';
+    const sep = cur.endsWith('\n') ? '' : '\n\n';
+    content.value = cur + sep + text + '\n';
+    content.dispatchEvent(new Event('input'));
+  }
+
+  embedBtn && embedBtn.addEventListener('click', () => {
+    const id = (embedTaskId && embedTaskId.value || '').trim();
+    if (!id) return;
+    appendToContent(`[PRACTICE_TASK id="${id}"]`);
+    if (window.toast) window.toast.success('Блок практики вставлен');
+  });
+
+  calloutBtns.forEach((btn) => btn.addEventListener('click', () => {
+    const kind = btn.dataset.callout;
+    const labels = { attention: 'ВНИМАНИЕ', tip: 'ЛАЙФХАК', danger: 'ОСТОРОЖНО' };
+    appendToContent(`[CALLOUT type="${kind}"] ${labels[kind]}: ... [/CALLOUT]`);
+    if (window.toast) window.toast.success('Плашка добавлена');
+  }));
+})();
+</script>
 {% endblock %}
