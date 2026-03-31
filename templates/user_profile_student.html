@@ -17,10 +17,12 @@
             <i class="ph-bold ph-arrow-left"></i> Назад
         </a>
         
-        <!-- Статус профиля -->
+        <!-- Тариф -->
         <div class="hidden sm:flex items-center gap-2 bg-gradient-to-r from-fuchsia-50 to-purple-50 px-4 py-2 rounded-xl border border-purple-200/50 shadow-sm">
-            <i class="ph-fill ph-student text-fuchsia-500 text-lg"></i>
-            <span class="text-xs font-extrabold text-fuchsia-700 uppercase tracking-widest">Профиль ученика</span>
+            <i class="ph-fill ph-crown text-fuchsia-500 text-lg"></i>
+            <span class="text-xs font-extrabold text-fuchsia-700 uppercase tracking-widest">
+                Тариф: {{ subscription_access.label if subscription_access and subscription_access.label else 'не задан' }}
+            </span>
         </div>
     </div>
 
@@ -31,7 +33,7 @@
         <div class="w-full h-40 sm:h-56 bg-gradient-to-r from-cyan-100 via-purple-100 to-fuchsia-100 relative overflow-hidden flex items-center justify-center">
             <div class="absolute inset-0 opacity-[0.03] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiMwMDAiLz48L3N2Zz4=')]"></div>
             
-            <button class="absolute top-4 right-4 bg-white/40 hover:bg-white/60 backdrop-blur-md text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors border border-white/50 shadow-sm" type="button">
+            <button class="absolute top-4 right-4 bg-white/40 hover:bg-white/60 backdrop-blur-md text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors border border-white/50 shadow-sm" type="button" onclick="openCoverPicker()">
                 <i class="ph-bold ph-image text-base"></i> Обложка
             </button>
         </div>
@@ -48,14 +50,14 @@
                 {% endif %}
             </div>
             
-            <div class="mt-20 sm:mt-24 flex flex-col md:flex-row md:justify-between md:items-start gap-6">
+            <div class="mt-20 sm:mt-24 sm:pl-[170px] flex flex-col md:flex-row md:justify-between md:items-start gap-6">
                 <div class="flex-1 min-w-0">
                     <h1 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight truncate">
                         {{ (current_user.profile.first_name ~ ' ' ~ current_user.profile.last_name)|trim if current_user.profile and (current_user.profile.first_name or current_user.profile.last_name) else current_user.username }}
                     </h1>
                     <p class="text-slate-500 font-bold text-sm mt-1">@{{ current_user.username }}</p>
                     
-                    <!-- Теги ученика (Только реальные данные) -->
+                    <!-- Теги ученика (по эталону: класс + категория) -->
                     <div class="flex flex-wrap items-center gap-2 mt-4">
                         {% if student and student.school_class %}
                             <span class="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-extrabold rounded-lg border border-slate-200">
@@ -65,11 +67,6 @@
                         {% if student and student.category %}
                             <span class="px-3 py-1.5 bg-cyan-50 text-boo-cyan text-xs font-extrabold rounded-lg border border-cyan-100 uppercase tracking-wider">
                                 {{ student.category }}
-                            </span>
-                        {% endif %}
-                        {% if current_user.custom_status %}
-                            <span class="px-3 py-1.5 bg-purple-50 text-boo-primary text-xs font-extrabold rounded-lg border border-purple-100">
-                                {{ current_user.custom_status }}
                             </span>
                         {% endif %}
                     </div>
@@ -212,9 +209,9 @@
                 </div>
 
                 <!-- Восстановлена ГОРИЗОНТАЛЬНАЯ сетка ачивок из эталона -->
-                <div class="grid grid-cols-3 sm:grid-cols-5 gap-4">
+                <div class="flex flex-wrap sm:flex-nowrap items-start justify-between gap-4">
                     <!-- Активная ачивка -->
-                    <div class="flex flex-col items-center gap-2 group cursor-pointer">
+                    <div class="flex flex-col items-center gap-2 group cursor-pointer min-w-[92px]">
                         <div class="w-16 h-16 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center border-2 border-orange-200 shadow-sm group-hover:scale-110 transition-transform">
                             <i class="ph-fill ph-fire text-3xl"></i>
                         </div>
@@ -222,7 +219,7 @@
                     </div>
 
                     <!-- Активная ачивка -->
-                    <div class="flex flex-col items-center gap-2 group cursor-pointer">
+                    <div class="flex flex-col items-center gap-2 group cursor-pointer min-w-[92px]">
                         <div class="w-16 h-16 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center border-2 border-blue-200 shadow-sm group-hover:scale-110 transition-transform">
                             <i class="ph-fill ph-drop text-3xl"></i>
                         </div>
@@ -230,7 +227,7 @@
                     </div>
 
                     <!-- Активная ачивка -->
-                    <div class="flex flex-col items-center gap-2 group cursor-pointer">
+                    <div class="flex flex-col items-center gap-2 group cursor-pointer min-w-[92px]">
                         <div class="w-16 h-16 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center border-2 border-purple-200 shadow-sm group-hover:scale-110 transition-transform">
                             <i class="ph-fill ph-brain text-3xl"></i>
                         </div>
@@ -238,7 +235,7 @@
                     </div>
 
                     <!-- Заблокированная ачивка -->
-                    <div class="flex flex-col items-center gap-2 opacity-40 grayscale group cursor-not-allowed">
+                    <div class="flex flex-col items-center gap-2 opacity-40 grayscale group cursor-not-allowed min-w-[92px]">
                         <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-2 border-slate-200 shadow-sm">
                             <i class="ph-fill ph-lock-key text-2xl"></i>
                         </div>
@@ -246,7 +243,7 @@
                     </div>
 
                     <!-- Заблокированная ачивка -->
-                    <div class="flex flex-col items-center gap-2 opacity-40 grayscale group cursor-not-allowed hidden sm:flex">
+                    <div class="flex-col items-center gap-2 opacity-40 grayscale group cursor-not-allowed hidden sm:flex min-w-[92px]">
                         <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-2 border-slate-200 shadow-sm">
                             <i class="ph-fill ph-lock-key text-2xl"></i>
                         </div>
@@ -313,6 +310,14 @@
             </div>
 
             <div class="space-y-1.5">
+                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="cover_file">Обложка</label>
+                <div class="relative">
+                    <i class="ph-bold ph-image absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"></i>
+                    <input type="file" id="cover_file" name="cover_file" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input file:hidden text-slate-500 cursor-pointer" accept="image/*">
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
                 <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="custom_status">Статус</label>
                 <div class="relative">
                     <i class="ph-bold ph-text-t absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"></i>
@@ -372,6 +377,14 @@ function closeEditProfileModal() {
     box.classList.add('scale-95');
     
     document.body.style.overflow = '';
+}
+
+function openCoverPicker() {
+    openEditProfileModal();
+    setTimeout(() => {
+        const coverInput = document.getElementById('cover_file');
+        if (coverInput) coverInput.click();
+    }, 80);
 }
 
 async function submitProfileEdit(event) {
