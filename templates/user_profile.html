@@ -844,7 +844,7 @@ bg-boo-bg text-boo-textMain
     function copyTelegramCode() {
         if (telegramLinkCode) {
             navigator.clipboard.writeText('/link ' + telegramLinkCode);
-            if (window.toast) toast.success('Команда скопирована!');
+            if (window.toast) window.toast.success('Команда скопирована!');
         }
     }
     
@@ -853,9 +853,9 @@ bg-boo-bg text-boo-textMain
         try {
             const resp = await fetch('/api/telegram/unlink', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
             const data = await resp.json();
-            if (data.success) { if (window.toast) toast.success('Telegram отвязан'); loadTelegramStatus(); }
-            else { if (window.toast) toast.error(data.error); }
-        } catch (e) { if (window.toast) toast.error('Ошибка соединения'); }
+            if (data.success) { if (window.toast) window.toast.success('Telegram отвязан'); loadTelegramStatus(); }
+            else { if (window.toast) window.toast.error(data.error); }
+        } catch (e) { if (window.toast) window.toast.error('Ошибка соединения'); }
     }
     
     async function toggleTelegramNotifications(enabled) {
@@ -865,9 +865,9 @@ bg-boo-bg text-boo-textMain
                 body: JSON.stringify({ enabled })
             });
             const data = await resp.json();
-            if (data.success) { if (window.toast) toast.success(enabled ? 'Уведомления включены' : 'Уведомления выключены'); }
-            else { if (window.toast) toast.error(data.error); loadTelegramStatus(); }
-        } catch (e) { if (window.toast) toast.error('Ошибка соединения'); loadTelegramStatus(); }
+            if (data.success) { if (window.toast) window.toast.success(enabled ? 'Уведомления включены' : 'Уведомления выключены'); }
+            else { if (window.toast) window.toast.error(data.error); loadTelegramStatus(); }
+        } catch (e) { if (window.toast) window.toast.error('Ошибка соединения'); loadTelegramStatus(); }
     }
     
     document.addEventListener('DOMContentLoaded', loadTelegramStatus);
