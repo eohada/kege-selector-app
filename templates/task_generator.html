@@ -76,19 +76,19 @@
     {% set status_headline = 'Нет привязки к уроку' %}
 {% endif %}
 
-<div class="w-full max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6 items-start gen-premium-shell pb-8 px-0">
-    <div class="w-full lg:w-1/3 flex flex-col gap-6 min-w-0 lg:sticky lg:top-28 self-start">
-        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 relative overflow-hidden group">
+<div class="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6 items-start gen-premium-shell pb-8">
+    <div class="w-full lg:w-1/3 flex flex-col gap-6 min-w-0 lg:sticky lg:top-28">
+        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 relative overflow-hidden group">
             <div class="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-purple-50 to-cyan-50 rounded-full blur-3xl opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
             <div class="relative z-10">
                 <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                     <i class="ph-fill ph-magic-wand text-boo-primary"></i> Генератор заданий
                 </div>
-                <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-3 leading-tight">Один поток. Одна задача. Максимум фокуса.</h1>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-3 leading-tight">Один поток. Одна задача. Максимум фокуса.</h1>
                 <p class="text-sm font-medium text-slate-500 mb-6 leading-relaxed">
                     Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной. Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
                 </p>
-                <div class="pt-4 border-t border-slate-100 flex justify-between items-center gap-2 flex-wrap">
+                <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
                     <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Режим работы</span>
                     <button type="button" class="text-sm font-bold text-boo-primary hover:text-boo-primaryHover transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-default font-inherit">
                         {{ mode_text }} <i class="ph-bold ph-caret-down" aria-hidden="true"></i>
@@ -140,7 +140,7 @@
         </div>
         {% endif %}
 
-        <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 generator-panel gen-start-card">
+        <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 generator-panel gen-start-card">
             <div class="flex justify-between items-start mb-6 gap-3 flex-wrap">
                 <div>
                     <h2 class="text-xl font-black text-slate-900 m-0">Запуск</h2>
@@ -155,7 +155,7 @@
                 {{ selection_form.hidden_tag() }}
                 {% if all_courses and all_courses|length > 1 %}
                 <div class="space-y-1.5">
-                    <label for="exam_course_id" class="text-[10px] font-black text-slate-400 uppercase tracking-[0.35em] ml-1 block">Программа подготовки</label>
+                    <label for="exam_course_id" class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block">Программа подготовки</label>
                     <div class="relative">
                         <select id="exam_course_id" name="exam_course_id" class="{{ gen_select_class }}" onchange="window.location.href=this.options[this.selectedIndex].dataset.url">
                             {% for c in all_courses %}
@@ -167,7 +167,7 @@
                 </div>
                 {% endif %}
                 <div class="space-y-1.5">
-                    <label for="taskTypeSelect" class="text-[10px] font-black text-slate-400 uppercase tracking-[0.35em] ml-1 block">Номер задания</label>
+                    <label for="taskTypeSelect" class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block">Номер задания</label>
                     <div class="relative">
                         {{ selection_form.task_type(class_=gen_select_class, id='taskTypeSelect') }}
                         <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true"></i>
@@ -188,7 +188,7 @@
                     <span class="text-sm font-medium text-slate-600">включать пропущенные (опционально)</span>
                 </label>
 
-                <div class="bg-indigo-50/50 border border-indigo-100/80 rounded-xl p-4">
+                <div class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 mt-4">
                     <p class="text-xs font-medium text-slate-600 leading-relaxed m-0">
                         <span class="font-bold text-indigo-600"><i class="ph-fill ph-lightbulb" aria-hidden="true"></i> Подсказка:</span>
                         кнопки можно прожимать с клавиатуры —
@@ -198,7 +198,7 @@
                     </p>
                 </div>
 
-                <details class="group pt-1">
+                <details class="group pt-2">
                     <summary class="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
                         <i class="ph-bold ph-caret-right transition-transform group-open:rotate-90 text-slate-400" aria-hidden="true"></i> Расширенные действия
                     </summary>
@@ -289,7 +289,7 @@
             </div>
 
             <div class="gen-task-card is-entering bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col overflow-hidden" id="genTaskCard" style="display:none;">
-                <div class="px-6 sm:px-8 py-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50 rounded-t-[32px]">
+                <div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50 rounded-t-[32px]">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-8 h-8 shrink-0 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center shadow-inner tabular-nums" id="genTaskNumber" aria-hidden="true">—</div>
                         <span id="genTaskTitle" class="sr-only">Задание</span>
@@ -302,7 +302,7 @@
                     </button>
                 </div>
 
-                <div class="task-content text-[15px] leading-relaxed text-slate-800 space-y-4 p-6 sm:p-8 pt-6" id="genTaskBody"></div>
+                <div class="task-content text-[15px] leading-relaxed text-slate-800 space-y-4 p-8" id="genTaskBody"></div>
                 <div class="gen-answer" id="genAnswer"></div>
 
                 <div class="p-6 bg-slate-50/30 border-t border-slate-100 rounded-b-[32px] flex flex-col sm:flex-row gap-3">
@@ -618,7 +618,8 @@
             const params = new URLSearchParams(window.location.search);
             const returnEdit = params.get('return_edit');
             const label = returnEdit ? '➕ Добавить в работу' : '📝 Создать работу';
-            document.getElementById('genCreateWorkBtnText')?.textContent = label;
+            const createWorkBtnText = document.getElementById('genCreateWorkBtnText');
+            if (createWorkBtnText) createWorkBtnText.textContent = label;
             const topLbl = document.getElementById('genCreateWorkBtnTopText');
             if (topLbl) topLbl.textContent = label;
         })();
