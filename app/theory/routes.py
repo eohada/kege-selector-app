@@ -142,6 +142,40 @@ def _student_can_view_task_number(student_id, task_number, course_id):
     return task_number in _get_allowed_task_numbers_for_student(student_id, course_id)
 
 
+def _build_visible_with_state(course_id):
+    """Common dataset for student theory shell (cards + read/bookmark state)."""
+    task_numbers = _get_course_task_numbers(course_id)
+    blocks = TheoryBlock.query.filter(
+        (TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))
+    ).order_by(TheoryBlock.task_number).all()
+    block_by_number = {b.task_number: b for b in blocks}
+
+    allowed_numbers = set(task_numbers)
+    student = None
+    if current_user.is_student():
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if student:
+            allowed_numbers = _get_allowed_task_numbers_for_student(student.student_id, course_id)
+        else:
+            allowed_numbers = set()
+
+    visible = [
+        (num, block_by_number.get(num))
+        for num in task_numbers
+        if num in allowed_numbers and num in block_by_number
+    ]
+
+    state_by_number = {}
+    if student:
+        rows = StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=course_id).all()
+        for r in rows:
+            state_by_number[r.task_number] = {
+                'bookmarked': bool(r.is_bookmarked),
+                'read': bool(r.is_read),
+            }
+    return visible, state_by_number
+
+
 # --- Просмотр для учеников (и тьюторов) ---
 
 @theory_bp.route('/theory')
@@ -162,33 +196,15 @@ def theory_index():
             active_page='theory',
         )
 
-    task_numbers = _get_course_task_numbers(course_id)
-    blocks = TheoryBlock.query.filter(
-        (TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))
-    ).order_by(TheoryBlock.task_number).all()
-    block_by_number = {b.task_number: b for b in blocks}
-
-    # Для ученика — фильтруем по StudentTheoryAccess
-    allowed_numbers = set(task_numbers)
-    if current_user.is_student():
-        student = Student.query.filter_by(user_id=current_user.id).first()
-        if student:
-            allowed_numbers = _get_allowed_task_numbers_for_student(student.student_id, course_id)
-        else:
-            allowed_numbers = set()
-
-    # Показываем только номера, по которым есть блок и доступ
-    visible = [
-        (num, block_by_number.get(num))
-        for num in task_numbers
-        if num in allowed_numbers and num in block_by_number
-    ]
+    visible, state_by_number = _build_visible_with_state(course_id)
 
     return render_template(
-        'theory/theory_index.html',
+        'theory/theory_shell.html',
         visible=visible,
+        state_by_number=state_by_number,
         course_id=course_id,
         active_page='theory',
+        initial_view='index',
     )
 
 
@@ -209,6 +225,7 @@ def theory_view(task_number):
     if task_number not in task_numbers:
         abort(404)
 
+    student = None
     if current_user.is_student():
         student = Student.query.filter_by(user_id=current_user.id).first()
         if student and not _student_can_view_task_number(student.student_id, task_number, course_id):
@@ -238,9 +255,36 @@ def theory_view(task_number):
     except Exception:
         logger.exception("Failed to load custom theory HTML for task_number=%s", task_number)
 
+    visible, state_by_number = _build_visible_with_state(course_id)
+    feedback = None
+    state = None
+    if student:
+        st_row = StudentTheoryState.query.filter_by(
+            student_id=student.student_id,
+            course_id=course_id,
+            task_number=task_number,
+        ).first()
+        if st_row:
+            state = {
+                'bookmarked': bool(st_row.is_bookmarked),
+                'read': bool(st_row.is_read),
+            }
+        feedback = TheoryFeedback.query.filter_by(
+            student_id=student.student_id,
+            course_id=course_id,
+            task_number=task_number,
+        ).first()
+
     return render_template(
-        'theory/theory_view.html',
+        'theory/theory_shell.html',
+        visible=visible,
+        state_by_number=state_by_number,
         block=block,
+        initial_block=block,
+        initial_state=state,
+        initial_feedback=feedback,
+        initial_custom_html=custom_html,
+        initial_view='article',
         course_id=course_id,
         active_page='theory',
         custom_html=custom_html,
