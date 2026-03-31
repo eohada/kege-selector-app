@@ -977,6 +977,7 @@ def profile_update():
                 if not os.path.abspath(file_path).startswith(os.path.abspath(upload_folder)):
                     return jsonify({'success': False, 'error': 'Недопустимый путь'}), 400
                 file.save(file_path)
+                current_user.cover_url = cover_url
                 if getattr(current_user, 'profile', None):
                     current_user.profile.cover_url = cover_url
                 logger.info(f"Cover uploaded for user {current_user.id}: {cover_url}")
