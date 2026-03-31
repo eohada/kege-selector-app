@@ -13,6 +13,9 @@
   .prose-article p { margin-bottom: 1rem; line-height: 1.7; color: #475569; }
   .prose-article ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; color: #475569; }
   .prose-article li { margin-bottom: 0.5rem; }
+  .prose-article .theory-spacer { height: 18px; }
+  .prose-article .theory-smart-code { border-radius: 24px; }
+  .prose-article code { background: #f1f5f9; color: #334155; padding: .15rem .35rem; border-radius: .35rem; font-weight: 700; }
 </style>
 {% endblock %}
 
@@ -355,6 +358,29 @@
         star.classList.toggle('text-boo-accent', rVal <= rating);
         star.classList.toggle('text-slate-300', rVal > rating);
       });
+    }
+
+    if (action === 'mark-read') {
+      e.preventDefault();
+      const r = await fetch({{ url_for('theory.theory_api_read')|tojson }}, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ task_number: taskNumber, course_id: courseId }),
+      });
+      const data = await r.json().catch(() => null);
+      if (!r.ok || !data || !data.success) { if (window.toast) window.toast.error('Не удалось отметить'); return; }
+      const card = grid?.querySelector(`.theory-card[data-task-number="${taskNumber}"]`);
+      if (card) card.dataset.read = '1';
+      const btnRead = articleContainer.querySelector('[data-action="mark-read"]');
+      if (btnRead) {
+        btnRead.classList.add('bg-green-600');
+        btnRead.classList.remove('bg-boo-primary');
+        btnRead.innerHTML = '<i class="ph-bold ph-check-circle text-lg"></i> Изучено';
+      }
+      if (window.toast) window.toast.success('Отмечено как изученное');
+      applyFilters();
+      return;
     }
   });
 

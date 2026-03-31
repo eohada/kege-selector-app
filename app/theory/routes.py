@@ -46,51 +46,64 @@ def _render_theory_content_html(content_value):
         lang = (match.group(1) or 'python').strip().lower()
         code_body = (match.group(2) or '').strip()
         return (
-            '<div class="theory-smart-code my-6 rounded-2xl border border-slate-700 overflow-hidden bg-slate-900" '
+            '<div class="theory-smart-code my-8 rounded-[24px] border border-slate-800 overflow-hidden bg-[#0F172A] shadow-inner" '
             f'data-lang="{lang}">'
             '<div class="px-4 py-2.5 border-b border-slate-700 bg-slate-800/80 flex items-center justify-between">'
-            f'<span class="text-xs font-bold text-slate-300 uppercase">{lang}</span>'
+            '<div class="flex items-center gap-2.5"><div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div><div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div><div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>'
+            f'<span class="text-[10px] font-mono font-bold text-slate-400 uppercase ml-1">{lang}</span></div>'
             '<div class="flex items-center gap-2">'
             '<input type="text" class="theory-code-args bg-slate-900 border border-slate-600 rounded-md px-2 py-1 text-[11px] text-slate-200" '
             'placeholder="Аргументы / stdin">'
-            '<button type="button" class="theory-run-btn px-2.5 py-1 text-xs font-bold text-white bg-green-600 hover:bg-green-500 rounded-md">Run</button>'
+            '<button type="button" class="theory-run-btn px-2.5 py-1 text-xs font-bold text-white bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-md">Run</button>'
             '</div>'
             '</div>'
-            f'<textarea class="theory-code-input w-full min-h-[120px] bg-slate-950 text-slate-200 font-mono text-xs p-4 border-none outline-none">{code_body}</textarea>'
-            '<pre class="theory-code-output hidden m-0 p-4 bg-black text-green-300 text-xs font-mono border-t border-slate-700"></pre>'
+            f'<textarea class="theory-code-input w-full min-h-[120px] bg-[#0F172A] text-slate-300 font-mono text-[14px] p-5 border-none outline-none leading-relaxed">{code_body}</textarea>'
+            '<pre class="theory-code-output hidden m-0 p-4 bg-slate-950 text-green-300 text-xs font-mono border-t border-slate-700"></pre>'
             '</div>'
         )
 
     def _callout_repl(match):
         ctype = (match.group(1) or 'tip').strip().lower()
         body = (match.group(2) or '').strip()
+        body = re.sub(r'^(ВНИМАНИЕ|ЛАЙФХАК|ОСТОРОЖНО)\s*:\s*', '', body, flags=re.IGNORECASE)
         theme = {
-            'attention': ('orange', 'Внимание'),
-            'tip': ('cyan', 'Лайфхак'),
-            'danger': ('red', 'Осторожно'),
-        }.get(ctype, ('cyan', 'Заметка'))
-        color, title = theme
+            'attention': {'title': 'Внимание', 'bg': '#FFF7ED', 'border': '#FED7AA', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FFFFFF', 'icon_color': '#EA580C'},
+            'tip': {'title': 'Что нужно запомнить?', 'bg': '#ECFEFF', 'border': '#A5F3FC', 'icon': 'ph-fill ph-info', 'icon_bg': '#FFFFFF', 'icon_color': '#06B6D4'},
+            'danger': {'title': 'Осторожно', 'bg': '#FEF2F2', 'border': '#FECACA', 'icon': 'ph-fill ph-shield-warning', 'icon_bg': '#FFFFFF', 'icon_color': '#DC2626'},
+        }.get(ctype, {'title': 'Заметка', 'bg': '#ECFEFF', 'border': '#A5F3FC', 'icon': 'ph-fill ph-info', 'icon_bg': '#FFFFFF', 'icon_color': '#0891B2'})
         return (
-            f'<div class="my-5 rounded-2xl border border-{color}-200 bg-{color}-50 px-5 py-4">'
-            f'<div class="text-xs font-extrabold uppercase tracking-widest text-{color}-600 mb-1">{title}</div>'
-            f'<div class="text-sm font-medium text-slate-700">{body}</div>'
+            f'<div class="my-8 rounded-[24px] p-6 flex gap-4 shadow-sm" style="background:{theme["bg"]};border:1px solid {theme["border"]};">'
+            f'<div class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center shadow-sm" style="background:{theme["icon_bg"]};color:{theme["icon_color"]};border:1px solid {theme["border"]};">'
+            f'<i class="{theme["icon"]} text-xl"></i></div>'
+            f'<div><h4 class="font-bold text-slate-900 mb-1">{theme["title"]}</h4>'
+            f'<p class="text-sm font-medium text-slate-600">{body}</p></div>'
             '</div>'
         )
 
     def _practice_repl(match):
         task_id = (match.group(1) or '').strip()
         return (
-            '<div class="my-6 rounded-2xl border-2 border-slate-200 bg-white p-5">'
+            '<div class="my-8 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">'
             '<div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-2">Интерактивный блок</div>'
-            f'<div class="text-sm font-bold text-slate-800 mb-3">Практика · ID: {task_id}</div>'
-            '<button type="button" class="px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-sm font-bold text-slate-700">Открыть в тренажере</button>'
+            f'<div class="text-2xl font-black text-slate-900 mb-3">Практика · ID: {task_id}</div>'
+            '<button type="button" class="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors">Открыть в тренажере</button>'
             '</div>'
         )
 
+    text = re.sub(r"\n{3,}", "\n\n<div class=\"theory-spacer\"></div>\n\n", text)
     text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
-    text = re.sub(r"\$\$(.+?)\$\$", lambda m: f'<div class="my-4 text-center text-xl font-serif text-slate-800">{m.group(1)}</div>', text, flags=re.DOTALL)
+    text = re.sub(
+        r"\$\$(.+?)\$\$",
+        lambda m: (
+            '<div class="my-8 bg-slate-50 p-6 rounded-2xl border border-slate-200/70 shadow-inner">'
+            f'<div class="font-mono text-lg text-slate-800 font-bold tracking-wide whitespace-pre-wrap">{m.group(1).strip()}</div>'
+            '</div>'
+        ),
+        text,
+        flags=re.DOTALL
+    )
     try:
         from markdown import markdown as _md
         text = _md(text, extensions=['extra', 'tables', 'fenced_code'])
@@ -266,20 +279,34 @@ def theory_view(task_number):
             task_number=task_number,
         ).first()
 
+    template_ctx = dict(
+        block=block,
+        course_id=course_id,
+        active_page='theory',
+        custom_html=custom_html,
+        rendered_content_html=_render_theory_content_html(block.content or ''),
+    )
+
+    if request.args.get('fragment') == '1':
+        return render_template(
+            'theory/_article.html',
+            initial_block=block,
+            initial_state=state,
+            initial_feedback=feedback,
+            initial_custom_html=custom_html,
+            **template_ctx,
+        )
+
     return render_template(
         'theory/theory_shell.html',
         visible=visible,
         state_by_number=state_by_number,
-        block=block,
         initial_block=block,
         initial_state=state,
         initial_feedback=feedback,
         initial_custom_html=custom_html,
         initial_view='article',
-        course_id=course_id,
-        active_page='theory',
-        custom_html=custom_html,
-        rendered_content_html=_render_theory_content_html(block.content or ''),
+        **template_ctx,
     )
 
 
