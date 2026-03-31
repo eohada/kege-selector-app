@@ -842,11 +842,12 @@
   /* ═══════════════ MODAL ═══════════════ */
 
   .modal-overlay {
-    @apply fixed inset-0 z-[100] flex items-center justify-center animate-fade-in;
+    @apply fixed inset-0 z-[100] hidden items-center justify-center animate-fade-in;
     background: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(4px);
     padding: 1.5rem;
   }
+  .modal-overlay.active { @apply flex; }
   .modal-content {
     @apply w-full max-w-lg animate-slide-up overflow-y-auto;
     background: #FFFFFF;
