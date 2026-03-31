@@ -412,6 +412,10 @@
 
         function renderMath(container) {
             try {
+                if (!container) return;
+                const rawText = container.textContent || '';
+                // Skip expensive KaTeX pass for plain-text tasks.
+                if (!rawText.includes('$')) return;
                 if (window.renderMathInElement) {
                     window.renderMathInElement(container, {
                         delimiters: [
@@ -502,14 +506,11 @@
         }
 
         function animateSwap(nextTask, message) {
-            card.classList.add('is-leaving');
-            setTimeout(() => {
-                renderTask(nextTask);
-                card.classList.remove('is-leaving');
-                card.classList.add('is-entering');
-                setTimeout(() => card.classList.remove('is-entering'), 30);
-                if (message && window.toast) window.toast.success(message);
-            }, 200);
+            renderTask(nextTask);
+            card.classList.remove('is-leaving');
+            card.classList.add('is-entering');
+            requestAnimationFrame(() => card.classList.remove('is-entering'));
+            if (message && window.toast) window.toast.success(message);
         }
 
         async function startStream() {
