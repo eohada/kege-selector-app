@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+{% block title %}Профиль · BooStudy{% endblock %}
+{% set active_page = None %}
+{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
+
+{% block content %}
+{% set creator_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
+<div class="w-full max-w-[1200px] mx-auto flex flex-col gap-6 pb-6">
+    <a href="{{ url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary transition-colors bg-white/70 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm no-underline">
+        <i class="ph-bold ph-arrow-left"></i> Вернуться к метрикам
+    </a>
+
+    <section class="bg-white/95 backdrop-blur-xl rounded-[32px] border border-purple-200/60 border-b-[4px] border-b-purple-300 shadow-[0_10px_50px_-10px_rgba(123,92,255,0.3)] overflow-hidden">
+        <div class="w-full h-56 sm:h-72 bg-slate-900 relative overflow-hidden group">
+            {% if creator_cover %}
+            <img src="{{ creator_cover }}" alt="Cover" class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700 absolute inset-0 z-10">
+            {% else %}
+            <div class="absolute inset-0 z-10 bg-gradient-to-br from-violet-600 to-cyan-700"></div>
+            {% endif %}
+            <div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/30 z-20 pointer-events-none"></div>
+            <button class="absolute top-6 right-6 bg-white/10 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/20 z-30 shadow-sm" type="button" onclick="openEditProfileModal()">
+                <i class="ph-bold ph-camera text-lg"></i> Сменить обложку
+            </button>
+        </div>
+
+        <div class="px-8 sm:px-12 pb-10 relative bg-white">
+            <div class="absolute -top-20 sm:-top-24 left-8 sm:left-12 w-36 h-36 sm:w-44 sm:h-44 rounded-[32px] shadow-[0_0_0_6px_#fff,0_8px_32px_-4px_rgba(123,92,255,0.4)] bg-slate-900 flex items-center justify-center shrink-0 z-30 ring-4 ring-purple-100 ring-offset-4 ring-offset-white overflow-hidden">
+                {% if current_user.avatar_url %}
+                <img src="{{ current_user.avatar_url }}" alt="Avatar" class="w-full h-full object-cover">
+                {% else %}
+                <span class="w-full h-full flex items-center justify-center text-white text-4xl font-black">{{ current_user.username[0].upper() }}</span>
+                {% endif %}
+            </div>
+            <div class="absolute top-10 sm:top-12 left-[130px] sm:left-[170px] w-8 h-8 sm:w-10 sm:h-10 bg-green-500 rounded-full border-[5px] border-white shadow-md z-40"></div>
+
+            <div class="mt-20 sm:mt-24 flex flex-col md:flex-row md:justify-between md:items-start gap-6">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tight truncate">{{ current_user.username }}</h1>
+                        <i class="ph-fill ph-check-circle text-boo-primary text-2xl" title="Верифицированный"></i>
+                    </div>
+                    <p class="text-slate-500 font-medium text-lg italic mt-2">"{{ current_user.custom_status or 'слеп, но не глуп' }}"</p>
+
+                    <div class="flex flex-wrap items-center gap-2 mt-6">
+                        {% for role_name in current_user.get_roles_display()[:3] %}
+                        <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-md border border-slate-700 uppercase tracking-wider">
+                            {{ role_name }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="shrink-0 pt-2">
+                    <button class="px-7 py-4 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm border border-slate-200 text-sm" type="button" onclick="openEditProfileModal()">
+                        <i class="ph-bold ph-pencil-simple text-xl"></i> Редактировать профиль
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <a href="{{ url_for('schedule.schedule') }}" class="px-4 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline"><i class="ph-bold ph-calendar-blank text-lg"></i> Расписание</a>
+                <a href="{{ url_for('students.students_list') }}" class="px-4 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-users-three text-lg text-boo-primary"></i> Ученики</a>
+                <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-tray text-lg text-boo-primary"></i> Работы</a>
+                <a href="{{ url_for('library.materials_library') }}" class="px-4 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-books text-lg text-boo-primary"></i> Библиотека</a>
+            </div>
+        </div>
+    </section>
+
+    <div class="flex flex-col lg:flex-row gap-6">
+        <div class="w-full lg:w-1/2">
+            <section class="bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+                <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <i class="ph-fill ph-user-circle-gear text-xl"></i> Информация профиля
+                </h2>
+                <div class="bg-[#0F172A] p-6 rounded-[24px] border border-slate-700 shadow-inner relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-8 bg-slate-800/80 flex items-center px-4 gap-2 border-b border-slate-700">
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        <span class="text-[10px] text-slate-500 font-mono ml-2">creator_bio.md</span>
+                    </div>
+                    <div class="mt-6 text-[13px] text-slate-300 leading-relaxed space-y-3 font-mono">
+                        {% if current_user.about_me %}
+                        {% for line in current_user.about_me.split('\n') if line.strip() %}
+                        <p><span class="text-boo-primary font-bold">~</span> {{ line }}</p>
+                        {% endfor %}
+                        {% else %}
+                        <p><span class="text-boo-primary font-bold">~</span> Инноватор в сфере EdTech и практикующий IT-наставник.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-1 mt-8">
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-slate-500">ID аккаунта</span><span class="text-sm font-black text-white bg-slate-900 px-3 py-1 rounded-lg shadow-sm border border-slate-700">{% if current_user.numeric_id %}#{{ current_user.numeric_id }}{% else %}—{% endif %}</span></div>
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-slate-500">Логин</span><span class="text-sm font-bold text-slate-900">@{{ current_user.username }}</span></div>
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-slate-500">Регистрация</span><span class="text-sm font-bold text-slate-900">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span></div>
+                    <div class="flex justify-between items-center py-3.5"><span class="text-sm font-bold text-slate-500">Статус</span><span class="text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
+                </div>
+            </section>
+        </div>
+
+        <div class="w-full lg:w-1/2">
+            <section class="bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2"><i class="ph-fill ph-terminal-window text-xl"></i> Панель управления</h2>
+                    <div class="flex items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-100">
+                        <span class="text-[10px] font-extrabold text-boo-primary uppercase">Dev Mode</span>
+                        <div class="w-8 h-4 bg-boo-primary rounded-full relative"><div class="absolute right-1 top-0.5 w-3 h-3 bg-white rounded-full"></div></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-8">
+                    <a href="{{ url_for('schedule.schedule') }}" class="py-4 px-4 bg-boo-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 text-sm no-underline"><i class="ph-bold ph-calendar-blank text-xl"></i> Расписание</a>
+                    <a href="{{ url_for('students.students_list') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-users text-xl"></i> Ученики</a>
+                    <a href="{{ url_for('assignments.assignments_list') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-files text-xl"></i> Работы</a>
+                    <a href="{{ url_for('lessons.review_queue') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-check-square-offset text-xl"></i> Проверка</a>
+                    <a href="{{ url_for('reminders.reminders_list') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-bell-ringing text-xl"></i> Напоминания</a>
+                    <a href="{{ url_for('library.materials_library') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-books text-xl"></i> Библиотека</a>
+                    <a href="{{ url_for('trainer.trainer_embed') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-game-controller text-xl"></i> Тренажёр</a>
+                    <a href="{{ url_for('rubrics.rubrics_list') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-tree-structure text-xl"></i> Рубрикатор</a>
+                    <div class="col-span-2 py-4 px-4 bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm"><i class="ph-bold ph-dots-three text-2xl"></i> Больше инструментов</div>
+                </div>
+
+                <details>
+                    <summary class="font-black text-slate-800 cursor-pointer">Синхронизация календаря</summary>
+                </details>
+
+                <form method="POST" action="{{ url_for('auth.logout') }}" class="mt-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="w-full py-4 bg-red-50 hover:bg-red-100 text-boo-coral rounded-xl font-bold flex justify-center items-center gap-2 shadow-sm border border-red-200 transition-all text-sm" type="submit">
+                        <i class="ph-bold ph-sign-out text-xl"></i> Выйти из аккаунта
+                    </button>
+                </form>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="editProfileModal" style="z-index:9999;">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title">Редактировать профиль</h2>
+            <button class="modal-close" onclick="closeEditProfileModal()">&times;</button>
+        </div>
+        <form id="editProfileForm" onsubmit="submitProfileEdit(event)" enctype="multipart/form-data">
+            <div class="modal-body">
+                <div class="neo-field">
+                    <label class="neo-label" for="avatar_file">Аватарка</label>
+                    <input type="file" id="avatar_file" name="avatar_file" class="neo-input" accept="image/*">
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="cover_file">Баннер профиля</label>
+                    <input type="file" id="cover_file" name="cover_file" class="neo-input" accept="image/*">
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="custom_status">Статус</label>
+                    <input type="text" id="custom_status" name="custom_status" class="neo-input" value="{{ current_user.custom_status or '' }}">
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="about_me">О себе</label>
+                    <textarea id="about_me" name="about_me" class="neo-textarea">{{ current_user.about_me or '' }}</textarea>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="telegram_link">Telegram</label>
+                    <input type="text" id="telegram_link" name="telegram_link" class="neo-input" value="{{ current_user.telegram_link or '' }}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="neo-button ghost" onclick="closeEditProfileModal()">Отмена</button>
+                <button type="submit" class="neo-button accent">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+function openEditProfileModal() {
+    document.getElementById('editProfileModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function closeEditProfileModal() {
+    document.getElementById('editProfileModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+async function submitProfileEdit(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (!csrfToken) return;
+    formData.append('csrf_token', csrfToken.content || csrfToken.getAttribute('content'));
+    try {
+        const response = await fetch("{{ url_for('auth.profile_update') }}", { method: 'POST', body: formData });
+        const result = await response.json();
+        if (response.ok && result.success) {
+            if (window.toast) window.toast.success('Профиль обновлен');
+            setTimeout(() => window.location.reload(), 400);
+        } else if (window.toast) {
+            window.toast.error(result.error || 'Ошибка обновления');
+        }
+    } catch (e) {
+        if (window.toast) window.toast.error('Ошибка сети: ' + e.message);
+    }
+}
+</script>
+{% endblock %}

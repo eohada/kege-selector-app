@@ -791,13 +791,17 @@ def user_profile():
         recent_lessons = []
         lesson_counts = {'total': 0, 'planned': 0, 'completed': 0}
 
-    # Student profile should match the dedicated student profile etalon page.
-    if current_user.is_student() and linked_student:
-        return redirect(url_for('students.student_profile', student_id=linked_student.student_id))
+    if current_user.is_student():
+        return render_template(
+            'user_profile_student.html',
+            linked_student=linked_student,
+            recent_lessons=recent_lessons,
+            lesson_counts=lesson_counts,
+        )
 
     if current_user.is_creator():
         return render_template(
-            'user_profile_creator.html',
+            'user_profile_creator_v2.html',
             linked_student=linked_student,
             recent_lessons=recent_lessons,
             lesson_counts=lesson_counts,
