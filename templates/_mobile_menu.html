@@ -1,26 +1,27 @@
 {# Mobile hamburger + slide-in menu — matches Tactile Dock style #}
-<button class="mobile-menu-toggle md:hidden" data-mobile-menu-toggle aria-label="Открыть меню" type="button">
-    <span></span>
-    <span></span>
-    <span></span>
-</button>
+<div data-mobile-menu-root>
+    <button class="mobile-menu-toggle md:hidden" data-mobile-menu-toggle aria-label="Открыть меню" type="button">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
 
-<div class="mobile-menu-overlay" data-mobile-menu-overlay></div>
+    <div class="mobile-menu-overlay" data-mobile-menu-overlay></div>
 
-<nav class="mobile-menu" data-mobile-menu>
-    <div class="mobile-menu-header">
-        <a href="{{ url_for('main.index') }}" class="dock-brand" style="gap:0.5rem;">
-            <div class="dock-brand-icon" style="width:32px;height:32px;border-radius:10px;">
-                <i class="ph-fill ph-ghost text-lg"></i>
-            </div>
-            <span class="font-extrabold text-base">BooStudy</span>
-        </a>
-        <button class="mobile-menu-close" data-mobile-menu-close aria-label="Закрыть" type="button">
-            <i class="ph-bold ph-x text-xl"></i>
-        </button>
-    </div>
+    <nav class="mobile-menu" data-mobile-menu>
+        <div class="mobile-menu-header">
+            <a href="{{ url_for('main.index') }}" class="dock-brand" style="gap:0.5rem;">
+                <div class="dock-brand-icon" style="width:32px;height:32px;border-radius:10px;">
+                    <i class="ph-fill ph-ghost text-lg"></i>
+                </div>
+                <span class="font-extrabold text-base">BooStudy</span>
+            </a>
+            <button class="mobile-menu-close" data-mobile-menu-close aria-label="Закрыть" type="button">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
+        </div>
 
-    <div class="mobile-nav-links">
+        <div class="mobile-nav-links">
         {% if current_user and current_user.is_authenticated %}
             {# Parent #}
             {% if current_user.is_parent() %}
@@ -112,42 +113,42 @@
                 <i class="ph-bold ph-sign-out text-lg"></i> Выход
             </a>
         {% endif %}
-    </div>
-</nav>
+        </div>
+    </nav>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var toggles = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-toggle]'));
-    if (!toggles.length) return;
-    var menus = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu]'));
-    var overlays = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-overlay]'));
-    var closes = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-close]'));
+    var roots = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-root]'));
+    if (!roots.length) return;
 
-    toggles.forEach(function(toggle, idx) {
-        var root = toggle.parentElement || document;
-        var menu = menus[idx] || root.querySelector('[data-mobile-menu]');
-        var overlay = overlays[idx] || root.querySelector('[data-mobile-menu-overlay]');
-        var close = closes[idx] || root.querySelector('[data-mobile-menu-close]');
+    roots.forEach(function(root) {
+        var toggle = root.querySelector('[data-mobile-menu-toggle]');
+        var menu = root.querySelector('[data-mobile-menu]');
+        var overlay = root.querySelector('[data-mobile-menu-overlay]');
+        var close = root.querySelector('[data-mobile-menu-close]');
         if (!menu || !overlay || !close) return;
 
         function openMenu() {
-            toggle.classList.add('active');
+            if (toggle) toggle.classList.add('active');
             menu.classList.add('active');
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
 
         function closeMenu() {
-            toggle.classList.remove('active');
+            if (toggle) toggle.classList.remove('active');
             menu.classList.remove('active');
             overlay.classList.remove('active');
             document.body.style.overflow = '';
         }
 
-        toggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            openMenu();
-        });
+        if (toggle) {
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                openMenu();
+            });
+        }
         close.addEventListener('click', closeMenu);
         overlay.addEventListener('click', closeMenu);
         Array.prototype.slice.call(menu.querySelectorAll('.nav-link')).forEach(function(link) {
