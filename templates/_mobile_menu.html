@@ -119,12 +119,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     var toggles = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-toggle]'));
     if (!toggles.length) return;
+    var menus = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu]'));
+    var overlays = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-overlay]'));
+    var closes = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-close]'));
 
-    toggles.forEach(function(toggle) {
+    toggles.forEach(function(toggle, idx) {
         var root = toggle.parentElement || document;
-        var menu = root.querySelector('[data-mobile-menu]');
-        var overlay = root.querySelector('[data-mobile-menu-overlay]');
-        var close = root.querySelector('[data-mobile-menu-close]');
+        var menu = menus[idx] || root.querySelector('[data-mobile-menu]');
+        var overlay = overlays[idx] || root.querySelector('[data-mobile-menu-overlay]');
+        var close = closes[idx] || root.querySelector('[data-mobile-menu-close]');
         if (!menu || !overlay || !close) return;
 
         function openMenu() {
@@ -141,7 +144,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.style.overflow = '';
         }
 
-        toggle.addEventListener('click', openMenu);
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            openMenu();
+        });
         close.addEventListener('click', closeMenu);
         overlay.addEventListener('click', closeMenu);
         Array.prototype.slice.call(menu.querySelectorAll('.nav-link')).forEach(function(link) {
