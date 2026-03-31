@@ -184,7 +184,13 @@
                 <div class="text-text-muted text-sm">Итого</div>
                 <div class="text-3xl font-bold" x-text="planPrice() + ' ₽'"></div>
             </div>
-            <button class="neo-button accent w-full py-4 text-lg">Оплатить</button>
+            <button
+                type="button"
+                :disabled="!allSelected()"
+                @click="window.location.href='{{ url_for('billing.billing_subscriptions') }}'"
+                class="neo-button accent w-full py-4 text-lg disabled:opacity-60 disabled:cursor-not-allowed">
+                Оплатить
+            </button>
         </div>
     </div>
 </section>

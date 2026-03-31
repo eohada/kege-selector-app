@@ -28,7 +28,14 @@
 </section>
 
 <section class="bg-white rounded-[24px] p-5 border border-slate-200 shadow-tactile">
-    <div class="flex gap-4 flex-wrap">
+    <div class="flex gap-4 flex-wrap items-end">
+        <div class="min-w-[260px] flex-1">
+            <label class="block mb-2 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Поиск</label>
+            <div class="relative">
+                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                <input id="searchFilter" type="text" value="{{ current_q or '' }}" placeholder="Название шаблона..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" onkeydown="if(event.key==='Enter'){applyFilters();}">
+            </div>
+        </div>
         <div>
             <label class="block mb-2 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Тип шаблона</label>
             <select id="typeFilter" class="w-full min-w-[200px] bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100" onchange="applyFilters()">
@@ -49,6 +56,7 @@
                 <option value="ПРОГРАММИРОВАНИЕ" {% if current_category == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
             </select>
         </div>
+        <button type="button" onclick="applyFilters()" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm flex items-center gap-2"><i class="ph-bold ph-funnel"></i>Применить</button>
     </div>
 </section>
 
@@ -100,6 +108,10 @@
 
             <div class="template-actions">
                 <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost no-underline">{{ ui_icon('action.eye', 'sm', decorative=true) }}Просмотр</a>
+                <form method="POST" action="{{ url_for('templates.template_create_assignment', template_id=template.template_id) }}" class="inline">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button type="submit" class="neo-button accent">{{ ui_icon('action.plus', 'sm', decorative=true) }}Сформировать ДЗ</button>
+                </form>
                 {% if can_manage_templates %}
                 <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost no-underline">{{ ui_icon('action.edit', 'sm', decorative=true) }}Изменить</a>
                 <button type="button" class="neo-button ghost danger flex-none px-3 py-3" onclick="confirmDeleteTemplate({{ template.template_id }})">{{ ui_icon('action.trash', 'sm', decorative=true, extra_class='ui-icon--only') }}</button>
@@ -127,7 +139,9 @@
     function applyFilters() {
         const type = document.getElementById('typeFilter').value;
         const category = document.getElementById('categoryFilter').value;
+        const q = (document.getElementById('searchFilter')?.value || '').trim();
         const params = new URLSearchParams();
+        if (q) params.append('q', q);
         if (type) params.append('type', type);
         if (category) params.append('category', category);
         window.location.href = '{{ url_for('templates.templates_list') }}?' + params.toString();

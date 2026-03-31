@@ -127,6 +127,7 @@ def templates_list():
         return _deny_templates_access()
     template_type = request.args.get('type', '')
     category = request.args.get('category', '')
+    q_text = (request.args.get('q') or '').strip()
     
     query = TaskTemplate.query.filter_by(is_active=True)
     
@@ -134,6 +135,8 @@ def templates_list():
         query = query.filter_by(template_type=template_type)
     if category:
         query = query.filter_by(category=category)
+    if q_text:
+        query = query.filter(TaskTemplate.name.ilike(f'%{q_text}%'))
     
     templates = query.options(
         db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
@@ -153,7 +156,28 @@ def templates_list():
                          templates=templates,
                          templates_by_type=templates_by_type,
                          current_type=template_type,
-                         current_category=category)
+                         current_category=category,
+                         current_q=q_text)
+
+
+@templates_bp.route('/templates/<int:template_id>/create-assignment', methods=['POST'])
+@login_required
+def template_create_assignment(template_id: int):
+    """Быстрый переход к мастеру создания работы из шаблона."""
+    if not _can_manage_templates():
+        return _deny_templates_access()
+    template = TaskTemplate.query.get_or_404(template_id)
+    assignment_type = (template.template_type or 'homework').strip().lower()
+    if assignment_type not in {'homework', 'classwork', 'exam'}:
+        assignment_type = 'homework'
+    return redirect(
+        url_for(
+            'assignments.assignment_create',
+            source='template',
+            template_id=template.template_id,
+            assignment_type=assignment_type
+        )
+    )
 
 @templates_bp.route('/templates/new', methods=['GET', 'POST'])
 @login_required

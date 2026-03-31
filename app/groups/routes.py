@@ -112,6 +112,14 @@ def groups_list():
             pass
 
     groups = q.all()
+    subject_options = sorted(
+        {
+            (g.subject or '').strip()
+            for g in groups
+            if (g.subject or '').strip()
+        },
+        key=lambda s: s.lower()
+    )
     active_groups = [g for g in groups if (getattr(g, 'status', None) or '').lower() == 'active']
     total_members = sum(len(getattr(g, 'students', None) or []) for g in groups)
     return render_template(
@@ -119,6 +127,7 @@ def groups_list():
         groups=groups,
         groups_filter_q=q_text,
         groups_filter_subject=subject_filter,
+        groups_subject_options=subject_options,
         groups_active_count=len(active_groups),
         groups_total_members=total_members,
     )
@@ -342,6 +351,46 @@ def group_edit(group_id: int):
         return redirect(url_for('groups.group_view', group_id=group.group_id))
 
     return render_template('group_form.html', is_new=False, group=group)
+
+
+@groups_bp.route('/groups/<int:group_id>/archive', methods=['POST'])
+@login_required
+def group_archive(group_id: int):
+    _guard_groups_manage()
+    group = SchoolGroup.query.get_or_404(group_id)
+    if not _can_access_group(group):
+        abort(403)
+    group.status = 'archived' if (group.status or 'active') == 'active' else 'active'
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='archive_group', entity='SchoolGroup', entity_id=group.group_id, error=str(e))
+        flash('Не удалось изменить статус группы.', 'danger')
+        return redirect(url_for('groups.groups_list'))
+    flash('Статус группы обновлён.', 'success')
+    return redirect(url_for('groups.groups_list'))
+
+
+@groups_bp.route('/groups/<int:group_id>/delete', methods=['POST'])
+@login_required
+def group_delete(group_id: int):
+    _guard_groups_manage()
+    group = SchoolGroup.query.get_or_404(group_id)
+    if not _can_access_group(group):
+        abort(403)
+    GroupStudent.query.filter_by(group_id=group.group_id).delete()
+    title = group.title
+    db.session.delete(group)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='delete_group', entity='SchoolGroup', entity_id=group.group_id, error=str(e))
+        flash('Не удалось удалить группу.', 'danger')
+        return redirect(url_for('groups.groups_list'))
+    flash(f'Группа «{title}» удалена.', 'success')
+    return redirect(url_for('groups.groups_list'))
 
 
 @groups_bp.route('/groups/<int:group_id>/members/add', methods=['POST'])

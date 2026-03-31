@@ -53,7 +53,13 @@
             <div class="w-full sm:w-56 space-y-1.5">
                 <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Предмет</label>
                 <div class="relative">
-                    <input type="text" name="subject" value="{{ groups_filter_subject or '' }}" placeholder="Напр. Информатика" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-4 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input cursor-text">
+                    <select name="subject" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-8 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input appearance-none cursor-pointer">
+                        <option value="">Все предметы</option>
+                        {% for subj in groups_subject_options or [] %}
+                        <option value="{{ subj }}" {% if groups_filter_subject == subj %}selected{% endif %}>{{ subj }}</option>
+                        {% endfor %}
+                    </select>
+                    <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                 </div>
             </div>
         </div>
@@ -124,6 +130,21 @@
                 <a href="{{ url_for('groups.group_view', group_id=g.group_id) }}" class="flex-1 py-2.5 bg-white text-slate-700 border border-slate-200 text-xs font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5 no-underline">
                     <i class="ph-bold ph-eye"></i> Открыть группу
                 </a>
+                <a href="{{ url_for('groups.group_edit', group_id=g.group_id) }}" class="w-10 h-10 bg-white text-slate-500 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-slate-50 hover:text-boo-primary transition-colors no-underline" title="Редактировать">
+                    <i class="ph-bold ph-pencil-simple text-lg"></i>
+                </a>
+                <form method="POST" action="{{ url_for('groups.group_archive', group_id=g.group_id) }}" class="inline">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button type="submit" class="w-10 h-10 bg-white text-slate-500 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-slate-50 hover:text-amber-600 transition-colors" title="{% if (g.status or 'active') == 'active' %}В архив{% else %}Восстановить{% endif %}">
+                        <i class="ph-bold {% if (g.status or 'active') == 'active' %}ph-archive{% else %}ph-arrow-counter-clockwise{% endif %} text-lg"></i>
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('groups.group_delete', group_id=g.group_id) }}" class="inline" onsubmit="return confirm('Удалить группу {{ g.title|e }}?');">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button type="submit" class="w-10 h-10 bg-white text-slate-500 border border-slate-200 rounded-xl flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-colors" title="Удалить">
+                        <i class="ph-bold ph-trash text-lg"></i>
+                    </button>
+                </form>
                 <a href="{{ url_for('groups.group_view', group_id=g.group_id) }}" class="w-10 h-10 bg-purple-50 text-boo-primary border border-purple-200 rounded-xl flex items-center justify-center hover:bg-purple-100 transition-colors no-underline" title="Массовое ДЗ и настройки">
                     <i class="ph-bold ph-paper-plane-right text-lg"></i>
                 </a>
