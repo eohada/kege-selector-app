@@ -27,8 +27,8 @@
     </aside>
 
     <section class="flex-1 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:p-12 overflow-y-auto relative">
-      <button type="button" data-action="bookmark" data-value="{{ '1' if state and state.bookmarked else '0' }}" class="absolute top-8 right-8 w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center border border-slate-200 {% if state and state.bookmarked %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-slate-400 hover:text-boo-accent hover:bg-orange-50{% endif %} transition-colors shadow-sm">
-        <i class="{% if state and state.bookmarked %}ph-fill{% else %}ph-bold{% endif %} ph-bookmark-simple text-xl"></i>
+      <button type="button" data-action="bookmark" data-value="{{ '1' if state and state.bookmarked else '0' }}" title="Сохранить" class="absolute top-8 right-8 w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center border border-slate-200 {% if state and state.bookmarked %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-slate-400 hover:text-boo-accent hover:bg-orange-50{% endif %} transition-colors shadow-sm">
+        <i class="{% if state and state.bookmarked %}ph-fill{% else %}ph-bold{% endif %} ph-bookmark-simple text-xl bookmark-icon"></i>
       </button>
 
       <div class="max-w-3xl mx-auto prose-article">

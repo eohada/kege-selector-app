@@ -204,6 +204,24 @@
     });
   }
 
+  function syncCardBookmark(taskNumber, bookmarked) {
+    const card = grid?.querySelector(`.theory-card[data-task-number="${taskNumber}"]`);
+    if (!card) return;
+    card.dataset.bookmarked = bookmarked ? '1' : '0';
+    const chips = card.querySelector('.flex.flex-wrap.gap-1\\.5.mb-4');
+    if (!chips) return;
+    const existing = chips.querySelector('[data-bookmark-chip]');
+    if (bookmarked && !existing) {
+      const span = document.createElement('span');
+      span.setAttribute('data-bookmark-chip', '1');
+      span.className = 'bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100';
+      span.textContent = 'Сохранено';
+      chips.appendChild(span);
+    } else if (!bookmarked && existing) {
+      existing.remove();
+    }
+  }
+
   filterBtns.forEach(btn => btn.addEventListener('click', () => {
     setActiveFilter(btn.dataset.filter);
     applyFilters();
@@ -303,9 +321,17 @@
       const data = await r.json().catch(() => null);
       if (!r.ok || !data || !data.success) { if (window.toast) window.toast.error('Не удалось сохранить'); return; }
       btn.dataset.value = data.bookmarked ? '1' : '0';
-      btn.innerHTML = data.bookmarked ? '<i class="ph-fill ph-bookmark-simple"></i> Сохранено' : '<i class="ph-bold ph-bookmark-simple"></i> Сохранить';
-      const card = grid?.querySelector(`.theory-card[data-task-number="${taskNumber}"]`);
-      if (card) card.dataset.bookmarked = data.bookmarked ? '1' : '0';
+      btn.classList.toggle('bg-orange-50', !!data.bookmarked);
+      btn.classList.toggle('border-orange-200', !!data.bookmarked);
+      btn.classList.toggle('text-boo-accent', !!data.bookmarked);
+      btn.classList.toggle('text-slate-400', !data.bookmarked);
+      const icon = btn.querySelector('.bookmark-icon, i');
+      if (icon) {
+        icon.classList.toggle('ph-fill', !!data.bookmarked);
+        icon.classList.toggle('ph-bold', !data.bookmarked);
+      }
+      btn.setAttribute('title', data.bookmarked ? 'В сохраненном' : 'Сохранить');
+      syncCardBookmark(taskNumber, !!data.bookmarked);
       applyFilters();
       return;
     }

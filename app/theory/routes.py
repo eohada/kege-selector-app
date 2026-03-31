@@ -240,20 +240,11 @@ def theory_view(task_number):
         flash('Теория по заданию {} ещё не добавлена.'.format(task_number), 'info')
         return redirect(url_for('theory.theory_index', course_id=course_id))
 
+    # IMPORTANT:
+    # Source of truth for student theory is TheoryBlock.content
+    # created in teacher workspace. We intentionally do not inject
+    # legacy /theory/n*.html here to avoid duplicated layouts/nav.
     custom_html = None
-    try:
-        project_root = os.path.dirname(current_app.root_path)
-        theory_root = os.path.join(project_root, 'theory')
-        filename = f"n{task_number}.html"
-        candidate = os.path.join(theory_root, filename)
-        if os.path.exists(candidate):
-            with open(candidate, 'r', encoding='utf-8') as f:
-                raw = f.read()
-            # allow the file to contain Jinja placeholders (e.g. {{ task_number }})
-            from flask import render_template_string
-            custom_html = render_template_string(raw, task_number=task_number)
-    except Exception:
-        logger.exception("Failed to load custom theory HTML for task_number=%s", task_number)
 
     visible, state_by_number = _build_visible_with_state(course_id)
     feedback = None
