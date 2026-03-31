@@ -181,14 +181,14 @@
             <span class="sandbox-badge">SANDBOX</span>
             {% endif %}
 
-            <button class="dock-icon-btn" onclick="document.getElementById('cmdPalette').classList.add('active')" title="Поиск (Ctrl+K)">
+            <button class="dock-icon-btn" onclick="document.getElementById('cmdPalette').classList.add('active')" title="Поиск (Ctrl+K)" type="button">
                 <i class="ph-bold ph-magnifying-glass text-xl"></i>
             </button>
 
             {% if current_user and current_user.is_authenticated %}
             <div class="dock-avatar">
-                <div class="profile-dropdown">
-                    <a href="{{ url_for('auth.user_profile') }}" title="{{ current_user.username }}">
+                <div class="profile-dropdown" data-profile-dropdown>
+                    <button class="dock-avatar-trigger" title="{{ current_user.username }}" data-profile-trigger type="button" aria-haspopup="menu" aria-expanded="false">
                         {% if current_user.is_demo_user %}
                         <img src="{{ url_for('static', filename='images/demo_user_avatar.png') }}" alt="Avatar" class="dock-avatar-placeholder" style="object-fit:cover;">
                         {% elif current_user.avatar_url %}
@@ -196,8 +196,8 @@
                         {% else %}
                         <div class="dock-avatar-placeholder">{{ current_user.username[0].upper() }}</div>
                         {% endif %}
-                    </a>
-                    <div class="profile-dropdown-content">
+                    </button>
+                    <div class="profile-dropdown-content" data-profile-menu>
                         <a href="{{ url_for('auth.user_profile') }}" class="profile-item">
                             <i class="ph-bold ph-user text-base text-slate-400"></i>
                             <span>Профиль</span>
@@ -234,3 +234,34 @@
         </div>
     </header>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var dropdowns = Array.prototype.slice.call(document.querySelectorAll('[data-profile-dropdown]'));
+    dropdowns.forEach(function(dropdown) {
+        var trigger = dropdown.querySelector('[data-profile-trigger]');
+        var menu = dropdown.querySelector('[data-profile-menu]');
+        if (!trigger || !menu) return;
+
+        function closeMenu() {
+            dropdown.classList.remove('is-open');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        function openMenu() {
+            dropdown.classList.add('is-open');
+            trigger.setAttribute('aria-expanded', 'true');
+        }
+
+        trigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (dropdown.classList.contains('is-open')) closeMenu();
+            else openMenu();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) closeMenu();
+        });
+    });
+});
+</script>

@@ -14,12 +14,12 @@
         {% endif %}
         {% if current_user and current_user.is_authenticated %}
         <div class="nav-user-actions">
-            <div class="profile-dropdown">
-                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }}">
+            <div class="profile-dropdown" data-profile-dropdown>
+                <button class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }}" data-profile-trigger type="button" aria-haspopup="menu" aria-expanded="false">
                     {% if current_user.is_demo_user %}<img src="{{ url_for('static', filename='images/demo_user_avatar.png') }}" alt="Avatar">{% elif current_user.avatar_url %}<img src="{{ current_user.avatar_url }}" alt="Avatar">{% else %}{{ current_user.username[0].upper() }}{% endif %}
-                </a>
+                </button>
 
-                <div class="profile-dropdown-content">
+                <div class="profile-dropdown-content" data-profile-menu>
                     <a href="{{ url_for('auth.user_profile') }}" class="profile-item">
                         {{ ui_icon('profile.user', 'sm', title='Профиль') }}
                         <span>Профиль</span>
@@ -60,3 +60,30 @@
         {% include '_mobile_menu.html' %}
     </div>
 </header>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var dropdowns = Array.prototype.slice.call(document.querySelectorAll('[data-profile-dropdown]'));
+    dropdowns.forEach(function(dropdown) {
+        var trigger = dropdown.querySelector('[data-profile-trigger]');
+        var menu = dropdown.querySelector('[data-profile-menu]');
+        if (!trigger || !menu) return;
+
+        function closeMenu() {
+            dropdown.classList.remove('is-open');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        trigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var isOpen = dropdown.classList.contains('is-open');
+            dropdown.classList.toggle('is-open', !isOpen);
+            trigger.setAttribute('aria-expanded', String(!isOpen));
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) closeMenu();
+        });
+    });
+});
+</script>

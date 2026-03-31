@@ -2,6 +2,14 @@
 {% block title %}Профиль · BooStudy{% endblock %}
 {% set active_page = None %}
 {% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
+{% block head_css %}
+<style>
+@media (max-width: 768px) {
+    .grid.grid-cols-2 { grid-template-columns: 1fr; }
+    .px-8, .sm\:px-12, .p-8 { padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+</style>
+{% endblock %}
 
 {% block content %}
 {% set creator_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}

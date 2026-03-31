@@ -404,14 +404,19 @@
         @media (max-width: 1024px) {
             .schedule-layout { grid-template-columns: 1fr; }
             .schedule-inspector { position: static; height: auto; }
+            #scheduleGrid { min-width: 760px; }
+        }
+        @media (max-width: 768px) {
+            .schedule-grid-head .day-head .dd { font-size: 0.9rem; }
+            .schedule-inspector { margin-top: 0.75rem; }
         }
     </style>
 {% endblock %}
 {% set active_page = 'schedule' %}
 {% block content %}
         <main class="flex-1 pt-0 pb-8 flex justify-center h-full">
-            <div class="w-full max-w-[1600px] flex gap-6 h-full">
-                <div class="flex-1 flex flex-col min-w-0 h-full">
+            <div class="w-full max-w-[1600px] flex flex-col xl:flex-row gap-4 xl:gap-6 h-full">
+                <div class="w-full xl:flex-1 flex flex-col min-w-0 h-full">
                     <div class="flex justify-between items-end mb-6">
                         <div>
                             <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-1">Твой календарь успеха</h1>
@@ -544,7 +549,7 @@
                     {% endif %}
                 </div>
 
-                <div class="w-96 flex flex-col h-full shrink-0">
+                <div class="w-full xl:w-96 flex flex-col h-full shrink-0">
                     <aside class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full relative overflow-hidden schedule-inspector" id="lessonInspector">
                         <div class="p-6 border-b border-slate-100 bg-slate-50/50">
                             <div class="flex justify-between items-start mb-4">
@@ -864,9 +869,7 @@
                     list.appendChild(el);
                 });
             } catch (e) {
-                list.innerHTML = `<div style="color: var(--danger);">Ошибка: ${e.message || e}</main>
-    </div>
-</div>`;
+                list.innerHTML = `<div style="color: var(--danger);">Ошибка: ${e.message || e}</div>`;
             }
         }
         async function createTemplate() {

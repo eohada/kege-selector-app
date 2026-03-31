@@ -7,6 +7,7 @@
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
@@ -58,6 +59,11 @@
         @media (max-width: 980px) {
             .layout { grid-template-columns: 1fr; }
         }
+        @media (max-width: 768px) {
+            .page-hero { padding: 1rem; }
+            .hero-title { font-size: 1.5rem; }
+            .card { padding: 0.85rem; }
+        }
         .card {
             border: 1px solid var(--stroke-1);
             background: var(--surface-1);
@@ -107,7 +113,7 @@
         })();
     </script>
 </head>
-<body>
+<body class="layout-teacher">
     <div class="app-layout">
         {% include '_sidebar.html' %}
     <div class="app-main">

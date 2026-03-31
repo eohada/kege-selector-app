@@ -1913,8 +1913,8 @@ def student_delete(student_id):
             from core.db_models import UserRole
             UserRole.query.filter_by(user_id=linked_user.id).delete()
             UserMastery.query.filter_by(user_id=linked_user.id).delete()
-            FamilyTie.query.filter_by(parent_user_id=linked_user.id).delete()
-            FamilyTie.query.filter_by(child_user_id=linked_user.id).delete()
+            FamilyTie.query.filter_by(parent_id=linked_user.id).delete()
+            FamilyTie.query.filter_by(student_id=linked_user.id).delete()
             db.session.delete(linked_user)
 
         db.session.commit()
@@ -2020,8 +2020,8 @@ def delete_all_demo():
         for uid in demo_user_ids:
             UserRole.query.filter_by(user_id=uid).delete()
             UserMastery.query.filter_by(user_id=uid).delete()
-            FamilyTie.query.filter_by(parent_user_id=uid).delete()
-            FamilyTie.query.filter_by(child_user_id=uid).delete()
+            FamilyTie.query.filter_by(parent_id=uid).delete()
+            FamilyTie.query.filter_by(student_id=uid).delete()
 
         User.query.filter(User.id.in_(demo_user_ids)).delete(synchronize_session=False)
 

@@ -3,6 +3,14 @@
 {% block body_class %}layout-teacher{% endblock %}
 
 {% set active_page = active_page | default('review_queue') %}
+{% block head_css %}
+<style>
+@media (max-width: 768px) {
+    .review-filters-actions { width: 100%; flex-wrap: wrap; }
+    .review-filters-actions > * { width: 100%; }
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="w-full max-w-[1400px] mx-auto space-y-8">
@@ -63,7 +71,7 @@
             </a>
         </div>
 
-        <div class="flex items-center gap-3 w-full md:w-auto">
+        <div class="flex items-center gap-3 w-full md:w-auto review-filters-actions">
             <div class="relative w-full md:w-72 flex-1">
                 <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
                 <input type="text" name="student" value="{{ student_query }}" placeholder="Ученик или тема..."

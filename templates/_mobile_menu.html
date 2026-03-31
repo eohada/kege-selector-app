@@ -1,13 +1,13 @@
 {# Mobile hamburger + slide-in menu — matches Tactile Dock style #}
-<button class="mobile-menu-toggle md:hidden" id="mobileMenuToggle" aria-label="Открыть меню">
+<button class="mobile-menu-toggle md:hidden" data-mobile-menu-toggle aria-label="Открыть меню" type="button">
     <span></span>
     <span></span>
     <span></span>
 </button>
 
-<div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+<div class="mobile-menu-overlay" data-mobile-menu-overlay></div>
 
-<nav class="mobile-menu" id="mobileMenu">
+<nav class="mobile-menu" data-mobile-menu>
     <div class="mobile-menu-header">
         <a href="{{ url_for('main.index') }}" class="dock-brand" style="gap:0.5rem;">
             <div class="dock-brand-icon" style="width:32px;height:32px;border-radius:10px;">
@@ -15,7 +15,7 @@
             </div>
             <span class="font-extrabold text-base">BooStudy</span>
         </a>
-        <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Закрыть">
+        <button class="mobile-menu-close" data-mobile-menu-close aria-label="Закрыть" type="button">
             <i class="ph-bold ph-x text-xl"></i>
         </button>
     </div>
@@ -117,17 +117,36 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var toggle = document.getElementById('mobileMenuToggle');
-    var menu = document.getElementById('mobileMenu');
-    var overlay = document.getElementById('mobileMenuOverlay');
-    var close = document.getElementById('mobileMenuClose');
+    var toggles = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-toggle]'));
+    if (!toggles.length) return;
 
-    function openMenu() { toggle.classList.add('active'); menu.classList.add('active'); overlay.classList.add('active'); document.body.style.overflow = 'hidden'; }
-    function closeMenu() { toggle.classList.remove('active'); menu.classList.remove('active'); overlay.classList.remove('active'); document.body.style.overflow = ''; }
+    toggles.forEach(function(toggle) {
+        var root = toggle.parentElement || document;
+        var menu = root.querySelector('[data-mobile-menu]');
+        var overlay = root.querySelector('[data-mobile-menu-overlay]');
+        var close = root.querySelector('[data-mobile-menu-close]');
+        if (!menu || !overlay || !close) return;
 
-    if (toggle) toggle.addEventListener('click', openMenu);
-    if (close) close.addEventListener('click', closeMenu);
-    if (overlay) overlay.addEventListener('click', closeMenu);
-    menu.querySelectorAll('.nav-link').forEach(function(lnk) { lnk.addEventListener('click', function() { setTimeout(closeMenu, 200); }); });
+        function openMenu() {
+            toggle.classList.add('active');
+            menu.classList.add('active');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMenu() {
+            toggle.classList.remove('active');
+            menu.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        toggle.addEventListener('click', openMenu);
+        close.addEventListener('click', closeMenu);
+        overlay.addEventListener('click', closeMenu);
+        Array.prototype.slice.call(menu.querySelectorAll('.nav-link')).forEach(function(link) {
+            link.addEventListener('click', function() { setTimeout(closeMenu, 120); });
+        });
+    });
 });
 </script>

@@ -75,6 +75,13 @@
   --glass-bg: var(--color-bg-surface);
   --glass-border: var(--color-stroke);
   --border-color: var(--color-stroke);
+  --z-dock: 60;
+  --z-mobile-overlay: 140;
+  --z-mobile-menu: 150;
+  --z-modal: 170;
+  --z-toast: 200;
+  --z-confirm: 220;
+  --z-cmd: 230;
 }
 
 /* ── Dark theme ── */
@@ -149,7 +156,7 @@
   /* ═══════════════ APP SHELL ═══════════════ */
 
   .app-layout { @apply flex flex-col min-h-screen; }
-  .app-main   { @apply flex-1 overflow-y-auto; padding-top: 5.5rem; }
+  .app-main   { @apply flex-1 overflow-y-auto; padding-top: calc(5.5rem + env(safe-area-inset-top, 0px)); }
   .app-content {
     @apply w-full mx-auto;
     padding: 1.5rem 1rem;
@@ -200,7 +207,8 @@
   /* ═══════════════ FLOATING DOCK (Nav) ═══════════════ */
 
   .dock-wrapper {
-    @apply fixed top-0 w-full z-50 pointer-events-none;
+    @apply fixed top-0 w-full pointer-events-none;
+    z-index: var(--z-dock);
     /* Align with `.app-content` horizontal padding */
     padding: 1rem 1rem 0;
   }
@@ -310,7 +318,8 @@
   .dock-mega { @apply relative; }
   .dock-mega-panel {
     /* Keep it in the layout (no display:none) to avoid “jump” */
-    @apply absolute z-50;
+    @apply absolute;
+    z-index: calc(var(--z-dock) + 2);
     top: calc(100% + 0.75rem);
     left: 50%;
     transform: translateX(-50%) translateY(10px);
@@ -391,8 +400,16 @@
 
   /* Profile dropdown (reused from topbar) */
   .profile-dropdown { @apply relative; }
+  .dock-avatar-trigger,
+  .profile-dropdown [data-profile-trigger] {
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
   .profile-dropdown-content {
-    @apply absolute z-50;
+    @apply absolute;
+    z-index: calc(var(--z-dock) + 4);
     min-width: 200px;
     background: #FFFFFF;
     top: calc(100% + 0.5rem); right: 0;
@@ -414,6 +431,7 @@
     top: -0.5rem;
     height: 0.5rem;
   }
+  .profile-dropdown.is-open .profile-dropdown-content,
   .profile-dropdown:hover .profile-dropdown-content,
   .profile-dropdown:focus-within .profile-dropdown-content {
     opacity: 1;
@@ -842,7 +860,8 @@
   /* ═══════════════ MODAL ═══════════════ */
 
   .modal-overlay {
-    @apply fixed inset-0 z-[100] hidden items-center justify-center animate-fade-in;
+    @apply fixed inset-0 hidden items-center justify-center animate-fade-in;
+    z-index: var(--z-modal);
     background: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(4px);
     padding: 1.5rem;
@@ -870,7 +889,8 @@
   /* ═══════════════ TOAST ═══════════════ */
 
   .toast-container {
-    @apply fixed z-[200] flex flex-col gap-2.5 pointer-events-none;
+    @apply fixed flex flex-col gap-2.5 pointer-events-none;
+    z-index: var(--z-toast);
     top: 6.5rem; right: 1.5rem; max-width: 380px;
   }
   .toast {
@@ -905,7 +925,7 @@
   /* ═══════════════ CONFIRM DIALOG ═══════════════ */
 
   .confirm-modal { @apply hidden; }
-  .confirm-modal.active { @apply fixed inset-0 z-[220] flex items-center justify-center px-4; background: rgba(15,23,42,0.4); }
+  .confirm-modal.active { @apply fixed inset-0 flex items-center justify-center px-4; z-index: var(--z-confirm); background: rgba(15,23,42,0.4); }
   .confirm-modal-content {
     background: #FFFFFF;
     @apply animate-slide-up w-full;
@@ -941,10 +961,11 @@
 
   /* ═══════════════ MOBILE MENU ═══════════════ */
 
-  .mobile-menu-overlay { @apply fixed inset-0 z-50 hidden; background: rgba(15,23,42,0.4); }
+  .mobile-menu-overlay { @apply fixed inset-0 hidden; z-index: var(--z-mobile-overlay); background: rgba(15,23,42,0.4); }
   .mobile-menu-overlay.active { @apply block; }
   .mobile-menu {
-    @apply fixed top-0 right-0 bottom-0 z-[51] overflow-y-auto;
+    @apply fixed top-0 right-0 bottom-0 overflow-y-auto;
+    z-index: var(--z-mobile-menu);
     width: 300px;
     background: #FFFFFF;
     border-left: 1px solid #E2E8F0;
@@ -1189,7 +1210,8 @@
   /* ═══════════════ NOW PLAYING ═══════════════ */
 
   .now-playing-pill {
-    @apply fixed z-[45] flex items-center gap-2 font-bold cursor-pointer;
+    @apply fixed flex items-center gap-2 font-bold cursor-pointer;
+    z-index: calc(var(--z-dock) - 10);
     bottom: 1.5rem; left: 50%; transform: translateX(-50%);
     padding: 0.6rem 1.25rem; font-size: 0.875rem;
     background: #06B6D4; color: #FFFFFF;
@@ -1199,7 +1221,8 @@
   }
   .now-playing-pill:hover { transform: translateX(-50%) translateY(-2px); }
   .now-playing-panel {
-    @apply fixed z-[44];
+    @apply fixed;
+    z-index: calc(var(--z-dock) - 11);
     bottom: 4.5rem; left: 50%; transform: translateX(-50%) translateY(10px);
     background: #FFFFFF; border: 1px solid #E2E8F0;
     border-radius: 20px; padding: 1.25rem; min-width: 300px;
@@ -1212,7 +1235,8 @@
   /* ═══════════════ COMMAND PALETTE (Ctrl+K) ═══════════════ */
 
   .cmd-palette-overlay {
-    @apply fixed inset-0 z-[200] hidden items-start justify-center;
+    @apply fixed inset-0 hidden items-start justify-center;
+    z-index: var(--z-cmd);
     background: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(4px);
     padding-top: 15vh;

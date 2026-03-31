@@ -68,6 +68,13 @@
     .lessons-remaining--danger { color: var(--danger); }
     .lessons-remaining--warning { color: var(--warning); }
     .lessons-remaining--accent { color: var(--accent-1); }
+    @media (max-width: 768px) {
+        .profile-creator-auras,
+        .profile-creator-dust { display: none; }
+        .profile-card-body { padding: 0 1rem 1rem !important; }
+        .profile-header { gap: 1rem; }
+        .profile-identity { gap: 1rem; align-items: center; }
+    }
 </style>
 {% endblock %}
 

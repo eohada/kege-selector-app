@@ -56,13 +56,6 @@
     }
     .demo-toggle-row label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; color: var(--color-text-muted); user-select: none; }
     .demo-toggle-row input[type="checkbox"] { accent-color: rgba(251, 191, 36, 0.8); width: 16px; height: 16px; }
-    /* delete confirmations use the global confirm modal (static/confirm-modal.js) */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; }
-    .modal-overlay.active { display: flex; }
-    .modal-box { background: var(--color-bg-surface); border: 1px solid var(--color-stroke-strong); border-radius: 20px; padding: 2rem; max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-    .modal-box h3 { margin: 0 0 0.75rem 0; font-size: 1.15rem; }
-    .modal-box p { color: var(--color-text-muted); margin: 0 0 1.5rem 0; line-height: 1.5; }
-    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
 </style>
 {% endblock %}
 
@@ -94,7 +87,7 @@
                     Показать демо-учеников ({{ demo_count }})
                 </label>
                 {% if show_demo %}
-                <form method="POST" action="" id="deleteAllDemoForm" style="margin-left: auto;">
+                <form method="POST" action="{{ url_for('students.delete_all_demo') }}" id="deleteAllDemoForm" style="margin-left: auto;">
                     {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                     <button type="button" class="btn-action-sm danger" onclick="confirmDeleteAllDemo()" style="font-size: 0.82rem;">
                         Удалить всех демо
@@ -239,30 +232,23 @@
 {% endblock %}
 
 {% block scripts_extra %}
-    <div class="modal-overlay" id="deleteAllDemoModal">
-        <div class="modal-box">
-            <h3>Удалить всех демо-учеников?</h3>
-            <p>Это действие удалит <strong>всех</strong> демо-учеников и их данные (уроки, задания, статистику, демо-пользователей). Это необратимо.</p>
-            <div class="modal-actions">
-                <button class="neo-button ghost" onclick="document.getElementById('deleteAllDemoModal').classList.remove('active')">Отмена</button>
-                <form method="POST" action="{{ url_for('students.delete_all_demo') }}" style="margin: 0;">
-                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <button type="submit" class="neo-button accent" style="background: #FF6B6B; border-color: #FF6B6B;">Удалить всех</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <script>
         document.getElementById('showDemoToggle')?.addEventListener('change', function() {
             const url = new URL(window.location.href);
             if (this.checked) { url.searchParams.set('show_demo', '1'); } else { url.searchParams.delete('show_demo'); }
             window.location.href = url.toString();
         });
-        function confirmDeleteAllDemo() { document.getElementById('deleteAllDemoModal').classList.add('active'); }
-
-        document.querySelectorAll('.modal-overlay').forEach(function(modal) {
-            modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('active'); });
-        });
+        function confirmDeleteAllDemo() {
+            const form = document.getElementById('deleteAllDemoForm');
+            if (!form || typeof showConfirmModal !== 'function') return;
+            showConfirmModal({
+                title: 'Удалить всех демо-учеников?',
+                message: 'Будут удалены все демо-ученики и их данные (уроки, задания, статистика, демо-пользователи). Это действие необратимо.',
+                confirmText: 'Удалить всех',
+                cancelText: 'Отмена',
+                confirmClass: 'danger',
+                onConfirm: () => form.submit()
+            });
+        }
     </script>
 {% endblock %}

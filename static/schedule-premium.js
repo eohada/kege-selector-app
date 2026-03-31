@@ -198,7 +198,7 @@
       const nextTopic = topicInput?.value ?? '';
       const nextDate = dateInput?.value || '';
       const nextTime = timeInput?.value || '';
-      const currentTz = document.querySelector('[data-timezone-toggle]')?.dataset.timezone || 'moscow';
+      const currentTz = scheduleRoot.dataset.timezone || 'moscow';
 
       try {
 

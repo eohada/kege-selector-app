@@ -1,0 +1,62 @@
+:root {
+  --z-dock: 60;
+  --z-mobile-overlay: 140;
+  --z-mobile-menu: 150;
+  --z-modal: 170;
+  --z-toast: 200;
+  --z-confirm: 220;
+  --z-cmd: 230;
+}
+
+.app-main {
+  padding-top: calc(5.5rem + env(safe-area-inset-top, 0px));
+}
+
+.dock-wrapper {
+  z-index: var(--z-dock) !important;
+}
+
+.profile-dropdown [data-profile-trigger],
+.dock-avatar-trigger {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.profile-dropdown.is-open .profile-dropdown-content {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.mobile-menu-overlay {
+  z-index: var(--z-mobile-overlay) !important;
+}
+
+.mobile-menu {
+  z-index: var(--z-mobile-menu) !important;
+}
+
+.modal-overlay {
+  z-index: var(--z-modal) !important;
+}
+
+.toast-container {
+  z-index: var(--z-toast) !important;
+}
+
+.confirm-modal.active {
+  z-index: var(--z-confirm) !important;
+}
+
+.cmd-palette-overlay {
+  z-index: var(--z-cmd) !important;
+}
+
+@media (max-width: 768px) {
+  .app-content {
+    padding: 1rem !important;
+  }
+}

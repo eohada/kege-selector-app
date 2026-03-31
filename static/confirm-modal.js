@@ -55,12 +55,12 @@ function showConfirmModal(options) {
         onCancel();
     });
 
-    modal.addEventListener('click', (e) => {
+    modal.onclick = (e) => {
         if (e.target === modal) {
             modal.classList.remove('active');
             onCancel();
         }
-    });
+    };
 
     const escapeHandler = (e) => {
         if (e.key === 'Escape') {
