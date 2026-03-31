@@ -84,9 +84,21 @@
             </div>
           </div>
           <div class="flex items-center gap-2">
-            <button type="button" class="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2" onclick="window.toast && window.toast.success('Предпросмотр в процессе разработки')">
+            <select id="statusSelect" class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
+              <option value="draft">Черновик</option>
+              <option value="published">Опубликовано</option>
+            </select>
+            <button id="previewTheoryBtn" type="button" class="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
               <i class="ph-bold ph-eye"></i> Предпросмотр
             </button>
+            {% if selected_block %}
+            <form method="post" action="{{ url_for('theory.manage_delete', block_id=selected_block.id) }}" onsubmit="return confirm('Удалить теорию по заданию {{ selected_task_number }}?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors shadow-sm flex items-center gap-2">
+                <i class="ph-bold ph-trash"></i> Удалить
+              </button>
+            </form>
+            {% endif %}
             <button type="submit" class="px-5 py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[2px] border-b-purple-800 text-sm" onclick="document.getElementById('editorStatusInput').value='published'">
               <i class="ph-bold ph-paper-plane-right"></i> Опубликовать
             </button>
@@ -117,6 +129,9 @@
               </div>
               <pre id="smartCodeInput" class="p-4 font-mono text-[13px] text-slate-300 min-h-[140px] overflow-auto">for i in range(1, 4):
     print(i)</pre>
+              <div class="px-4 pb-3">
+                <button type="button" id="insertCodeBlockBtn" class="px-3 py-2 bg-slate-700 text-slate-100 rounded-lg text-xs font-bold hover:bg-slate-600">Вставить в теорию</button>
+              </div>
               <pre id="smartCodeOutput" class="hidden p-3 border-t border-slate-700 bg-slate-900 text-green-300 text-xs font-mono"></pre>
             </div>
             <div class="bg-slate-50 border border-slate-200 rounded-[20px] p-5">
@@ -155,9 +170,12 @@
 (function() {
   const statusInput = document.getElementById('editorStatusInput');
   const statusBadge = document.getElementById('editorStatusBadge');
+  const statusSelect = document.getElementById('statusSelect');
+  const previewBtn = document.getElementById('previewTheoryBtn');
   const form = document.getElementById('theoryEditorForm');
   const content = document.getElementById('theoryContentInput');
   const runBtn = document.getElementById('runSmartCode');
+  const insertCodeBlockBtn = document.getElementById('insertCodeBlockBtn');
   const codeInput = document.getElementById('smartCodeInput');
   const codeOut = document.getElementById('smartCodeOutput');
   const latexInput = document.getElementById('latexInput');
@@ -170,6 +188,19 @@
     if (!statusInput || !statusBadge) return;
     statusInput.value = 'draft';
     statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-boo-accent animate-pulse"></span> Черновик';
+    if (statusSelect) statusSelect.value = 'draft';
+  }
+  if (statusSelect && statusInput) {
+    statusSelect.value = statusInput.value || 'draft';
+    statusSelect.addEventListener('change', () => {
+      statusInput.value = statusSelect.value;
+      if (!statusBadge) return;
+      if (statusInput.value === 'published') {
+        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span> Опубликовано';
+      } else {
+        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-boo-accent animate-pulse"></span> Черновик';
+      }
+    });
   }
   content && content.addEventListener('input', setDraftState);
   form && form.addEventListener('submit', () => {
@@ -180,6 +211,12 @@
     if (!codeOut || !codeInput) return;
     codeOut.classList.remove('hidden');
     codeOut.textContent = '1\n2\n3\n\n[demo-run] Выполнение интерактивного кода доступно в режиме ученика.';
+  });
+  insertCodeBlockBtn && insertCodeBlockBtn.addEventListener('click', () => {
+    const code = (codeInput && codeInput.textContent ? codeInput.textContent : '').trim();
+    if (!code) return;
+    appendToContent(`[CODE lang="python"]\n${code}\n[/CODE]`);
+    if (window.toast) window.toast.success('Код-блок добавлен в теорию');
   });
 
   latexInput && latexInput.addEventListener('input', () => {
@@ -213,6 +250,30 @@
     appendToContent(`[CALLOUT type="${kind}"] ${labels[kind]}: ... [/CALLOUT]`);
     if (window.toast) window.toast.success('Плашка добавлена');
   }));
+  previewBtn && previewBtn.addEventListener('click', async () => {
+    try {
+      const r = await fetch('{{ url_for("theory.theory_manage_preview") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          title: (document.querySelector('input[name="title"]') || {}).value || '',
+          content: content ? content.value : '',
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.success) {
+        if (window.toast) window.toast.error(data.error || 'Ошибка предпросмотра');
+        return;
+      }
+      const w = window.open('', '_blank');
+      if (!w) return;
+      w.document.write(`<html><head><meta charset="utf-8"><title>Предпросмотр</title></head><body style="font-family: Arial,sans-serif;max-width:920px;margin:32px auto;padding:0 12px;color:#1e293b;">${data.html}</body></html>`);
+      w.document.close();
+    } catch (e) {
+      if (window.toast) window.toast.error('Ошибка предпросмотра');
+    }
+  });
 })();
 </script>
 {% endblock %}

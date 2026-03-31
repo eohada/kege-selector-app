@@ -36,6 +36,8 @@
     <div class="prose-article">
       {% if custom_html %}
         {{ custom_html | safe }}
+      {% elif rendered_content_html %}
+        {{ rendered_content_html }}
       {% elif block.content %}
         {{ block.content | markdown | safe }}
       {% else %}

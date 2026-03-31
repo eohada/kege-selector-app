@@ -246,6 +246,38 @@
   // Article actions (bookmark + feedback + back)
   const articleContainer = document.getElementById('articleContainer');
   articleContainer?.addEventListener('click', async (e) => {
+    const runBtn = e.target.closest('.theory-run-btn');
+    if (runBtn) {
+      e.preventDefault();
+      const card = runBtn.closest('.theory-smart-code');
+      const codeEl = card ? card.querySelector('.theory-code-input') : null;
+      const argsEl = card ? card.querySelector('.theory-code-args') : null;
+      const outEl = card ? card.querySelector('.theory-code-output') : null;
+      if (!card || !codeEl || !outEl) return;
+      const lang = card.dataset.lang || 'python';
+      const code = codeEl.value || codeEl.textContent || '';
+      const args = argsEl ? argsEl.value || '' : '';
+      outEl.classList.remove('hidden');
+      outEl.textContent = 'Запуск...';
+      try {
+        const resp = await fetch({{ url_for('theory.theory_api_run_code')|tojson }}, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ lang, code, args }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.success) {
+          outEl.textContent = data.error || 'Ошибка запуска';
+          return;
+        }
+        outEl.textContent = data.output || '[пустой вывод]';
+      } catch (err) {
+        outEl.textContent = 'Ошибка сети';
+      }
+      return;
+    }
+
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;

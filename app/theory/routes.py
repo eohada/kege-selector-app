@@ -4,7 +4,10 @@
 """
 import logging
 import os
+import re
+import subprocess
 from flask import render_template, request, redirect, url_for, flash, abort, jsonify, current_app
+from markupsafe import Markup
 from flask_login import login_required, current_user
 
 from app.theory import theory_bp
@@ -17,11 +20,78 @@ from app.models import (
     Course,
     CourseTaskTemplate,
     StudentCourseEnrollment,
+    StudentTheoryState,
+    TheoryFeedback,
     moscow_now,
 )
 from app.auth.rbac_utils import has_permission
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_status_marker(content_value):
+    text = (content_value or '').strip()
+    if text.startswith('<!--status:published-->'):
+        return text[len('<!--status:published-->'):].lstrip()
+    if text.startswith('<!--status:draft-->'):
+        return text[len('<!--status:draft-->'):].lstrip()
+    return text
+
+
+def _render_theory_content_html(content_value):
+    """Render block-based theory markers to safe-ish HTML fragments."""
+    text = _strip_status_marker(content_value or '')
+
+    def _code_repl(match):
+        lang = (match.group(1) or 'python').strip().lower()
+        code_body = (match.group(2) or '').strip()
+        return (
+            '<div class="theory-smart-code my-6 rounded-2xl border border-slate-700 overflow-hidden bg-slate-900" '
+            f'data-lang="{lang}">'
+            '<div class="px-4 py-2.5 border-b border-slate-700 bg-slate-800/80 flex items-center justify-between">'
+            f'<span class="text-xs font-bold text-slate-300 uppercase">{lang}</span>'
+            '<div class="flex items-center gap-2">'
+            '<input type="text" class="theory-code-args bg-slate-900 border border-slate-600 rounded-md px-2 py-1 text-[11px] text-slate-200" '
+            'placeholder="Аргументы / stdin">'
+            '<button type="button" class="theory-run-btn px-2.5 py-1 text-xs font-bold text-white bg-green-600 hover:bg-green-500 rounded-md">Run</button>'
+            '</div>'
+            '</div>'
+            f'<textarea class="theory-code-input w-full min-h-[120px] bg-slate-950 text-slate-200 font-mono text-xs p-4 border-none outline-none">{code_body}</textarea>'
+            '<pre class="theory-code-output hidden m-0 p-4 bg-black text-green-300 text-xs font-mono border-t border-slate-700"></pre>'
+            '</div>'
+        )
+
+    def _callout_repl(match):
+        ctype = (match.group(1) or 'tip').strip().lower()
+        body = (match.group(2) or '').strip()
+        theme = {
+            'attention': ('orange', 'Внимание'),
+            'tip': ('cyan', 'Лайфхак'),
+            'danger': ('red', 'Осторожно'),
+        }.get(ctype, ('cyan', 'Заметка'))
+        color, title = theme
+        return (
+            f'<div class="my-5 rounded-2xl border border-{color}-200 bg-{color}-50 px-5 py-4">'
+            f'<div class="text-xs font-extrabold uppercase tracking-widest text-{color}-600 mb-1">{title}</div>'
+            f'<div class="text-sm font-medium text-slate-700">{body}</div>'
+            '</div>'
+        )
+
+    def _practice_repl(match):
+        task_id = (match.group(1) or '').strip()
+        return (
+            '<div class="my-6 rounded-2xl border-2 border-slate-200 bg-white p-5">'
+            '<div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-2">Интерактивный блок</div>'
+            f'<div class="text-sm font-bold text-slate-800 mb-3">Практика · ID: {task_id}</div>'
+            '<button type="button" class="px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-sm font-bold text-slate-700">Открыть в тренажере</button>'
+            '</div>'
+        )
+
+    text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
+    text = re.sub(r"\$\$(.+?)\$\$", lambda m: f'<div class="my-4 text-center text-xl font-serif text-slate-800">{m.group(1)}</div>', text, flags=re.DOTALL)
+    return Markup(text)
 
 
 def _get_course_task_numbers(course_id):
@@ -169,6 +239,7 @@ def theory_view(task_number):
         course_id=course_id,
         active_page='theory',
         custom_html=custom_html,
+        rendered_content_html=_render_theory_content_html(block.content or ''),
     )
 
 
@@ -550,6 +621,134 @@ def manage_delete(block_id):
     db.session.commit()
     flash('Блок теории по заданию {} удалён.'.format(num), 'success')
     return redirect(url_for('theory.manage_list', course_id=course_id))
+
+
+@theory_bp.route('/theory/manage/preview', methods=['POST'])
+@login_required
+def theory_manage_preview():
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    content = (payload.get('content') or '').strip()
+    title = (payload.get('title') or 'Предпросмотр').strip()
+    html = (
+        f'<article class="prose-article"><h1 class="text-3xl font-black text-slate-900 mb-4">{title}</h1>'
+        f'{_render_theory_content_html(content)}</article>'
+    )
+    return jsonify({'success': True, 'html': html})
+
+
+@theory_bp.route('/theory/api/run-code', methods=['POST'])
+@login_required
+def theory_api_run_code():
+    if not has_permission(current_user, 'theory.view'):
+        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
+    payload = request.get_json(silent=True) or {}
+    lang = (payload.get('lang') or 'python').strip().lower()
+    code = (payload.get('code') or '').strip()
+    args = (payload.get('args') or '').strip()
+    if not code:
+        return jsonify({'success': False, 'error': 'Пустой код'}), 400
+    if lang != 'python':
+        return jsonify({'success': False, 'error': 'Пока поддержан только Python'}), 400
+    try:
+        proc = subprocess.run(
+            ['python', '-c', code],
+            input=args,
+            text=True,
+            capture_output=True,
+            timeout=3,
+            check=False,
+        )
+        out = (proc.stdout or '') + (('\n' + proc.stderr) if proc.stderr else '')
+        return jsonify({'success': True, 'output': out.strip() or '[пустой вывод]'})
+    except subprocess.TimeoutExpired:
+        return jsonify({'success': False, 'error': 'Время выполнения превышено (3s)'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@theory_bp.route('/theory/api/read', methods=['POST'])
+@login_required
+def theory_api_read():
+    if not current_user.is_student():
+        return jsonify({'success': True})
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        return jsonify({'success': False, 'error': 'Учeник не найден'}), 404
+    payload = request.get_json(silent=True) or {}
+    try:
+        task_number = int(payload.get('task_number'))
+    except Exception:
+        task_number = None
+    course_id = payload.get('course_id')
+    if not task_number:
+        return jsonify({'success': False, 'error': 'task_number required'}), 400
+    row = StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=course_id, task_number=task_number).first()
+    if not row:
+        row = StudentTheoryState(student_id=student.student_id, course_id=course_id, task_number=task_number)
+        db.session.add(row)
+    row.is_read = True
+    row.last_opened_at = moscow_now()
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@theory_bp.route('/theory/api/bookmark', methods=['POST'])
+@login_required
+def theory_api_bookmark():
+    if not current_user.is_student():
+        return jsonify({'success': False, 'error': 'Только для учеников'}), 403
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        return jsonify({'success': False, 'error': 'Учeник не найден'}), 404
+    payload = request.get_json(silent=True) or {}
+    try:
+        task_number = int(payload.get('task_number'))
+    except Exception:
+        task_number = None
+    course_id = payload.get('course_id')
+    value = bool(payload.get('value'))
+    if not task_number:
+        return jsonify({'success': False, 'error': 'task_number required'}), 400
+    row = StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=course_id, task_number=task_number).first()
+    if not row:
+        row = StudentTheoryState(student_id=student.student_id, course_id=course_id, task_number=task_number)
+        db.session.add(row)
+    row.is_bookmarked = value
+    db.session.commit()
+    return jsonify({'success': True, 'bookmarked': row.is_bookmarked})
+
+
+@theory_bp.route('/theory/api/feedback', methods=['POST'])
+@login_required
+def theory_api_feedback():
+    if not current_user.is_student():
+        return jsonify({'success': False, 'error': 'Только для учеников'}), 403
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        return jsonify({'success': False, 'error': 'Учeник не найден'}), 404
+    payload = request.get_json(silent=True) or {}
+    try:
+        task_number = int(payload.get('task_number'))
+    except Exception:
+        task_number = None
+    course_id = payload.get('course_id')
+    rating = payload.get('rating')
+    comment = (payload.get('comment') or '').strip()
+    if not task_number:
+        return jsonify({'success': False, 'error': 'task_number required'}), 400
+    row = TheoryFeedback.query.filter_by(student_id=student.student_id, course_id=course_id, task_number=task_number).first()
+    if not row:
+        row = TheoryFeedback(student_id=student.student_id, user_id=current_user.id, course_id=course_id, task_number=task_number)
+        db.session.add(row)
+    try:
+        row.rating = int(rating) if rating is not None else None
+    except Exception:
+        row.rating = None
+    row.comment = comment or None
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 # --- Управление доступом учеников (запрет/разрешение по номерам) ---
