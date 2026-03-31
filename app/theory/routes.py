@@ -91,6 +91,11 @@ def _render_theory_content_html(content_value):
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
     text = re.sub(r"\$\$(.+?)\$\$", lambda m: f'<div class="my-4 text-center text-xl font-serif text-slate-800">{m.group(1)}</div>', text, flags=re.DOTALL)
+    try:
+        from markdown import markdown as _md
+        text = _md(text, extensions=['extra', 'tables', 'fenced_code'])
+    except Exception:
+        pass
     return Markup(text)
 
 
