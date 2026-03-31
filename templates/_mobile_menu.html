@@ -177,11 +177,44 @@ document.addEventListener('DOMContentLoaded', function() {
         var overlay = root.querySelector('[data-mobile-menu-overlay]');
         var close = root.querySelector('[data-mobile-menu-close]');
         if (!menu || !overlay || !close) return;
+        var scrollY = 0;
+
+        function applyClosedState() {
+            overlay.style.display = 'none';
+            overlay.style.position = 'fixed';
+            overlay.style.inset = '0';
+            overlay.style.background = 'rgba(15, 23, 42, 0.42)';
+            overlay.style.zIndex = '140';
+
+            menu.style.position = 'fixed';
+            menu.style.top = '0';
+            menu.style.right = '0';
+            menu.style.bottom = '0';
+            menu.style.width = 'min(86vw, 320px)';
+            menu.style.maxWidth = '320px';
+            menu.style.height = '100dvh';
+            menu.style.background = '#fff';
+            menu.style.borderLeft = '1px solid #E2E8F0';
+            menu.style.overflowY = 'auto';
+            menu.style.zIndex = '150';
+            menu.style.transform = 'translateX(100%)';
+            menu.style.transition = 'transform 0.25s ease';
+        }
+
+        applyClosedState();
 
         function openMenu() {
             if (toggle) toggle.classList.add('active');
             menu.classList.add('active');
             overlay.classList.add('active');
+            overlay.style.display = 'block';
+            menu.style.transform = 'translateX(0)';
+            scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+            document.body.style.position = 'fixed';
+            document.body.style.top = '-' + scrollY + 'px';
+            document.body.style.left = '0';
+            document.body.style.right = '0';
+            document.body.style.width = '100%';
             document.body.style.overflow = 'hidden';
         }
 
@@ -189,7 +222,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (toggle) toggle.classList.remove('active');
             menu.classList.remove('active');
             overlay.classList.remove('active');
+            menu.style.transform = 'translateX(100%)';
+            overlay.style.display = 'none';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.left = '';
+            document.body.style.right = '';
+            document.body.style.width = '';
             document.body.style.overflow = '';
+            window.scrollTo(0, scrollY);
         }
 
         if (toggle) {
