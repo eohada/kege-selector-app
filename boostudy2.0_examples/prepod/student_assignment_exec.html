@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Выполнение работы</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты: Golos Text для UI, JetBrains Mono для кода -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Golos Text"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        boo: {
+                            bg: '#E5E9F0', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                        'bottom-bar': '0 -10px 40px rgba(15, 23, 42, 0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Плавные переходы для состояний "До начала" -> "В процессе" */
+        .locked-content { display: block; opacity: 1; transition: opacity 0.3s; }
+        .unlocked-content { display: none; opacity: 0; transition: opacity 0.3s; transform: translateY(10px); }
+        
+        body.is-started .locked-content { display: none; opacity: 0; }
+        body.is-started .unlocked-content { display: block; opacity: 1; animation: slideUp 0.5s ease forwards; }
+
+        /* Анимация появления плавающей панели снизу */
+        .bottom-action-bar { transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        body.is-started .bottom-action-bar { transform: translateY(0); }
+
+        @keyframes slideUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Кастомный фокус для текстовых полей */
+        .task-input:focus-within {
+            box-shadow: 0 0 0 4px rgba(123, 92, 255, 0.15);
+            border-color: #7B5CFF;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ (Вид Ученика) -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none flex justify-center">
+        <header class="w-full max-w-[1400px] bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer group">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm group-hover:scale-105 transition-all">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Главное меню -->
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/60 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-house text-lg"></i> Главная
+                </a>
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2 relative">
+                    <i class="ph-bold ph-list-checks text-lg"></i> Задания
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-chart-line-up text-lg"></i> Аналитика
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 rounded-lg border border-orange-100 hidden sm:flex">
+                    <i class="ph-fill ph-fire text-boo-accent text-lg"></i>
+                    <span class="text-sm font-extrabold text-orange-600">12</span>
+                </div>
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 cursor-pointer">
+                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=QaStudent1&backgroundColor=06B6D4" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-cyan-50">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-32 px-6 lg:px-8" id="mainScrollArea">
+        <div class="w-full max-w-[1000px] mx-auto flex flex-col gap-6">
+
+            <!-- КРОШКИ И ВОЗВРАТ -->
+            <a href="#" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm">
+                <i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий
+            </a>
+
+            <!-- БЛОК 1: HERO ЗАГОЛОВОК И СТАТУС -->
+            <div class="bg-white rounded-[32px] p-6 lg:p-10 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile relative overflow-hidden">
+                <div class="absolute -right-20 -top-20 w-80 h-80 bg-purple-50/50 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
+                    
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="bg-purple-100 text-boo-primary text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-purple-200">
+                                Домашняя работа
+                            </span>
+                            <span class="text-slate-400 font-bold text-sm">#1045</span>
+                        </div>
+                        <h1 class="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight mb-8">Графы и пути (ДЗ №1)</h1>
+                        
+                        <!-- Статус-панель -->
+                        <div class="flex flex-wrap items-center gap-4 lg:gap-8">
+                            
+                            <!-- Статус (Меняется динамически) -->
+                            <div>
+                                <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Статус</div>
+                                <div id="statusBadge" class="flex items-center gap-2 bg-slate-100 text-slate-600 px-3 py-1.5 rounded-xl border border-slate-200 font-bold text-sm transition-all duration-300">
+                                    <i class="ph-fill ph-lock-key"></i> Назначено
+                                </div>
+                            </div>
+
+                            <div class="w-px h-8 bg-slate-200 hidden sm:block"></div>
+
+                            <!-- Дедлайн -->
+                            <div>
+                                <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Дедлайн</div>
+                                <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+                                    <i class="ph-bold ph-calendar-blank text-boo-coral"></i> 03.04.2026 19:59
+                                </div>
+                            </div>
+
+                            <div class="w-px h-8 bg-slate-200 hidden sm:block"></div>
+
+                            <!-- Попытки -->
+                            <div>
+                                <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Попытки</div>
+                                <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+                                    <i class="ph-bold ph-arrows-clockwise text-boo-primary"></i> <span id="attemptCount">0 / 1</span>
+                                </div>
+                            </div>
+
+                            <!-- Начало (Появляется после старта) -->
+                            <div class="unlocked-content pl-0 sm:pl-8 sm:border-l border-slate-200 mt-4 sm:mt-0">
+                                <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5">Начато</div>
+                                <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+                                    <i class="ph-bold ph-clock text-boo-cyan"></i> <span id="startTimeLabel">--:--</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Кнопка Старта (Скрывается после нажатия) -->
+                    <div class="locked-content shrink-0 w-full md:w-auto mt-6 md:mt-0">
+                        <button onclick="startAssignment()" class="w-full md:w-auto px-8 py-5 bg-boo-primary text-white rounded-2xl font-black text-lg hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(123,92,255,0.3)] border-b-[4px] border-b-purple-800 active:translate-y-[3px] active:border-b-0 hover:-translate-y-1">
+                            <i class="ph-fill ph-play-circle text-2xl"></i> Начать выполнение
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- БЛОК 2: ПАНЕЛЬ НАВИГАЦИИ ПО ЗАДАНИЯМ (Sticky) -->
+            <div class="sticky top-20 z-40 bg-white/80 backdrop-blur-xl p-2 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between mt-2">
+                <div class="flex items-center gap-2 font-bold text-slate-500 text-sm pl-4 uppercase tracking-widest">
+                    Задания:
+                </div>
+                <div class="flex flex-wrap gap-2 pr-2">
+                    <button class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-boo-primary text-white font-black text-lg sm:text-xl flex items-center justify-center shadow-sm border-b-[3px] border-purple-800 transition-all cursor-default">
+                        1
+                    </button>
+                    <button class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-lg sm:text-xl flex items-center justify-center transition-colors">
+                        2
+                    </button>
+                    <button class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 font-bold text-lg sm:text-xl flex items-center justify-center transition-colors">
+                        3
+                    </button>
+                </div>
+            </div>
+
+            <!-- БЛОК 3: КАРТОЧКА ЗАДАНИЯ -->
+            <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col relative overflow-hidden">
+                
+                <!-- Шапка карточки -->
+                <div class="px-6 lg:px-10 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-xl font-black text-boo-primary">Задание 1</h2>
+                        <span class="bg-purple-100 text-purple-700 text-[10px] font-extrabold px-2 py-0.5 rounded border border-purple-200 uppercase tracking-wider">1 балл</span>
+                    </div>
+                    <button class="text-slate-400 hover:text-slate-600 transition-colors" title="Сообщить об ошибке в задании">
+                        <i class="ph-bold ph-warning-circle text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- СОСТОЯНИЕ 1: ДО НАЧАЛА РАБОТЫ (Заблокировано) -->
+                <div class="locked-content p-10 lg:p-16 flex flex-col items-center justify-center text-center">
+                    <div class="w-20 h-20 bg-slate-50 rounded-[20px] flex items-center justify-center mb-6 border-2 border-slate-200 shadow-sm relative">
+                        <i class="ph-fill ph-lock-key text-4xl text-slate-300"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-900 tracking-tight mb-2">Контент скрыт</h3>
+                    <p class="text-slate-500 font-medium text-sm max-w-md mx-auto italic">
+                        Условия задания будут доступны после нажатия кнопки «Начать выполнение» вверху страницы. Пока видно только номер и баллы.
+                    </p>
+                    
+                    <!-- Неактивное поле ввода -->
+                    <div class="w-full max-w-2xl mt-10 opacity-50 pointer-events-none">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-2 block text-left">Ваш ответ:</label>
+                        <div class="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl h-24 flex items-center justify-center text-slate-400">
+                            <i class="ph-bold ph-lock"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- СОСТОЯНИЕ 2: В ПРОЦЕССЕ (Разблокировано) -->
+                <div class="unlocked-content p-6 lg:p-10 flex flex-col gap-8">
+                    
+                    <!-- Текст условия -->
+                    <div class="text-[15px] leading-relaxed text-slate-800 space-y-4">
+                        <p>На рисунке справа схема дорог Н-ского района изображена в виде графа, в таблице содержатся сведения о длинах этих дорог (в километрах).</p>
+                        <p>Так как таблицу и схему рисовали независимо друг от друга, то нумерация населённых пунктов в таблице никак не связана с буквенными обозначениями на графе. Определите, какова длина дороги из пункта <b>В</b> в пункт <b>Е</b>. В ответе запишите целое число — так, как оно указано в таблице.</p>
+
+                        <!-- Инфографика (Таблица + Граф как на скрине) -->
+                        <div class="flex flex-col md:flex-row gap-8 items-center bg-slate-50 p-6 rounded-2xl border border-slate-200 my-6">
+                            
+                            <!-- Таблица -->
+                            <div class="bg-white p-2 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                                <table class="text-sm font-mono text-center border-collapse">
+                                    <thead>
+                                        <tr>
+                                            <th class="border border-slate-300 p-2 w-8 bg-slate-100"></th>
+                                            <th class="border border-slate-300 p-2 w-8 bg-slate-100">П1</th>
+                                            <th class="border border-slate-300 p-2 w-8 bg-slate-100">П2</th>
+                                            <th class="border border-slate-300 p-2 w-8 bg-slate-100">П3</th>
+                                            <th class="border border-slate-300 p-2 w-8 bg-slate-100">П4</th>
+                                            <th class="border border-slate-300 p-2 w-8 bg-slate-100">П5</th>
+                                            <th class="border border-slate-300 p-2 w-8 bg-slate-100">П6</th>
+                                            <th class="border border-slate-300 p-2 w-8 bg-slate-100">П7</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><th class="border border-slate-300 p-2 bg-slate-100">П1</th><td class="border border-slate-300 p-2 bg-slate-200"></td><td class="border border-slate-300 p-2">28</td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2">32</td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2">25</td><td class="border border-slate-300 p-2"></td></tr>
+                                        <tr><th class="border border-slate-300 p-2 bg-slate-100">П2</th><td class="border border-slate-300 p-2">28</td><td class="border border-slate-300 p-2 bg-slate-200"></td><td class="border border-slate-300 p-2">25</td><td class="border border-slate-300 p-2">12</td><td class="border border-slate-300 p-2">27</td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2"></td></tr>
+                                        <tr><th class="border border-slate-300 p-2 bg-slate-100">П3</th><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2">25</td><td class="border border-slate-300 p-2 bg-slate-200"></td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2">16</td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2"></td></tr>
+                                        <tr><th class="border border-slate-300 p-2 bg-slate-100">П4</th><td class="border border-slate-300 p-2">32</td><td class="border border-slate-300 p-2">12</td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2 bg-slate-200"></td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2">34</td><td class="border border-slate-300 p-2">14</td></tr>
+                                        <tr><th class="border border-slate-300 p-2 bg-slate-100">П5</th><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2">27</td><td class="border border-slate-300 p-2">16</td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2 bg-slate-200"></td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2">36</td></tr>
+                                        <tr><th class="border border-slate-300 p-2 bg-slate-100">П6</th><td class="border border-slate-300 p-2">25</td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2">34</td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2 bg-slate-200"></td><td class="border border-slate-300 p-2">30</td></tr>
+                                        <tr><th class="border border-slate-300 p-2 bg-slate-100">П7</th><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2"></td><td class="border border-slate-300 p-2">14</td><td class="border border-slate-300 p-2">36</td><td class="border border-slate-300 p-2">30</td><td class="border border-slate-300 p-2 bg-slate-200"></td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Граф (Мок SVG) -->
+                            <div class="flex-1 max-w-[200px] shrink-0">
+                                <svg viewBox="0 0 200 150" class="w-full h-auto stroke-slate-900" fill="none" stroke-width="2">
+                                    <!-- Линии -->
+                                    <line x1="20" y1="30" x2="100" y2="30"/>
+                                    <line x1="20" y1="30" x2="20" y2="120"/>
+                                    <line x1="20" y1="30" x2="100" y2="75"/>
+                                    <line x1="20" y1="120" x2="100" y2="120"/>
+                                    <line x1="20" y1="120" x2="100" y2="75"/>
+                                    <line x1="100" y1="30" x2="100" y2="120"/>
+                                    <line x1="100" y1="30" x2="180" y2="75"/>
+                                    <line x1="100" y1="120" x2="180" y2="75"/>
+                                    <line x1="100" y1="75" x2="180" y2="75"/>
+                                    <!-- Узлы -->
+                                    <circle cx="20" cy="30" r="4" fill="#1E293B"/>
+                                    <circle cx="20" cy="120" r="4" fill="#1E293B"/>
+                                    <circle cx="100" cy="30" r="4" fill="#1E293B"/>
+                                    <circle cx="100" cy="75" r="4" fill="#1E293B"/>
+                                    <circle cx="100" cy="120" r="4" fill="#1E293B"/>
+                                    <circle cx="180" cy="75" r="4" fill="#1E293B"/>
+                                    <!-- Метки -->
+                                    <text x="5" y="25" fill="#1E293B" stroke="none" font-size="12" font-family="sans-serif" font-weight="bold">А</text>
+                                    <text x="5" y="130" fill="#1E293B" stroke="none" font-size="12" font-family="sans-serif" font-weight="bold">Б</text>
+                                    <text x="105" y="20" fill="#1E293B" stroke="none" font-size="12" font-family="sans-serif" font-weight="bold">В</text>
+                                    <text x="110" y="65" fill="#1E293B" stroke="none" font-size="12" font-family="sans-serif" font-weight="bold">Г</text>
+                                    <text x="105" y="140" fill="#1E293B" stroke="none" font-size="12" font-family="sans-serif" font-weight="bold">Д</text>
+                                    <text x="185" y="65" fill="#1E293B" stroke="none" font-size="12" font-family="sans-serif" font-weight="bold">Е</text>
+                                    <text x="185" y="95" fill="#1E293B" stroke="none" font-size="12" font-family="sans-serif" font-weight="bold">К</text>
+                                </svg>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Поле ввода ответа -->
+                    <div class="task-input bg-white border border-slate-200 rounded-[20px] p-2 transition-all shadow-sm">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-2 mb-2 block">Ваш ответ:</label>
+                        <textarea rows="3" placeholder="Введите полученное число..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-mono text-slate-900 text-lg focus:outline-none focus:bg-white transition-colors resize-y shadow-inner-soft"></textarea>
+                    </div>
+
+                    <!-- Встроенный редактор кода (Аккордеон) -->
+                    <div class="border border-slate-200 rounded-[24px] overflow-hidden">
+                        <button onclick="toggleEditor()" class="w-full px-6 py-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-colors font-bold text-slate-700">
+                            <span class="flex items-center gap-2"><i class="ph-bold ph-code text-boo-primary text-lg"></i> Редактор кода</span>
+                            <i id="editorCaret" class="ph-bold ph-caret-down text-slate-400 transition-transform"></i>
+                        </button>
+                        
+                        <div id="codeEditorContainer" class="hidden flex-col border-t border-slate-200 bg-white">
+                            <!-- Панель инструментов редактора -->
+                            <div class="flex items-center justify-between px-6 py-3 bg-slate-50/80 border-b border-slate-200">
+                                <span class="text-xs font-bold text-slate-500">Python 3. <span class="font-medium">Доступны только <code class="bg-white border border-slate-200 px-1 rounded">itertools</code> и <code class="bg-white border border-slate-200 px-1 rounded">math</code>.</span></span>
+                            </div>
+                            
+                            <!-- Зона кода (VS Code Style Light) -->
+                            <div class="flex h-[300px]">
+                                <div class="w-12 bg-slate-50 border-r border-slate-200 flex flex-col text-slate-400 font-mono text-sm py-4 items-center select-none shrink-0">
+                                    <span>1</span>
+                                </div>
+                                <textarea class="flex-1 w-full bg-white p-4 outline-none resize-none font-mono text-[14px] text-slate-800 leading-relaxed shadow-inner-soft" spellcheck="false" placeholder="# Ваш код здесь..."></textarea>
+                            </div>
+                            
+                            <!-- Действия с кодом и Вывод -->
+                            <div class="p-4 border-t border-slate-200 bg-slate-50/50 flex flex-col gap-4">
+                                <div class="flex items-center gap-3">
+                                    <button class="px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors shadow-sm flex items-center gap-2">
+                                        <i class="ph-fill ph-play text-green-500"></i> Запустить
+                                    </button>
+                                    <button class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm hover:bg-boo-primaryHover transition-colors shadow-sm flex items-center gap-2">
+                                        <i class="ph-bold ph-floppy-disk"></i> Сохранить код
+                                    </button>
+                                </div>
+                                
+                                <div>
+                                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Вывод консоли:</label>
+                                    <div class="w-full h-12 bg-white border border-slate-200 rounded-xl px-4 py-2 font-mono text-slate-500 text-sm shadow-inner-soft flex items-center">
+                                        > Ожидание запуска...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- БЛОК 4: КОММЕНТАРИИ -->
+            <div class="bg-white rounded-[32px] border border-slate-200 shadow-tactile p-6 lg:p-8 mt-2 mb-10">
+                <h3 class="text-lg font-black text-slate-900 mb-6">Комментарии</h3>
+                
+                <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-[20px] border border-slate-100 mb-6">
+                    <p class="text-sm font-medium text-slate-500">Нет комментариев. Задайте вопрос преподавателю!</p>
+                </div>
+
+                <div class="flex gap-3">
+                    <input type="text" placeholder="Написать сообщение..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                    <button class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-md text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 shrink-0">
+                        Отправить
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ПЛАВАЮЩАЯ ПАНЕЛЬ СДАЧИ (Появляется только после старта) -->
+    <div class="bottom-action-bar fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[1000px] px-6 z-50 pointer-events-none">
+        <div class="bg-white/90 backdrop-blur-xl border border-slate-200 shadow-bottom-bar rounded-[24px] p-4 flex items-center justify-between pointer-events-auto">
+            
+            <button class="px-5 py-3 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors shadow-sm flex items-center gap-2">
+                <i class="ph-bold ph-floppy-disk text-lg"></i> <span class="hidden sm:inline">Сохранить черновик</span>
+            </button>
+
+            <button class="px-8 py-3.5 bg-boo-primary text-white rounded-xl font-black hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-base">
+                <i class="ph-bold ph-check-circle text-xl"></i> Сдать работу
+            </button>
+
+        </div>
+    </div>
+
+    <script>
+        // Функция начала выполнения работы (Интерактив)
+        function startAssignment() {
+            // Добавляем класс на body для запуска CSS анимаций
+            document.body.classList.add('is-started');
+            
+            // Меняем статус в шапке
+            const statusBadge = document.getElementById('statusBadge');
+            statusBadge.className = 'flex items-center gap-2 bg-purple-50 text-boo-primary px-3 py-1.5 rounded-xl border border-purple-100 font-bold text-sm shadow-sm transition-all duration-300';
+            statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-boo-primary animate-pulse"></span> В процессе';
+
+            // Обновляем попытки
+            document.getElementById('attemptCount').textContent = '1 / 1';
+
+            // Устанавливаем текущее время старта
+            const now = new Date();
+            const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('startTimeLabel').textContent = timeString;
+
+            // Прокручиваем к первому заданию
+            setTimeout(() => {
+                document.getElementById('mainScrollArea').scrollTo({ top: 300, behavior: 'smooth' });
+            }, 300);
+        }
+
+        // Функция открытия/закрытия редактора кода
+        function toggleEditor() {
+            const container = document.getElementById('codeEditorContainer');
+            const caret = document.getElementById('editorCaret');
+            
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                container.classList.add('flex');
+                caret.classList.add('rotate-180');
+            } else {
+                container.classList.add('hidden');
+                container.classList.remove('flex');
+                caret.classList.remove('rotate-180');
+            }
+        }
+    </script>
+</body>
+</html>

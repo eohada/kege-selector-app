@@ -28,12 +28,15 @@
     {% include '_ux_enhancements.html' %}
     
     <style>
+        body { background: #E5E9F0; }
         .submission-header {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            margin-bottom: 2rem;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 32px;
+            border-bottom: 4px solid #cbd5e1;
+            padding: 2rem 2.25rem;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
         }
         
         .submission-header h1 {
@@ -81,12 +84,14 @@
         }
         
         .task-card {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 28px;
+            border-bottom: 4px solid #cbd5e1;
+            padding: 0;
             margin-bottom: 1.5rem;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
         }
         .task-card.task-correct {
             border-color: rgba(16, 185, 129, 0.5);
@@ -145,9 +150,11 @@
             display: flex;
             justify-content: space-between;
             align-items: start;
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--stroke-1);
+            margin-bottom: 0;
+            padding: 1.1rem 1.35rem;
+            border-bottom: 1px solid #f1f5f9;
+            background: rgba(248, 250, 252, 0.75);
+            border-radius: 28px 28px 0 0;
         }
         
         .task-number {
@@ -163,6 +170,9 @@
         
         .task-content {
             margin-bottom: 1.5rem;
+            font-size: 15px;
+            line-height: 1.65;
+            color: #1e293b;
         }
         .task-content img {
             max-width: 100%;
@@ -178,15 +188,16 @@
             border-radius: var(--radius-sm);
             font-family: inherit;
             font-size: 1em;
-            background: var(--surface-2);
-            color: var(--text-primary);
+            background: #f8fafc;
+            color: #0f172a;
             resize: vertical;
             max-height: 12rem;
         }
         
         .answer-input:focus {
             outline: none;
-            border-color: var(--accent-1);
+            border-color: #7B5CFF;
+            box-shadow: 0 0 0 4px rgba(123, 92, 255, 0.15);
         }
         
         .autosave-indicator {
@@ -197,15 +208,22 @@
         }
         
         .submit-section {
-            position: sticky;
-            bottom: 0;
-            background: var(--surface-1);
-            border-top: 2px solid var(--stroke-1);
-            padding: 1.5rem;
-            margin-top: 2rem;
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 16px;
+            width: min(1000px, calc(100% - 48px));
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            padding: 1rem 1.15rem;
+            margin-top: 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            z-index: 70;
+            box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.08);
         }
         
         .status-badge {
@@ -259,13 +277,14 @@
             flex-wrap: wrap;
             gap: 0.5rem;
             align-items: center;
-            margin-bottom: 1.5rem;
-            padding: 1rem 1.25rem;
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
+            margin-bottom: 1rem;
+            padding: 0.65rem;
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
             position: sticky;
-            top: 4rem;
+            top: 82px;
             z-index: 50;
         }
         .task-nav-label {
@@ -275,17 +294,17 @@
             margin-right: 0.25rem;
         }
         .task-nav-btn {
-            width: 38px;
-            height: 38px;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-sm);
-            background: var(--surface-2);
-            color: var(--text-primary);
-            font-weight: 700;
-            font-size: 0.9rem;
+            border-radius: 12px;
+            background: #f1f5f9;
+            color: #64748b;
+            font-weight: 800;
+            font-size: 1rem;
             cursor: pointer;
             transition: all .15s ease;
             text-decoration: none;
@@ -327,6 +346,50 @@
         .scroll-to-top {
             bottom: 6rem !important;
         }
+        .locked-card {
+            padding: 2.6rem 1.5rem 2.4rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .locked-card__icon {
+            width: 78px;
+            height: 78px;
+            border-radius: 20px;
+            border: 2px solid #e2e8f0;
+            background: #f8fafc;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 34px;
+        }
+        .locked-card__title {
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: 0.35rem;
+        }
+        .locked-card__text {
+            color: #64748b;
+            max-width: 560px;
+            font-size: 14px;
+            line-height: 1.45;
+            margin-bottom: 1.25rem;
+        }
+        .locked-card__fake {
+            width: min(100%, 740px);
+            border: 2px solid #e2e8f0;
+            background: #f8fafc;
+            border-radius: 16px;
+            height: 92px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 18px;
+        }
     </style>
     <script>
         (function(){
@@ -344,8 +407,8 @@
         {% include '_sidebar.html' %}
     <div class="app-main">
         {% include '_topbar.html' %}
-        <main class="app-content" style="margin-top: 1.25rem;">
-        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost back-to-assignments" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.5rem 1rem; font-weight: 600;">{{ ui_icon('action.chevron_left', 'sm') }} К заданиям</a></p>
+        <main class="app-content" style="margin-top: 1.25rem; max-width: 1000px; margin-left: auto; margin-right: auto; padding-bottom: 120px;">
+        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost back-to-assignments" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.625rem 1rem; font-weight: 700; border-radius: 12px; background: rgba(255,255,255,0.8); border: 1px solid #e2e8f0;">{{ ui_icon('action.chevron_left', 'sm') }} К списку заданий</a></p>
         <div class="submission-header">
             <h1>{{ assignment.title }}</h1>
             {% if assignment.description %}
@@ -439,15 +502,18 @@
                 </div>
                 
                 {% if should_hide_tasks %}
-                <div class="task-content" style="color: var(--text-muted); font-style: italic;">
-                    Условия задания будут доступны после нажатия «Начать выполнение». Пока видно только номер и краткая информация.
-                </div>
-                {% else %}
-                <div class="task-content">
-                    {{ task_item.task.content_html|task_content_absolute_urls|strip_attachment_links|sanitize_html }}
+                <div class="locked-card">
+                    <div class="locked-card__icon"><i class="ph-fill ph-lock-key"></i></div>
+                    <div class="locked-card__title">Контент скрыт</div>
+                    <div class="locked-card__text">Условия задания будут доступны после нажатия кнопки «Начать выполнение» вверху страницы. Пока видно только номер и баллы.</div>
+                    <div class="locked-card__fake"><i class="ph-bold ph-lock"></i></div>
                 </div>
                 {% endif %}
                 
+                {% if not should_hide_tasks %}
+                <div class="task-content" style="padding: 1.25rem 1.35rem 0;">
+                    {{ task_item.task.content_html|task_content_absolute_urls|strip_attachment_links|sanitize_html }}
+                </div>
                 {% if (not should_hide_tasks) and task_item.task.attached_files %}
                 {% set files = task_item.task.attached_files | from_json %}
                 {% if files %}
@@ -478,7 +544,7 @@
                 {% endif %}
                 {% endif %}
                 
-                <div>
+                <div style="padding: 0 1.35rem 1.35rem;">
                     {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task and task_item.answer %}
                     <div style="margin-bottom: 0.5rem; padding: 0.5rem 0; font-weight: 600;">
                         {% if task_item.answer.is_correct == True %}
@@ -584,6 +650,7 @@
                     {% endif %}
                     {% endif %}
                 </div>
+                {% endif %}
             </div>
             {% endfor %}
             
