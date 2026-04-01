@@ -158,25 +158,10 @@
             border-radius: 32px 32px 0 0;
         }
         
-        .task-number {
-            font-size: 1.9rem;
-            font-weight: 900;
-            color: #7B5CFF;
-            letter-spacing: -0.02em;
-        }
+        .task-number { font-size: 1.75rem; font-weight: 900; color: #7B5CFF; letter-spacing: -0.01em; }
+        .task-score { font-size: 1rem; color: #64748b; font-weight: 500; }
         
-        .task-score {
-            font-size: 1.1rem;
-            color: #64748b;
-            font-weight: 500;
-        }
-        
-        .task-content {
-            margin-bottom: 1.5rem;
-            font-size: 15px;
-            line-height: 1.65;
-            color: #1e293b;
-        }
+        .task-content { margin-bottom: 1.25rem; font-size: 15px; line-height: 1.65; color: #1e293b; }
         .task-content img {
             max-width: 100%;
             height: auto;
@@ -185,12 +170,12 @@
         
         .answer-input {
             width: 100%;
-            min-height: 5.2rem;
+            min-height: 4.25rem;
             padding: 0.85rem 1rem;
-            border: 1px solid #dbe3ee;
-            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
             font-family: inherit;
-            font-size: 1.15rem;
+            font-size: 1.05rem;
             font-weight: 600;
             background: #f8fafc;
             color: #0f172a;
@@ -266,7 +251,7 @@
         .status-returned { background: var(--warning); color: white; }
         .meta-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #94a3b8; margin-bottom: 6px; }
         .meta-value { font-size: 30px; font-weight: 900; color: #0f172a; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 1.1rem; }
-        .hero-grid { display: grid; grid-template-columns: 1fr auto; gap: 1.25rem; align-items: end; }
+        .hero-grid { display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: end; }
         .hero-metrics { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 0; border-top: 1px solid #e2e8f0; padding-top: 1rem; }
         .hero-metrics > div { padding-right: 1.25rem; }
         .hero-metrics > div + div { border-left: 1px solid #e2e8f0; padding-left: 1.25rem; }
@@ -300,11 +285,10 @@
             gap: 0.5rem;
             align-items: center;
             margin-bottom: 1rem;
-            padding: 0.65rem;
-            background: rgba(255, 255, 255, 0.85);
+            padding: 0.55rem 0.6rem;
+            background: #ffffff;
             border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            backdrop-filter: blur(10px);
+            border-radius: 18px;
             position: sticky;
             top: 82px;
             z-index: 50;
@@ -319,17 +303,17 @@
             margin-left: .65rem;
         }
         .task-nav-btn {
-            width: 40px;
-            height: 40px;
+            width: 46px;
+            height: 46px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid var(--stroke-1);
+            border: 1px solid #dbe3ee;
             border-radius: 12px;
             background: #f1f5f9;
             color: #64748b;
             font-weight: 800;
-            font-size: 1rem;
+            font-size: 1.3rem;
             cursor: pointer;
             transition: all .15s ease;
             text-decoration: none;
@@ -458,7 +442,7 @@
                 </div>
                 {% if should_hide_tasks %}
                 <div>
-                    <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1.15rem 2.35rem; font-size: 1.05rem; font-weight: 900; border-radius: 16px; box-shadow: 0 10px 30px rgba(123,92,255,.3);">
+                    <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1.25rem 2.8rem; font-size: 1.05rem; font-weight: 900; border-radius: 16px; box-shadow: 0 10px 30px rgba(123,92,255,.3); border-bottom-width:4px;">
                         <i class="ph-fill ph-play-circle" style="font-size:1.25rem;"></i> Начать выполнение
                     </button>
                 </div>
@@ -469,7 +453,7 @@
                 <div>
                     <div class="meta-label">Статус</div>
                     <span class="status-pill status-{{ submission.status.lower() }}{% if timer_expired and time_limit_strict %} status-overdue-timer{% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %} status-overdue-deadline{% endif %}">
-                        <i class="ph-bold {% if submission.status == 'ASSIGNED' %}ph-lock{% elif submission.status == 'IN_PROGRESS' %}ph-circle{% elif submission.status == 'SUBMITTED' %}ph-check-circle{% else %}ph-clock{% endif %}"></i>
+                        <i class="ph-bold {% if submission.status == 'ASSIGNED' %}ph-lock{% elif submission.status == 'IN_PROGRESS' %}ph-circle{% elif submission.status == 'SUBMITTED' %}ph-check-circle{% else %}ph-clock{% endif %}" style="font-size:.9rem;"></i>
                         {% if timer_expired and time_limit_strict %}Просрочено по таймеру
                         {% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}Просрочено по дедлайну
                         {% elif submission.status == 'ASSIGNED' %}Назначено
@@ -513,9 +497,11 @@
             {% for task_item in tasks_data %}
             <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
-                    <div>
+                    <div style="display:flex; align-items:center; gap:.6rem;">
                         <span class="task-number">Задание {{ loop.index }}</span>
-                        <span class="task-score">({{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }})</span>
+                        <span style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.04em;">{{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }}</span>
+                    </div>
+                    <div style="color:#94a3b8;"><i class="ph-bold ph-warning-circle"></i></div>
                     </div>
                 </div>
                 
