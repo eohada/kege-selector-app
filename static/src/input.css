@@ -133,9 +133,10 @@
   }
   h1,h2,h3,h4,h5,h6 { @apply font-sans font-bold; color: var(--color-text-primary); line-height: 1.25; }
   code,pre,kbd,samp { @apply font-mono; }
-  a { color: #7B5CFF; text-decoration: none; transition: color 0.15s ease; }
-  /* Do NOT recolor all links on hover: it breaks “card links” (e.g. purple bento). */
-  a:hover { text-decoration: underline; }
+  a { color: #7B5CFF; text-decoration: none; transition: all 0.2s ease; }
+  /* Do NOT recolor all links on hover: it breaks “card links” (e.g. purple bento).
+     We removed text-decoration: underline and replaced with opacity for pure text links. */
+  a:hover:not([class*="btn"]):not([class*="button"]):not([class*="card"]) { opacity: 0.8; }
   ::selection { background-color: var(--color-accent-soft); color: #6A4CE5; }
   :focus-visible { outline: 2px solid #7B5CFF; outline-offset: 2px; border-radius: 8px; }
   img, svg { @apply max-w-full h-auto; }
@@ -169,7 +170,7 @@
   /* ═══════════════ STUDENT LAYOUT (pixel-perfect like examples) ═══════════════ */
 
   .layout-student .app-main {
-    @apply pt-32 pb-16 px-6 lg:px-8;
+    @apply pt-24 pb-8 px-4 sm:pt-32 sm:pb-16 sm:px-6 lg:px-8;
   }
   .layout-student .app-content {
     @apply max-w-[1400px] mx-auto p-0;
@@ -178,7 +179,7 @@
   /* ═══════════════ TEACHER LAYOUT (pixel-perfect like examples) ═══════════════ */
 
   .layout-teacher .app-main {
-    @apply pt-32 pb-16 px-8 lg:px-12;
+    @apply pt-24 pb-8 px-4 sm:pt-32 sm:pb-16 sm:px-8 lg:px-12;
   }
   .layout-teacher .app-content {
     @apply max-w-[1600px] mx-auto p-0;
@@ -189,7 +190,7 @@
     display: none;
   }
   .layout-chief-tester .app-main {
-    @apply pt-32 pb-16 px-6 lg:px-8;
+    @apply pt-24 pb-8 px-4 sm:pt-32 sm:pb-16 sm:px-6 lg:px-8;
   }
   .layout-chief-tester .app-content {
     @apply max-w-[1400px] mx-auto p-0;
@@ -234,7 +235,7 @@
   }
 
   .layout-student .dock-wrapper {
-    @apply pt-5 px-6 lg:px-8 flex justify-center;
+    @apply pt-3 px-3 sm:pt-5 sm:px-6 lg:px-8 flex justify-center;
     padding-bottom: 0;
   }
   .layout-student .dock {
@@ -249,7 +250,7 @@
   }
 
   .layout-teacher .dock-wrapper {
-    @apply pt-5 px-8 lg:px-12 flex justify-center;
+    @apply pt-3 px-3 sm:pt-5 sm:px-8 lg:px-12 flex justify-center;
     padding-bottom: 0;
   }
   .layout-teacher .dock {
@@ -598,6 +599,75 @@
   }
   .neo-checkbox { @apply flex items-center gap-2 cursor-pointer; font-size: 0.875rem; color: #475569; }
   .neo-checkbox-input { @apply w-[18px] h-[18px]; border-radius: 6px; accent-color: #7B5CFF; }
+
+  /* ═══════════════ TOM SELECT (CUSTOM PLATFORM STYLE) ═══════════════ */
+  .ts-wrapper { margin-bottom: 0.75rem; }
+  .ts-wrapper .ts-control {
+    @apply w-full outline-none font-medium flex items-center;
+    padding: 0.6rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    border-bottom-width: 2px;
+    border-bottom-color: #CBD5E1;
+    background: #FFFFFF;
+    font-size: 0.875rem;
+    color: #1E293B;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.04);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    min-height: calc(2.25rem + 4px);
+  }
+  [data-theme="dark"] .ts-wrapper .ts-control {
+    background: var(--color-bg-surface-alt);
+    border-color: var(--color-stroke);
+    border-bottom-color: var(--color-stroke-strong);
+    color: var(--color-text-primary);
+  }
+  .ts-wrapper.focus .ts-control {
+    border-bottom-color: #7B5CFF;
+    border-color: #7B5CFF;
+    box-shadow: 0 0 0 3px rgba(123, 92, 255, 0.1);
+  }
+  .ts-dropdown {
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+    background: #FFFFFF;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  [data-theme="dark"] .ts-dropdown {
+    background: var(--color-bg-surface-alt);
+    border-color: var(--color-stroke);
+  }
+  .ts-dropdown .option {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  [data-theme="dark"] .ts-dropdown .option {
+    color: var(--color-text-primary);
+  }
+  .ts-dropdown .option:hover,
+  .ts-dropdown .active {
+    background-color: #F8FAFC !important;
+    color: #0F172A !important;
+  }
+  [data-theme="dark"] .ts-dropdown .option:hover,
+  [data-theme="dark"] .ts-dropdown .active {
+    background-color: var(--color-stroke) !important;
+    color: #FFFFFF !important;
+  }
+  .ts-wrapper.single .ts-control::after {
+    border-color: #94A3B8 transparent transparent transparent;
+    border-width: 5px 4px 0 4px;
+  }
+  .ts-wrapper.single.dropdown-active .ts-control::after {
+    border-color: transparent transparent #94A3B8 transparent;
+    border-width: 0 4px 5px 4px;
+  }
 
   /* ═══════════════ HERO ═══════════════ */
 

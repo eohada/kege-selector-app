@@ -15,6 +15,11 @@
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
     {% block head_js %}{% endblock %}
+    
+    <!-- TomSelect -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js" defer></script>
+
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -127,5 +132,26 @@
     </script>
 
     {% block scripts_extra %}{% endblock %}
+
+    <!-- Global Dropdown Initialization via TomSelect -->
+    <script>
+    function initTactileSelects() {
+        if (typeof TomSelect === 'undefined') return;
+        document.querySelectorAll('select:not(.no-tomselect)').forEach(function(el) {
+            if (!el.tomselect) {
+                new TomSelect(el, {
+                    create: false,
+                    maxOptions: null,
+                    // Keep native-like filtering but hide input if < 10 options? To be safe, just standard behavior
+                    dropdownParent: 'body' 
+                });
+            }
+        });
+    }
+    document.addEventListener('DOMContentLoaded', initTactileSelects);
+    if(typeof htmx !== 'undefined') {
+        htmx.onLoad(initTactileSelects);
+    }
+    </script>
 </body>
 </html>

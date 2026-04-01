@@ -87,7 +87,7 @@
                           <label class="neo-label">Название *</label>
                           <input class="neo-input" name="title" value="{{ e.title }}" required>
                         </div>
-                        <div class="grid gap-3 mt-3" style="grid-template-columns: 1fr 1fr;">
+                        <div class="grid gap-3 mt-3 grid-cols-1 sm:grid-cols-2">
                           <div class="neo-field">
                             <label class="neo-label">Категория</label>
                             <input class="neo-input" name="category" value="{{ e.category or '' }}" placeholder="homework / exam / ...">
@@ -193,7 +193,7 @@
                 <option value="test">Тест</option>
               </datalist>
             </div>
-            <div class="grid gap-3 mt-3" style="grid-template-columns: 1fr 1fr;">
+            <div class="grid gap-3 mt-3 grid-cols-1 sm:grid-cols-2">
               <div class="neo-field">
                 <label class="neo-label">Баллы</label>
                 <input class="neo-input" type="number" name="score">
