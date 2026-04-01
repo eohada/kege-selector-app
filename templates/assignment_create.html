@@ -3,351 +3,243 @@
 
 {% block head_css %}
 <style>
-    .wizard-container {
-        max-width: 900px;
-        margin: 2rem auto;
-        padding: 0 1rem;
-    }
-    .stepper {
-        display: flex;
-        justify-content: center;
-        gap: 3rem;
-        margin-bottom: 2.5rem;
-    }
-    .step {
-        display: flex;
-        align-items: center;
-        gap: 0.8rem;
-        opacity: 0.3;
-        transition: all 0.3s ease;
-    }
-    .step.active { opacity: 1; transform: scale(1.05); }
-    .step.completed { opacity: 1; color: var(--color-accent); }
-    .step-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: var(--color-bg-surface-alt);
-        border: 2px solid var(--color-stroke);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 900;
-    }
-    .step.active .step-icon { background: var(--color-accent); color: #000; border-color: var(--color-accent); box-shadow: 0 0 15px rgba(0,255,213,0.2); }
-    .step.completed .step-icon { border-color: var(--color-accent); background: transparent; color: var(--color-accent); }
-    .step-label { font-weight: 700; font-size: 1rem; }
-
-    .panel {
-        background: var(--color-bg-surface);
-        border-radius: var(--radius-card);
-        padding: 2rem;
-        box-shadow: var(--shadow-card);
-    }
-    .panel h2 { margin: 0 0 0.5rem 0; font-weight: 900; font-size: 1.75rem; }
-    .panel .subtitle { color: var(--color-text-muted); margin-bottom: 2rem; }
-
-    .wizard-step-content { display: none; }
-    .wizard-step-content.active { display: block; animation: slideUp 0.4s ease; }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-    .source-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
-    .source-card {
-        background: var(--color-bg-surface-alt);
-        border-radius: var(--radius-card);
-        padding: 1.5rem;
-        text-decoration: none;
-        color: inherit;
-        transition: all 0.2s ease;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        cursor: pointer;
-        box-shadow: var(--shadow-card);
-    }
-    .source-card:hover { border-color: var(--color-accent); background: rgba(0,255,213,0.03); transform: translateY(-3px); }
-    .source-card.active { border: 1px solid var(--color-accent); background: rgba(0,255,213,0.08); box-shadow: 0 0 0 3px rgba(0,255,213,0.1); }
-    .source-card .sc-title { font-weight: 900; font-size: 1.2rem; }
-    .source-card .sc-sub { color: var(--color-text-muted); font-size: 0.9rem; line-height: 1.4; }
-
-    .status-bar {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-        flex-wrap: wrap;
-    }
-    .pill {
-        background: var(--color-bg-surface-alt);
-        border: 1px solid var(--color-stroke);
-        padding: 0.4rem 0.8rem;
-        border-radius: 999px;
-        font-size: 0.85rem;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .actions-bar {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 2.5rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid var(--color-stroke);
-    }
-
-    .task-mini-list {
-        display: grid;
-        gap: 0.5rem;
-        max-height: 300px;
-        overflow-y: auto;
-        margin-top: 1rem;
-        padding-right: 0.5rem;
-    }
-    .task-mini-item {
-        background: var(--color-bg-surface-alt);
-        padding: 0;
-        border-radius: var(--radius-card);
-        font-size: 0.9rem;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        box-shadow: var(--shadow-card);
-    }
-    .task-mini-header {
-        padding: 0.75rem 1rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        cursor: pointer;
-        user-select: none;
-        background: rgba(255,255,255,0.02);
-        transition: background 0.2s;
-    }
-    .task-mini-header:hover { background: rgba(255,255,255,0.05); }
-    .task-mini-body {
-        padding: 1rem;
-        border-top: 1px solid var(--color-stroke);
-        display: none;
-        background: var(--color-bg-surface);
-        line-height: 1.6;
-    }
+    .wizard-container { max-width: 900px; margin: 0 auto; padding: 0 1rem 2rem; }
+    .step-card { display: none; opacity: 0; transform: translateY(10px); }
+    .step-card.active { display: block; animation: slideUp .4s ease forwards; }
+    @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+    .student-list::-webkit-scrollbar { width: 6px; }
+    .student-list::-webkit-scrollbar-track { background: #f8fafc; border-radius: 8px; }
+    .student-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 8px; }
+    .student-list::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+    .source-card.active-manual { border-color: #7b5cff; background: rgba(123,92,255,.06); box-shadow: inset 0 0 0 3px rgba(123,92,255,.12); }
+    .source-card.active-generator { border-color: #06b6d4; background: rgba(6,182,212,.06); box-shadow: inset 0 0 0 3px rgba(6,182,212,.12); }
+    .source-card.active-template { border-color: #fb923c; background: rgba(251,146,60,.06); box-shadow: inset 0 0 0 3px rgba(251,146,60,.12); }
+    .task-mini-body { display: none; }
     .task-mini-body.active { display: block; }
-    .task-mini-body img { max-width: 100%; height: auto; border-radius: 4px; margin: 0.5rem 0; }
 </style>
 {% endblock %}
 
 {% set active_page = 'assignments' %}
 
 {% block content %}
-            <div class="wizard-container">
+<main class="flex-1 overflow-y-auto pt-6 pb-16 px-6 lg:px-8">
+  <div class="wizard-container">
+    <div class="flex flex-col items-center mb-8">
+      <div class="flex items-center bg-white/80 backdrop-blur-md rounded-[20px] border border-slate-200 shadow-sm p-1.5 mb-6">
+        <button type="button" onclick="goToStep(1)" id="stepIndicator1" class="flex items-center gap-2.5 px-4 py-2 rounded-xl font-bold text-sm transition-all">
+          <div id="stepBadge1" class="w-6 h-6 rounded-full flex items-center justify-center text-xs">1</div> Ученики
+        </button>
+        <div class="w-8 h-px bg-slate-200 mx-1"></div>
+        <button type="button" onclick="goToStep(2)" id="stepIndicator2" class="flex items-center gap-2.5 px-4 py-2 rounded-xl font-bold text-sm transition-all">
+          <div id="stepBadge2" class="w-6 h-6 rounded-full flex items-center justify-center text-xs">2</div> Задания
+        </button>
+        <div class="w-8 h-px bg-slate-200 mx-1"></div>
+        <button type="button" onclick="goToStep(3)" id="stepIndicator3" class="flex items-center gap-2.5 px-4 py-2 rounded-xl font-bold text-sm transition-all">
+          <div id="stepBadge3" class="w-6 h-6 rounded-full flex items-center justify-center text-xs">3</div> Настройки
+        </button>
+      </div>
 
-                <div class="stepper">
-                    <div class="step" id="stepIndicator1">
-                        <div class="step-icon">1</div>
-                        <div class="step-label">Ученики</div>
-                    </div>
-                    <div class="step" id="stepIndicator2">
-                        <div class="step-icon">2</div>
-                        <div class="step-label">Задания</div>
-                    </div>
-                    <div class="step" id="stepIndicator3">
-                        <div class="step-icon">3</div>
-                        <div class="step-label">Настройки</div>
-                    </div>
+      <div class="flex items-center gap-3">
+        <div class="bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs font-extrabold text-slate-500 uppercase tracking-widest shadow-sm">
+          Учеников: <span id="statusRecipients" class="text-slate-900 font-black">0</span>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs font-extrabold text-slate-500 uppercase tracking-widest shadow-sm">
+          Заданий: <span id="statusTasks" class="text-slate-900 font-black">{{ (task_ids|length) if task_ids else 0 }}</span>
+        </div>
+        {% if task_ids and task_ids|length > 0 %}
+        <button type="button" class="bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors shadow-sm active:scale-95" onclick="clearTasks()">Сбросить</button>
+        {% endif %}
+      </div>
+    </div>
+
+    <div id="stepContent1" class="step-card">
+      <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
+        <h2 class="text-3xl md:text-4xl font-black text-slate-900 mb-2 tracking-tight">1. Кому выдаем?</h2>
+        <p class="text-slate-500 font-medium text-base mb-6">Выберите учеников из списка, назначьте группе или выберите всех сразу.</p>
+
+        {% if available_groups %}
+        <div class="mb-4">
+          <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Быстрый выбор по группе</label>
+          <select id="ca_group_select" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" onchange="handleGroupSelect(this.value)">
+            <option value="">— Выбрать вручную —</option>
+            <option value="all">Все ученики</option>
+            {% for g in available_groups %}
+            <option value="{{ g.group_id }}">{{ g.title }}{% if g.subject %} ({{ g.subject }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <select id="ca_recipients" multiple class="hidden">
+          {% for st in (recipient_options or []) %}
+            {% set _sel = (default_recipient_ids and st.student_id in default_recipient_ids) %}
+            <option value="{{ st.student_id }}" {% if _sel %}selected{% endif %}>{{ st.name }}</option>
+          {% endfor %}
+        </select>
+
+        <div class="bg-slate-50/50 border border-slate-200 rounded-[24px] overflow-hidden mb-8">
+          <div id="recipientCards" class="student-list max-h-[340px] overflow-y-auto p-3 space-y-1.5">
+            {% for st in (recipient_options or []) %}
+              {% set _sel = (default_recipient_ids and st.student_id in default_recipient_ids) %}
+              <label class="flex items-center gap-4 p-3 rounded-xl bg-white border border-slate-200 cursor-pointer hover:border-purple-200 hover:shadow-sm transition-all group relative recipient-card" data-student-id="{{ st.student_id }}">
+                <input type="checkbox" class="peer sr-only recipient-check" value="{{ st.student_id }}" {% if _sel %}checked{% endif %}>
+                <div class="w-5 h-5 rounded border border-slate-300 bg-white peer-checked:bg-boo-primary peer-checked:border-boo-primary flex items-center justify-center transition-colors shadow-sm shrink-0">
+                  <i class="ph-bold ph-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
                 </div>
-
-                <div class="status-bar">
-                    <div class="pill">Учеников: <span id="statusRecipients">0</span></div>
-                    <div class="pill">
-                        Заданий: <span id="statusTasks">{{ (task_ids|length) if task_ids else 0 }}</span>
-                        {% if task_ids and task_ids|length > 0 %}
-                        <button type="button" class="neo-button danger sm" style="padding: 0 6px; font-size: 10px; height: 18px; margin-left: 5px;" onclick="clearTasks()">Сбросить</button>
-                        {% endif %}
-                    </div>
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500">
+                    <i class="ph-bold ph-user"></i>
+                  </div>
+                  <div>
+                    <div class="font-bold text-slate-900 text-sm">{{ st.name }}</div>
+                    <div class="text-xs text-slate-500 font-medium">ID: {{ st.student_id }}</div>
+                  </div>
                 </div>
+                <div class="absolute inset-0 rounded-xl border-2 border-boo-primary opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"></div>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
 
-                <!-- ШАГ 1 -->
-                <div class="wizard-step-content" id="stepContent1">
-                    <div class="panel">
-                        <h2>1. Кому выдаём?</h2>
-                        <p class="subtitle">Выберите учеников из списка, назначьте группе или выберите всех сразу.</p>
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-slate-100">
+          <div class="flex gap-2 w-full sm:w-auto">
+            <button type="button" class="flex-1 sm:flex-none px-4 py-2.5 bg-slate-50 text-slate-700 font-bold text-sm rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors shadow-sm" onclick="selectAll(true)">Выбрать всех</button>
+            <button type="button" class="flex-1 sm:flex-none px-4 py-2.5 text-slate-500 hover:text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-50 transition-colors" onclick="selectAll(false)">Снять выбор</button>
+          </div>
+          <button type="button" class="w-full sm:w-auto px-8 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" onclick="goToStep(2)">
+            Далее: Выбрать задания <i class="ph-bold ph-arrow-right"></i>
+          </button>
+        </div>
+      </section>
+    </div>
 
-                        {% if available_groups %}
-                        <div style="margin-bottom: 1rem;">
-                            <label style="font-weight: 700; margin-bottom: 0.35rem; display: block;">Быстрый выбор по группе</label>
-                            <select id="ca_group_select" class="neo-select" onchange="handleGroupSelect(this.value)">
-                                <option value="">— Выбрать вручную —</option>
-                                <option value="all">Все ученики</option>
-                                {% for g in available_groups %}
-                                <option value="{{ g.group_id }}">{{ g.title }}{% if g.subject %} ({{ g.subject }}){% endif %}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        {% endif %}
+    <div id="stepContent2" class="step-card">
+      <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
+        <h2 class="text-3xl md:text-4xl font-black text-slate-900 mb-2 tracking-tight">2. Откуда берем задания?</h2>
+        <p class="text-slate-500 font-medium text-base mb-8">Выберите наиболее удобный способ формирования пула задач.</p>
 
-                        <select id="ca_recipients" class="neo-select" multiple size="12" style="min-height: 300px;">
-                            {% for st in (recipient_options or []) %}
-                                {% set _sel = (default_recipient_ids and st.student_id in default_recipient_ids) %}
-                                <option value="{{ st.student_id }}" {% if _sel %}selected{% endif %}>{{ st.name }}</option>
-                            {% endfor %}
-                        </select>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <button type="button" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-white text-left {% if source == 'manual' %}active-manual{% endif %}" onclick="setSource('manual')">
+            <div class="w-12 h-12 rounded-xl bg-purple-100 text-boo-primary flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-keyboard"></i></div>
+            <h3 class="text-lg font-black text-slate-900 mb-1">Ввести ID вручную</h3>
+            <p class="text-xs font-medium text-slate-500">Если номера задач уже известны.</p>
+          </button>
+          <a id="generatorLink" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-white text-left no-underline {% if source == 'generator' %}active-generator{% endif %}" href="#">
+            <div class="w-12 h-12 rounded-xl bg-cyan-100 text-cyan-600 flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-magic-wand"></i></div>
+            <h3 class="text-lg font-black text-slate-900 mb-1">Генератор</h3>
+            <p class="text-xs font-medium text-slate-500">Подобрать новые задачи (анти-повтор включен).</p>
+          </a>
+          <button type="button" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-white text-left {% if source == 'template' %}active-template{% endif %}" onclick="setSource('template')">
+            <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-500 flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-squares-four"></i></div>
+            <h3 class="text-lg font-black text-slate-900 mb-1">Из шаблона</h3>
+            <p class="text-xs font-medium text-slate-500">Готовые варианты или тематические наборы.</p>
+          </button>
+        </div>
 
-                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
-                            <button type="button" class="neo-button ghost sm" onclick="selectAll(true)">Выбрать всех</button>
-                            <button type="button" class="neo-button ghost sm" onclick="selectAll(false)">Снять выбор</button>
-                        </div>
+        <div id="sourceOptions" class="bg-slate-50/80 border border-slate-200 rounded-[24px] p-6 lg:p-8 mb-8 shadow-inner-soft">
+          {% if source == 'template' %}
+            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Выберите шаблон из библиотеки</label>
+            <select class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" onchange="pickTemplate(this.value)">
+              <option value="">— выбрать шаблон —</option>
+              {% for tpl in (templates or []) %}
+              <option value="{{ tpl.template_id }}" {% if template_id == tpl.template_id %}selected{% endif %}>{{ tpl.name }}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Введите ID через запятую или пробел</label>
+            <textarea id="manualTaskIds" rows="4" class="w-full bg-white border border-slate-200 rounded-xl p-4 font-mono text-slate-800 text-[15px] focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-sm resize-y" placeholder="Пример: 123, 456, 789...">{% if source == 'manual' and task_ids %}{{ task_ids|join(', ') }}{% endif %}</textarea>
+          {% endif %}
+        </div>
 
-                        <div class="actions-bar">
-                            <div></div>
-                            <button type="button" class="neo-button accent" onclick="goToStep(2)">Далее: Выбрать задания {{ ui_icon('action.chevron_right', 'sm') }}</button>
-                        </div>
-                    </div>
+        <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-6 border-t border-slate-100">
+          <button type="button" class="w-full sm:w-auto text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors flex items-center justify-center gap-1.5 px-4 py-2" onclick="goToStep(1)">
+            <i class="ph-bold ph-arrow-left"></i> Назад к ученикам
+          </button>
+          <button type="button" class="w-full sm:w-auto px-8 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" onclick="goToStep(3)">
+            Далее: Настройки <i class="ph-bold ph-arrow-right"></i>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div id="stepContent3" class="step-card">
+      <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
+        <h2 class="text-3xl md:text-4xl font-black text-slate-900 mb-2 tracking-tight">3. Финальные настройки</h2>
+        <p class="text-slate-500 font-medium text-base mb-8">Проверьте список задач и установите срок сдачи.</p>
+
+        <div class="mb-8">
+          <h3 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 ml-1">Список задач ({{ tasks|length }})</h3>
+          <div class="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+            {% for t in tasks %}
+            <div class="task-mini-item bg-slate-50 border border-slate-200 rounded-xl">
+              <div class="task-mini-header flex justify-between items-center px-4 py-3 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('active')">
+                <div class="font-bold text-slate-900 text-sm"><span class="text-slate-400 font-mono">#{{ t.task_id }}</span> <span class="mx-1">•</span> Задание №{{ t.task_number }}</div>
+                <div class="flex items-center gap-2">
+                  {% if t.source_url %}<a class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-boo-primary no-underline" href="{{ t.source_url }}" target="_blank" onclick="event.stopPropagation()">Источник</a>{% endif %}
+                  <i class="ph-bold ph-caret-down text-slate-400"></i>
                 </div>
-
-                <!-- ШАГ 2 -->
-                <div class="wizard-step-content" id="stepContent2">
-                    <div class="panel">
-                        <h2>2. Откуда берём задания?</h2>
-                        <p class="subtitle">Выберите наиболее удобный способ.</p>
-
-                        <div class="source-cards">
-                            <div class="source-card {% if source=='manual' %}active{% endif %}" onclick="setSource('manual')">
-                                <div class="sc-title">Ввести ID вручную</div>
-                                <div class="sc-sub">Если номера задач уже известны.</div>
-                            </div>
-                            <div class="source-card {% if source=='template' %}active{% endif %}" onclick="setSource('template')">
-                                <div class="sc-title">Из шаблона</div>
-                                <div class="sc-sub">Готовые варианты или тематические наборы.</div>
-                            </div>
-                            <a class="source-card" id="generatorLink" href="#">
-                                <div class="sc-title">Генератор</div>
-                                <div class="sc-sub">Подобрать новые задачи (анти-повтор включен).</div>
-                            </a>
-                        </div>
-
-                        <div id="sourceOptions" style="margin-top: 2rem;">
-                            {% if source == 'manual' %}
-                            <div class="panel" style="background: rgba(255,255,255,0.02); border-style: dashed;">
-                                <label class="neo-label">Введите ID через запятую или пробел</label>
-                                <textarea id="manualTaskIds" class="neo-input" style="min-height: 120px;" placeholder="Пример: 123, 456, 789..."></textarea>
-                            </div>
-                            {% endif %}
-
-                            {% if source == 'template' %}
-                            <div class="panel" style="background: rgba(255,255,255,0.02); border-style: dashed;">
-                                <label class="neo-label">Выберите шаблон из списка</label>
-                                <select class="neo-select" onchange="pickTemplate(this.value)">
-                                    <option value="">— выбрать шаблон —</option>
-                                    {% for tpl in (templates or []) %}
-                                    <option value="{{ tpl.template_id }}" {% if template_id == tpl.template_id %}selected{% endif %}>{{ tpl.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="actions-bar">
-                            <button type="button" class="neo-button ghost" onclick="goToStep(1)">{{ ui_icon('action.chevron_left', 'sm') }} Назад к ученикам</button>
-                            <button type="button" class="neo-button accent" onclick="goToStep(3)">Далее: Настройки {{ ui_icon('action.chevron_right', 'sm') }}</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ШАГ 3 -->
-                <div class="wizard-step-content" id="stepContent3">
-                    <div class="panel">
-                        <h2>3. Финальные настройки</h2>
-                        <p class="subtitle">Проверьте список задач и установите срок сдачи.</p>
-
-                        <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
-                            <div>
-                                <h3 style="font-weight: 900; margin-bottom: 1rem;">{{ ui_icon('nav.assignments', 'sm') }} Список задач</h3>
-                                <div class="task-mini-list">
-                                    {% for t in tasks %}
-                                    <div class="task-mini-item">
-                                        <div class="task-mini-header" onclick="this.nextElementSibling.classList.toggle('active')">
-                                            <span style="font-weight: 800;">#{{ t.task_id }} · Задание №{{ t.task_number }}</span>
-                                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                                {% if t.source_url %}<a class="neo-button ghost sm" href="{{ t.source_url }}" target="_blank" style="padding: 2px 8px; font-size: 11px;" onclick="event.stopPropagation()">Источник</a>{% endif %}
-                                                {{ ui_icon('action.chevron_down', 'xs') }}
-                                            </div>
-                                        </div>
-                                        <div class="task-mini-body">
-                                            {{ (t.content_html or 'Текст отсутствует') | sanitize_html }}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                    {% if not tasks and source != 'manual' %}
-                                    <div class="hint">Задачи не выбраны. Вернитесь назад.</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div>
-                                <form id="ca_form"
-                                      hx-post="" hx-target="body" hx-swap="outerHTML" hx-indicator=".loading-overlay">
-                                    <div class="neo-field">
-                                        <label class="neo-label">Название работы *</label>
-                                        <input id="ca_title" class="neo-input" required placeholder="Например: ДЗ по теме 1">
-                                    </div>
-                                    <div class="neo-field" style="margin-top: 1rem;">
-                                        <label class="neo-label">Тип</label>
-                                        <select id="ca_type" class="neo-select">
-                                            <option value="homework">Домашняя работа</option>
-                                            <option value="classwork">Классная работа</option>
-                                            <option value="exam">Проверочная / Тест</option>
-                                        </select>
-                                    </div>
-                                    <div class="neo-field" style="margin-top: 1rem;">
-                                        <label class="neo-label">Описание / комментарий для ученика</label>
-                                        <textarea id="ca_description" class="neo-input" rows="3" placeholder="Ученик увидит этот текст перед началом выполнения"></textarea>
-                                    </div>
-                                    <div class="neo-field" style="margin-top: 1rem;">
-                                        <label class="neo-label">Срок сдачи (дедлайн) *</label>
-                                        <input id="ca_deadline" class="neo-input" type="datetime-local" required>
-                                    </div>
-                                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                                        <div class="neo-field">
-                                            <label class="neo-label">Время (мин)</label>
-                                            <input id="ca_time_limit" class="neo-input" type="number" placeholder="Нет" min="5" max="480">
-                                        </div>
-                                        <div class="neo-field">
-                                            <label class="neo-label">Попытки</label>
-                                            <input id="ca_max_attempts" class="neo-input" type="number" value="1" min="1" max="20">
-                                        </div>
-                                    </div>
-                                    <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.2rem;">
-                                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                                            <input type="checkbox" id="ca_hard_deadline">
-                                            <span style="font-size: 0.9rem; font-weight: 700;">Запретить сдачу после дедлайна</span>
-                                        </label>
-                                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                                            <input type="checkbox" id="ca_attempts_per_task">
-                                            <span style="font-size: 0.9rem; font-weight: 700;">Попытки на каждое задание</span>
-                                        </label>
-                                        <p style="font-size: 0.8rem; color: var(--color-text-muted); margin: 0 0 0 0;">Если снято — попытки считаются на всю работу, сдавать по одному заданию нельзя.</p>
-                                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                                            <input type="checkbox" id="ca_separate_submission" checked>
-                                            <span style="font-size: 0.9rem; font-weight: 700;">Разрешить сдавать задачи по одной</span>
-                                        </label>
-                                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                                            <input type="checkbox" id="ca_time_limit_strict">
-                                            <span style="font-size: 0.9rem; font-weight: 700;">Блокировать сдачу после истечения таймера</span>
-                                        </label>
-                                        <p style="font-size: 0.8rem; color: var(--color-text-muted); margin: 0.25rem 0 0 0;">Если снято — работа только помечается как не уложившаяся в время, сдача разрешена.</p>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div class="actions-bar">
-                            <button type="button" class="neo-button ghost" onclick="goToStep(2)">{{ ui_icon('action.chevron_left', 'sm') }} К выбору задач</button>
-                            <button type="button" class="neo-button accent" id="submitBtn" onclick="submitWork()">Создать и отправить работу!</button>
-                        </div>
-                    </div>
-                </div>
-
+              </div>
+              <div class="task-mini-body px-4 py-3 border-t border-slate-200 text-sm text-slate-700 bg-white">
+                {{ (t.content_html or 'Текст отсутствует') | sanitize_html }}
+              </div>
             </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <form id="ca_form">
+          <div class="space-y-6">
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Название работы <span class="text-red-500">*</span></label>
+              <input id="ca_title" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" required>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Тип</label>
+              <select id="ca_type" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all">
+                <option value="homework">Домашняя работа</option>
+                <option value="classwork">Классная работа</option>
+                <option value="exam">Проверочная / Тест</option>
+              </select>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Описание / Комментарий для ученика</label>
+              <textarea id="ca_description" rows="3" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all resize-y"></textarea>
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Срок сдачи (дедлайн) <span class="text-red-500">*</span></label>
+              <input id="ca_deadline" type="datetime-local" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" required>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Время (мин)</label>
+                <input id="ca_time_limit" type="number" min="5" max="480" placeholder="Нет" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all text-center">
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Попытки</label>
+                <input id="ca_max_attempts" type="number" value="1" min="1" max="20" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all text-center">
+              </div>
+            </div>
+            <div class="pt-4 space-y-3">
+              <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_hard_deadline">Запретить сдачу после дедлайна</label>
+              <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_attempts_per_task">Попытки на каждое задание</label>
+              <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_separate_submission" checked>Разрешить сдавать задачи по одной</label>
+              <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_time_limit_strict">Блокировать сдачу после истечения таймера</label>
+            </div>
+          </div>
+        </form>
+
+        <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-8 mt-8 border-t border-slate-100">
+          <button type="button" class="w-full sm:w-auto text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors flex items-center justify-center gap-1.5 px-4 py-2" onclick="goToStep(2)">
+            <i class="ph-bold ph-arrow-left"></i> К выбору задач
+          </button>
+          <button type="button" id="submitBtn" class="w-full sm:w-auto px-8 py-4 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" onclick="submitWork()">
+            <i class="ph-bold ph-paper-plane-right text-lg"></i> Создать и отправить работу!
+          </button>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -355,16 +247,38 @@
     <script>
         let currentStep = 1;
         const CSRF_TOKEN = "{{ csrf_token() }}";
+        function syncRecipientSelectFromCards() {
+            const sel = document.getElementById('ca_recipients');
+            if (!sel) return;
+            const checkedIds = new Set(
+                Array.from(document.querySelectorAll('.recipient-check:checked')).map((x) => String(x.value))
+            );
+            Array.from(sel.options).forEach((o) => { o.selected = checkedIds.has(String(o.value)); });
+        }
 
         function updateUI() {
-            document.querySelectorAll('.wizard-step-content').forEach((el, i) => {
+            syncRecipientSelectFromCards();
+            document.querySelectorAll('.step-card').forEach((el, i) => {
                 el.classList.toggle('active', (i + 1) === currentStep);
             });
-            document.querySelectorAll('.step').forEach((el, i) => {
-                const s = i + 1;
-                el.classList.toggle('active', s === currentStep);
-                el.classList.toggle('completed', s < currentStep);
-            });
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`stepIndicator${i}`);
+                const badge = document.getElementById(`stepBadge${i}`);
+                if (!btn || !badge) continue;
+                if (i === currentStep) {
+                    btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl bg-purple-50 text-boo-primary font-bold text-sm transition-all';
+                    badge.className = 'w-6 h-6 rounded-full bg-boo-primary text-white flex items-center justify-center text-xs';
+                    badge.textContent = String(i);
+                } else if (i < currentStep) {
+                    btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-slate-700 hover:bg-slate-50 font-bold text-sm transition-all';
+                    badge.className = 'w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs';
+                    badge.innerHTML = '<i class="ph-bold ph-check"></i>';
+                } else {
+                    btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-50 font-bold text-sm transition-all';
+                    badge.className = 'w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs';
+                    badge.textContent = String(i);
+                }
+            }
 
             const sel = document.getElementById('ca_recipients');
             if (sel) {
@@ -405,6 +319,7 @@
         function selectAll(val) {
             const sel = document.getElementById('ca_recipients');
             Array.from(sel.options).forEach(o => o.selected = val);
+            document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = val; });
             const gs = document.getElementById('ca_group_select');
             if (gs) gs.value = val ? 'all' : '';
             updateUI();
@@ -414,8 +329,10 @@
             const sel = document.getElementById('ca_recipients');
             if (value === 'all') {
                 Array.from(sel.options).forEach(o => o.selected = true);
+                document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = true; });
             } else if (value === '') {
                 Array.from(sel.options).forEach(o => o.selected = false);
+                document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = false; });
             }
             updateUI();
         }
@@ -510,6 +427,9 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.recipient-check').forEach((ch) => {
+                ch.addEventListener('change', () => updateUI());
+            });
             const url = new URLSearchParams(location.search);
             const hasRecs = !!url.get('recipient_ids');
             const initialTasks = JSON.parse(document.getElementById('task-ids-json').textContent || '[]');
