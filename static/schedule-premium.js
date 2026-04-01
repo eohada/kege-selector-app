@@ -48,6 +48,7 @@
   const inspector = qs('#lessonInspector');
   const inspectorBody = qs('#lessonInspectorBody');
   const inspectorTitle = qs('#lessonInspectorTitle');
+  const inspectorSubtitle = qs('#lessonInspectorSubtitle');
   const inspectorClose = qs('#lessonInspectorClose');
   const inspectorIcon = qs('#lessonInspectorIcon');
 
@@ -106,6 +107,17 @@
       completed: 'Проведён',
       cancelled: 'Отменён',
     };
+    const statusDotClass = {
+      planned: 'bg-[#F59E0B]',
+      in_progress: 'bg-[#F59E0B]',
+      completed: 'bg-emerald-500',
+      cancelled: 'bg-rose-500',
+    };
+    if (inspectorSubtitle) {
+      const st = statusMap[meta.status_code] || meta.status_code || '';
+      const dotCls = statusDotClass[meta.status_code] || 'bg-slate-400';
+      inspectorSubtitle.innerHTML = `<span class="inspector-status-badge"><span class="w-2 h-2 rounded-full ${dotCls}"></span>${st}</span>`;
+    }
 
     const lt = meta.lesson_type || 'regular';
     if (!canManage) {
@@ -141,16 +153,16 @@
 
     inspectorBody.innerHTML = `
       <div class="space-y-4">
-        <div>
-          <label class="inspector-label">Дата</label>
-          <input class="inspector-input" id="inspectorDate" type="date" value="${dateValue}">
+        <div class="inspector-grid-two">
+          <div>
+            <label class="inspector-label">Дата</label>
+            <input class="inspector-input" id="inspectorDate" type="date" value="${dateValue}">
+          </div>
+          <div>
+            <label class="inspector-label">Время</label>
+            <input class="inspector-input" id="inspectorTime" type="time" value="${timeValue}">
+          </div>
         </div>
-
-        <div>
-          <label class="inspector-label">Время</label>
-          <input class="inspector-input" id="inspectorTime" type="time" value="${timeValue}">
-        </div>
-
         <div>
           <label class="inspector-label">Статус</label>
           <select class="inspector-input" id="inspectorStatus">
@@ -160,12 +172,18 @@
             <option value="cancelled" ${meta.status_code === 'cancelled' ? 'selected' : ''}>Отменён</option>
           </select>
         </div>
-
         <div>
           <label class="inspector-label">Длительность (мин)</label>
           <input class="inspector-input" id="inspectorDuration" type="number" min="30" max="240" step="30" value="${meta.duration_minutes || 60}">
         </div>
-
+        <div>
+          <label class="inspector-label">Ученик</label>
+          <div class="inspector-input">${meta.student || ''}</div>
+        </div>
+        <div>
+          <label class="inspector-label">Тема урока</label>
+          <input class="inspector-input" id="inspectorTopic" type="text" value="${meta.topic ? String(meta.topic).replace(/"/g, '&quot;') : ''}" placeholder="Введите тему (опционально)">
+        </div>
         <div>
           <label class="inspector-label">Тип занятия</label>
           <select class="inspector-input" id="inspectorLessonType">
@@ -174,13 +192,7 @@
             <option value="introductory" ${lt === 'introductory' ? 'selected' : ''}>Вводный</option>
           </select>
         </div>
-
-        <div>
-          <label class="inspector-label">Тема урока</label>
-          <input class="inspector-input" id="inspectorTopic" type="text" value="${meta.topic ? String(meta.topic).replace(/"/g, '&quot;') : ''}" placeholder="Введите тему (опционально)">
-        </div>
-
-        <div class="space-y-3 pt-1">
+        <div class="space-y-3 pt-2">
           <button class="w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex justify-center items-center gap-2 active:translate-y-1 active:border-b-0 text-sm" type="button" id="inspectorSave">
             Сохранить изменения
           </button>
@@ -380,13 +392,18 @@
 
     const initial = (ev.student || '?').trim().charAt(0).toUpperCase();
     const lessonTypeLabel = lt === 'exam' ? 'Проверочный' : (lt === 'introductory' ? 'Вводный' : 'Обычный');
+    const statusClass = ev.status_code || 'planned';
+    const showDot = statusClass === 'in_progress';
+    const iconBox = statusClass === 'planned'
+      ? 'w-6 h-6 rounded-md bg-white/20 border border-white/20 flex items-center justify-center backdrop-blur-sm'
+      : 'w-2 h-2 rounded-full bg-[#F59E0B] mt-1';
     el.innerHTML = `
       <div class="lesson-chip__top">
         <div class="lesson-chip__time" data-role="time">${ev.start_time || ''}<br><span class="lesson-chip__duration">${durationLabel}</span></div>
-        <div class="w-6 h-6 rounded-md bg-white/20 border border-white/20 flex items-center justify-center backdrop-blur-sm">${iconHtml(icon)}</div>
+        ${showDot ? `<div class="${iconBox}"></div>` : `<div class="${iconBox}">${iconHtml(icon)}</div>`}
       </div>
       <div class="lesson-chip__meta">${topic ? topic : lessonTypeLabel}</div>
-      <div class="lesson-chip__student"><span class="w-4 h-4 rounded-full bg-white/70 text-[10px] font-bold text-slate-700 inline-flex items-center justify-center">${initial}</span>${ev.student || ''}</div>
+      <div class="lesson-chip__student"><span class="lesson-chip__avatar">${initial}</span>${ev.student || ''}</div>
     `;
 
     dayCol.querySelector('.day-col__body')?.appendChild(el);

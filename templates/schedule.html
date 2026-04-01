@@ -58,14 +58,14 @@
 
         .day-col__body {
             position: relative;
-            height: calc({{ total_slots }} * 28px);
-            min-height: calc({{ total_slots }} * 28px);
+            height: calc({{ total_slots }} * 48px);
+            min-height: calc({{ total_slots }} * 48px);
             background-image: repeating-linear-gradient(
                 to bottom,
                 transparent 0,
-                transparent calc(28px - 1px),
-                #f8fafc calc(28px - 1px),
-                #f8fafc 28px
+                transparent calc(48px - 1px),
+                #f1f5f9 calc(48px - 1px),
+                #f1f5f9 48px
             );
             cursor: pointer;
         }
@@ -148,6 +148,17 @@
             margin-bottom: 2px;
             font-weight: 700;
         }
+        .lesson-chip__avatar {
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            background: #f5d0fe;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            line-height: 1;
+        }
 
         .lesson-chip.status-planned {
             background: linear-gradient(135deg, #8e70ff 0%, #6a4ce5 100%);
@@ -168,6 +179,9 @@
             outline: 2px solid #e9d5ff;
             outline-offset: 1px;
         }
+        .lesson-chip.status-in_progress .lesson-chip__duration { color: #94a3b8; }
+        .lesson-chip.status-in_progress .lesson-chip__meta { color: #64748b; }
+        .lesson-chip.status-in_progress .lesson-chip__student { color: #0f172a; }
 
         .lesson-chip.status-completed {
             border-color: #d1d5db;
@@ -242,13 +256,26 @@
         }
         .inspector-input {
             width: 100%;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
             border-radius: 12px;
             padding: 12px 14px;
             font-weight: 700;
             font-size: 14px;
             color: #0f172a;
+        }
+        .inspector-grid-two {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .inspector-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            font-weight: 700;
+            font-size: 14px;
         }
         .inspector-label {
             font-size: 12px;
@@ -507,7 +534,7 @@
                              data-start-hour="{{ day_start_hour }}"
                              data-end-hour="{{ day_end_hour }}"
                              data-total-slots="{{ total_slots }}"
-                             data-px-per-slot="28"
+                             data-px-per-slot="48"
                              data-timezone="{{ timezone }}"
                              data-week-offset="{{ week_offset }}"
                              data-can-manage="{{ '1' if can_manage_schedule else '0' }}"
@@ -540,7 +567,7 @@
                                 <div id="scheduleGrid" class="grid grid-cols-8 relative" style="grid-template-columns: 84px repeat({{ day_columns_count }}, minmax(0, 1fr));">
                                     <div class="border-r border-slate-100/50 relative bg-white z-10 time-col">
                                         {% for label in time_labels %}
-                                        <div class="h-14 border-b border-slate-100 flex justify-center pt-2 time-label"><span class="text-xs font-bold text-slate-400">{{ label }}</span></div>
+                                        <div class="h-24 border-b border-slate-100 flex justify-center pt-2 time-label"><span class="text-xs font-bold text-slate-400">{{ label }}</span></div>
                                         {% endfor %}
                                     </div>
                                     {% for day_index in range(day_columns_count) %}
@@ -570,7 +597,7 @@
                                 </div>
                                 <div>
                                     <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="lessonInspectorTitle">Выбери урок</h3>
-                                    <div class="text-slate-500 font-bold text-sm mt-1">
+                                    <div class="text-slate-500 font-bold text-sm mt-1" id="lessonInspectorSubtitle">
                                         {% if can_manage_schedule %}Клик по уроку — редактирование.{% else %}Клик по уроку — детали.{% endif %}
                                     </div>
                                 </div>
