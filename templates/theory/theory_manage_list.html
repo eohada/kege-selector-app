@@ -4,15 +4,13 @@
 
 {% block head_css %}
 <style>
-  .theory-editor-block:hover .theory-block-actions { opacity: 1; }
-  .theory-block-actions { opacity: 0; transition: opacity .2s ease; }
   .theory-toolbar-btn {
     border: 1px solid #e2e8f0;
     background: #f8fafc;
     color: #334155;
-    border-radius: 12px;
-    height: 36px;
-    padding: 0 12px;
+    border-radius: 10px;
+    height: 34px;
+    padding: 0 10px;
     font-size: 12px;
     font-weight: 800;
     display: inline-flex;
@@ -21,10 +19,14 @@
     transition: all .2s ease;
     white-space: nowrap;
   }
-  .theory-toolbar-btn:hover { border-color: #cbd5e1; background: #ffffff; color: #7B5CFF; }
-  .sticky-toolbar { position: sticky; top: 0; z-index: 20; background: linear-gradient(180deg,#fff 70%,rgba(255,255,255,0)); padding-bottom: 14px; }
-  .hide-scroll::-webkit-scrollbar { display: none; }
-  .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+  .theory-toolbar-btn:hover { border-color: #cbd5e1; background: #fff; color: #7B5CFF; }
+  .sticky-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: linear-gradient(180deg, rgba(255,255,255,1) 70%, rgba(255,255,255,0) 100%);
+    padding-bottom: 18px;
+  }
 </style>
 {% endblock %}
 
@@ -35,83 +37,83 @@
 {% endif %}
 <main class="flex-1 pt-6 pb-8 px-6 lg:px-8 h-full flex justify-center">
   <div class="w-full max-w-[1600px] flex flex-col lg:flex-row gap-6 h-full">
-    <div class="w-full lg:w-[420px] shrink-0 flex flex-col gap-6 h-full">
+
+    <aside class="w-full lg:w-[420px] shrink-0 flex flex-col gap-6 h-full">
       <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col h-full overflow-hidden">
         <div class="mb-6 shrink-0">
           <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
             <i class="ph-fill ph-book-open"></i> База знаний
           </div>
-          <h2 class="text-3xl font-black text-slate-900 tracking-tight mb-4">Навигатор</h2>
-          <div class="relative">
-            <i class="ph-bold ph-exam absolute left-4 top-1/2 -translate-y-1/2 text-boo-primary text-lg"></i>
-            <select id="courseSelector" class="w-full bg-purple-50 border border-purple-100 rounded-xl pl-11 pr-10 py-3 font-bold text-boo-primary text-sm focus:outline-none focus:ring-2 focus:ring-purple-200 appearance-none shadow-sm">
-              <option selected>{{ course.title if course else 'Курс' }}</option>
-            </select>
-            <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none"></i>
+          <h2 class="text-4xl font-black text-slate-900 tracking-tight mb-4">Навигатор</h2>
+          <div class="relative bg-slate-50 border border-slate-200 rounded-xl flex items-center px-4 py-3.5 shadow-sm">
+            <i class="ph-fill ph-exam text-boo-primary text-xl mr-3"></i>
+            <span class="font-bold text-slate-800 text-sm flex-1">{{ course.title if course else 'Курс' }}</span>
+            <i class="ph-bold ph-caret-down text-slate-400 text-sm"></i>
           </div>
         </div>
 
         <div class="flex-1 overflow-y-auto pr-2">
-          <div class="mb-4 p-4 rounded-2xl border border-slate-200 bg-slate-50">
-            <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Группы</div>
-            <div class="space-y-2 max-h-40 overflow-y-auto pr-1 mb-3">
-              {% for group in groups %}
-              <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=group.id) }}"
-                 class="block px-4 py-3 rounded-xl text-sm font-bold no-underline transition-all {{ 'bg-purple-50 text-boo-primary border-2 border-boo-primary shadow-sm' if selected_group and selected_group.id == group.id else 'bg-white text-slate-700 border border-slate-200 border-b-[3px] border-b-slate-300 hover:-translate-y-0.5 hover:shadow-tactile' }}">
-                {{ group.name }}
-              </a>
+          <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 ml-1">Группы</div>
+          <div class="space-y-3 mb-6">
+            {% for group in groups %}
+            <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=group.id) }}"
+               class="block {{ 'bg-purple-50 border-2 border-boo-primary text-boo-primary' if selected_group and selected_group.id == group.id else 'bg-white border border-slate-200 border-b-[3px] border-b-slate-300 text-slate-700 hover:-translate-y-0.5 hover:shadow-tactile' }} rounded-xl px-4 py-3 font-bold text-sm no-underline transition-all">
+              {{ group.name }}
+            </a>
+            {% endfor %}
+          </div>
+
+          <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm h-12">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="create_group">
+            <input type="text" name="group_name" placeholder="Новая группа" class="flex-1 bg-transparent border-none px-4 text-sm font-medium text-slate-700 focus:outline-none placeholder-slate-400 h-full">
+            <button type="submit" class="w-12 h-full bg-purple-50 text-boo-primary flex items-center justify-center hover:bg-purple-100 border-l border-slate-200 transition-colors shrink-0">
+              <i class="ph-bold ph-plus text-lg"></i>
+            </button>
+          </form>
+
+          {% if selected_group %}
+          <div class="grid grid-cols-2 gap-2 mt-3">
+            <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="rename_group">
+              <input type="hidden" name="group_id" value="{{ selected_group.id }}">
+              <input type="hidden" name="group_name" value="{{ selected_group.name }}">
+              <input type="hidden" name="group_description" value="{{ selected_group.description or '' }}">
+              <button type="submit" class="w-full py-2 bg-purple-50 text-boo-primary border border-purple-200 rounded-xl text-xs font-black">Редактировать</button>
+            </form>
+            <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="delete_group">
+              <input type="hidden" name="group_id" value="{{ selected_group.id }}">
+              <button type="submit" class="w-full py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-black">Удалить</button>
+            </form>
+          </div>
+          {% endif %}
+
+          <div class="mt-8 pt-6 border-t border-slate-100">
+            <div class="flex justify-between items-end mb-3">
+              <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Заполнение базы: <span class="text-slate-900 font-black">{{ completion_percent }}%</span></span>
+            </div>
+            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-6 shadow-inner">
+              <div class="h-full bg-boo-primary rounded-full" style="width: {{ completion_percent }}%;"></div>
+            </div>
+            <div class="grid grid-cols-5 gap-3 p-1">
+              {% for item in grid_states %}
+                {% set num = item.task_number %}
+                {% set st = item.state %}
+                {% set is_active = (selected_task_number == num) %}
+                {% if is_active %}
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-2xl bg-boo-primary text-white font-black text-xl flex items-center justify-center ring-[4px] ring-purple-200 ring-offset-2 border-b-[3px] border-purple-800 transition-all no-underline">{{ num }}</a>
+                {% elif st == 'published' %}
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-2xl bg-green-500 text-white font-black text-xl flex items-center justify-center shadow-sm border-b-[4px] border-green-700 hover:translate-y-[2px] hover:border-b-[2px] transition-all no-underline">{{ num }}</a>
+                {% elif st == 'draft' %}
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-2xl bg-orange-400 text-white font-black text-xl flex items-center justify-center shadow-sm border-b-[4px] border-orange-600 hover:translate-y-[2px] hover:border-b-[2px] transition-all no-underline">{{ num }}</a>
+                {% else %}
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-2xl bg-slate-50 text-slate-400 font-bold text-xl flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all no-underline">{{ num }}</a>
+                {% endif %}
               {% endfor %}
             </div>
-            <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm h-11">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <input type="hidden" name="action" value="create_group">
-              <input type="text" name="group_name" class="flex-1 bg-transparent border-none px-4 text-sm font-medium text-slate-700 focus:outline-none placeholder-slate-400 h-full" placeholder="Новая группа">
-              <button type="submit" class="w-11 h-full bg-purple-50 text-boo-primary flex items-center justify-center hover:bg-purple-100 border-l border-slate-200 transition-colors shrink-0">
-                <i class="ph-bold ph-plus text-lg"></i>
-              </button>
-            </form>
-            {% if selected_group %}
-            <div class="flex gap-2 mt-2">
-              <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex-1">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="action" value="rename_group">
-                <input type="hidden" name="group_id" value="{{ selected_group.id }}">
-                <input type="hidden" name="group_description" value="{{ selected_group.description or '' }}">
-                <input type="hidden" name="group_name" value="{{ selected_group.name }}">
-                <button type="submit" class="w-full py-2 rounded-xl bg-purple-50 border border-purple-200 text-boo-primary text-xs font-black">Ред.</button>
-              </form>
-              <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex-1">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="action" value="delete_group">
-                <input type="hidden" name="group_id" value="{{ selected_group.id }}">
-                <button type="submit" class="w-full py-2 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-black">Удалить</button>
-              </form>
-            </div>
-            {% endif %}
-          </div>
-
-          <div class="flex justify-between items-end mb-3">
-            <span class="text-xs font-bold text-slate-500">Заполнение базы: <span class="text-slate-900 font-black">{{ completion_percent }}%</span></span>
-          </div>
-          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-6 shadow-inner">
-            <div class="h-full bg-boo-primary rounded-full" style="width: {{ completion_percent }}%;"></div>
-          </div>
-
-          <div class="grid grid-cols-5 gap-2.5 p-1">
-            {% for item in grid_states %}
-              {% set num = item.task_number %}
-              {% set st = item.state %}
-              {% set is_active = (selected_task_number == num) %}
-              {% if is_active %}
-                <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-2xl bg-boo-primary text-white font-black text-lg flex items-center justify-center ring-[4px] ring-purple-200 ring-offset-2 border-b-[3px] border-purple-800 z-10 transition-all no-underline">{{ num }}</a>
-              {% elif st == 'published' %}
-                <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-2xl bg-green-500 text-white font-black text-lg flex items-center justify-center shadow-sm border-b-[4px] border-green-700 hover:translate-y-[2px] hover:border-b-[2px] transition-all no-underline">{{ num }}</a>
-              {% elif st == 'draft' %}
-                <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-2xl bg-orange-400 text-white font-black text-lg flex items-center justify-center shadow-sm border-b-[4px] border-orange-600 hover:translate-y-[2px] hover:border-b-[2px] transition-all no-underline">{{ num }}</a>
-              {% else %}
-                <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-2xl bg-slate-50 text-slate-400 font-bold text-lg flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all no-underline">{{ num }}</a>
-              {% endif %}
-            {% endfor %}
           </div>
         </div>
 
@@ -135,119 +137,64 @@
           {% endif %}
         </div>
       </section>
-    </div>
+    </aside>
 
     <section class="flex-1 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden">
       <form id="theoryEditorForm" method="post" action="{{ url_for('theory.manage_list', course_id=course_id, task_number=selected_task_number) }}" class="contents">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="task_number" value="{{ selected_task_number or '' }}">
+        <input type="hidden" name="group_id" value="{{ selected_group.id if selected_group else '' }}">
         <input type="hidden" name="editor_status" id="editorStatusInput" value="draft">
 
         <div class="h-[80px] px-6 lg:px-8 border-b border-slate-100 bg-white flex items-center justify-between shrink-0">
-          <div class="flex items-center gap-3">
-            <span class="bg-boo-primary text-white w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-black shadow-sm border-b-[3px] border-purple-800">{{ selected_task_number or '—' }}</span>
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-boo-primary text-white font-black text-2xl flex items-center justify-center shadow-sm border-b-[3px] border-purple-800">{{ selected_task_number or '—' }}</div>
             <div id="editorStatusBadge" class="flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-xl shadow-sm text-sm font-bold text-orange-600">
-              <span class="w-2 h-2 rounded-full bg-boo-accent animate-pulse"></span> Черновик
+              <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span> Черновик
             </div>
           </div>
-          <div class="flex items-center gap-2 flex-wrap justify-end">
-            <select id="statusSelect" class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
-              <option value="draft">Черновик</option>
-              <option value="published">Опубликовано</option>
-            </select>
-            <button id="previewTheoryBtn" type="button" class="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
-              <i class="ph-bold ph-eye"></i> Предпросмотр
+          <div class="flex items-center gap-3">
+            <button id="previewTheoryBtn" type="button" class="px-5 py-2.5 bg-white text-slate-600 border border-slate-200 border-b-[3px] border-b-slate-300 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2 active:translate-y-[2px] active:border-b-0">
+              <i class="ph-bold ph-eye text-lg"></i> Предпросмотр
             </button>
-            <button type="submit" class="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2" onclick="document.getElementById('editorStatusInput').value='draft'">
-              <i class="ph-bold ph-floppy-disk"></i> Сохранить
+            <button type="submit" class="px-5 py-2.5 bg-white text-slate-600 border border-slate-200 border-b-[3px] border-b-slate-300 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2 active:translate-y-[2px] active:border-b-0" onclick="document.getElementById('editorStatusInput').value='draft'">
+              <i class="ph-bold ph-floppy-disk text-lg"></i> Сохранить
             </button>
             {% if selected_block %}
-            <button type="submit"
-                    formnovalidate
-                    formaction="{{ url_for('theory.manage_delete', block_id=selected_block.id) }}"
-                    onclick="return confirm('Удалить теорию по заданию {{ selected_task_number }}?')"
-                    class="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors shadow-sm flex items-center gap-2">
-              <i class="ph-bold ph-trash"></i> Удалить
+            <button type="submit" formnovalidate formaction="{{ url_for('theory.manage_delete', block_id=selected_block.id) }}" onclick="return confirm('Удалить теорию по заданию {{ selected_task_number }}?')" class="px-5 py-2.5 bg-red-50 text-boo-coral border border-red-200 border-b-[3px] border-b-red-300 rounded-xl font-bold text-sm hover:bg-red-100 transition-all shadow-sm flex items-center gap-2 active:translate-y-[2px] active:border-b-0">
+              <i class="ph-bold ph-trash text-lg"></i> Удалить
             </button>
             {% endif %}
-            <button type="submit" class="px-5 py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[2px] border-b-purple-800 text-sm" onclick="document.getElementById('editorStatusInput').value='published'">
-              <i class="ph-bold ph-paper-plane-right"></i> Опубликовать
+            <button type="submit" class="px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm ml-1" onclick="document.getElementById('editorStatusInput').value='published'">
+              <i class="ph-bold ph-paper-plane-right text-lg"></i> Опубликовать
             </button>
           </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto px-8 lg:px-16 py-10 text-slate-800">
-          <div class="sticky-toolbar">
-          <div class="mb-4 p-2 rounded-[20px] border border-slate-200 bg-white shadow-toolbar flex flex-wrap gap-2">
-            <button type="button" class="theory-toolbar-btn" data-format="h2"><i class="ph-bold ph-text-h-two"></i> H2</button>
-            <button type="button" class="theory-toolbar-btn" data-format="h3"><i class="ph-bold ph-text-h-three"></i> H3</button>
-            <button type="button" class="theory-toolbar-btn" data-format="bold"><i class="ph-bold ph-text-bolder"></i> Жирный</button>
-            <button type="button" class="theory-toolbar-btn" data-format="italic"><i class="ph-bold ph-text-italic"></i> Курсив</button>
-            <button type="button" class="theory-toolbar-btn" data-format="ul"><i class="ph-bold ph-list-bullets"></i> Список</button>
-            <button type="button" class="theory-toolbar-btn" data-format="quote"><i class="ph-bold ph-quotes"></i> Цитата</button>
-            <button type="button" class="theory-toolbar-btn" data-format="inline-code"><i class="ph-bold ph-code"></i> Inline code</button>
-            <button type="button" class="theory-toolbar-btn" data-format="code"><i class="ph-bold ph-file-code"></i> Code block</button>
-            <button type="button" class="theory-toolbar-btn" data-format="math"><i class="ph-bold ph-function"></i> Math</button>
-            <button type="button" class="theory-toolbar-btn" data-format="attention"><i class="ph-bold ph-warning-circle"></i> Attention</button>
-            <button type="button" class="theory-toolbar-btn" data-format="tip"><i class="ph-bold ph-lightbulb"></i> Tip</button>
-            <button type="button" class="theory-toolbar-btn" data-format="danger"><i class="ph-bold ph-shield-warning"></i> Danger</button>
-            <button type="button" class="theory-toolbar-btn" data-format="practice"><i class="ph-bold ph-puzzle-piece"></i> Practice</button>
-          </div>
-          </div>
-
-          <input type="text" name="title" class="w-full text-5xl font-black text-slate-900 placeholder-slate-300 bg-transparent border-none outline-none mb-8" value="{{ (selected_block.title if selected_block else ('Задание ' ~ selected_task_number)) if selected_task_number else '' }}" placeholder="Заголовок теории">
-
-          <div class="theory-editor-block relative mb-6 group">
-            <div class="theory-block-actions absolute -left-10 top-0.5 flex gap-1 text-slate-300">
-              <button type="button" class="hover:text-boo-primary hover:bg-purple-50 rounded p-0.5"><i class="ph-bold ph-plus"></i></button>
-              <button type="button" class="hover:text-slate-600 rounded p-0.5 cursor-grab"><i class="ph-bold ph-dots-six-vertical"></i></button>
-            </div>
-            <textarea id="theoryContentInput" name="content" class="w-full min-h-[520px] bg-transparent border-none outline-none text-lg leading-relaxed resize-y">{{ selected_clean_content }}</textarea>
-            <div class="text-xs font-medium text-slate-400 mt-2">
-              Подсказка: вставляй блоки кнопками ниже (Code / Embed / Callout), они сохраняются в теории и рендерятся у ученика как интерактивные элементы.
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            <div class="bg-[#0F172A] rounded-[20px] border border-slate-800 overflow-hidden" style="box-shadow:0 8px 24px -4px rgba(15,23,42,.25);">
-              <div class="flex items-center justify-between px-4 py-2.5 bg-slate-800/80 border-b border-slate-700">
-                <div class="flex items-center gap-2">
-                  <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
-                  <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
-                  <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
-                  <span class="text-xs text-slate-400 ml-1">Python</span>
-                </div>
-                <button type="button" id="runSmartCode" class="text-xs font-bold text-white bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 px-2.5 py-1 rounded-md transition-colors">Run</button>
-              </div>
-              <textarea id="smartCodeInput" class="w-full p-4 font-mono text-[13px] min-h-[140px] border-none outline-none resize-y" style="background:#0b1220;color:#cbd5e1;line-height:1.7;">for i in range(1, 4):
-    print(i)</textarea>
-              <div class="px-4 pb-3">
-                <button type="button" id="insertCodeBlockBtn" class="px-3 py-2 bg-slate-700 text-slate-100 rounded-lg text-xs font-bold hover:bg-slate-600">Вставить в теорию</button>
-              </div>
-              <pre id="smartCodeOutput" class="hidden p-3 border-t border-slate-700 bg-slate-900 text-green-300 text-xs font-mono"></pre>
-            </div>
-            <div class="bg-slate-50 border border-slate-200 rounded-[20px] p-5">
-              <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Math & LaTeX</div>
-              <input id="latexInput" type="text" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 font-mono text-xs mb-3" value="\neg(A \land B) \equiv \neg A \lor \neg B">
-              <div id="latexPreview" class="font-serif text-xl text-slate-800 font-bold">¬(A ∧ B) ≡ ¬A ∨ ¬B</div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div class="bg-white border border-slate-200 rounded-[20px] p-5">
-              <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Практика (Embed)</div>
-              <div class="flex gap-2">
-                <input id="embedTaskId" type="text" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="ID задачи, например 10452">
-                <button type="button" id="insertEmbedBtn" class="px-3 py-2 bg-boo-primary text-white rounded-lg text-sm font-bold">Вставить</button>
+        <div class="flex-1 overflow-y-auto relative bg-white">
+          <div class="max-w-4xl mx-auto w-full px-8 py-10 relative">
+            <div class="sticky-toolbar">
+              <div class="bg-white border border-slate-200 rounded-[20px] p-2 shadow-toolbar flex flex-wrap items-center gap-2 w-max transition-shadow">
+                <button type="button" class="theory-toolbar-btn" data-format="h2"><i class="ph-bold ph-text-h-two"></i></button>
+                <button type="button" class="theory-toolbar-btn" data-format="h3"><i class="ph-bold ph-text-h-three"></i></button>
+                <button type="button" class="theory-toolbar-btn" data-format="bold"><i class="ph-bold ph-text-bolder"></i></button>
+                <button type="button" class="theory-toolbar-btn" data-format="italic"><i class="ph-bold ph-text-italic"></i></button>
+                <button type="button" class="theory-toolbar-btn" data-format="ul"><i class="ph-bold ph-list-bullets"></i></button>
+                <button type="button" class="theory-toolbar-btn" data-format="quote"><i class="ph-bold ph-quotes"></i></button>
+                <button type="button" class="theory-toolbar-btn" data-format="code"><i class="ph-bold ph-file-code"></i> Код</button>
+                <button type="button" class="theory-toolbar-btn" data-format="math"><i class="ph-bold ph-function"></i> Формула</button>
+                <button type="button" class="theory-toolbar-btn" data-format="attention"><i class="ph-fill ph-warning-circle text-orange-500"></i> Внимание</button>
+                <button type="button" class="theory-toolbar-btn" data-format="practice"><i class="ph-bold ph-puzzle-piece text-boo-primary"></i> Задача</button>
               </div>
             </div>
-            <div class="bg-white border border-slate-200 rounded-[20px] p-5">
-              <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Callouts</div>
-              <div class="flex gap-2">
-                <button type="button" data-callout="attention" class="callout-btn px-3 py-2 bg-orange-50 text-orange-700 border border-orange-200 rounded-lg text-sm font-bold">Внимание</button>
-                <button type="button" data-callout="tip" class="callout-btn px-3 py-2 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-lg text-sm font-bold">Лайфхак</button>
-                <button type="button" data-callout="danger" class="callout-btn px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-bold">Осторожно</button>
+
+            <div class="theory-editor-block relative mt-4">
+              <div class="theory-block-actions absolute -left-12 top-2 w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm">
+                <i class="ph-bold ph-plus text-base"></i>
               </div>
+              <input type="text" name="title" class="w-full text-5xl font-black text-slate-900 placeholder-slate-300 bg-transparent border-none outline-none mb-5" value="{{ (selected_block.title if selected_block else ('Задание ' ~ selected_task_number)) if selected_task_number else '' }}" placeholder="Задание 1">
+              <input type="text" name="description" class="w-full text-sm font-semibold text-slate-600 placeholder-slate-400 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-8" value="{{ selected_block.description if selected_block and selected_block.description else '' }}" placeholder="Описание карточки для ученика">
+              <textarea id="theoryContentInput" name="content" class="w-full min-h-[520px] bg-transparent border-none outline-none text-[16px] leading-[2.1] resize-y font-mono text-slate-700">{{ selected_clean_content }}</textarea>
             </div>
           </div>
         </div>
@@ -267,23 +214,15 @@
   const form = document.getElementById('theoryEditorForm');
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const content = document.getElementById('theoryContentInput');
-  const runBtn = document.getElementById('runSmartCode');
-  const insertCodeBlockBtn = document.getElementById('insertCodeBlockBtn');
-  const codeInput = document.getElementById('smartCodeInput');
-  const codeOut = document.getElementById('smartCodeOutput');
-  const latexInput = document.getElementById('latexInput');
-  const latexPreview = document.getElementById('latexPreview');
-  const embedBtn = document.getElementById('insertEmbedBtn');
-  const embedTaskId = document.getElementById('embedTaskId');
-  const calloutBtns = Array.from(document.querySelectorAll('.callout-btn'));
   const formatBtns = Array.from(document.querySelectorAll('[data-format]'));
 
   function setDraftState() {
     if (!statusInput || !statusBadge) return;
     statusInput.value = 'draft';
-    statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-boo-accent animate-pulse"></span> Черновик';
+    statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span> Черновик';
     if (statusSelect) statusSelect.value = 'draft';
   }
+
   if (statusSelect && statusInput) {
     statusSelect.value = statusInput.value || 'draft';
     statusSelect.addEventListener('change', () => {
@@ -291,36 +230,17 @@
       if (!statusBadge) return;
       if (statusInput.value === 'published') {
         statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span> Опубликовано';
+        statusBadge.className = 'flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-xl shadow-sm text-sm font-bold text-green-700';
       } else {
-        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-boo-accent animate-pulse"></span> Черновик';
+        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span> Черновик';
+        statusBadge.className = 'flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-xl shadow-sm text-sm font-bold text-orange-600';
       }
     });
   }
+
   content && content.addEventListener('input', setDraftState);
   form && form.addEventListener('submit', () => {
     if (statusInput.value !== 'published') statusInput.value = 'draft';
-  });
-
-  runBtn && runBtn.addEventListener('click', () => {
-    if (!codeOut || !codeInput) return;
-    codeOut.classList.remove('hidden');
-    codeOut.textContent = '1\n2\n3\n\n[demo-run] Выполнение интерактивного кода доступно в режиме ученика.';
-  });
-  insertCodeBlockBtn && insertCodeBlockBtn.addEventListener('click', () => {
-    const code = (codeInput && codeInput.value ? codeInput.value : '').trim();
-    if (!code) return;
-    appendToContent(`[CODE lang="python"]\n${code}\n[/CODE]`);
-    if (window.toast) window.toast.success('Код-блок добавлен в теорию');
-  });
-
-  latexInput && latexInput.addEventListener('input', () => {
-    if (!latexPreview) return;
-    const raw = latexInput.value || '';
-    latexPreview.textContent = raw
-      .replace(/\\neg/g, '¬')
-      .replace(/\\land/g, '∧')
-      .replace(/\\lor/g, '∨')
-      .replace(/\\equiv/g, '≡');
   });
 
   function appendToContent(text) {
@@ -330,33 +250,20 @@
     content.value = cur + sep + text + '\n';
     content.dispatchEvent(new Event('input'));
   }
+
   function replaceSelection(wrapperStart, wrapperEnd = '') {
     if (!content) return;
     const start = content.selectionStart || 0;
     const end = content.selectionEnd || 0;
     const full = content.value || '';
     const selected = full.slice(start, end) || 'текст';
-    const next = full.slice(0, start) + wrapperStart + selected + wrapperEnd + full.slice(end);
-    content.value = next;
+    content.value = full.slice(0, start) + wrapperStart + selected + wrapperEnd + full.slice(end);
     const caret = start + wrapperStart.length + selected.length + wrapperEnd.length;
     content.setSelectionRange(caret, caret);
     content.focus();
     content.dispatchEvent(new Event('input'));
   }
 
-  embedBtn && embedBtn.addEventListener('click', () => {
-    const id = (embedTaskId && embedTaskId.value || '').trim();
-    if (!id) return;
-    appendToContent(`[PRACTICE_TASK id="${id}"]`);
-    if (window.toast) window.toast.success('Блок практики вставлен');
-  });
-
-  calloutBtns.forEach((btn) => btn.addEventListener('click', () => {
-    const kind = btn.dataset.callout;
-    const labels = { attention: 'ВНИМАНИЕ', tip: 'ЛАЙФХАК', danger: 'ОСТОРОЖНО' };
-    appendToContent(`[CALLOUT type="${kind}"] ${labels[kind]}: ... [/CALLOUT]`);
-    if (window.toast) window.toast.success('Плашка добавлена');
-  }));
   formatBtns.forEach((btn) => btn.addEventListener('click', () => {
     const type = btn.dataset.format;
     if (!type) return;
@@ -367,16 +274,14 @@
       case 'italic': return replaceSelection('*', '*');
       case 'ul': return appendToContent('- Пункт 1\n- Пункт 2');
       case 'quote': return appendToContent('> Важная мысль');
-      case 'inline-code': return replaceSelection('`', '`');
-      case 'code': return appendToContent('[CODE lang="python"]\nprint("hello")\n[/CODE]');
+      case 'code': return appendToContent('[CODE lang="python"]\nfor i in range(1, 4):\n    print(i)\n[/CODE]');
       case 'math': return appendToContent('$$\\neg(A \\land B) \\equiv \\neg A \\lor \\neg B$$');
       case 'attention': return appendToContent('[CALLOUT type="attention"] ВНИМАНИЕ: ... [/CALLOUT]');
-      case 'tip': return appendToContent('[CALLOUT type="tip"] ЛАЙФХАК: ... [/CALLOUT]');
-      case 'danger': return appendToContent('[CALLOUT type="danger"] ОСТОРОЖНО: ... [/CALLOUT]');
       case 'practice': return appendToContent('[PRACTICE_TASK id="10452"]');
       default: return;
     }
   }));
+
   previewBtn && previewBtn.addEventListener('click', async () => {
     try {
       const r = await fetch('{{ url_for("theory.theory_manage_preview") }}', {
@@ -390,39 +295,13 @@
         }),
       });
       const data = await r.json();
-      if (!r.ok || !data.success) {
-        if (window.toast) window.toast.error(data.error || 'Ошибка предпросмотра');
-        return;
-      }
+      if (!r.ok || !data.success) return;
       const w = window.open('', '_blank');
       if (!w) return;
       const origin = window.location.origin;
-      w.document.write(`<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Предпросмотр теории</title>
-  <link rel="stylesheet" href="${origin}/static/dist/boostudy.css">
-  <style>
-    body{background:#E5E9F0;margin:0;font-family:'Golos Text',Arial,sans-serif;color:#1e293b;}
-    .preview-wrap{max-width:1100px;margin:24px auto;padding:0 16px;}
-    .preview-card{background:#fff;border:1px solid #e2e8f0;border-bottom:4px solid #cbd5e1;border-radius:32px;box-shadow:0 8px 24px -4px rgba(15,23,42,.08);padding:32px;}
-    .preview-card .prose-article h1{font-size:44px;line-height:1.1;font-weight:900;margin:0 0 16px;color:#0f172a;}
-    .preview-card .prose-article p{font-size:18px;line-height:1.7;color:#334155;}
-    .preview-card .theory-smart-code textarea{width:100%;background:#0b1220;color:#cbd5e1;border:0;outline:0;padding:16px;font-family:'JetBrains Mono',monospace;line-height:1.7;}
-  </style>
-</head>
-<body>
-  <main class="preview-wrap">
-    <section class="preview-card">${data.html}</section>
-  </main>
-</body>
-</html>`);
+      w.document.write(`<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Предпросмотр</title><link rel="stylesheet" href="${origin}/static/dist/boostudy.css"></head><body style="background:#E5E9F0;margin:0"><main style="max-width:1100px;margin:24px auto;padding:0 16px"><section style="background:#fff;border:1px solid #e2e8f0;border-bottom:4px solid #cbd5e1;border-radius:32px;box-shadow:0 8px 24px -4px rgba(15,23,42,.08);padding:32px">${data.html}</section></main></body></html>`);
       w.document.close();
-    } catch (e) {
-      if (window.toast) window.toast.error('Ошибка предпросмотра');
-    }
+    } catch (e) {}
   });
 })();
 </script>
