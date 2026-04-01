@@ -96,40 +96,40 @@
                             <div class="dock-mega-group-title">Учёба</div>
                             {% if has_permission(current_user, 'assignment.view') %}
                             <a href="{{ url_for('assignments.assignments_list') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-file-text text-base text-slate-400"></i> Работы
+                                <i class="ph-bold ph-file-text text-base text-muted"></i> Работы
                             </a>
                             {% endif %}
                             {% if has_permission(current_user, 'assignment.grade') %}
                             <a href="{{ url_for('lessons.tutor_manual_reviews') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-check-circle text-base text-slate-400"></i> Ручная проверка
+                                <i class="ph-bold ph-check-circle text-base text-muted"></i> Ручная проверка
                             </a>
                             {% endif %}
                             <a href="{{ url_for('reminders.reminders_list') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-bell text-base text-slate-400"></i> Напоминания
+                                <i class="ph-bold ph-bell text-base text-muted"></i> Напоминания
                             </a>
                             {% if has_permission(current_user, 'theory.manage') %}
                             <a href="{{ url_for('theory.manage_list') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-book-open text-base text-slate-400"></i> Теория
+                                <i class="ph-bold ph-book-open text-base text-muted"></i> Теория
                             </a>
                             {% endif %}
 
                             <div class="dock-mega-group-title mt-3">Создание</div>
                             <a href="{{ url_for('task_generator.task_generator') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-magic-wand text-base text-slate-400"></i> Генератор
+                                <i class="ph-bold ph-magic-wand text-base text-muted"></i> Генератор
                             </a>
                             {% if has_permission(current_user, 'task.manage') %}
                             <a href="{{ url_for('templates.templates_list') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-file-dashed text-base text-slate-400"></i> Шаблоны
+                                <i class="ph-bold ph-file-dashed text-base text-muted"></i> Шаблоны
                             </a>
                             {% endif %}
                             {% if has_permission(current_user, 'lesson.edit') %}
                             <a href="{{ url_for('library.materials_library') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-books text-base text-slate-400"></i> Библиотека
+                                <i class="ph-bold ph-books text-base text-muted"></i> Библиотека
                             </a>
                             {% endif %}
                             {% if has_permission(current_user, 'rubrics.manage') %}
                             <a href="{{ url_for('rubrics.rubrics_list') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-list-checks text-base text-slate-400"></i> Рубрики
+                                <i class="ph-bold ph-list-checks text-base text-muted"></i> Рубрики
                             </a>
                             {% endif %}
                         </div>
@@ -137,33 +137,33 @@
                             <div class="dock-mega-group-title">Управление</div>
                             {% if has_permission(current_user, 'groups.view') %}
                             <a href="{{ url_for('groups.groups_list') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-users text-base text-slate-400"></i> Группы
+                                <i class="ph-bold ph-users text-base text-muted"></i> Группы
                             </a>
                             {% endif %}
                             {% if has_permission(current_user, 'onboarding.view') %}
                             <a href="{{ url_for('onboarding.invites_list') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-envelope-simple text-base text-slate-400"></i> Приглашения
+                                <i class="ph-bold ph-envelope-simple text-base text-muted"></i> Приглашения
                             </a>
                             {% endif %}
                             {% if has_permission(current_user, 'assets.manage') %}
                             <a href="{{ url_for('designer.assets_manager') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-paint-brush text-base text-slate-400"></i> Ассеты
+                                <i class="ph-bold ph-paint-brush text-base text-muted"></i> Ассеты
                             </a>
                             {% endif %}
                             {% if has_permission(current_user, 'billing.manage') %}
                             <a href="{{ url_for('billing.billing_plans') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-credit-card text-base text-slate-400"></i> Тарифы
+                                <i class="ph-bold ph-credit-card text-base text-muted"></i> Тарифы
                             </a>
                             {% endif %}
                             <a href="{{ url_for('main.update_plans') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-rocket text-base text-slate-400"></i> Планы
+                                <i class="ph-bold ph-rocket text-base text-muted"></i> Планы
                             </a>
 
                             {% if current_user.is_admin() or current_user.is_creator() %}
                             <div class="dock-mega-group-title mt-3">Админ</div>
                             {% if config.ADMIN_URL %}
                             <a href="{{ config.ADMIN_URL }}" class="dock-mega-link" target="_blank" rel="noopener">
-                                <i class="ph-bold ph-gear text-base text-slate-400"></i> Панель
+                                <i class="ph-bold ph-gear text-base text-muted"></i> Панель
                             </a>
                             {% endif %}
                             {% endif %}
@@ -199,16 +199,16 @@
                     </button>
                     <div class="profile-dropdown-content" data-profile-menu>
                         <a href="{{ url_for('auth.user_profile') }}" class="profile-item">
-                            <i class="ph-bold ph-user text-base text-slate-400"></i>
+                            <i class="ph-bold ph-user text-base text-muted"></i>
                             <span>Профиль</span>
                         </a>
                         <a href="{{ url_for('notifications.notifications_list') }}" class="profile-item">
-                            <i class="ph-bold ph-bell text-base text-slate-400"></i>
+                            <i class="ph-bold ph-bell text-base text-muted"></i>
                             <span>Уведомления</span>
                         </a>
                         {% if (current_user.is_admin() or current_user.is_creator()) and config.ADMIN_URL %}
                         <a href="{{ config.ADMIN_URL }}" class="profile-item" target="_blank" rel="noopener">
-                            <i class="ph-bold ph-gear text-base text-slate-400"></i>
+                            <i class="ph-bold ph-gear text-base text-muted"></i>
                             <span>Админ панель</span>
                         </a>
                         {% endif %}

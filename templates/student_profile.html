@@ -20,7 +20,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- ГЛАВНАЯ КАРТОЧКА -->
-        <div class="lg:col-span-2 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col justify-between relative overflow-hidden group">
+        <div class="lg:col-span-2 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col justify-between relative overflow-hidden group">
             <i class="ph-fill ph-ghost absolute -right-10 -bottom-10 text-[200px] text-slate-50 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-700 pointer-events-none"></i>
 
             <div class="relative z-10 flex justify-between items-start mb-12 gap-6">
@@ -30,7 +30,7 @@
                             {{ 'ЕГЭ Информатика' if (student.category or '')|upper != 'ОГЭ' else 'ОГЭ Информатика' }}
                         </span>
                         {% if student.school_class %}
-                        <span class="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg border border-slate-200/50">
+                        <span class="px-3 py-1 bg-surface-alt text-muted text-xs font-bold rounded-lg border border-slate-200/50">
                             {{ student.school_class }} класс
                         </span>
                         {% endif %}
@@ -41,19 +41,19 @@
                         {% endif %}
                     </div>
 
-                    <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Привет, {{ first_name }}!</h1>
-                    <p class="text-slate-500 font-medium text-lg">
+                    <h1 class="text-4xl font-black text-primary tracking-tight mb-2">Привет, {{ first_name }}!</h1>
+                    <p class="text-muted font-medium text-lg">
                         {% if student.deadline %}До экзамена: {{ student.deadline }}{% else %}Продолжаем двигаться к твоей цели.{% endif %}
                     </p>
                 </div>
 
                 <div class="shrink-0 hidden sm:flex items-center gap-2">
                     <a href="{{ url_for('auth.user_profile') if (current_user.is_student() and student.user_id == current_user.id) else url_for('students.student_info', student_id=student.student_id) }}"
-                       class="px-4 py-2.5 bg-slate-100/70 hover:bg-slate-100 text-slate-700 rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/50 no-underline">
-                        <i class="ph-bold ph-user text-lg text-slate-500"></i> Профиль
+                       class="px-4 py-2.5 bg-slate-100/70 hover:bg-surface-alt text-secondary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/50 no-underline">
+                        <i class="ph-bold ph-user text-lg text-muted"></i> Профиль
                     </a>
                     <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
-                       class="px-4 py-2.5 bg-white text-boo-primary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/60 shadow-sm no-underline">
+                       class="px-4 py-2.5 bg-surface text-boo-primary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/60 shadow-sm dark:shadow-none no-underline">
                         <i class="ph-bold ph-chart-line-up text-lg"></i> Статистика
                     </a>
                 </div>
@@ -79,13 +79,13 @@
             {% endif %}
 
             <!-- Траектория и Прогресс -->
-            <div class="relative z-10 bg-slate-50 rounded-2xl p-6 border border-slate-100">
+            <div class="relative z-10 bg-surface-alt rounded-2xl p-6 border border-slate-100">
                 <div class="flex justify-between items-end mb-3 gap-4">
-                    <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                    <h3 class="font-bold text-secondary flex items-center gap-2">
                         <i class="ph-fill ph-target text-boo-primary text-xl"></i>
                         Твоя траектория: {{ student.target_score if student.target_score is not none else '—' }} баллов
                     </h3>
-                    <span class="text-2xl font-black text-slate-900">{{ progress_pct }}%</span>
+                    <span class="text-2xl font-black text-primary">{{ progress_pct }}%</span>
                 </div>
 
                 <div class="w-full h-4 bg-slate-200 rounded-full overflow-hidden mb-4 border border-slate-200/50">
@@ -94,7 +94,7 @@
                     </div>
                 </div>
 
-                <div class="flex justify-between text-sm font-bold text-slate-400">
+                <div class="flex justify-between text-sm font-bold text-muted">
                     <span>Завершено уроков: {{ completed_lessons }}</span>
                     <span>Всего уроков: {{ total_lessons }}</span>
                 </div>
@@ -116,16 +116,16 @@
                 <div class="flex items-center gap-4 mb-6">
                     <div class="relative">
                         {% if mentor and mentor.avatar_url %}
-                        <img src="{{ mentor.avatar_url }}" class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm bg-purple-100 object-cover" alt="Аватар наставника">
+                        <img src="{{ mentor.avatar_url }}" class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm dark:shadow-none bg-purple-100 object-cover" alt="Аватар наставника">
                         {% else %}
-                        <div class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm bg-purple-100 flex items-center justify-center text-boo-primary font-black text-2xl">
+                        <div class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm dark:shadow-none bg-purple-100 flex items-center justify-center text-boo-primary font-black text-2xl">
                             {{ (mentor.username[0]|upper) if mentor else '—' }}
                         </div>
                         {% endif %}
                         <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" title="Онлайн"></div>
                     </div>
                     <div class="min-w-0">
-                        <h4 class="text-xl font-black text-slate-900 truncate">
+                        <h4 class="text-xl font-black text-primary truncate">
                             {% if mentor %}
                                 {% if mentor.profile and (mentor.profile.first_name or mentor.profile.last_name) %}
                                     {{ mentor.profile.first_name or '' }} {{ mentor.profile.last_name or '' }}
@@ -136,28 +136,28 @@
                                 Наставник не назначен
                             {% endif %}
                         </h4>
-                        <p class="text-sm font-semibold text-slate-500 mt-0.5 truncate">
+                        <p class="text-sm font-semibold text-muted mt-0.5 truncate">
                             {% if mentor %}@{{ mentor.username }}{% else %}—{% endif %}
                         </p>
                     </div>
                 </div>
 
-                <div class="bg-white/70 border border-purple-100 rounded-2xl p-4 shadow-sm">
-                    <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Статус преподавателя</div>
-                    <div class="text-sm font-black text-slate-900 mt-0.5">
+                <div class="bg-white/70 border border-purple-100 rounded-2xl p-4 shadow-sm dark:shadow-none">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Статус преподавателя</div>
+                    <div class="text-sm font-black text-primary mt-0.5">
                         {% if mentor and mentor.custom_status %}{{ mentor.custom_status }}{% else %}—{% endif %}
                     </div>
-                    <div class="text-xs font-bold text-slate-500 mt-1">
+                    <div class="text-xs font-bold text-muted mt-1">
                         {% if mentor and mentor.created_at %}В системе с {{ mentor.created_at.strftime('%d.%m.%Y') }}{% else %}В системе с —{% endif %}
                     </div>
                 </div>
             </div>
             {% if mentor %}
-            <div class="mt-6 relative z-10 flex items-center justify-between text-xs font-bold text-slate-500">
+            <div class="mt-6 relative z-10 flex items-center justify-between text-xs font-bold text-muted">
                 <span class="inline-flex items-center gap-1.5">
                     <i class="ph-bold ph-cursor-click text-sm text-boo-primary"></i> Открыть профиль
                 </span>
-                <i class="ph-bold ph-arrow-up-right text-sm text-slate-400 group-hover:text-boo-primary transition-colors"></i>
+                <i class="ph-bold ph-arrow-up-right text-sm text-muted group-hover:text-boo-primary transition-colors"></i>
             </div>
             {% endif %}
         {% if mentor %}
@@ -170,16 +170,16 @@
     <!-- НИЖНИЙ РЯД (Action Items) -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        <div class="bg-white rounded-[32px] border {% if active_cnt > 0 %}border-red-200 border-b-boo-coral{% else %}border-slate-200 border-b-slate-300{% endif %} border-b-[4px] shadow-tactile p-6 flex flex-col hover:-translate-y-1 transition-transform duration-300">
+        <div class="bg-surface rounded-[32px] border {% if active_cnt > 0 %}border-red-200 border-b-boo-coral{% else %}border-slate-200 border-b-slate-300{% endif %} border-b-[4px] shadow-tactile p-6 flex flex-col hover:-translate-y-1 transition-transform duration-300">
             <div class="flex justify-between items-start mb-6">
-                <div class="w-12 h-12 rounded-2xl {% if active_cnt > 0 %}bg-red-50 text-boo-coral border-red-100{% else %}bg-slate-50 text-slate-400 border-slate-200{% endif %} flex items-center justify-center border">
+                <div class="w-12 h-12 rounded-2xl {% if active_cnt > 0 %}bg-red-50 text-boo-coral border-red-100{% else %}bg-surface-alt text-muted border-slate-200{% endif %} flex items-center justify-center border">
                     <i class="ph-fill {% if active_cnt > 0 %}ph-warning-circle{% else %}ph-check-circle{% endif %} text-2xl"></i>
                 </div>
-                <span class="bg-slate-900 text-white font-black text-sm px-3 py-1 rounded-full shadow-sm">{{ active_cnt }} работ</span>
+                <span class="bg-slate-900 text-white font-black text-sm px-3 py-1 rounded-full shadow-sm dark:shadow-none">{{ active_cnt }} работ</span>
             </div>
 
-            <h3 class="text-2xl font-black text-slate-900 mb-2">{% if active_cnt > 0 %}Сдать ДЗ{% else %}Всё сдано{% endif %}</h3>
-            <p class="text-sm font-medium text-slate-500 mb-6 flex-1">
+            <h3 class="text-2xl font-black text-primary mb-2">{% if active_cnt > 0 %}Сдать ДЗ{% else %}Всё сдано{% endif %}</h3>
+            <p class="text-sm font-medium text-muted mb-6 flex-1">
                 {% if active_cnt > 0 %}
                     У тебя есть активные работы. Проверь дедлайны и продолжай решение.
                 {% else %}
@@ -188,68 +188,68 @@
             </p>
 
             <a href="{{ url_for('assignments.submissions_list') }}"
-               class="w-full py-3 {% if active_cnt > 0 %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-slate-900 hover:bg-slate-800 border-b-black{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm text-sm border-b-[3px] active:translate-y-1 active:border-b-0 no-underline">
+               class="w-full py-3 {% if active_cnt > 0 %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-slate-900 hover:bg-slate-800 border-b-black{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm border-b-[3px] active:translate-y-1 active:border-b-0 no-underline">
                 Перейти к заданиям <i class="ph-bold ph-arrow-right"></i>
             </a>
         </div>
 
-        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 transition-transform duration-300">
+        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 transition-transform duration-300">
             <div class="flex justify-between items-start mb-6">
                 <div class="w-12 h-12 rounded-2xl bg-cyan-50 text-boo-cyan flex items-center justify-center border border-cyan-100">
                     <i class="ph-fill ph-video-camera text-2xl"></i>
                 </div>
-                <span class="bg-slate-100 text-slate-600 font-bold text-xs px-2.5 py-1 rounded-lg border border-slate-200/50 uppercase tracking-wide">
+                <span class="bg-surface-alt text-muted font-bold text-xs px-2.5 py-1 rounded-lg border border-slate-200/50 uppercase tracking-wide">
                     {% if upcoming and upcoming.lesson_date %}{{ upcoming.lesson_date.strftime('%d.%m') }}{% else %}—{% endif %}
                 </span>
             </div>
 
-            <h3 class="text-2xl font-black text-slate-900 mb-2">
+            <h3 class="text-2xl font-black text-primary mb-2">
                 {% if upcoming and upcoming.topic %}{{ upcoming.topic }}{% elif in_progress_lesson and in_progress_lesson.topic %}{{ in_progress_lesson.topic }}{% else %}Следующий урок{% endif %}
             </h3>
-            <div class="text-sm font-bold text-slate-500 mb-6 flex-1 flex flex-col gap-2">
+            <div class="text-sm font-bold text-muted mb-6 flex-1 flex flex-col gap-2">
                 <span class="flex items-center gap-2"><i class="ph-bold ph-clock text-boo-primary"></i>
                     {% if upcoming and upcoming.lesson_date %}{{ upcoming.lesson_date.strftime('%H:%M') }}{% else %}—{% endif %}
                     — {% if upcoming and upcoming.duration %}{{ upcoming.duration }} мин{% else %}—{% endif %}
                 </span>
-                <span class="flex items-center gap-2"><i class="ph-bold ph-chalkboard-teacher text-slate-400"></i> Онлайн</span>
+                <span class="flex items-center gap-2"><i class="ph-bold ph-chalkboard-teacher text-muted"></i> Онлайн</span>
             </div>
 
             {% if upcoming %}
             <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=upcoming.lesson_id) }}"
-               class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 shadow-sm text-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 no-underline">
+               class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 no-underline">
                 Открыть урок
             </a>
             {% else %}
-            <div class="w-full py-3 bg-slate-100 text-slate-500 rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-200">
+            <div class="w-full py-3 bg-surface-alt text-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-200">
                 Уроков пока нет
             </div>
             {% endif %}
         </div>
 
-        <div class="bg-white rounded-[32px] border {% if trainer_is_available %}border-slate-200 border-b-slate-300 hover:-translate-y-1{% else %}border-slate-200/80 border-b-slate-300 bg-slate-50/60{% endif %} border-b-[4px] shadow-tactile p-6 flex flex-col transition-transform duration-300 relative overflow-hidden {% if not trainer_is_available %}opacity-95{% endif %}">
+        <div class="bg-surface rounded-[32px] border {% if trainer_is_available %}border-slate-200 border-b-slate-300 hover:-translate-y-1{% else %}border-slate-200/80 border-b-slate-300 bg-slate-50/60{% endif %} border-b-[4px] shadow-tactile p-6 flex flex-col transition-transform duration-300 relative overflow-hidden {% if not trainer_is_available %}opacity-95{% endif %}">
             <div class="flex justify-between items-start mb-6">
-                <div class="w-12 h-12 rounded-2xl {% if trainer_is_available %}bg-orange-50 text-boo-accent border-orange-100{% else %}bg-slate-200 text-slate-400 border-slate-300{% endif %} flex items-center justify-center border">
+                <div class="w-12 h-12 rounded-2xl {% if trainer_is_available %}bg-orange-50 text-boo-accent border-orange-100{% else %}bg-slate-200 text-muted border-slate-300{% endif %} flex items-center justify-center border">
                     <i class="ph-fill ph-game-controller text-2xl"></i>
                 </div>
                 {% if not trainer_is_available %}
-                <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+                <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">
                     Нет доступа
                 </span>
                 {% endif %}
             </div>
 
-            <h3 class="text-2xl font-black {% if trainer_is_available %}text-slate-900{% else %}text-slate-500{% endif %} mb-2">Тренажёр</h3>
-            <p class="text-sm font-medium {% if trainer_is_available %}text-slate-500{% else %}text-slate-400{% endif %} mb-6 flex-1">
+            <h3 class="text-2xl font-black {% if trainer_is_available %}text-primary{% else %}text-muted{% endif %} mb-2">Тренажёр</h3>
+            <p class="text-sm font-medium {% if trainer_is_available %}text-muted{% else %}text-muted{% endif %} mb-6 flex-1">
                 Закрепи теорию практикой. Решай задачи каждый день, чтобы улучшать результат.
             </p>
 
             {% if trainer_is_available %}
             <a href="{{ url_for('trainer.trainer_v2') }}"
-               class="w-full py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 hover:text-boo-primary transition-all flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
+               class="w-full py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt hover:text-boo-primary transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
                 Подобрать задачу <i class="ph-bold ph-magic-wand text-boo-primary"></i>
             </a>
             {% else %}
-            <div class="w-full py-3.5 bg-gradient-to-r from-slate-100 to-slate-200 text-slate-600 rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-300 cursor-not-allowed select-none">
+            <div class="w-full py-3.5 bg-gradient-to-r from-slate-100 to-slate-200 text-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-300 cursor-not-allowed select-none">
                 <i class="ph-bold ph-lock-key"></i> Тренажёр недоступен в текущем тарифе
             </div>
             {% endif %}
@@ -260,11 +260,11 @@
     </div>
 
     <!-- ЛЕНТА УРОКОВ -->
-    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+    <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
         <div class="flex justify-between items-end mb-6 gap-4 flex-wrap">
             <div>
-                <h3 class="text-2xl font-black text-slate-900 mb-1">Лента уроков</h3>
-                <p class="text-sm font-medium text-slate-500">История занятий и быстрый доступ к материалам.</p>
+                <h3 class="text-2xl font-black text-primary mb-1">Лента уроков</h3>
+                <p class="text-sm font-medium text-muted">История занятий и быстрый доступ к материалам.</p>
             </div>
         </div>
 
@@ -273,15 +273,15 @@
             {% for l in other_lessons[:20] %}
             <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=l.lesson_id) }}"
                class="py-4 flex items-center gap-4 hover:bg-slate-50/60 transition-colors rounded-2xl px-3 -mx-3 no-underline">
-                <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
-                    <div class="text-lg font-black text-slate-900">{% if l.lesson_date %}{{ l.lesson_date.strftime('%d') }}{% else %}—{% endif %}</div>
-                    <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">{% if l.lesson_date %}{{ l.lesson_date.strftime('%b') }}{% else %}—{% endif %}</div>
+                <div class="w-14 h-14 rounded-2xl bg-surface-alt border border-slate-200 flex flex-col items-center justify-center">
+                    <div class="text-lg font-black text-primary">{% if l.lesson_date %}{{ l.lesson_date.strftime('%d') }}{% else %}—{% endif %}</div>
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">{% if l.lesson_date %}{{ l.lesson_date.strftime('%b') }}{% else %}—{% endif %}</div>
                 </div>
                 <div class="min-w-0 flex-1">
-                    <div class="text-sm font-black text-slate-900 truncate">{{ l.topic or 'Урок' }}</div>
-                    <div class="text-xs font-bold text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
-                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-clock text-slate-400"></i> {% if l.lesson_date %}{{ l.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}</span>
-                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-timer text-slate-400"></i> {{ l.duration or 60 }} мин</span>
+                    <div class="text-sm font-black text-primary truncate">{{ l.topic or 'Урок' }}</div>
+                    <div class="text-xs font-bold text-muted mt-1 flex items-center gap-2 flex-wrap">
+                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-clock text-muted"></i> {% if l.lesson_date %}{{ l.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}</span>
+                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-timer text-muted"></i> {{ l.duration or 60 }} мин</span>
                         <span class="inline-flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full {% if l.status == 'completed' %}bg-green-500{% elif l.status == 'in_progress' %}bg-boo-primary{% else %}bg-slate-400{% endif %}"></span>
                             {{ 'Завершен' if l.status == 'completed' else ('В процессе' if l.status == 'in_progress' else 'Запланирован') }}
@@ -296,11 +296,11 @@
         </div>
         {% else %}
         <div class="w-full bg-slate-50/50 rounded-[24px] border-2 border-slate-200 border-dashed p-10 text-center">
-            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-4">
+            <div class="w-16 h-16 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none mx-auto mb-4">
                 <i class="ph-fill ph-ghost text-3xl text-slate-300"></i>
             </div>
-            <h4 class="text-lg font-bold text-slate-900 mb-1">Уроков пока нет</h4>
-            <p class="text-sm font-medium text-slate-500">Когда занятия появятся, они будут отображаться здесь.</p>
+            <h4 class="text-lg font-bold text-primary mb-1">Уроков пока нет</h4>
+            <p class="text-sm font-medium text-muted">Когда занятия появятся, они будут отображаться здесь.</p>
         </div>
         {% endif %}
     </div>

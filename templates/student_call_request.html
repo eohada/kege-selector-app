@@ -5,79 +5,79 @@
 {% block content %}
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
 
-    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
+    <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
         <i class="ph-fill ph-calendar-check absolute -right-10 -bottom-10 text-[220px] text-slate-50 pointer-events-none"></i>
         <div class="relative z-10">
-            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="inline-flex items-center gap-2 text-slate-400 font-bold text-sm hover:text-boo-primary transition-colors no-underline">
+            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="inline-flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary transition-colors no-underline">
                 <i class="ph-bold ph-arrow-left"></i> В комнату
             </a>
-            <h1 class="text-4xl font-black text-slate-900 tracking-tight mt-3 mb-2">Запись на созвон</h1>
-            <p class="text-slate-500 font-medium text-lg">Оставь заявку — наставник предложит время и формат.</p>
+            <h1 class="text-4xl font-black text-primary tracking-tight mt-3 mb-2">Запись на созвон</h1>
+            <p class="text-muted font-medium text-lg">Оставь заявку — наставник предложит время и формат.</p>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
-            <h3 class="text-2xl font-black text-slate-900 mb-2">Новая заявка</h3>
-            <p class="text-sm font-medium text-slate-500 mb-6">Можно указать удобное время и коротко описать вопрос.</p>
+        <div class="lg:col-span-2 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+            <h3 class="text-2xl font-black text-primary mb-2">Новая заявка</h3>
+            <p class="text-sm font-medium text-muted mb-6">Можно указать удобное время и коротко описать вопрос.</p>
 
             <form method="POST" class="space-y-5">
                 {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
 
                 <div>
-                    <label class="block text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Предпочтительное время</label>
+                    <label class="block text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Предпочтительное время</label>
                     <input type="datetime-local" name="preferred_at"
-                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft">
+                           class="w-full bg-surface-alt border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-secondary focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Сообщение</label>
+                    <label class="block text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Сообщение</label>
                     <textarea name="message" rows="5" placeholder="Например: хочу разобрать ошибки в 27-й задаче, не понимаю динамику..."
-                              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft resize-none"></textarea>
+                              class="w-full bg-surface-alt border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-secondary placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft resize-none"></textarea>
                 </div>
 
                 <button type="submit"
-                        class="w-full sm:w-auto px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all inline-flex items-center justify-center gap-2 shadow-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">
+                        class="w-full sm:w-auto px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all inline-flex items-center justify-center gap-2 shadow-sm dark:shadow-none border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">
                     Отправить заявку <i class="ph-bold ph-paper-plane-right"></i>
                 </button>
             </form>
         </div>
 
-        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
-            <h3 class="text-xl font-black text-slate-900 mb-3">Последние заявки</h3>
+        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+            <h3 class="text-xl font-black text-primary mb-3">Последние заявки</h3>
 
             {% if recent_requests and recent_requests|length > 0 %}
             <div class="space-y-3">
                 {% for r in recent_requests %}
-                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/60">
+                <div class="p-4 rounded-2xl bg-surface-alt border border-slate-200/60">
                     <div class="flex items-center justify-between gap-3">
-                        <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest">
+                        <div class="text-xs font-extrabold text-muted uppercase tracking-widest">
                             {% if r.created_at %}{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}
                         </div>
-                        <span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border border-slate-200 bg-white text-slate-600">
+                        <span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border border-slate-200 bg-surface text-muted">
                             {{ r.status }}
                         </span>
                     </div>
                     {% if r.preferred_at %}
-                    <div class="mt-2 text-sm font-bold text-slate-700">
+                    <div class="mt-2 text-sm font-bold text-secondary">
                         Удобно: {{ r.preferred_at.strftime('%d.%m.%Y %H:%M') }}
                     </div>
                     {% endif %}
                     {% if r.message %}
-                    <div class="mt-2 text-sm font-medium text-slate-600 whitespace-pre-wrap break-words">{{ r.message }}</div>
+                    <div class="mt-2 text-sm font-medium text-muted whitespace-pre-wrap break-words">{{ r.message }}</div>
                     {% else %}
-                    <div class="mt-2 text-sm font-medium text-slate-400">Без сообщения</div>
+                    <div class="mt-2 text-sm font-medium text-muted">Без сообщения</div>
                     {% endif %}
                 </div>
                 {% endfor %}
             </div>
             {% else %}
             <div class="p-6 rounded-2xl border-2 border-slate-200 border-dashed bg-slate-50/50 text-center">
-                <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-4">
+                <div class="w-14 h-14 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none mx-auto mb-4">
                     <i class="ph-fill ph-calendar-plus text-3xl text-slate-300"></i>
                 </div>
-                <div class="text-sm font-bold text-slate-700">Заявок пока нет</div>
-                <div class="text-sm font-medium text-slate-500 mt-1">Создай первую — это быстро.</div>
+                <div class="text-sm font-bold text-secondary">Заявок пока нет</div>
+                <div class="text-sm font-medium text-muted mt-1">Создай первую — это быстро.</div>
             </div>
             {% endif %}
         </div>

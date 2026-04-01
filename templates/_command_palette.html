@@ -15,22 +15,22 @@
                     {% if current_user and current_user.is_authenticated %}
                     {% if not current_user.is_student() and not current_user.is_parent() %}
                     <a href="{{ url_for('main.dashboard') }}" class="cmd-palette-item">
-                        <i class="ph-bold ph-users-three text-base text-slate-400"></i> Перейти к ученикам
+                        <i class="ph-bold ph-users-three text-base text-muted"></i> Перейти к ученикам
                     </a>
                     <a href="{{ url_for('schedule.schedule') }}" class="cmd-palette-item">
-                        <i class="ph-bold ph-calendar-blank text-base text-slate-400"></i> Расписание
+                        <i class="ph-bold ph-calendar-blank text-base text-muted"></i> Расписание
                     </a>
                     {% if has_permission(current_user, 'assignment.grade') %}
                     <a href="{{ url_for('lessons.review_queue') }}" class="cmd-palette-item">
-                        <i class="ph-bold ph-tray text-base text-slate-400"></i> Очередь проверки
+                        <i class="ph-bold ph-tray text-base text-muted"></i> Очередь проверки
                     </a>
                     {% endif %}
                     <a href="{{ url_for('task_generator.task_generator') }}" class="cmd-palette-item">
-                        <i class="ph-bold ph-magic-wand text-base text-slate-400"></i> Генератор задач
+                        <i class="ph-bold ph-magic-wand text-base text-muted"></i> Генератор задач
                     </a>
                     {% endif %}
                     <a href="{{ url_for('auth.user_profile') }}" class="cmd-palette-item">
-                        <i class="ph-bold ph-user text-base text-slate-400"></i> Мой профиль
+                        <i class="ph-bold ph-user text-base text-muted"></i> Мой профиль
                     </a>
                     {% endif %}
                 </div>
@@ -56,7 +56,7 @@
                             <template x-for="(r, idx) in actions" :key="r.url">
                                 <a :href="r.url" class="cmd-palette-item" :class="isActive('actions', idx) ? 'active' : ''"
                                    @mouseenter="setActive('actions', idx)">
-                                    <i class="ph-bold ph-lightning text-base text-slate-400"></i>
+                                    <i class="ph-bold ph-lightning text-base text-muted"></i>
                                     <span x-text="r.title"></span>
                                 </a>
                             </template>
@@ -69,7 +69,7 @@
                             <template x-for="(r, idx) in students" :key="r.url">
                                 <a :href="r.url" class="cmd-palette-item" :class="isActive('students', idx) ? 'active' : ''"
                                    @mouseenter="setActive('students', idx)">
-                                    <i class="ph-bold ph-user text-base text-slate-400"></i>
+                                    <i class="ph-bold ph-user text-base text-muted"></i>
                                     <span x-text="r.title"></span>
                                 </a>
                             </template>
@@ -82,7 +82,7 @@
                             <template x-for="(r, idx) in lessons" :key="r.url">
                                 <a :href="r.url" class="cmd-palette-item" :class="isActive('lessons', idx) ? 'active' : ''"
                                    @mouseenter="setActive('lessons', idx)">
-                                    <i class="ph-bold ph-video-camera text-base text-slate-400"></i>
+                                    <i class="ph-bold ph-video-camera text-base text-muted"></i>
                                     <span x-text="r.title"></span>
                                 </a>
                             </template>
@@ -95,7 +95,7 @@
                             <template x-for="(r, idx) in tasks" :key="r.url">
                                 <a :href="r.url" class="cmd-palette-item" :class="isActive('tasks', idx) ? 'active' : ''"
                                    @mouseenter="setActive('tasks', idx)">
-                                    <i class="ph-bold ph-file-text text-base text-slate-400"></i>
+                                    <i class="ph-bold ph-file-text text-base text-muted"></i>
                                     <span x-text="r.title"></span>
                                 </a>
                             </template>

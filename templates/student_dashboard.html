@@ -11,9 +11,9 @@
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
 
     {% if not student %}
-    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
-        <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-2">Дашборд</h1>
-        <p class="text-slate-500 font-medium">Профиль ученика не найден.</p>
+    <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+        <h1 class="text-3xl font-black text-primary tracking-tight mb-2">Дашборд</h1>
+        <p class="text-muted font-medium">Профиль ученика не найден.</p>
     </div>
     {% else %}
 
@@ -21,7 +21,7 @@
     <div class="flex flex-wrap gap-2">
         {% for enrollment in enrollments %}
         <a href="?course_id={{ enrollment.course_id }}"
-           class="px-4 py-2 rounded-xl text-sm font-bold border transition-all {% if selected_course_id == enrollment.course_id %}bg-white text-boo-primary shadow-sm border-slate-200/60{% else %}bg-slate-100/70 text-slate-600 hover:bg-white/70 hover:text-slate-900 border-slate-200/40{% endif %}">
+           class="px-4 py-2 rounded-xl text-sm font-bold border transition-all {% if selected_course_id == enrollment.course_id %}bg-surface text-boo-primary shadow-sm dark:shadow-none border-slate-200/60{% else %}bg-slate-100/70 text-muted hover:bg-white/70 hover:text-primary border-slate-200/40{% endif %}">
             {{ enrollment.course.title if enrollment.course else ('Курс #' ~ enrollment.course_id) }}
         </a>
         {% endfor %}
@@ -37,7 +37,7 @@
 
             <div class="relative z-10 flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
                 <div>
-                    <span class="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-xs font-bold tracking-widest uppercase inline-flex items-center gap-1.5 mb-4 shadow-sm">
+                    <span class="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-xs font-bold tracking-widest uppercase inline-flex items-center gap-1.5 mb-4 shadow-sm dark:shadow-none">
                         <i class="ph-fill ph-student text-purple-100"></i> {{ student.name }}
                     </span>
                     <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2 leading-tight">Твой путь к цели</h1>
@@ -47,7 +47,7 @@
                 </div>
 
                 <div class="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-inner flex items-center gap-3 shrink-0">
-                    <div class="w-12 h-12 bg-white text-boo-primary rounded-xl flex items-center justify-center font-black text-xl shadow-sm">
+                    <div class="w-12 h-12 bg-surface text-boo-primary rounded-xl flex items-center justify-center font-black text-xl shadow-sm dark:shadow-none">
                         {{ student.target_score if student.target_score is not none else '—' }}
                     </div>
                     <div>
@@ -82,7 +82,7 @@
                     <i class="ph-bold ph-bell text-lg"></i> Уведомления{% if unread_notifications %} ({{ unread_notifications }}){% endif %}
                 </a>
                 <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
-                   class="px-5 py-2.5 bg-white text-boo-primary border border-white/30 rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 shadow-sm">
+                   class="px-5 py-2.5 bg-surface text-boo-primary border border-white/30 rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 shadow-sm dark:shadow-none">
                     <i class="ph-bold ph-chart-line-up text-lg"></i> Аналитика
                 </a>
             </div>
@@ -97,15 +97,15 @@
                     </h3>
                 </div>
 
-                <h4 class="text-2xl font-black text-slate-900 mb-2 leading-tight">Слабые темы</h4>
+                <h4 class="text-2xl font-black text-primary mb-2 leading-tight">Слабые темы</h4>
 
                 {% if problem_topics and problem_topics|length > 0 %}
                 <div class="mt-6 space-y-3">
                     {% for t in problem_topics[:4] %}
                     <div class="bg-white/70 rounded-2xl border border-orange-100/70 p-3 flex items-center justify-between">
                         <div class="min-w-0">
-                            <div class="text-sm font-extrabold text-slate-900 truncate">{{ t.name }}</div>
-                            <div class="text-xs font-bold text-slate-500">средний результат</div>
+                            <div class="text-sm font-extrabold text-primary truncate">{{ t.name }}</div>
+                            <div class="text-xs font-bold text-muted">средний результат</div>
                         </div>
                         <div class="text-sm font-black text-orange-600">{{ t.avg_score }}%</div>
                     </div>
@@ -113,10 +113,10 @@
                 </div>
                 {% else %}
                 <div class="mt-8 flex flex-col items-center justify-center text-center">
-                    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-orange-100">
+                    <div class="w-16 h-16 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none mb-4 border border-orange-100">
                         <i class="ph-fill ph-ghost text-3xl text-orange-300"></i>
                     </div>
-                    <p class="text-slate-600 font-medium text-sm leading-relaxed mb-6">
+                    <p class="text-muted font-medium text-sm leading-relaxed mb-6">
                         Пока недостаточно данных для анализа. Решай больше тестов, чтобы система выявила твои слабые места.
                     </p>
                 </div>
@@ -124,7 +124,7 @@
             </div>
 
             <a href="{{ url_for('trainer.trainer_v2') if has_permission(current_user,'trainer.use') else url_for('assignments.submissions_list') }}"
-               class="w-full py-3.5 bg-white text-orange-600 border border-orange-200 rounded-xl font-bold hover:bg-orange-100 transition-all flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
+               class="w-full py-3.5 bg-surface text-orange-600 border border-orange-200 rounded-xl font-bold hover:bg-orange-100 transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
                 <i class="ph-bold ph-magic-wand"></i> Подобрать тест
             </a>
         </div>
@@ -132,7 +132,7 @@
 
     <!-- БЫСТРАЯ СТАТИСТИКА -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform group">
+        <div class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform group">
             <div class="flex justify-between items-start mb-4">
                 <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-100 group-hover:scale-110 transition-transform">
                     <i class="ph-fill ph-video-camera text-2xl"></i>
@@ -140,12 +140,12 @@
                 <i class="ph-bold ph-arrow-up-right text-slate-300 group-hover:text-blue-400 transition-colors"></i>
             </div>
             <div>
-                <div class="text-4xl font-black text-slate-900 tracking-tight">{{ total_lessons if total_lessons is defined else '—' }}</div>
-                <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Всего занятий</div>
+                <div class="text-4xl font-black text-primary tracking-tight">{{ total_lessons if total_lessons is defined else '—' }}</div>
+                <div class="text-xs font-bold text-muted uppercase tracking-widest mt-1">Всего занятий</div>
             </div>
         </div>
 
-        <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform group">
+        <div class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform group">
             <div class="flex justify-between items-start mb-4">
                 <div class="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center border border-green-100 group-hover:scale-110 transition-transform">
                     <i class="ph-fill ph-checks text-2xl"></i>
@@ -153,22 +153,22 @@
                 <i class="ph-bold ph-arrow-up-right text-slate-300 group-hover:text-green-400 transition-colors"></i>
             </div>
             <div>
-                <div class="text-4xl font-black text-slate-900 tracking-tight">{{ completed_tasks if completed_tasks is defined else 0 }}</div>
-                <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Выполнено заданий</div>
+                <div class="text-4xl font-black text-primary tracking-tight">{{ completed_tasks if completed_tasks is defined else 0 }}</div>
+                <div class="text-xs font-bold text-muted uppercase tracking-widest mt-1">Выполнено заданий</div>
             </div>
         </div>
 
-        <div class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform group">
+        <div class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform group">
             <div class="flex justify-between items-start mb-4">
                 <div class="w-12 h-12 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
                     <i class="ph-fill ph-star text-2xl"></i>
                 </div>
             </div>
             <div>
-                <div class="text-4xl font-black {% if avg_score is defined and avg_score is not none and avg_score != '—' %}text-slate-900{% else %}text-slate-300{% endif %} tracking-tight">
+                <div class="text-4xl font-black {% if avg_score is defined and avg_score is not none and avg_score != '—' %}text-primary{% else %}text-slate-300{% endif %} tracking-tight">
                     {{ avg_score if avg_score is defined else '—' }}
                 </div>
-                <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Средний балл (GPA)</div>
+                <div class="text-xs font-bold text-muted uppercase tracking-widest mt-1">Средний балл (GPA)</div>
             </div>
         </div>
     </div>
@@ -176,9 +176,9 @@
     <!-- АКТИВНЫЕ ДЕЙСТВИЯ И ЖУРНАЛ -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col h-full min-h-[300px]">
+        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col h-full min-h-[300px]">
             <div class="flex justify-between items-center mb-8">
-                <h3 class="text-2xl font-black text-slate-900">Активные работы</h3>
+                <h3 class="text-2xl font-black text-primary">Активные работы</h3>
                 <a href="{{ url_for('assignments.submissions_list') }}" class="text-sm font-bold text-boo-primary hover:text-boo-primaryHover transition-colors flex items-center gap-1 no-underline">
                     Все <i class="ph-bold ph-arrow-right"></i>
                 </a>
@@ -188,17 +188,17 @@
             <div class="grid gap-3">
                 {% for s in pending_submissions[:5] %}
                 <a href="{{ url_for('assignments.submission_view', submission_id=s.submission_id) }}"
-                   class="bg-slate-50/50 hover:bg-slate-50 rounded-[24px] border border-slate-200/60 p-4 transition-colors no-underline">
+                   class="bg-slate-50/50 hover:bg-surface-alt rounded-[24px] border border-slate-200/60 p-4 transition-colors no-underline">
                     <div class="flex justify-between items-start gap-4">
                         <div class="min-w-0">
-                            <div class="text-sm font-black text-slate-900 truncate">
+                            <div class="text-sm font-black text-primary truncate">
                                 {{ s.assignment.title if s.assignment else ('Работа #' ~ s.submission_id) }}
                             </div>
-                            <div class="text-xs font-bold text-slate-500 mt-1">
+                            <div class="text-xs font-bold text-muted mt-1">
                                 {% if s.assignment and s.assignment.deadline %}Дедлайн: {{ s.assignment.deadline.strftime('%d.%m.%Y %H:%M') }}{% else %}Без дедлайна{% endif %}
                             </div>
                         </div>
-                        <span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border border-slate-200 bg-white text-slate-600 shrink-0">
+                        <span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border border-slate-200 bg-surface text-muted shrink-0">
                             {{ s.status }}
                         </span>
                     </div>
@@ -207,18 +207,18 @@
             </div>
             {% else %}
             <div class="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-slate-100 border-dashed rounded-[24px] bg-slate-50/50">
-                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                <div class="w-16 h-16 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none mb-4">
                     <i class="ph-fill ph-check-circle text-4xl text-green-400"></i>
                 </div>
-                <h4 class="text-lg font-bold text-slate-900 mb-1">Всё сдано!</h4>
-                <p class="text-sm text-slate-500 font-medium">Нет активных работ. Можно отдохнуть или порешать тренажёр.</p>
+                <h4 class="text-lg font-bold text-primary mb-1">Всё сдано!</h4>
+                <p class="text-sm text-muted font-medium">Нет активных работ. Можно отдохнуть или порешать тренажёр.</p>
             </div>
             {% endif %}
         </div>
 
-        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col h-full min-h-[300px]">
+        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col h-full min-h-[300px]">
             <div class="flex justify-between items-center mb-8">
-                <h3 class="text-2xl font-black text-slate-900">Последние оценки</h3>
+                <h3 class="text-2xl font-black text-primary">Последние оценки</h3>
                 <a href="{{ url_for('students.student_gradebook', student_id=student.student_id) }}" class="text-sm font-bold text-boo-primary hover:text-boo-primaryHover transition-colors flex items-center gap-1 no-underline">
                     Все <i class="ph-bold ph-arrow-right"></i>
                 </a>
@@ -229,12 +229,12 @@
                 {% for e in recent_grades[:6] %}
                 <div class="bg-slate-50/50 rounded-[24px] border border-slate-200/60 p-4 flex items-center justify-between gap-4">
                     <div class="min-w-0">
-                        <div class="text-sm font-black text-slate-900 truncate">{{ e.title }}</div>
-                        <div class="text-xs font-bold text-slate-500 mt-1">
+                        <div class="text-sm font-black text-primary truncate">{{ e.title }}</div>
+                        <div class="text-xs font-bold text-muted mt-1">
                             {% if e.created_at %}{{ e.created_at.strftime('%d.%m.%Y') }}{% else %}—{% endif %}
                         </div>
                     </div>
-                    <div class="text-sm font-black text-slate-900 shrink-0">
+                    <div class="text-sm font-black text-primary shrink-0">
                         {% if e.score is not none and e.max_score is not none %}{{ e.score }}/{{ e.max_score }}{% else %}—{% endif %}
                     </div>
                 </div>
@@ -242,11 +242,11 @@
             </div>
             {% else %}
             <div class="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-slate-100 border-dashed rounded-[24px] bg-slate-50/50">
-                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                <div class="w-16 h-16 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none mb-4">
                     <i class="ph-fill ph-notebook text-4xl text-slate-300"></i>
                 </div>
-                <h4 class="text-lg font-bold text-slate-900 mb-1">Пока пусто</h4>
-                <p class="text-sm text-slate-500 font-medium">Здесь появятся оценки после первых проверенных работ.</p>
+                <h4 class="text-lg font-bold text-primary mb-1">Пока пусто</h4>
+                <p class="text-sm text-muted font-medium">Здесь появятся оценки после первых проверенных работ.</p>
             </div>
             {% endif %}
         </div>

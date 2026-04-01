@@ -85,7 +85,7 @@
 <main class="flex-1 overflow-y-auto pt-6 pb-16 px-6 lg:px-8">
   <div class="wizard-container">
     <div class="flex flex-col items-center mb-8">
-      <div class="flex items-center bg-white/80 backdrop-blur-md rounded-[20px] border border-slate-200 shadow-sm p-1.5 mb-6">
+      <div class="flex items-center bg-white/80 backdrop-blur-md rounded-[20px] border border-slate-200 shadow-sm dark:shadow-none p-1.5 mb-6">
         <button type="button" onclick="goToStep(1)" id="stepIndicator1" class="flex items-center gap-2.5 px-4 py-2 rounded-xl font-bold text-sm transition-all">
           <div id="stepBadge1" class="w-6 h-6 rounded-full flex items-center justify-center text-xs">1</div> Ученики
         </button>
@@ -103,20 +103,20 @@
         <div class="status-pill">Учеников: <span id="statusRecipients">0</span></div>
         <div class="status-pill">Заданий: <span id="statusTasks">{{ (task_ids|length) if task_ids else 0 }}</span></div>
         {% if task_ids and task_ids|length > 0 %}
-        <button type="button" class="bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors shadow-sm active:scale-95" onclick="clearTasks()">Сбросить</button>
+        <button type="button" class="bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors shadow-sm dark:shadow-none active:scale-95" onclick="clearTasks()">Сбросить</button>
         {% endif %}
       </div>
     </div>
 
     <div id="stepContent1" class="step-card">
-      <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
-        <h2 class="text-3xl md:text-4xl font-black text-slate-900 mb-2 tracking-tight">1. Кому выдаем?</h2>
-        <p class="text-slate-500 font-medium text-base mb-6">Выберите учеников из списка, назначьте группе или выберите всех сразу.</p>
+      <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
+        <h2 class="text-3xl md:text-4xl font-black text-primary mb-2 tracking-tight">1. Кому выдаем?</h2>
+        <p class="text-muted font-medium text-base mb-6">Выберите учеников из списка, назначьте группе или выберите всех сразу.</p>
 
         {% if available_groups %}
         <div class="mb-4">
-          <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Быстрый выбор по группе</label>
-          <select id="ca_group_select" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" onchange="handleGroupSelect(this.value)">
+          <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 mb-2 block">Быстрый выбор по группе</label>
+          <select id="ca_group_select" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" onchange="handleGroupSelect(this.value)">
             <option value="">— Выбрать вручную —</option>
             <option value="all">Все ученики</option>
             {% for g in available_groups %}
@@ -137,18 +137,18 @@
           <div id="recipientCards" class="student-list max-h-[340px] overflow-y-auto p-3 space-y-1.5">
             {% for st in (recipient_options or []) %}
               {% set _sel = (default_recipient_ids and st.student_id in default_recipient_ids) %}
-              <label class="flex items-center gap-4 p-3 rounded-xl bg-white border border-slate-200 cursor-pointer hover:border-purple-200 hover:shadow-sm transition-all group relative recipient-card" data-student-id="{{ st.student_id }}">
+              <label class="flex items-center gap-4 p-3 rounded-xl bg-surface border border-slate-200 cursor-pointer hover:border-purple-200 hover:shadow-sm dark:shadow-none transition-all group relative recipient-card" data-student-id="{{ st.student_id }}">
                 <input type="checkbox" class="peer sr-only recipient-check" value="{{ st.student_id }}" {% if _sel %}checked{% endif %}>
                 <div class="recipient-checkbox">
                   <i class="ph-bold ph-check recipient-check-icon"></i>
                 </div>
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500">
+                  <div class="w-10 h-10 rounded-lg bg-surface-alt border border-slate-200 flex items-center justify-center text-muted">
                     <i class="ph-bold ph-user"></i>
                   </div>
                   <div>
-                    <div class="font-bold text-slate-900 text-sm">{{ st.name }}</div>
-                    <div class="text-xs text-slate-500 font-medium">ID: {{ st.student_id }}</div>
+                    <div class="font-bold text-primary text-sm">{{ st.name }}</div>
+                    <div class="text-xs text-muted font-medium">ID: {{ st.student_id }}</div>
                   </div>
                 </div>
                 <div class="recipient-selection-ring"></div>
@@ -159,8 +159,8 @@
 
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-slate-100">
           <div class="flex gap-2 w-full sm:w-auto">
-            <button type="button" class="flex-1 sm:flex-none px-4 py-2.5 bg-slate-50 text-slate-700 font-bold text-sm rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors shadow-sm" onclick="selectAll(true)">Выбрать всех</button>
-            <button type="button" class="flex-1 sm:flex-none px-4 py-2.5 text-slate-500 hover:text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-50 transition-colors" onclick="selectAll(false)">Снять выбор</button>
+            <button type="button" class="flex-1 sm:flex-none px-4 py-2.5 bg-surface-alt text-secondary font-bold text-sm rounded-xl border border-slate-200 hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none" onclick="selectAll(true)">Выбрать всех</button>
+            <button type="button" class="flex-1 sm:flex-none px-4 py-2.5 text-muted hover:text-secondary font-bold text-sm rounded-xl hover:bg-surface-alt transition-colors" onclick="selectAll(false)">Снять выбор</button>
           </div>
           <button type="button" class="w-full sm:w-auto px-8 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" onclick="goToStep(2)">
             Далее: Выбрать задания <i class="ph-bold ph-arrow-right"></i>
@@ -170,45 +170,45 @@
     </div>
 
     <div id="stepContent2" class="step-card">
-      <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
-        <h2 class="text-3xl md:text-4xl font-black text-slate-900 mb-2 tracking-tight">2. Откуда берем задания?</h2>
-        <p class="text-slate-500 font-medium text-base mb-8">Выберите наиболее удобный способ формирования пула задач.</p>
+      <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
+        <h2 class="text-3xl md:text-4xl font-black text-primary mb-2 tracking-tight">2. Откуда берем задания?</h2>
+        <p class="text-muted font-medium text-base mb-8">Выберите наиболее удобный способ формирования пула задач.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <button type="button" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-white text-left {% if source == 'manual' %}active-manual{% endif %}" onclick="setSource('manual')">
+          <button type="button" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left {% if source == 'manual' %}active-manual{% endif %}" onclick="setSource('manual')">
             <div class="w-12 h-12 rounded-xl bg-purple-100 text-boo-primary flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-keyboard"></i></div>
-            <h3 class="text-lg font-black text-slate-900 mb-1">Ввести ID вручную</h3>
-            <p class="text-xs font-medium text-slate-500">Если номера задач уже известны.</p>
+            <h3 class="text-lg font-black text-primary mb-1">Ввести ID вручную</h3>
+            <p class="text-xs font-medium text-muted">Если номера задач уже известны.</p>
           </button>
-          <a id="generatorLink" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-white text-left no-underline {% if source == 'generator' %}active-generator{% endif %}" href="#">
+          <a id="generatorLink" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left no-underline {% if source == 'generator' %}active-generator{% endif %}" href="#">
             <div class="w-12 h-12 rounded-xl bg-cyan-100 text-cyan-600 flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-magic-wand"></i></div>
-            <h3 class="text-lg font-black text-slate-900 mb-1">Генератор</h3>
-            <p class="text-xs font-medium text-slate-500">Подобрать новые задачи (анти-повтор включен).</p>
+            <h3 class="text-lg font-black text-primary mb-1">Генератор</h3>
+            <p class="text-xs font-medium text-muted">Подобрать новые задачи (анти-повтор включен).</p>
           </a>
-          <button type="button" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-white text-left {% if source == 'template' %}active-template{% endif %}" onclick="setSource('template')">
+          <button type="button" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left {% if source == 'template' %}active-template{% endif %}" onclick="setSource('template')">
             <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-500 flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-squares-four"></i></div>
-            <h3 class="text-lg font-black text-slate-900 mb-1">Из шаблона</h3>
-            <p class="text-xs font-medium text-slate-500">Готовые варианты или тематические наборы.</p>
+            <h3 class="text-lg font-black text-primary mb-1">Из шаблона</h3>
+            <p class="text-xs font-medium text-muted">Готовые варианты или тематические наборы.</p>
           </button>
         </div>
 
         <div id="sourceOptions" class="bg-slate-50/80 border border-slate-200 rounded-[24px] p-6 lg:p-8 mb-8 shadow-inner-soft">
           {% if source == 'template' %}
-            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Выберите шаблон из библиотеки</label>
-            <select class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" onchange="pickTemplate(this.value)">
+            <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 mb-3 block">Выберите шаблон из библиотеки</label>
+            <select class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3.5 font-bold text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" onchange="pickTemplate(this.value)">
               <option value="">— выбрать шаблон —</option>
               {% for tpl in (templates or []) %}
               <option value="{{ tpl.template_id }}" {% if template_id == tpl.template_id %}selected{% endif %}>{{ tpl.name }}</option>
               {% endfor %}
             </select>
           {% else %}
-            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-3 block">Введите ID через запятую или пробел</label>
-            <textarea id="manualTaskIds" rows="4" class="w-full bg-white border border-slate-200 rounded-xl p-4 font-mono text-slate-800 text-[15px] focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-sm resize-y" placeholder="Пример: 123, 456, 789...">{% if source == 'manual' and task_ids %}{{ task_ids|join(', ') }}{% endif %}</textarea>
+            <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 mb-3 block">Введите ID через запятую или пробел</label>
+            <textarea id="manualTaskIds" rows="4" class="w-full bg-surface border border-slate-200 rounded-xl p-4 font-mono text-primary text-[15px] focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-sm dark:shadow-none resize-y" placeholder="Пример: 123, 456, 789...">{% if source == 'manual' and task_ids %}{{ task_ids|join(', ') }}{% endif %}</textarea>
           {% endif %}
         </div>
 
         <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-6 border-t border-slate-100">
-          <button type="button" class="w-full sm:w-auto text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors flex items-center justify-center gap-1.5 px-4 py-2" onclick="goToStep(1)">
+          <button type="button" class="w-full sm:w-auto text-muted hover:text-primary font-bold text-sm transition-colors flex items-center justify-center gap-1.5 px-4 py-2" onclick="goToStep(1)">
             <i class="ph-bold ph-arrow-left"></i> Назад к ученикам
           </button>
           <button type="button" class="w-full sm:w-auto px-8 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" onclick="goToStep(3)">
@@ -219,23 +219,23 @@
     </div>
 
     <div id="stepContent3" class="step-card">
-      <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
-        <h2 class="text-3xl md:text-4xl font-black text-slate-900 mb-2 tracking-tight">3. Финальные настройки</h2>
-        <p class="text-slate-500 font-medium text-base mb-8">Проверьте список задач и установите срок сдачи.</p>
+      <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
+        <h2 class="text-3xl md:text-4xl font-black text-primary mb-2 tracking-tight">3. Финальные настройки</h2>
+        <p class="text-muted font-medium text-base mb-8">Проверьте список задач и установите срок сдачи.</p>
 
         <div class="mb-8">
-          <h3 class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 ml-1">Список задач ({{ tasks|length }})</h3>
+          <h3 class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-3 ml-1">Список задач ({{ tasks|length }})</h3>
           <div class="space-y-2 max-h-[320px] overflow-y-auto pr-1">
             {% for t in tasks %}
-            <div class="task-mini-item bg-slate-50 border border-slate-200 rounded-xl">
+            <div class="task-mini-item bg-surface-alt border border-slate-200 rounded-xl">
               <div class="task-mini-header flex justify-between items-center px-4 py-3 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('active')">
-                <div class="font-bold text-slate-900 text-sm"><span class="text-slate-400 font-mono">#{{ t.task_id }}</span> <span class="mx-1">•</span> Задание №{{ t.task_number }}</div>
+                <div class="font-bold text-primary text-sm"><span class="text-muted font-mono">#{{ t.task_id }}</span> <span class="mx-1">•</span> Задание №{{ t.task_number }}</div>
                 <div class="flex items-center gap-2">
-                  {% if t.source_url %}<a class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-boo-primary no-underline" href="{{ t.source_url }}" target="_blank" onclick="event.stopPropagation()">Источник</a>{% endif %}
-                  <i class="ph-bold ph-caret-down text-slate-400"></i>
+                  {% if t.source_url %}<a class="text-[10px] font-bold text-muted uppercase tracking-widest hover:text-boo-primary no-underline" href="{{ t.source_url }}" target="_blank" onclick="event.stopPropagation()">Источник</a>{% endif %}
+                  <i class="ph-bold ph-caret-down text-muted"></i>
                 </div>
               </div>
-              <div class="task-mini-body px-4 py-3 border-t border-slate-200 text-sm text-slate-700 bg-white">
+              <div class="task-mini-body px-4 py-3 border-t border-slate-200 text-sm text-secondary bg-surface">
                 {{ (t.content_html or 'Текст отсутствует') | sanitize_html }}
               </div>
             </div>
@@ -246,47 +246,47 @@
         <form id="ca_form">
           <div class="space-y-6">
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Название работы <span class="text-red-500">*</span></label>
-              <input id="ca_title" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" required>
+              <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Название работы <span class="text-red-500">*</span></label>
+              <input id="ca_title" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" required>
             </div>
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Тип</label>
-              <select id="ca_type" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all">
+              <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Тип</label>
+              <select id="ca_type" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all">
                 <option value="homework">Домашняя работа</option>
                 <option value="classwork">Классная работа</option>
                 <option value="exam">Проверочная / Тест</option>
               </select>
             </div>
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Описание / Комментарий для ученика</label>
-              <textarea id="ca_description" rows="3" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all resize-y"></textarea>
+              <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Описание / Комментарий для ученика</label>
+              <textarea id="ca_description" rows="3" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-medium text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all resize-y"></textarea>
             </div>
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Срок сдачи (дедлайн) <span class="text-red-500">*</span></label>
-              <input id="ca_deadline" type="datetime-local" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" required>
+              <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Срок сдачи (дедлайн) <span class="text-red-500">*</span></label>
+              <input id="ca_deadline" type="datetime-local" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" required>
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Время (мин)</label>
-                <input id="ca_time_limit" type="number" min="5" max="480" placeholder="Нет" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all text-center">
+                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Время (мин)</label>
+                <input id="ca_time_limit" type="number" min="5" max="480" placeholder="Нет" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all text-center">
               </div>
               <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest ml-1">Попытки</label>
-                <input id="ca_max_attempts" type="number" value="1" min="1" max="20" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all text-center">
+                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Попытки</label>
+                <input id="ca_max_attempts" type="number" value="1" min="1" max="20" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all text-center">
               </div>
             </div>
             <div class="pt-4 space-y-3">
-              <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_hard_deadline">Запретить сдачу после дедлайна</label>
-              <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_hide_before_start" checked>Скрывать задания до нажатия "Начать выполнение"</label>
-              <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_attempts_per_task">Попытки на каждое задание</label>
-              <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_separate_submission" checked>Разрешить сдавать задачи по одной</label>
-              <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_time_limit_strict">Блокировать сдачу после истечения таймера</label>
+              <label class="flex items-center gap-2 text-sm font-bold text-primary"><input type="checkbox" id="ca_hard_deadline">Запретить сдачу после дедлайна</label>
+              <label class="flex items-center gap-2 text-sm font-bold text-primary"><input type="checkbox" id="ca_hide_before_start" checked>Скрывать задания до нажатия "Начать выполнение"</label>
+              <label class="flex items-center gap-2 text-sm font-bold text-primary"><input type="checkbox" id="ca_attempts_per_task">Попытки на каждое задание</label>
+              <label class="flex items-center gap-2 text-sm font-bold text-primary"><input type="checkbox" id="ca_separate_submission" checked>Разрешить сдавать задачи по одной</label>
+              <label class="flex items-center gap-2 text-sm font-bold text-primary"><input type="checkbox" id="ca_time_limit_strict">Блокировать сдачу после истечения таймера</label>
             </div>
           </div>
         </form>
 
         <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-8 mt-8 border-t border-slate-100">
-          <button type="button" class="w-full sm:w-auto text-slate-500 hover:text-slate-900 font-bold text-sm transition-colors flex items-center justify-center gap-1.5 px-4 py-2" onclick="goToStep(2)">
+          <button type="button" class="w-full sm:w-auto text-muted hover:text-primary font-bold text-sm transition-colors flex items-center justify-center gap-1.5 px-4 py-2" onclick="goToStep(2)">
             <i class="ph-bold ph-arrow-left"></i> К выбору задач
           </button>
           <button type="button" id="submitBtn" class="w-full sm:w-auto px-8 py-4 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" onclick="submitWork()">
@@ -335,12 +335,12 @@
                     badge.className = 'w-6 h-6 rounded-full bg-boo-primary text-white flex items-center justify-center text-xs';
                     badge.textContent = String(i);
                 } else if (i < currentStep) {
-                    btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-slate-700 hover:bg-slate-50 font-bold text-sm transition-all';
+                    btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-secondary hover:bg-surface-alt font-bold text-sm transition-all';
                     badge.className = 'w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs';
                     badge.innerHTML = '<i class="ph-bold ph-check"></i>';
                 } else {
-                    btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-50 font-bold text-sm transition-all';
-                    badge.className = 'w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs';
+                    btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-muted hover:bg-surface-alt font-bold text-sm transition-all';
+                    badge.className = 'w-6 h-6 rounded-full bg-surface-alt text-muted flex items-center justify-center text-xs';
                     badge.textContent = String(i);
                 }
             }

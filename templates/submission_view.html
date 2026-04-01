@@ -523,7 +523,7 @@
         {% include '_dock_nav.html' %}
     <div class="app-main">
         <main class="app-content" style="margin-top: 1.25rem; max-width: 1000px; margin-left: auto; margin-right: auto; padding-bottom: 120px;">
-        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
+        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
         <div class="submission-header">
             {% set should_hide_tasks = assignment.hide_before_start and submission.status == 'ASSIGNED' and not submission.started_at %}
             <div class="hero-grid">
@@ -609,7 +609,7 @@
                 
                 {% if not should_hide_tasks %}
                 <div class="exec-unlocked">
-                <div class="task-content text-[15px] leading-relaxed text-slate-800 space-y-4">
+                <div class="task-content text-[15px] leading-relaxed text-primary space-y-4">
                     {{ task_item.task.content_html|task_content_absolute_urls|strip_attachment_links|sanitize_html }}
                 </div>
                 {% if (not should_hide_tasks) and task_item.task.attached_files %}
@@ -642,7 +642,7 @@
                 {% endif %}
                 {% endif %}
                 
-                <div class="task-input bg-white border border-slate-200 rounded-[20px] p-2 transition-all shadow-sm">
+                <div class="task-input bg-surface border border-slate-200 rounded-[20px] p-2 transition-all shadow-sm dark:shadow-none">
                     {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task and task_item.answer %}
                     <div style="margin-bottom: 0.5rem; padding: 0.5rem 0; font-weight: 600;">
                         {% if task_item.answer.is_correct == True %}
@@ -654,7 +654,7 @@
                         {% endif %}
                         <span style="color: var(--text-muted); font-size: 0.9em; font-weight: 500;"> (попытки {{ task_item.task_attempts_used }}/{{ task_item.max_attempts_for_task }} исчерпаны)</span>
                     </div>
-                    <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-2 mb-2 block">Ваш ответ:</label>
+                    <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-2 mb-2 block">Ваш ответ:</label>
                     <div style="padding: 0.6rem 0.9rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); white-space: pre-wrap; color: var(--text-primary);">{{ task_item.answer.value or '(нет ответа)' }}</div>
                     {% if task_item.answer and task_item.answer.teacher_comment %}
                     <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
@@ -675,7 +675,7 @@
                         <span style="color: var(--text-muted); font-size: 0.9em; font-weight: 500;"> (попытка {{ task_item.task_attempts_used }}/{{ task_item.max_attempts_for_task }})</span>
                     </div>
                     {% endif %}
-                    <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-2 mb-2 block">Ваш ответ:</label>
+                    <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-2 mb-2 block">Ваш ответ:</label>
                     {% if task_item.requires_manual_review and submission.status in ['IN_PROGRESS', 'RETURNED'] and (not attempts_per_task or task_item.task_attempts_used < task_item.max_attempts_for_task) %}
                     <div class="file-upload-zone"
                          ondragover="event.preventDefault(); this.classList.add('bg-light')"
@@ -726,7 +726,7 @@
                     {% endif %}
                     {% if submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0) %}
                     <div class="code-editor-wrap border border-slate-200 rounded-[24px] overflow-hidden" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 0.75rem;">
-                        <button type="button" class="code-editor-toggle w-full px-6 py-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-colors font-bold text-slate-700">
+                        <button type="button" class="code-editor-toggle w-full px-6 py-4 bg-surface-alt hover:bg-surface-alt flex items-center justify-between transition-colors font-bold text-secondary">
                             <span class="flex items-center gap-2"><i class="ph-bold ph-code text-boo-primary text-lg"></i> Редактор кода</span>
                             <span class="code-editor-toggle-icon">▶</span>
                         </button>
@@ -770,7 +770,7 @@
                         Таймер будет запущен после начала выполнения.
                     </div>
                     {% endif %}
-                    <button type="button" id="autosave-btn" class="px-5 py-3 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors shadow-sm flex items-center gap-2" {% if should_hide_tasks %}disabled{% endif %}>
+                    <button type="button" id="autosave-btn" class="px-5 py-3 bg-surface-alt text-muted border border-slate-200 rounded-xl font-bold text-sm hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none flex items-center gap-2" {% if should_hide_tasks %}disabled{% endif %}>
                         <i class="ph-bold ph-floppy-disk text-lg"></i> <span class="hidden sm:inline">Сохранить черновик</span>
                     </button>
                     <span id="last-save" class="autosave-indicator" style="font-size: 0.85em; color: var(--text-muted); font-weight: 500;"></span>
@@ -902,8 +902,8 @@
         {% endif %}
         {% endif %}
 
-        <section class="submission-comments bg-white rounded-[32px] border border-slate-200 shadow-tactile p-6 lg:p-8 mt-2 mb-10">
-            <h3 class="text-lg font-black text-slate-900 mb-6">Комментарии</h3>
+        <section class="submission-comments bg-surface rounded-[32px] border border-slate-200 shadow-tactile p-6 lg:p-8 mt-2 mb-10">
+            <h3 class="text-lg font-black text-primary mb-6">Комментарии</h3>
             
             <div id="comments-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 400px; overflow-y: auto; margin-bottom: 1.5rem;">
                 {% if submission.comments %}
@@ -926,14 +926,14 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div id="no-comments" class="flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-[20px] border border-slate-100">
-                        <p class="text-sm font-medium text-slate-500">Нет комментариев. Задайте вопрос преподавателю!</p>
+                    <div id="no-comments" class="flex flex-col items-center justify-center py-8 text-center bg-surface-alt rounded-[20px] border border-slate-100">
+                        <p class="text-sm font-medium text-muted">Нет комментариев. Задайте вопрос преподавателю!</p>
                     </div>
                 {% endif %}
             </div>
             
             <form id="comment-form" class="flex gap-3">
-                <input type="text" id="comment-input" placeholder="Написать сообщение..." required class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all">
+                <input type="text" id="comment-input" placeholder="Написать сообщение..." required class="flex-1 bg-surface-alt border border-slate-200 rounded-xl px-4 py-3 font-medium text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all">
                 <button type="submit" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-md text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 shrink-0">Отправить</button>
             </form>
         </section>

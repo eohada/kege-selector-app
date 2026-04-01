@@ -37,7 +37,7 @@
 <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
 {% endblock %}
 
-{% set gen_select_class = 'gen-select w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 h-14 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-1 focus:ring-boo-primary/30 transition-all shadow-input appearance-none cursor-pointer' %}
+{% set gen_select_class = 'gen-select w-full bg-surface-alt border border-slate-200 rounded-xl pl-4 pr-10 h-14 font-bold text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-1 focus:ring-boo-primary/30 transition-all shadow-input appearance-none cursor-pointer' %}
 
 {% block content %}
 {% set is_homework = (assignment_type == 'homework') %}
@@ -78,18 +78,18 @@
 
 <div class="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6 items-start gen-premium-shell pb-8">
     <div class="w-full lg:w-1/3 flex flex-col gap-6 min-w-0 lg:sticky lg:top-28">
-        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 relative overflow-hidden group">
+        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 relative overflow-hidden group">
             <div class="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-purple-50 to-cyan-50 rounded-full blur-3xl opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
             <div class="relative z-10">
-                <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                     <i class="ph-fill ph-magic-wand text-boo-primary"></i> Генератор заданий
                 </div>
-                <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-3 leading-tight">Один поток. Одна задача. Максимум фокуса.</h1>
-                <p class="text-sm font-medium text-slate-500 mb-6 leading-relaxed">
+                <h1 class="text-3xl font-black text-primary tracking-tight mb-3 leading-tight">Один поток. Одна задача. Максимум фокуса.</h1>
+                <p class="text-sm font-medium text-muted mb-6 leading-relaxed">
                     Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной. Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
                 </p>
                 <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Режим работы</span>
+                    <span class="text-xs font-bold text-muted uppercase tracking-widest">Режим работы</span>
                     <button type="button" class="text-sm font-bold text-boo-primary hover:text-boo-primaryHover transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-default font-inherit">
                         {{ mode_text }} <i class="ph-bold ph-caret-down" aria-hidden="true"></i>
                     </button>
@@ -98,53 +98,53 @@
         </div>
 
         {% if lesson and student %}
-        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col gap-4 generator-mode {{ mode_class }}">
+        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col gap-4 generator-mode {{ mode_class }}">
             <div class="flex items-start gap-4">
                 <div class="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
                     <img src="{{ url_for('static', filename=banner_icon_path) }}" alt="" class="w-7 h-7 object-contain">
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="text-lg font-black text-slate-900 tracking-tight">Режим {{ mode_label }}</div>
-                    <div class="text-sm font-medium text-slate-600 mt-1">
-                        <strong class="text-slate-800">Ученик:</strong> {{ student.name }}
+                    <div class="text-lg font-black text-primary tracking-tight">Режим {{ mode_label }}</div>
+                    <div class="text-sm font-medium text-muted mt-1">
+                        <strong class="text-primary">Ученик:</strong> {{ student.name }}
                         {% if lesson.lesson_date %}
-                        · <strong class="text-slate-800">Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
+                        · <strong class="text-primary">Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
                         {% endif %}
                         {% if lesson.topic %}
-                        · <strong class="text-slate-800">Тема:</strong> {{ lesson.topic }}
+                        · <strong class="text-primary">Тема:</strong> {{ lesson.topic }}
                         {% endif %}
                     </div>
-                    <p class="text-xs text-slate-500 mt-2 mb-0 leading-relaxed generator-mode__hint">
+                    <p class="text-xs text-muted mt-2 mb-0 leading-relaxed generator-mode__hint">
                         {{ 'Все принятые карточки попадут в ДЗ и скроются из будущих выдач для ученика.' if is_homework else 'Все принятые карточки добавляются в работу и не повторяются для ученика.' }}
                     </p>
                 </div>
             </div>
-            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) if assignment_type == 'homework' else url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="px-4 py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 text-sm no-underline w-full sm:w-auto">
+            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) if assignment_type == 'homework' else url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="px-4 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 text-sm no-underline w-full sm:w-auto">
                 <i class="ph-bold ph-arrow-left"></i> К уроку
             </a>
         </div>
         {% elif template_id %}
-        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col gap-4 generator-mode {{ mode_class }}">
+        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col gap-4 generator-mode {{ mode_class }}">
             <div class="flex items-start gap-4">
                 <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 text-boo-primary">
                     {{ ui_icon('nav.templates', 'md', decorative=true, extra_class='ui-icon--only') }}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="text-lg font-black text-slate-900 tracking-tight">Режим редактирования шаблона</div>
-                    <p class="text-xs text-slate-500 mt-1 mb-0 leading-relaxed generator-mode__hint">Все принятые задания будут добавлены в шаблон.</p>
+                    <div class="text-lg font-black text-primary tracking-tight">Режим редактирования шаблона</div>
+                    <p class="text-xs text-muted mt-1 mb-0 leading-relaxed generator-mode__hint">Все принятые задания будут добавлены в шаблон.</p>
                 </div>
             </div>
-            <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="px-4 py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 text-sm no-underline w-full sm:w-auto">
+            <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="px-4 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 text-sm no-underline w-full sm:w-auto">
                 <i class="ph-bold ph-arrow-left"></i> К шаблону
             </a>
         </div>
         {% endif %}
 
-        <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 generator-panel gen-start-card">
+        <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 generator-panel gen-start-card">
             <div class="flex justify-between items-start mb-6 gap-3 flex-wrap">
                 <div>
-                    <h2 class="text-xl font-black text-slate-900 m-0">Запуск</h2>
-                    <p class="text-sm font-medium text-slate-500 m-0 mt-1">Выбери параметры и нажми старт.</p>
+                    <h2 class="text-xl font-black text-primary m-0">Запуск</h2>
+                    <p class="text-sm font-medium text-muted m-0 mt-1">Выбери параметры и нажми старт.</p>
                 </div>
                 {% if generator_recipient_ids %}
                 <button type="button" id="genCreateWorkBtnTop" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm shadow-md border-b-[3px] border-b-purple-800 border border-transparent hover:bg-boo-primaryHover active:translate-y-[1px] active:border-b-0 transition-all">{{ ui_icon('action.check', 'sm', decorative=true) }}<span id="genCreateWorkBtnTopText">Завершить и создать</span></button>
@@ -155,22 +155,22 @@
                 {{ selection_form.hidden_tag() }}
                 {% if all_courses and all_courses|length > 1 %}
                 <div class="space-y-1.5">
-                    <label for="exam_course_id" class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block">Программа подготовки</label>
+                    <label for="exam_course_id" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Программа подготовки</label>
                     <div class="relative">
                         <select id="exam_course_id" name="exam_course_id" class="{{ gen_select_class }}" onchange="window.location.href=this.options[this.selectedIndex].dataset.url">
                             {% for c in all_courses %}
                             <option value="{{ c.id }}" data-url="{{ url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type, exam_course_id=c.id, template_id=template_id) }}" {% if exam_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
                             {% endfor %}
                         </select>
-                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true"></i>
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true"></i>
                     </div>
                 </div>
                 {% endif %}
                 <div class="space-y-1.5">
-                    <label for="taskTypeSelect" class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block">Номер задания</label>
+                    <label for="taskTypeSelect" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Номер задания</label>
                     <div class="relative">
                         {{ selection_form.task_type(class_=gen_select_class, id='taskTypeSelect') }}
-                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true"></i>
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true"></i>
                     </div>
                 </div>
 
@@ -178,29 +178,29 @@
                     <button type="button" class="flex-1 py-3 min-h-[48px] bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm border border-transparent" id="genStartBtn">
                         <i class="ph-fill ph-play text-lg" aria-hidden="true"></i> Старт
                     </button>
-                    <button type="button" class="flex-1 py-3 min-h-[48px] bg-white text-slate-600 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-sm disabled:opacity-45 disabled:pointer-events-none" id="genStopBtn" disabled>
+                    <button type="button" class="flex-1 py-3 min-h-[48px] bg-surface text-muted border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm disabled:opacity-45 disabled:pointer-events-none" id="genStopBtn" disabled>
                         <i class="ph-bold ph-stop" aria-hidden="true"></i> Стоп
                     </button>
                 </div>
 
                 <label class="flex items-center gap-3 cursor-pointer px-1">
                     <input id="useSkipped" type="checkbox" class="w-5 h-5 shrink-0 rounded border-slate-300 accent-boo-primary focus:ring-2 focus:ring-boo-primary/30">
-                    <span class="text-sm font-medium text-slate-600">включать пропущенные (опционально)</span>
+                    <span class="text-sm font-medium text-muted">включать пропущенные (опционально)</span>
                 </label>
 
                 <div class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 mt-4">
-                    <p class="text-xs font-medium text-slate-600 leading-relaxed m-0">
+                    <p class="text-xs font-medium text-muted leading-relaxed m-0">
                         <span class="font-bold text-indigo-600"><i class="ph-fill ph-lightbulb" aria-hidden="true"></i> Подсказка:</span>
                         кнопки можно прожимать с клавиатуры —
-                        <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)] ml-0.5">A</kbd> /
-                        <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">S</kbd> /
-                        <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">B</kbd>.
+                        <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-surface border border-slate-200 rounded text-[10px] font-black text-secondary shadow-[0_2px_0_rgba(203,213,225,1)] ml-0.5">A</kbd> /
+                        <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-surface border border-slate-200 rounded text-[10px] font-black text-secondary shadow-[0_2px_0_rgba(203,213,225,1)]">S</kbd> /
+                        <kbd class="inline-flex items-center justify-center px-1.5 py-0.5 bg-surface border border-slate-200 rounded text-[10px] font-black text-secondary shadow-[0_2px_0_rgba(203,213,225,1)]">B</kbd>.
                     </p>
                 </div>
 
                 <details class="group pt-2">
-                    <summary class="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
-                        <i class="ph-bold ph-caret-right transition-transform group-open:rotate-90 text-slate-400" aria-hidden="true"></i> Расширенные действия
+                    <summary class="flex items-center gap-2 text-sm font-bold text-secondary cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                        <i class="ph-bold ph-caret-right transition-transform group-open:rotate-90 text-muted" aria-hidden="true"></i> Расширенные действия
                     </summary>
                     <div class="pl-6 pt-4 space-y-4 border-t border-slate-100 mt-3">
                         <div class="generator-links flex flex-wrap gap-2">
@@ -242,26 +242,26 @@
     </div>
 
     <div class="w-full lg:w-2/3 flex flex-col gap-6 min-w-0 gen-deck-wrap">
-        <div class="bg-white rounded-[24px] border border-slate-200 shadow-tactile p-6">
-            <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Что уже известно</div>
+        <div class="bg-surface rounded-[24px] border border-slate-200 shadow-tactile p-6">
+            <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-1">Что уже известно</div>
             <h2 class="text-2xl font-black text-boo-primary tracking-tight mb-3 break-words" id="genStatusHeadline">{{ status_headline }}</h2>
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-100 pt-4">
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest shrink-0">Следующий шаг</span>
-                <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-medium text-slate-600">
+                <span class="text-xs font-bold text-muted uppercase tracking-widest shrink-0">Следующий шаг</span>
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-medium text-muted">
                     <span class="flex items-center gap-1.5">
-                        <kbd class="inline-flex items-center justify-center w-5 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">A</kbd> принять
+                        <kbd class="inline-flex items-center justify-center w-5 h-5 bg-surface border border-slate-200 rounded text-[10px] font-black text-secondary shadow-[0_2px_0_rgba(203,213,225,1)]">A</kbd> принять
                     </span>
                     <span class="text-slate-300 hidden sm:inline" aria-hidden="true">•</span>
                     <span class="flex items-center gap-1.5">
-                        <kbd class="inline-flex items-center justify-center w-5 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">S</kbd> пропустить
+                        <kbd class="inline-flex items-center justify-center w-5 h-5 bg-surface border border-slate-200 rounded text-[10px] font-black text-secondary shadow-[0_2px_0_rgba(203,213,225,1)]">S</kbd> пропустить
                     </span>
                     <span class="text-slate-300 hidden sm:inline" aria-hidden="true">•</span>
                     <span class="flex items-center gap-1.5">
-                        <kbd class="inline-flex items-center justify-center w-5 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">B</kbd> blacklist
+                        <kbd class="inline-flex items-center justify-center w-5 h-5 bg-surface border border-slate-200 rounded text-[10px] font-black text-secondary shadow-[0_2px_0_rgba(203,213,225,1)]">B</kbd> blacklist
                     </span>
                     <span class="text-slate-300 hidden sm:inline" aria-hidden="true">•</span>
                     <span class="flex items-center gap-1.5">
-                        <kbd class="inline-flex items-center justify-center px-2 h-5 bg-white border border-slate-200 rounded text-[10px] font-black text-slate-700 shadow-[0_2px_0_rgba(203,213,225,1)]">Space</kbd> ответ
+                        <kbd class="inline-flex items-center justify-center px-2 h-5 bg-surface border border-slate-200 rounded text-[10px] font-black text-secondary shadow-[0_2px_0_rgba(203,213,225,1)]">Space</kbd> ответ
                     </span>
                 </div>
             </div>
@@ -274,35 +274,35 @@
              data-exam-course-id="{{ exam_course_id or '' }}"
              data-recipient-ids="{{ (generator_recipient_ids or []) | tojson }}">
 
-            <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8" id="genEmpty">
+            <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8" id="genEmpty">
                 <div class="flex gap-3 items-start mb-3">
-                    <div class="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 text-boo-primary">
+                    <div class="w-12 h-12 rounded-2xl bg-surface-alt border border-slate-100 flex items-center justify-center shrink-0 text-boo-primary">
                         <i class="ph-fill ph-magic-wand text-2xl" aria-hidden="true"></i>
                     </div>
                     <div>
-                        <div class="font-black text-lg text-slate-900">Готов к запуску</div>
-                        <p class="text-sm font-medium text-slate-500 m-0 mt-2 leading-relaxed">
-                            Выбери номер задания слева и нажми <strong class="text-slate-800">Старт</strong>. Дальше ты работаешь в потоке — быстро и без лишних кликов.
+                        <div class="font-black text-lg text-primary">Готов к запуску</div>
+                        <p class="text-sm font-medium text-muted m-0 mt-2 leading-relaxed">
+                            Выбери номер задания слева и нажми <strong class="text-primary">Старт</strong>. Дальше ты работаешь в потоке — быстро и без лишних кликов.
                         </p>
                     </div>
                 </div>
             </div>
 
-            <div class="gen-task-card is-entering bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col overflow-hidden" id="genTaskCard" style="display:none;">
+            <div class="gen-task-card is-entering bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col overflow-hidden" id="genTaskCard" style="display:none;">
                 <div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50 rounded-t-[32px]">
                     <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-8 h-8 shrink-0 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center shadow-inner tabular-nums" id="genTaskNumber" aria-hidden="true">—</div>
+                        <div class="w-8 h-8 shrink-0 rounded-full bg-surface-alt border border-slate-200 text-secondary font-black text-sm flex items-center justify-center shadow-inner tabular-nums" id="genTaskNumber" aria-hidden="true">—</div>
                         <span id="genTaskTitle" class="sr-only">Задание</span>
-                        <a id="genSourceLink" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-boo-primary transition-colors shadow-sm no-underline shrink-0" href="#" target="_blank" rel="noopener" style="display:none;">
+                        <a id="genSourceLink" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-slate-200 text-muted rounded-lg text-xs font-bold hover:bg-surface-alt hover:text-boo-primary transition-colors shadow-sm dark:shadow-none no-underline shrink-0" href="#" target="_blank" rel="noopener" style="display:none;">
                             <i class="ph-bold ph-link" aria-hidden="true"></i> источник
                         </a>
                     </div>
-                    <button type="button" class="text-sm font-bold text-slate-500 hover:text-boo-primary transition-colors flex items-center gap-1.5 shrink-0 bg-transparent border-0 p-0 cursor-pointer font-inherit disabled:opacity-40 disabled:pointer-events-none" id="genToggleAnswerBtn" disabled>
+                    <button type="button" class="text-sm font-bold text-muted hover:text-boo-primary transition-colors flex items-center gap-1.5 shrink-0 bg-transparent border-0 p-0 cursor-pointer font-inherit disabled:opacity-40 disabled:pointer-events-none" id="genToggleAnswerBtn" disabled>
                         <i class="ph-bold ph-eye" aria-hidden="true"></i> Ответ
                     </button>
                 </div>
 
-                <div class="task-content text-[15px] leading-relaxed text-slate-800 space-y-4 p-8" id="genTaskBody"></div>
+                <div class="task-content text-[15px] leading-relaxed text-primary space-y-4 p-8" id="genTaskBody"></div>
                 <div class="gen-answer" id="genAnswer"></div>
 
                 <div class="p-6 bg-slate-50/30 border-t border-slate-100 rounded-b-[32px] flex flex-col sm:flex-row gap-3">
@@ -310,9 +310,9 @@
                         <i class="ph-bold ph-check text-lg" aria-hidden="true"></i> Принять
                         <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-purple-400 border border-purple-300 rounded text-[10px] font-black text-white shadow-[0_2px_0_rgba(107,76,229,1)] ml-1 opacity-70 group-hover:opacity-100">A</kbd>
                     </button>
-                    <button type="button" class="group flex-1 py-4 min-h-[52px] bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all flex justify-center items-center gap-2 shadow-sm text-sm disabled:opacity-45 disabled:pointer-events-none" id="genSkipBtn" disabled>
-                        <i class="ph-bold ph-minus text-lg text-slate-400" aria-hidden="true"></i> Пропустить
-                        <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-500 shadow-[0_2px_0_rgba(203,213,225,1)] ml-1 opacity-70 group-hover:opacity-100">S</kbd>
+                    <button type="button" class="group flex-1 py-4 min-h-[52px] bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt hover:text-primary transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm disabled:opacity-45 disabled:pointer-events-none" id="genSkipBtn" disabled>
+                        <i class="ph-bold ph-minus text-lg text-muted" aria-hidden="true"></i> Пропустить
+                        <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-surface-alt border border-slate-200 rounded text-[10px] font-black text-muted shadow-[0_2px_0_rgba(203,213,225,1)] ml-1 opacity-70 group-hover:opacity-100">S</kbd>
                     </button>
                     <button type="button" class="group flex-1 py-4 min-h-[52px] bg-boo-coral text-white rounded-xl font-bold hover:bg-red-500 transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-red-700 active:translate-y-[2px] active:border-b-0 text-sm border border-transparent disabled:opacity-45 disabled:pointer-events-none" id="genBlacklistBtn" disabled>
                         <i class="ph-bold ph-trash text-lg" aria-hidden="true"></i> Blacklist

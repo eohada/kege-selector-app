@@ -592,7 +592,7 @@
         <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
 
         <div class="flex items-center">
-            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm no-underline">
+            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline">
                 <i class="ph-bold ph-arrow-left text-lg"></i> Назад в профиль
             </a>
         </div>
@@ -610,7 +610,7 @@
                             <i class="ph-fill ph-clock" aria-hidden="true"></i> {{ lesson.duration }} мин
                         </span>
                         <span class="lesson-meta-chip">
-                            <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name or student.student_id|string)|urlencode }}&backgroundColor=F3F0FF" alt="" class="w-5 h-5 rounded-md bg-white border border-slate-200 shrink-0" width="20" height="20">
+                            <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name or student.student_id|string)|urlencode }}&backgroundColor=F3F0FF" alt="" class="w-5 h-5 rounded-md bg-surface border border-slate-200 shrink-0" width="20" height="20">
                             {{ student.name }}
                         </span>
                         <span class="lesson-meta-chip lesson-meta-chip--badge">Классная работа</span>
@@ -621,15 +621,15 @@
                     <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
                         <i class="ph-bold ph-house-line text-lg"></i> Создать ДЗ
                     </a>
-                    <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="px-5 py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
+                    <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="px-5 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
                         <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
                     </a>
-                    <button type="button" class="w-10 h-10 bg-red-50 text-[#FF6B6B] border border-red-100 rounded-xl font-bold hover:bg-red-100 hover:border-red-200 transition-colors flex justify-center items-center shadow-sm shrink-0" title="Удалить урок" onclick="deleteLesson({{ lesson.lesson_id }}, {{ student.student_id }})" aria-label="Удалить урок">
+                    <button type="button" class="w-10 h-10 bg-red-50 text-[#FF6B6B] border border-red-100 rounded-xl font-bold hover:bg-red-100 hover:border-red-200 transition-colors flex justify-center items-center shadow-sm dark:shadow-none shrink-0" title="Удалить урок" onclick="deleteLesson({{ lesson.lesson_id }}, {{ student.student_id }})" aria-label="Удалить урок">
                         <i class="ph-bold ph-trash text-lg"></i>
                     </button>
                     {% endif %}
                     {% if is_student_view %}
-                    <a href="{{ url_for('assignments.submissions_list') }}" class="px-5 py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
+                    <a href="{{ url_for('assignments.submissions_list') }}" class="px-5 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
                         <i class="ph-bold ph-check-square-offset text-lg"></i> К заданиям
                     </a>
                     {% endif %}

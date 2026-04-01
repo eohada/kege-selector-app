@@ -5,20 +5,20 @@
 {% block content %}
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
 
-    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
+    <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
         <i class="ph-fill ph-chat-circle-text absolute -right-10 -bottom-10 text-[220px] text-slate-50 pointer-events-none"></i>
         <div class="relative z-10">
-            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="inline-flex items-center gap-2 text-slate-400 font-bold text-sm hover:text-boo-primary transition-colors no-underline">
+            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="inline-flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary transition-colors no-underline">
                 <i class="ph-bold ph-arrow-left"></i> В комнату
             </a>
-            <h1 class="text-4xl font-black text-slate-900 tracking-tight mt-3 mb-2">Чат с наставником</h1>
-            <p class="text-slate-500 font-medium text-lg">
-                Диалог привязан к уроку: <span class="font-bold text-slate-700">{{ lesson.topic or 'Урок' }}</span>
+            <h1 class="text-4xl font-black text-primary tracking-tight mt-3 mb-2">Чат с наставником</h1>
+            <p class="text-muted font-medium text-lg">
+                Диалог привязан к уроку: <span class="font-bold text-secondary">{{ lesson.topic or 'Урок' }}</span>
                 {% if lesson.lesson_date %} · {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% endif %}
             </p>
         </div>
         <div class="relative z-10 w-full lg:w-auto flex items-center gap-2">
-            <span class="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg border border-slate-200/50">
+            <span class="px-3 py-1.5 bg-surface-alt text-muted text-xs font-bold rounded-lg border border-slate-200/50">
                 Lesson #{{ lesson.lesson_id }}
             </span>
         </div>
@@ -26,32 +26,32 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <div class="lg:col-span-2 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-0 overflow-hidden flex flex-col min-h-[520px]">
+        <div class="lg:col-span-2 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-0 overflow-hidden flex flex-col min-h-[520px]">
             <div id="chatList" class="flex-1 p-6 space-y-3 overflow-y-auto bg-slate-50/40"></div>
 
-            <form id="chatForm" class="p-5 border-t border-slate-200 bg-white flex items-end gap-3">
+            <form id="chatForm" class="p-5 border-t border-slate-200 bg-surface flex items-end gap-3">
                 <div class="flex-1">
-                    <label class="block text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Сообщение</label>
+                    <label class="block text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Сообщение</label>
                     <textarea id="chatBody" rows="2" placeholder="Напиши вопрос или уточнение..."
-                              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft resize-none"></textarea>
+                              class="w-full bg-surface-alt border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-secondary placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft resize-none"></textarea>
                 </div>
                 <button type="submit"
-                        class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all inline-flex items-center gap-2 shadow-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm whitespace-nowrap">
+                        class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all inline-flex items-center gap-2 shadow-sm dark:shadow-none border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm whitespace-nowrap">
                     Отправить <i class="ph-bold ph-paper-plane-right"></i>
                 </button>
             </form>
         </div>
 
-        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
-            <h3 class="text-xl font-black text-slate-900 mb-3">Подсказки</h3>
-            <div class="space-y-3 text-sm font-medium text-slate-600 leading-relaxed">
-                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/60">
+        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+            <h3 class="text-xl font-black text-primary mb-3">Подсказки</h3>
+            <div class="space-y-3 text-sm font-medium text-muted leading-relaxed">
+                <div class="p-4 rounded-2xl bg-surface-alt border border-slate-200/60">
                     Пиши конкретно: что сделал, где застрял, что ожидал получить.
                 </div>
-                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/60">
+                <div class="p-4 rounded-2xl bg-surface-alt border border-slate-200/60">
                     Если вопрос по задаче — приложи номер задания или ссылку на работу.
                 </div>
-                <a href="{{ url_for('assignments.submissions_list') }}" class="w-full py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
+                <a href="{{ url_for('assignments.submissions_list') }}" class="w-full py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
                     Перейти к заданиям <i class="ph-bold ph-arrow-right"></i>
                 </a>
             </div>
@@ -86,9 +86,9 @@
     const wrap = document.createElement('div');
     wrap.className = `flex ${mine ? 'justify-end' : 'justify-start'}`;
     wrap.innerHTML = `
-      <div class="${mine ? 'bg-boo-primary text-white border-purple-300/20' : 'bg-white text-slate-800 border-slate-200'} max-w-[85%] rounded-2xl border px-4 py-3 shadow-sm">
+      <div class="${mine ? 'bg-boo-primary text-white border-purple-300/20' : 'bg-surface text-primary border-slate-200'} max-w-[85%] rounded-2xl border px-4 py-3 shadow-sm dark:shadow-none">
         <div class="text-sm font-semibold leading-relaxed whitespace-pre-wrap break-words">${esc(m.body)}</div>
-        <div class="${mine ? 'text-purple-100/80' : 'text-slate-400'} text-[10px] font-extrabold uppercase tracking-widest mt-2">${esc(fmtTime(m.created_at))}</div>
+        <div class="${mine ? 'text-purple-100/80' : 'text-muted'} text-[10px] font-extrabold uppercase tracking-widest mt-2">${esc(fmtTime(m.created_at))}</div>
       </div>
     `;
     return wrap;

@@ -126,25 +126,25 @@
             <div class="app-sidebar-group-title">Инструменты</div>
             {% if has_permission(current_user, 'assignment.view') %}
             <a href="{{ url_for('assignments.assignments_list') }}" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
-                <i class="ph-bold ph-file-text text-lg text-slate-400"></i> Работы
+                <i class="ph-bold ph-file-text text-lg text-muted"></i> Работы
             </a>
             {% endif %}
             <a href="{{ url_for('task_generator.task_generator') }}" class="nav-link {% if active_page == 'generator' %}active{% endif %}">
-                <i class="ph-bold ph-magic-wand text-lg text-slate-400"></i> Генератор
+                <i class="ph-bold ph-magic-wand text-lg text-muted"></i> Генератор
             </a>
             {% if has_permission(current_user, 'task.manage') %}
             <a href="{{ url_for('templates.templates_list') }}" class="nav-link {% if active_page == 'templates' %}active{% endif %}">
-                <i class="ph-bold ph-file-dashed text-lg text-slate-400"></i> Шаблоны
+                <i class="ph-bold ph-file-dashed text-lg text-muted"></i> Шаблоны
             </a>
             {% endif %}
             {% if has_permission(current_user, 'groups.view') %}
             <a href="{{ url_for('groups.groups_list') }}" class="nav-link {% if active_page == 'groups' %}active{% endif %}">
-                <i class="ph-bold ph-users text-lg text-slate-400"></i> Группы
+                <i class="ph-bold ph-users text-lg text-muted"></i> Группы
             </a>
             {% endif %}
             {% if has_permission(current_user, 'theory.manage') %}
             <a href="{{ url_for('theory.manage_list') }}" class="nav-link {% if active_page == 'theory_manage' %}active{% endif %}">
-                <i class="ph-bold ph-book-open text-lg text-slate-400"></i> Теория
+                <i class="ph-bold ph-book-open text-lg text-muted"></i> Теория
             </a>
             {% endif %}
             {% endif %}
@@ -156,7 +156,7 @@
                 <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
             </div>
             <a href="{{ url_for('auth.user_profile') }}" class="nav-link">
-                <i class="ph-bold ph-user text-lg text-slate-400"></i> Профиль
+                <i class="ph-bold ph-user text-lg text-muted"></i> Профиль
             </a>
             <a href="{{ url_for('auth.logout') }}" class="nav-link" style="color:#EF4444;">
                 <i class="ph-bold ph-sign-out text-lg"></i> Выход

@@ -196,22 +196,22 @@
         <main class="app-content">
         <div class="w-full max-w-[1000px] mx-auto flex flex-col gap-6 pb-8">
 
-        <div class="bg-white rounded-[20px] p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 student-context">
+        <div class="bg-surface rounded-[20px] p-4 border border-slate-200 shadow-sm dark:shadow-none flex flex-col sm:flex-row sm:items-center justify-between gap-4 student-context">
             <div class="flex items-center gap-3">
-                <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name or student.student_id|string)|urlencode }}&backgroundColor=F3F0FF" alt="" class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 shrink-0" width="40" height="40">
+                <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name or student.student_id|string)|urlencode }}&backgroundColor=F3F0FF" alt="" class="w-10 h-10 rounded-lg bg-surface-alt border border-slate-200 shrink-0" width="40" height="40">
                 <div>
-                    <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-tight">Урок для ученика</div>
-                    <div class="font-bold text-slate-900 text-sm">{{ student.name }}</div>
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest leading-tight">Урок для ученика</div>
+                    <div class="font-bold text-primary text-sm">{{ student.name }}</div>
                 </div>
             </div>
-            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="px-4 py-2 bg-slate-50 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 hover:text-boo-primary transition-colors border border-slate-200 flex items-center gap-2 shadow-sm w-fit no-underline">
+            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="px-4 py-2 bg-surface-alt text-muted rounded-xl font-bold text-sm hover:bg-surface-alt hover:text-boo-primary transition-colors border border-slate-200 flex items-center gap-2 shadow-sm dark:shadow-none w-fit no-underline">
                 <i class="ph-bold ph-arrow-left text-lg"></i> Вернуться к профилю
             </a>
         </div>
 
         <div>
-            <h1 class="text-3xl font-black text-slate-900 tracking-tight m-0">{{ title }}</h1>
-            <p class="text-slate-500 font-medium text-sm mt-1 mb-0">Запланируйте новое занятие и укажите необходимые детали.</p>
+            <h1 class="text-3xl font-black text-primary tracking-tight m-0">{{ title }}</h1>
+            <p class="text-muted font-medium text-sm mt-1 mb-0">Запланируйте новое занятие и укажите необходимые детали.</p>
         </div>
 
         {% if form.errors %}

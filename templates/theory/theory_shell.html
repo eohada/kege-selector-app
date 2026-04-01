@@ -34,30 +34,30 @@
   <!-- ========================================== -->
   <div id="view-groups" class="view-section {% if initial_view == 'groups' %}active{% endif %} flex-col gap-8">
 
-    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+    <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
       <div>
-        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Группы теории</h1>
-        <p class="text-slate-500 font-medium text-lg">Сначала выбери группу, затем открой нужную тему.</p>
+        <h1 class="text-4xl font-black text-primary tracking-tight mb-2">Группы теории</h1>
+        <p class="text-muted font-medium text-lg">Сначала выбери группу, затем открой нужную тему.</p>
       </div>
 
       <div class="w-full lg:w-96 relative">
-        <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+        <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-muted text-lg"></i>
         <input id="theorySearch" type="text" placeholder="Поиск по группе..."
-               class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3.5 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft">
-        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 bg-white text-slate-500 p-1.5 rounded-lg border border-slate-200 hover:text-boo-primary transition-colors shadow-sm" title="Фильтры">
+               class="w-full bg-surface-alt border border-slate-200 rounded-xl pl-11 pr-4 py-3.5 text-sm font-medium text-secondary placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft">
+        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 bg-surface text-muted p-1.5 rounded-lg border border-slate-200 hover:text-boo-primary transition-colors shadow-sm dark:shadow-none" title="Фильтры">
           <i class="ph-bold ph-sliders-horizontal"></i>
         </button>
       </div>
     </div>
 
     <div class="flex gap-2 bg-slate-200/50 p-1.5 rounded-xl w-fit border border-slate-200/50">
-      <button type="button" class="theory-filter px-6 py-2.5 bg-white text-slate-900 rounded-lg font-bold text-sm shadow-sm border border-slate-200/50 flex items-center gap-2 transition-all" data-filter="all">
+      <button type="button" class="theory-filter px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 flex items-center gap-2 transition-all" data-filter="all">
         Все группы
       </button>
-      <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="nonempty">
+      <button type="button" class="theory-filter px-6 py-2.5 text-muted hover:text-primary hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="nonempty">
         Непустые
       </button>
-      <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="bookmarked">
+      <button type="button" class="theory-filter px-6 py-2.5 text-muted hover:text-primary hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="bookmarked">
         Избранное
       </button>
     </div>
@@ -75,7 +75,7 @@
       {% endfor %}
 
       <a href="{{ href }}"
-         class="theory-card bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
+         class="theory-card bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
          data-group-id="{{ group_pack.group.id }}"
          data-title="{{ (group_pack.group.name or '')|lower }}"
          data-count="{{ group_pack.blocks|length }}"
@@ -87,7 +87,7 @@
           <div class="w-12 h-12 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
             <i class="ph-bold ph-book-open-text text-2xl"></i>
           </div>
-          <span class="bg-white px-2.5 py-1 rounded-lg text-xs font-extrabold text-slate-400 border border-slate-200 shadow-sm flex items-center gap-1.5">
+          <span class="bg-surface px-2.5 py-1 rounded-lg text-xs font-extrabold text-muted border border-slate-200 shadow-sm dark:shadow-none flex items-center gap-1.5">
             {% if group_pack.blocks|length > 0 %}
               <i class="ph-fill ph-stack text-boo-primary"></i> {{ group_pack.blocks|length }} тем
             {% else %}
@@ -97,13 +97,13 @@
         </div>
 
         <div class="relative z-10 flex-1">
-          <h3 class="text-xl font-black text-slate-900 mb-1 group-hover:text-boo-primary transition-colors">
+          <h3 class="text-xl font-black text-primary mb-1 group-hover:text-boo-primary transition-colors">
             {{ group_pack.group.name }}
           </h3>
           <div class="flex flex-wrap gap-1.5 mb-4">
             <span class="bg-purple-50 text-purple-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-purple-100">Группа</span>
           </div>
-          <p class="text-sm font-medium text-slate-500 mb-6 line-clamp-2">
+          <p class="text-sm font-medium text-muted mb-6 line-clamp-2">
             {% if group_pack.group.description %}
               {{ group_pack.group.description|truncate(140, True, '…') }}
             {% else %}
@@ -113,7 +113,7 @@
         </div>
 
         <div class="relative z-10 pt-4 border-t border-slate-100 flex items-center justify-between">
-          <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">Открыть</div>
+          <div class="text-xs font-bold text-muted uppercase tracking-widest">Открыть</div>
           <i class="ph-bold ph-arrow-right text-slate-300 group-hover:text-boo-primary transition-colors"></i>
         </div>
       </a>
@@ -126,28 +126,28 @@
           {% if st and st.get('bookmarked') %}
             {% set href = url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) %}
             {% set hx_href = href ~ '&fragment=1' %}
-            <a href="{{ href }}" class="theory-bookmark-card bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
+            <a href="{{ href }}" class="theory-bookmark-card bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
                hx-get="{{ hx_href }}" hx-target="#articleContainer" hx-swap="innerHTML" hx-push-url="{{ href }}"
                data-title="{{ (block.title or ('Тема ' ~ block.task_number))|lower }}">
               <div class="flex items-center justify-between mb-4">
                 <span class="bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100">Избранное</span>
-                <span class="text-[10px] font-bold text-slate-400">{{ group_pack.group.name }}</span>
+                <span class="text-[10px] font-bold text-muted">{{ group_pack.group.name }}</span>
               </div>
-              <h3 class="text-xl font-black text-slate-900 mb-2">{{ block.title or ('Тема ' ~ block.task_number) }}</h3>
-              <p class="text-sm font-medium text-slate-500 line-clamp-2">{{ (block.description or 'Открой тему для просмотра.')|truncate(110, True, '…') }}</p>
+              <h3 class="text-xl font-black text-primary mb-2">{{ block.title or ('Тема ' ~ block.task_number) }}</h3>
+              <p class="text-sm font-medium text-muted line-clamp-2">{{ (block.description or 'Открой тему для просмотра.')|truncate(110, True, '…') }}</p>
             </a>
           {% endif %}
         {% endfor %}
       {% endfor %}
     </div>
     {% else %}
-    <div class="w-full bg-white rounded-[32px] border-2 border-slate-200 border-dashed p-12 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
+    <div class="w-full bg-surface rounded-[32px] border-2 border-slate-200 border-dashed p-12 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
       <div class="absolute inset-0 bg-slate-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
       <div class="relative z-10 w-28 h-28 bg-cyan-50 rounded-[32px] rotate-3 flex items-center justify-center mb-6 border-4 border-white shadow-lg">
         <i class="ph-fill ph-ghost text-[64px] text-boo-cyan"></i>
       </div>
-      <h2 class="relative z-10 text-2xl font-black text-slate-900 tracking-tight mb-3">Пока нет доступной теории</h2>
-      <p class="relative z-10 text-slate-500 font-medium max-w-md mx-auto leading-relaxed">
+      <h2 class="relative z-10 text-2xl font-black text-primary tracking-tight mb-3">Пока нет доступной теории</h2>
+      <p class="relative z-10 text-muted font-medium max-w-md mx-auto leading-relaxed">
         Обратитесь к преподавателю — он откроет доступ к модулям.
       </p>
     </div>
@@ -160,12 +160,12 @@
   <div id="view-topics" class="view-section {% if initial_view == 'topics' %}active{% endif %} flex-col gap-8">
     {% set g = selected_group if selected_group is defined else None %}
     {% set blocks = selected_group_blocks if selected_group_blocks is defined else [] %}
-    <button type="button" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl border border-slate-200/50 shadow-sm w-fit" onclick="window.location.href='{{ url_for('theory.theory_index', course_id=course_id) }}'">
+    <button type="button" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl border border-slate-200/50 shadow-sm dark:shadow-none w-fit" onclick="window.location.href='{{ url_for('theory.theory_index', course_id=course_id) }}'">
       <i class="ph-bold ph-arrow-left"></i> Назад к группам
     </button>
-    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
-      <h2 class="text-3xl font-black text-slate-900 mb-2">{{ g.name if g else 'Группа' }}</h2>
-      <p class="text-slate-500 font-medium">{{ g.description if g and g.description else 'Список карточек теории в выбранной группе.' }}</p>
+    <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+      <h2 class="text-3xl font-black text-primary mb-2">{{ g.name if g else 'Группа' }}</h2>
+      <p class="text-muted font-medium">{{ g.description if g and g.description else 'Список карточек теории в выбранной группе.' }}</p>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
       {% for block in blocks %}
@@ -175,7 +175,7 @@
       {% set is_read = st.get('read') if st else False %}
       {% set href = url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) %}
       {% set hx_href = href ~ '&fragment=1' %}
-      <a href="{{ href }}" class="theory-card bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
+      <a href="{{ href }}" class="theory-card bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
          hx-get="{{ hx_href }}" hx-target="#articleContainer" hx-swap="innerHTML" hx-push-url="{{ href }}"
          data-task-number="{{ num }}" data-bookmarked="{{ '1' if is_bookmarked else '0' }}" data-read="{{ '1' if is_read else '0' }}" data-title="{{ (block.title or ('Тема ' ~ num))|lower }}">
         <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors pointer-events-none"></div>
@@ -184,32 +184,32 @@
           <div class="w-12 h-12 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
             <i class="ph-bold ph-book-open-text text-2xl"></i>
           </div>
-          <span class="bg-white px-2.5 py-1 rounded-lg text-xs font-extrabold text-slate-400 border border-slate-200 shadow-sm flex items-center gap-1.5">
+          <span class="bg-surface px-2.5 py-1 rounded-lg text-xs font-extrabold text-muted border border-slate-200 shadow-sm dark:shadow-none flex items-center gap-1.5">
             {% if is_read %}
               <i class="ph-fill ph-check-circle text-green-500"></i> Изучено
             {% else %}
-              <i class="ph-fill ph-clock text-slate-400"></i> Новое
+              <i class="ph-fill ph-clock text-muted"></i> Новое
             {% endif %}
           </span>
         </div>
 
         <div class="relative z-10 flex-1">
-          <h3 class="text-xl font-black text-slate-900 mb-1 group-hover:text-boo-primary transition-colors">
+          <h3 class="text-xl font-black text-primary mb-1 group-hover:text-boo-primary transition-colors">
             {{ block.title or ('Тема ' ~ num) }}
           </h3>
           <div class="flex flex-wrap gap-1.5 mb-4">
-            <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание {{ num }}</span>
+            <span class="bg-surface-alt text-muted text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание {{ num }}</span>
             {% if is_bookmarked %}
             <span class="bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100">Сохранено</span>
             {% endif %}
           </div>
-          <p class="text-sm font-medium text-slate-500 mb-6 line-clamp-2">
+          <p class="text-sm font-medium text-muted mb-6 line-clamp-2">
             {{ (block.description or 'Открой тему для просмотра.')|truncate(110, True, '…') }}
           </p>
         </div>
 
         <div class="relative z-10 pt-4 border-t border-slate-100 flex items-center justify-between">
-          <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">Открыть</div>
+          <div class="text-xs font-bold text-muted uppercase tracking-widest">Открыть</div>
           <i class="ph-bold ph-arrow-right text-slate-300 group-hover:text-boo-primary transition-colors"></i>
         </div>
       </a>
@@ -224,13 +224,13 @@
       {% if initial_view == 'article' and initial_block %}
         {% include 'theory/_article.html' with context %}
       {% else %}
-      <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-12 text-center">
-        <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center shadow-sm mx-auto mb-4 border border-slate-200">
+      <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-12 text-center">
+        <div class="w-16 h-16 bg-surface-alt rounded-full flex items-center justify-center shadow-sm dark:shadow-none mx-auto mb-4 border border-slate-200">
           <i class="ph-fill ph-book-open-text text-3xl text-slate-300"></i>
         </div>
-        <div class="text-lg font-black text-slate-900 mb-1">Выбери модуль</div>
-        <div class="text-sm font-medium text-slate-500">Открой тему из группы — статья загрузится здесь.</div>
-        <button type="button" class="mt-6 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 text-sm" onclick="window.__theoryOpenIndex?.()">
+        <div class="text-lg font-black text-primary mb-1">Выбери модуль</div>
+        <div class="text-sm font-medium text-muted">Открой тему из группы — статья загрузится здесь.</div>
+        <button type="button" class="mt-6 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm dark:shadow-none border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 text-sm" onclick="window.__theoryOpenIndex?.()">
           В каталог <i class="ph-bold ph-arrow-right"></i>
         </button>
       </div>
@@ -305,7 +305,7 @@
       const preview = card.querySelector('.theory-code-highlight');
       if (!input || !preview) return;
       input.classList.remove('hidden');
-      input.classList.add('w-full', 'min-h-[180px]', 'p-4', 'bg-white', 'text-slate-800', 'font-mono', 'text-[14px]', 'leading-relaxed', 'outline-none', 'resize-y');
+      input.classList.add('w-full', 'min-h-[180px]', 'p-4', 'bg-surface', 'text-primary', 'font-mono', 'text-[14px]', 'leading-relaxed', 'outline-none', 'resize-y');
       preview.classList.add('hidden');
     };
 
@@ -406,11 +406,11 @@
   function setActiveFilter(id) {
     filterBtns.forEach(b => {
       if (b.dataset.filter === id) {
-        b.classList.add('bg-white','text-slate-900','shadow-sm','border','border-slate-200/50');
-        b.classList.remove('text-slate-500');
+        b.classList.add('bg-surface','text-primary','shadow-sm dark:shadow-none','border','border-slate-200/50');
+        b.classList.remove('text-muted');
       } else {
-        b.classList.remove('bg-white','text-slate-900','shadow-sm','border','border-slate-200/50');
-        b.classList.add('text-slate-500');
+        b.classList.remove('bg-surface','text-primary','shadow-sm dark:shadow-none','border','border-slate-200/50');
+        b.classList.add('text-muted');
       }
     });
   }
@@ -418,7 +418,7 @@
   function applyFilters() {
     if (!grid) return;
     const q = (search?.value || '').trim().toLowerCase();
-    const active = (filterBtns.find(b => b.classList.contains('bg-white'))?.dataset.filter) || 'all';
+    const active = (filterBtns.find(b => b.classList.contains('bg-surface'))?.dataset.filter) || 'all';
     const cards = Array.from(grid.querySelectorAll('.theory-card'));
     const bookmarkCards = Array.from((bookmarkedGrid || document).querySelectorAll('.theory-bookmark-card'));
     if (bookmarkedGrid) bookmarkedGrid.classList.toggle('hidden', active !== 'bookmarked');
@@ -476,7 +476,7 @@
     const saved = localStorage.getItem('ui.theory.filter');
     if (saved && filterBtns.some(b => b.dataset.filter === saved)) setActiveFilter(saved);
   } catch(e) {}
-  if (!filterBtns.some(b => b.classList.contains('bg-white'))) setActiveFilter('all');
+  if (!filterBtns.some(b => b.classList.contains('bg-surface'))) setActiveFilter('all');
   applyFilters();
   setupCodeBlocks(document).catch(() => {});
 
@@ -561,7 +561,7 @@
       btn.classList.toggle('bg-orange-50', !!data.bookmarked);
       btn.classList.toggle('border-orange-200', !!data.bookmarked);
       btn.classList.toggle('text-boo-accent', !!data.bookmarked);
-      btn.classList.toggle('text-slate-400', !data.bookmarked);
+      btn.classList.toggle('text-muted', !data.bookmarked);
       const icon = btn.querySelector('.bookmark-icon, i');
       if (icon) {
         icon.classList.toggle('ph-fill', !!data.bookmarked);
@@ -594,7 +594,7 @@
         star.classList.toggle('bg-orange-50', active);
         star.classList.toggle('border-orange-200', active);
         star.classList.toggle('text-slate-300', !active);
-        star.classList.toggle('bg-white', !active);
+        star.classList.toggle('bg-surface', !active);
         star.classList.toggle('border-slate-200', !active);
       });
       root.dataset.rating = String(rating);
@@ -615,7 +615,7 @@
       const btnRead = articleContainer.querySelector('[data-action="mark-read"]');
       if (btnRead) {
         btnRead.classList.add('bg-green-600');
-        btnRead.classList.remove('text-slate-500');
+        btnRead.classList.remove('text-muted');
         btnRead.classList.add('text-white');
         btnRead.classList.remove('bg-boo-primary');
         btnRead.style.color = '#FFFFFF';

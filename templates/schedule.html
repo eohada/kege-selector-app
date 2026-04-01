@@ -416,8 +416,8 @@
                 <div class="w-full xl:flex-1 flex flex-col min-w-0 h-full">
                     <div class="flex justify-between items-end mb-6">
                         <div>
-                            <h1 class="text-3xl font-black text-slate-900 tracking-tight mb-1">Твой календарь успеха</h1>
-                            <p class="text-slate-500 font-medium text-sm flex items-center gap-2">
+                            <h1 class="text-3xl font-black text-primary tracking-tight mb-1">Твой календарь успеха</h1>
+                            <p class="text-muted font-medium text-sm flex items-center gap-2">
                                 <i class="ph-fill ph-check-circle text-boo-cyan"></i>
                                 На этой неделе запланировано {{ agenda|length if agenda else 0 }} уроков
                             </p>
@@ -430,31 +430,31 @@
                         {% endif %}
                     </div>
 
-                    <div class="bg-white rounded-2xl p-2 border border-slate-200 border-b-[3px] border-b-slate-300 shadow-tactile mb-6 flex flex-wrap gap-3 items-center justify-between">
-                        <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200/50">
-                            <button class="px-5 py-1.5 {% if view_mode == 'day' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('day')">День</button>
-                            <button class="px-5 py-1.5 {% if view_mode == 'week' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('week')">Неделя</button>
-                            <button class="px-5 py-1.5 {% if view_mode == 'month' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('month')">Месяц</button>
-                            <button class="px-5 py-1.5 {% if view_mode == 'agenda' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('agenda')">Список</button>
+                    <div class="bg-surface rounded-2xl p-2 border border-slate-200 border-b-[3px] border-b-slate-300 shadow-tactile mb-6 flex flex-wrap gap-3 items-center justify-between">
+                        <div class="bg-surface-alt p-1 rounded-xl flex items-center border border-slate-200/50">
+                            <button class="px-5 py-1.5 {% if view_mode == 'day' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('day')">День</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'week' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('week')">Неделя</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'month' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('month')">Месяц</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'agenda' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('agenda')">Список</button>
                         </div>
 
                         <div class="flex items-center gap-4">
-                            <button class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-boo-primary transition-all" data-week-offset="{{ week_offset - 1 }}" onclick="navigatePeriod(this.dataset.weekOffset)"><i class="ph-bold ph-caret-left"></i></button>
-                            <h2 class="text-lg font-extrabold text-slate-900 tracking-tight w-72 text-center">{{ week_label }}</h2>
-                            <button class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-boo-primary transition-all" data-week-offset="{{ week_offset + 1 }}" onclick="navigatePeriod(this.dataset.weekOffset)"><i class="ph-bold ph-caret-right"></i></button>
+                            <button class="w-8 h-8 rounded-lg bg-surface-alt border border-slate-200 flex items-center justify-center text-muted hover:bg-surface-alt hover:text-boo-primary transition-all" data-week-offset="{{ week_offset - 1 }}" onclick="navigatePeriod(this.dataset.weekOffset)"><i class="ph-bold ph-caret-left"></i></button>
+                            <h2 class="text-lg font-extrabold text-primary tracking-tight w-72 text-center">{{ week_label }}</h2>
+                            <button class="w-8 h-8 rounded-lg bg-surface-alt border border-slate-200 flex items-center justify-center text-muted hover:bg-surface-alt hover:text-boo-primary transition-all" data-week-offset="{{ week_offset + 1 }}" onclick="navigatePeriod(this.dataset.weekOffset)"><i class="ph-bold ph-caret-right"></i></button>
                         </div>
 
                         <div class="flex items-center gap-2 pr-2 flex-wrap">
-                            <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200/50">
-                                <button class="px-4 py-1.5 {% if timezone == 'moscow' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('moscow')">МСК</button>
-                                <button class="px-4 py-1.5 {% if timezone == 'tomsk' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('tomsk')">Томск</button>
+                            <div class="bg-surface-alt p-1 rounded-xl flex items-center border border-slate-200/50">
+                                <button class="px-4 py-1.5 {% if timezone == 'moscow' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('moscow')">МСК</button>
+                                <button class="px-4 py-1.5 {% if timezone == 'tomsk' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('tomsk')">Томск</button>
                             </div>
                             <div class="schedule-filter-shell schedule-top-chip" style="min-width: 170px;">
                                 <i class="ph-bold ph-funnel"></i>
                                 <span>
                                     {% if status_filter == 'planned' %}Запланирован{% elif status_filter == 'in_progress' %}Идет сейчас{% elif status_filter == 'completed' %}Проведен{% elif status_filter == 'cancelled' %}Отменен{% else %}Все статусы{% endif %}
                                 </span>
-                                <i class="ph-bold ph-caret-down text-slate-400 text-xs ml-auto"></i>
+                                <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
                                 <select id="statusFilter" class="schedule-filter-native" onchange="applyFilters()">
                                     <option value="">Все статусы</option>
                                     {% for status in statuses %}
@@ -467,7 +467,7 @@
                             <div class="schedule-filter-shell schedule-top-chip" style="min-width: 170px;">
                                 <i class="ph-bold ph-books"></i>
                                 <span>{{ category_filter or 'Все категории' }}</span>
-                                <i class="ph-bold ph-caret-down text-slate-400 text-xs ml-auto"></i>
+                                <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
                                 <select id="categoryFilter" class="schedule-filter-native" onchange="applyFilters()">
                                     <option value="">Все категории</option>
                                     {% for category in categories %}
@@ -479,7 +479,7 @@
                             <div class="schedule-filter-shell schedule-top-chip" style="min-width: 220px;">
                                 <i class="ph-bold ph-user"></i>
                                 <span>{% if student_filter %}{% for s in students %}{% if s.student_id == student_filter %}{{ s.name }}{% endif %}{% endfor %}{% else %}Все ученики{% endif %}</span>
-                                <i class="ph-bold ph-caret-down text-slate-400 text-xs ml-auto"></i>
+                                <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
                                 <select id="studentFilter" class="schedule-filter-native" onchange="applyFilters()">
                                     <option value="">Все ученики</option>
                                     {% for s in students %}
@@ -495,39 +495,39 @@
                     </div>
 
                     {% if view_mode == 'agenda' %}
-                        <div class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
-                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">список</div>
-                            <div class="text-xl font-extrabold text-slate-900 tracking-tight mt-1">Уроки недели</div>
+                        <div class="bg-surface rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
+                            <div class="text-[10px] font-bold text-muted uppercase tracking-widest">список</div>
+                            <div class="text-xl font-extrabold text-primary tracking-tight mt-1">Уроки недели</div>
                             <div class="mt-4 space-y-3">
                                 {% for a in agenda %}
                                     <div class="p-4 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
                                         <div class="min-w-0">
-                                            <div class="font-extrabold text-slate-900">{{ a.date_human }} · {{ a.time }}</div>
-                                            <div class="text-slate-500 font-medium text-sm mt-1">
+                                            <div class="font-extrabold text-primary">{{ a.date_human }} · {{ a.time }}</div>
+                                            <div class="text-muted font-medium text-sm mt-1">
                                                 <strong>{{ a.student_name }}</strong>{% if a.topic %} · {{ a.topic }}{% endif %} · {{ a.duration }} мин
                                             </div>
                                         </div>
                                         <div class="flex gap-2 flex-wrap">
-                                            <a class="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors" href="{{ a.lesson_url }}">Открыть урок</a>
-                                            <a class="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:text-boo-primary hover:border-purple-200 transition-colors" href="{{ a.profile_url }}">Профиль</a>
+                                            <a class="px-4 py-2 bg-surface-alt border border-slate-200 text-secondary rounded-xl font-bold text-sm hover:bg-surface-alt transition-colors" href="{{ a.lesson_url }}">Открыть урок</a>
+                                            <a class="px-4 py-2 bg-surface border border-slate-200 text-muted rounded-xl font-bold text-sm hover:text-boo-primary hover:border-purple-200 transition-colors" href="{{ a.profile_url }}">Профиль</a>
                                         </div>
                                     </div>
                                 {% else %}
-                                    <div class="text-slate-500 font-medium">На этой неделе нет уроков.</div>
+                                    <div class="text-muted font-medium">На этой неделе нет уроков.</div>
                                 {% endfor %}
                             </div>
                         </div>
                     {% elif view_mode == 'month' %}
-                        <div class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-4">
+                        <div class="bg-surface rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-4">
                             <div class="grid grid-cols-7 border border-slate-200 rounded-2xl overflow-hidden">
                                 {% for dn in day_names %}
-                                <div class="py-2 text-center text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-200">{{ dn }}</div>
+                                <div class="py-2 text-center text-xs font-black uppercase tracking-wider text-muted bg-surface-alt border-b border-slate-200">{{ dn }}</div>
                                 {% endfor %}
                                 {% for week in month_weeks %}
                                     {% for cell in week %}
                                     <div class="min-h-[140px] p-2 border-b border-r border-slate-100 {% if not cell.in_month %}bg-slate-50/50{% endif %} {% if cell.is_today %}ring-1 ring-boo-primary ring-inset{% endif %}">
                                         <div class="flex justify-between items-center mb-1">
-                                            <a href="{{ url_for('schedule.schedule', timezone=timezone, view='day', week=(cell.date - today_display_date).days) }}" class="text-sm font-extrabold {% if cell.is_today %}text-boo-primary{% else %}text-slate-700{% endif %} no-underline">
+                                            <a href="{{ url_for('schedule.schedule', timezone=timezone, view='day', week=(cell.date - today_display_date).days) }}" class="text-sm font-extrabold {% if cell.is_today %}text-boo-primary{% else %}text-secondary{% endif %} no-underline">
                                                 {{ cell.date.day }}
                                             </a>
                                             {% if cell.events_count %}
@@ -537,7 +537,7 @@
                                         <div class="space-y-1">
                                             {% for ev in cell.events %}
                                             <a href="{{ ev.lesson_url }}" class="block no-underline">
-                                                <div class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 truncate">
+                                                <div class="px-2 py-1 rounded-lg bg-surface-alt border border-slate-200 text-[11px] text-secondary truncate">
                                                     <span class="font-bold">{{ ev.time }}</span> {{ ev.student_name }}
                                                 </div>
                                             </a>
@@ -549,7 +549,7 @@
                             </div>
                         </div>
                     {% else %}
-                        <div class="flex-1 bg-white rounded-3xl border border-slate-200 shadow-tactile flex flex-col overflow-hidden relative"
+                        <div class="flex-1 bg-surface rounded-3xl border border-slate-200 shadow-tactile flex flex-col overflow-hidden relative"
                              data-schedule-root
                              data-slot-minutes="{{ slot_minutes }}"
                              data-start-hour="{{ day_start_hour }}"
@@ -578,23 +578,23 @@
                                     {% if is_today %}
                                     <div class="absolute top-0 left-0 w-full h-1 bg-boo-primary"></div>
                                     {% endif %}
-                                    <div class="text-xs font-bold {% if is_today %}text-boo-primary{% else %}text-slate-400{% endif %} uppercase tracking-widest mb-1">{{ day_names[loop.index0] }}</div>
-                                    <div class="text-2xl font-black {% if is_today %}text-slate-900{% else %}text-slate-700{% endif %}">{{ day.strftime('%d') }}</div>
+                                    <div class="text-xs font-bold {% if is_today %}text-boo-primary{% else %}text-muted{% endif %} uppercase tracking-widest mb-1">{{ day_names[loop.index0] }}</div>
+                                    <div class="text-2xl font-black {% if is_today %}text-primary{% else %}text-secondary{% endif %}">{{ day.strftime('%d') }}</div>
                                 </div>
                                 {% endfor %}
                             </div>
 
                             <div class="flex-1 overflow-y-auto hide-scroll relative">
                                 <div id="scheduleGrid" class="grid grid-cols-8 relative" style="grid-template-columns: 84px repeat({{ day_columns_count }}, minmax(0, 1fr));">
-                                    <div class="border-r border-slate-100/50 relative bg-white z-10 time-col">
+                                    <div class="border-r border-slate-100/50 relative bg-surface z-10 time-col">
                                         {% for label in time_labels %}
-                                        <div class="h-24 border-b border-slate-100 flex justify-center pt-2 time-label"><span class="text-xs font-bold text-slate-400">{{ label }}</span></div>
+                                        <div class="h-24 border-b border-slate-100 flex justify-center pt-2 time-label"><span class="text-xs font-bold text-muted">{{ label }}</span></div>
                                         {% endfor %}
                                     </div>
                                     {% for day_index in range(day_columns_count) %}
                                     {% set day = week_days[day_index] %}
                                     {% set is_weekend_col = day.weekday() >= 5 %}
-                                    <div class="{% if not loop.last %}border-r border-slate-100/50{% endif %} relative {% if is_weekend_col %}bg-slate-50/30{% else %}bg-white{% endif %} day-col"
+                                    <div class="{% if not loop.last %}border-r border-slate-100/50{% endif %} relative {% if is_weekend_col %}bg-slate-50/30{% else %}bg-surface{% endif %} day-col"
                                          data-day="{{ day.isoformat() }}" data-day-index="{{ day_index }}" data-events='{{ day_events[day_index]|tojson }}'>
                                         <div class="day-col__body"></div>
                                     </div>
@@ -606,26 +606,26 @@
                 </div>
 
                 <div class="w-full xl:w-96 flex flex-col h-full shrink-0">
-                    <aside class="bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full relative overflow-hidden schedule-inspector" id="lessonInspector">
+                    <aside class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full relative overflow-hidden schedule-inspector" id="lessonInspector">
                         <div class="inspector-card-head">
                             <div class="flex justify-between items-start mb-4">
-                                <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Инспектор урока</h2>
-                                <button class="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 hover:shadow-sm transition-all" type="button" id="lessonInspectorClose"><i class="ph-bold ph-x"></i></button>
+                                <h2 class="text-[10px] font-bold text-muted uppercase tracking-widest">Инспектор урока</h2>
+                                <button class="w-8 h-8 bg-surface border border-slate-200 rounded-full flex items-center justify-center text-muted hover:text-primary hover:shadow-sm dark:shadow-none transition-all" type="button" id="lessonInspectorClose"><i class="ph-bold ph-x"></i></button>
                             </div>
                             <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 rounded-2xl bg-purple-100 text-boo-primary flex items-center justify-center border border-purple-200 shadow-sm" id="lessonInspectorIcon">
+                                <div class="w-14 h-14 rounded-2xl bg-purple-100 text-boo-primary flex items-center justify-center border border-purple-200 shadow-sm dark:shadow-none" id="lessonInspectorIcon">
                                     <i class="ph-bold ph-calendar-check text-2xl"></i>
                                 </div>
                                 <div>
-                                    <h3 class="text-2xl font-black text-slate-900 tracking-tight" id="lessonInspectorTitle">Выбери урок</h3>
-                                    <div class="text-slate-500 font-bold text-sm mt-1" id="lessonInspectorSubtitle">
+                                    <h3 class="text-2xl font-black text-primary tracking-tight" id="lessonInspectorTitle">Выбери урок</h3>
+                                    <div class="text-muted font-bold text-sm mt-1" id="lessonInspectorSubtitle">
                                         {% if can_manage_schedule %}Клик по уроку — редактирование.{% else %}Клик по уроку — детали.{% endif %}
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto p-6 space-y-5 hide-scroll schedule-inspector__body" id="lessonInspectorBody">
-                            <div class="text-slate-500 font-medium">
+                            <div class="text-muted font-medium">
                                 {% if can_manage_schedule %}
                                     Кликни по уроку, чтобы увидеть детали и быстрые действия. Перетаскивание работает прямо на сетке.
                                 {% else %}
@@ -633,17 +633,17 @@
                                 {% endif %}
                             </div>
                             <div class="border-t border-slate-200 pt-5">
-                                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">на этой неделе</div>
+                                <div class="text-[10px] font-bold text-muted uppercase tracking-widest">на этой неделе</div>
                                 <div class="mt-3 space-y-2">
                                     {% for a in (agenda_week_sidebar if agenda_week_sidebar is defined else agenda) %}
                                         <a href="{{ a.lesson_url }}" class="block no-underline">
                                             <div class="p-3 rounded-2xl border border-slate-200 hover:border-purple-200 hover:bg-purple-50/30 transition-colors">
-                                                <div class="font-extrabold text-slate-900 text-sm">{{ a.date_human }} · {{ a.time }}</div>
-                                                <div class="text-slate-500 font-medium text-sm mt-1">{{ a.student_name }}{% if a.topic %} · {{ a.topic }}{% endif %}</div>
+                                                <div class="font-extrabold text-primary text-sm">{{ a.date_human }} · {{ a.time }}</div>
+                                                <div class="text-muted font-medium text-sm mt-1">{{ a.student_name }}{% if a.topic %} · {{ a.topic }}{% endif %}</div>
                                             </div>
                                         </a>
                                     {% else %}
-                                        <div class="text-slate-500 font-medium">Нет уроков.</div>
+                                        <div class="text-muted font-medium">Нет уроков.</div>
                                     {% endfor %}
                                 </div>
                             </div>

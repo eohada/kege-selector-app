@@ -14,17 +14,17 @@
 {% endif %}
 
 <div data-theory-article data-task-number="{{ block.task_number }}" data-block-id="{{ block.id }}" class="flex flex-col gap-4">
-  <button type="button" data-action="back" data-back-url="{{ back_to_url if back_to_url is defined else url_for('theory.theory_index', course_id=course_id) }}" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm w-fit transition-colors">
+  <button type="button" data-action="back" data-back-url="{{ back_to_url if back_to_url is defined else url_for('theory.theory_index', course_id=course_id) }}" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none w-fit transition-colors">
     <i class="ph-bold ph-arrow-left"></i> Назад в каталог
   </button>
 
   <div class="flex flex-col lg:flex-row gap-6 h-full min-h-[760px]">
-    <aside class="hidden lg:block w-72 bg-white rounded-[32px] border border-slate-200 shadow-tactile p-6 h-fit shrink-0">
+    <aside class="hidden lg:block w-72 bg-surface rounded-[32px] border border-slate-200 shadow-tactile p-6 h-fit shrink-0">
       <div class="flex items-center gap-2 text-[10px] font-extrabold text-boo-primary uppercase tracking-widest mb-4">
         <i class="ph-fill ph-book-open-text"></i> Теория
       </div>
-      <h4 class="font-black text-slate-900 text-lg mb-1 leading-tight">Содержание модуля</h4>
-      <p class="text-xs font-semibold text-slate-400 mb-4">{{ ns_group.current_group.name if ns_group.current_group else 'Группа' }}</p>
+      <h4 class="font-black text-primary text-lg mb-1 leading-tight">Содержание модуля</h4>
+      <p class="text-xs font-semibold text-muted mb-4">{{ ns_group.current_group.name if ns_group.current_group else 'Группа' }}</p>
       <div class="space-y-1">
         {% for item in ns_group.current_group_blocks %}
         <a href="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}"
@@ -32,31 +32,31 @@
            hx-target="#articleContainer"
            hx-swap="innerHTML"
            hx-push-url="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}"
-           class="block px-3 py-2.5 {{ 'bg-purple-50 text-boo-primary border-purple-100' if item.id == block.id else 'text-slate-600 hover:bg-slate-50 border-transparent' }} rounded-xl font-bold text-sm border transition-colors no-underline">
+           class="block px-3 py-2.5 {{ 'bg-purple-50 text-boo-primary border-purple-100' if item.id == block.id else 'text-muted hover:bg-surface-alt border-transparent' }} rounded-xl font-bold text-sm border transition-colors no-underline">
           {{ loop.index }}. {{ item.title or ('Тема ' ~ item.task_number) }}
         </a>
         {% endfor %}
       </div>
       <div class="mt-8 pt-6 border-t border-slate-100">
-        <a href="{{ url_for('trainer.trainer_embed') }}" class="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
+        <a href="{{ url_for('trainer.trainer_embed') }}" class="w-full py-3 bg-surface border border-slate-200 text-secondary rounded-xl font-bold hover:bg-surface-alt transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
           <i class="ph-bold ph-game-controller text-boo-primary"></i> В тренажёр
         </a>
       </div>
     </aside>
 
-    <section class="flex-1 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:p-12 overflow-y-auto relative">
-      <button type="button" data-action="bookmark" data-value="{{ '1' if state and state.bookmarked else '0' }}" title="Сохранить" class="absolute top-8 right-8 w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center border border-slate-200 {% if state and state.bookmarked %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-slate-400 hover:text-boo-accent hover:bg-orange-50{% endif %} transition-colors shadow-sm">
+    <section class="flex-1 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:p-12 overflow-y-auto relative">
+      <button type="button" data-action="bookmark" data-value="{{ '1' if state and state.bookmarked else '0' }}" title="Сохранить" class="absolute top-8 right-8 w-10 h-10 bg-surface-alt rounded-full flex items-center justify-center border border-slate-200 {% if state and state.bookmarked %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-muted hover:text-boo-accent hover:bg-orange-50{% endif %} transition-colors shadow-sm dark:shadow-none">
         <i class="{% if state and state.bookmarked %}ph-fill{% else %}ph-bold{% endif %} ph-bookmark-simple text-xl bookmark-icon"></i>
       </button>
 
       <div class="max-w-3xl mx-auto prose-article">
         <div class="flex items-center gap-2 mb-4">
-          <span class="bg-slate-100 text-slate-500 text-xs font-bold px-2.5 py-1 rounded-md border border-slate-200">Задание {{ block.task_number }}</span>
-          <span class="text-slate-400 text-xs font-semibold flex items-center gap-1"><i class="ph-fill ph-clock"></i> {{ block.read_minutes or 5 }} мин чтения</span>
+          <span class="bg-surface-alt text-muted text-xs font-bold px-2.5 py-1 rounded-md border border-slate-200">Задание {{ block.task_number }}</span>
+          <span class="text-muted text-xs font-semibold flex items-center gap-1"><i class="ph-fill ph-clock"></i> {{ block.read_minutes or 5 }} мин чтения</span>
         </div>
-        <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4 leading-tight">{{ block.title or ('Задание ' ~ block.task_number) }}</h1>
+        <h1 class="text-4xl md:text-5xl font-black text-primary tracking-tight mb-4 leading-tight">{{ block.title or ('Задание ' ~ block.task_number) }}</h1>
         {% if block.description %}
-        <p class="text-base text-slate-500 font-medium mb-8">{{ block.description }}</p>
+        <p class="text-base text-muted font-medium mb-8">{{ block.description }}</p>
         {% endif %}
 
         {% if custom_html %}
@@ -70,15 +70,15 @@
         {% endif %}
 
         <div class="mt-16 pt-10 border-t border-slate-200">
-          <div class="flex flex-col sm:flex-row items-center justify-between gap-6 bg-slate-50 p-6 rounded-[28px] border border-slate-200">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-6 bg-surface-alt p-6 rounded-[28px] border border-slate-200">
             <div>
-              <h4 class="font-black text-slate-900 text-lg mb-1">Понятно?</h4>
-              <p class="text-sm font-medium text-slate-500">Оцени материал и оставь комментарий.</p>
+              <h4 class="font-black text-primary text-lg mb-1">Понятно?</h4>
+              <p class="text-sm font-medium text-muted">Оцени материал и оставь комментарий.</p>
             </div>
             <div class="flex gap-3 w-full sm:w-auto items-center">
               {% set current_rating = (feedback.rating if feedback and feedback.rating is not none else 0) %}
               {% for i in range(1,6) %}
-              <button type="button" data-action="rate" data-rating="{{ i }}" class="w-10 h-10 rounded-xl border border-slate-200 bg-white shadow-sm flex items-center justify-center transition-colors cursor-pointer {% if i <= current_rating %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-slate-300{% endif %} hover:text-boo-accent">
+              <button type="button" data-action="rate" data-rating="{{ i }}" class="w-10 h-10 rounded-xl border border-slate-200 bg-surface shadow-sm dark:shadow-none flex items-center justify-center transition-colors cursor-pointer {% if i <= current_rating %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-slate-300{% endif %} hover:text-boo-accent">
                 <i class="ph-fill ph-star text-xl"></i>
               </button>
               {% endfor %}
@@ -88,8 +88,8 @@
             </div>
           </div>
           <div class="mt-5">
-            <label class="block text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-2">Комментарий (опционально)</label>
-            <textarea name="theory_comment" rows="3" placeholder="Что улучшить? Где было непонятно?" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft resize-none">{{ feedback.comment if feedback and feedback.comment else '' }}</textarea>
+            <label class="block text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Комментарий (опционально)</label>
+            <textarea name="theory_comment" rows="3" placeholder="Что улучшить? Где было непонятно?" class="w-full bg-surface-alt border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-secondary placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft resize-none">{{ feedback.comment if feedback and feedback.comment else '' }}</textarea>
           </div>
         </div>
       </div>

@@ -16,8 +16,8 @@
 <div class="w-full max-w-[1400px] mx-auto space-y-8">
     <div class="flex flex-col lg:flex-row gap-6">
         <div class="lg:w-1/2 flex flex-col justify-center">
-            <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Журнал проверок</h1>
-            <p class="text-slate-500 font-medium text-lg leading-relaxed">
+            <h1 class="text-4xl font-black text-primary tracking-tight mb-2">Журнал проверок</h1>
+            <p class="text-muted font-medium text-lg leading-relaxed">
                 Ученики ждут вашего фидбека. Очередь обновляется в реальном времени.
             </p>
         </div>
@@ -35,10 +35,10 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-[24px] p-5 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex items-center justify-between">
+            <div class="bg-surface rounded-[24px] p-5 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex items-center justify-between">
                 <div>
-                    <div class="text-sm font-bold text-slate-500 mb-1 uppercase tracking-wide">Проверено</div>
-                    <div class="text-4xl font-black text-slate-900">{{ (status_counts.graded if status_counts else 0) }}</div>
+                    <div class="text-sm font-bold text-muted mb-1 uppercase tracking-wide">Проверено</div>
+                    <div class="text-4xl font-black text-primary">{{ (status_counts.graded if status_counts else 0) }}</div>
                 </div>
                 <div class="w-14 h-14 rounded-2xl bg-cyan-50 flex items-center justify-center border border-cyan-100">
                     <i class="ph-fill ph-checks text-3xl text-boo-cyan"></i>
@@ -47,52 +47,52 @@
         </div>
     </div>
 
-    <form method="GET" class="bg-white rounded-[24px] p-3 border border-slate-200 shadow-tactile flex flex-col md:flex-row gap-4 items-center justify-between">
+    <form method="GET" class="bg-surface rounded-[24px] p-3 border border-slate-200 shadow-tactile flex flex-col md:flex-row gap-4 items-center justify-between">
         {% if lesson_id %}<input type="hidden" name="lesson_id" value="{{ lesson_id }}">{% endif %}
         {% if assignment_id %}<input type="hidden" name="assignment_id" value="{{ assignment_id }}">{% endif %}
         <input type="hidden" name="status" value="{{ status }}">
 
         <div class="bg-slate-100/80 p-1.5 rounded-xl flex w-full md:w-auto overflow-x-auto hide-scroll border border-slate-200/50">
             <a href="{{ url_for('lessons.review_queue', status='submitted', source=source, assignment_type=assignment_type, student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="px-5 py-2.5 {% if status == 'submitted' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} rounded-lg font-bold text-sm transition-colors whitespace-nowrap">
+               class="px-5 py-2.5 {% if status == 'submitted' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-colors whitespace-nowrap">
                 Все новые <span class="bg-boo-coral text-white px-2 py-0.5 rounded-md text-xs">{{ (status_counts.submitted if status_counts else 0) }}</span>
             </a>
             <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='homework', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="px-5 py-2.5 {% if assignment_type == 'homework' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} rounded-lg font-bold text-sm transition-colors whitespace-nowrap">
+               class="px-5 py-2.5 {% if assignment_type == 'homework' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-colors whitespace-nowrap">
                 Домашки
             </a>
             <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='classwork', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="px-5 py-2.5 {% if assignment_type == 'classwork' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} rounded-lg font-bold text-sm transition-colors whitespace-nowrap">
+               class="px-5 py-2.5 {% if assignment_type == 'classwork' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-colors whitespace-nowrap">
                 Классная работа
             </a>
             <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='exam', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="px-5 py-2.5 {% if assignment_type == 'exam' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} rounded-lg font-bold text-sm transition-colors whitespace-nowrap">
+               class="px-5 py-2.5 {% if assignment_type == 'exam' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-colors whitespace-nowrap">
                 Тесты
             </a>
         </div>
 
         <div class="flex items-center gap-3 w-full md:w-auto review-filters-actions">
             <div class="relative w-full md:w-72 flex-1">
-                <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-lg"></i>
                 <input type="text" name="student" value="{{ student_query }}" placeholder="Ученик или тема..."
-                       class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-boo-primary transition-colors">
+                       class="w-full bg-surface-alt border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium text-secondary placeholder-slate-400 focus:outline-none focus:border-boo-primary transition-colors">
             </div>
-            <select name="source" class="px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors shrink-0">
+            <select name="source" class="px-4 py-2.5 bg-surface-alt border border-slate-200 text-muted rounded-xl font-bold text-sm hover:bg-surface-alt transition-colors shrink-0">
                 <option value="all" {% if source == 'all' %}selected{% endif %}>Все</option>
                 <option value="lessons" {% if source == 'lessons' %}selected{% endif %}>Классная</option>
                 <option value="assignments" {% if source == 'assignments' %}selected{% endif %}>Работы</option>
             </select>
-            <button type="submit" class="px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors flex items-center gap-2 shrink-0">
+            <button type="submit" class="px-4 py-2.5 bg-surface-alt border border-slate-200 text-muted rounded-xl font-bold text-sm hover:bg-surface-alt transition-colors flex items-center gap-2 shrink-0">
                 <i class="ph-bold ph-faders"></i> Применить
             </button>
-            <a href="{{ url_for('lessons.review_queue') }}" class="px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center gap-2 shrink-0">
+            <a href="{{ url_for('lessons.review_queue') }}" class="px-4 py-2.5 bg-surface border border-slate-200 text-muted rounded-xl font-bold text-sm hover:text-primary hover:bg-surface-alt transition-colors flex items-center gap-2 shrink-0">
                 <i class="ph-bold ph-rotate-ccw"></i> Сброс
             </a>
         </div>
     </form>
 
     <div class="mb-4">
-        <h3 class="text-xl font-extrabold text-slate-900 mb-4 flex items-center gap-2">
+        <h3 class="text-xl font-extrabold text-primary mb-4 flex items-center gap-2">
             <i class="ph-fill ph-clock-countdown text-boo-accent"></i> Требуют вашей оценки
         </h3>
 
@@ -105,7 +105,7 @@
                     {% for sub in (card.submissions or []) %}
                         {% set rendered = rendered + 1 %}
                         {% set is_late = (sub.status or '').upper() in ['LATE'] %}
-                        <div class="{% if is_late %}bg-gradient-to-b from-[#FFF5F5] to-white border-red-200 border-b-boo-coral{% else %}bg-white border-slate-200 border-b-slate-300{% endif %} rounded-[24px] border border-b-[4px] shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
+                        <div class="{% if is_late %}bg-gradient-to-b from-[#FFF5F5] to-white border-red-200 border-b-boo-coral{% else %}bg-surface border-slate-200 border-b-slate-300{% endif %} rounded-[24px] border border-b-[4px] shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
                             <div class="p-5 flex-1">
                                 <div class="flex justify-between items-start mb-4">
                                     <div class="flex items-center gap-1.5 bg-cyan-50 text-cyan-700 px-2.5 py-1 rounded-lg border border-cyan-100/50">
@@ -114,25 +114,25 @@
                                             {{ a.assignment_type if a and a.assignment_type else 'Работа' }}
                                         </span>
                                     </div>
-                                    <span class="text-xs font-bold text-slate-400">
+                                    <span class="text-xs font-bold text-muted">
                                         {% if sub.submitted_at %}{{ sub.submitted_at.strftime('%d.%m %H:%M') }}{% else %}—{% endif %}
                                     </span>
                                 </div>
-                                <h4 class="text-lg font-black text-slate-900 leading-tight mb-2">{{ a.title if a and a.title else ('Сдача #' ~ sub.submission_id) }}</h4>
-                                <p class="text-sm text-slate-500 font-medium mb-5 line-clamp-2">
+                                <h4 class="text-lg font-black text-primary leading-tight mb-2">{{ a.title if a and a.title else ('Сдача #' ~ sub.submission_id) }}</h4>
+                                <p class="text-sm text-muted font-medium mb-5 line-clamp-2">
                                     {% if a and a.description %}{{ a.description }}{% else %}Сдача #{{ sub.submission_id }} · {{ sub.status }}{% endif %}
                                 </p>
-                                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (sub.student.name if sub.student else 'student')|urlencode }}&backgroundColor=F3F0FF" class="w-10 h-10 rounded-lg border border-slate-200 bg-white" alt="">
+                                <div class="flex items-center gap-3 p-3 bg-surface-alt rounded-xl border border-slate-100">
+                                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (sub.student.name if sub.student else 'student')|urlencode }}&backgroundColor=F3F0FF" class="w-10 h-10 rounded-lg border border-slate-200 bg-surface" alt="">
                                     <div class="min-w-0">
-                                        <div class="font-bold text-slate-900 text-sm truncate">{{ sub.student.name if sub.student else 'Ученик' }}</div>
-                                        <div class="text-xs font-semibold text-slate-500">ID: {{ sub.student.platform_id if sub.student and sub.student.platform_id else (sub.student_id if sub.student_id else '—') }}</div>
+                                        <div class="font-bold text-primary text-sm truncate">{{ sub.student.name if sub.student else 'Ученик' }}</div>
+                                        <div class="text-xs font-semibold text-muted">ID: {{ sub.student.platform_id if sub.student and sub.student.platform_id else (sub.student_id if sub.student_id else '—') }}</div>
                                     </div>
                                 </div>
                             </div>
                             <div class="p-2 border-t border-slate-100">
                                 <a href="{{ url_for('assignments.submission_grade_view', submission_id=sub.submission_id) }}"
-                                   class="w-full py-3 {% if is_late %}bg-boo-coral hover:bg-red-500{% else %}bg-boo-primary hover:bg-boo-primaryHover{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm">
+                                   class="w-full py-3 {% if is_late %}bg-boo-coral hover:bg-red-500{% else %}bg-boo-primary hover:bg-boo-primaryHover{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none">
                                     Начать проверку <i class="ph-bold ph-arrow-right"></i>
                                 </a>
                             </div>
@@ -148,7 +148,7 @@
                     {% for lt in (item.tasks or []) %}
                         {% set rendered = rendered + 1 %}
                         {% set tnum = lt.task.task_number if lt.task and lt.task.task_number else None %}
-                        <div class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
+                        <div class="bg-surface rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
                             <div class="p-5 flex-1">
                                 <div class="flex justify-between items-start mb-4">
                                     <div class="flex items-center gap-1.5 bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg border border-purple-100/50">
@@ -156,27 +156,27 @@
                                             {% if lt.assignment_type == 'classwork' %}Классная{% elif lt.assignment_type == 'exam' %}Проверочная{% else %}Домашка{% endif %}
                                         </span>
                                     </div>
-                                    <span class="text-xs font-bold text-slate-400">
+                                    <span class="text-xs font-bold text-muted">
                                         {% if lesson and lesson.lesson_date %}{{ lesson.lesson_date.strftime('%d.%m %H:%M') }}{% else %}—{% endif %}
                                     </span>
                                 </div>
-                                <h4 class="text-lg font-black text-slate-900 leading-tight mb-2">
+                                <h4 class="text-lg font-black text-primary leading-tight mb-2">
                                     {% if tnum %}Задание {{ tnum }}{% else %}Задача #{{ lt.lesson_task_id }}{% endif %}
                                 </h4>
-                                <p class="text-sm text-slate-500 font-medium mb-5 line-clamp-2">
+                                <p class="text-sm text-muted font-medium mb-5 line-clamp-2">
                                     {{ lesson.topic if lesson and lesson.topic else 'Классная комната' }}
                                 </p>
-                                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name if student else 'student')|urlencode }}&backgroundColor=F3F0FF" class="w-10 h-10 rounded-lg border border-slate-200 bg-white" alt="">
+                                <div class="flex items-center gap-3 p-3 bg-surface-alt rounded-xl border border-slate-100">
+                                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name if student else 'student')|urlencode }}&backgroundColor=F3F0FF" class="w-10 h-10 rounded-lg border border-slate-200 bg-surface" alt="">
                                     <div class="min-w-0">
-                                        <div class="font-bold text-slate-900 text-sm truncate">{{ student.name if student else 'Ученик' }}</div>
-                                        <div class="text-xs font-semibold text-slate-500">Урок #{{ lesson.lesson_id if lesson else '—' }}</div>
+                                        <div class="font-bold text-primary text-sm truncate">{{ student.name if student else 'Ученик' }}</div>
+                                        <div class="text-xs font-semibold text-muted">Урок #{{ lesson.lesson_id if lesson else '—' }}</div>
                                     </div>
                                 </div>
                             </div>
                             <div class="p-2 border-t border-slate-100">
                                 <a href="{{ url_for('lessons.review_lesson_task', lesson_task_id=lt.lesson_task_id) }}"
-                                   class="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 hover:text-slate-900 transition-all flex justify-center items-center gap-2">
+                                   class="w-full py-3 bg-surface-alt text-secondary rounded-xl font-bold hover:bg-slate-200 hover:text-primary transition-all flex justify-center items-center gap-2">
                                     Начать проверку <i class="ph-bold ph-arrow-right"></i>
                                 </a>
                             </div>
@@ -187,12 +187,12 @@
         </div>
 
         {% if rendered == 0 %}
-            <div class="mt-12 bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-10 text-center">
-                <div class="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-200 mx-auto flex items-center justify-center text-slate-400">
+            <div class="mt-12 bg-surface rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-10 text-center">
+                <div class="w-14 h-14 rounded-2xl bg-surface-alt border border-slate-200 mx-auto flex items-center justify-center text-muted">
                     <i class="ph-bold ph-check-circle text-2xl"></i>
                 </div>
-                <div class="text-xl font-black text-slate-900 mt-4">Очередь пуста</div>
-                <div class="text-slate-500 font-medium mt-1">Всё проверено, можно выдохнуть.</div>
+                <div class="text-xl font-black text-primary mt-4">Очередь пуста</div>
+                <div class="text-muted font-medium mt-1">Всё проверено, можно выдохнуть.</div>
             </div>
         {% endif %}
     </div>

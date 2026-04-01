@@ -86,31 +86,31 @@
 
 /* ── Dark theme ── */
 [data-theme="dark"] {
-  --color-bg-app: #0F172A;
-  --color-bg-surface: #1E293B;
-  --color-bg-surface-alt: #334155;
-  --color-bg-sidebar: #1E293B;
-  --color-accent-soft: rgba(123, 92, 255, 0.15);
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #CBD5E1;
-  --color-text-muted: #94A3B8;
-  --color-stroke: rgba(255, 255, 255, 0.1);
-  --color-stroke-strong: rgba(255, 255, 255, 0.18);
+  --color-bg-app: #0B0818;
+  --color-bg-surface: #141026;
+  --color-bg-surface-alt: #1E1838;
+  --color-bg-sidebar: #141026;
+  --color-accent-soft: rgba(123, 92, 255, 0.2);
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #E2E8F0;
+  --color-text-muted: #8B85A1;
+  --color-stroke: rgba(139, 92, 255, 0.2);
+  --color-stroke-strong: rgba(139, 92, 255, 0.4);
   color-scheme: dark;
   --page-bg: var(--color-bg-app);
   --surface-1: var(--color-bg-surface);
   --surface-2: var(--color-bg-surface-alt);
-  --surface-3: #1E293B;
+  --surface-3: #141026;
   --surface-card: var(--color-bg-surface);
   --text-primary: var(--color-text-primary);
   --text-secondary: var(--color-text-secondary);
   --text-muted: var(--color-text-muted);
   --stroke-1: var(--color-stroke);
   --stroke-2: var(--color-stroke-strong);
-  --overlay-hover: rgba(255, 255, 255, 0.06);
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.3);
-  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.3);
-  --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.4);
+  --overlay-hover: rgba(139, 92, 255, 0.08);
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
 /* ============================================================
@@ -221,10 +221,10 @@
   .dock {
     @apply w-full mx-auto flex items-center justify-between pointer-events-auto;
     max-width: 1400px;
-    background: rgba(255,255,255,0.95);
+    background: var(--color-bg-surface);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid #E2E8F0;
+    border: 1px solid var(--color-stroke);
     border-radius: 16px;
     padding: 0.5rem 0.75rem;
     box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
@@ -240,8 +240,8 @@
   }
   .layout-student .dock {
     @apply max-w-[1400px];
-    background: rgba(255,255,255,0.90);
-    border-color: rgba(226,232,240,0.8);
+    background: var(--color-bg-surface);
+    border-color: var(--color-stroke);
     border-radius: 1rem; /* rounded-2xl */
     padding: 0.625rem 1rem; /* py-2.5 px-4 */
   }
@@ -255,8 +255,8 @@
   }
   .layout-teacher .dock {
     @apply max-w-[1600px];
-    background: rgba(255,255,255,0.95);
-    border-color: rgba(226,232,240,0.8);
+    background: var(--color-bg-surface);
+    border-color: var(--color-stroke);
     border-radius: 1rem; /* rounded-2xl */
     padding: 0.625rem 1rem; /* py-2.5 px-4 */
   }
@@ -286,26 +286,26 @@
   /* Nav pills */
   .dock-nav {
     @apply hidden md:flex items-center gap-0.5;
-    background: rgba(241,245,249,0.8);
+    background: var(--color-bg-surface-alt);
     padding: 4px;
     border-radius: 12px;
-    border: 1px solid rgba(226,232,240,0.5);
+    border: 1px solid var(--color-stroke);
   }
   .dock-nav-item {
     @apply flex items-center gap-1.5 no-underline font-bold;
     padding: 0.45rem 1rem;
     font-size: 0.85rem;
     border-radius: 8px;
-    color: #64748B;
+    color: var(--color-text-muted);
     transition: all 0.15s ease;
     position: relative;
   }
-  .dock-nav-item:hover { color: #0F172A; background: rgba(255,255,255,0.6); }
+  .dock-nav-item:hover { color: var(--color-text-primary); background: var(--color-bg-surface); }
   .dock-nav-item.active {
-    background: #FFFFFF;
-    color: #7B5CFF;
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-    border: 1px solid rgba(226,232,240,0.5);
+    border: 1px solid var(--color-stroke);
   }
   .dock-nav-item .dock-badge {
     @apply absolute;
@@ -325,8 +325,8 @@
     left: 50%;
     transform: translateX(-50%) translateY(10px);
     min-width: 520px;
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-stroke);
     border-radius: 20px;
     padding: 1.25rem;
     box-shadow: 0 20px 60px rgba(15,23,42,0.12);
@@ -363,10 +363,10 @@
     padding: 0.45rem 0.5rem;
     font-size: 0.85rem;
     border-radius: 10px;
-    color: #475569;
+    color: var(--color-text-secondary);
     transition: all 0.12s ease;
   }
-  .dock-mega-link:hover { background: #F8FAFC; color: #0F172A; }
+  .dock-mega-link:hover { background: var(--color-bg-surface-alt); color: var(--color-text-primary); }
   [x-cloak] { display: none !important; }
 
   /* Dock right */
@@ -509,14 +509,14 @@
     padding: 0.55rem 1.15rem;
     border-radius: 12px;
     font-size: 0.875rem;
-    border: 1px solid #E2E8F0;
-    background: #FFFFFF;
-    color: #475569;
+    border: 1px solid var(--color-stroke);
+    background: var(--color-bg-surface);
+    color: var(--color-text-secondary);
     box-shadow: 0 1px 3px rgba(15,23,42,0.06);
     transition: all 0.15s ease;
     line-height: 1.4;
   }
-  .neo-button:hover { background: #F8FAFC; color: #0F172A; }
+  .neo-button:hover { background: var(--color-bg-surface-alt); color: var(--color-text-primary); }
   .neo-button:active { transform: translateY(1px); box-shadow: none; }
   .neo-button:disabled { @apply opacity-40 cursor-not-allowed; transform: none; }
 
@@ -575,12 +575,12 @@
     @apply w-full outline-none font-medium;
     padding: 0.6rem 0.9rem;
     border-radius: 12px;
-    border: 1px solid #E2E8F0;
+    border: 1px solid var(--color-stroke);
     border-bottom-width: 2px;
-    border-bottom-color: #CBD5E1;
-    background: #FFFFFF;
+    border-bottom-color: var(--color-stroke-strong);
+    background: var(--color-bg-surface);
     font-size: 0.875rem;
-    color: #1E293B;
+    color: var(--color-text-primary);
     box-shadow: 0 1px 3px rgba(15,23,42,0.04);
     transition: border-color 0.15s ease;
   }

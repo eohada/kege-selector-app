@@ -6,39 +6,39 @@
 {% block content %}
 {% set can_manage_templates = (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage'))) %}
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 pb-4">
-<section class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
+<section class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
     <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
     <div class="relative z-10 max-w-3xl">
         <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
             <i class="ph-fill ph-books"></i> Библиотека шаблонов
         </div>
-        <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">Шаблоны заданий</h1>
-        <p class="text-slate-600 font-medium text-sm leading-relaxed">Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ.</p>
+        <h1 class="text-3xl md:text-4xl font-black text-primary tracking-tight mb-2">Шаблоны заданий</h1>
+        <p class="text-muted font-medium text-sm leading-relaxed">Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ.</p>
     </div>
     {% if can_manage_templates %}
     <div class="relative z-10 flex flex-col sm:flex-row gap-3 shrink-0">
         <a href="{{ url_for('templates.template_new') }}" class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
             <i class="ph-bold ph-plus text-lg"></i> Создать шаблон
         </a>
-        <a href="{{ url_for('templates.template_new', mode='manual') }}" class="px-6 py-3.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline">
+        <a href="{{ url_for('templates.template_new', mode='manual') }}" class="px-6 py-3.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline">
             <i class="ph-bold ph-pencil-simple text-lg"></i> Вручную
         </a>
     </div>
     {% endif %}
 </section>
 
-<section class="bg-white rounded-[24px] p-5 border border-slate-200 shadow-tactile">
+<section class="bg-surface rounded-[24px] p-5 border border-slate-200 shadow-tactile">
     <div class="flex gap-4 flex-wrap items-end">
         <div class="min-w-[260px] flex-1">
-            <label class="block mb-2 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Поиск</label>
+            <label class="block mb-2 text-[10px] font-extrabold text-muted uppercase tracking-widest">Поиск</label>
             <div class="relative">
-                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-                <input id="searchFilter" type="text" value="{{ current_q or '' }}" placeholder="Название шаблона..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" onkeydown="if(event.key==='Enter'){applyFilters();}">
+                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted text-lg"></i>
+                <input id="searchFilter" type="text" value="{{ current_q or '' }}" placeholder="Название шаблона..." class="w-full bg-surface-alt border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 font-medium text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" onkeydown="if(event.key==='Enter'){applyFilters();}">
             </div>
         </div>
         <div>
-            <label class="block mb-2 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Тип шаблона</label>
-            <select id="typeFilter" class="w-full min-w-[200px] bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100" onchange="applyFilters()">
+            <label class="block mb-2 text-[10px] font-extrabold text-muted uppercase tracking-widest">Тип шаблона</label>
+            <select id="typeFilter" class="w-full min-w-[200px] bg-surface-alt border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100" onchange="applyFilters()">
                 <option value="">Все типы</option>
                 <option value="homework" {% if current_type == 'homework' %}selected{% endif %}>Домашние задания</option>
                 <option value="classwork" {% if current_type == 'classwork' %}selected{% endif %}>Классные работы</option>
@@ -47,8 +47,8 @@
             </select>
         </div>
         <div>
-            <label class="block mb-2 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Категория</label>
-            <select id="categoryFilter" class="w-full min-w-[200px] bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100" onchange="applyFilters()">
+            <label class="block mb-2 text-[10px] font-extrabold text-muted uppercase tracking-widest">Категория</label>
+            <select id="categoryFilter" class="w-full min-w-[200px] bg-surface-alt border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100" onchange="applyFilters()">
                 <option value="">Все категории</option>
                 <option value="ЕГЭ" {% if current_category == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
                 <option value="ОГЭ" {% if current_category == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
@@ -56,7 +56,7 @@
                 <option value="ПРОГРАММИРОВАНИЕ" {% if current_category == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
             </select>
         </div>
-        <button type="button" onclick="applyFilters()" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm flex items-center gap-2"><i class="ph-bold ph-funnel"></i>Применить</button>
+        <button type="button" onclick="applyFilters()" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm dark:shadow-none flex items-center gap-2"><i class="ph-bold ph-funnel"></i>Применить</button>
     </div>
 </section>
 
@@ -68,7 +68,7 @@
 ] %}
 {% set type_templates = templates_by_type.get(type_key, []) %}
 {% if not current_type or current_type == type_key %}
-<section class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile mb-8 p-6 lg:p-8">
+<section class="bg-surface rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile mb-8 p-6 lg:p-8">
     <div class="panel-head">
         <div>
             <p class="eyebrow">

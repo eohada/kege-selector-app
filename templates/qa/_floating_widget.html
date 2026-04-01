@@ -8,28 +8,28 @@
     </button>
 
     <div id="qaWidget" class="absolute bottom-20 right-0 hidden relative w-[360px] max-w-[92vw] max-h-[78vh] min-w-[320px] min-h-[260px]" style="z-index:2147483646;pointer-events:auto;height:min(78vh,560px);">
-    <div class="bg-white rounded-2xl border border-slate-200 border-b-[4px] border-b-slate-300 shadow-2xl overflow-hidden flex flex-col min-h-[240px] h-full">
-        <div id="qaWidgetDragHandle" class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between select-none">
+    <div class="bg-surface rounded-2xl border border-slate-200 border-b-[4px] border-b-slate-300 shadow-2xl overflow-hidden flex flex-col min-h-[240px] h-full">
+        <div id="qaWidgetDragHandle" class="px-4 py-3 bg-surface-alt border-b border-slate-200 flex items-center justify-between select-none">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center">
                     <i class="ph-fill ph-radar text-lg"></i>
                 </div>
                 <div class="leading-tight">
-                    <div class="text-xs font-extrabold uppercase tracking-widest text-slate-500">QA</div>
-                    <div class="text-sm font-black text-slate-900">Инструменты тестирования</div>
+                    <div class="text-xs font-extrabold uppercase tracking-widest text-muted">QA</div>
+                    <div class="text-sm font-black text-primary">Инструменты тестирования</div>
                 </div>
             </div>
-            <button type="button" class="text-slate-500 hover:text-slate-900" onclick="toggleQAWidget()">
+            <button type="button" class="text-muted hover:text-primary" onclick="toggleQAWidget()">
                 <i class="ph-bold ph-x text-xl"></i>
             </button>
         </div>
 
         <div class="p-4 border-b border-slate-100">
-            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Сессия</div>
+            <div class="text-[11px] font-bold text-muted uppercase tracking-widest">Сессия</div>
             <div class="mt-1 flex items-center justify-between gap-2">
                 <div class="min-w-0">
-                    <div class="text-sm font-black text-slate-900 truncate">{{ current_user.username }}</div>
-                    <div class="text-xs font-mono text-slate-400">#{{ current_user.id }}</div>
+                    <div class="text-sm font-black text-primary truncate">{{ current_user.username }}</div>
+                    <div class="text-xs font-mono text-muted">#{{ current_user.id }}</div>
                 </div>
                 {% if session.get('impersonator_id') %}
                 <form action="{{ url_for('qa.revert_impersonation') }}" method="POST" data-no-ajax class="shrink-0">
@@ -46,39 +46,39 @@
                     <i class="ph-bold ph-bug"></i> Создать баг-репорт
                 </button>
 
-                <details class="rounded-xl border border-slate-200 bg-white">
+                <details class="rounded-xl border border-slate-200 bg-surface">
                     <summary class="cursor-pointer select-none px-4 py-3 flex items-center justify-between">
-                        <span class="text-xs font-extrabold uppercase tracking-widest text-slate-500">Быстрые ссылки</span>
-                        <i class="ph-bold ph-caret-down text-slate-400"></i>
+                        <span class="text-xs font-extrabold uppercase tracking-widest text-muted">Быстрые ссылки</span>
+                        <i class="ph-bold ph-caret-down text-muted"></i>
                     </summary>
                     <div class="px-4 pb-4 space-y-2">
                         {% if current_user.is_creator() or current_user.is_chief_tester() %}
-                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-800 no-underline" href="{{ url_for('chief_tester.dashboard', tab='dashboard') }}">Кабинет главного тестировщика</a>
+                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-surface-alt hover:bg-surface-alt text-sm font-bold text-primary no-underline" href="{{ url_for('chief_tester.dashboard', tab='dashboard') }}">Кабинет главного тестировщика</a>
                         {% endif %}
-                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-800 no-underline" href="{{ url_for('qa.board') }}">QA доска</a>
-                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-800 no-underline" href="{{ url_for('qa.bug_reports') }}">Список багов</a>
-                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-800 no-underline" href="{{ url_for('qa.pool') }}">Пул профилей</a>
+                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-surface-alt hover:bg-surface-alt text-sm font-bold text-primary no-underline" href="{{ url_for('qa.board') }}">QA доска</a>
+                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-surface-alt hover:bg-surface-alt text-sm font-bold text-primary no-underline" href="{{ url_for('qa.bug_reports') }}">Список багов</a>
+                        <a class="block w-full px-3 py-2 rounded-xl border border-slate-200 bg-surface-alt hover:bg-surface-alt text-sm font-bold text-primary no-underline" href="{{ url_for('qa.pool') }}">Пул профилей</a>
                     </div>
                 </details>
 
                 {% if _qa_is_elevated %}
-                <details class="rounded-xl border border-slate-200 bg-white">
+                <details class="rounded-xl border border-slate-200 bg-surface">
                     <summary class="cursor-pointer select-none px-4 py-3 flex items-center justify-between">
-                        <span class="text-xs font-extrabold uppercase tracking-widest text-slate-500">Имперсонация</span>
-                        <i class="ph-bold ph-caret-down text-slate-400"></i>
+                        <span class="text-xs font-extrabold uppercase tracking-widest text-muted">Имперсонация</span>
+                        <i class="ph-bold ph-caret-down text-muted"></i>
                     </summary>
                     <div class="px-4 pb-4 space-y-2">
                         <form class="flex items-center gap-2" onsubmit="qaImpersonationSearch(event)">
                             <input id="qaImpersonateQ" type="text" class="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="username / id" autocomplete="off">
                             <button type="submit" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold">Поиск</button>
                         </form>
-                        <div id="qaImpersonateResults" class="hidden rounded-xl border border-slate-200 bg-white shadow-sm p-2"></div>
+                        <div id="qaImpersonateResults" class="hidden rounded-xl border border-slate-200 bg-surface shadow-sm dark:shadow-none p-2"></div>
                         <div class="grid grid-cols-2 gap-2 pt-1">
                             {% for un in ['qa_pool_student_1','qa_pool_student_2','qa_pool_student_3','qa_pool_tutor_1','qa_pool_tutor_2','qa_pool_tutor_3'] %}
                             <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="username" value="{{ un }}">
-                                <button type="submit" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-800 text-left">{{ un }}</button>
+                                <button type="submit" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-surface-alt hover:bg-surface-alt text-xs font-bold text-primary text-left">{{ un }}</button>
                             </form>
                             {% endfor %}
                         </div>
@@ -87,13 +87,13 @@
                 {% endif %}
 
                 {% if (not _qa_is_pool) or _qa_has_impersonator %}
-                <details class="rounded-xl border border-slate-200 bg-white" open>
+                <details class="rounded-xl border border-slate-200 bg-surface" open>
                     <summary class="cursor-pointer select-none px-4 py-3 flex items-center justify-between">
-                        <span class="text-xs font-extrabold uppercase tracking-widest text-slate-500">Пресеты</span>
-                        <i class="ph-bold ph-caret-down text-slate-400"></i>
+                        <span class="text-xs font-extrabold uppercase tracking-widest text-muted">Пресеты</span>
+                        <i class="ph-bold ph-caret-down text-muted"></i>
                     </summary>
                     <div class="px-4 pb-4 space-y-3">
-                        <div class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Каталог</div>
+                        <div class="text-[11px] font-extrabold text-muted uppercase tracking-widest">Каталог</div>
                         <div class="space-y-2">
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/pass_assignment')">Pass assignment</button>
                             <button type="button" class="qa-preset-btn" onclick="qaRunPreset('/qa/manipulate/pay_course')">Pay course</button>
@@ -133,17 +133,17 @@
         </div>
     </div>
     <div id="qaWidgetResizeHandle" class="absolute w-5 h-5 cursor-se-resize opacity-70 hover:opacity-100 flex items-end justify-end select-none" style="right:8px;bottom:8px;z-index:5;" title="Изменить размер">
-        <i class="ph-bold ph-corners-out text-slate-400 text-sm"></i>
+        <i class="ph-bold ph-corners-out text-muted text-sm"></i>
     </div>
     </div>
 </div>
 </div>
 
 <div id="qaBugModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 px-4" style="z-index:2147483647;">
-    <div class="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+    <div class="w-full max-w-xl rounded-2xl border border-slate-200 bg-surface p-5 shadow-2xl">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-xl font-black text-slate-900">Новый баг-репорт</h3>
-            <button type="button" class="text-slate-500 hover:text-slate-900" onclick="closeQABugModal()"><i class="ph-bold ph-x text-xl"></i></button>
+            <h3 class="text-xl font-black text-primary">Новый баг-репорт</h3>
+            <button type="button" class="text-muted hover:text-primary" onclick="closeQABugModal()"><i class="ph-bold ph-x text-xl"></i></button>
         </div>
         <form id="qaBugForm" class="space-y-3">
             <input type="hidden" name="context_url" id="qaBugContextUrl">
@@ -151,30 +151,30 @@
             <input type="hidden" name="logs_snapshot" id="qaBugLogsSnapshot">
             <input type="hidden" name="request_id" id="qaBugRequestId">
 
-            <input type="text" name="title" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900" placeholder="Краткая суть бага" required>
+            <input type="text" name="title" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-primary" placeholder="Краткая суть бага" required>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <select name="severity" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900">
+                <select name="severity" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-primary">
                     <option value="medium">Severity: medium</option>
                     <option value="low">Severity: low</option>
                     <option value="high">Severity: high</option>
                     <option value="critical">Severity: critical</option>
                 </select>
-                <input type="text" name="environment" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Окружение (prod/sandbox/local + браузер)">
+                <input type="text" name="environment" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-primary" placeholder="Окружение (prod/sandbox/local + браузер)">
             </div>
-            <textarea name="steps" rows="4" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Шаги воспроизведения (1..N)"></textarea>
-            <textarea name="expected" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Ожидаемое поведение"></textarea>
-            <textarea name="actual" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Фактическое поведение"></textarea>
-            <textarea name="description" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" placeholder="Доп. комментарии (необязательно)"></textarea>
+            <textarea name="steps" rows="4" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-primary" placeholder="Шаги воспроизведения (1..N)"></textarea>
+            <textarea name="expected" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-primary" placeholder="Ожидаемое поведение"></textarea>
+            <textarea name="actual" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-primary" placeholder="Фактическое поведение"></textarea>
+            <textarea name="description" rows="2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-primary" placeholder="Доп. комментарии (необязательно)"></textarea>
 
-            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
-                <div class="text-xs font-bold text-slate-500 mb-2">Скриншот (авто):</div>
+            <div class="rounded-xl border border-dashed border-slate-300 bg-surface-alt p-3">
+                <div class="text-xs font-bold text-muted mb-2">Скриншот (авто):</div>
                 <img id="qaBugScreenshotImg" class="max-h-48 rounded-lg border border-slate-200 hidden" alt="preview">
-                <div id="qaBugScreenshotPlaceholder" class="text-xs text-slate-400">Готовим скриншот...</div>
+                <div id="qaBugScreenshotPlaceholder" class="text-xs text-muted">Готовим скриншот...</div>
             </div>
 
             <div class="flex gap-2 pt-2">
                 <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700">Отправить</button>
-                <button type="button" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm" onclick="closeQABugModal()">Отмена</button>
+                <button type="button" class="px-4 py-2 bg-surface-alt text-secondary rounded-xl font-bold text-sm" onclick="closeQABugModal()">Отмена</button>
             </div>
         </form>
     </div>
@@ -522,18 +522,18 @@ async function qaImpersonationSearch(ev) {
         const data = await res.json().catch(() => ({}));
         const items = Array.isArray(data.items) ? data.items : [];
         if (!items.length) {
-            box.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">Ничего не найдено</div>';
+            box.innerHTML = '<div class="px-3 py-2 text-xs text-muted">Ничего не найдено</div>';
             box.classList.remove('hidden');
             return;
         }
         box.innerHTML = items.map(i => `
-            <form method="POST" action="/qa/impersonate/${i.id}" class="flex items-center justify-between gap-2 rounded-lg hover:bg-slate-50 px-2 py-2" data-no-ajax>
+            <form method="POST" action="/qa/impersonate/${i.id}" class="flex items-center justify-between gap-2 rounded-lg hover:bg-surface-alt px-2 py-2" data-no-ajax>
                 <input type="hidden" name="csrf_token" value="${getCsrf()}">
                 <div class="min-w-0">
-                    <div class="text-xs font-bold text-slate-900 truncate">${i.username} <span class="text-slate-400">#${i.id}</span></div>
-                    <div class="text-[11px] text-slate-500 truncate">${i.role}${i.student_name ? ` • ${i.student_name}` : ''}</div>
+                    <div class="text-xs font-bold text-primary truncate">${i.username} <span class="text-muted">#${i.id}</span></div>
+                    <div class="text-[11px] text-muted truncate">${i.role}${i.student_name ? ` • ${i.student_name}` : ''}</div>
                 </div>
-                <button class="shrink-0 px-2 py-1 rounded-md border border-slate-200 text-[11px] font-bold text-slate-700" type="submit">Войти как</button>
+                <button class="shrink-0 px-2 py-1 rounded-md border border-slate-200 text-[11px] font-bold text-secondary" type="submit">Войти как</button>
             </form>
         `).join('');
         box.classList.remove('hidden');

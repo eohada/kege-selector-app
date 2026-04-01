@@ -120,9 +120,9 @@ bg-boo-bg text-boo-textMain
     {% if current_user %}
         {% if current_user.is_student() %}
         <div class="w-full max-w-[1400px] mx-auto mb-6">
-            <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
+            <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
                 <div class="flex items-center gap-4 min-w-0">
-                    <div class="w-16 h-16 rounded-2xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm shrink-0 overflow-hidden font-black text-2xl">
+                    <div class="w-16 h-16 rounded-2xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm dark:shadow-none shrink-0 overflow-hidden font-black text-2xl">
                         {% if current_user.avatar_url %}
                         <img src="{{ current_user.avatar_url }}" alt="" class="w-full h-full object-cover">
                         {% else %}
@@ -130,13 +130,13 @@ bg-boo-bg text-boo-textMain
                         {% endif %}
                     </div>
                     <div class="min-w-0">
-                        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Мой профиль</div>
-                        <h1 class="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight m-0 mt-1 truncate">{{ current_user.username }}</h1>
+                        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Мой профиль</div>
+                        <h1 class="text-2xl lg:text-3xl font-black text-primary tracking-tight m-0 mt-1 truncate">{{ current_user.username }}</h1>
                         <div class="flex flex-wrap items-center gap-2 mt-2">
                             {% if linked_student and linked_student.platform_id %}
-                            <span class="text-xs font-bold text-slate-400">ID: {{ linked_student.platform_id }}</span>
+                            <span class="text-xs font-bold text-muted">ID: {{ linked_student.platform_id }}</span>
                             {% endif %}
-                            <span class="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 text-[10px] font-extrabold uppercase tracking-wider">Уроков: {{ lesson_counts.total if lesson_counts else 0 }}</span>
+                            <span class="px-2.5 py-1 rounded-lg bg-surface-alt text-muted border border-slate-200 text-[10px] font-extrabold uppercase tracking-wider">Уроков: {{ lesson_counts.total if lesson_counts else 0 }}</span>
                             <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold uppercase tracking-wider">Завершено: {{ lesson_counts.completed if lesson_counts else 0 }}</span>
                         </div>
                     </div>
@@ -146,11 +146,11 @@ bg-boo-bg text-boo-textMain
                     <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline inline-flex items-center gap-2">
                         <i class="ph-bold ph-door-open text-lg"></i> Комната
                     </a>
-                    <a href="{{ url_for('assignments.submissions_list') }}" class="px-4 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 text-sm no-underline inline-flex items-center gap-2">
+                    <a href="{{ url_for('assignments.submissions_list') }}" class="px-4 py-2.5 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt text-sm no-underline inline-flex items-center gap-2">
                         <i class="ph-bold ph-tray text-lg text-boo-primary"></i> Задания
                     </a>
                     {% endif %}
-                    <button type="button" class="px-4 py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 text-sm inline-flex items-center gap-2" onclick="openEditProfileModal()">
+                    <button type="button" class="px-4 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 text-sm inline-flex items-center gap-2" onclick="openEditProfileModal()">
                         <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
                     </button>
                 </div>
@@ -168,11 +168,11 @@ bg-boo-bg text-boo-textMain
                 {% else %}
                 <div class="absolute inset-0 z-10 bg-gradient-to-br from-violet-500/50 to-cyan-400/25"></div>
                 {% endif %}
-                <button type="button" class="absolute top-4 right-4 sm:top-6 sm:right-6 z-40 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm" onclick="openCoverPicker()">
+                <button type="button" class="absolute top-4 right-4 sm:top-6 sm:right-6 z-40 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm dark:shadow-none" onclick="openCoverPicker()">
                     <i class="ph-bold ph-camera text-base"></i> Сменить обложку
                 </button>
             </div>
-            <div class="px-6 sm:px-10 pb-8 pt-0 relative bg-white">
+            <div class="px-6 sm:px-10 pb-8 pt-0 relative bg-surface">
                 <div class="absolute -top-16 sm:-top-20 left-6 sm:left-10 w-28 h-28 sm:w-36 sm:h-36 rounded-[24px] sm:rounded-[28px] shadow-[0_0_0_6px_#fff,0_12px_36px_-6px_rgba(123,92,255,0.42)] bg-slate-900 flex items-center justify-center z-30 ring-4 ring-purple-100 ring-offset-4 ring-offset-white">
                     <div class="profile-avatar-wrapper w-full h-full rounded-[20px] sm:rounded-[24px] overflow-hidden {% if current_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if current_user.avatar_url %}data-avatar-url="{{ current_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0"{% endif %}>
                         {% if current_user.avatar_url %}
@@ -185,11 +185,11 @@ bg-boo-bg text-boo-textMain
                 <div class="pt-16 sm:pt-20 flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
                     <div class="min-w-0 flex-1 pl-0 sm:pl-[152px] lg:pl-0 lg:ml-[152px]">
                         <div class="flex flex-wrap items-center gap-2 gap-y-1">
-                            <h2 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight m-0 truncate">{{ current_user.username }}</h2>
+                            <h2 class="text-3xl sm:text-4xl font-black text-primary tracking-tight m-0 truncate">{{ current_user.username }}</h2>
                             <i class="ph-fill ph-check-circle text-boo-primary text-2xl shrink-0" title="Создатель платформы"></i>
                         </div>
                         {% if current_user.custom_status %}
-                        <p class="text-slate-500 font-medium mt-2 mb-0 italic">"{{ current_user.custom_status }}"</p>
+                        <p class="text-muted font-medium mt-2 mb-0 italic">"{{ current_user.custom_status }}"</p>
                         {% endif %}
                         <div class="flex flex-wrap gap-2 mt-4">
                             {% for role_name in current_user.get_roles_display() %}
@@ -197,7 +197,7 @@ bg-boo-bg text-boo-textMain
                             {% endfor %}
                         </div>
                     </div>
-                    <button type="button" class="px-5 py-2.5 bg-white text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm shrink-0 w-full sm:w-auto" onclick="openEditProfileModal()">
+                    <button type="button" class="px-5 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 shadow-sm dark:shadow-none text-sm shrink-0 w-full sm:w-auto" onclick="openEditProfileModal()">
                         <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
                     </button>
                 </div>
@@ -205,13 +205,13 @@ bg-boo-bg text-boo-textMain
                     <a href="{{ url_for('schedule.schedule') }}" class="px-4 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
                         <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
                     </a>
-                    <a href="{{ url_for('students.students_list') }}" class="px-4 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline">
+                    <a href="{{ url_for('students.students_list') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline">
                         <i class="ph-bold ph-users-three text-lg text-boo-primary"></i> Ученики
                     </a>
-                    <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline">
+                    <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline">
                         <i class="ph-bold ph-tray text-lg text-boo-primary"></i> Работы
                     </a>
-                    <a href="{{ url_for('library.materials_library') }}" class="px-4 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline">
+                    <a href="{{ url_for('library.materials_library') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline">
                         <i class="ph-bold ph-books text-lg text-boo-primary"></i> Библиотека
                     </a>
                 </div>

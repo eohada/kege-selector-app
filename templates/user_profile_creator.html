@@ -6,7 +6,7 @@
 {% block content %}
 {% set creator_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
 <div class="w-full max-w-[1200px] mx-auto flex flex-col gap-6 pb-4">
-    <a href="{{ url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-bold no-underline hover:bg-slate-50">
+    <a href="{{ url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-surface text-muted text-sm font-bold no-underline hover:bg-surface-alt">
         <i class="ph-bold ph-arrow-left"></i> Вернуться к метрикам
     </a>
 
@@ -18,12 +18,12 @@
             <div class="absolute inset-0 z-10 bg-gradient-to-br from-violet-600 to-cyan-700"></div>
             {% endif %}
             <div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/30 z-20 pointer-events-none"></div>
-            <button type="button" class="absolute top-6 right-6 z-30 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm" onclick="openEditProfileModal()">
+            <button type="button" class="absolute top-6 right-6 z-30 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm dark:shadow-none" onclick="openEditProfileModal()">
                 <i class="ph-bold ph-camera text-base"></i> Сменить обложку
             </button>
         </div>
 
-        <div class="px-8 sm:px-12 pb-10 pt-0 relative bg-white">
+        <div class="px-8 sm:px-12 pb-10 pt-0 relative bg-surface">
             <div class="absolute -top-20 sm:-top-24 left-8 sm:left-12 w-36 h-36 sm:w-44 sm:h-44 rounded-[28px] shadow-[0_0_0_6px_#fff,0_12px_36px_-6px_rgba(123,92,255,0.42)] bg-slate-900 flex items-center justify-center z-30 ring-4 ring-purple-100 ring-offset-4 ring-offset-white overflow-hidden">
                 {% if current_user.avatar_url %}
                 <img src="{{ current_user.avatar_url }}" alt="Avatar" class="w-full h-full object-cover">
@@ -35,11 +35,11 @@
             <div class="mt-20 sm:mt-24 flex flex-col md:flex-row md:justify-between md:items-start gap-6">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-3">
-                        <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tight truncate">{{ current_user.username }}</h1>
+                        <h1 class="text-4xl md:text-5xl font-black text-primary tracking-tight truncate">{{ current_user.username }}</h1>
                         <i class="ph-fill ph-check-circle text-boo-primary text-2xl"></i>
                     </div>
                     {% if current_user.custom_status %}
-                    <p class="text-slate-500 font-medium text-lg italic mt-2">"{{ current_user.custom_status }}"</p>
+                    <p class="text-muted font-medium text-lg italic mt-2">"{{ current_user.custom_status }}"</p>
                     {% endif %}
                     <div class="flex flex-wrap items-center gap-2 mt-6">
                         {% for role_name in current_user.get_roles_display()[:3] %}
@@ -47,23 +47,23 @@
                         {% endfor %}
                     </div>
                 </div>
-                <button type="button" class="px-7 py-4 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm border border-slate-200 text-sm" onclick="openEditProfileModal()">
+                <button type="button" class="px-7 py-4 bg-surface hover:bg-surface-alt text-secondary rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm" onclick="openEditProfileModal()">
                     <i class="ph-bold ph-pencil-simple text-xl"></i> Редактировать профиль
                 </button>
             </div>
 
             <div class="mt-8 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <a href="{{ url_for('schedule.schedule') }}" class="px-4 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline"><i class="ph-bold ph-calendar-blank text-lg"></i> Расписание</a>
-                <a href="{{ url_for('students.students_list') }}" class="px-4 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-users-three text-lg text-boo-primary"></i> Ученики</a>
-                <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-tray text-lg text-boo-primary"></i> Работы</a>
-                <a href="{{ url_for('library.materials_library') }}" class="px-4 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-books text-lg text-boo-primary"></i> Библиотека</a>
+                <a href="{{ url_for('students.students_list') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-users-three text-lg text-boo-primary"></i> Ученики</a>
+                <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-tray text-lg text-boo-primary"></i> Работы</a>
+                <a href="{{ url_for('library.materials_library') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-books text-lg text-boo-primary"></i> Библиотека</a>
             </div>
         </div>
     </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
-            <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+        <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+            <h2 class="text-xs font-extrabold text-muted uppercase tracking-widest mb-6 flex items-center gap-2">
                 <i class="ph-fill ph-user-circle-gear text-xl"></i> Информация профиля
             </h2>
 
@@ -72,7 +72,7 @@
                     <div class="w-3 h-3 rounded-full bg-red-500"></div>
                     <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
                     <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                    <span class="text-[10px] text-slate-500 font-mono ml-2">creator_bio.md</span>
+                    <span class="text-[10px] text-muted font-mono ml-2">creator_bio.md</span>
                 </div>
                 <div class="mt-6 text-[13px] text-slate-300 leading-relaxed space-y-3 font-mono">
                     {% if current_user.about_me %}
@@ -86,46 +86,46 @@
             </div>
 
             <div class="flex flex-col gap-1 mt-6">
-                <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-slate-500">ID аккаунта</span><span class="text-sm font-black text-white bg-slate-900 px-3 py-1 rounded-lg shadow-sm border border-slate-700">{% if current_user.numeric_id %}#{{ current_user.numeric_id }}{% else %}—{% endif %}</span></div>
-                <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-slate-500">Логин</span><span class="text-sm font-bold text-slate-900">@{{ current_user.username }}</span></div>
-                <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-slate-500">Регистрация</span><span class="text-sm font-bold text-slate-900">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span></div>
-                <div class="flex justify-between items-center py-3.5"><span class="text-sm font-bold text-slate-500">Статус</span><span class="text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
+                <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">ID аккаунта</span><span class="text-sm font-black text-white bg-slate-900 px-3 py-1 rounded-lg shadow-sm dark:shadow-none border border-slate-700">{% if current_user.numeric_id %}#{{ current_user.numeric_id }}{% else %}—{% endif %}</span></div>
+                <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Логин</span><span class="text-sm font-bold text-primary">@{{ current_user.username }}</span></div>
+                <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Регистрация</span><span class="text-sm font-bold text-primary">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span></div>
+                <div class="flex justify-between items-center py-3.5"><span class="text-sm font-bold text-muted">Статус</span><span class="text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
             </div>
         </section>
 
-        <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+        <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xs font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <h2 class="text-xs font-extrabold text-muted uppercase tracking-widest flex items-center gap-2">
                     <i class="ph-fill ph-terminal-window text-xl"></i> Панель управления
                 </h2>
                 <div class="flex items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-100">
                     <span class="text-[10px] font-extrabold text-boo-primary uppercase">Dev Mode</span>
-                    <div class="w-8 h-4 bg-boo-primary rounded-full relative"><div class="absolute right-1 top-0.5 w-3 h-3 bg-white rounded-full"></div></div>
+                    <div class="w-8 h-4 bg-boo-primary rounded-full relative"><div class="absolute right-1 top-0.5 w-3 h-3 bg-surface rounded-full"></div></div>
                 </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3 mb-8">
                 <a href="{{ url_for('schedule.schedule') }}" class="py-4 px-4 bg-boo-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 text-sm no-underline"><i class="ph-bold ph-calendar-blank text-xl"></i> Расписание</a>
-                <a href="{{ url_for('students.students_list') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-users text-xl"></i> Ученики</a>
-                <a href="{{ url_for('assignments.assignments_list') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-files text-xl"></i> Работы</a>
-                <a href="{{ url_for('lessons.review_queue') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-check-square-offset text-xl"></i> Проверка</a>
-                <a href="{{ url_for('reminders.reminders_list') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-bell-ringing text-xl"></i> Напоминания</a>
-                <a href="{{ url_for('library.materials_library') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-books text-xl"></i> Библиотека</a>
-                <a href="{{ url_for('trainer.trainer_embed') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-game-controller text-xl"></i> Тренажёр</a>
-                <a href="{{ url_for('rubrics.rubrics_list') }}" class="py-4 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-tree-structure text-xl"></i> Рубрикатор</a>
-                <a href="{{ url_for('billing.billing_plans') }}" class="col-span-2 py-4 px-4 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm border border-slate-200 text-sm no-underline"><i class="ph-bold ph-credit-card text-xl"></i> Тарифы и подписки</a>
+                <a href="{{ url_for('students.students_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-users text-xl"></i> Ученики</a>
+                <a href="{{ url_for('assignments.assignments_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-files text-xl"></i> Работы</a>
+                <a href="{{ url_for('lessons.review_queue') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-check-square-offset text-xl"></i> Проверка</a>
+                <a href="{{ url_for('reminders.reminders_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-bell-ringing text-xl"></i> Напоминания</a>
+                <a href="{{ url_for('library.materials_library') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-books text-xl"></i> Библиотека</a>
+                <a href="{{ url_for('trainer.trainer_embed') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-game-controller text-xl"></i> Тренажёр</a>
+                <a href="{{ url_for('rubrics.rubrics_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-tree-structure text-xl"></i> Рубрикатор</a>
+                <a href="{{ url_for('billing.billing_plans') }}" class="col-span-2 py-4 px-4 bg-surface-alt hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-credit-card text-xl"></i> Тарифы и подписки</a>
             </div>
 
             <details>
-                <summary class="font-black text-slate-800 cursor-pointer">Синхронизация календаря</summary>
-                <div class="mt-3 text-sm text-slate-500">
+                <summary class="font-black text-primary cursor-pointer">Синхронизация календаря</summary>
+                <div class="mt-3 text-sm text-muted">
                     Управление ссылкой календаря доступно в блоке расписания.
                 </div>
             </details>
 
             <form method="POST" action="{{ url_for('auth.logout') }}" class="mt-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="w-full py-4 bg-red-50 hover:bg-red-100 text-boo-coral rounded-xl font-bold flex justify-center items-center gap-2 shadow-sm border border-red-200 transition-all text-sm">
+                <button type="submit" class="w-full py-4 bg-red-50 hover:bg-red-100 text-boo-coral rounded-xl font-bold flex justify-center items-center gap-2 shadow-sm dark:shadow-none border border-red-200 transition-all text-sm">
                     <i class="ph-bold ph-sign-out text-xl"></i> Выйти из аккаунта
                 </button>
             </form>
