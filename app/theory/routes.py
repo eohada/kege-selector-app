@@ -106,7 +106,7 @@ def _render_theory_content_html(content_value):
     )
     try:
         from markdown import markdown as _md
-        text = _md(text, extensions=['extra', 'tables', 'fenced_code'])
+        text = _md(text, extensions=['extra', 'tables', 'fenced_code', 'nl2br'])
     except Exception:
         pass
     return Markup(text)
