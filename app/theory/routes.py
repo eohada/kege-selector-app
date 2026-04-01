@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import subprocess
+import html
 from flask import render_template, request, redirect, url_for, flash, abort, jsonify, current_app
 from markupsafe import Markup
 from flask_login import login_required, current_user
@@ -42,9 +43,21 @@ def _render_theory_content_html(content_value):
     """Render block-based theory markers to safe-ish HTML fragments."""
     text = _strip_status_marker(content_value or '')
 
+    def _highlight_python_html(code_value):
+        escaped = html.escape(code_value or '')
+        escaped = re.sub(r'(\"[^\"]*\"|\'[^\']*\')', r'<span class="text-green-300">\1</span>', escaped)
+        escaped = re.sub(r'\b(\d+)\b', r'<span class="text-orange-300">\1</span>', escaped)
+        escaped = re.sub(
+            r'\b(for|in|if|else|elif|while|def|return|import|from|as|try|except|finally|with|class|pass|break|continue|and|or|not|True|False|None|print|range)\b',
+            r'<span class="text-purple-300 font-bold">\1</span>',
+            escaped,
+        )
+        return escaped
+
     def _code_repl(match):
         lang = (match.group(1) or 'python').strip().lower()
         code_body = (match.group(2) or '').strip()
+        highlighted = _highlight_python_html(code_body) if lang == 'python' else html.escape(code_body)
         return (
             '<div class="theory-smart-code my-8 rounded-[24px] border border-slate-800 overflow-hidden bg-[#0F172A] shadow-inner" '
             f'data-lang="{lang}">'
@@ -57,7 +70,8 @@ def _render_theory_content_html(content_value):
             '<button type="button" class="theory-run-btn px-2.5 py-1 text-xs font-bold text-white bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-md">Run</button>'
             '</div>'
             '</div>'
-            f'<textarea class="theory-code-input w-full min-h-[120px] bg-[#0F172A] text-slate-300 font-mono text-[14px] p-5 border-none outline-none leading-relaxed">{code_body}</textarea>'
+            f'<textarea class="theory-code-input w-full min-h-[120px] bg-[#0F172A] text-slate-300 font-mono text-[14px] p-5 border-none outline-none leading-relaxed">{html.escape(code_body)}</textarea>'
+            f'<pre class="theory-code-highlight m-0 px-5 pb-5 -mt-2 bg-[#0F172A] text-slate-200 text-[14px] font-mono leading-relaxed overflow-x-auto">{highlighted}</pre>'
             '<pre class="theory-code-output hidden m-0 p-4 bg-slate-950 text-green-300 text-xs font-mono border-t border-slate-700"></pre>'
             '</div>'
         )
@@ -90,7 +104,7 @@ def _render_theory_content_html(content_value):
             '</div>'
         )
 
-    text = re.sub(r"\n{3,}", "\n\n<div class=\"theory-spacer\"></div>\n\n", text)
+    text = re.sub(r"\n{3,}", "\n\n__THEORY_SPACER__\n\n", text)
     text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
@@ -109,6 +123,8 @@ def _render_theory_content_html(content_value):
         text = _md(text, extensions=['extra', 'tables', 'fenced_code', 'nl2br'])
     except Exception:
         pass
+    text = text.replace('<p>__THEORY_SPACER__</p>', '<div class="theory-spacer"></div>')
+    text = text.replace('__THEORY_SPACER__', '<div class="theory-spacer"></div>')
     return Markup(text)
 
 
