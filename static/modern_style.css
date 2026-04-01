@@ -1,0 +1,4 @@
+/* Compatibility stylesheet for legacy template links.
+   Keeps old url_for('static', filename='modern_style.css') working. */
+@import url("./dist/boostudy.css");
+
