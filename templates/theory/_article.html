@@ -15,7 +15,7 @@
 {% endif %}
 
 <div data-theory-article data-task-number="{{ block.task_number }}" data-block-id="{{ block.id }}" class="flex flex-col gap-4">
-  <button type="button" data-action="back" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm w-fit transition-colors">
+  <button type="button" data-action="back" data-back-url="{{ back_to_url if back_to_url is defined else url_for('theory.theory_index', course_id=course_id) }}" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm w-fit transition-colors">
     <i class="ph-bold ph-arrow-left"></i> Назад в каталог
   </button>
 

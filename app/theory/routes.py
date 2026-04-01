@@ -295,7 +295,36 @@ def theory_index():
         state_by_number=state_by_number,
         course_id=course_id,
         active_page='theory',
-        initial_view='index',
+        initial_view='groups',
+    )
+
+
+@theory_bp.route('/theory/group/<int:group_id>')
+@login_required
+def theory_group_view(group_id):
+    if not has_permission(current_user, 'theory.view'):
+        flash('У вас нет доступа к разделу «Теория».', 'warning')
+        return redirect(url_for('main.dashboard'))
+
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    if course_id is None:
+        flash('Нет доступных курсов.', 'warning')
+        return redirect(url_for('main.dashboard'))
+
+    visible_groups, state_by_number = _build_visible_with_state(course_id)
+    selected_group_pack = next((x for x in visible_groups if x['group'].id == group_id), None)
+    if not selected_group_pack:
+        return redirect(url_for('theory.theory_index', course_id=course_id))
+
+    return render_template(
+        'theory/theory_shell.html',
+        visible_groups=visible_groups,
+        selected_group=selected_group_pack['group'],
+        selected_group_blocks=selected_group_pack['blocks'],
+        state_by_number=state_by_number,
+        course_id=course_id,
+        active_page='theory',
+        initial_view='topics',
     )
 
 
@@ -375,6 +404,7 @@ def theory_view_block(block_id):
         block=block,
         course_id=course_id,
         visible_groups=visible_groups,
+        back_to_url=url_for('theory.theory_group_view', group_id=block.group_id, course_id=course_id) if block.group_id else url_for('theory.theory_index', course_id=course_id),
         active_page='theory',
         custom_html=custom_html,
         rendered_content_html=_render_theory_content_html(block.content or ''),
@@ -555,6 +585,8 @@ def manage_list():
         selected_block = TheoryBlock.query.filter_by(course_id=course_id, task_number=selected_task_number).first()
     if selected_block is None:
         selected_block = group_blocks[0] if group_blocks else None
+    if selected_block and (selected_group is None or selected_group.id != selected_block.group_id):
+        selected_group = next((g for g in groups if g.id == selected_block.group_id), selected_group)
     selected_task_number = selected_block.task_number if selected_block else None
 
     all_blocks = TheoryBlock.query.filter_by(course_id=course_id).order_by(TheoryBlock.task_number).all()

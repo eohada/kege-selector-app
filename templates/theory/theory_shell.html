@@ -25,24 +25,24 @@
 {% endblock %}
 
 {% block content %}
-{% set initial_view = initial_view|default('index') %}
+{% set initial_view = initial_view|default('groups') %}
 
 <div class="w-full max-w-[1400px] mx-auto relative h-full">
 
   <!-- ========================================== -->
-  <!-- ВИД 1: КАТАЛОГ -->
+  <!-- ВИД 1: ГРУППЫ -->
   <!-- ========================================== -->
-  <div id="view-index" class="view-section {% if initial_view == 'index' %}active{% endif %} flex-col gap-8">
+  <div id="view-groups" class="view-section {% if initial_view == 'groups' %}active{% endif %} flex-col gap-8">
 
     <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
       <div>
-        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">База знаний</h1>
-        <p class="text-slate-500 font-medium text-lg">Вся необходимая теория по темам. Читай, сохраняй и применяй на практике.</p>
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-2">Группы теории</h1>
+        <p class="text-slate-500 font-medium text-lg">Сначала выбери группу, затем открой нужную тему.</p>
       </div>
 
       <div class="w-full lg:w-96 relative">
         <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-        <input id="theorySearch" type="text" placeholder="Поиск по темам, функциям..."
+        <input id="theorySearch" type="text" placeholder="Поиск по группе..."
                class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3.5 text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft">
         <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 bg-white text-slate-500 p-1.5 rounded-lg border border-slate-200 hover:text-boo-primary transition-colors shadow-sm" title="Фильтры">
           <i class="ph-bold ph-sliders-horizontal"></i>
@@ -50,50 +50,25 @@
       </div>
     </div>
 
-    <div class="w-full lg:w-80">
-      <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Группа теории</label>
-      <select id="groupFilter" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700">
-        <option value="all">Все группы</option>
-        {% for group_pack in visible_groups %}
-        <option value="{{ group_pack.group.id }}">{{ group_pack.group.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
     <div class="flex gap-2 bg-slate-200/50 p-1.5 rounded-xl w-fit border border-slate-200/50">
       <button type="button" class="theory-filter px-6 py-2.5 bg-white text-slate-900 rounded-lg font-bold text-sm shadow-sm border border-slate-200/50 flex items-center gap-2 transition-all" data-filter="all">
-        Все модули
+        Все группы
       </button>
-      <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="bookmarked">
-        <i class="ph-fill ph-bookmark-simple text-boo-accent"></i> Сохраненное
-      </button>
-      <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="studied">
-        Изученное
+      <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="nonempty">
+        Непустые
       </button>
     </div>
 
     {% if visible_groups and visible_groups|length > 0 %}
     <div id="theoryGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
       {% for group_pack in visible_groups %}
-      {% for block in group_pack.blocks %}
-      {% set num = block.task_number %}
-      {% set st = (state_by_number.get(num) if state_by_number is defined and state_by_number else {}) %}
-      {% set is_bookmarked = st.get('bookmarked') if st else False %}
-      {% set is_read = st.get('read') if st else False %}
-      {% set href = (url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) if course_id else url_for('theory.theory_view_block', block_id=block.id)) %}
-      {% set hx_href = (href ~ '&fragment=1') if ('?' in href) else (href ~ '?fragment=1') %}
+      {% set href = url_for('theory.theory_group_view', group_id=group_pack.group.id, course_id=course_id) %}
 
       <a href="{{ href }}"
          class="theory-card bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
-         hx-get="{{ hx_href }}"
-         hx-target="#articleContainer"
-         hx-swap="innerHTML"
-         hx-push-url="{{ href }}"
-         data-task-number="{{ num }}"
          data-group-id="{{ group_pack.group.id }}"
-         data-title="{{ (block.title or ('Задание ' ~ num))|lower }}"
-         data-bookmarked="{{ '1' if is_bookmarked else '0' }}"
-         data-read="{{ '1' if is_read else '0' }}">
+         data-title="{{ (group_pack.group.name or '')|lower }}"
+         data-count="{{ group_pack.blocks|length }}">
 
         <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors pointer-events-none"></div>
 
@@ -102,30 +77,22 @@
             <i class="ph-bold ph-book-open-text text-2xl"></i>
           </div>
           <span class="bg-white px-2.5 py-1 rounded-lg text-xs font-extrabold text-slate-400 border border-slate-200 shadow-sm flex items-center gap-1.5">
-            {% if is_read %}
-              <i class="ph-fill ph-check-circle text-green-500"></i> Изучено
-            {% else %}
-              <i class="ph-fill ph-clock text-slate-400"></i> Новое
-            {% endif %}
+            <i class="ph-fill ph-stack text-boo-primary"></i> {{ group_pack.blocks|length }} тем
           </span>
         </div>
 
         <div class="relative z-10 flex-1">
           <h3 class="text-xl font-black text-slate-900 mb-1 group-hover:text-boo-primary transition-colors">
-            {{ block.title if block and block.title else ('Задание ' ~ num) }}
+            {{ group_pack.group.name }}
           </h3>
           <div class="flex flex-wrap gap-1.5 mb-4">
-            <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание {{ num }}</span>
-            <span class="bg-purple-50 text-purple-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-purple-100">{{ group_pack.group.name }}</span>
-            {% if is_bookmarked %}
-            <span class="bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100">Сохранено</span>
-            {% endif %}
+            <span class="bg-purple-50 text-purple-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-purple-100">Группа</span>
           </div>
           <p class="text-sm font-medium text-slate-500 mb-6 line-clamp-2">
-            {% if block and block.description %}
-              {{ block.description|truncate(140, True, '…') }}
+            {% if group_pack.group.description %}
+              {{ group_pack.group.description|truncate(140, True, '…') }}
             {% else %}
-              Открой тему, чтобы прочитать материал.
+              Открой группу, чтобы увидеть карточки теории.
             {% endif %}
           </p>
         </div>
@@ -135,7 +102,6 @@
           <i class="ph-bold ph-arrow-right text-slate-300 group-hover:text-boo-primary transition-colors"></i>
         </div>
       </a>
-      {% endfor %}
       {% endfor %}
     </div>
     {% else %}
@@ -153,7 +119,39 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- ВИД 2: СТАТЬЯ -->
+  <!-- ВИД 2: КАРТОЧКИ ГРУППЫ -->
+  <!-- ========================================== -->
+  <div id="view-topics" class="view-section {% if initial_view == 'topics' %}active{% endif %} flex-col gap-8">
+    {% set g = selected_group if selected_group is defined else None %}
+    {% set blocks = selected_group_blocks if selected_group_blocks is defined else [] %}
+    <button type="button" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl border border-slate-200/50 shadow-sm w-fit" onclick="window.location.href='{{ url_for('theory.theory_index', course_id=course_id) }}'">
+      <i class="ph-bold ph-arrow-left"></i> Назад к группам
+    </button>
+    <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+      <h2 class="text-3xl font-black text-slate-900 mb-2">{{ g.name if g else 'Группа' }}</h2>
+      <p class="text-slate-500 font-medium">{{ g.description if g and g.description else 'Список карточек теории в выбранной группе.' }}</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {% for block in blocks %}
+      {% set num = block.task_number %}
+      {% set st = (state_by_number.get(num) if state_by_number is defined and state_by_number else {}) %}
+      {% set is_read = st.get('read') if st else False %}
+      {% set href = url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) %}
+      {% set hx_href = href ~ '&fragment=1' %}
+      <a href="{{ href }}" class="theory-card bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer no-underline"
+         hx-get="{{ hx_href }}" hx-target="#articleContainer" hx-swap="innerHTML" hx-push-url="{{ href }}"
+         data-task-number="{{ num }}" data-read="{{ '1' if is_read else '0' }}" data-title="{{ (block.title or ('Тема ' ~ num))|lower }}">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xl font-black text-slate-900">{{ block.title or ('Тема ' ~ num) }}</h3>
+          <span class="text-xs font-bold {{ 'text-green-600' if is_read else 'text-slate-400' }}">{{ 'Изучено' if is_read else 'Новое' }}</span>
+        </div>
+        <p class="text-sm text-slate-500 line-clamp-2">{{ (block.description or 'Открой тему для просмотра.')|truncate(110, True, '…') }}</p>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ВИД 3: СТАТЬЯ -->
   <!-- ========================================== -->
   <div id="view-article" class="view-section {% if initial_view == 'article' %}active{% endif %} flex-col gap-8">
     <div id="articleContainer">
@@ -165,7 +163,7 @@
           <i class="ph-fill ph-book-open-text text-3xl text-slate-300"></i>
         </div>
         <div class="text-lg font-black text-slate-900 mb-1">Выбери модуль</div>
-        <div class="text-sm font-medium text-slate-500">Открой тему из каталога — статья загрузится здесь.</div>
+        <div class="text-sm font-medium text-slate-500">Открой тему из группы — статья загрузится здесь.</div>
         <button type="button" class="mt-6 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 text-sm" onclick="window.__theoryOpenIndex?.()">
           В каталог <i class="ph-bold ph-arrow-right"></i>
         </button>
@@ -182,11 +180,11 @@
 (function() {
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const courseId = {{ course_id|tojson }};
-  const viewIndex = document.getElementById('view-index');
+  const viewGroups = document.getElementById('view-groups');
+  const viewTopics = document.getElementById('view-topics');
   const viewArticle = document.getElementById('view-article');
   const grid = document.getElementById('theoryGrid');
   const search = document.getElementById('theorySearch');
-  const groupFilter = document.getElementById('groupFilter');
   const filterBtns = Array.from(document.querySelectorAll('.theory-filter'));
 
   let cmBundle = null;
@@ -237,16 +235,18 @@
     });
   }
 
-  function openIndex(push=true) {
+  function openGroups(push=true) {
+    viewTopics?.classList.remove('active');
     viewArticle?.classList.remove('active');
-    viewIndex?.classList.add('active');
+    viewGroups?.classList.add('active');
     if (push) history.pushState({}, '', {{ url_for('theory.theory_index', course_id=course_id)|tojson }});
   }
   function openArticle(push=false) {
-    viewIndex?.classList.remove('active');
+    viewGroups?.classList.remove('active');
+    viewTopics?.classList.remove('active');
     viewArticle?.classList.add('active');
   }
-  window.__theoryOpenIndex = openIndex;
+  window.__theoryOpenIndex = openGroups;
 
   function setActiveFilter(id) {
     filterBtns.forEach(b => {
@@ -263,20 +263,16 @@
   function applyFilters() {
     if (!grid) return;
     const q = (search?.value || '').trim().toLowerCase();
-    const groupId = groupFilter?.value || 'all';
     const active = (filterBtns.find(b => b.classList.contains('bg-white'))?.dataset.filter) || 'all';
     const cards = Array.from(grid.querySelectorAll('.theory-card'));
     cards.forEach(card => {
       const title = (card.dataset.title || '');
       const read = card.dataset.read === '1';
-      const bookmarked = card.dataset.bookmarked === '1';
-      const cardGroupId = card.dataset.groupId || '';
+      const cardCount = parseInt(card.dataset.count || '0');
       const matchQuery = !q || title.includes(q);
-      const matchGroup = groupId === 'all' || groupId === cardGroupId;
       let matchFilter = true;
-      if (active === 'bookmarked') matchFilter = bookmarked;
-      else if (active === 'studied') matchFilter = read;
-      card.style.display = (matchQuery && matchFilter && matchGroup) ? '' : 'none';
+      if (active === 'nonempty') matchFilter = cardCount > 0 || read;
+      card.style.display = (matchQuery && matchFilter) ? '' : 'none';
     });
   }
 
@@ -304,7 +300,6 @@
     try { localStorage.setItem('ui.theory.filter', btn.dataset.filter); } catch(e) {}
   }));
   search?.addEventListener('input', applyFilters);
-  groupFilter?.addEventListener('change', applyFilters);
 
   // Restore filter
   try {
@@ -317,7 +312,7 @@
 
   // Back button should return to catalog
   window.addEventListener('popstate', () => {
-    if (location.pathname.endsWith('/theory')) openIndex(false);
+    if (location.pathname.endsWith('/theory')) openGroups(false);
   });
 
   // HTMX swap: open article view only
@@ -372,7 +367,12 @@
 
     if (action === 'back') {
       e.preventDefault();
-      openIndex(true);
+      const backUrl = btn.dataset.backUrl;
+      if (backUrl) {
+        window.location.href = backUrl;
+      } else {
+        openGroups(true);
+      }
       return;
     }
 
