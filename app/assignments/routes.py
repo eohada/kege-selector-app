@@ -1257,6 +1257,11 @@ def assignment_create():
         except Exception:
             default_recipient_ids = []
 
+    # Каждый новый запуск мастера должен стартовать с пустого пула задач.
+    # "Новая работа" = нет явно переданных task_ids/template/lesson.
+    if not task_ids_param and not template_id and not lesson_id and source in {'accepted', 'manual', 'generator'}:
+        source = 'manual'
+
     if source == 'generator' and task_ids_param:
         try:
             ids = [int(x.strip()) for x in task_ids_param.split(',') if x.strip() and x.strip().isdigit()]

@@ -16,6 +16,66 @@
     .source-card.active-template { border-color: #fb923c; background: rgba(251,146,60,.06); box-shadow: inset 0 0 0 3px rgba(251,146,60,.12); }
     .task-mini-body { display: none; }
     .task-mini-body.active { display: block; }
+    .status-pill {
+        min-width: 130px;
+        text-align: center;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        box-shadow: 0 1px 2px rgba(15,23,42,.04);
+    }
+    .status-pill span {
+        color: #0f172a;
+        font-weight: 900;
+    }
+    .recipient-checkbox {
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all .2s ease;
+        box-shadow: 0 1px 2px rgba(15,23,42,.06);
+        flex-shrink: 0;
+    }
+    .recipient-check-icon {
+        opacity: 0;
+        color: #fff;
+        font-size: 11px;
+        transition: opacity .2s ease;
+    }
+    .recipient-selection-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 12px;
+        border: 2px solid #7b5cff;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .2s ease;
+    }
+    .recipient-card.is-selected {
+        border-color: #c4b5fd !important;
+        background: #faf5ff !important;
+    }
+    .recipient-card.is-selected .recipient-selection-ring { opacity: 1; }
+    .recipient-card.is-selected .recipient-checkbox {
+        background: #7b5cff;
+        border-color: #7b5cff;
+    }
+    .recipient-card.is-selected .recipient-check-icon { opacity: 1; }
 </style>
 {% endblock %}
 
@@ -40,12 +100,8 @@
       </div>
 
       <div class="flex items-center gap-3">
-        <div class="bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs font-extrabold text-slate-500 uppercase tracking-widest shadow-sm">
-          Учеников: <span id="statusRecipients" class="text-slate-900 font-black">0</span>
-        </div>
-        <div class="bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs font-extrabold text-slate-500 uppercase tracking-widest shadow-sm">
-          Заданий: <span id="statusTasks" class="text-slate-900 font-black">{{ (task_ids|length) if task_ids else 0 }}</span>
-        </div>
+        <div class="status-pill">Учеников: <span id="statusRecipients">0</span></div>
+        <div class="status-pill">Заданий: <span id="statusTasks">{{ (task_ids|length) if task_ids else 0 }}</span></div>
         {% if task_ids and task_ids|length > 0 %}
         <button type="button" class="bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors shadow-sm active:scale-95" onclick="clearTasks()">Сбросить</button>
         {% endif %}
@@ -83,8 +139,8 @@
               {% set _sel = (default_recipient_ids and st.student_id in default_recipient_ids) %}
               <label class="flex items-center gap-4 p-3 rounded-xl bg-white border border-slate-200 cursor-pointer hover:border-purple-200 hover:shadow-sm transition-all group relative recipient-card" data-student-id="{{ st.student_id }}">
                 <input type="checkbox" class="peer sr-only recipient-check" value="{{ st.student_id }}" {% if _sel %}checked{% endif %}>
-                <div class="w-5 h-5 rounded border border-slate-300 bg-white peer-checked:bg-boo-primary peer-checked:border-boo-primary flex items-center justify-center transition-colors shadow-sm shrink-0">
-                  <i class="ph-bold ph-check text-white text-xs opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                <div class="recipient-checkbox">
+                  <i class="ph-bold ph-check recipient-check-icon"></i>
                 </div>
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500">
@@ -95,7 +151,7 @@
                     <div class="text-xs text-slate-500 font-medium">ID: {{ st.student_id }}</div>
                   </div>
                 </div>
-                <div class="absolute inset-0 rounded-xl border-2 border-boo-primary opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"></div>
+                <div class="recipient-selection-ring"></div>
               </label>
             {% endfor %}
           </div>
@@ -255,9 +311,17 @@
             );
             Array.from(sel.options).forEach((o) => { o.selected = checkedIds.has(String(o.value)); });
         }
+        function syncRecipientCardState() {
+            document.querySelectorAll('.recipient-card').forEach((card) => {
+                const checkbox = card.querySelector('.recipient-check');
+                if (!checkbox) return;
+                card.classList.toggle('is-selected', !!checkbox.checked);
+            });
+        }
 
         function updateUI() {
             syncRecipientSelectFromCards();
+            syncRecipientCardState();
             document.querySelectorAll('.step-card').forEach((el, i) => {
                 el.classList.toggle('active', (i + 1) === currentStep);
             });
