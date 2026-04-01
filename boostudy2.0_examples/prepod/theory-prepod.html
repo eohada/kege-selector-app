@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BooStudy - Редактор Теории</title>
+    <title>BooStudy - Редактор Теории (Tactile Pro)</title>
     <!-- Подключаем Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Шрифты: Golos Text для UI, JetBrains Mono для кода, Noto Serif для формул -->
@@ -36,7 +36,7 @@
                         'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
                         'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
                         'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
-                        'block': '0 0 0 1px rgba(15, 23, 42, 0.05), 0 2px 10px rgba(15, 23, 42, 0.02)',
+                        'toolbar': '0 12px 30px -10px rgba(15, 23, 42, 0.1)',
                     }
                 }
             }
@@ -49,350 +49,337 @@
         ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
         
-        /* Стили для contenteditable редактора */
+        /* Скрытие скроллбара для внутренних списков */
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Настройка плейсхолдера для редактора */
         [contenteditable]:empty:before {
             content: attr(data-placeholder);
             color: #94A3B8;
             pointer-events: none;
             display: block;
         }
-        
-        /* Плавающее меню блоков (псевдо) */
-        .block-menu-trigger { opacity: 0; transition: opacity 0.2s; }
-        .editor-block:hover .block-menu-trigger { opacity: 1; }
+
+        /* Мягкое появление тулбара */
+        .sticky-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: linear-gradient(180deg, rgba(255,255,255,1) 70%, rgba(255,255,255,0) 100%);
+            padding-bottom: 20px;
+        }
     </style>
 </head>
 <body class="flex flex-col h-screen overflow-hidden relative">
 
-    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ (Вид Преподавателя) -->
-    <div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none">
-        <header class="w-full max-w-[1600px] mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none flex justify-center">
+        <header class="w-full max-w-[1600px] bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
             
-            <div class="flex items-center gap-3 pl-2">
-                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm">
+            <div class="flex items-center gap-3 pl-2 cursor-pointer group">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm group-hover:scale-105 transition-all">
                     <i class="ph-fill ph-ghost text-2xl"></i>
                 </div>
                 <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
             </div>
 
             <!-- Главное меню -->
-            <nav class="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/50">
-                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/60 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
                     <i class="ph-bold ph-users-three text-lg"></i> Ученики
                 </a>
-                <!-- АКТИВНЫЙ ПУНКТ: ТЕОРИЯ -->
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-tray text-lg"></i> Проверка
+                </a>
+                <!-- АКТИВНЫЙ ПУНКТ -->
                 <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2 relative">
                     <i class="ph-bold ph-book-open-text text-lg"></i> Теория
                 </a>
-                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
-                    <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
-                </a>
-                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
                     <i class="ph-bold ph-squares-four text-lg"></i> Ещё <i class="ph-bold ph-caret-down text-xs ml-1"></i>
                 </a>
             </nav>
 
             <div class="flex items-center gap-3 pr-1">
-                <button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 transition-colors shadow-sm bg-white border border-slate-200">
-                    <i class="ph-bold ph-bell text-xl"></i>
+                <button class="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white hover:shadow-sm transition-all">
+                    <i class="ph-bold ph-magnifying-glass text-xl"></i>
                 </button>
                 <div class="flex items-center gap-2 pl-3 border-l border-slate-200 cursor-pointer">
-                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator" class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm bg-purple-50">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator" class="w-10 h-10 rounded-xl border-2 border-boo-primary shadow-sm bg-purple-100">
                 </div>
             </div>
         </header>
     </div>
 
     <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ (Split-Screen) -->
-    <main class="flex-1 pt-32 pb-8 px-6 lg:px-8 h-full flex justify-center">
+    <main class="flex-1 pt-32 pb-8 px-6 lg:px-8 h-full flex justify-center relative z-10">
         <div class="w-full max-w-[1600px] flex flex-col lg:flex-row gap-6 h-full">
 
             <!-- ======================================================= -->
-            <!-- ЛЕВАЯ ПАНЕЛЬ: НАВИГАТОР И СЕТКА ГОТОВНОСТИ ТЕОРИИ       -->
+            <!-- ЛЕВАЯ ПАНЕЛЬ: НАВИГАТОР И ГРУППЫ                        -->
             <!-- ======================================================= -->
-            <div class="w-full lg:w-[380px] shrink-0 flex flex-col gap-6 h-full">
+            <div class="w-full lg:w-[420px] shrink-0 flex flex-col gap-6 h-full">
                 
-                <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col h-full overflow-hidden">
+                <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col h-full overflow-hidden relative">
                     
                     <!-- Шапка навигатора -->
                     <div class="mb-6 shrink-0">
                         <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
                             <i class="ph-fill ph-book-open"></i> База знаний
                         </div>
-                        <h2 class="text-2xl font-black text-slate-900 tracking-tight mb-4">Навигатор</h2>
+                        <h2 class="text-3xl font-black text-slate-900 tracking-tight mb-4">Навигатор</h2>
                         
                         <!-- Селектор курса -->
-                        <div class="relative">
-                            <i class="ph-bold ph-exam absolute left-4 top-1/2 -translate-y-1/2 text-boo-primary text-lg"></i>
-                            <select class="w-full bg-purple-50 border border-purple-100 rounded-xl pl-11 pr-10 py-3 font-bold text-boo-primary text-sm focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all appearance-none cursor-pointer shadow-sm">
-                                <option value="ege_inf" selected>ЕГЭ Информатика</option>
-                                <option value="oge_inf">ОГЭ Информатика</option>
-                                <option value="ege_math">ЕГЭ Математика</option>
-                            </select>
-                            <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none"></i>
+                        <div class="relative bg-slate-50 border border-slate-200 rounded-xl flex items-center px-4 py-3.5 cursor-pointer hover:border-boo-primary transition-colors shadow-sm group">
+                            <i class="ph-fill ph-exam text-boo-primary text-xl mr-3 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-bold text-slate-800 text-sm flex-1">ЕГЭ Информатика</span>
+                            <i class="ph-bold ph-caret-down text-slate-400 text-sm"></i>
                         </div>
                     </div>
 
-                    <!-- Сетка 27 заданий (Идея со скриншота) -->
-                    <div class="flex-1 overflow-y-auto pr-2 hide-scroll">
-                        <div class="flex justify-between items-end mb-3">
-                            <span class="text-xs font-bold text-slate-500">Заполнение базы: <span class="text-slate-900 font-black">45%</span></span>
+                    <!-- Список Групп -->
+                    <div class="flex-1 overflow-y-auto pr-2 hide-scroll flex flex-col">
+                        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 ml-1">
+                            Группы
                         </div>
-                        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-6 shadow-inner">
-                            <div class="h-full bg-boo-primary rounded-full w-[45%] relative">
-                                <div class="absolute inset-0 bg-white/20" style="background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+                        
+                        <div class="space-y-3 mb-6">
+                            <!-- Активная группа -->
+                            <div class="bg-purple-50 border-2 border-boo-primary rounded-xl px-4 py-3 flex items-center justify-between shadow-sm cursor-pointer">
+                                <span class="font-black text-boo-primary text-sm">Общая группа</span>
+                            </div>
+
+                            <!-- Обычная группа -->
+                            <div class="bg-white border border-slate-200 border-b-[3px] border-b-slate-300 rounded-xl px-4 py-3 flex items-center justify-between shadow-sm cursor-pointer hover:-translate-y-0.5 hover:shadow-tactile transition-all group">
+                                <span class="font-bold text-slate-700 text-sm group-hover:text-boo-primary transition-colors">Алгебра логики</span>
+                            </div>
+
+                            <!-- ИСПРАВЛЕНО: Инпут "Новая группа" (Красивый, без черного квадрата) -->
+                            <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden mt-4 shadow-sm focus-within:border-boo-primary focus-within:ring-2 focus-within:ring-purple-100 transition-all h-12 group">
+                                <input type="text" placeholder="Новая группа" class="flex-1 bg-transparent border-none px-4 text-sm font-medium text-slate-700 focus:outline-none placeholder-slate-400 h-full">
+                                <button class="w-12 h-full bg-purple-50 text-boo-primary flex items-center justify-center hover:bg-purple-100 border-l border-slate-200 group-focus-within:border-purple-200 transition-colors shrink-0">
+                                    <i class="ph-bold ph-plus text-lg"></i>
+                                </button>
+                            </div>
+
+                            <div class="bg-white border border-slate-200 border-b-[3px] border-b-slate-300 rounded-xl px-4 py-3 flex items-center justify-between shadow-sm cursor-pointer hover:-translate-y-0.5 hover:shadow-tactile transition-all group mt-4">
+                                <span class="font-bold text-slate-700 text-sm group-hover:text-boo-primary transition-colors">Программирование</span>
                             </div>
                         </div>
 
                         <!-- СЕТКА ЗАДАНИЙ -->
-                        <div class="grid grid-cols-5 gap-2.5">
-                            <!-- Опубликовано (Зеленый) -->
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">
-                                1
-                                <span class="absolute -top-1 -right-1 w-3 h-3 bg-green-200 border-2 border-white rounded-full"></span>
-                            </button>
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">2</button>
-                            <!-- Черновик (Оранжевый) -->
-                            <button class="aspect-square rounded-xl bg-orange-400 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-orange-600 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">
-                                3
-                                <span class="absolute -top-1 -right-1 w-3 h-3 bg-white border-2 border-orange-400 rounded-full flex items-center justify-center"><div class="w-1 h-1 bg-orange-400 rounded-full"></div></span>
-                            </button>
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">4</button>
-                            <!-- Нужна доработка (Красный) -->
-                            <button class="aspect-square rounded-xl bg-boo-coral text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-red-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">5</button>
+                        <div class="mt-auto pt-6 border-t border-slate-100 shrink-0">
+                            <div class="flex justify-between items-end mb-3 ml-1">
+                                <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Заполнение базы: <span class="text-slate-900 font-black">100%</span></span>
+                            </div>
                             
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">6</button>
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">7</button>
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">8</button>
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">9</button>
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">10</button>
-                            
-                            <button class="aspect-square rounded-xl bg-orange-400 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-orange-600 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">11</button>
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">12</button>
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">13</button>
-                            <button class="aspect-square rounded-xl bg-green-500 text-white font-bold flex items-center justify-center shadow-md border-b-[3px] border-green-700 hover:translate-y-[1px] hover:border-b-[2px] transition-all cursor-pointer relative group">14</button>
-                            
-                            <!-- АКТИВНЫЙ ВЫБРАННЫЙ ЭЛЕМЕНТ -->
-                            <button class="aspect-square rounded-xl bg-boo-primary text-white font-black text-xl flex items-center justify-center shadow-[0_0_0_4px_#FFFFFF,0_0_0_6px_#7B5CFF] border-b-[3px] border-purple-800 scale-105 z-10 transition-all cursor-default">
-                                15
-                            </button>
-                            
-                            <!-- Пустые (Dashed) -->
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">16</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">17</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">18</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">19</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">20</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">21</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">22</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">23</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">24</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">25</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">26</button>
-                            <button class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">27</button>
-                        </div>
-                    </div>
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-6 shadow-inner">
+                                <div class="h-full bg-boo-primary rounded-full w-full"></div>
+                            </div>
 
-                    <div class="mt-4 pt-4 border-t border-slate-100 shrink-0">
-                        <button class="w-full py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-black active:translate-y-[2px] active:border-b-0 text-sm">
-                            <i class="ph-bold ph-folder-open text-lg"></i> Обзор всех файлов
-                        </button>
+                            <!-- АДАПТИВНАЯ СЕТКА КНОПОК (Идеально отцентрированные квадраты) -->
+                            <!-- padding добавлен, чтобы кольцо (ring) активной кнопки не обрезалось контейнером -->
+                            <div class="grid grid-cols-4 sm:grid-cols-5 gap-3 p-2">
+                                <!-- Активное задание (1) -->
+                                <button class="aspect-square w-full rounded-2xl bg-boo-primary text-white font-black text-xl flex items-center justify-center ring-[4px] ring-purple-200 ring-offset-2 border-b-[3px] border-purple-800 z-10 transition-all cursor-default">
+                                    1
+                                </button>
+                                <!-- Готовые задания (2, 3) -->
+                                <button class="aspect-square w-full rounded-2xl bg-green-500 text-white font-black text-xl flex items-center justify-center shadow-sm border-b-[4px] border-green-700 hover:translate-y-[2px] hover:border-b-[2px] transition-all cursor-pointer">
+                                    2
+                                </button>
+                                <button class="aspect-square w-full rounded-2xl bg-green-500 text-white font-black text-xl flex items-center justify-center shadow-sm border-b-[4px] border-green-700 hover:translate-y-[2px] hover:border-b-[2px] transition-all cursor-pointer">
+                                    3
+                                </button>
+                                <!-- Черновик -->
+                                <button class="aspect-square w-full rounded-2xl bg-orange-400 text-white font-black text-xl flex items-center justify-center shadow-sm border-b-[4px] border-orange-600 hover:translate-y-[2px] hover:border-b-[2px] transition-all cursor-pointer">
+                                    4
+                                </button>
+                                <!-- Пустое -->
+                                <button class="aspect-square w-full rounded-2xl bg-slate-50 text-slate-400 font-bold text-xl flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all cursor-pointer">
+                                    5
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
             </div>
 
             <!-- ======================================================= -->
-            <!-- ПРАВАЯ ПАНЕЛЬ: РЕДАКТОР СТАТЬИ (NOTION-STYLE)           -->
+            <!-- ПРАВАЯ ПАНЕЛЬ: РЕДАКТОР СТАТЬИ                          -->
             <!-- ======================================================= -->
             <div class="flex-1 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden relative">
                 
-                <!-- Шапка редактора (Toolbar) -->
-                <div class="h-16 px-6 border-b border-slate-100 bg-slate-50/80 backdrop-blur-md flex items-center justify-between shrink-0">
+                <!-- Шапка редактора (Панель статуса и действий) -->
+                <div class="h-[80px] px-6 lg:px-8 border-b border-slate-100 bg-white flex items-center justify-between shrink-0">
                     
-                    <div class="flex items-center gap-3">
-                        <span class="bg-boo-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black shadow-sm">15</span>
-                        <div class="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm text-xs font-bold text-slate-600">
-                            <span class="w-2 h-2 rounded-full bg-boo-accent animate-pulse"></span> Черновик
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-boo-primary text-white font-black text-2xl flex items-center justify-center shadow-sm border-b-[3px] border-purple-800">
+                            1
                         </div>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Сохранено только что</span>
+                        <div class="flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-xl shadow-sm text-sm font-bold text-orange-600">
+                            <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span> Черновик
+                        </div>
                     </div>
 
-                    <div class="flex items-center gap-2">
-                        <!-- Тулбар форматирования -->
-                        <div class="hidden md:flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm mr-2">
-                            <button class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-700 font-serif font-bold transition-colors">B</button>
-                            <button class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-700 font-serif italic transition-colors">I</button>
-                            <div class="w-px h-4 bg-slate-200 mx-1"></div>
-                            <button class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-700 font-mono transition-colors"><i class="ph-bold ph-code"></i></button>
-                            <button class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"><i class="ph-bold ph-function"></i></button>
-                        </div>
-                        
-                        <button class="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
-                            <i class="ph-bold ph-eye"></i> Предпросмотр
+                    <div class="flex items-center gap-3">
+                        <button class="px-5 py-2.5 bg-white text-slate-600 border border-slate-200 border-b-[3px] border-b-slate-300 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2 active:translate-y-[2px] active:border-b-0">
+                            <i class="ph-bold ph-eye text-lg"></i> Предпросмотр
                         </button>
-                        <button class="px-5 py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[2px] border-b-purple-800 active:translate-y-[1px] active:border-b-0 text-sm">
-                            <i class="ph-bold ph-paper-plane-right"></i> Опубликовать
+                        
+                        <button class="px-5 py-2.5 bg-white text-slate-600 border border-slate-200 border-b-[3px] border-b-slate-300 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2 active:translate-y-[2px] active:border-b-0">
+                            <i class="ph-bold ph-floppy-disk text-lg"></i> Сохранить
+                        </button>
+
+                        <button class="px-5 py-2.5 bg-red-50 text-boo-coral border border-red-200 border-b-[3px] border-b-red-300 rounded-xl font-bold text-sm hover:bg-red-100 transition-all shadow-sm flex items-center gap-2 active:translate-y-[2px] active:border-b-0">
+                            <i class="ph-bold ph-trash text-lg"></i> Удалить
+                        </button>
+
+                        <button class="px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm ml-2">
+                            <i class="ph-bold ph-paper-plane-right text-lg"></i> Опубликовать
                         </button>
                     </div>
                 </div>
 
-                <!-- Зона редактирования -->
-                <div class="flex-1 overflow-y-auto px-8 lg:px-16 py-12 outline-none text-slate-800" id="editor-area">
+                <!-- Зона редактора (Скроллируемая) -->
+                <div class="flex-1 overflow-y-auto relative bg-white" id="editor-container">
                     
-                    <!-- Cover (Опционально) -->
-                    <div class="w-full h-32 bg-purple-50 rounded-2xl mb-8 border border-purple-100 flex items-center justify-center group cursor-pointer hover:bg-purple-100 transition-colors">
-                        <span class="text-sm font-bold text-boo-primary flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"><i class="ph-bold ph-image"></i> Добавить обложку</span>
-                    </div>
-
-                    <!-- Название статьи -->
-                    <input type="text" class="w-full text-4xl lg:text-5xl font-black text-slate-900 placeholder-slate-300 bg-transparent border-none outline-none mb-8 resize-none" value="Законы Де Моргана и круги Эйлера">
-
-                    <!-- Блок: Обычный текст -->
-                    <div class="editor-block relative mb-4 group">
-                        <div class="block-menu-trigger absolute -left-10 top-0.5 flex gap-1 text-slate-300">
-                            <button class="hover:text-boo-primary hover:bg-purple-50 rounded p-0.5"><i class="ph-bold ph-plus"></i></button>
-                            <button class="hover:text-slate-600 rounded p-0.5 cursor-grab"><i class="ph-bold ph-dots-six-vertical"></i></button>
-                        </div>
-                        <p class="text-lg leading-relaxed outline-none" contenteditable="true">
-                            Для успешного решения 15 задания необходимо уметь упрощать сложные логические выражения. Два самых важных правила в арсенале — это законы Де Моргана.
-                        </p>
-                    </div>
-
-                    <!-- Блок: Callout (Важная информация) -->
-                    <div class="editor-block relative mb-6 mt-6 group">
-                        <div class="block-menu-trigger absolute -left-10 top-1/2 -translate-y-1/2 flex gap-1 text-slate-300">
-                            <button class="hover:text-boo-primary hover:bg-purple-50 rounded p-0.5"><i class="ph-bold ph-plus"></i></button>
-                            <button class="hover:text-slate-600 rounded p-0.5 cursor-grab"><i class="ph-bold ph-dots-six-vertical"></i></button>
-                        </div>
-                        <div class="bg-cyan-50 border border-cyan-200 rounded-[20px] p-5 flex gap-4 shadow-sm relative">
-                            <!-- Меню типа блока -->
-                            <div class="absolute -top-3 right-4 bg-white border border-slate-200 shadow-sm rounded-lg flex items-center p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button class="w-6 h-6 rounded flex items-center justify-center text-cyan-600 bg-cyan-50"><i class="ph-fill ph-info"></i></button>
-                                <button class="w-6 h-6 rounded flex items-center justify-center text-orange-500 hover:bg-orange-50"><i class="ph-fill ph-warning"></i></button>
-                                <button class="w-6 h-6 rounded flex items-center justify-center text-purple-500 hover:bg-purple-50"><i class="ph-fill ph-lightbulb"></i></button>
-                            </div>
-
-                            <div class="w-8 h-8 rounded-full bg-white border border-cyan-100 flex items-center justify-center shrink-0 shadow-sm text-boo-cyan">
-                                <i class="ph-fill ph-info text-lg"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-slate-900 mb-1 outline-none" contenteditable="true">Что нужно запомнить?</h4>
-                                <p class="text-sm font-medium text-slate-700 outline-none" contenteditable="true">
-                                    Отрицание конъюнкции (И) есть дизъюнкция (ИЛИ) отрицаний. Суть в том, что "Не" меняет знак операции на противоположный, а также инвертирует каждую переменную.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Блок: Математика (LaTeX) -->
-                    <div class="editor-block relative mb-6 group">
-                        <div class="block-menu-trigger absolute -left-10 top-1/2 -translate-y-1/2 flex gap-1 text-slate-300">
-                            <button class="hover:text-boo-primary hover:bg-purple-50 rounded p-0.5"><i class="ph-bold ph-plus"></i></button>
-                            <button class="hover:text-slate-600 rounded p-0.5 cursor-grab"><i class="ph-bold ph-dots-six-vertical"></i></button>
-                        </div>
-                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-inner-soft flex flex-col items-center justify-center group/math">
-                            <!-- Формула -->
-                            <div class="font-serif text-xl text-slate-800 font-bold tracking-wide">
-                                ¬(A ∧ B) ≡ ¬A ∨ ¬B
-                            </div>
-                            <!-- Инпут для редактирования (скрыт, появляется при клике) -->
-                            <div class="mt-4 w-full max-w-md opacity-0 group-hover/math:opacity-100 transition-opacity">
-                                <input type="text" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 font-mono text-xs text-slate-600 focus:outline-none focus:border-boo-primary shadow-sm" value="\neg(A \land B) \equiv \neg A \lor \neg B">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Блок: Заголовок 2 -->
-                    <div class="editor-block relative mb-4 mt-8 group">
-                        <div class="block-menu-trigger absolute -left-10 top-2 flex gap-1 text-slate-300">
-                            <button class="hover:text-boo-primary hover:bg-purple-50 rounded p-0.5"><i class="ph-bold ph-plus"></i></button>
-                            <button class="hover:text-slate-600 rounded p-0.5 cursor-grab"><i class="ph-bold ph-dots-six-vertical"></i></button>
-                        </div>
-                        <h2 class="text-2xl font-black text-slate-900 outline-none" contenteditable="true">Как это запрограммировать?</h2>
-                    </div>
-
-                    <!-- Блок: Текст -->
-                    <div class="editor-block relative mb-6 group">
-                        <div class="block-menu-trigger absolute -left-10 top-0.5 flex gap-1 text-slate-300">
-                            <button class="hover:text-boo-primary hover:bg-purple-50 rounded p-0.5"><i class="ph-bold ph-plus"></i></button>
-                            <button class="hover:text-slate-600 rounded p-0.5 cursor-grab"><i class="ph-bold ph-dots-six-vertical"></i></button>
-                        </div>
-                        <p class="text-lg leading-relaxed outline-none" contenteditable="true">
-                            В Python можно легко доказать этот закон, перебрав все возможные комбинации <code>a</code> и <code>b</code> с помощью вложенных циклов.
-                        </p>
-                    </div>
-
-                    <!-- Блок: SMART CODE BLOCK (Выполняемый код) -->
-                    <div class="editor-block relative mb-8 group">
-                        <div class="block-menu-trigger absolute -left-10 top-4 flex gap-1 text-slate-300">
-                            <button class="hover:text-boo-primary hover:bg-purple-50 rounded p-0.5"><i class="ph-bold ph-plus"></i></button>
-                            <button class="hover:text-slate-600 rounded p-0.5 cursor-grab"><i class="ph-bold ph-dots-six-vertical"></i></button>
-                        </div>
-                        <div class="bg-[#0F172A] rounded-[24px] border border-slate-800 shadow-tactile overflow-hidden flex flex-col">
-                            <!-- Шапка кода -->
-                            <div class="flex items-center justify-between px-4 py-2.5 bg-slate-800/80 border-b border-slate-700">
-                                <div class="flex items-center gap-2">
-                                    <div class="flex gap-1.5 mr-2">
-                                        <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
-                                        <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
-                                        <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
-                                    </div>
-                                    <select class="bg-transparent text-xs font-mono font-bold text-slate-400 outline-none cursor-pointer hover:text-white transition-colors">
-                                        <option>Python</option>
-                                        <option>C++</option>
-                                    </select>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button class="text-xs font-bold text-slate-400 hover:text-white transition-colors flex items-center gap-1 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-600"><i class="ph-bold ph-copy"></i> Copy</button>
-                                    <button class="text-xs font-bold text-white bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 px-2.5 py-1 rounded-md transition-colors flex items-center gap-1.5"><i class="ph-fill ph-play text-green-400"></i> Run Code</button>
-                                </div>
-                            </div>
-                            <!-- Код -->
-                            <div class="p-5 font-mono text-[14px] leading-loose text-slate-300 outline-none" contenteditable="true" spellcheck="false">
-<span class="text-purple-400 font-bold">for</span> a <span class="text-purple-400 font-bold">in</span> (<span class="text-orange-400">0</span>, <span class="text-orange-400">1</span>):
-    <span class="text-purple-400 font-bold">for</span> b <span class="text-purple-400 font-bold">in</span> (<span class="text-orange-400">0</span>, <span class="text-orange-400">1</span>):
-        left = <span class="text-blue-400 font-bold">not</span> (a <span class="text-blue-400 font-bold">and</span> b)
-        right = (<span class="text-blue-400 font-bold">not</span> a) <span class="text-blue-400 font-bold">or</span> (<span class="text-blue-400 font-bold">not</span> b)
-        <span class="text-blue-400">print</span>(left == right)
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Блок: EMBED TASK (Вставка задачи) -->
-                    <div class="editor-block relative mb-8 group mt-10 border-t border-slate-200 pt-10">
-                        <div class="block-menu-trigger absolute -left-10 top-12 flex gap-1 text-slate-300">
-                            <button class="hover:text-boo-primary hover:bg-purple-50 rounded p-0.5"><i class="ph-bold ph-plus"></i></button>
-                            <button class="hover:text-slate-600 rounded p-0.5 cursor-grab"><i class="ph-bold ph-dots-six-vertical"></i></button>
-                        </div>
+                    <div class="max-w-4xl mx-auto w-full px-8 py-10 relative">
                         
-                        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                            <i class="ph-bold ph-link"></i> Интерактивный блок
+                        <!-- ИСПРАВЛЕНО: ИДЕАЛЬНО СГРУППИРОВАННЫЙ ТУЛБАР -->
+                        <!-- Тулбар прилеплен к верху рабочей зоны (Sticky) для удобства -->
+                        <div class="sticky-toolbar">
+                            <div class="bg-white border border-slate-200 rounded-[20px] p-2 shadow-toolbar flex flex-wrap items-center gap-2 w-max mx-auto lg:mx-0 transition-shadow hover:shadow-lg">
+                                
+                                <!-- Типографика -->
+                                <div class="flex items-center bg-slate-50 rounded-xl p-1 border border-slate-100">
+                                    <button class="w-9 h-9 rounded-lg text-slate-700 font-bold hover:bg-white hover:shadow-sm transition-all flex items-center justify-center font-serif text-sm">H<sub class="text-[10px] ml-[1px]">2</sub></button>
+                                    <button class="w-9 h-9 rounded-lg text-slate-700 font-bold hover:bg-white hover:shadow-sm transition-all flex items-center justify-center font-serif text-sm">H<sub class="text-[10px] ml-[1px]">3</sub></button>
+                                </div>
+                                
+                                <!-- Стили текста -->
+                                <div class="flex items-center bg-slate-50 rounded-xl p-1 border border-slate-100">
+                                    <button class="w-9 h-9 rounded-lg text-slate-700 font-bold hover:bg-white hover:shadow-sm transition-all flex items-center justify-center font-serif text-sm">B</button>
+                                    <button class="w-9 h-9 rounded-lg text-slate-700 font-bold hover:bg-white hover:shadow-sm transition-all flex items-center justify-center font-serif italic text-sm">I</button>
+                                    <button class="w-9 h-9 rounded-lg text-slate-700 font-bold hover:bg-white hover:shadow-sm transition-all flex items-center justify-center underline text-sm">U</button>
+                                </div>
+                                
+                                <!-- Списки -->
+                                <div class="flex items-center bg-slate-50 rounded-xl p-1 border border-slate-100">
+                                    <button class="w-9 h-9 rounded-lg text-slate-600 hover:bg-white hover:shadow-sm transition-all flex items-center justify-center"><i class="ph-bold ph-list-bullets text-base"></i></button>
+                                    <button class="w-9 h-9 rounded-lg text-slate-600 font-black hover:bg-white hover:shadow-sm transition-all flex items-center justify-center text-sm font-serif">99</button>
+                                </div>
+
+                                <div class="w-px h-6 bg-slate-200 mx-1"></div>
+
+                                <!-- Вставка сложных блоков (Пилюли) -->
+                                <div class="flex items-center gap-1.5">
+                                    <button class="px-4 py-2 rounded-xl text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
+                                        <i class="ph-bold ph-file-code text-[16px] text-slate-400"></i> Код
+                                    </button>
+                                    <button class="px-4 py-2 rounded-xl text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors flex items-center gap-2">
+                                        <span class="font-serif italic font-bold text-slate-400 text-[16px]">f</span> Формула
+                                    </button>
+                                    <button class="px-4 py-2 rounded-xl text-orange-600 bg-orange-50 font-bold text-sm hover:bg-orange-100 border border-orange-100 transition-colors flex items-center gap-2 shadow-sm">
+                                        <i class="ph-fill ph-warning-circle text-[16px]"></i> Внимание
+                                    </button>
+                                    <button class="px-4 py-2 rounded-xl text-boo-primary bg-purple-50 font-bold text-sm hover:bg-purple-100 border border-purple-100 transition-colors flex items-center gap-2 shadow-sm">
+                                        <i class="ph-bold ph-game-controller text-[16px]"></i> Задача
+                                    </button>
+                                </div>
+
+                            </div>
                         </div>
 
-                        <!-- Карточка задачи внутри теории -->
-                        <div class="bg-white border-2 border-slate-200 rounded-[24px] shadow-sm p-6 relative overflow-hidden group/embed">
-                            <div class="absolute top-2 right-2 bg-slate-100 text-slate-500 rounded-lg px-2 py-1 text-[10px] font-mono font-bold opacity-0 group-hover/embed:opacity-100 transition-opacity flex items-center gap-2 cursor-pointer border border-slate-200 hover:border-boo-primary">
-                                ID: 10452 <i class="ph-bold ph-pencil-simple"></i>
+                        <!-- RAW CONTENT AREA (Поле ввода) -->
+                        <div class="flex flex-col relative w-full mt-4">
+                            <!-- Декоративный плюсик слева для добавления блоков -->
+                            <div class="absolute -left-12 top-2 w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm cursor-pointer hover:text-boo-primary hover:border-boo-primary transition-all hover:scale-105">
+                                <i class="ph-bold ph-plus text-base"></i>
                             </div>
 
-                            <div class="flex items-center gap-2 mb-3">
-                                <span class="bg-purple-100 text-boo-primary text-[10px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider">Пример задачи</span>
+                            <!-- Заголовок -->
+                            <input type="text" class="w-full text-5xl font-black text-slate-900 placeholder-slate-300 bg-transparent border-none outline-none mb-10 resize-none" value="Задание 1">
+                            
+                            <!-- Raw Textarea / ContentEditable -->
+                            <div class="font-mono text-slate-700 text-[16px] leading-[2.2] outline-none whitespace-pre-wrap" contenteditable="true" spellcheck="false" data-placeholder="Начните писать или нажмите '/' для вызова меню блоков...">
+[CALLOUT type="attention"] ВНИМАНИЕ: Обязательно проверяйте уникальные степени вершин перед началом решения. [/CALLOUT]
+
+[CALLOUT type="tip"] ЛАЙФХАК: Если граф симметричный, ищите вершину, которая ломает симметрию. [/CALLOUT]
+
+[CODE lang="python"]
+for i in range(1, 4):
+    print(i)
+[/CODE]
+
+## Разбор графов
+Этот метод помогает быстро находить соответствия между таблицей и графом...
                             </div>
-                            <p class="text-sm font-medium text-slate-700 mb-4 line-clamp-3">
-                                Укажите наименьшее целое значение А, при котором выражение (x < A) ∨ (y < A) ∨ (x + 2y > 50) тождественно истинно...
-                            </p>
-                            <button class="w-full py-2.5 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-bold hover:bg-slate-100 hover:text-boo-primary transition-all flex justify-center items-center gap-2 text-sm shadow-sm">
-                                <i class="ph-bold ph-play"></i> Открыть в тренажере
-                            </button>
                         </div>
-                    </div>
 
-                    <!-- Пустая строка для добавления нового блока -->
-                    <div class="editor-block relative mt-4">
-                        <div class="flex gap-2 items-center text-slate-300">
-                            <button class="w-6 h-6 rounded flex items-center justify-center hover:bg-slate-100 hover:text-boo-primary transition-colors"><i class="ph-bold ph-plus"></i></button>
-                            <p class="text-lg text-slate-300 outline-none w-full" contenteditable="true" data-placeholder="Нажмите '/' для команд..."></p>
+                        <!-- РАЗДЕЛИТЕЛЬ -->
+                        <div class="my-16 border-t-2 border-dashed border-slate-200 relative flex justify-center">
+                            <span class="bg-white px-4 text-xs font-bold text-slate-400 uppercase tracking-widest absolute -top-2.5">
+                                Как это выглядит у ученика (Preview)
+                            </span>
+                        </div>
+
+                        <!-- PREVIEW AREA (Отрендеренный контент) -->
+                        <div class="w-full pb-20">
+                            <div class="grid grid-cols-1 gap-8">
+                                
+                                <!-- Рендер Кода (Светлый, чистый дизайн) -->
+                                <div class="bg-slate-50 rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-sm overflow-hidden flex flex-col">
+                                    <!-- Шапка кода -->
+                                    <div class="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200">
+                                        <div class="flex items-center gap-4">
+                                            <!-- Mac-style dots -->
+                                            <div class="flex gap-1.5">
+                                                <div class="w-3 h-3 rounded-full bg-red-400 border border-red-500/20"></div>
+                                                <div class="w-3 h-3 rounded-full bg-yellow-400 border border-yellow-500/20"></div>
+                                                <div class="w-3 h-3 rounded-full bg-green-400 border border-green-500/20"></div>
+                                            </div>
+                                            <span class="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">Python</span>
+                                        </div>
+                                        <button class="text-xs font-black uppercase tracking-widest text-green-700 bg-green-100 hover:bg-green-200 px-5 py-2.5 rounded-xl transition-colors shadow-sm border-b-[3px] border-green-300 active:translate-y-[2px] active:border-b-0 flex items-center gap-2">
+                                            <i class="ph-fill ph-play text-lg"></i> Run Code
+                                        </button>
+                                    </div>
+                                    <!-- Тело кода (Светлая тема с адаптированными цветами) -->
+                                    <div class="p-6 font-mono text-[15px] leading-relaxed text-slate-700 overflow-x-auto">
+<span class="text-purple-600 font-bold">def</span> <span class="text-blue-600">find_path</span>(graph, start, end, path=[]):
+    path = path + [start]
+    <span class="text-purple-600 font-bold">if</span> start == end:
+        <span class="text-purple-600 font-bold">return</span> path
+    <span class="text-purple-600 font-bold">if not</span> start <span class="text-purple-600 font-bold">in</span> graph:
+        <span class="text-purple-600 font-bold">return None</span>
+    
+    <span class="text-slate-400 italic"># Рекурсивный обход графа</span>
+    <span class="text-purple-600 font-bold">for</span> node <span class="text-purple-600 font-bold">in</span> graph[start]:
+        <span class="text-purple-600 font-bold">if</span> node <span class="text-purple-600 font-bold">not in</span> path:
+            newpath = <span class="text-blue-600">find_path</span>(graph, node, end, path)
+            <span class="text-purple-600 font-bold">if</span> newpath: <span class="text-purple-600 font-bold">return</span> newpath
+    <span class="text-purple-600 font-bold">return None</span>
+                                    </div>
+                                </div>
+
+                                <!-- Рендер Math -->
+                                <div class="bg-white border border-slate-200 rounded-[24px] border-b-[4px] border-b-slate-300 p-8 shadow-sm flex flex-col justify-center">
+                                    <div class="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <i class="ph-bold ph-function text-boo-primary text-lg"></i> Math & Latex Block
+                                    </div>
+                                    <input type="text" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 font-mono text-sm text-slate-600 focus:outline-none focus:border-boo-primary transition-colors shadow-inner-soft mb-6" value="\neg(A \land B) \equiv \neg A \lor \neg B">
+                                    <div class="font-serif text-3xl md:text-4xl text-slate-800 font-bold text-center py-6 bg-slate-50/50 rounded-2xl border border-slate-100">
+                                        ¬(A ∧ B) ≡ ¬A ∨ ¬B
+                                    </div>
+                                </div>
+
+                            </div>
                         </div>
                     </div>
 
