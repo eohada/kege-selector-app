@@ -12,7 +12,7 @@
 
 {% block content %}
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 -mt-2">
-    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
+    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute right-60 bottom-[-50px] w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
         <div class="relative z-10 max-w-3xl">
@@ -64,11 +64,11 @@
             </div>
         </div>
         <div class="w-full lg:w-auto flex gap-2">
-            <button type="submit" class="flex-1 lg:flex-none px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm dark:shadow-none flex items-center justify-center gap-2">
+            <button type="submit" class="flex-1 lg:flex-none px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center gap-2">
                 <i class="ph-bold ph-funnel"></i> Применить
             </button>
             {% if groups and groups|length > 0 %}
-            <a href="{{ url_for('groups.group_view', group_id=groups[0].group_id) }}" class="flex-1 lg:flex-none px-5 py-2.5 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl font-bold text-sm hover:bg-orange-100 transition-all shadow-sm dark:shadow-none flex items-center justify-center gap-2 no-underline" title="Массовое ДЗ — откройте группу и прокрутите к форме">
+            <a href="{{ url_for('groups.group_view', group_id=groups[0].group_id) }}" class="flex-1 lg:flex-none px-5 py-2.5 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl font-bold text-sm hover:bg-orange-100 transition-all shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center gap-2 no-underline" title="Массовое ДЗ — откройте группу и прокрутите к форме">
                 <i class="ph-bold ph-paper-plane-right"></i> Массовое ДЗ
             </a>
             {% endif %}
@@ -127,7 +127,7 @@
                 <div class="text-[10px] font-medium text-muted">Участников в группе: <span class="font-bold text-muted">{{ g.students|length }}</span></div>
             </div>
             <div class="flex gap-2 pt-4 border-t border-slate-100">
-                <a href="{{ url_for('groups.group_view', group_id=g.group_id) }}" class="flex-1 py-2.5 bg-surface text-secondary border border-slate-200 text-xs font-bold rounded-xl shadow-sm dark:shadow-none hover:bg-surface-alt transition-colors flex items-center justify-center gap-1.5 no-underline">
+                <a href="{{ url_for('groups.group_view', group_id=g.group_id) }}" class="flex-1 py-2.5 bg-surface text-secondary border border-slate-200 text-xs font-bold rounded-xl shadow-sm dark:shadow-none dark:shadow-none hover:bg-surface-alt transition-colors flex items-center justify-center gap-1.5 no-underline">
                     <i class="ph-bold ph-eye"></i> Открыть группу
                 </a>
                 <a href="{{ url_for('groups.group_edit', group_id=g.group_id) }}" class="w-10 h-10 bg-surface text-muted border border-slate-200 rounded-xl flex items-center justify-center hover:bg-surface-alt hover:text-boo-primary transition-colors no-underline" title="Редактировать">
@@ -154,7 +154,7 @@
     </div>
     {% else %}
     <div class="w-full bg-surface rounded-[32px] border-2 border-slate-200 border-dashed p-12 lg:p-16 flex flex-col items-center justify-center text-center">
-        <div class="w-24 h-24 bg-surface-alt rounded-[24px] flex items-center justify-center mb-6 border-4 border-white shadow-sm dark:shadow-none">
+        <div class="w-24 h-24 bg-surface-alt rounded-[24px] flex items-center justify-center mb-6 border-4 border-white shadow-sm dark:shadow-none dark:shadow-none">
             <i class="ph-fill ph-users-four text-[60px] text-slate-300"></i>
         </div>
         <h3 class="text-2xl font-black text-primary tracking-tight mb-2">Групп пока нет</h3>

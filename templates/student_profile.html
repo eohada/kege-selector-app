@@ -53,7 +53,7 @@
                         <i class="ph-bold ph-user text-lg text-muted"></i> Профиль
                     </a>
                     <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
-                       class="px-4 py-2.5 bg-surface text-boo-primary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/60 shadow-sm dark:shadow-none no-underline">
+                       class="px-4 py-2.5 bg-surface text-boo-primary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/60 shadow-sm dark:shadow-none dark:shadow-none no-underline">
                         <i class="ph-bold ph-chart-line-up text-lg"></i> Статистика
                     </a>
                 </div>
@@ -116,9 +116,9 @@
                 <div class="flex items-center gap-4 mb-6">
                     <div class="relative">
                         {% if mentor and mentor.avatar_url %}
-                        <img src="{{ mentor.avatar_url }}" class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm dark:shadow-none bg-purple-100 object-cover" alt="Аватар наставника">
+                        <img src="{{ mentor.avatar_url }}" class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm dark:shadow-none dark:shadow-none bg-purple-100 object-cover" alt="Аватар наставника">
                         {% else %}
-                        <div class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm dark:shadow-none bg-purple-100 flex items-center justify-center text-boo-primary font-black text-2xl">
+                        <div class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm dark:shadow-none dark:shadow-none bg-purple-100 flex items-center justify-center text-boo-primary font-black text-2xl">
                             {{ (mentor.username[0]|upper) if mentor else '—' }}
                         </div>
                         {% endif %}
@@ -142,7 +142,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white/70 border border-purple-100 rounded-2xl p-4 shadow-sm dark:shadow-none">
+                <div class="bg-white/70 border border-purple-100 rounded-2xl p-4 shadow-sm dark:shadow-none dark:shadow-none">
                     <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Статус преподавателя</div>
                     <div class="text-sm font-black text-primary mt-0.5">
                         {% if mentor and mentor.custom_status %}{{ mentor.custom_status }}{% else %}—{% endif %}
@@ -175,7 +175,7 @@
                 <div class="w-12 h-12 rounded-2xl {% if active_cnt > 0 %}bg-red-50 text-boo-coral border-red-100{% else %}bg-surface-alt text-muted border-slate-200{% endif %} flex items-center justify-center border">
                     <i class="ph-fill {% if active_cnt > 0 %}ph-warning-circle{% else %}ph-check-circle{% endif %} text-2xl"></i>
                 </div>
-                <span class="bg-slate-900 text-white font-black text-sm px-3 py-1 rounded-full shadow-sm dark:shadow-none">{{ active_cnt }} работ</span>
+                <span class="bg-slate-900 text-white font-black text-sm px-3 py-1 rounded-full shadow-sm dark:shadow-none dark:shadow-none">{{ active_cnt }} работ</span>
             </div>
 
             <h3 class="text-2xl font-black text-primary mb-2">{% if active_cnt > 0 %}Сдать ДЗ{% else %}Всё сдано{% endif %}</h3>
@@ -188,7 +188,7 @@
             </p>
 
             <a href="{{ url_for('assignments.submissions_list') }}"
-               class="w-full py-3 {% if active_cnt > 0 %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-slate-900 hover:bg-slate-800 border-b-black{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm border-b-[3px] active:translate-y-1 active:border-b-0 no-underline">
+               class="w-full py-3 {% if active_cnt > 0 %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-slate-900 hover:bg-slate-800 border-b-black{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm border-b-[3px] active:translate-y-1 active:border-b-0 no-underline">
                 Перейти к заданиям <i class="ph-bold ph-arrow-right"></i>
             </a>
         </div>
@@ -216,7 +216,7 @@
 
             {% if upcoming %}
             <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=upcoming.lesson_id) }}"
-               class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 no-underline">
+               class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 no-underline">
                 Открыть урок
             </a>
             {% else %}
@@ -232,7 +232,7 @@
                     <i class="ph-fill ph-game-controller text-2xl"></i>
                 </div>
                 {% if not trainer_is_available %}
-                <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">
+                <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none dark:shadow-none">
                     Нет доступа
                 </span>
                 {% endif %}
@@ -245,7 +245,7 @@
 
             {% if trainer_is_available %}
             <a href="{{ url_for('trainer.trainer_v2') }}"
-               class="w-full py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt hover:text-boo-primary transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
+               class="w-full py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt hover:text-boo-primary transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
                 Подобрать задачу <i class="ph-bold ph-magic-wand text-boo-primary"></i>
             </a>
             {% else %}
@@ -296,7 +296,7 @@
         </div>
         {% else %}
         <div class="w-full bg-slate-50/50 rounded-[24px] border-2 border-slate-200 border-dashed p-10 text-center">
-            <div class="w-16 h-16 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none mx-auto mb-4">
+            <div class="w-16 h-16 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none mx-auto mb-4">
                 <i class="ph-fill ph-ghost text-3xl text-slate-300"></i>
             </div>
             <h4 class="text-lg font-bold text-primary mb-1">Уроков пока нет</h4>

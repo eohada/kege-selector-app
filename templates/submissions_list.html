@@ -21,7 +21,7 @@
     </div>
 
     <div class="bg-slate-100/80 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50">
-      <button type="button" class="task-tab px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 flex items-center gap-2 whitespace-nowrap transition-all" data-filter="in_work">
+      <button type="button" class="task-tab px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50 flex items-center gap-2 whitespace-nowrap transition-all" data-filter="in_work">
         В работе <span class="bg-boo-coral text-white px-2 py-0.5 rounded-md text-xs">{{ in_work_count }}</span>
       </button>
       <button type="button" class="task-tab px-6 py-2.5 text-muted hover:text-primary rounded-lg font-bold text-sm transition-colors whitespace-nowrap flex items-center gap-2" data-filter="on_review">
@@ -68,7 +68,7 @@
             </span>
 
             {% if display_status %}
-            <div class="flex items-center gap-1.5 {% if is_burning %}text-boo-coral{% else %}text-muted{% endif %} text-xs font-bold bg-surface px-2 py-1 rounded-lg border {% if is_burning %}border-red-100{% else %}border-slate-200{% endif %} shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-1.5 {% if is_burning %}text-boo-coral{% else %}text-muted{% endif %} text-xs font-bold bg-surface px-2 py-1 rounded-lg border {% if is_burning %}border-red-100{% else %}border-slate-200{% endif %} shadow-sm dark:shadow-none dark:shadow-none">
               <i class="ph-fill {% if is_burning %}ph-fire animate-pulse{% else %}ph-hourglass-high{% endif %}"></i> {{ display_status }}
             </div>
             {% else %}
@@ -109,17 +109,17 @@
         <div class="relative z-10 pt-4 border-t {% if is_burning %}border-red-100{% else %}border-slate-100{% endif %}">
           {% if status == 'ASSIGNED' %}
           <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}"
-             class="w-full py-3.5 {% if is_burning %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-boo-primary hover:bg-boo-primaryHover border-b-purple-800{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm border-b-[3px] active:translate-y-[2px] active:border-b-0 no-underline">
+             class="w-full py-3.5 {% if is_burning %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-boo-primary hover:bg-boo-primaryHover border-b-purple-800{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm border-b-[3px] active:translate-y-[2px] active:border-b-0 no-underline">
             Открыть работу <i class="ph-bold ph-arrow-right"></i>
           </a>
           {% elif status in ['IN_PROGRESS','RETURNED'] %}
           <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}"
-             class="w-full py-3.5 {% if is_burning %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-boo-primary hover:bg-boo-primaryHover border-b-purple-800{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm border-b-[3px] active:translate-y-[2px] active:border-b-0 no-underline">
+             class="w-full py-3.5 {% if is_burning %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-boo-primary hover:bg-boo-primaryHover border-b-purple-800{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm border-b-[3px] active:translate-y-[2px] active:border-b-0 no-underline">
             Продолжить решение <i class="ph-bold ph-arrow-right"></i>
           </a>
           {% else %}
           <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}"
-             class="w-full py-3 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
+             class="w-full py-3 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
             <i class="ph-bold ph-eye"></i> Посмотреть
           </a>
           {% endif %}
@@ -199,10 +199,10 @@
   function setActiveTab(filter) {
     tabs.forEach(t => {
       if (t.dataset.filter === filter) {
-        t.classList.add('bg-surface', 'text-primary', 'shadow-sm dark:shadow-none', 'border', 'border-slate-200/50');
+        t.classList.add('bg-surface', 'text-primary', 'shadow-sm dark:shadow-none dark:shadow-none', 'border', 'border-slate-200/50');
         t.classList.remove('text-muted');
       } else {
-        t.classList.remove('bg-surface', 'text-primary', 'shadow-sm dark:shadow-none', 'border', 'border-slate-200/50');
+        t.classList.remove('bg-surface', 'text-primary', 'shadow-sm dark:shadow-none dark:shadow-none', 'border', 'border-slate-200/50');
         t.classList.add('text-muted');
       }
     });

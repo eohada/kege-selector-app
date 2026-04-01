@@ -13,7 +13,7 @@
 {% block content %}
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 -mt-2">
 
-    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none relative overflow-hidden flex flex-col">
+    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none dark:shadow-none relative overflow-hidden flex flex-col">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/40 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute right-40 bottom-[-50px] w-60 h-60 bg-purple-200/30 rounded-full blur-2xl pointer-events-none"></div>
         <div class="relative z-10">
@@ -28,7 +28,7 @@
                     <i class="ph-bold ph-plus text-lg"></i> Создать работу
                 </a>
                 {% endif %}
-                <a href="{{ url_for('task_generator.task_generator') }}" class="px-6 py-3 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
+                <a href="{{ url_for('task_generator.task_generator') }}" class="px-6 py-3 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
                     <i class="ph-fill ph-magic-wand text-lg"></i> Открыть генератор
                 </a>
                 <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="px-5 py-3 text-muted font-bold hover:text-boo-primary hover:bg-white/60 rounded-xl transition-colors flex items-center gap-2 text-sm no-underline">
@@ -41,27 +41,27 @@
             </div>
         </div>
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 relative z-10 mt-auto">
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='active') }}" class="bg-white/80 backdrop-blur-md rounded-[20px] p-4 border {% if filters.status == 'active' %}border-boo-primary ring-2 ring-purple-100{% else %}border-white{% endif %} shadow-sm dark:shadow-none flex flex-col justify-between hover:bg-surface transition-colors">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='active') }}" class="bg-white/80 backdrop-blur-md rounded-[20px] p-4 border {% if filters.status == 'active' %}border-boo-primary ring-2 ring-purple-100{% else %}border-white{% endif %} shadow-sm dark:shadow-none dark:shadow-none flex flex-col justify-between hover:bg-surface transition-colors">
                 <div class="text-xs font-extrabold text-muted mb-2">Активные</div>
                 <div class="text-3xl font-black text-primary">{{ kpis.active if kpis else 0 }}</div>
             </a>
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='needs_grading') }}" class="rounded-[20px] p-4 flex flex-col justify-between transform hover:-translate-y-1 transition-all {% if filters.status == 'needs_grading' %}bg-surface border-2 border-cyan-200 shadow-[0_8px_20px_rgba(6,182,212,0.15)]{% else %}bg-white/80 border border-white shadow-sm dark:shadow-none hover:bg-surface{% endif %}">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='needs_grading') }}" class="rounded-[20px] p-4 flex flex-col justify-between transform hover:-translate-y-1 transition-all {% if filters.status == 'needs_grading' %}bg-surface border-2 border-cyan-200 shadow-[0_8px_20px_rgba(6,182,212,0.15)]{% else %}bg-white/80 border border-white shadow-sm dark:shadow-none dark:shadow-none hover:bg-surface{% endif %}">
                 <div class="text-xs font-extrabold text-primary mb-2">Нужно проверить</div>
                 <div class="text-3xl font-black text-primary">{{ kpis.needs_grading if kpis else 0 }}</div>
             </a>
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='returned') }}" class="bg-white/80 backdrop-blur-md rounded-[20px] p-4 border border-white shadow-sm dark:shadow-none flex flex-col justify-between hover:bg-surface transition-colors {% if filters.status == 'returned' %}ring-2 ring-amber-200{% endif %}">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='returned') }}" class="bg-white/80 backdrop-blur-md rounded-[20px] p-4 border border-white shadow-sm dark:shadow-none dark:shadow-none flex flex-col justify-between hover:bg-surface transition-colors {% if filters.status == 'returned' %}ring-2 ring-amber-200{% endif %}">
                 <div class="text-xs font-extrabold text-muted mb-2">На доработке</div>
                 <div class="text-3xl font-black text-primary">{{ kpis.returned if kpis else 0 }}</div>
             </a>
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='overdue') }}" class="bg-white/80 backdrop-blur-md rounded-[20px] p-4 border border-white shadow-sm dark:shadow-none flex flex-col justify-between hover:bg-surface transition-colors {% if filters.status == 'overdue' %}ring-2 ring-red-200{% endif %}">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='overdue') }}" class="bg-white/80 backdrop-blur-md rounded-[20px] p-4 border border-white shadow-sm dark:shadow-none dark:shadow-none flex flex-col justify-between hover:bg-surface transition-colors {% if filters.status == 'overdue' %}ring-2 ring-red-200{% endif %}">
                 <div class="text-xs font-extrabold text-muted mb-2">Просрочено</div>
                 <div class="text-3xl font-black text-primary">{{ kpis.overdue if kpis else 0 }}</div>
             </a>
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='completed') }}" class="bg-white/80 backdrop-blur-md rounded-[20px] p-4 border border-white shadow-sm dark:shadow-none flex flex-col justify-between hover:bg-surface transition-colors {% if filters.status == 'completed' %}ring-2 ring-green-200{% endif %}">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='completed') }}" class="bg-white/80 backdrop-blur-md rounded-[20px] p-4 border border-white shadow-sm dark:shadow-none dark:shadow-none flex flex-col justify-between hover:bg-surface transition-colors {% if filters.status == 'completed' %}ring-2 ring-green-200{% endif %}">
                 <div class="text-xs font-extrabold text-muted mb-2">Готово</div>
                 <div class="text-3xl font-black text-primary">{{ kpis.completed if kpis else 0 }}</div>
             </a>
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived='1', status='archived') }}" class="bg-white/80 backdrop-blur-md rounded-[20px] p-4 border border-white shadow-sm dark:shadow-none flex flex-col justify-between hover:bg-surface transition-colors opacity-90 {% if filters.status == 'archived' %}ring-2 ring-slate-300{% endif %}">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived='1', status='archived') }}" class="bg-white/80 backdrop-blur-md rounded-[20px] p-4 border border-white shadow-sm dark:shadow-none dark:shadow-none flex flex-col justify-between hover:bg-surface transition-colors opacity-90 {% if filters.status == 'archived' %}ring-2 ring-slate-300{% endif %}">
                 <div class="text-xs font-extrabold text-muted mb-2">Архив</div>
                 <div class="text-3xl font-black text-primary">{{ kpis.archived if kpis else 0 }}</div>
             </a>
@@ -110,13 +110,13 @@
             </div>
             <input type="hidden" name="status" value="{{ filters.status if filters else 'all' }}">
             <div class="w-full lg:w-auto flex gap-2">
-                <button type="submit" class="flex-1 lg:flex-none px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm hover:bg-boo-primaryHover transition-all shadow-sm dark:shadow-none">Применить</button>
-                <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 py-2.5 bg-surface text-muted border border-slate-200 rounded-xl font-bold text-sm hover:bg-surface-alt transition-all shadow-sm dark:shadow-none text-center no-underline">Сброс</a>
+                <button type="submit" class="flex-1 lg:flex-none px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm hover:bg-boo-primaryHover transition-all shadow-sm dark:shadow-none dark:shadow-none">Применить</button>
+                <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 py-2.5 bg-surface text-muted border border-slate-200 rounded-xl font-bold text-sm hover:bg-surface-alt transition-all shadow-sm dark:shadow-none dark:shadow-none text-center no-underline">Сброс</a>
             </div>
         </form>
 
         <div class="flex overflow-x-auto gap-2 pt-4 border-t border-slate-100 hide-scroll pb-1">
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='all') }}" class="px-4 py-2 rounded-xl font-black text-sm whitespace-nowrap shadow-sm dark:shadow-none border no-underline {% if filters.status == 'all' %}bg-cyan-50 border-cyan-200 text-cyan-800{% else %}bg-surface-alt border-slate-200 text-muted hover:bg-surface-alt font-bold{% endif %}">Все ({{ kpis.total if kpis else 0 }})</a>
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='all') }}" class="px-4 py-2 rounded-xl font-black text-sm whitespace-nowrap shadow-sm dark:shadow-none dark:shadow-none border no-underline {% if filters.status == 'all' %}bg-cyan-50 border-cyan-200 text-cyan-800{% else %}bg-surface-alt border-slate-200 text-muted hover:bg-surface-alt font-bold{% endif %}">Все ({{ kpis.total if kpis else 0 }})</a>
             <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='active') }}" class="px-4 py-2 rounded-xl text-sm whitespace-nowrap border no-underline {% if filters.status == 'active' %}bg-cyan-50 border-cyan-200 text-cyan-800 font-black{% else %}bg-surface-alt border-slate-200 text-muted hover:bg-surface-alt font-bold{% endif %}">Активные ({{ kpis.active if kpis else 0 }})</a>
             <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='needs_grading') }}" class="px-4 py-2 rounded-xl text-sm whitespace-nowrap border no-underline {% if filters.status == 'needs_grading' %}bg-cyan-50 border-cyan-200 text-cyan-800 font-black{% else %}bg-surface-alt border-slate-200 text-muted hover:bg-surface-alt font-bold{% endif %}">Нужно проверить ({{ kpis.needs_grading if kpis else 0 }})</a>
             <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='returned') }}" class="px-4 py-2 rounded-xl text-sm whitespace-nowrap border no-underline {% if filters.status == 'returned' %}bg-cyan-50 border-cyan-200 text-cyan-800 font-black{% else %}bg-surface-alt border-slate-200 text-muted hover:bg-surface-alt font-bold{% endif %}">На доработке ({{ kpis.returned if kpis else 0 }})</a>
@@ -158,7 +158,7 @@
             {% if item.student_submissions %}
             <div class="flex flex-wrap gap-1.5 mb-6">
                 {% for ss in item.student_submissions %}
-                <a href="{{ url_for('students.student_profile', student_id=ss.student_id) }}" class="bg-purple-50 text-boo-primary border border-purple-100 text-[11px] font-bold px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm dark:shadow-none no-underline hover:bg-purple-100" title="{{ ss.status }}">
+                <a href="{{ url_for('students.student_profile', student_id=ss.student_id) }}" class="bg-purple-50 text-boo-primary border border-purple-100 text-[11px] font-bold px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm dark:shadow-none dark:shadow-none no-underline hover:bg-purple-100" title="{{ ss.status }}">
                     <span class="w-1.5 h-1.5 rounded-full {% if ss.status == 'GRADED' %}bg-green-500{% elif ss.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] %}bg-boo-primary{% elif ss.status == 'RETURNED' %}bg-amber-400{% elif ss.status == 'IN_PROGRESS' %}bg-slate-400{% else %}bg-slate-300{% endif %}"></span>
                     {{ ss.name }}
                 </a>
@@ -167,9 +167,9 @@
             {% endif %}
             <div class="flex gap-2 mb-6 mt-auto">
                 {% if item.to_grade and item.to_grade > 0 %}
-                <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="bg-boo-primary text-white text-sm font-bold px-4 py-2.5 rounded-xl flex-1 shadow-sm dark:shadow-none hover:bg-boo-primaryHover transition-colors text-center border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 no-underline">Проверить ({{ item.to_grade }})</a>
+                <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="bg-boo-primary text-white text-sm font-bold px-4 py-2.5 rounded-xl flex-1 shadow-sm dark:shadow-none dark:shadow-none hover:bg-boo-primaryHover transition-colors text-center border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 no-underline">Проверить ({{ item.to_grade }})</a>
                 {% endif %}
-                <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="bg-surface text-boo-primary border border-purple-200 text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-purple-50 transition-colors shadow-sm dark:shadow-none text-center no-underline {% if not item.to_grade %}flex-1{% endif %}">Открыть</a>
+                <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="bg-surface text-boo-primary border border-purple-200 text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-purple-50 transition-colors shadow-sm dark:shadow-none dark:shadow-none text-center no-underline {% if not item.to_grade %}flex-1{% endif %}">Открыть</a>
             </div>
             <div class="mb-4">
                 <div class="w-full h-1.5 bg-surface-alt rounded-full overflow-hidden mb-2 relative">

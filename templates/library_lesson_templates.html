@@ -6,7 +6,7 @@
 {% block content %}
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 -mt-2">
 
-    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
+    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute right-60 bottom-[-50px] w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
         <div class="relative z-10 max-w-3xl">
@@ -21,7 +21,7 @@
             </p>
         </div>
         <div class="relative z-10 flex flex-wrap items-center gap-3 shrink-0">
-            <a href="{{ url_for('library.materials_library') }}" class="px-6 py-3 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
+            <a href="{{ url_for('library.materials_library') }}" class="px-6 py-3 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
                 <i class="ph-bold ph-books text-lg"></i> Материалы
             </a>
         </div>
@@ -50,7 +50,7 @@
             </div>
             {% if lesson %}<input type="hidden" name="lesson_id" value="{{ lesson.lesson_id }}">{% endif %}
             <div class="flex gap-2 items-end">
-                <button type="submit" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm hover:bg-boo-primaryHover shadow-sm dark:shadow-none">Найти</button>
+                <button type="submit" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm hover:bg-boo-primaryHover shadow-sm dark:shadow-none dark:shadow-none">Найти</button>
                 <a href="{{ url_for('library.lesson_templates', lesson_id=(lesson.lesson_id if lesson else None)) }}" class="px-4 py-2.5 bg-surface border border-slate-200 rounded-xl font-bold text-sm text-muted hover:bg-surface-alt no-underline">Сброс</a>
             </div>
         </form>
@@ -60,7 +60,7 @@
         <h2 class="text-xl font-black text-primary flex items-center gap-2">
             <i class="ph-fill ph-layout text-boo-primary"></i> Мои шаблоны
         </h2>
-        <span class="text-xs font-bold text-muted bg-surface border border-slate-200 px-2.5 py-1 rounded-lg shadow-sm dark:shadow-none">{{ templates|length }} шт.</span>
+        <span class="text-xs font-bold text-muted bg-surface border border-slate-200 px-2.5 py-1 rounded-lg shadow-sm dark:shadow-none dark:shadow-none">{{ templates|length }} шт.</span>
     </div>
 
     {% if templates and templates|length > 0 %}

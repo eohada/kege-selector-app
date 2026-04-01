@@ -72,7 +72,7 @@
                             <input id="qaImpersonateQ" type="text" class="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="username / id" autocomplete="off">
                             <button type="submit" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold">Поиск</button>
                         </form>
-                        <div id="qaImpersonateResults" class="hidden rounded-xl border border-slate-200 bg-surface shadow-sm dark:shadow-none p-2"></div>
+                        <div id="qaImpersonateResults" class="hidden rounded-xl border border-slate-200 bg-surface shadow-sm dark:shadow-none dark:shadow-none p-2"></div>
                         <div class="grid grid-cols-2 gap-2 pt-1">
                             {% for un in ['qa_pool_student_1','qa_pool_student_2','qa_pool_student_3','qa_pool_tutor_1','qa_pool_tutor_2','qa_pool_tutor_3'] %}
                             <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" data-no-ajax>

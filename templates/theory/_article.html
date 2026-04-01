@@ -14,7 +14,7 @@
 {% endif %}
 
 <div data-theory-article data-task-number="{{ block.task_number }}" data-block-id="{{ block.id }}" class="flex flex-col gap-4">
-  <button type="button" data-action="back" data-back-url="{{ back_to_url if back_to_url is defined else url_for('theory.theory_index', course_id=course_id) }}" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none w-fit transition-colors">
+  <button type="button" data-action="back" data-back-url="{{ back_to_url if back_to_url is defined else url_for('theory.theory_index', course_id=course_id) }}" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none dark:shadow-none w-fit transition-colors">
     <i class="ph-bold ph-arrow-left"></i> Назад в каталог
   </button>
 
@@ -38,14 +38,14 @@
         {% endfor %}
       </div>
       <div class="mt-8 pt-6 border-t border-slate-100">
-        <a href="{{ url_for('trainer.trainer_embed') }}" class="w-full py-3 bg-surface border border-slate-200 text-secondary rounded-xl font-bold hover:bg-surface-alt transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
+        <a href="{{ url_for('trainer.trainer_embed') }}" class="w-full py-3 bg-surface border border-slate-200 text-secondary rounded-xl font-bold hover:bg-surface-alt transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
           <i class="ph-bold ph-game-controller text-boo-primary"></i> В тренажёр
         </a>
       </div>
     </aside>
 
     <section class="flex-1 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:p-12 overflow-y-auto relative">
-      <button type="button" data-action="bookmark" data-value="{{ '1' if state and state.bookmarked else '0' }}" title="Сохранить" class="absolute top-8 right-8 w-10 h-10 bg-surface-alt rounded-full flex items-center justify-center border border-slate-200 {% if state and state.bookmarked %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-muted hover:text-boo-accent hover:bg-orange-50{% endif %} transition-colors shadow-sm dark:shadow-none">
+      <button type="button" data-action="bookmark" data-value="{{ '1' if state and state.bookmarked else '0' }}" title="Сохранить" class="absolute top-8 right-8 w-10 h-10 bg-surface-alt rounded-full flex items-center justify-center border border-slate-200 {% if state and state.bookmarked %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-muted hover:text-boo-accent hover:bg-orange-50{% endif %} transition-colors shadow-sm dark:shadow-none dark:shadow-none">
         <i class="{% if state and state.bookmarked %}ph-fill{% else %}ph-bold{% endif %} ph-bookmark-simple text-xl bookmark-icon"></i>
       </button>
 
@@ -78,7 +78,7 @@
             <div class="flex gap-3 w-full sm:w-auto items-center">
               {% set current_rating = (feedback.rating if feedback and feedback.rating is not none else 0) %}
               {% for i in range(1,6) %}
-              <button type="button" data-action="rate" data-rating="{{ i }}" class="w-10 h-10 rounded-xl border border-slate-200 bg-surface shadow-sm dark:shadow-none flex items-center justify-center transition-colors cursor-pointer {% if i <= current_rating %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-slate-300{% endif %} hover:text-boo-accent">
+              <button type="button" data-action="rate" data-rating="{{ i }}" class="w-10 h-10 rounded-xl border border-slate-200 bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center transition-colors cursor-pointer {% if i <= current_rating %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-slate-300{% endif %} hover:text-boo-accent">
                 <i class="ph-fill ph-star text-xl"></i>
               </button>
               {% endfor %}

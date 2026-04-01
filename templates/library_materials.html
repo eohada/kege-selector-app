@@ -17,7 +17,7 @@
 {% block content %}
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 -mt-2">
 
-    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none relative overflow-hidden flex flex-col">
+    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none dark:shadow-none relative overflow-hidden flex flex-col">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute right-60 bottom-[-50px] w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
         <div class="relative z-10 max-w-4xl">
@@ -40,7 +40,7 @@
                     <label class="text-[11px] font-extrabold text-muted uppercase tracking-widest ml-1">Файл</label>
                     <div class="lib-file-drop relative border-2 border-dashed border-slate-300 rounded-2xl bg-surface-alt p-6 flex flex-col items-center justify-center text-center cursor-pointer overflow-hidden group">
                         <input type="file" name="file" id="lib-file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required>
-                        <div class="w-12 h-12 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none border border-slate-200 mb-3 group-hover:scale-110 transition-transform pointer-events-none">
+                        <div class="w-12 h-12 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 mb-3 group-hover:scale-110 transition-transform pointer-events-none">
                             <i class="ph-bold ph-upload-simple text-xl text-boo-primary"></i>
                         </div>
                         <p class="text-sm font-bold text-secondary mb-1 pointer-events-none">Выберите файл или перетащите</p>
@@ -83,10 +83,10 @@
                             <i class="ph-bold ph-tag absolute left-4 top-1/2 -translate-y-1/2 text-muted"></i>
                             <input type="text" name="tag" value="{{ tag or '' }}" placeholder="Тег" class="w-full bg-surface-alt border border-slate-200 rounded-xl pl-10 pr-4 py-3 font-medium text-secondary text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
                         </div>
-                        <button type="submit" class="w-12 h-12 bg-surface border border-slate-200 text-boo-primary rounded-xl flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm dark:shadow-none shrink-0" aria-label="Искать">
+                        <button type="submit" class="w-12 h-12 bg-surface border border-slate-200 text-boo-primary rounded-xl flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm dark:shadow-none dark:shadow-none shrink-0" aria-label="Искать">
                             <i class="ph-bold ph-magnifying-glass"></i>
                         </button>
-                        <a href="{{ url_for('library.materials_library') }}" class="w-12 h-12 bg-surface border border-slate-200 text-muted rounded-xl flex items-center justify-center hover:bg-surface-alt hover:text-secondary transition-colors shadow-sm dark:shadow-none shrink-0" title="Сбросить фильтры">
+                        <a href="{{ url_for('library.materials_library') }}" class="w-12 h-12 bg-surface border border-slate-200 text-muted rounded-xl flex items-center justify-center hover:bg-surface-alt hover:text-secondary transition-colors shadow-sm dark:shadow-none dark:shadow-none shrink-0" title="Сбросить фильтры">
                             <i class="ph-bold ph-arrow-counter-clockwise"></i>
                         </a>
                     </div>
@@ -101,15 +101,15 @@
                         <div class="p-5 flex-1">
                             <div class="flex justify-between items-start mb-4">
                                 {% if ext in ['png','jpg','jpeg','gif','webp','svg'] %}
-                                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-100 shadow-sm dark:shadow-none overflow-hidden relative">
+                                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-100 shadow-sm dark:shadow-none dark:shadow-none overflow-hidden relative">
                                     <i class="ph-fill ph-image text-2xl relative z-10 text-blue-600"></i>
                                 </div>
                                 {% elif ext == 'pdf' %}
-                                <div class="w-12 h-12 rounded-xl bg-red-50 text-red-500 flex items-center justify-center border border-red-100 shadow-sm dark:shadow-none">
+                                <div class="w-12 h-12 rounded-xl bg-red-50 text-red-500 flex items-center justify-center border border-red-100 shadow-sm dark:shadow-none dark:shadow-none">
                                     <i class="ph-fill ph-file-pdf text-2xl"></i>
                                 </div>
                                 {% else %}
-                                <div class="w-12 h-12 rounded-xl bg-surface-alt text-muted flex items-center justify-center border border-slate-200 shadow-sm dark:shadow-none">
+                                <div class="w-12 h-12 rounded-xl bg-surface-alt text-muted flex items-center justify-center border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none">
                                     <i class="ph-fill ph-file text-2xl"></i>
                                 </div>
                                 {% endif %}
@@ -138,10 +138,10 @@
                         </div>
                         <div class="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-[24px] flex flex-col gap-2">
                             <div class="flex gap-2">
-                                <a href="{{ a.file_url }}" target="_blank" rel="noopener" class="flex-1 py-2 bg-surface text-secondary border border-slate-200 rounded-lg text-xs font-bold hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none flex items-center justify-center gap-1.5 no-underline">
+                                <a href="{{ a.file_url }}" target="_blank" rel="noopener" class="flex-1 py-2 bg-surface text-secondary border border-slate-200 rounded-lg text-xs font-bold hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center gap-1.5 no-underline">
                                     <i class="ph-bold ph-download-simple"></i> Скачать
                                 </a>
-                                <button type="button" class="w-10 h-10 bg-surface text-boo-primary border border-purple-200 rounded-lg flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm dark:shadow-none" title="Скопировать ссылку" data-copy-url="{{ a.file_url }}">
+                                <button type="button" class="w-10 h-10 bg-surface text-boo-primary border border-purple-200 rounded-lg flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm dark:shadow-none dark:shadow-none" title="Скопировать ссылку" data-copy-url="{{ a.file_url }}">
                                     <i class="ph-bold ph-link"></i>
                                 </button>
                             </div>
@@ -161,7 +161,7 @@
                 </div>
                 {% else %}
                 <div class="w-full bg-surface rounded-[24px] border-2 border-slate-200 border-dashed p-10 lg:p-14 flex flex-col items-center justify-center text-center">
-                    <div class="w-16 h-16 bg-surface-alt rounded-2xl flex items-center justify-center mb-4 border-2 border-white shadow-sm dark:shadow-none">
+                    <div class="w-16 h-16 bg-surface-alt rounded-2xl flex items-center justify-center mb-4 border-2 border-white shadow-sm dark:shadow-none dark:shadow-none">
                         <i class="ph-fill ph-paperclip text-3xl text-muted"></i>
                     </div>
                     <h3 class="text-lg font-black text-primary tracking-tight mb-1">Пока пусто</h3>

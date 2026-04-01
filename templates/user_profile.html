@@ -122,7 +122,7 @@ bg-boo-bg text-boo-textMain
         <div class="w-full max-w-[1400px] mx-auto mb-6">
             <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
                 <div class="flex items-center gap-4 min-w-0">
-                    <div class="w-16 h-16 rounded-2xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm dark:shadow-none shrink-0 overflow-hidden font-black text-2xl">
+                    <div class="w-16 h-16 rounded-2xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm dark:shadow-none dark:shadow-none shrink-0 overflow-hidden font-black text-2xl">
                         {% if current_user.avatar_url %}
                         <img src="{{ current_user.avatar_url }}" alt="" class="w-full h-full object-cover">
                         {% else %}
@@ -168,7 +168,7 @@ bg-boo-bg text-boo-textMain
                 {% else %}
                 <div class="absolute inset-0 z-10 bg-gradient-to-br from-violet-500/50 to-cyan-400/25"></div>
                 {% endif %}
-                <button type="button" class="absolute top-4 right-4 sm:top-6 sm:right-6 z-40 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm dark:shadow-none" onclick="openCoverPicker()">
+                <button type="button" class="absolute top-4 right-4 sm:top-6 sm:right-6 z-40 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm dark:shadow-none dark:shadow-none" onclick="openCoverPicker()">
                     <i class="ph-bold ph-camera text-base"></i> Сменить обложку
                 </button>
             </div>
@@ -197,7 +197,7 @@ bg-boo-bg text-boo-textMain
                             {% endfor %}
                         </div>
                     </div>
-                    <button type="button" class="px-5 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 shadow-sm dark:shadow-none text-sm shrink-0 w-full sm:w-auto" onclick="openEditProfileModal()">
+                    <button type="button" class="px-5 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm shrink-0 w-full sm:w-auto" onclick="openEditProfileModal()">
                         <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
                     </button>
                 </div>

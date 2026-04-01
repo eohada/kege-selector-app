@@ -6,7 +6,7 @@
 {% block content %}
 {% set can_manage_templates = (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage'))) %}
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 pb-4">
-<section class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
+<section class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
     <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
     <div class="relative z-10 max-w-3xl">
         <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
@@ -56,7 +56,7 @@
                 <option value="ПРОГРАММИРОВАНИЕ" {% if current_category == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
             </select>
         </div>
-        <button type="button" onclick="applyFilters()" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm dark:shadow-none flex items-center gap-2"><i class="ph-bold ph-funnel"></i>Применить</button>
+        <button type="button" onclick="applyFilters()" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-2"><i class="ph-bold ph-funnel"></i>Применить</button>
     </div>
 </section>
 

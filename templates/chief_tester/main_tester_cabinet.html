@@ -33,7 +33,7 @@
                 </h3>
                 <div class="space-y-3 flex-1 h-64 overflow-y-auto pr-2 hide-scroll">
                     <button onclick="runPreset('/qa/manipulate/generate_debtor')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
+                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
                             <i class="ph-bold ph-user-plus text-lg"></i>
                         </div>
                         <div>
@@ -43,7 +43,7 @@
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/overwhelm_reviews')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
+                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
                             <i class="ph-bold ph-tray-arrow-down text-lg"></i>
                         </div>
                         <div>
@@ -53,7 +53,7 @@
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/break_schedule')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
+                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
                             <i class="ph-bold ph-calendar-x text-lg"></i>
                         </div>
                         <div>
@@ -63,7 +63,7 @@
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/god_mode_30d')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-accent">
+                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-accent">
                             <i class="ph-bold ph-crown text-lg"></i>
                         </div>
                         <div>
@@ -73,7 +73,7 @@
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/tabula_rasa')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-red-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
+                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
                             <i class="ph-bold ph-trash text-lg"></i>
                         </div>
                         <div>
@@ -136,7 +136,7 @@
                             • Нашел: <span class="font-bold text-secondary">{{ e.reporter }}</span>
                         </div>
                     </div>
-                    <div class="hidden sm:flex px-3 py-1.5 bg-surface border border-slate-200 rounded-lg text-xs font-bold text-muted shadow-sm dark:shadow-none">
+                    <div class="hidden sm:flex px-3 py-1.5 bg-surface border border-slate-200 rounded-lg text-xs font-bold text-muted shadow-sm dark:shadow-none dark:shadow-none">
                         {{ e.status }}
                     </div>
                 </div>
@@ -175,7 +175,7 @@
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-3xl font-black text-primary tracking-tight">Доска задач</h2>
             <div class="flex gap-2">
-                <button class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-sm dark:shadow-none flex items-center gap-2" type="button" data-href="{{ url_for('qa.board', return_to=url_for('chief_tester.dashboard', tab='tasks')) }}" onclick="location.href=this.dataset.href">
+                <button class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-2" type="button" data-href="{{ url_for('qa.board', return_to=url_for('chief_tester.dashboard', tab='tasks')) }}" onclick="location.href=this.dataset.href">
                     <i class="ph-bold ph-funnel"></i> Открыть full board
                 </button>
             </div>
@@ -191,7 +191,7 @@
                     </h3>
                 </div>
                 {% for t in task_columns[key][:20] %}
-                <div class="bg-surface p-4 rounded-[20px] border border-slate-200 border-b-4 border-b-slate-300 shadow-sm dark:shadow-none hover:shadow-tactile transition-all">
+                <div class="bg-surface p-4 rounded-[20px] border border-slate-200 border-b-4 border-b-slate-300 shadow-sm dark:shadow-none dark:shadow-none hover:shadow-tactile transition-all">
                     <div class="flex gap-2 mb-3">
                         <span class="{{ t.priority_badge_cls }} px-2 py-0.5 rounded text-[10px] font-bold uppercase">{{ t.priority_badge_text }}</span>
                     </div>
@@ -231,7 +231,7 @@
                 <h2 class="text-3xl font-black text-primary tracking-tight">QA Отдел</h2>
                 <p class="text-muted font-medium">Управление доступом и распределение нагрузки на тестировщиков.</p>
             </div>
-            <button class="px-5 py-2.5 bg-surface border border-slate-200 text-secondary rounded-xl font-bold shadow-sm dark:shadow-none hover:bg-surface-alt transition-colors flex items-center gap-2" data-href="{{ url_for('qa.testers', return_to=url_for('chief_tester.dashboard', tab='team')) }}" onclick="location.href=this.dataset.href" type="button">
+            <button class="px-5 py-2.5 bg-surface border border-slate-200 text-secondary rounded-xl font-bold shadow-sm dark:shadow-none dark:shadow-none hover:bg-surface-alt transition-colors flex items-center gap-2" data-href="{{ url_for('qa.testers', return_to=url_for('chief_tester.dashboard', tab='team')) }}" onclick="location.href=this.dataset.href" type="button">
                 <i class="ph-bold ph-user-plus"></i> Управление
             </button>
         </div>
@@ -240,7 +240,7 @@
             <div class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col">
                 <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl border border-slate-200 shadow-sm dark:shadow-none bg-surface-alt text-secondary font-black flex items-center justify-center">{{ row.user.username[0]|upper }}</div>
+                        <div class="w-12 h-12 rounded-xl border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none bg-surface-alt text-secondary font-black flex items-center justify-center">{{ row.user.username[0]|upper }}</div>
                         <div>
                             <h4 class="font-black text-primary leading-tight">{{ row.user.username }}</h4>
                             <span class="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest">{{ (row.user.role or 'tester')|replace('_',' ') }}</span>
@@ -358,14 +358,14 @@
 <div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none flex justify-center">
     <header class="w-full max-w-[1400px] bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
         <div class="flex items-center gap-3 pl-2 cursor-pointer group">
-            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm dark:shadow-none group-hover:scale-105 transition-all">
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm dark:shadow-none dark:shadow-none group-hover:scale-105 transition-all">
                 <i class="ph-fill ph-radar text-2xl"></i>
             </div>
             <span class="font-extrabold text-xl tracking-tight text-primary hidden sm:block">BooQA</span>
         </div>
 
         <nav class="hidden md:flex items-center gap-1 bg-slate-100/60 p-1 rounded-xl border border-slate-200/50">
-            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-5 py-2 bg-surface text-indigo-600 shadow-sm dark:shadow-none border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-5 py-2 bg-surface text-indigo-600 shadow-sm dark:shadow-none dark:shadow-none border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
                 <i class="ph-bold ph-squares-four text-lg"></i> Дашборд
             </button>
             <button onclick="switchTab('tasks')" id="nav-tasks" class="px-5 py-2 text-muted hover:text-primary hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative">
@@ -407,7 +407,7 @@
                     <div class="text-xs font-black text-primary">{{ current_user.username }}</div>
                     <div class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">QA Lead</div>
                 </div>
-                <div class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm dark:shadow-none bg-indigo-50 text-indigo-700 font-black flex items-center justify-center">{{ current_user.username[0]|upper }}</div>
+                <div class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none bg-indigo-50 text-indigo-700 font-black flex items-center justify-center">{{ current_user.username[0]|upper }}</div>
             </div>
         </div>
     </header>
@@ -437,7 +437,7 @@ function updateTabUrl(tabId) {
 }
 
 function switchTab(tabId) {
-    const activeNavClass = 'px-5 py-2 bg-surface text-indigo-600 shadow-sm dark:shadow-none border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
+    const activeNavClass = 'px-5 py-2 bg-surface text-indigo-600 shadow-sm dark:shadow-none dark:shadow-none border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
     const inactiveNavClass = 'px-5 py-2 text-muted hover:text-primary hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
 
     tabs.forEach(id => {
@@ -832,7 +832,7 @@ window.refreshLogsCards = function refreshLogsCards() {
 
                     return `
                     <div class="flex items-start gap-4 p-4 border-b border-slate-100 hover:bg-surface-alt transition-colors group">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm dark:shadow-none border mt-1 ${iconColor}">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm dark:shadow-none dark:shadow-none border mt-1 ${iconColor}">
                             <i class="ph-bold ${iconClass}"></i>
                         </div>
                         <div class="flex-1 min-w-0">
@@ -843,7 +843,7 @@ window.refreshLogsCards = function refreshLogsCards() {
                                 <span class="text-[11px] font-bold text-muted">${timeOnly}</span>
                             </div>
                             <div class="flex items-center gap-3">
-                                <div class="flex items-center gap-1.5 bg-surface border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm dark:shadow-none">
+                                <div class="flex items-center gap-1.5 bg-surface border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm dark:shadow-none dark:shadow-none">
                                     <span class="text-[11px] font-bold text-secondary">${actorText}</span>
                                 </div>
                                 <span class="text-slate-300">•</span>
@@ -851,7 +851,7 @@ window.refreshLogsCards = function refreshLogsCards() {
                             </div>
                         </div>
                         <div class="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end gap-2">
-                            <button onclick="navigator.clipboard.writeText('${reqId}')" class="px-2 py-1 bg-surface border border-slate-200 rounded-md text-[10px] font-mono text-muted hover:text-indigo-600 hover:border-indigo-200 shadow-sm dark:shadow-none transition-colors" title="Копировать Request ID">
+                            <button onclick="navigator.clipboard.writeText('${reqId}')" class="px-2 py-1 bg-surface border border-slate-200 rounded-md text-[10px] font-mono text-muted hover:text-indigo-600 hover:border-indigo-200 shadow-sm dark:shadow-none dark:shadow-none transition-colors" title="Копировать Request ID">
                                 <i class="ph-bold ph-copy mr-1"></i> #${reqIdShort}
                             </button>
                         </div>

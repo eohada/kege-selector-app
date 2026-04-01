@@ -85,7 +85,7 @@
 <main class="flex-1 overflow-y-auto pt-6 pb-16 px-6 lg:px-8">
   <div class="wizard-container">
     <div class="flex flex-col items-center mb-8">
-      <div class="flex items-center bg-white/80 backdrop-blur-md rounded-[20px] border border-slate-200 shadow-sm dark:shadow-none p-1.5 mb-6">
+      <div class="flex items-center bg-white/80 backdrop-blur-md rounded-[20px] border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none p-1.5 mb-6">
         <button type="button" onclick="goToStep(1)" id="stepIndicator1" class="flex items-center gap-2.5 px-4 py-2 rounded-xl font-bold text-sm transition-all">
           <div id="stepBadge1" class="w-6 h-6 rounded-full flex items-center justify-center text-xs">1</div> Ученики
         </button>
@@ -103,7 +103,7 @@
         <div class="status-pill">Учеников: <span id="statusRecipients">0</span></div>
         <div class="status-pill">Заданий: <span id="statusTasks">{{ (task_ids|length) if task_ids else 0 }}</span></div>
         {% if task_ids and task_ids|length > 0 %}
-        <button type="button" class="bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors shadow-sm dark:shadow-none active:scale-95" onclick="clearTasks()">Сбросить</button>
+        <button type="button" class="bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors shadow-sm dark:shadow-none dark:shadow-none active:scale-95" onclick="clearTasks()">Сбросить</button>
         {% endif %}
       </div>
     </div>
@@ -137,7 +137,7 @@
           <div id="recipientCards" class="student-list max-h-[340px] overflow-y-auto p-3 space-y-1.5">
             {% for st in (recipient_options or []) %}
               {% set _sel = (default_recipient_ids and st.student_id in default_recipient_ids) %}
-              <label class="flex items-center gap-4 p-3 rounded-xl bg-surface border border-slate-200 cursor-pointer hover:border-purple-200 hover:shadow-sm dark:shadow-none transition-all group relative recipient-card" data-student-id="{{ st.student_id }}">
+              <label class="flex items-center gap-4 p-3 rounded-xl bg-surface border border-slate-200 cursor-pointer hover:border-purple-200 hover:shadow-sm dark:shadow-none dark:shadow-none transition-all group relative recipient-card" data-student-id="{{ st.student_id }}">
                 <input type="checkbox" class="peer sr-only recipient-check" value="{{ st.student_id }}" {% if _sel %}checked{% endif %}>
                 <div class="recipient-checkbox">
                   <i class="ph-bold ph-check recipient-check-icon"></i>
@@ -159,7 +159,7 @@
 
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-slate-100">
           <div class="flex gap-2 w-full sm:w-auto">
-            <button type="button" class="flex-1 sm:flex-none px-4 py-2.5 bg-surface-alt text-secondary font-bold text-sm rounded-xl border border-slate-200 hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none" onclick="selectAll(true)">Выбрать всех</button>
+            <button type="button" class="flex-1 sm:flex-none px-4 py-2.5 bg-surface-alt text-secondary font-bold text-sm rounded-xl border border-slate-200 hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none dark:shadow-none" onclick="selectAll(true)">Выбрать всех</button>
             <button type="button" class="flex-1 sm:flex-none px-4 py-2.5 text-muted hover:text-secondary font-bold text-sm rounded-xl hover:bg-surface-alt transition-colors" onclick="selectAll(false)">Снять выбор</button>
           </div>
           <button type="button" class="w-full sm:w-auto px-8 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" onclick="goToStep(2)">
@@ -203,7 +203,7 @@
             </select>
           {% else %}
             <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 mb-3 block">Введите ID через запятую или пробел</label>
-            <textarea id="manualTaskIds" rows="4" class="w-full bg-surface border border-slate-200 rounded-xl p-4 font-mono text-primary text-[15px] focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-sm dark:shadow-none resize-y" placeholder="Пример: 123, 456, 789...">{% if source == 'manual' and task_ids %}{{ task_ids|join(', ') }}{% endif %}</textarea>
+            <textarea id="manualTaskIds" rows="4" class="w-full bg-surface border border-slate-200 rounded-xl p-4 font-mono text-primary text-[15px] focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-sm dark:shadow-none dark:shadow-none resize-y" placeholder="Пример: 123, 456, 789...">{% if source == 'manual' and task_ids %}{{ task_ids|join(', ') }}{% endif %}</textarea>
           {% endif %}
         </div>
 

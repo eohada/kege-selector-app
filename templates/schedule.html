@@ -432,10 +432,10 @@
 
                     <div class="bg-surface rounded-2xl p-2 border border-slate-200 border-b-[3px] border-b-slate-300 shadow-tactile mb-6 flex flex-wrap gap-3 items-center justify-between">
                         <div class="bg-surface-alt p-1 rounded-xl flex items-center border border-slate-200/50">
-                            <button class="px-5 py-1.5 {% if view_mode == 'day' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('day')">День</button>
-                            <button class="px-5 py-1.5 {% if view_mode == 'week' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('week')">Неделя</button>
-                            <button class="px-5 py-1.5 {% if view_mode == 'month' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('month')">Месяц</button>
-                            <button class="px-5 py-1.5 {% if view_mode == 'agenda' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('agenda')">Список</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'day' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('day')">День</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'week' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('week')">Неделя</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'month' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('month')">Месяц</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'agenda' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('agenda')">Список</button>
                         </div>
 
                         <div class="flex items-center gap-4">
@@ -446,8 +446,8 @@
 
                         <div class="flex items-center gap-2 pr-2 flex-wrap">
                             <div class="bg-surface-alt p-1 rounded-xl flex items-center border border-slate-200/50">
-                                <button class="px-4 py-1.5 {% if timezone == 'moscow' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('moscow')">МСК</button>
-                                <button class="px-4 py-1.5 {% if timezone == 'tomsk' %}bg-surface text-primary shadow-sm dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('tomsk')">Томск</button>
+                                <button class="px-4 py-1.5 {% if timezone == 'moscow' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('moscow')">МСК</button>
+                                <button class="px-4 py-1.5 {% if timezone == 'tomsk' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('tomsk')">Томск</button>
                             </div>
                             <div class="schedule-filter-shell schedule-top-chip" style="min-width: 170px;">
                                 <i class="ph-bold ph-funnel"></i>
@@ -610,10 +610,10 @@
                         <div class="inspector-card-head">
                             <div class="flex justify-between items-start mb-4">
                                 <h2 class="text-[10px] font-bold text-muted uppercase tracking-widest">Инспектор урока</h2>
-                                <button class="w-8 h-8 bg-surface border border-slate-200 rounded-full flex items-center justify-center text-muted hover:text-primary hover:shadow-sm dark:shadow-none transition-all" type="button" id="lessonInspectorClose"><i class="ph-bold ph-x"></i></button>
+                                <button class="w-8 h-8 bg-surface border border-slate-200 rounded-full flex items-center justify-center text-muted hover:text-primary hover:shadow-sm dark:shadow-none dark:shadow-none transition-all" type="button" id="lessonInspectorClose"><i class="ph-bold ph-x"></i></button>
                             </div>
                             <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 rounded-2xl bg-purple-100 text-boo-primary flex items-center justify-center border border-purple-200 shadow-sm dark:shadow-none" id="lessonInspectorIcon">
+                                <div class="w-14 h-14 rounded-2xl bg-purple-100 text-boo-primary flex items-center justify-center border border-purple-200 shadow-sm dark:shadow-none dark:shadow-none" id="lessonInspectorIcon">
                                     <i class="ph-bold ph-calendar-check text-2xl"></i>
                                 </div>
                                 <div>

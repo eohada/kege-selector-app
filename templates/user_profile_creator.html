@@ -18,7 +18,7 @@
             <div class="absolute inset-0 z-10 bg-gradient-to-br from-violet-600 to-cyan-700"></div>
             {% endif %}
             <div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/30 z-20 pointer-events-none"></div>
-            <button type="button" class="absolute top-6 right-6 z-30 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm dark:shadow-none" onclick="openEditProfileModal()">
+            <button type="button" class="absolute top-6 right-6 z-30 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm dark:shadow-none dark:shadow-none" onclick="openEditProfileModal()">
                 <i class="ph-bold ph-camera text-base"></i> Сменить обложку
             </button>
         </div>
@@ -47,7 +47,7 @@
                         {% endfor %}
                     </div>
                 </div>
-                <button type="button" class="px-7 py-4 bg-surface hover:bg-surface-alt text-secondary rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm" onclick="openEditProfileModal()">
+                <button type="button" class="px-7 py-4 bg-surface hover:bg-surface-alt text-secondary rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm" onclick="openEditProfileModal()">
                     <i class="ph-bold ph-pencil-simple text-xl"></i> Редактировать профиль
                 </button>
             </div>
@@ -86,7 +86,7 @@
             </div>
 
             <div class="flex flex-col gap-1 mt-6">
-                <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">ID аккаунта</span><span class="text-sm font-black text-white bg-slate-900 px-3 py-1 rounded-lg shadow-sm dark:shadow-none border border-slate-700">{% if current_user.numeric_id %}#{{ current_user.numeric_id }}{% else %}—{% endif %}</span></div>
+                <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">ID аккаунта</span><span class="text-sm font-black text-white bg-slate-900 px-3 py-1 rounded-lg shadow-sm dark:shadow-none dark:shadow-none border border-slate-700">{% if current_user.numeric_id %}#{{ current_user.numeric_id }}{% else %}—{% endif %}</span></div>
                 <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Логин</span><span class="text-sm font-bold text-primary">@{{ current_user.username }}</span></div>
                 <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Регистрация</span><span class="text-sm font-bold text-primary">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span></div>
                 <div class="flex justify-between items-center py-3.5"><span class="text-sm font-bold text-muted">Статус</span><span class="text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
@@ -106,14 +106,14 @@
 
             <div class="grid grid-cols-2 gap-3 mb-8">
                 <a href="{{ url_for('schedule.schedule') }}" class="py-4 px-4 bg-boo-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 text-sm no-underline"><i class="ph-bold ph-calendar-blank text-xl"></i> Расписание</a>
-                <a href="{{ url_for('students.students_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-users text-xl"></i> Ученики</a>
-                <a href="{{ url_for('assignments.assignments_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-files text-xl"></i> Работы</a>
-                <a href="{{ url_for('lessons.review_queue') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-check-square-offset text-xl"></i> Проверка</a>
-                <a href="{{ url_for('reminders.reminders_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-bell-ringing text-xl"></i> Напоминания</a>
-                <a href="{{ url_for('library.materials_library') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-books text-xl"></i> Библиотека</a>
-                <a href="{{ url_for('trainer.trainer_embed') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-game-controller text-xl"></i> Тренажёр</a>
-                <a href="{{ url_for('rubrics.rubrics_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-tree-structure text-xl"></i> Рубрикатор</a>
-                <a href="{{ url_for('billing.billing_plans') }}" class="col-span-2 py-4 px-4 bg-surface-alt hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-credit-card text-xl"></i> Тарифы и подписки</a>
+                <a href="{{ url_for('students.students_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-users text-xl"></i> Ученики</a>
+                <a href="{{ url_for('assignments.assignments_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-files text-xl"></i> Работы</a>
+                <a href="{{ url_for('lessons.review_queue') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-check-square-offset text-xl"></i> Проверка</a>
+                <a href="{{ url_for('reminders.reminders_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-bell-ringing text-xl"></i> Напоминания</a>
+                <a href="{{ url_for('library.materials_library') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-books text-xl"></i> Библиотека</a>
+                <a href="{{ url_for('trainer.trainer_embed') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-game-controller text-xl"></i> Тренажёр</a>
+                <a href="{{ url_for('rubrics.rubrics_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-tree-structure text-xl"></i> Рубрикатор</a>
+                <a href="{{ url_for('billing.billing_plans') }}" class="col-span-2 py-4 px-4 bg-surface-alt hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-credit-card text-xl"></i> Тарифы и подписки</a>
             </div>
 
             <details>
@@ -125,7 +125,7 @@
 
             <form method="POST" action="{{ url_for('auth.logout') }}" class="mt-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="w-full py-4 bg-red-50 hover:bg-red-100 text-boo-coral rounded-xl font-bold flex justify-center items-center gap-2 shadow-sm dark:shadow-none border border-red-200 transition-all text-sm">
+                <button type="submit" class="w-full py-4 bg-red-50 hover:bg-red-100 text-boo-coral rounded-xl font-bold flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-red-200 transition-all text-sm">
                     <i class="ph-bold ph-sign-out text-xl"></i> Выйти из аккаунта
                 </button>
             </form>

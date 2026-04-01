@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Панель ученика (Dark)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Golos Text"', 'sans-serif'] },
+                    colors: {
+                        dark: {
+                            bg: '#0B1121',         
+                            card: '#1E293B',       
+                            cardHover: '#334155',  
+                            inner: '#0F172A',      
+                            border: '#334155',     
+                            borderDark: '#0F172A', 
+                            text: '#F8FAFC',       
+                            muted: '#94A3B8'       
+                        },
+                        boo: {
+                            primary: '#8B5CF6',
+                            primaryHover: '#A78BFA',
+                            cyan: '#22D3EE',
+                            coral: '#FB7185',
+                            accent: '#FBBF24',
+                        }
+                    },
+                    boxShadow: {
+                        'tactile-dark': 'inset 0 1px 1px rgba(255,255,255,0.05), 0 8px 24px -4px rgba(0, 0, 0, 0.5)',
+                        'nav-dark': '0 4px 20px rgba(0, 0, 0, 0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-dark-bg); color: var(--tw-colors-dark-text); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none flex justify-center">
+        <header class="w-full max-w-[1400px] bg-dark-card/80 backdrop-blur-xl border border-dark-border/50 shadow-nav-dark rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer group">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-boo-primary flex items-center justify-center border border-purple-500/30 shadow-[0_0_15px_rgba(139,92,246,0.2)]">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-white hidden sm:block">BooStudy</span>
+            </div>
+
+            <!-- Меню -->
+            <nav class="hidden md:flex items-center gap-1 bg-dark-inner/80 p-1 rounded-xl border border-dark-border/30">
+                <a href="#" class="px-5 py-2 bg-dark-card border border-dark-border text-white shadow-sm rounded-lg font-bold text-sm flex items-center gap-2">
+                    <i class="ph-bold ph-house text-lg text-boo-primary"></i> Главная
+                </a>
+                <a href="#" class="px-5 py-2 text-dark-muted hover:text-white hover:bg-dark-card/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-list-checks text-lg"></i> Задания
+                </a>
+                <a href="#" class="px-5 py-2 text-dark-muted hover:text-white hover:bg-dark-card/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative">
+                    <i class="ph-bold ph-chart-line-up text-lg"></i> Аналитика
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <div class="flex items-center gap-2 px-3 py-1.5 bg-orange-900/30 rounded-lg border border-orange-900/50 hidden sm:flex shadow-[0_0_10px_rgba(249,115,22,0.1)]">
+                    <i class="ph-fill ph-fire text-boo-accent text-lg drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]"></i>
+                    <span class="text-sm font-extrabold text-orange-400">3</span>
+                </div>
+                <div class="flex items-center gap-2 pl-3 border-l border-dark-border cursor-pointer">
+                    <div class="w-10 h-10 rounded-xl shadow-sm border border-dark-border overflow-hidden bg-dark-inner flex items-center justify-center relative cursor-pointer hover:border-boo-primary transition-colors">
+                        <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=QaStudent1&backgroundColor=0F172A" class="w-full h-full object-cover opacity-90">
+                    </div>
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-16 px-6 lg:px-8">
+        <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
+
+            <!-- ВЕРХНИЙ РЯД -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- ОБЪЕДИНЕННАЯ КАРТОЧКА (Hero Dark) -->
+                <div class="lg:col-span-2 bg-gradient-to-br from-[#4C1D95] to-[#312E81] rounded-[32px] border border-purple-500/30 border-b-[4px] border-b-[#1E1B4B] shadow-tactile-dark p-8 flex flex-col justify-between relative overflow-hidden group text-white">
+                    <div class="absolute top-[-20%] right-[-10%] w-64 h-64 bg-white/5 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
+                    
+                    <div class="relative z-10 flex flex-col sm:flex-row justify-between items-start mb-8 gap-4">
+                        <div>
+                            <span class="bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-xs font-bold tracking-widest uppercase inline-flex items-center gap-1.5 mb-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
+                                <i class="ph-fill ph-student text-purple-300"></i> Qa Pool Student 1
+                            </span>
+                            <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2 leading-tight text-white drop-shadow-md">Твой путь к цели</h1>
+                            <p class="text-purple-200 font-medium text-lg">До экзамена 84 дня. Идем по плану!</p>
+                        </div>
+                        
+                        <div class="bg-black/30 backdrop-blur-md rounded-2xl p-4 border border-white/10 shadow-[inset_0_2px_15px_rgba(0,0,0,0.3)] flex items-center gap-3 shrink-0">
+                            <div class="w-12 h-12 bg-dark-card text-boo-primary rounded-xl flex items-center justify-center font-black text-xl shadow-[0_0_15px_rgba(139,92,246,0.3)] border border-dark-border">85</div>
+                            <div>
+                                <div class="text-[10px] font-bold text-purple-300 uppercase tracking-widest">Траектория</div>
+                                <div class="font-bold text-white">Целевой балл</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="relative z-10 bg-black/20 backdrop-blur-md rounded-2xl p-6 border border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
+                        <div class="flex justify-between items-end mb-3">
+                            <span class="font-bold text-purple-200">Общий прогресс выполнения</span>
+                            <span class="text-3xl font-black text-white">34%</span>
+                        </div>
+                        
+                        <div class="w-full h-4 bg-black/40 rounded-full overflow-hidden mb-3 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
+                            <div class="h-full bg-boo-cyan rounded-full relative shadow-[0_0_10px_rgba(34,211,238,0.5)]" style="width: 34%">
+                                <div class="absolute inset-0 bg-white/20 w-full" style="background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- КАРТОЧКА: РИСКИ (Dark Neon) -->
+                <div class="bg-orange-900/20 rounded-[32px] border border-orange-900/50 border-b-[4px] border-b-dark-borderDark shadow-tactile-dark p-8 flex flex-col justify-between hover:border-orange-500/30 transition-all">
+                    <div>
+                        <div class="flex justify-between items-start mb-6">
+                            <h3 class="font-extrabold text-orange-500 text-xs uppercase tracking-widest flex items-center gap-2 drop-shadow-[0_0_5px_rgba(249,115,22,0.5)]">
+                                <i class="ph-fill ph-warning-circle text-lg"></i> Зона риска
+                            </h3>
+                        </div>
+
+                        <h4 class="text-2xl font-black text-white mb-2 leading-tight">Слабые темы</h4>
+                        
+                        <div class="mt-8 flex flex-col items-center justify-center text-center">
+                            <div class="w-16 h-16 bg-dark-inner rounded-full flex items-center justify-center shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] mb-4 border border-dark-border">
+                                <i class="ph-fill ph-ghost text-3xl text-dark-muted"></i>
+                            </div>
+                            <p class="text-dark-muted font-medium text-sm leading-relaxed mb-6">
+                                Пока недостаточно данных для анализа. Решай больше тестов.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full py-3.5 bg-dark-inner text-orange-400 border border-orange-900/50 rounded-xl font-bold hover:bg-dark-border transition-all flex justify-center items-center gap-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] text-sm">
+                        <i class="ph-bold ph-magic-wand"></i> Подобрать тест
+                    </button>
+                </div>
+            </div>
+
+            <!-- СРЕДНИЙ РЯД: БЫСТРАЯ СТАТИСТИКА -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <!-- Уроки -->
+                <div class="bg-dark-card rounded-[28px] border border-dark-border border-b-[4px] border-b-dark-borderDark shadow-tactile-dark p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform group cursor-pointer">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform shadow-[0_0_10px_rgba(59,130,246,0.15)]">
+                            <i class="ph-fill ph-video-camera text-2xl"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-black text-white tracking-tight">12</div>
+                        <div class="text-xs font-bold text-dark-muted uppercase tracking-widest mt-1">Всего занятий</div>
+                    </div>
+                </div>
+
+                <!-- Задания -->
+                <div class="bg-dark-card rounded-[28px] border border-dark-border border-b-[4px] border-b-dark-borderDark shadow-tactile-dark p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform group cursor-pointer">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-green-500/10 text-green-400 flex items-center justify-center border border-green-500/20 group-hover:scale-110 transition-transform shadow-[0_0_10px_rgba(34,197,94,0.15)]">
+                            <i class="ph-fill ph-checks text-2xl"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-black text-white tracking-tight">28</div>
+                        <div class="text-xs font-bold text-dark-muted uppercase tracking-widest mt-1">Выполнено заданий</div>
+                    </div>
+                </div>
+
+                <!-- Средний балл -->
+                <div class="bg-dark-card rounded-[28px] border border-dark-border border-b-[4px] border-b-dark-borderDark shadow-tactile-dark p-6 flex flex-col justify-between hover:-translate-y-1 transition-transform group cursor-pointer">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-purple-500/10 text-boo-primary flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform shadow-[0_0_10px_rgba(139,92,246,0.15)]">
+                            <i class="ph-fill ph-star text-2xl"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-black text-dark-border tracking-tight">—</div>
+                        <div class="text-xs font-bold text-dark-muted uppercase tracking-widest mt-1">Средний балл (GPA)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- НИЖНИЙ РЯД -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- АКТИВНЫЕ РАБОТЫ -->
+                <div class="bg-dark-card rounded-[32px] border border-dark-border border-b-[4px] border-b-dark-borderDark shadow-tactile-dark p-8 flex flex-col h-full min-h-[300px]">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-2xl font-black text-white">Активные работы</h3>
+                    </div>
+                    <!-- Dark Empty State -->
+                    <div class="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-dark-border border-dashed rounded-[24px] bg-dark-inner/50">
+                        <div class="w-16 h-16 bg-dark-inner rounded-full flex items-center justify-center shadow-[inset_0_2px_10px_rgba(0,0,0,0.3)] mb-4 border border-dark-border">
+                            <i class="ph-fill ph-check-circle text-4xl text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.4)]"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-1">Всё сдано!</h4>
+                        <p class="text-sm text-dark-muted font-medium">Нет активных работ. Можно отдохнуть.</p>
+                    </div>
+                </div>
+
+                <!-- ЖУРНАЛ -->
+                <div class="bg-dark-card rounded-[32px] border border-dark-border border-b-[4px] border-b-dark-borderDark shadow-tactile-dark p-8 flex flex-col h-full min-h-[300px]">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-2xl font-black text-white">Последние оценки</h3>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-dark-border border-dashed rounded-[24px] bg-dark-inner/50">
+                        <div class="w-16 h-16 bg-dark-inner rounded-full flex items-center justify-center shadow-[inset_0_2px_10px_rgba(0,0,0,0.3)] mb-4 border border-dark-border">
+                            <i class="ph-fill ph-folder-open text-4xl text-dark-border"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-1">Журнал пуст</h4>
+                        <p class="text-sm text-dark-muted font-medium">Здесь появятся оценки после проверки.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>

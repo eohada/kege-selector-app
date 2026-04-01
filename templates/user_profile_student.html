@@ -22,12 +22,12 @@
 
     <!-- КНОПКА НАЗАД И БЕЙДЖ -->
     <div class="flex items-center justify-between">
-        <a href="{{ request.referrer or url_for('main.index') }}" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none">
+        <a href="{{ request.referrer or url_for('main.index') }}" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none dark:shadow-none">
             <i class="ph-bold ph-arrow-left"></i> Назад
         </a>
         
         <!-- Тариф -->
-        <div class="hidden sm:flex items-center gap-2 bg-gradient-to-r from-fuchsia-50 to-purple-50 px-4 py-2 rounded-xl border border-purple-200/50 shadow-sm dark:shadow-none">
+        <div class="hidden sm:flex items-center gap-2 bg-gradient-to-r from-fuchsia-50 to-purple-50 px-4 py-2 rounded-xl border border-purple-200/50 shadow-sm dark:shadow-none dark:shadow-none">
             <i class="ph-fill ph-crown text-fuchsia-500 text-lg"></i>
             <span class="text-xs font-extrabold text-fuchsia-700 uppercase tracking-widest">
                 Тариф: {{ subscription_access.label if subscription_access and subscription_access.label else 'не задан' }}
@@ -46,7 +46,7 @@
             <div class="absolute inset-0 opacity-[0.03] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiMwMDAiLz48L3N2Zz4=')]"></div>
             {% endif %}
             
-            <button class="absolute top-4 right-4 bg-white/40 hover:bg-white/60 backdrop-blur-md text-secondary px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors border border-white/50 shadow-sm dark:shadow-none" type="button" onclick="openCoverPicker()">
+            <button class="absolute top-4 right-4 bg-white/40 hover:bg-white/60 backdrop-blur-md text-secondary px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors border border-white/50 shadow-sm dark:shadow-none dark:shadow-none" type="button" onclick="openCoverPicker()">
                 <i class="ph-bold ph-image text-base"></i> Обложка
             </button>
         </div>
@@ -86,7 +86,7 @@
 
                 <!-- Действия (Пропорциональные кнопки) -->
                 <div class="shrink-0 pt-2 flex gap-3">
-                    <button class="px-6 py-3 h-12 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-sm dark:shadow-none border border-slate-200 hover:shadow-md text-sm" onclick="openEditProfileModal()" type="button">
+                    <button class="px-6 py-3 h-12 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 hover:shadow-md text-sm" onclick="openEditProfileModal()" type="button">
                         <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
                     </button>
                 </div>
@@ -100,7 +100,7 @@
         <div class="bg-surface rounded-[24px] border border-slate-200/80 border-b-[4px] border-b-slate-300 bg-slate-50/60 shadow-tactile p-6 flex flex-col transition-transform group relative overflow-hidden opacity-95">
             <div class="flex justify-between items-start mb-2">
                 <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Дней подряд</div>
-                <span class="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">В активной разработке</span>
+                <span class="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none dark:shadow-none">В активной разработке</span>
             </div>
             <div class="w-full py-3.5 bg-gradient-to-r from-slate-100 to-slate-200 text-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-300 cursor-not-allowed select-none mt-auto">
                 <i class="ph-bold ph-lock-key"></i> Раздел скоро появится
@@ -112,7 +112,7 @@
         <div class="bg-surface rounded-[24px] border border-slate-200/80 border-b-[4px] border-b-slate-300 bg-slate-50/60 shadow-tactile p-6 flex flex-col transition-transform group relative overflow-hidden opacity-95">
             <div class="flex justify-between items-start mb-2">
                 <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Накоплено опыта</div>
-                <span class="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">В активной разработке</span>
+                <span class="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none dark:shadow-none">В активной разработке</span>
             </div>
             <div class="w-full py-3.5 bg-gradient-to-r from-slate-100 to-slate-200 text-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-300 cursor-not-allowed select-none mt-auto">
                 <i class="ph-bold ph-lock-key"></i> Раздел скоро появится
@@ -157,13 +157,13 @@
                 <div class="mt-6 flex flex-col gap-3">
                     <!-- Заглушки заменены на реальные данные профиля -->
                     {% if current_user.profile and current_user.profile.telegram_id %}
-                    <div class="flex items-center gap-3 text-sm font-bold text-secondary bg-surface border border-slate-200 px-4 py-2.5 rounded-xl shadow-sm dark:shadow-none">
+                    <div class="flex items-center gap-3 text-sm font-bold text-secondary bg-surface border border-slate-200 px-4 py-2.5 rounded-xl shadow-sm dark:shadow-none dark:shadow-none">
                         <i class="ph-fill ph-telegram-logo text-blue-500 text-lg"></i> {{ current_user.profile.telegram_id }}
                     </div>
                     {% endif %}
                     
                     {% if current_user.telegram_link %}
-                    <div class="flex items-center gap-3 text-sm font-bold text-secondary bg-surface border border-slate-200 px-4 py-2.5 rounded-xl shadow-sm dark:shadow-none">
+                    <div class="flex items-center gap-3 text-sm font-bold text-secondary bg-surface border border-slate-200 px-4 py-2.5 rounded-xl shadow-sm dark:shadow-none dark:shadow-none">
                         <i class="ph-fill ph-telegram-logo text-blue-500 text-lg"></i> {{ current_user.telegram_link }}
                     </div>
                     {% endif %}
@@ -181,7 +181,7 @@
                 
                 {% if active_tutor %}
                 <div class="flex items-center gap-4 mb-6">
-                    <div class="relative w-14 h-14 rounded-[16px] border-2 border-white shadow-sm dark:shadow-none bg-slate-900 overflow-hidden shrink-0">
+                    <div class="relative w-14 h-14 rounded-[16px] border-2 border-white shadow-sm dark:shadow-none dark:shadow-none bg-slate-900 overflow-hidden shrink-0">
                         {% if active_tutor.avatar_url %}
                             <img src="{{ active_tutor.avatar_url }}" class="w-full h-full object-cover">
                         {% else %}
@@ -199,7 +199,7 @@
                     </div>
                 </div>
                 
-                <button class="w-full py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none border-b-[3px] border-b-purple-800 active:translate-y-1 active:border-b-0 text-sm">
+                <button class="w-full py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border-b-[3px] border-b-purple-800 active:translate-y-1 active:border-b-0 text-sm">
                     <i class="ph-bold ph-chat-teardrop-dots text-lg"></i> Написать сообщение
                 </button>
                 {% else %}
@@ -220,7 +220,7 @@
                     <h2 class="text-xs font-extrabold text-muted uppercase tracking-widest flex items-center gap-2">
                         <i class="ph-fill ph-medal text-lg"></i> Витрина достижений
                     </h2>
-                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">В активной разработке</span>
+                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none dark:shadow-none">В активной разработке</span>
                 </div>
 
                 <div class="w-full py-4 bg-gradient-to-r from-slate-100 to-slate-200 text-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-300 cursor-not-allowed select-none">
@@ -235,7 +235,7 @@
                     <h2 class="text-xs font-extrabold text-muted uppercase tracking-widest flex items-center gap-2">
                         <i class="ph-fill ph-calendar-check text-lg"></i> Активность за месяц
                     </h2>
-                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">В активной разработке</span>
+                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none dark:shadow-none">В активной разработке</span>
                 </div>
 
                 <div class="flex-1 flex items-center justify-center bg-gradient-to-r from-slate-100 to-slate-200 rounded-[20px] border border-slate-300 p-6 min-h-[220px] text-muted">
@@ -302,7 +302,7 @@
             </div>
 
             <div class="pt-4 flex gap-3">
-                <button type="button" class="flex-1 py-3.5 bg-surface-alt text-muted border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none text-sm" onclick="closeEditProfileModal()">
+                <button type="button" class="flex-1 py-3.5 bg-surface-alt text-muted border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none dark:shadow-none text-sm" onclick="closeEditProfileModal()">
                     Отмена
                 </button>
                 <button type="submit" class="flex-1 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">

@@ -44,14 +44,14 @@
         <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-muted text-lg"></i>
         <input id="theorySearch" type="text" placeholder="Поиск по группе..."
                class="w-full bg-surface-alt border border-slate-200 rounded-xl pl-11 pr-4 py-3.5 text-sm font-medium text-secondary placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft">
-        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 bg-surface text-muted p-1.5 rounded-lg border border-slate-200 hover:text-boo-primary transition-colors shadow-sm dark:shadow-none" title="Фильтры">
+        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 bg-surface text-muted p-1.5 rounded-lg border border-slate-200 hover:text-boo-primary transition-colors shadow-sm dark:shadow-none dark:shadow-none" title="Фильтры">
           <i class="ph-bold ph-sliders-horizontal"></i>
         </button>
       </div>
     </div>
 
     <div class="flex gap-2 bg-slate-200/50 p-1.5 rounded-xl w-fit border border-slate-200/50">
-      <button type="button" class="theory-filter px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 flex items-center gap-2 transition-all" data-filter="all">
+      <button type="button" class="theory-filter px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50 flex items-center gap-2 transition-all" data-filter="all">
         Все группы
       </button>
       <button type="button" class="theory-filter px-6 py-2.5 text-muted hover:text-primary hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="nonempty">
@@ -87,7 +87,7 @@
           <div class="w-12 h-12 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
             <i class="ph-bold ph-book-open-text text-2xl"></i>
           </div>
-          <span class="bg-surface px-2.5 py-1 rounded-lg text-xs font-extrabold text-muted border border-slate-200 shadow-sm dark:shadow-none flex items-center gap-1.5">
+          <span class="bg-surface px-2.5 py-1 rounded-lg text-xs font-extrabold text-muted border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-1.5">
             {% if group_pack.blocks|length > 0 %}
               <i class="ph-fill ph-stack text-boo-primary"></i> {{ group_pack.blocks|length }} тем
             {% else %}
@@ -160,7 +160,7 @@
   <div id="view-topics" class="view-section {% if initial_view == 'topics' %}active{% endif %} flex-col gap-8">
     {% set g = selected_group if selected_group is defined else None %}
     {% set blocks = selected_group_blocks if selected_group_blocks is defined else [] %}
-    <button type="button" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl border border-slate-200/50 shadow-sm dark:shadow-none w-fit" onclick="window.location.href='{{ url_for('theory.theory_index', course_id=course_id) }}'">
+    <button type="button" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl border border-slate-200/50 shadow-sm dark:shadow-none dark:shadow-none w-fit" onclick="window.location.href='{{ url_for('theory.theory_index', course_id=course_id) }}'">
       <i class="ph-bold ph-arrow-left"></i> Назад к группам
     </button>
     <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
@@ -184,7 +184,7 @@
           <div class="w-12 h-12 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
             <i class="ph-bold ph-book-open-text text-2xl"></i>
           </div>
-          <span class="bg-surface px-2.5 py-1 rounded-lg text-xs font-extrabold text-muted border border-slate-200 shadow-sm dark:shadow-none flex items-center gap-1.5">
+          <span class="bg-surface px-2.5 py-1 rounded-lg text-xs font-extrabold text-muted border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-1.5">
             {% if is_read %}
               <i class="ph-fill ph-check-circle text-green-500"></i> Изучено
             {% else %}
@@ -225,12 +225,12 @@
         {% include 'theory/_article.html' with context %}
       {% else %}
       <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-12 text-center">
-        <div class="w-16 h-16 bg-surface-alt rounded-full flex items-center justify-center shadow-sm dark:shadow-none mx-auto mb-4 border border-slate-200">
+        <div class="w-16 h-16 bg-surface-alt rounded-full flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none mx-auto mb-4 border border-slate-200">
           <i class="ph-fill ph-book-open-text text-3xl text-slate-300"></i>
         </div>
         <div class="text-lg font-black text-primary mb-1">Выбери модуль</div>
         <div class="text-sm font-medium text-muted">Открой тему из группы — статья загрузится здесь.</div>
-        <button type="button" class="mt-6 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm dark:shadow-none border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 text-sm" onclick="window.__theoryOpenIndex?.()">
+        <button type="button" class="mt-6 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 text-sm" onclick="window.__theoryOpenIndex?.()">
           В каталог <i class="ph-bold ph-arrow-right"></i>
         </button>
       </div>
@@ -406,10 +406,10 @@
   function setActiveFilter(id) {
     filterBtns.forEach(b => {
       if (b.dataset.filter === id) {
-        b.classList.add('bg-surface','text-primary','shadow-sm dark:shadow-none','border','border-slate-200/50');
+        b.classList.add('bg-surface','text-primary','shadow-sm dark:shadow-none dark:shadow-none','border','border-slate-200/50');
         b.classList.remove('text-muted');
       } else {
-        b.classList.remove('bg-surface','text-primary','shadow-sm dark:shadow-none','border','border-slate-200/50');
+        b.classList.remove('bg-surface','text-primary','shadow-sm dark:shadow-none dark:shadow-none','border','border-slate-200/50');
         b.classList.add('text-muted');
       }
     });
