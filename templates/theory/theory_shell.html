@@ -18,9 +18,9 @@
   .prose-article code { background: #f1f5f9; color: #334155; padding: .15rem .35rem; border-radius: .35rem; font-weight: 700; }
   .prose-article .theory-code-highlight { border-top: 1px dashed rgba(148,163,184,.25); white-space: pre; }
   .prose-article .theory-code-input.hidden { display: none; }
-  .prose-article .theory-code-highlight [data-hl="kw"] { color: #c4b5fd; font-weight: 700; }
-  .prose-article .theory-code-highlight [data-hl="str"] { color: #86efac; }
-  .prose-article .theory-code-highlight [data-hl="num"] { color: #fdba74; }
+  .prose-article .theory-code-highlight [data-hl="kw"] { color: #7c3aed; font-weight: 700; }
+  .prose-article .theory-code-highlight [data-hl="str"] { color: #0f766e; }
+  .prose-article .theory-code-highlight [data-hl="num"] { color: #ea580c; }
 </style>
 {% endblock %}
 
@@ -257,21 +257,32 @@
   let cmBundle = null;
   async function getCmBundle() {
     if (cmBundle) return cmBundle;
-    const [{ EditorState }, { EditorView, keymap, lineNumbers }, { defaultKeymap, indentWithTab }, { python }, { cpp }, { oneLight }] = await Promise.all([
+    const [{ EditorState }, { EditorView, keymap, lineNumbers }, { defaultKeymap, indentWithTab }, { python }, { cpp }, { oneLight }, { syntaxHighlighting, HighlightStyle }, { tags }] = await Promise.all([
       import('https://esm.sh/@codemirror/state'),
       import('https://esm.sh/@codemirror/view'),
       import('https://esm.sh/@codemirror/commands'),
       import('https://esm.sh/@codemirror/lang-python'),
       import('https://esm.sh/@codemirror/lang-cpp'),
       import('https://esm.sh/@codemirror/theme-one-light'),
+      import('https://esm.sh/@codemirror/language'),
+      import('https://esm.sh/@lezer/highlight'),
     ]);
-    cmBundle = { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp, oneLight };
+    cmBundle = { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp, oneLight, syntaxHighlighting, HighlightStyle, tags };
     return cmBundle;
   }
 
   async function setupCodeBlocks(root) {
     const blocks = Array.from((root || document).querySelectorAll('.theory-smart-code'));
-    const { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp, oneLight } = await getCmBundle();
+    const { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp, oneLight, syntaxHighlighting, HighlightStyle, tags } = await getCmBundle();
+    const syntaxTheme = syntaxHighlighting(
+      HighlightStyle.define([
+        { tag: [tags.keyword, tags.operatorKeyword], color: "#7c3aed", fontWeight: "700" },
+        { tag: [tags.string, tags.special(tags.string)], color: "#0f766e" },
+        { tag: [tags.number, tags.bool], color: "#ea580c", fontWeight: "600" },
+        { tag: [tags.comment], color: "#64748b", fontStyle: "italic" },
+        { tag: [tags.function(tags.variableName), tags.labelName], color: "#2563eb" },
+      ])
+    );
     const cmTheme = EditorView.theme({
       "&": { backgroundColor: "#ffffff", color: "#0f172a", minHeight: "120px" },
       ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7" },
@@ -294,6 +305,7 @@
           keymap.of([indentWithTab, ...defaultKeymap]),
           (lang === 'cpp' ? cpp() : python()),
           oneLight,
+          syntaxTheme,
           cmTheme,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) input.value = update.state.doc.toString();
