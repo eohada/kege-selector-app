@@ -49,6 +49,7 @@
   const inspectorBody = qs('#lessonInspectorBody');
   const inspectorTitle = qs('#lessonInspectorTitle');
   const inspectorClose = qs('#lessonInspectorClose');
+  const inspectorIcon = qs('#lessonInspectorIcon');
 
   const formatMinutes = (mins) => {
     const h = Math.floor(mins / 60);
@@ -85,6 +86,12 @@
 
     const meta = JSON.parse(lessonEl.dataset.meta || '{}');
     inspectorTitle.textContent = meta.student || 'Урок';
+    if (inspectorIcon) {
+      const iconClass = (meta.lesson_type === 'exam')
+        ? 'ph-bold ph-file-text text-2xl'
+        : (meta.lesson_type === 'introductory' ? 'ph-bold ph-student text-2xl' : 'ph-bold ph-calendar-check text-2xl');
+      inspectorIcon.innerHTML = `<i class="${iconClass}"></i>`;
+    }
 
     const dayCol = lessonEl.closest('.day-col');
     const dayIso = dayCol?.dataset.day || '';
@@ -104,27 +111,27 @@
     if (!canManage) {
       const lt = meta.lesson_type || 'regular';
       inspectorBody.innerHTML = `
-        <div style="display:grid; gap:0.85rem;">
-          <div style="display:grid; gap:0.4rem;">
-            <div style="color:var(--text-muted); font-size:0.9rem;">Время</div>
-            <div style="font-weight:900; font-size:1.1rem; color:var(--text-primary);">${meta.start_time || ''}</div>
+        <div class="space-y-4">
+          <div>
+            <div class="inspector-label">Время</div>
+            <div class="inspector-input">${meta.start_time || ''}</div>
           </div>
-          <div style="display:grid; gap:0.4rem;">
-            <div style="color:var(--text-muted); font-size:0.9rem;">Статус</div>
-            <div style="font-weight:800;">${statusMap[meta.status_code] || meta.status_code || ''}</div>
+          <div>
+            <div class="inspector-label">Статус</div>
+            <div class="inspector-input">${statusMap[meta.status_code] || meta.status_code || ''}</div>
           </div>
-          <div style="display:grid; gap:0.4rem;">
-            <div style="color:var(--text-muted); font-size:0.9rem;">Длительность</div>
-            <div style="font-weight:800;">${meta.duration_minutes || 60} мин</div>
+          <div>
+            <div class="inspector-label">Длительность</div>
+            <div class="inspector-input">${meta.duration_minutes || 60} мин</div>
           </div>
-          <div style="display:grid; gap:0.4rem;">
-            <div style="color:var(--text-muted); font-size:0.9rem;">Тип</div>
-            <div style="font-weight:800;">${lt}</div>
+          <div>
+            <div class="inspector-label">Тип занятия</div>
+            <div class="inspector-input">${lt}</div>
           </div>
-          ${meta.topic ? `<div style="display:grid; gap:0.4rem;"><div style="color:var(--text-muted); font-size:0.9rem;">Тема</div><div style="font-weight:800;">${String(meta.topic)}</div></div>` : ''}
-          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            ${meta.profile_url ? `<a class="neo-button ghost" href="${meta.profile_url}" style="text-decoration:none;">Профиль</a>` : ''}
-            ${meta.lesson_url ? `<a class="neo-button accent" href="${meta.lesson_url}" style="text-decoration:none;">Открыть урок</a>` : ''}
+          ${meta.topic ? `<div><div class="inspector-label">Тема</div><div class="inspector-input">${String(meta.topic)}</div></div>` : ''}
+          <div class="flex gap-3">
+            ${meta.profile_url ? `<a class="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>` : ''}
+            ${meta.lesson_url ? `<a class="flex-1 py-3 bg-purple-50 border border-purple-100 text-boo-primary rounded-xl font-bold hover:bg-purple-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.lesson_url}">Урок</a>` : ''}
           </div>
         </div>
       `;
@@ -133,20 +140,20 @@
     }
 
     inspectorBody.innerHTML = `
-      <div style="display:grid; gap:0.85rem;">
-        <div class="neo-field">
-          <label class="neo-label">Дата</label>
-          <input class="neo-input" id="inspectorDate" type="date" value="${dateValue}">
+      <div class="space-y-4">
+        <div>
+          <label class="inspector-label">Дата</label>
+          <input class="inspector-input" id="inspectorDate" type="date" value="${dateValue}">
         </div>
 
-        <div class="neo-field">
-          <label class="neo-label">Время</label>
-          <input class="neo-input" id="inspectorTime" type="time" value="${timeValue}">
+        <div>
+          <label class="inspector-label">Время</label>
+          <input class="inspector-input" id="inspectorTime" type="time" value="${timeValue}">
         </div>
 
-        <div class="neo-field">
-          <label class="neo-label">Статус</label>
-          <select class="neo-select" id="inspectorStatus">
+        <div>
+          <label class="inspector-label">Статус</label>
+          <select class="inspector-input" id="inspectorStatus">
             <option value="planned" ${meta.status_code === 'planned' ? 'selected' : ''}>Запланирован</option>
             <option value="in_progress" ${meta.status_code === 'in_progress' ? 'selected' : ''}>Идёт сейчас</option>
             <option value="completed" ${meta.status_code === 'completed' ? 'selected' : ''}>Проведён</option>
@@ -154,35 +161,36 @@
           </select>
         </div>
 
-        <div class="neo-field">
-          <label class="neo-label">Длительность (мин)</label>
-          <input class="neo-input" id="inspectorDuration" type="number" min="30" max="240" step="30" value="${meta.duration_minutes || 60}">
+        <div>
+          <label class="inspector-label">Длительность (мин)</label>
+          <input class="inspector-input" id="inspectorDuration" type="number" min="30" max="240" step="30" value="${meta.duration_minutes || 60}">
         </div>
 
-        <div class="neo-field">
-          <label class="neo-label">Тип урока</label>
-          <select class="neo-select" id="inspectorLessonType">
+        <div>
+          <label class="inspector-label">Тип занятия</label>
+          <select class="inspector-input" id="inspectorLessonType">
             <option value="regular" ${lt === 'regular' ? 'selected' : ''}>Обычный</option>
             <option value="exam" ${lt === 'exam' ? 'selected' : ''}>Проверочный</option>
             <option value="introductory" ${lt === 'introductory' ? 'selected' : ''}>Вводный</option>
           </select>
         </div>
 
-        <div class="neo-field">
-          <label class="neo-label">Тема</label>
-          <input class="neo-input" id="inspectorTopic" type="text" value="${meta.topic ? String(meta.topic).replace(/"/g, '&quot;') : ''}" placeholder="Опционально">
+        <div>
+          <label class="inspector-label">Тема урока</label>
+          <input class="inspector-input" id="inspectorTopic" type="text" value="${meta.topic ? String(meta.topic).replace(/"/g, '&quot;') : ''}" placeholder="Введите тему (опционально)">
         </div>
 
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-          <a class="neo-button ghost" href="${meta.profile_url || '#'}" style="text-decoration:none;">Профиль</a>
-          <a class="neo-button accent" href="${meta.lesson_url || '#'}" style="text-decoration:none;">Открыть урок</a>
-          <button class="neo-button ghost" type="button" id="inspectorSave">Сохранить</button>
-          <button class="neo-button danger" type="button" id="inspectorDelete">Удалить</button>
-          <button class="neo-button outline" type="button" id="inspectorMakeRecurring">Сделать еженедельным</button>
-        </div>
-
-        <div style="color:var(--text-muted); font-size:0.9rem;">
-          Перенос: перетащи карточку. Линия “сейчас” показывает текущее время.
+        <div class="space-y-3 pt-1">
+          <button class="w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex justify-center items-center gap-2 active:translate-y-1 active:border-b-0 text-sm" type="button" id="inspectorSave">
+            Сохранить изменения
+          </button>
+          <div class="flex gap-3">
+            <a class="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url || '#'}">Профиль</a>
+            <button class="flex-1 py-3 bg-red-50 border border-red-100 text-boo-coral rounded-xl font-bold hover:bg-red-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorDelete">Удалить</button>
+          </div>
+          <button class="w-full py-3 bg-purple-50 border border-purple-100 text-boo-primary rounded-xl font-bold hover:bg-purple-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorMakeRecurring">
+            Сделать еженедельным
+          </button>
         </div>
       </div>
     `;
@@ -370,13 +378,15 @@
     const topic = ev.topic ? String(ev.topic) : '';
     const durationLabel = formatDurationLabel(ev.duration_minutes || 60);
 
+    const initial = (ev.student || '?').trim().charAt(0).toUpperCase();
+    const lessonTypeLabel = lt === 'exam' ? 'Проверочный' : (lt === 'introductory' ? 'Вводный' : 'Обычный');
     el.innerHTML = `
       <div class="lesson-chip__top">
-        <div class="lesson-chip__time" data-role="time">${ev.start_time || ''}<br><span class="lesson-chip__meta">${durationLabel}</span></div>
-        ${iconHtml(icon)}
+        <div class="lesson-chip__time" data-role="time">${ev.start_time || ''}<br><span class="lesson-chip__duration">${durationLabel}</span></div>
+        <div class="w-6 h-6 rounded-md bg-white/20 border border-white/20 flex items-center justify-center backdrop-blur-sm">${iconHtml(icon)}</div>
       </div>
-      <div class="lesson-chip__student">${ev.student || ''}</div>
-      <div class="lesson-chip__meta">${topic ? topic : `${(ev.subject || 'Информатика')}${ev.grade ? ` · ${ev.grade}` : ''}`}</div>
+      <div class="lesson-chip__meta">${topic ? topic : lessonTypeLabel}</div>
+      <div class="lesson-chip__student"><span class="w-4 h-4 rounded-full bg-white/70 text-[10px] font-bold text-slate-700 inline-flex items-center justify-center">${initial}</span>${ev.student || ''}</div>
     `;
 
     dayCol.querySelector('.day-col__body')?.appendChild(el);
