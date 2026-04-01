@@ -108,12 +108,10 @@
 
         <div class="relative z-10 pt-4 border-t {% if is_burning %}border-red-100{% else %}border-slate-100{% endif %}">
           {% if status == 'ASSIGNED' %}
-          <button type="button"
-                  class="task-start-btn w-full py-3.5 {% if is_burning %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-boo-primary hover:bg-boo-primaryHover border-b-purple-800{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm text-sm border-b-[3px] active:translate-y-[2px] active:border-b-0"
-                  data-start-url="{{ url_for('assignments.submission_start', submission_id=submission.submission_id) }}"
-                  data-view-url="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}">
-            Начать <i class="ph-bold ph-play"></i>
-          </button>
+          <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}"
+             class="w-full py-3.5 {% if is_burning %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-boo-primary hover:bg-boo-primaryHover border-b-purple-800{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm text-sm border-b-[3px] active:translate-y-[2px] active:border-b-0 no-underline">
+            Открыть работу <i class="ph-bold ph-arrow-right"></i>
+          </a>
           {% elif status in ['IN_PROGRESS','RETURNED'] %}
           <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}"
              class="w-full py-3.5 {% if is_burning %}bg-boo-coral hover:bg-red-500 border-b-red-700{% else %}bg-boo-primary hover:bg-boo-primaryHover border-b-purple-800{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm text-sm border-b-[3px] active:translate-y-[2px] active:border-b-0 no-underline">
@@ -197,7 +195,6 @@
 (function() {
   const tabs = Array.from(document.querySelectorAll('.task-tab'));
   const cards = Array.from(document.querySelectorAll('.task-card'));
-  const startButtons = Array.from(document.querySelectorAll('.task-start-btn'));
 
   function setActiveTab(filter) {
     tabs.forEach(t => {
@@ -224,29 +221,6 @@
       setActiveTab(f);
       applyFilter(f);
       try { localStorage.setItem('ui.tasks.filter', f); } catch(e) {}
-    });
-  });
-
-  startButtons.forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-      const startUrl = btn.dataset.startUrl;
-      const viewUrl = btn.dataset.viewUrl;
-      try {
-        const r = await fetch(startUrl, {
-          method: 'POST',
-          headers: { 'X-CSRFToken': csrf, 'Accept': 'application/json' },
-          credentials: 'same-origin',
-        });
-        const data = await r.json().catch(() => null);
-        if (!r.ok || !data || !data.success) {
-          if (window.toast) window.toast.error((data && data.error) ? data.error : 'Не удалось начать работу');
-          return;
-        }
-        window.location.href = viewUrl;
-      } catch(e) {
-        if (window.toast) window.toast.error('Ошибка соединения');
-      }
     });
   });
 
