@@ -5,6 +5,39 @@
 
 {% block head_css %}
 <style>
+    .creator-public-wrap { max-width: 1200px; margin: 1.25rem auto 3rem; padding: 0 1rem; }
+    .creator-back-link { display:flex; align-items:center; gap:.5rem; width:fit-content; padding:.5rem 1rem; border-radius:.75rem; border:1px solid #e2e8f0; background:rgba(255,255,255,.8); color:#64748b; font-size:.875rem; font-weight:700; text-decoration:none; box-shadow:0 4px 14px rgba(15,23,42,.05); transition:all .18s; }
+    .creator-back-link:hover { color:#7B5CFF; border-color:#d8ccff; background:#fff; }
+    .creator-hero-card { background:rgba(255,255,255,.95); border:1px solid rgba(196,181,253,.6); border-bottom:4px solid #c4b5fd; border-radius:32px; overflow:hidden; box-shadow:0 10px 50px -10px rgba(123,92,255,.3); }
+    .creator-cover { width:100%; height:18rem; background:#0f172a center/cover no-repeat; position:relative; overflow:hidden; }
+    .creator-cover::after { content:''; position:absolute; inset:0; background:linear-gradient(to top,#fff 0%,rgba(255,255,255,0) 55%,rgba(15,23,42,.35) 100%); pointer-events:none; }
+    .creator-head { position:relative; background:#fff; padding:0 3rem 2.5rem; }
+    .creator-avatar { position:absolute; left:3rem; top:-5.5rem; width:11rem; height:11rem; border-radius:28px; overflow:hidden; border:4px solid #ede9fe; box-shadow:0 0 0 6px #fff, 0 8px 32px -4px rgba(123,92,255,.4); background:#0f172a; }
+    .creator-avatar img { width:100%; height:100%; object-fit:cover; }
+    .creator-online { position:absolute; left:11.25rem; top:.9rem; width:2.3rem; height:2.3rem; border-radius:999px; background:#22c55e; border:5px solid #fff; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(15,23,42,.2); }
+    .creator-online > span { width:.7rem; height:.7rem; border-radius:999px; background:#fff; animation:pulse 2s infinite; }
+    .creator-head-content { margin-top:5.8rem; display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
+    .creator-name-row { display:flex; align-items:center; gap:.65rem; }
+    .creator-name { font-size:clamp(2rem,4vw,3.2rem); font-weight:900; color:#0f172a; line-height:1; letter-spacing:-.02em; margin:0; }
+    .creator-quote { margin:.65rem 0 0; color:#64748b; font-size:1.1rem; font-style:italic; }
+    .creator-badges { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1.2rem; }
+    .creator-badge { display:inline-flex; align-items:center; gap:.35rem; padding:.5rem .95rem; border-radius:.75rem; font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; border:1px solid #e2e8f0; }
+    .creator-layout { display:flex; gap:1.25rem; margin-top:1.25rem; align-items:stretch; }
+    .creator-left { width:58%; min-width:0; }
+    .creator-right { width:42%; min-width:0; }
+    .creator-box { background:rgba(255,255,255,.95); border:1px solid #e2e8f0; border-bottom:4px solid #cbd5e1; border-radius:32px; box-shadow:0 8px 24px -4px rgba(15,23,42,.06); padding:2rem; }
+    .creator-box-title { font-size:.72rem; text-transform:uppercase; letter-spacing:.16em; font-weight:800; color:#94a3b8; display:flex; align-items:center; gap:.45rem; margin-bottom:1.2rem; }
+    .creator-terminal { background:#0f172a; border:1px solid #334155; border-radius:24px; padding:1.25rem 1.35rem; position:relative; overflow:hidden; min-height:300px; }
+    .creator-terminal-head { height:2.2rem; margin:-1.25rem -1.35rem 1rem; background:rgba(30,41,59,.85); border-bottom:1px solid #334155; display:flex; align-items:center; gap:.5rem; padding:0 .9rem; }
+    .creator-terminal-body { color:#cbd5e1; font-size:.95rem; line-height:1.9; white-space:pre-wrap; font-family:'JetBrains Mono', monospace; }
+    .creator-row { display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:1rem 0; border-bottom:1px solid #f1f5f9; }
+    .creator-row:last-child { border-bottom:none; }
+    .creator-row-key { color:#64748b; font-size:.9rem; font-weight:700; display:flex; align-items:center; gap:.45rem; }
+    .creator-row-value { color:#0f172a; font-size:.9rem; font-weight:700; text-align:right; }
+    .creator-chip { padding:.35rem .7rem; border-radius:.55rem; border:1px solid #e2e8f0; background:#f8fafc; font-weight:800; font-size:.8rem; }
+    @media (max-width: 1100px) { .creator-layout { flex-direction:column; } .creator-left,.creator-right { width:100%; } }
+    @media (max-width: 768px) { .creator-head { padding:0 1.25rem 1.5rem; } .creator-avatar { left:1.25rem; width:8.4rem; height:8.4rem; top:-4.2rem; border-radius:22px; } .creator-online { left:7.3rem; top:.25rem; } .creator-head-content { margin-top:4.4rem; } .creator-cover { height:13.5rem; } }
+
     .public-profile-wrap { max-width: 1060px; margin: 1.25rem auto 3rem; padding: 0 1rem; }
     .public-hero { display:flex; gap: 1.25rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
     .public-identity { display:flex; gap: 1.1rem; align-items:center; min-width: 0; }
@@ -59,84 +92,82 @@
     {% set _telegram_link = _ov.telegram_link if _ov else public_user.telegram_link %}
     {% set _created_at = _ov.created_at_display if _ov else (public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—') %}
     {% set _avatar_url = _ov.avatar_url if _ov else public_user.avatar_url %}
-    <div class="profile-container theme-creator">
-        <div class="profile-card">
-            {% set creator_cover = creator_cover_url|default(none) %}
-            <div class="profile-cover {% if creator_cover %}has-cover{% endif %}" {% if creator_cover %}style="background-image: url('{{ creator_cover }}');"{% endif %}></div>
-            <div class="profile-header">
-                <div class="profile-identity">
-                    <div class="profile-avatar-wrapper {% if _avatar_url %}profile-avatar-clickable{% endif %}" {% if _avatar_url %}data-avatar-url="{{ _avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
-                        <div class="profile-avatar-big">
-                            {% if _avatar_url %}
-                                <img src="{{ _avatar_url }}" alt="Avatar">
-                            {% else %}
-                                {{ public_display_name[0]|upper }}
-                            {% endif %}
+    <div class="creator-public-wrap">
+        <a class="creator-back-link" href="{{ request.referrer or url_for('main.dashboard') }}"><i class="ph-bold ph-arrow-left"></i> Назад</a>
+
+        {% set creator_cover = creator_cover_url|default(none) %}
+        <section class="creator-hero-card" style="margin-top:1rem;">
+            <div class="creator-cover" {% if creator_cover %}style="background-image:url('{{ creator_cover }}');"{% endif %}></div>
+            <div class="creator-head">
+                <div class="creator-avatar {% if _avatar_url %}profile-avatar-clickable{% endif %}" {% if _avatar_url %}data-avatar-url="{{ _avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
+                    {% if _avatar_url %}<img src="{{ _avatar_url }}" alt="Avatar">{% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:3rem;font-weight:900;">{{ public_display_name[0]|upper }}</div>{% endif %}
+                </div>
+                <div class="creator-online" title="В сети"><span></span></div>
+                <div class="creator-head-content">
+                    <div>
+                        <div class="creator-name-row">
+                            <h1 class="creator-name">{{ public_display_name }}</h1>
+                            <i class="ph-fill ph-check-circle" style="color:#7B5CFF;font-size:1.7rem;" title="Верифицированный создатель"></i>
                         </div>
-                    </div>
-                    <div class="profile-info">
-                        <div class="profile-role-badge">{{ public_user.get_primary_role_display() }}</div>
-                        <h1>{{ public_display_name }}</h1>
-                        <div class="public-sub" style="margin-top: 0.35rem;">
-                            <span class="status-badge status-info" style="opacity:.75;">{{ _username }}</span>
-                            {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
-                            {% if _telegram_link %}<span class="status-badge" style="opacity:.8;">{{ _telegram_link }}</span>{% endif %}
-                            {% if _custom_status %}
-                            <span class="status-badge" style="opacity:.9;">{{ _custom_status }}</span>
-                            {% endif %}
-                        </div>
-                        <div style="margin-top: 1rem;">
-                            <a class="neo-button outline" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
+                        {% if _custom_status %}<p class="creator-quote">"{{ _custom_status }}"</p>{% endif %}
+                        <div class="creator-badges">
+                            <span class="creator-badge" style="background:linear-gradient(90deg,#0f172a,#1e293b);color:#fff;border-color:#1e293b;"><i class="ph-fill ph-crown" style="color:#FF9F1C;font-size:1rem;"></i> Создатель</span>
+                            {% for role_name in public_user.get_roles_display() %}
+                                {% if role_name != 'Создатель' %}
+                                <span class="creator-badge">{{ role_name }}</span>
+                                {% endif %}
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
             </div>
-            <div style="padding: 0 2.5rem 2.5rem;">
-                <div class="profile-content-grid">
-                    <section class="profile-section">
-                        <h3>О пользователе</h3>
-                        {% if _about_me %}
-                            <div class="public-bio">{{ _about_me }}</div>
-                        {% else %}
-                            <div style="color: var(--text-muted);">Пока нет описания.</div>
-                        {% endif %}
-                    </section>
-                    <aside class="profile-section">
-                        <h3>Сводка</h3>
-                        <div class="data-row">
-                            <span class="data-label">Роль</span>
-                            <span class="data-value">{{ public_user.get_roles_display() | join(', ') }}</span>
+        </section>
+
+        <section class="creator-layout">
+            <div class="creator-left">
+                <div class="creator-box">
+                    <h2 class="creator-box-title"><i class="ph-fill ph-user-circle-gear" style="font-size:1.1rem;"></i> Информация профиля</h2>
+                    <div class="creator-terminal">
+                        <div class="creator-terminal-head">
+                            <div style="display:flex;gap:.35rem;">
+                                <span style="width:.62rem;height:.62rem;border-radius:999px;background:#ef4444;"></span>
+                                <span style="width:.62rem;height:.62rem;border-radius:999px;background:#f59e0b;"></span>
+                                <span style="width:.62rem;height:.62rem;border-radius:999px;background:#22c55e;"></span>
+                            </div>
+                            <span style="font-size:.7rem;color:#94a3b8;font-family:'JetBrains Mono', monospace;font-weight:700;">creator_bio.md</span>
                         </div>
-                        <div class="data-row">
-                            <span class="data-label">Логин</span>
-                            <span class="data-value">{{ _username }}</span>
-                        </div>
-                        {% if public_numeric_id %}
-                        <div class="data-row">
-                            <span class="data-label">ID</span>
-                            <span class="data-value">#{{ public_numeric_id }}</span>
-                        </div>
-                        {% endif %}
-                        {% if _telegram_link %}
-                        <div class="data-row">
-                            <span class="data-label">Telegram</span>
-                            <span class="data-value">{{ _telegram_link }}</span>
-                        </div>
-                        {% endif %}
-                        {% if _custom_status %}
-                        <div class="data-row">
-                            <span class="data-label">Статус</span>
-                            <span class="data-value">{{ _custom_status }}</span>
-                        </div>
-                        {% endif %}
-                        <div class="data-row">
-                            <span class="data-label">В системе с</span>
-                            <span class="data-value">{{ _created_at }}</span>
-                        </div>
-                    </aside>
+                        <div class="creator-terminal-body">{% if _about_me %}{{ _about_me }}{% else %}Пока нет описания.{% endif %}</div>
+                    </div>
                 </div>
             </div>
-        </div>
+            <div class="creator-right">
+                <div class="creator-box">
+                    <h2 class="creator-box-title"><i class="ph-fill ph-identification-card" style="font-size:1.1rem;"></i> Детали аккаунта</h2>
+                    <div class="creator-row">
+                        <span class="creator-row-key"><i class="ph-bold ph-hash"></i> ID аккаунта</span>
+                        <span class="creator-row-value"><span class="creator-chip" style="background:#0f172a;color:#fff;border-color:#1e293b;">#{{ public_numeric_id }}</span></span>
+                    </div>
+                    <div class="creator-row">
+                        <span class="creator-row-key"><i class="ph-bold ph-at"></i> Логин</span>
+                        <span class="creator-row-value"><span class="creator-chip">@{{ _username }}</span></span>
+                    </div>
+                    <div class="creator-row">
+                        <span class="creator-row-key"><i class="ph-bold ph-calendar-blank"></i> Регистрация</span>
+                        <span class="creator-row-value">{{ _created_at }}</span>
+                    </div>
+                    {% if _telegram_link %}
+                    <div class="creator-row">
+                        <span class="creator-row-key"><i class="ph-bold ph-telegram-logo"></i> Telegram</span>
+                        <span class="creator-row-value">{{ _telegram_link }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="creator-row">
+                        <span class="creator-row-key"><i class="ph-bold ph-activity"></i> Статус</span>
+                        <span class="creator-row-value"><span class="creator-chip" style="background:#ecfdf5;border-color:#bbf7d0;color:#166534;"><i class="ph-fill ph-check-circle"></i> В системе</span></span>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
     {% elif use_custom_theme %}
     <div class="profile-container theme-custom-999">
