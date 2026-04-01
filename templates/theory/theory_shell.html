@@ -320,7 +320,9 @@
         matchFilter = cardCount > 0 || read;
       } else if (active === 'bookmarked') {
         const bookmarkedCount = parseInt(card.dataset.bookmarkedCount || '0');
-        matchFilter = bookmarkedCount > 0;
+        // В "Избранном" не показываем всю группу из-за одной карточки:
+        // группа попадает только если ВСЕ ее карточки в избранном.
+        matchFilter = cardCount > 0 && bookmarkedCount === cardCount;
       }
       card.style.display = (matchQuery && matchFilter) ? '' : 'none';
     });
@@ -498,6 +500,7 @@
         btnRead.classList.remove('text-slate-500');
         btnRead.classList.add('text-white');
         btnRead.classList.remove('bg-boo-primary');
+        btnRead.style.color = '#FFFFFF';
         btnRead.innerHTML = '<i class="ph-bold ph-check-circle text-lg"></i> Изучено';
       }
       if (window.toast) window.toast.success('Отмечено как изученное');

@@ -83,7 +83,7 @@
                 <i class="ph-fill ph-star text-xl"></i>
               </button>
               {% endfor %}
-              <button type="button" data-action="mark-read" class="px-6 py-3 {{ 'bg-green-600 border-b-green-800' if state and state.read else 'bg-boo-primary border-b-purple-800' }} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] active:translate-y-[2px] active:border-b-0 text-sm">
+              <button type="button" data-action="mark-read" style="color:#FFFFFF;" class="px-6 py-3 {{ 'bg-green-600 border-b-green-800' if state and state.read else 'bg-[#7B5CFF] border-b-[#5B3FD6] hover:bg-[#6849F2]' }} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] active:translate-y-[2px] active:border-b-0 text-sm">
                 <i class="ph-bold ph-check-circle text-lg"></i> {{ 'Изучено' if state and state.read else 'Отметить как изученное' }}
               </button>
             </div>
