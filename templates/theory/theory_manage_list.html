@@ -18,9 +18,9 @@
   {% set selected_clean_content = selected_block.content|replace('<!--status:published-->\n','')|replace('<!--status:draft-->\n','')|replace('<!--status:published-->','')|replace('<!--status:draft-->','') %}
 {% endif %}
 <main class="flex-1 pt-6 pb-8 px-6 lg:px-8 h-full flex justify-center">
-  <div class="w-full max-w-[1600px] flex flex-col md:flex-row gap-6 h-full items-stretch">
+  <div class="w-full max-w-[1600px] flex flex-row gap-6 h-full items-stretch overflow-x-auto">
 
-    <aside class="w-full md:w-[420px] shrink-0 h-full">
+    <aside class="w-[420px] min-w-[420px] shrink-0 h-full">
       <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col h-full overflow-hidden">
         <div class="mb-5 shrink-0">
           <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
@@ -121,7 +121,7 @@
       </section>
     </aside>
 
-    <section class="flex-1 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden min-h-[760px]">
+    <section class="flex-1 min-w-0 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden min-h-[760px]">
       <form id="theoryEditorForm" method="post" action="{{ url_for('theory.manage_list', course_id=course_id, task_number=selected_task_number) }}" class="contents">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="task_number" value="{{ selected_task_number or '' }}">
