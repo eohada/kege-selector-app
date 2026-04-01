@@ -77,7 +77,11 @@
             <i class="ph-bold ph-book-open-text text-2xl"></i>
           </div>
           <span class="bg-white px-2.5 py-1 rounded-lg text-xs font-extrabold text-slate-400 border border-slate-200 shadow-sm flex items-center gap-1.5">
-            <i class="ph-fill ph-stack text-boo-primary"></i> {{ group_pack.blocks|length }} тем
+            {% if group_pack.blocks|length > 0 %}
+              <i class="ph-fill ph-stack text-boo-primary"></i> {{ group_pack.blocks|length }} тем
+            {% else %}
+              <i class="ph-fill ph-warning-circle text-orange-500"></i> Пока пусто
+            {% endif %}
           </span>
         </div>
 

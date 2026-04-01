@@ -253,8 +253,7 @@ def _build_visible_with_state(course_id):
             if allowed_numbers is not None and block.task_number not in allowed_numbers:
                 continue
             items.append(block)
-        if items:
-            visible_groups.append({'group': group, 'blocks': items})
+        visible_groups.append({'group': group, 'blocks': items})
 
     state_by_number = {}
     if student:
