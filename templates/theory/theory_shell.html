@@ -264,8 +264,6 @@
       { python },
       { cpp },
       { oneLight },
-      { defaultHighlightStyle, syntaxHighlighting, indentOnInput, bracketMatching },
-      { autocompletion, closeBrackets, closeBracketsKeymap },
     ] = await Promise.all([
       import('https://esm.sh/@codemirror/state'),
       import('https://esm.sh/@codemirror/view'),
@@ -273,9 +271,21 @@
       import('https://esm.sh/@codemirror/lang-python'),
       import('https://esm.sh/@codemirror/lang-cpp'),
       import('https://esm.sh/@codemirror/theme-one-light'),
-      import('https://esm.sh/@codemirror/language'),
-      import('https://esm.sh/@codemirror/autocomplete'),
     ]);
+    // Optional modules: if CDN fails, keep core editor and syntax highlighting alive.
+    let optional = {};
+    try {
+      const [
+        { defaultHighlightStyle, syntaxHighlighting, indentOnInput, bracketMatching },
+        { autocompletion, closeBrackets, closeBracketsKeymap },
+      ] = await Promise.all([
+        import('https://esm.sh/@codemirror/language'),
+        import('https://esm.sh/@codemirror/autocomplete'),
+      ]);
+      optional = { defaultHighlightStyle, syntaxHighlighting, indentOnInput, bracketMatching, autocompletion, closeBrackets, closeBracketsKeymap };
+    } catch (_) {
+      optional = {};
+    }
     cmBundle = {
       EditorState,
       EditorView,
@@ -286,13 +296,7 @@
       python,
       cpp,
       oneLight,
-      defaultHighlightStyle,
-      syntaxHighlighting,
-      indentOnInput,
-      bracketMatching,
-      autocompletion,
-      closeBrackets,
-      closeBracketsKeymap,
+      ...optional,
     };
     return cmBundle;
   }
@@ -338,11 +342,11 @@
       closeBracketsKeymap,
     } = bundle;
     const cmTheme = EditorView.theme({
-      "&": { backgroundColor: "#ffffff", color: "#0f172a", minHeight: "120px" },
+      "&": { backgroundColor: "#ffffff", color: "#0f172a", minHeight: "120px", height: "auto" },
       ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7" },
       ".cm-gutters": { backgroundColor: "#f8fafc", color: "#6366f1", border: "1px solid #e2e8f0", borderLeft: "none", borderTop: "none", borderBottom: "none" },
       ".cm-activeLineGutter": { backgroundColor: "transparent" },
-      ".cm-scroller": { overflowX: "auto" },
+      ".cm-scroller": { overflowX: "auto", overflowY: "hidden" },
       ".cm-focused": { outline: "none" },
     });
     blocks.forEach((card) => {
@@ -354,26 +358,40 @@
       if (!input || !preview) return;
       try {
         preview.innerHTML = '';
+        let viewRef = null;
+        const syncHeight = () => {
+          if (!viewRef) return;
+          const lines = viewRef.state.doc.lines || 1;
+          const height = Math.max(120, lines * 28 + 24);
+          viewRef.dom.style.height = `${height}px`;
+        };
+        const extensions = [
+          lineNumbers(),
+          keymap.of([indentWithTab, ...(closeBracketsKeymap || []), ...defaultKeymap]),
+          (lang === 'cpp' ? cpp() : python()),
+          oneLight,
+          cmTheme,
+          EditorView.editable.of(true),
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+              input.value = update.state.doc.toString();
+              syncHeight();
+            }
+          }),
+        ];
+        if (indentOnInput) extensions.push(indentOnInput());
+        if (bracketMatching) extensions.push(bracketMatching());
+        if (closeBrackets) extensions.push(closeBrackets());
+        if (autocompletion) extensions.push(autocompletion());
+        if (syntaxHighlighting && defaultHighlightStyle) {
+          extensions.push(syntaxHighlighting(defaultHighlightStyle, { fallback: true }));
+        }
         const state = EditorState.create({
           doc: input.value || '',
-          extensions: [
-            lineNumbers(),
-            keymap.of([indentWithTab, ...closeBracketsKeymap, ...defaultKeymap]),
-            (lang === 'cpp' ? cpp() : python()),
-            indentOnInput(),
-            bracketMatching(),
-            closeBrackets(),
-            autocompletion(),
-            syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-            oneLight,
-            cmTheme,
-            EditorView.editable.of(true),
-            EditorView.updateListener.of((update) => {
-              if (update.docChanged) input.value = update.state.doc.toString();
-            }),
-          ],
+          extensions,
         });
-        new EditorView({ state, parent: preview });
+        viewRef = new EditorView({ state, parent: preview });
+        syncHeight();
       } catch (_) {
         makeTextareaFallback(card);
       }
