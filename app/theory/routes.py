@@ -41,7 +41,7 @@ def _strip_status_marker(content_value):
 
 def _render_theory_content_html(content_value):
     """Render block-based theory markers to safe-ish HTML fragments."""
-    text = _strip_status_marker(content_value or '')
+    text = _strip_status_marker(content_value or '').replace('\r\n', '\n')
 
     def _highlight_python_html(code_value):
         escaped = html.escape(code_value or '')
@@ -70,7 +70,7 @@ def _render_theory_content_html(content_value):
             '<button type="button" class="theory-run-btn px-2.5 py-1 text-xs font-bold text-white bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-md">Run</button>'
             '</div>'
             '</div>'
-            f'<textarea class="theory-code-input w-full min-h-[120px] bg-[#0F172A] text-slate-300 font-mono text-[14px] p-5 border-none outline-none leading-relaxed">{html.escape(code_body)}</textarea>'
+            f'<textarea class="theory-code-input hidden w-full min-h-[120px] bg-[#0F172A] text-slate-300 font-mono text-[14px] p-5 border-none outline-none leading-relaxed">{html.escape(code_body)}</textarea>'
             f'<pre class="theory-code-highlight m-0 px-5 pb-5 -mt-2 bg-[#0F172A] text-slate-200 text-[14px] font-mono leading-relaxed overflow-x-auto">{highlighted}</pre>'
             '<pre class="theory-code-output hidden m-0 p-4 bg-slate-950 text-green-300 text-xs font-mono border-t border-slate-700"></pre>'
             '</div>'
@@ -104,7 +104,15 @@ def _render_theory_content_html(content_value):
             '</div>'
         )
 
-    text = re.sub(r"\n{3,}", "\n\n__THEORY_SPACER__\n\n", text)
+    def _preserve_blank_lines(src):
+        # Convert each extra blank line into explicit spacer markers before markdown.
+        return re.sub(
+            r"\n{2,}",
+            lambda m: "\n" + ("__THEORY_SPACER__\n" * (len(m.group(0)) - 1)),
+            src,
+        )
+
+    text = _preserve_blank_lines(text)
     text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
@@ -303,7 +311,7 @@ def theory_view(task_number):
         rendered_content_html=_render_theory_content_html(block.content or ''),
     )
 
-    if request.args.get('fragment') == '1':
+    if request.args.get('fragment') == '1' and request.headers.get('HX-Request') == 'true':
         return render_template(
             'theory/_article.html',
             initial_block=block,
