@@ -260,6 +260,22 @@
         .status-submitted { background: var(--accent-1); color: white; }
         .status-graded { background: var(--success); color: white; }
         .status-returned { background: var(--warning); color: white; }
+        .meta-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #94a3b8; margin-bottom: 6px; }
+        .meta-value { font-size: 30px; font-weight: 900; color: #0f172a; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 1.1rem; }
+        .hero-grid { display: grid; grid-template-columns: 1fr auto; gap: 1.25rem; align-items: end; }
+        .hero-metrics { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 1.5rem; border-top: 1px solid #e2e8f0; padding-top: 1rem; }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            padding: 7px 14px;
+            font-size: 14px;
+            font-weight: 800;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #334155;
+        }
         .back-to-assignments .ui-icon-slot { display: inline-flex; min-width: 1.25em; min-height: 1.25em; vertical-align: middle; }
         
         .file-upload-zone {
@@ -410,15 +426,28 @@
         <main class="app-content" style="margin-top: 1.25rem; max-width: 1000px; margin-left: auto; margin-right: auto; padding-bottom: 120px;">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost back-to-assignments" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.625rem 1rem; font-weight: 700; border-radius: 12px; background: rgba(255,255,255,0.8); border: 1px solid #e2e8f0;">{{ ui_icon('action.chevron_left', 'sm') }} К списку заданий</a></p>
         <div class="submission-header">
-            <h1>{{ assignment.title }}</h1>
-            {% if assignment.description %}
-            <p style="color: var(--text-muted); margin-bottom: 1rem;">{{ assignment.description }}</p>
-            {% endif %}
-            
-            <div class="submission-info">
-                <div class="info-item">
-                    <span class="info-label">Статус</span>
-                    <span class="status-badge status-{{ submission.status.lower() }}{% if timer_expired and time_limit_strict %} status-overdue-timer{% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %} status-overdue-deadline{% endif %}">
+            {% set should_hide_tasks = assignment.hide_before_start and submission.status == 'ASSIGNED' and not submission.started_at %}
+            <div class="hero-grid">
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:.5rem;">
+                        <span style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:8px; padding:4px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.08em;">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else 'Проверочная') }}</span>
+                        <span style="font-size:14px; color:#94a3b8; font-weight:800;">#{{ assignment.assignment_id }}</span>
+                    </div>
+                    <div class="meta-value">{{ assignment.title }}</div>
+                </div>
+                {% if should_hide_tasks %}
+                <div>
+                    <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1rem 2rem; font-size: 1.05rem; font-weight: 900; border-radius: 14px;">
+                        {{ ui_icon('action.play', 'sm') }} Начать выполнение
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="hero-metrics">
+                <div>
+                    <div class="meta-label">Статус</div>
+                    <span class="status-pill status-{{ submission.status.lower() }}{% if timer_expired and time_limit_strict %} status-overdue-timer{% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %} status-overdue-deadline{% endif %}">
                         {% if timer_expired and time_limit_strict %}Просрочено по таймеру
                         {% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}Просрочено по дедлайну
                         {% elif submission.status == 'ASSIGNED' %}Назначено
@@ -430,62 +459,29 @@
                         {% else %}{{ submission.status }}{% endif %}
                     </span>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">Дедлайн</span>
-                    <span class="info-value">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span>
+                <div>
+                    <div class="meta-label">Дедлайн</div>
+                    <div class="info-value">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">Попытки</span>
-                    <span class="info-value">{{ attempts_used }} / {{ effective_max_attempts }}{% if attempts_left is defined and attempts_left >= 0 and attempts_left < effective_max_attempts %} <span style="color: var(--text-muted); font-size: 0.9em;">(осталось {{ attempts_left }})</span>{% endif %}</span>
+                <div>
+                    <div class="meta-label">Попытки</div>
+                    <div class="info-value">{{ attempts_used }} / {{ effective_max_attempts }}</div>
                 </div>
-                {% if assignment.time_limit_minutes %}
-                <div class="info-item">
-                    <span class="info-label">Время на выполнение</span>
-                    <span class="info-value">{{ assignment.time_limit_minutes }} мин</span>
-                </div>
-                {% endif %}
                 {% if submission.started_at %}
-                <div class="info-item">
-                    <span class="info-label">Начато</span>
-                    <span class="info-value">{{ submission.started_at.strftime('%d.%m.%Y %H:%M') }}</span>
-                </div>
-                {% endif %}
-                {% if submission.total_score is not none and submission.status in ['SUBMITTED', 'GRADED', 'NEEDS_MANUAL_REVIEW'] %}
-                <div class="info-item">
-                    <span class="info-label">Оценка</span>
-                    <span class="info-value" style="color: var(--accent-1); font-size: 1.2em;">
-                        {{ submission.total_score }}/{{ submission.max_score }} ({{ "%.1f"|format(submission.percentage or 0) }}%)
-                    </span>
+                <div>
+                    <div class="meta-label">Начато</div>
+                    <div class="info-value">{{ submission.started_at.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
                 {% endif %}
             </div>
-            
-            {% if is_deadline_passed %}
-            <div class="deadline-warning {% if assignment.hard_deadline %}deadline-passed{% endif %}">
-                {% if assignment.hard_deadline %}
-                {{ ui_icon('action.warning', 'sm') }} Дедлайн истек. Сдача невозможна.
-                {% else %}
-                {{ ui_icon('action.warning', 'sm') }} Дедлайн истек. Работа будет помечена как сданная с опозданием.
-                {% endif %}
-            </div>
-            {% endif %}
         </div>
         
-        {% set should_hide_tasks = assignment.hide_before_start and submission.status == 'ASSIGNED' and not submission.started_at %}
-        {% if should_hide_tasks %}
-        <div style="text-align: center; margin: 2rem 0;">
-            <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1.2rem 2.5rem; font-size: 1.05em; font-weight: 700; letter-spacing: 0.5px;">
-                {{ ui_icon('action.play', 'sm') }} Начать выполнение
-            </button>
-        </div>
-        {% endif %}
-
         <div class="task-nav" id="taskNav">
             <span class="task-nav-label">Задания:</span>
             {% for task_item in tasks_data %}
             {% set ti_answer = task_item.answer %}
-            <a href="#task-{{ loop.index }}" class="task-nav-btn{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %}" title="Задание {{ task_item.task.task_number }}">
-                {{ task_item.task.task_number }}
+            <a href="#task-{{ loop.index }}" class="task-nav-btn{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %}" title="Задание {{ loop.index }}">
+                {{ loop.index }}
             </a>
             {% endfor %}
         </div>
@@ -496,7 +492,7 @@
             <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
                     <div>
-                        <span class="task-number">Задание {{ task_item.task.task_number }}</span>
+                        <span class="task-number">Задание {{ loop.index }}</span>
                         <span class="task-score">({{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }})</span>
                     </div>
                 </div>
@@ -654,7 +650,7 @@
             </div>
             {% endfor %}
             
-            {% if (submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) and can_submit %}
+            {% if (submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) and can_submit %}
             <div class="submit-section{% if current_user.is_demo_user %} demo-submit-section{% endif %}" id="{% if current_user.is_demo_user %}demo-submit-section{% endif %}" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin: 2.5rem 0; padding: 1rem 1.5rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
                 <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                     {% if assignment.time_limit_minutes and submission.started_at %}
@@ -670,7 +666,7 @@
                         Таймер будет запущен после начала выполнения.
                     </div>
                     {% endif %}
-                    <button type="button" id="autosave-btn" class="neo-button ghost" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; min-height: 2.75rem; font-weight: 600; box-sizing: border-box;">
+                    <button type="button" id="autosave-btn" class="neo-button ghost" {% if should_hide_tasks %}disabled{% endif %} style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; min-height: 2.75rem; font-weight: 600; box-sizing: border-box;">
                         {{ ui_icon('action.backup', 'sm') }} Сохранить черновик
                     </button>
                     <span id="last-save" class="autosave-indicator" style="font-size: 0.85em; color: var(--text-muted); font-weight: 500;"></span>
@@ -679,7 +675,7 @@
                     <div id="timer-blocked-msg" style="{% if timer_expired and time_limit_strict %}display: block;{% else %}display: none;{% endif %} padding: 0.75rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: var(--radius-md); color: #ef4444; font-weight: 700; font-size: 0.95em;">
                         {{ ui_icon('action.warning', 'sm') }} Сдача заблокирована. Время на выполнение истекло.
                     </div>
-                    <button type="button" id="submit-btn" class="neo-button accent {% if timer_expired and time_limit_strict %}submit-btn-overdue{% endif %}" data-prevent-double-submit="true" {% if timer_expired and time_limit_strict %}disabled{% endif %} style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; min-height: 2.75rem; font-weight: 700; box-sizing: border-box;">
+                    <button type="button" id="submit-btn" class="neo-button accent {% if timer_expired and time_limit_strict %}submit-btn-overdue{% endif %}" data-prevent-double-submit="true" {% if timer_expired and time_limit_strict or should_hide_tasks %}disabled{% endif %} style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; min-height: 2.75rem; font-weight: 700; box-sizing: border-box;">
                         {{ ui_icon('action.check', 'sm') }} <span id="submit-btn-label">{% if submission.status in ['RETURNED', 'GRADED'] %}Сдать повторно{% else %}Сдать работу{% endif %}</span>
                     </button>
                 </div>
@@ -692,7 +688,7 @@
         <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% elif task_item.answer %} task-pending-review{% endif %}" id="task-{{ loop.index }}">
             <div class="task-header">
                 <div>
-                    <span class="task-number">Задание {{ task_item.task.task_number }}</span>
+                    <span class="task-number">Задание {{ loop.index }}</span>
                     <span class="task-score">({{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }})</span>
                 </div>
             </div>
