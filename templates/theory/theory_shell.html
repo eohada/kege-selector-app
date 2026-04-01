@@ -271,7 +271,27 @@
 
   async function setupCodeBlocks(root) {
     const blocks = Array.from((root || document).querySelectorAll('.theory-smart-code'));
-    const { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp, oneLight } = await getCmBundle();
+    const makeTextareaFallback = (card) => {
+      const input = card.querySelector('.theory-code-input');
+      const preview = card.querySelector('.theory-code-highlight');
+      if (!input || !preview) return;
+      input.classList.remove('hidden');
+      input.classList.add('w-full', 'min-h-[180px]', 'p-4', 'bg-white', 'text-slate-800', 'font-mono', 'text-[14px]', 'leading-relaxed', 'outline-none', 'resize-y');
+      preview.classList.add('hidden');
+    };
+
+    let bundle = null;
+    try {
+      bundle = await getCmBundle();
+    } catch (_) {
+      blocks.forEach((card) => {
+        if (card.dataset.cmReady === '1') return;
+        card.dataset.cmReady = '1';
+        makeTextareaFallback(card);
+      });
+      return;
+    }
+    const { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp, oneLight } = bundle;
     const cmTheme = EditorView.theme({
       "&": { backgroundColor: "#ffffff", color: "#0f172a", minHeight: "120px" },
       ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7" },
@@ -287,22 +307,26 @@
       const input = card.querySelector('.theory-code-input');
       const preview = card.querySelector('.theory-code-highlight');
       if (!input || !preview) return;
-      preview.innerHTML = '';
-      const state = EditorState.create({
-        doc: input.value || '',
-        extensions: [
-          lineNumbers(),
-          keymap.of([indentWithTab, ...defaultKeymap]),
-          (lang === 'cpp' ? cpp() : python()),
-          oneLight,
-          cmTheme,
-          EditorView.editable.of(true),
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged) input.value = update.state.doc.toString();
-          }),
-        ],
-      });
-      new EditorView({ state, parent: preview });
+      try {
+        preview.innerHTML = '';
+        const state = EditorState.create({
+          doc: input.value || '',
+          extensions: [
+            lineNumbers(),
+            keymap.of([indentWithTab, ...defaultKeymap]),
+            (lang === 'cpp' ? cpp() : python()),
+            oneLight,
+            cmTheme,
+            EditorView.editable.of(true),
+            EditorView.updateListener.of((update) => {
+              if (update.docChanged) input.value = update.state.doc.toString();
+            }),
+          ],
+        });
+        new EditorView({ state, parent: preview });
+      } catch (_) {
+        makeTextareaFallback(card);
+      }
     });
   }
 
