@@ -408,7 +408,8 @@
             {% endif %}
         </div>
         
-        {% if submission.status == 'ASSIGNED' and not submission.started_at %}
+        {% set should_hide_tasks = assignment.hide_before_start and submission.status == 'ASSIGNED' and not submission.started_at %}
+        {% if should_hide_tasks %}
         <div style="text-align: center; margin: 2rem 0;">
             <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1.2rem 2.5rem; font-size: 1.05em; font-weight: 700; letter-spacing: 0.5px;">
                 {{ ui_icon('action.play', 'sm') }} Начать выполнение
@@ -437,7 +438,7 @@
                     </div>
                 </div>
                 
-                {% if submission.status == 'ASSIGNED' and not submission.started_at %}
+                {% if should_hide_tasks %}
                 <div class="task-content" style="color: var(--text-muted); font-style: italic;">
                     Условия задания будут доступны после нажатия «Начать выполнение». Пока видно только номер и краткая информация.
                 </div>
@@ -447,7 +448,7 @@
                 </div>
                 {% endif %}
                 
-                {% if task_item.task.attached_files %}
+                {% if (not should_hide_tasks) and task_item.task.attached_files %}
                 {% set files = task_item.task.attached_files | from_json %}
                 {% if files %}
                 <div class="attached-files task-attachments" style="margin-top: 1rem; padding: 1rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md);">
@@ -534,7 +535,7 @@
                         class="answer-input{% if loop.first and current_user.is_demo_user %} demo-first-answer{% endif %}"
                         name="answer"
                         data-task-id="{{ task_item.assignment_task.assignment_task_id }}"
-                        {% if (submission.status == 'ASSIGNED' and not submission.started_at) or submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
+                        {% if should_hide_tasks or submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
                         {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
                     <div class="autosave-indicator" id="autosave-{{ task_item.assignment_task.assignment_task_id }}"></div>
@@ -1099,7 +1100,7 @@
         }
         
         // Обработчики событий
-        {% if submission.status == 'ASSIGNED' %}
+        {% if should_hide_tasks %}
         document.getElementById('start-btn').addEventListener('click', function() {
             // Показываем подтверждение перед стартом выполнения
             const doStart = () => {

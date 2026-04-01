@@ -580,6 +580,7 @@ def distribute_assignment():
         assignment_type = data.get('type', 'homework')  # homework, classwork, exam, test
         deadline_str = data.get('deadline')
         hard_deadline = data.get('hard_deadline', False)
+        hide_before_start = data.get('hide_before_start', True)
         allow_separate_submission = data.get('allow_separate_submission', True)
         attempts_per_task = data.get('attempts_per_task', False)
         if attempts_per_task:
@@ -653,6 +654,7 @@ def distribute_assignment():
             assignment_type=assignment_type,
             deadline=deadline,
             hard_deadline=hard_deadline,
+            hide_before_start=hide_before_start,
             allow_separate_submission=allow_separate_submission,
             attempts_per_task=attempts_per_task,
             time_limit_minutes=time_limit_minutes,
@@ -1505,6 +1507,7 @@ def assignment_update(assignment_id: int):
             except Exception:
                 pass
         assignment.hard_deadline = bool(data.get('hard_deadline', assignment.hard_deadline))
+        assignment.hide_before_start = bool(data.get('hide_before_start', assignment.hide_before_start))
         assignment.allow_separate_submission = bool(data.get('allow_separate_submission', assignment.allow_separate_submission))
         assignment.attempts_per_task = bool(data.get('attempts_per_task', assignment.attempts_per_task))
         if 'time_limit_minutes' in data:
@@ -1672,6 +1675,7 @@ def assignment_duplicate(assignment_id: int):
         assignment_type=src.assignment_type,
         deadline=new_deadline,
         hard_deadline=bool(src.hard_deadline),
+        hide_before_start=bool(getattr(src, 'hide_before_start', True)),
         time_limit_minutes=src.time_limit_minutes,
         max_attempts_default=getattr(src, 'max_attempts_default', None),
         created_by_id=current_user.id,

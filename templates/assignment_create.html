@@ -277,6 +277,7 @@
             </div>
             <div class="pt-4 space-y-3">
               <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_hard_deadline">Запретить сдачу после дедлайна</label>
+              <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_hide_before_start" checked>Скрывать задания до нажатия "Начать выполнение"</label>
               <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_attempts_per_task">Попытки на каждое задание</label>
               <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_separate_submission" checked>Разрешить сдавать задачи по одной</label>
               <label class="flex items-center gap-2 text-sm font-bold text-slate-800"><input type="checkbox" id="ca_time_limit_strict">Блокировать сдачу после истечения таймера</label>
@@ -444,6 +445,7 @@
             const timeLimit = parseInt(document.getElementById('ca_time_limit').value) || null;
             const maxAttempts = parseInt(document.getElementById('ca_max_attempts').value) || 1;
             const hardDeadline = document.getElementById('ca_hard_deadline').checked;
+            const hideBeforeStart = document.getElementById('ca_hide_before_start').checked;
             const attemptsPerTask = document.getElementById('ca_attempts_per_task').checked;
             const allowSeparate = attemptsPerTask || document.getElementById('ca_separate_submission').checked;
             const timeLimitStrict = document.getElementById('ca_time_limit_strict').checked;
@@ -469,6 +471,7 @@
                         time_limit_strict: timeLimitStrict,
                         max_attempts_default: maxAttempts,
                         hard_deadline: hardDeadline,
+                        hide_before_start: hideBeforeStart,
                         attempts_per_task: attemptsPerTask,
                         allow_separate_submission: allowSeparate,
                         groupId: selectedGroup || null,

@@ -1327,6 +1327,16 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add allow_separate_submission to {assignments_table}: {e}")
                             db.session.rollback()
+                    if 'hide_before_start' not in cols:
+                        try:
+                            if _is_postgres(app):
+                                db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN hide_before_start BOOLEAN DEFAULT TRUE NOT NULL'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN hide_before_start INTEGER DEFAULT 1 NOT NULL'))
+                            logger.info(f"Added hide_before_start to {assignments_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add hide_before_start to {assignments_table}: {e}")
+                            db.session.rollback()
                     if 'time_limit_minutes' not in cols:
                         try:
                             db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN time_limit_minutes INTEGER'))

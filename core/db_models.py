@@ -1513,6 +1513,7 @@ class Assignment(db.Model):
     
     deadline = db.Column(db.DateTime, nullable=False)  # Дедлайн сдачи
     hard_deadline = db.Column(db.Boolean, default=False)  # Если True - нельзя сдать после дедлайна
+    hide_before_start = db.Column(db.Boolean, default=True, nullable=False)  # Скрывать условия до нажатия "Начать выполнение"
     allow_separate_submission = db.Column(db.Boolean, default=True, nullable=False)  # Разрешить сдавать по одной задаче
     time_limit_minutes = db.Column(db.Integer, nullable=True)  # Ограничение времени выполнения (для exam/test)
     time_limit_strict = db.Column(db.Boolean, default=False, nullable=False)  # True: после истечения таймера блокировать сдачу; False: только помечать как не уложился
