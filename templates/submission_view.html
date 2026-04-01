@@ -755,8 +755,8 @@
             {% endfor %}
             
             {% if (submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) and can_submit %}
-            <div class="submit-section{% if current_user.is_demo_user %} demo-submit-section{% endif %}" id="{% if current_user.is_demo_user %}demo-submit-section{% endif %}" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin: 2.5rem 0; padding: 1rem 1.5rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
-                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div class="submit-section{% if current_user.is_demo_user %} demo-submit-section{% endif %}" id="{% if current_user.is_demo_user %}demo-submit-section{% endif %}" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                     {% if assignment.time_limit_minutes and submission.started_at %}
                     <div id="timer-container" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; min-height: 2.75rem; box-sizing: border-box; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
                         <span>{{ ui_icon('action.clock', 'sm') }}</span>
@@ -770,8 +770,8 @@
                         Таймер будет запущен после начала выполнения.
                     </div>
                     {% endif %}
-                    <button type="button" id="autosave-btn" class="neo-button ghost" {% if should_hide_tasks %}disabled{% endif %} style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; min-height: 2.75rem; font-weight: 600; box-sizing: border-box;">
-                        {{ ui_icon('action.backup', 'sm') }} Сохранить черновик
+                    <button type="button" id="autosave-btn" class="px-5 py-3 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors shadow-sm flex items-center gap-2" {% if should_hide_tasks %}disabled{% endif %}>
+                        <i class="ph-bold ph-floppy-disk text-lg"></i> <span class="hidden sm:inline">Сохранить черновик</span>
                     </button>
                     <span id="last-save" class="autosave-indicator" style="font-size: 0.85em; color: var(--text-muted); font-weight: 500;"></span>
                 </div>
@@ -779,8 +779,8 @@
                     <div id="timer-blocked-msg" style="{% if timer_expired and time_limit_strict %}display: block;{% else %}display: none;{% endif %} padding: 0.75rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: var(--radius-md); color: #ef4444; font-weight: 700; font-size: 0.95em;">
                         {{ ui_icon('action.warning', 'sm') }} Сдача заблокирована. Время на выполнение истекло.
                     </div>
-                    <button type="button" id="submit-btn" class="neo-button accent {% if timer_expired and time_limit_strict %}submit-btn-overdue{% endif %}" data-prevent-double-submit="true" {% if timer_expired and time_limit_strict or should_hide_tasks %}disabled{% endif %} style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; min-height: 2.75rem; font-weight: 700; box-sizing: border-box;">
-                        {{ ui_icon('action.check', 'sm') }} <span id="submit-btn-label">{% if submission.status in ['RETURNED', 'GRADED'] %}Сдать повторно{% else %}Сдать работу{% endif %}</span>
+                    <button type="button" id="submit-btn" class="px-8 py-3.5 bg-boo-primary text-white rounded-xl font-black hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-base {% if timer_expired and time_limit_strict %}submit-btn-overdue{% endif %}" data-prevent-double-submit="true" {% if timer_expired and time_limit_strict or should_hide_tasks %}disabled{% endif %}>
+                        <i class="ph-bold ph-check-circle text-xl"></i> <span id="submit-btn-label">{% if submission.status in ['RETURNED', 'GRADED'] %}Сдать повторно{% else %}Сдать работу{% endif %}</span>
                     </button>
                 </div>
             </div>
@@ -902,8 +902,8 @@
         {% endif %}
         {% endif %}
 
-        <section class="submission-comments" style="margin-top: 3rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem;">
-            <h3 style="margin-bottom: 1.5rem;">Комментарии</h3>
+        <section class="submission-comments bg-white rounded-[32px] border border-slate-200 shadow-tactile p-6 lg:p-8 mt-2 mb-10">
+            <h3 class="text-lg font-black text-slate-900 mb-6">Комментарии</h3>
             
             <div id="comments-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 400px; overflow-y: auto; margin-bottom: 1.5rem;">
                 {% if submission.comments %}
@@ -926,15 +926,15 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div id="no-comments" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                        Нет комментариев. Задайте вопрос преподавателю!
+                    <div id="no-comments" class="flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-[20px] border border-slate-100">
+                        <p class="text-sm font-medium text-slate-500">Нет комментариев. Задайте вопрос преподавателю!</p>
                     </div>
                 {% endif %}
             </div>
             
-            <form id="comment-form" style="display: flex; gap: 1rem;">
-                <input type="text" id="comment-input" class="neo-input" placeholder="Написать сообщение..." required style="flex: 1;">
-                <button type="submit" class="neo-button accent">Отправить</button>
+            <form id="comment-form" class="flex gap-3">
+                <input type="text" id="comment-input" placeholder="Написать сообщение..." required class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all">
+                <button type="submit" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-md text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 shrink-0">Отправить</button>
             </form>
         </section>
         </main>
