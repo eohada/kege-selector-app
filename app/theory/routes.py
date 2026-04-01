@@ -45,11 +45,11 @@ def _render_theory_content_html(content_value):
 
     def _highlight_python_html(code_value):
         escaped = html.escape(code_value or '')
-        escaped = re.sub(r'(\"[^\"]*\"|\'[^\']*\')', r'<span class="text-green-300">\1</span>', escaped)
-        escaped = re.sub(r'\b(\d+)\b', r'<span class="text-orange-300">\1</span>', escaped)
+        escaped = re.sub(r'(\"[^\"]*\"|\'[^\']*\')', r'<span data-hl="str">\1</span>', escaped)
+        escaped = re.sub(r'\b(\d+)\b', r'<span data-hl="num">\1</span>', escaped)
         escaped = re.sub(
             r'\b(for|in|if|else|elif|while|def|return|import|from|as|try|except|finally|with|class|pass|break|continue|and|or|not|True|False|None|print|range)\b',
-            r'<span class="text-purple-300 font-bold">\1</span>',
+            r'<span data-hl="kw">\1</span>',
             escaped,
         )
         return escaped
@@ -70,7 +70,7 @@ def _render_theory_content_html(content_value):
             '<button type="button" class="theory-run-btn px-2.5 py-1 text-xs font-bold text-white bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-md">Run</button>'
             '</div>'
             '</div>'
-            f'<textarea class="theory-code-input hidden w-full min-h-[120px] bg-[#0F172A] text-slate-300 font-mono text-[14px] p-5 border-none outline-none leading-relaxed">{html.escape(code_body)}</textarea>'
+            f'<textarea class="theory-code-input hidden">{html.escape(code_body)}</textarea>'
             f'<pre class="theory-code-highlight m-0 px-5 pb-5 -mt-2 bg-[#0F172A] text-slate-200 text-[14px] font-mono leading-relaxed overflow-x-auto">{highlighted}</pre>'
             '<pre class="theory-code-output hidden m-0 p-4 bg-slate-950 text-green-300 text-xs font-mono border-t border-slate-700"></pre>'
             '</div>'
@@ -133,6 +133,8 @@ def _render_theory_content_html(content_value):
         pass
     text = text.replace('<p>__THEORY_SPACER__</p>', '<div class="theory-spacer"></div>')
     text = text.replace('__THEORY_SPACER__', '<div class="theory-spacer"></div>')
+    text = text.replace('<p>THEORY_SPACER</p>', '<div class="theory-spacer"></div>')
+    text = text.replace('THEORY_SPACER', '<div class="theory-spacer"></div>')
     return Markup(text)
 
 

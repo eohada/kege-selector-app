@@ -16,8 +16,11 @@
   .prose-article .theory-spacer { height: 18px; }
   .prose-article .theory-smart-code { border-radius: 24px; }
   .prose-article code { background: #f1f5f9; color: #334155; padding: .15rem .35rem; border-radius: .35rem; font-weight: 700; }
-  .prose-article .theory-code-highlight { border-top: 1px dashed rgba(148,163,184,.25); cursor: text; }
+  .prose-article .theory-code-highlight { border-top: 1px dashed rgba(148,163,184,.25); white-space: pre; }
   .prose-article .theory-code-input.hidden { display: none; }
+  .prose-article .theory-code-highlight [data-hl="kw"] { color: #c4b5fd; font-weight: 700; }
+  .prose-article .theory-code-highlight [data-hl="str"] { color: #86efac; }
+  .prose-article .theory-code-highlight [data-hl="num"] { color: #fdba74; }
 </style>
 {% endblock %}
 
@@ -175,9 +178,9 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-    s = s.replace(/(\"[^\"]*\"|\'[^\']*\')/g, '<span class="text-green-300">$1</span>');
-    s = s.replace(/\b(\d+)\b/g, '<span class="text-orange-300">$1</span>');
-    s = s.replace(/\b(for|in|if|else|elif|while|def|return|import|from|as|try|except|finally|with|class|pass|break|continue|and|or|not|True|False|None|print|range)\b/g, '<span class="text-purple-300 font-bold">$1</span>');
+    s = s.replace(/(\"[^\"]*\"|\'[^\']*\')/g, '<span data-hl="str">$1</span>');
+    s = s.replace(/\b(\d+)\b/g, '<span data-hl="num">$1</span>');
+    s = s.replace(/\b(for|in|if|else|elif|while|def|return|import|from|as|try|except|finally|with|class|pass|break|continue|and|or|not|True|False|None|print|range)\b/g, '<span data-hl="kw">$1</span>');
     return s;
   }
 
@@ -194,16 +197,6 @@
       };
       render();
       input.addEventListener('input', render);
-      preview.addEventListener('click', () => {
-        preview.classList.add('hidden');
-        input.classList.remove('hidden');
-        input.focus();
-      });
-      input.addEventListener('blur', () => {
-        render();
-        input.classList.add('hidden');
-        preview.classList.remove('hidden');
-      });
     });
   }
 
