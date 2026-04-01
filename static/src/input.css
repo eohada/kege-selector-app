@@ -21,6 +21,8 @@
   --color-text-muted: #64748B;
   --color-stroke: #E2E8F0;
   --color-stroke-strong: #CBD5E1;
+  --color-shadow-bottom: #CBD5E1;
+  --color-bg-inset: #F8FAFC;
   color-scheme: light;
 
   /* Legacy aliases for 65 templates with inline <style> */
@@ -86,21 +88,23 @@
 
 /* ── Dark theme ── */
 [data-theme="dark"] {
-  --color-bg-app: #0B0818;
-  --color-bg-surface: #141026;
-  --color-bg-surface-alt: #1E1838;
-  --color-bg-sidebar: #141026;
+  --color-bg-app: #0B1121;
+  --color-bg-surface: #1E293B;
+  --color-bg-surface-alt: #334155;
+  --color-bg-sidebar: #1E293B;
+  --color-bg-inset: #0F172A;
   --color-accent-soft: rgba(123, 92, 255, 0.2);
   --color-text-primary: #F8FAFC;
-  --color-text-secondary: #E2E8F0;
-  --color-text-muted: #8B85A1;
-  --color-stroke: rgba(139, 92, 255, 0.2);
-  --color-stroke-strong: rgba(139, 92, 255, 0.4);
+  --color-text-secondary: #CBD5E1;
+  --color-text-muted: #94A3B8;
+  --color-stroke: rgba(255, 255, 255, 0.1);
+  --color-stroke-strong: rgba(255, 255, 255, 0.2);
+  --color-shadow-bottom: #0F172A;
   color-scheme: dark;
   --page-bg: var(--color-bg-app);
   --surface-1: var(--color-bg-surface);
   --surface-2: var(--color-bg-surface-alt);
-  --surface-3: #141026;
+  --surface-3: #1E293B;
   --surface-card: var(--color-bg-surface);
   --text-primary: var(--color-text-primary);
   --text-secondary: var(--color-text-secondary);
@@ -108,10 +112,24 @@
   --stroke-1: var(--color-stroke);
   --stroke-2: var(--color-stroke-strong);
   --overlay-hover: rgba(139, 92, 255, 0.08);
-  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.4);
-  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.4);
-  --shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.5);
+  --shadow-soft: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 10px 30px rgba(0, 0, 0, 0.4);
+  --shadow-card: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 10px 30px rgba(0, 0, 0, 0.4);
+  --shadow-hover: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 20px 40px rgba(0, 0, 0, 0.5);
 }
+
+/* ── FORCE DARK MODE FOR LEGACY PAGES ── */
+[data-theme="dark"] .bg-white { background-color: var(--color-bg-surface) !important; }
+[data-theme="dark"] .bg-slate-50 { background-color: var(--color-bg-inset) !important; }
+[data-theme="dark"] .bg-slate-100 { background-color: var(--color-bg-app) !important; }
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .text-slate-800 { color: var(--color-text-primary) !important; }
+[data-theme="dark"] .text-slate-700,
+[data-theme="dark"] .text-slate-600 { color: var(--color-text-secondary) !important; }
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-400 { color: var(--color-text-muted) !important; }
+[data-theme="dark"] .border-slate-200,
+[data-theme="dark"] .border-slate-300 { border-color: var(--color-stroke) !important; }
+[data-theme="dark"] .shadow-sm { box-shadow: none !important; }
 
 /* ============================================================
    @layer base
