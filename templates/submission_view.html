@@ -520,9 +520,8 @@
 <body data-cinema-scene="submission-work">
     <div class="app-layout">
         {% set active_page = 'assignments' %}
-        {% include '_sidebar.html' %}
+        {% include '_dock_nav.html' %}
     <div class="app-main">
-        {% include '_topbar.html' %}
         <main class="app-content" style="margin-top: 1.25rem; max-width: 1000px; margin-left: auto; margin-right: auto; padding-bottom: 120px;">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
         <div class="submission-header">
