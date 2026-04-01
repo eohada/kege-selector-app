@@ -142,8 +142,12 @@
           </div>
           ${meta.topic ? `<div><div class="inspector-label">Тема</div><div class="inspector-input">${String(meta.topic)}</div></div>` : ''}
           <div class="flex gap-3">
-            ${meta.profile_url ? `<a class="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>` : ''}
-            ${meta.lesson_url ? `<a class="flex-1 py-3 bg-purple-50 border border-purple-100 text-boo-primary rounded-xl font-bold hover:bg-purple-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.lesson_url}">Урок</a>` : ''}
+            ${meta.profile_url
+              ? `<a class="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>`
+              : `<button class="flex-1 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
+            ${meta.lesson_url
+              ? `<a class="flex-1 py-3 bg-purple-50 border border-purple-100 text-boo-primary rounded-xl font-bold hover:bg-purple-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.lesson_url}">Урок</a>`
+              : `<button class="flex-1 py-3 bg-purple-50 border border-purple-100 text-boo-primary rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Урок</button>`}
           </div>
         </div>
       `;
@@ -197,7 +201,9 @@
             Сохранить изменения
           </button>
           <div class="flex gap-3">
-            <a class="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url || '#'}">Профиль</a>
+            ${meta.profile_url
+              ? `<a class="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>`
+              : `<button class="flex-1 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
             <button class="flex-1 py-3 bg-red-50 border border-red-100 text-boo-coral rounded-xl font-bold hover:bg-red-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorDelete">Удалить</button>
           </div>
           <button class="w-full py-3 bg-purple-50 border border-purple-100 text-boo-primary rounded-xl font-bold hover:bg-purple-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorMakeRecurring">
@@ -363,10 +369,8 @@
 
     const top = minutesToY(parseInt(ev.start_total || '0', 10));
     const durationSlots = parseInt(ev.duration_minutes || '60', 10) / slotMinutes;
-    const height = Math.max(
-      durationSlots * pxPerSlot - 4,
-      pxPerSlot * 0.9
-    );
+    const minCardHeight = 86;
+    const height = Math.max(durationSlots * pxPerSlot - 4, minCardHeight);
     const maxTop = Math.max((totalSlots * pxPerSlot) - height - 2, 0);
     el.style.top = `${Math.min(top + 2, maxTop)}px`;
     el.style.height = `${height}px`;
