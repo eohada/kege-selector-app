@@ -100,19 +100,18 @@
         </div>
 
         <!-- КАРТОЧКА НАСТАВНИКА -->
-        <div class="bg-gradient-to-b from-[#F9F7FF] to-white rounded-[32px] border border-purple-200 border-b-[4px] border-b-purple-300 shadow-tactile p-8 flex flex-col justify-between hover:shadow-tactile-hover transition-shadow relative overflow-hidden">
+        {% if mentor %}
+        <a href="{{ url_for('auth.user_public_profile', user_id=mentor.id) }}"
+           class="bg-gradient-to-b from-[#F9F7FF] to-white rounded-[32px] border border-purple-200 border-b-[4px] border-b-purple-300 shadow-tactile p-8 flex flex-col justify-between hover:shadow-tactile-hover transition-shadow relative overflow-hidden no-underline group">
+        {% else %}
+        <div class="bg-gradient-to-b from-[#F9F7FF] to-white rounded-[32px] border border-purple-200 border-b-[4px] border-b-purple-300 shadow-tactile p-8 flex flex-col justify-between transition-shadow relative overflow-hidden">
+        {% endif %}
             <div class="relative z-10">
                 <div class="flex justify-between items-start mb-6">
                     <h3 class="font-extrabold text-slate-400 text-xs uppercase tracking-widest">Твой наставник</h3>
-                    {% if student_subscription and student_subscription.label %}
                     <span class="px-2.5 py-1.5 bg-gradient-to-r from-fuchsia-100 to-purple-100 text-fuchsia-700 text-[10px] font-extrabold rounded-lg flex items-center gap-1 border border-fuchsia-200/50 shadow-sm uppercase">
-                        <i class="ph-fill ph-crown text-fuchsia-500"></i> {{ student_subscription.label }}
+                        <i class="ph-fill ph-user-focus text-fuchsia-500"></i> Профиль наставника
                     </span>
-                    {% else %}
-                    <span class="px-2.5 py-1.5 bg-slate-100 text-slate-500 text-[10px] font-extrabold rounded-lg flex items-center gap-1 border border-slate-200/50 shadow-sm uppercase">
-                        <i class="ph-fill ph-shield-check text-slate-400"></i> Доступ
-                    </span>
-                    {% endif %}
                 </div>
 
                 <div class="flex items-center gap-4 mb-6">
@@ -144,28 +143,29 @@
                     </div>
                 </div>
 
-                {% if student_subscription and student_subscription.subscription and student_subscription.plan %}
                 <div class="bg-white/70 border border-purple-100 rounded-2xl p-4 shadow-sm">
-                    <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Тариф</div>
-                    <div class="text-sm font-black text-slate-900 mt-0.5">{{ student_subscription.plan.title }}</div>
+                    <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Статус преподавателя</div>
+                    <div class="text-sm font-black text-slate-900 mt-0.5">
+                        {% if mentor and mentor.custom_status %}{{ mentor.custom_status }}{% elif mentor and mentor.is_active %}На связи{% else %}Не в сети{% endif %}
+                    </div>
                     <div class="text-xs font-bold text-slate-500 mt-1">
-                        {% if student_subscription.ends_at_utc %}До {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}{% else %}—{% endif %}
+                        {% if mentor and mentor.created_at %}В системе с {{ mentor.created_at.strftime('%d.%m.%Y') }}{% else %}В системе с —{% endif %}
                     </div>
                 </div>
-                {% endif %}
             </div>
-
-            <div class="space-y-3 relative z-10 mt-6">
-                <a href="{{ url_for('students.student_chat', student_id=student.student_id) }}"
-                   class="w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm border-b-[3px] border-b-purple-800 active:translate-y-1 active:border-b-0 text-sm no-underline">
-                    <i class="ph-bold ph-chat-circle-text text-lg"></i> Написать в чат
-                </a>
-                <a href="{{ url_for('students.student_call_request', student_id=student.student_id) }}"
-                   class="w-full py-3.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
-                    <i class="ph-bold ph-calendar-plus text-lg"></i> Записаться на созвон
-                </a>
+            {% if mentor %}
+            <div class="mt-6 relative z-10 flex items-center justify-between text-xs font-bold text-slate-500">
+                <span class="inline-flex items-center gap-1.5">
+                    <i class="ph-bold ph-cursor-click text-sm text-boo-primary"></i> Открыть профиль
+                </span>
+                <i class="ph-bold ph-arrow-up-right text-sm text-slate-400 group-hover:text-boo-primary transition-colors"></i>
             </div>
+            {% endif %}
+        {% if mentor %}
+        </a>
+        {% else %}
         </div>
+        {% endif %}
     </div>
 
     <!-- НИЖНИЙ РЯД (Action Items) -->
@@ -227,15 +227,20 @@
             {% endif %}
         </div>
 
-        <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 transition-transform duration-300">
+        <div class="bg-white rounded-[32px] border {% if has_permission(current_user, 'trainer.use') %}border-slate-200 border-b-slate-300 hover:-translate-y-1{% else %}border-slate-200/80 border-b-slate-300 bg-slate-50/60{% endif %} border-b-[4px] shadow-tactile p-6 flex flex-col transition-transform duration-300 relative overflow-hidden {% if not has_permission(current_user, 'trainer.use') %}opacity-95{% endif %}">
             <div class="flex justify-between items-start mb-6">
-                <div class="w-12 h-12 rounded-2xl bg-orange-50 text-boo-accent flex items-center justify-center border border-orange-100">
+                <div class="w-12 h-12 rounded-2xl {% if has_permission(current_user, 'trainer.use') %}bg-orange-50 text-boo-accent border-orange-100{% else %}bg-slate-200 text-slate-400 border-slate-300{% endif %} flex items-center justify-center border">
                     <i class="ph-fill ph-game-controller text-2xl"></i>
                 </div>
+                {% if not has_permission(current_user, 'trainer.use') %}
+                <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+                    Нет доступа
+                </span>
+                {% endif %}
             </div>
 
-            <h3 class="text-2xl font-black text-slate-900 mb-2">Тренажёр</h3>
-            <p class="text-sm font-medium text-slate-500 mb-6 flex-1">
+            <h3 class="text-2xl font-black {% if has_permission(current_user, 'trainer.use') %}text-slate-900{% else %}text-slate-500{% endif %} mb-2">Тренажёр</h3>
+            <p class="text-sm font-medium {% if has_permission(current_user, 'trainer.use') %}text-slate-500{% else %}text-slate-400{% endif %} mb-6 flex-1">
                 Закрепи теорию практикой. Решай задачи каждый день, чтобы улучшать результат.
             </p>
 
@@ -245,9 +250,12 @@
                 Подобрать задачу <i class="ph-bold ph-magic-wand text-boo-primary"></i>
             </a>
             {% else %}
-            <div class="w-full py-3 bg-slate-100 text-slate-500 rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-200">
-                Тренажёр недоступен
+            <div class="w-full py-3.5 bg-gradient-to-r from-slate-100 to-slate-200 text-slate-600 rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-300 cursor-not-allowed select-none">
+                <i class="ph-bold ph-lock-key"></i> Тренажёр недоступен в текущем тарифе
             </div>
+            {% endif %}
+            {% if not has_permission(current_user, 'trainer.use') %}
+            <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.12),transparent_45%)]"></div>
             {% endif %}
         </div>
     </div>
