@@ -84,6 +84,9 @@ def _render_theory_content_html(content_value):
         ctype = (match.group(1) or 'tip').strip().lower()
         body = (match.group(2) or '').strip()
         body = re.sub(r'^(ВНИМАНИЕ|ЛАЙФХАК|ОСТОРОЖНО)\s*:\s*', '', body, flags=re.IGNORECASE)
+        # Inline markdown parity with teacher preview (e.g. **Важно:**)
+        body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', body)
+        body = re.sub(r'\*(.+?)\*', r'<em>\1</em>', body)
         theme = {
             'attention': {'title': 'Внимание', 'bg': '#FFF7ED', 'border': '#FED7AA', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FFFFFF', 'icon_color': '#EA580C'},
             'tip': {'title': 'Что нужно запомнить?', 'bg': '#ECFEFF', 'border': '#A5F3FC', 'icon': 'ph-fill ph-info', 'icon_bg': '#FFFFFF', 'icon_color': '#06B6D4'},
@@ -93,8 +96,8 @@ def _render_theory_content_html(content_value):
             f'<div class="my-8 rounded-[24px] p-6 flex gap-4 shadow-sm" style="background:{theme["bg"]};border:1px solid {theme["border"]};">'
             f'<div class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center shadow-sm" style="background:{theme["icon_bg"]};color:{theme["icon_color"]};border:1px solid {theme["border"]};">'
             f'<i class="{theme["icon"]} text-xl"></i></div>'
-            f'<div><h4 class="font-bold text-slate-900 mb-1">{theme["title"]}</h4>'
-            f'<p class="text-sm font-medium text-slate-600">{body}</p></div>'
+            f'<div><h4 class="font-black text-[46px] leading-[1.05] text-slate-900 mb-1">{theme["title"]}</h4>'
+            f'<p class="text-[38px] leading-[1.35] font-extrabold text-slate-800 uppercase">{body}</p></div>'
             '</div>'
         )
 
@@ -549,6 +552,7 @@ def manage_list():
                 task_number=next_task,
                 title=f'Тема {next_pos}',
                 description='Краткое описание темы',
+                read_minutes=5,
                 content='<!--status:draft-->\n',
                 position=next_pos,
                 author_id=current_user.id,
@@ -562,6 +566,7 @@ def manage_list():
         task_number = request.form.get('task_number', type=int)
         title = (request.form.get('title') or '').strip()
         description = (request.form.get('description') or '').strip()
+        read_minutes_raw = request.form.get('read_minutes', type=int)
         content = (request.form.get('content') or '').strip()
         status = (request.form.get('editor_status') or 'draft').strip().lower()
         group_id = request.form.get('group_id', type=int)
@@ -591,6 +596,7 @@ def manage_list():
         local_number = block.position or 1
         block.title = title or f'Тема {local_number}'
         block.description = description or None
+        block.read_minutes = max(1, min(180, int(read_minutes_raw or block.read_minutes or 5)))
         block.content = content_with_status
         block.author_id = current_user.id
 

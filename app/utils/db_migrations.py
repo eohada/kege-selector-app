@@ -1573,6 +1573,7 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
         _add_col('TheoryBlocks', 'pdf_path', 'VARCHAR(500)')
         _add_col('TheoryBlocks', 'group_id', 'INTEGER')
         _add_col('TheoryBlocks', 'description', 'VARCHAR(500)')
+        _add_col('TheoryBlocks', 'read_minutes', 'INTEGER DEFAULT 5')
         _add_col('TheoryBlocks', 'position', 'INTEGER DEFAULT 0')
         _add_col('StudentTheoryAccess', 'course_id', 'INTEGER')
         _add_col('StudentTaskStatistics', 'course_id', 'INTEGER')

@@ -53,7 +53,7 @@
       <div class="max-w-3xl mx-auto prose-article">
         <div class="flex items-center gap-2 mb-4">
           <span class="bg-slate-100 text-slate-500 text-xs font-bold px-2.5 py-1 rounded-md border border-slate-200">Задание {{ block.task_number }}</span>
-          <span class="text-slate-400 text-xs font-semibold flex items-center gap-1"><i class="ph-fill ph-clock"></i> 5 мин чтения</span>
+          <span class="text-slate-400 text-xs font-semibold flex items-center gap-1"><i class="ph-fill ph-clock"></i> {{ block.read_minutes or 5 }} мин чтения</span>
         </div>
         <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4 leading-tight">{{ block.title or ('Задание ' ~ block.task_number) }}</h1>
         {% if block.description %}
@@ -79,11 +79,11 @@
             <div class="flex gap-3 w-full sm:w-auto items-center">
               {% set current_rating = (feedback.rating if feedback and feedback.rating is not none else 0) %}
               {% for i in range(1,6) %}
-              <button type="button" data-action="rate" data-rating="{{ i }}" class="w-10 h-10 rounded-xl border border-slate-200 bg-white shadow-sm flex items-center justify-center transition-colors {% if i <= current_rating %}text-boo-accent{% else %}text-slate-300{% endif %} hover:text-boo-accent">
+              <button type="button" data-action="rate" data-rating="{{ i }}" class="w-10 h-10 rounded-xl border border-slate-200 bg-white shadow-sm flex items-center justify-center transition-colors cursor-pointer {% if i <= current_rating %}text-boo-accent bg-orange-50 border-orange-200{% else %}text-slate-300{% endif %} hover:text-boo-accent">
                 <i class="ph-fill ph-star text-xl"></i>
               </button>
               {% endfor %}
-              <button type="button" data-action="mark-read" class="px-6 py-3 {{ 'bg-green-600 border-b-green-800' if state and state.read else 'bg-boo-primary border-b-purple-800' }} text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] active:translate-y-[2px] active:border-b-0 text-sm">
+              <button type="button" data-action="mark-read" class="px-6 py-3 {{ 'bg-green-600 border-b-green-800' if state and state.read else 'bg-boo-primary border-b-purple-800' }} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] active:translate-y-[2px] active:border-b-0 text-sm">
                 <i class="ph-bold ph-check-circle text-lg"></i> {{ 'Изучено' if state and state.read else 'Отметить как изученное' }}
               </button>
             </div>

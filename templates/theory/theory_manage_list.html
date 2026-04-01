@@ -350,6 +350,10 @@
               <input type="text" name="title" class="w-full text-5xl font-black text-slate-900 placeholder-slate-200 bg-transparent border-none outline-none mb-6 resize-none focus:ring-0 leading-tight" value="{{ (selected_block.title if selected_block else ('Тема ' ~ (selected_display_number or ''))) }}" placeholder="Заголовок темы">
               
               <input type="text" name="description" class="w-full text-lg font-medium text-slate-500 placeholder-slate-400 bg-transparent border-none px-0 py-2 mb-10 focus:outline-none focus:ring-0 transition-colors" value="{{ selected_block.description if selected_block and selected_block.description else '' }}" placeholder="Краткое описание (например: Таблицы истинности, законы Де Моргана)...">
+              <div class="mb-8 max-w-[220px]">
+                <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Время чтения (мин)</label>
+                <input type="number" min="1" max="180" name="read_minutes" value="{{ selected_block.read_minutes if selected_block and selected_block.read_minutes else 5 }}" class="w-full h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100">
+              </div>
               
               <div class="inline-flex items-center rounded-xl border border-slate-200 p-1 bg-slate-50 mb-4">
                 <button id="tabMarkupBtn" type="button" class="px-3 h-9 rounded-lg text-xs font-bold bg-white text-slate-700 border border-slate-200 shadow-sm">

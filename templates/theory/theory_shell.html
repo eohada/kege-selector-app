@@ -57,18 +57,29 @@
       <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="nonempty">
         Непустые
       </button>
+      <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="bookmarked">
+        Избранное
+      </button>
     </div>
 
     {% if visible_groups and visible_groups|length > 0 %}
     <div id="theoryGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
       {% for group_pack in visible_groups %}
       {% set href = url_for('theory.theory_group_view', group_id=group_pack.group.id, course_id=course_id) %}
+      {% set ns = namespace(bookmarked_count=0) %}
+      {% for b in group_pack.blocks %}
+        {% set b_state = (state_by_number.get(b.task_number) if state_by_number is defined and state_by_number else {}) %}
+        {% if b_state and b_state.get('bookmarked') %}
+          {% set ns.bookmarked_count = ns.bookmarked_count + 1 %}
+        {% endif %}
+      {% endfor %}
 
       <a href="{{ href }}"
          class="theory-card bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
          data-group-id="{{ group_pack.group.id }}"
          data-title="{{ (group_pack.group.name or '')|lower }}"
-         data-count="{{ group_pack.blocks|length }}">
+         data-count="{{ group_pack.blocks|length }}"
+         data-bookmarked-count="{{ ns.bookmarked_count }}">
 
         <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors pointer-events-none"></div>
 
@@ -305,7 +316,12 @@
       const cardCount = parseInt(card.dataset.count || '0');
       const matchQuery = !q || title.includes(q);
       let matchFilter = true;
-      if (active === 'nonempty') matchFilter = cardCount > 0 || read;
+      if (active === 'nonempty') {
+        matchFilter = cardCount > 0 || read;
+      } else if (active === 'bookmarked') {
+        const bookmarkedCount = parseInt(card.dataset.bookmarkedCount || '0');
+        matchFilter = bookmarkedCount > 0;
+      }
       card.style.display = (matchQuery && matchFilter) ? '' : 'none';
     });
   }
@@ -453,9 +469,15 @@
       if (window.toast) window.toast.success('Спасибо за фидбек!');
       articleContainer.querySelectorAll('[data-action="rate"]').forEach(star => {
         const rVal = parseInt(star.dataset.rating || '0');
-        star.classList.toggle('text-boo-accent', rVal <= rating);
-        star.classList.toggle('text-slate-300', rVal > rating);
+        const active = rVal <= rating;
+        star.classList.toggle('text-boo-accent', active);
+        star.classList.toggle('bg-orange-50', active);
+        star.classList.toggle('border-orange-200', active);
+        star.classList.toggle('text-slate-300', !active);
+        star.classList.toggle('bg-white', !active);
+        star.classList.toggle('border-slate-200', !active);
       });
+      root.dataset.rating = String(rating);
     }
 
     if (action === 'mark-read') {
@@ -473,6 +495,8 @@
       const btnRead = articleContainer.querySelector('[data-action="mark-read"]');
       if (btnRead) {
         btnRead.classList.add('bg-green-600');
+        btnRead.classList.remove('text-slate-500');
+        btnRead.classList.add('text-white');
         btnRead.classList.remove('bg-boo-primary');
         btnRead.innerHTML = '<i class="ph-bold ph-check-circle text-lg"></i> Изучено';
       }

@@ -1891,6 +1891,7 @@ class TheoryBlock(db.Model):
     task_number = db.Column(db.Integer, nullable=False, index=True)
     title = db.Column(db.String(200), nullable=True)
     description = db.Column(db.String(500), nullable=True)
+    read_minutes = db.Column(db.Integer, nullable=False, default=5, server_default='5')
     position = db.Column(db.Integer, nullable=False, default=0, server_default='0', index=True)
     content = db.Column(db.Text, nullable=True)
     pdf_path = db.Column(db.String(500), nullable=True)
