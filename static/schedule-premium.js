@@ -192,8 +192,8 @@
             <option value="introductory" ${lt === 'introductory' ? 'selected' : ''}>Вводный</option>
           </select>
         </div>
-        <div class="space-y-3 pt-2">
-          <button class="w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex justify-center items-center gap-2 active:translate-y-1 active:border-b-0 text-sm" type="button" id="inspectorSave">
+        <div class="inspector-actions-sticky space-y-3">
+          <button class="w-full py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex justify-center items-center gap-2 active:translate-y-1 active:border-b-0 text-sm" type="button" id="inspectorSave">
             Сохранить изменения
           </button>
           <div class="flex gap-3">
@@ -367,7 +367,8 @@
       durationSlots * pxPerSlot - 4,
       pxPerSlot * 0.9
     );
-    el.style.top = `${top + 2}px`;
+    const maxTop = Math.max((totalSlots * pxPerSlot) - height - 2, 0);
+    el.style.top = `${Math.min(top + 2, maxTop)}px`;
     el.style.height = `${height}px`;
 
     const meta = {
