@@ -11,6 +11,8 @@
 {% set mentor = (tutors_list[0] if tutors_list and tutors_list|length > 0 else None) %}
 {% set upcoming = (upcoming_lessons[0] if upcoming_lessons and upcoming_lessons|length > 0 else None) %}
 {% set active_cnt = (active_submissions|length if active_submissions is defined and active_submissions else 0) %}
+{% set sub_allow_trainer = (student_subscription.allow_trainer if student_subscription and student_subscription.allow_trainer is not none else True) %}
+{% set trainer_is_available = (sub_allow_trainer and has_permission(current_user, 'trainer.use')) %}
 
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
 
@@ -108,10 +110,7 @@
         {% endif %}
             <div class="relative z-10">
                 <div class="flex justify-between items-start mb-6">
-                    <h3 class="font-extrabold text-slate-400 text-xs uppercase tracking-widest">Твой наставник</h3>
-                    <span class="px-2.5 py-1.5 bg-gradient-to-r from-fuchsia-100 to-purple-100 text-fuchsia-700 text-[10px] font-extrabold rounded-lg flex items-center gap-1 border border-fuchsia-200/50 shadow-sm uppercase">
-                        <i class="ph-fill ph-user-focus text-fuchsia-500"></i> Профиль наставника
-                    </span>
+                    <h3 class="font-extrabold text-fuchsia-600 text-xs uppercase tracking-widest">Твой наставник</h3>
                 </div>
 
                 <div class="flex items-center gap-4 mb-6">
@@ -146,7 +145,7 @@
                 <div class="bg-white/70 border border-purple-100 rounded-2xl p-4 shadow-sm">
                     <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Статус преподавателя</div>
                     <div class="text-sm font-black text-slate-900 mt-0.5">
-                        {% if mentor and mentor.custom_status %}{{ mentor.custom_status }}{% elif mentor and mentor.is_active %}На связи{% else %}Не в сети{% endif %}
+                        {% if mentor and mentor.custom_status %}{{ mentor.custom_status }}{% else %}—{% endif %}
                     </div>
                     <div class="text-xs font-bold text-slate-500 mt-1">
                         {% if mentor and mentor.created_at %}В системе с {{ mentor.created_at.strftime('%d.%m.%Y') }}{% else %}В системе с —{% endif %}
@@ -227,24 +226,24 @@
             {% endif %}
         </div>
 
-        <div class="bg-white rounded-[32px] border {% if has_permission(current_user, 'trainer.use') %}border-slate-200 border-b-slate-300 hover:-translate-y-1{% else %}border-slate-200/80 border-b-slate-300 bg-slate-50/60{% endif %} border-b-[4px] shadow-tactile p-6 flex flex-col transition-transform duration-300 relative overflow-hidden {% if not has_permission(current_user, 'trainer.use') %}opacity-95{% endif %}">
+        <div class="bg-white rounded-[32px] border {% if trainer_is_available %}border-slate-200 border-b-slate-300 hover:-translate-y-1{% else %}border-slate-200/80 border-b-slate-300 bg-slate-50/60{% endif %} border-b-[4px] shadow-tactile p-6 flex flex-col transition-transform duration-300 relative overflow-hidden {% if not trainer_is_available %}opacity-95{% endif %}">
             <div class="flex justify-between items-start mb-6">
-                <div class="w-12 h-12 rounded-2xl {% if has_permission(current_user, 'trainer.use') %}bg-orange-50 text-boo-accent border-orange-100{% else %}bg-slate-200 text-slate-400 border-slate-300{% endif %} flex items-center justify-center border">
+                <div class="w-12 h-12 rounded-2xl {% if trainer_is_available %}bg-orange-50 text-boo-accent border-orange-100{% else %}bg-slate-200 text-slate-400 border-slate-300{% endif %} flex items-center justify-center border">
                     <i class="ph-fill ph-game-controller text-2xl"></i>
                 </div>
-                {% if not has_permission(current_user, 'trainer.use') %}
+                {% if not trainer_is_available %}
                 <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
                     Нет доступа
                 </span>
                 {% endif %}
             </div>
 
-            <h3 class="text-2xl font-black {% if has_permission(current_user, 'trainer.use') %}text-slate-900{% else %}text-slate-500{% endif %} mb-2">Тренажёр</h3>
-            <p class="text-sm font-medium {% if has_permission(current_user, 'trainer.use') %}text-slate-500{% else %}text-slate-400{% endif %} mb-6 flex-1">
+            <h3 class="text-2xl font-black {% if trainer_is_available %}text-slate-900{% else %}text-slate-500{% endif %} mb-2">Тренажёр</h3>
+            <p class="text-sm font-medium {% if trainer_is_available %}text-slate-500{% else %}text-slate-400{% endif %} mb-6 flex-1">
                 Закрепи теорию практикой. Решай задачи каждый день, чтобы улучшать результат.
             </p>
 
-            {% if has_permission(current_user, 'trainer.use') %}
+            {% if trainer_is_available %}
             <a href="{{ url_for('trainer.trainer_v2') }}"
                class="w-full py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 hover:text-boo-primary transition-all flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
                 Подобрать задачу <i class="ph-bold ph-magic-wand text-boo-primary"></i>
@@ -254,7 +253,7 @@
                 <i class="ph-bold ph-lock-key"></i> Тренажёр недоступен в текущем тарифе
             </div>
             {% endif %}
-            {% if not has_permission(current_user, 'trainer.use') %}
+            {% if not trainer_is_available %}
             <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.12),transparent_45%)]"></div>
             {% endif %}
         </div>
