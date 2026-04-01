@@ -257,38 +257,28 @@
   let cmBundle = null;
   async function getCmBundle() {
     if (cmBundle) return cmBundle;
-    const [{ EditorState }, { EditorView, keymap, lineNumbers }, { defaultKeymap, indentWithTab }, { python }, { cpp }, { oneLight }, { syntaxHighlighting, HighlightStyle }, { tags }] = await Promise.all([
+    const [{ EditorState }, { EditorView, keymap, lineNumbers }, { defaultKeymap, indentWithTab }, { python }, { cpp }, { oneLight }] = await Promise.all([
       import('https://esm.sh/@codemirror/state'),
       import('https://esm.sh/@codemirror/view'),
       import('https://esm.sh/@codemirror/commands'),
       import('https://esm.sh/@codemirror/lang-python'),
       import('https://esm.sh/@codemirror/lang-cpp'),
       import('https://esm.sh/@codemirror/theme-one-light'),
-      import('https://esm.sh/@codemirror/language'),
-      import('https://esm.sh/@lezer/highlight'),
     ]);
-    cmBundle = { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp, oneLight, syntaxHighlighting, HighlightStyle, tags };
+    cmBundle = { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp, oneLight };
     return cmBundle;
   }
 
   async function setupCodeBlocks(root) {
     const blocks = Array.from((root || document).querySelectorAll('.theory-smart-code'));
-    const { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp, oneLight, syntaxHighlighting, HighlightStyle, tags } = await getCmBundle();
-    const syntaxTheme = syntaxHighlighting(
-      HighlightStyle.define([
-        { tag: [tags.keyword, tags.operatorKeyword], color: "#7c3aed", fontWeight: "700" },
-        { tag: [tags.string, tags.special(tags.string)], color: "#0f766e" },
-        { tag: [tags.number, tags.bool], color: "#ea580c", fontWeight: "600" },
-        { tag: [tags.comment], color: "#64748b", fontStyle: "italic" },
-        { tag: [tags.function(tags.variableName), tags.labelName], color: "#2563eb" },
-      ])
-    );
+    const { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp, oneLight } = await getCmBundle();
     const cmTheme = EditorView.theme({
       "&": { backgroundColor: "#ffffff", color: "#0f172a", minHeight: "120px" },
       ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7" },
       ".cm-gutters": { backgroundColor: "#f8fafc", color: "#6366f1", border: "1px solid #e2e8f0", borderLeft: "none", borderTop: "none", borderBottom: "none" },
       ".cm-activeLineGutter": { backgroundColor: "transparent" },
       ".cm-scroller": { overflowX: "auto" },
+      ".cm-focused": { outline: "none" },
     });
     blocks.forEach((card) => {
       if (card.dataset.cmReady === '1') return;
@@ -305,8 +295,8 @@
           keymap.of([indentWithTab, ...defaultKeymap]),
           (lang === 'cpp' ? cpp() : python()),
           oneLight,
-          syntaxTheme,
           cmTheme,
+          EditorView.editable.of(true),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) input.value = update.state.doc.toString();
           }),
