@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         /* Редактор кода: в тёмной теме фон и текст по переменным темы */
         [data-theme="dark"] .code-editor-panel .CodeMirror { background: var(--surface-1); color: var(--text-primary); }
@@ -263,7 +264,9 @@
         .meta-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #94a3b8; margin-bottom: 6px; }
         .meta-value { font-size: 30px; font-weight: 900; color: #0f172a; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 1.1rem; }
         .hero-grid { display: grid; grid-template-columns: 1fr auto; gap: 1.25rem; align-items: end; }
-        .hero-metrics { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 1.5rem; border-top: 1px solid #e2e8f0; padding-top: 1rem; }
+        .hero-metrics { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 0; border-top: 1px solid #e2e8f0; padding-top: 1rem; }
+        .hero-metrics > div { padding-right: 1.25rem; }
+        .hero-metrics > div + div { border-left: 1px solid #e2e8f0; padding-left: 1.25rem; }
         .status-pill {
             display: inline-flex;
             align-items: center;
@@ -304,10 +307,13 @@
             z-index: 50;
         }
         .task-nav-label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-right: 0.25rem;
+            font-size: 0.95rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: #64748b;
+            margin-right: auto;
+            margin-left: .65rem;
         }
         .task-nav-btn {
             width: 40px;
@@ -330,6 +336,12 @@
             background: rgba(0, 255, 213, 0.08);
             color: var(--accent-1);
             transform: translateY(-1px);
+        }
+        .task-nav-btn.active {
+            background: #7B5CFF;
+            color: #fff;
+            border-color: #7B5CFF;
+            box-shadow: inset 0 -3px 0 rgba(74, 29, 150, .35);
         }
         .task-nav-btn.correct {
             border-color: rgba(16, 185, 129, 0.5);
@@ -424,7 +436,7 @@
     <div class="app-main">
         {% include '_topbar.html' %}
         <main class="app-content" style="margin-top: 1.25rem; max-width: 1000px; margin-left: auto; margin-right: auto; padding-bottom: 120px;">
-        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost back-to-assignments" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.625rem 1rem; font-weight: 700; border-radius: 12px; background: rgba(255,255,255,0.8); border: 1px solid #e2e8f0;">{{ ui_icon('action.chevron_left', 'sm') }} К списку заданий</a></p>
+        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost back-to-assignments" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.625rem 1rem; font-weight: 700; border-radius: 12px; background: rgba(255,255,255,0.8); border: 1px solid #e2e8f0;"><i class="ph-bold ph-arrow-left"></i> К списку заданий</a></p>
         <div class="submission-header">
             {% set should_hide_tasks = assignment.hide_before_start and submission.status == 'ASSIGNED' and not submission.started_at %}
             <div class="hero-grid">
@@ -437,8 +449,8 @@
                 </div>
                 {% if should_hide_tasks %}
                 <div>
-                    <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1rem 2rem; font-size: 1.05rem; font-weight: 900; border-radius: 14px;">
-                        {{ ui_icon('action.play', 'sm') }} Начать выполнение
+                    <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1.15rem 2.35rem; font-size: 1.05rem; font-weight: 900; border-radius: 16px; box-shadow: 0 10px 30px rgba(123,92,255,.3);">
+                        <i class="ph-fill ph-play-circle" style="font-size:1.25rem;"></i> Начать выполнение
                     </button>
                 </div>
                 {% endif %}
@@ -448,6 +460,7 @@
                 <div>
                     <div class="meta-label">Статус</div>
                     <span class="status-pill status-{{ submission.status.lower() }}{% if timer_expired and time_limit_strict %} status-overdue-timer{% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %} status-overdue-deadline{% endif %}">
+                        <i class="ph-bold {% if submission.status == 'ASSIGNED' %}ph-lock{% elif submission.status == 'IN_PROGRESS' %}ph-circle{% elif submission.status == 'SUBMITTED' %}ph-check-circle{% else %}ph-clock{% endif %}"></i>
                         {% if timer_expired and time_limit_strict %}Просрочено по таймеру
                         {% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}Просрочено по дедлайну
                         {% elif submission.status == 'ASSIGNED' %}Назначено
@@ -461,16 +474,16 @@
                 </div>
                 <div>
                     <div class="meta-label">Дедлайн</div>
-                    <div class="info-value">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
+                    <div class="info-value"><i class="ph-bold ph-calendar-blank" style="font-size:1rem;color:#fb7185;margin-right:.35rem;"></i>{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
                 <div>
                     <div class="meta-label">Попытки</div>
-                    <div class="info-value">{{ attempts_used }} / {{ effective_max_attempts }}</div>
+                    <div class="info-value"><i class="ph-bold ph-arrows-clockwise" style="font-size:1rem;color:#7B5CFF;margin-right:.35rem;"></i>{{ attempts_used }} / {{ effective_max_attempts }}</div>
                 </div>
                 {% if submission.started_at %}
                 <div>
                     <div class="meta-label">Начато</div>
-                    <div class="info-value">{{ submission.started_at.strftime('%d.%m.%Y %H:%M') }}</div>
+                    <div class="info-value"><i class="ph-bold ph-clock" style="font-size:1rem;color:#06b6d4;margin-right:.35rem;"></i>{{ submission.started_at.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
                 {% endif %}
             </div>
@@ -480,7 +493,7 @@
             <span class="task-nav-label">Задания:</span>
             {% for task_item in tasks_data %}
             {% set ti_answer = task_item.answer %}
-            <a href="#task-{{ loop.index }}" class="task-nav-btn{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %}" title="Задание {{ loop.index }}">
+            <a href="#task-{{ loop.index }}" class="task-nav-btn {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %}" title="Задание {{ loop.index }}">
                 {{ loop.index }}
             </a>
             {% endfor %}
