@@ -63,20 +63,20 @@ def _render_theory_content_html(content_value):
         code_body = (match.group(2) or '').strip()
         highlighted = _highlight_python_html(code_body) if lang == 'python' else html.escape(code_body)
         return (
-            '<div class="theory-smart-code my-8 rounded-[24px] border border-slate-800 overflow-hidden bg-[#0F172A] shadow-inner" '
+            '<div class="theory-smart-code my-8 rounded-[24px] border border-slate-200 overflow-hidden bg-white shadow-sm" '
             f'data-lang="{lang}">'
-            '<div class="px-4 py-2.5 border-b border-slate-700 bg-slate-800/80 flex items-center justify-between">'
-            '<div class="flex items-center gap-2.5"><div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div><div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div><div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>'
-            f'<span class="text-[10px] font-mono font-bold text-slate-400 uppercase ml-1">{lang}</span></div>'
+            '<div class="px-4 py-2.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">'
+            '<div class="flex items-center gap-2.5"><div class="w-2.5 h-2.5 rounded-full bg-red-400"></div><div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div><div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>'
+            f'<span class="text-[10px] font-mono font-bold text-slate-500 uppercase ml-1">{lang}</span></div>'
             '<div class="flex items-center gap-2">'
-            '<input type="text" class="theory-code-args bg-slate-900 border border-slate-600 rounded-md px-2 py-1 text-[11px] text-slate-200" '
+            '<input type="text" class="theory-code-args bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] text-slate-700" '
             'placeholder="Аргументы / stdin">'
-            '<button type="button" class="theory-run-btn px-2.5 py-1 text-xs font-bold text-white bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 rounded-md">Run</button>'
+            '<button type="button" class="theory-run-btn px-2.5 py-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 border border-green-700 rounded-md">Run</button>'
             '</div>'
             '</div>'
             f'<textarea class="theory-code-input hidden">{html.escape(code_body)}</textarea>'
-            f'<pre class="theory-code-highlight m-0 px-5 pb-5 -mt-2 bg-[#0F172A] text-slate-200 text-[14px] font-mono leading-relaxed overflow-x-auto">{highlighted}</pre>'
-            '<pre class="theory-code-output hidden m-0 p-4 bg-slate-950 text-green-300 text-xs font-mono border-t border-slate-700"></pre>'
+            f'<pre class="theory-code-highlight m-0 px-5 py-4 bg-white text-slate-800 text-[14px] font-mono leading-relaxed overflow-x-auto">{highlighted}</pre>'
+            '<pre class="theory-code-output hidden m-0 p-4 bg-slate-50 text-slate-700 text-xs font-mono border-t border-slate-200"></pre>'
             '</div>'
         )
 
