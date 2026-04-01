@@ -4,29 +4,17 @@
 
 {% block head_css %}
 <style>
-  /* Премиальный парящий тулбар в стиле Notion */
-  .premium-toolbar {
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(226, 232, 240, 0.8);
-      border-radius: 20px;
-      padding: 6px;
-      box-shadow: 0 12px 32px -10px rgba(15, 23, 42, 0.1), 0 0 0 1px rgba(15, 23, 42, 0.02);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      width: max-content;
-      margin: 0 auto;
-  }
-  
+  /* Фикс ошибки линтера VS Code: Выносим динамическую ширину в отдельный класс */
+  .progress-fill { width: {{ completion_percent|default(0) }}%; }
+
+  /* Стили для тулбара */
   .theory-toolbar-btn { 
       background: transparent; 
-      color: #64748B; 
-      border-radius: 12px; 
-      height: 36px; 
-      min-width: 36px;
-      padding: 0 12px; 
-      font-size: 14px; 
+      color: #475569; 
+      border-radius: 8px; 
+      height: 32px; 
+      padding: 0 10px; 
+      font-size: 13px; 
       font-weight: 700; 
       display: inline-flex; 
       align-items: center; 
@@ -36,35 +24,30 @@
       white-space: nowrap; 
       cursor: pointer;
   }
+  .theory-toolbar-btn:hover { background: #F1F5F9; color: #7B5CFF; }
   
-  .theory-toolbar-btn:hover { 
-      background: #F1F5F9; 
-      color: #7B5CFF; 
-  }
-  
-  .theory-toolbar-btn.icon-only {
-      padding: 0;
-      width: 36px;
-  }
+  .theory-toolbar-btn.icon-only { padding: 0; width: 32px; }
 
-  /* Специальные цвета для бейджей в тулбаре при наведении */
-  .theory-toolbar-btn.hover-orange:hover { color: #F97316; background: #FFF7ED; }
-  .theory-toolbar-btn.hover-purple:hover { color: #7B5CFF; background: #FAF5FF; }
+  /* Специальные цвета для кнопок блоков */
+  .btn-code:hover { color: #64748B; background: #F1F5F9; }
+  .btn-math:hover { color: #64748B; background: #F1F5F9; }
+  .btn-attention:hover { color: #F97316; background: #FFF7ED; }
+  .btn-practice:hover { color: #7B5CFF; background: #FAF5FF; }
   
   .sticky-toolbar-wrapper { 
       position: sticky; 
-      top: 16px; 
+      top: 0px; 
       z-index: 40; 
-      margin-bottom: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,1) 80%, rgba(255,255,255,0) 100%);
+      padding-top: 16px;
+      padding-bottom: 24px;
   }
 
   .hide-scroll::-webkit-scrollbar { display: none; }
   .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
   
-  /* Плейсхолдеры для чистой зоны редактора */
   #theoryContentInput::placeholder { color: #CBD5E1; font-weight: 500; font-family: "Golos Text", sans-serif; }
   input[name="title"]::placeholder { color: #E2E8F0; }
-  input[name="description"]::placeholder { color: #94A3B8; font-weight: 500; }
 </style>
 {% endblock %}
 
@@ -74,7 +57,7 @@
   {% set selected_clean_content = selected_block.content|replace('<!--status:published-->\n','')|replace('<!--status:draft-->\n','')|replace('<!--status:published-->','')|replace('<!--status:draft-->','') %}
 {% endif %}
 <main class="flex-1 pt-6 pb-8 px-6 lg:px-8 h-full flex justify-center">
-  <div class="w-full max-w-[1700px] grid grid-cols-1 lg:grid-cols-[400px_minmax(0,1fr)] gap-6 h-full items-stretch">
+  <div class="w-full max-w-[1700px] grid grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)] gap-6 h-full items-stretch">
 
     <!-- ЛЕВАЯ ПАНЕЛЬ: НАВИГАТОР И ГРУППЫ -->
     <aside class="w-full h-full flex flex-col">
@@ -87,7 +70,7 @@
           </div>
           <h2 class="text-3xl xl:text-4xl font-black text-slate-900 tracking-tight mb-5">Навигатор</h2>
           
-          <div class="relative bg-slate-50 border border-slate-200 rounded-xl flex items-center px-4 py-3.5 shadow-sm hover:border-boo-primary transition-colors cursor-pointer group">
+          <div class="relative bg-slate-50 border border-slate-200 rounded-xl flex items-center px-4 py-3 shadow-sm hover:border-boo-primary transition-colors cursor-pointer group">
             <i class="ph-fill ph-exam text-boo-primary text-xl mr-3 group-hover:scale-110 transition-transform"></i>
             <span class="font-bold text-slate-800 text-sm flex-1">{{ course.title if course else 'Курс' }}</span>
             <i class="ph-bold ph-caret-down text-slate-400 text-sm"></i>
@@ -95,24 +78,24 @@
         </div>
 
         <!-- Список групп и управление -->
-        <div class="flex-1 overflow-y-auto pr-3 hide-scroll flex flex-col">
+        <div class="flex-1 overflow-y-auto pr-2 hide-scroll flex flex-col">
           <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 ml-1">Группы</div>
           
           <div class="space-y-3 mb-5">
             {% for group in groups %}
             <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=group.id) }}"
-               class="block {{ 'bg-purple-50 border-2 border-boo-primary text-boo-primary shadow-sm' if selected_group and selected_group.id == group.id else 'bg-white border border-slate-200 border-b-[3px] border-b-slate-300 text-slate-700 hover:-translate-y-0.5 hover:shadow-tactile hover:text-boo-primary' }} rounded-xl px-4 py-3.5 font-bold text-sm no-underline transition-all">
+               class="block {{ 'bg-purple-50 border-2 border-boo-primary text-boo-primary shadow-sm' if selected_group and selected_group.id == group.id else 'bg-white border border-slate-200 border-b-[3px] border-b-slate-300 text-slate-700 hover:-translate-y-0.5 hover:shadow-tactile hover:text-boo-primary' }} rounded-xl px-4 py-3 font-bold text-sm no-underline transition-all">
               {{ group.name }}
             </a>
             {% endfor %}
           </div>
 
-          <!-- Форма создания новой группы -->
-          <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm h-12 focus-within:border-boo-primary focus-within:bg-white focus-within:ring-2 focus-within:ring-purple-100 transition-all group">
+          <!-- ИДЕАЛЬНАЯ Форма создания новой группы (Как на Скрине 3) -->
+          <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm h-[44px] focus-within:border-boo-primary focus-within:ring-2 focus-within:ring-purple-100 transition-all">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="create_group">
             <input type="text" name="group_name" placeholder="Новая группа" class="flex-1 bg-transparent border-none px-4 text-sm font-medium text-slate-700 focus:outline-none placeholder-slate-400 h-full">
-            <button type="submit" class="w-12 h-full bg-slate-800 text-white flex items-center justify-center hover:bg-slate-900 transition-colors shrink-0">
+            <button type="submit" class="w-12 h-full bg-[#1E293B] text-white flex items-center justify-center hover:bg-slate-900 transition-colors shrink-0 border-l border-slate-200">
               <i class="ph-bold ph-plus text-lg"></i>
             </button>
           </form>
@@ -126,7 +109,7 @@
               <input type="hidden" name="group_id" value="{{ selected_group.id }}">
               <input type="hidden" name="group_name" value="{{ selected_group.name }}">
               <input type="hidden" name="group_description" value="{{ selected_group.description or '' }}">
-              <button type="submit" class="w-full py-2.5 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors shadow-sm">
+              <button type="submit" class="w-full py-2 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-100 transition-colors shadow-sm">
                   Редактировать
               </button>
             </form>
@@ -134,7 +117,7 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="action" value="delete_group">
               <input type="hidden" name="group_id" value="{{ selected_group.id }}">
-              <button type="submit" class="w-full py-2.5 bg-red-50 text-boo-coral border border-red-200 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors shadow-sm">
+              <button type="submit" class="w-full py-2 bg-red-50 text-boo-coral border border-red-200 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors shadow-sm">
                   Удалить
               </button>
             </form>
@@ -147,31 +130,32 @@
               <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Заполнение базы: <span class="text-slate-900 font-black">{{ completion_percent }}%</span></span>
             </div>
             
-            <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden mb-6 shadow-inner border border-slate-200/50">
-              <!-- Обход парсера VS Code: используем безопасную генерацию строки атрибута -->
-              <div class="h-full bg-boo-primary rounded-full transition-all duration-500" {{ 'style="width: ' ~ completion_percent ~ '%;"' | safe }}></div>
+            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mb-6 shadow-inner border border-slate-200/50">
+              <!-- Безопасное подключение ширины без ошибок линтера -->
+              <div class="h-full bg-boo-primary rounded-full transition-all duration-500 progress-fill"></div>
             </div>
             
-            <div class="grid grid-cols-5 gap-2.5 p-1.5">
+            <!-- ИДЕАЛЬНАЯ СЕТКА КНОПОК (Используем flex-wrap и фиксированный размер, чтобы избежать растягивания) -->
+            <div class="flex flex-wrap gap-2.5 p-1">
               {% for item in grid_states %}
                 {% set num = item.task_number %}
                 {% set st = item.state %}
                 {% set is_active = (selected_task_number == num) %}
                 
                 {% if is_active %}
-                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-xl bg-boo-primary text-white font-black text-lg xl:text-xl flex items-center justify-center ring-[4px] ring-purple-200 ring-offset-1 border-b-[3px] border-purple-800 transition-all no-underline shadow-sm">
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="w-[48px] h-[48px] rounded-[14px] bg-boo-primary text-white font-black text-xl flex items-center justify-center ring-[3px] ring-purple-200 ring-offset-2 border-b-[3px] border-purple-800 transition-all no-underline shadow-sm">
                     {{ num }}
                   </a>
                 {% elif st == 'published' %}
-                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-xl bg-green-500 text-white font-black text-lg xl:text-xl flex items-center justify-center shadow-sm border-b-[4px] border-green-700 hover:translate-y-[2px] hover:border-b-[2px] transition-all no-underline">
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="w-[48px] h-[48px] rounded-[14px] bg-green-500 text-white font-black text-xl flex items-center justify-center shadow-sm border-b-[3px] border-green-700 hover:translate-y-[2px] hover:border-b-[1px] transition-all no-underline">
                     {{ num }}
                   </a>
                 {% elif st == 'draft' %}
-                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-xl bg-orange-400 text-white font-black text-lg xl:text-xl flex items-center justify-center shadow-sm border-b-[4px] border-orange-600 hover:translate-y-[2px] hover:border-b-[2px] transition-all no-underline">
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="w-[48px] h-[48px] rounded-[14px] bg-orange-400 text-white font-black text-xl flex items-center justify-center shadow-sm border-b-[3px] border-orange-600 hover:translate-y-[2px] hover:border-b-[1px] transition-all no-underline">
                     {{ num }}
                   </a>
                 {% else %}
-                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="aspect-square rounded-xl bg-slate-50 text-slate-400 font-bold text-lg xl:text-xl flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all no-underline">
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, task_number=num) }}" class="w-[48px] h-[48px] rounded-[14px] bg-slate-50 text-slate-400 font-bold text-xl flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary transition-all no-underline">
                     {{ num }}
                   </a>
                 {% endif %}
@@ -181,22 +165,22 @@
         </div>
 
         <!-- Нижние действия -->
-        <div class="mt-6 pt-5 border-t border-slate-100 shrink-0 grid grid-cols-2 gap-3">
-          <a href="{{ url_for('theory.manage_access_index', course_id=course_id) }}" class="py-3.5 bg-white text-slate-700 border border-slate-200 border-b-[3px] border-b-slate-300 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 text-sm no-underline active:translate-y-[2px] active:border-b-0 shadow-sm">
+        <div class="mt-6 pt-5 border-t border-slate-100 shrink-0 flex gap-3">
+          <a href="{{ url_for('theory.manage_access_index', course_id=course_id) }}" class="flex-1 py-3 bg-white text-slate-700 border border-slate-200 border-b-[3px] border-b-slate-300 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 text-sm no-underline active:translate-y-[2px] active:border-b-0 shadow-sm">
             <i class="ph-bold ph-lock-key text-lg"></i> Доступ
           </a>
           
           {% if selected_group %}
-          <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="contents">
+          <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex-1 contents">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="create_block">
             <input type="hidden" name="group_id" value="{{ selected_group.id }}">
-            <button type="submit" class="py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm shadow-md border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0">
+            <button type="submit" class="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm shadow-md border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0">
               <i class="ph-bold ph-plus text-lg"></i> Новый
             </button>
           </form>
           {% else %}
-          <a href="{{ url_for('theory.manage_new', course_id=course_id) }}" class="py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm no-underline shadow-md border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0">
+          <a href="{{ url_for('theory.manage_new', course_id=course_id) }}" class="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm no-underline shadow-md border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0">
             <i class="ph-bold ph-plus text-lg"></i> Новый
           </a>
           {% endif %}
@@ -212,105 +196,99 @@
         <input type="hidden" name="group_id" value="{{ selected_group.id if selected_group else '' }}">
         <input type="hidden" name="editor_status" id="editorStatusInput" value="draft">
 
-        <!-- Шапка редактора (Чистая и сгруппированная) -->
+        <!-- Шапка редактора (Единая панель действий) -->
         <div class="h-[88px] px-6 lg:px-8 border-b border-slate-100 bg-white flex items-center justify-between shrink-0 z-50">
           
           <div class="flex items-center gap-4">
             <div class="w-12 h-12 rounded-xl bg-boo-primary text-white font-black text-2xl flex items-center justify-center shadow-sm border-b-[3px] border-purple-800">
                 {{ selected_task_number or '—' }}
             </div>
-            <div id="editorStatusBadge" class="flex items-center gap-2 px-4 py-2.5 bg-orange-50 border border-orange-200 rounded-xl shadow-sm text-sm font-bold text-orange-600">
-              <span class="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span> Черновик
+            <div id="editorStatusBadge" class="flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-xl shadow-sm text-sm font-bold text-orange-600">
+              <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span> Черновик
             </div>
           </div>
 
-          <!-- Единая консоль действий для редактора -->
-          <div class="flex items-center p-1.5 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm">
-            <button id="previewTheoryBtn" type="button" class="px-5 py-2 hover:bg-white rounded-xl text-sm font-bold text-slate-600 transition-colors flex items-center gap-2">
-              <i class="ph-bold ph-eye text-lg"></i> <span class="hidden md:inline">Предпросмотр</span>
+          <div class="flex items-center p-1 bg-white border border-slate-200 rounded-2xl shadow-sm">
+            <button id="previewTheoryBtn" type="button" class="px-4 py-2 hover:bg-slate-50 rounded-xl text-sm font-bold text-slate-600 transition-colors flex items-center gap-2">
+              <i class="ph-bold ph-eye text-lg"></i> <span class="hidden xl:inline">Предпросмотр</span>
             </button>
             
-            <button type="submit" class="px-5 py-2 hover:bg-white rounded-xl text-sm font-bold text-slate-600 transition-colors flex items-center gap-2" onclick="document.getElementById('editorStatusInput').value='draft'">
+            <button type="submit" class="px-4 py-2 hover:bg-slate-50 rounded-xl text-sm font-bold text-slate-600 transition-colors flex items-center gap-2" onclick="document.getElementById('editorStatusInput').value='draft'">
               <i class="ph-bold ph-floppy-disk text-lg"></i> <span class="hidden md:inline">Сохранить</span>
             </button>
 
             {% if selected_block %}
             <div class="w-px h-5 bg-slate-200 mx-1 hidden sm:block"></div>
             <button type="submit" formnovalidate formaction="{{ url_for('theory.manage_delete', block_id=selected_block.id) }}" onclick="return confirm('Удалить теорию по заданию {{ selected_task_number }}?')" class="px-4 py-2 hover:bg-red-50 text-boo-coral rounded-xl text-sm font-bold transition-colors flex items-center gap-2">
-              <i class="ph-bold ph-trash text-lg"></i>
+              <i class="ph-bold ph-trash text-lg"></i> <span class="hidden lg:inline">Удалить</span>
             </button>
             {% endif %}
 
-            <div class="w-px h-5 bg-slate-200 mx-1"></div>
-
-            <button type="submit" class="px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm text-sm" onclick="document.getElementById('editorStatusInput').value='published'">
-              <i class="ph-bold ph-paper-plane-right text-lg"></i> <span class="hidden sm:inline">Опубликовать</span>
+            <button type="submit" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm text-sm ml-1" onclick="document.getElementById('editorStatusInput').value='published'">
+              <i class="ph-bold ph-paper-plane-right text-lg"></i> <span class="hidden md:inline">Опубликовать</span>
             </button>
           </div>
         </div>
 
         <!-- Зона Редактора -->
-        <div class="flex-1 overflow-y-auto relative bg-[#F8FAFC]">
-          
-          <!-- ПАРЯЩИЙ ТУЛБАР В СТИЛЕ NOTION -->
-          <div class="sticky-toolbar-wrapper">
-            <div class="premium-toolbar">
-              
-              <!-- Заголовки -->
-              <div class="flex items-center gap-0.5">
-                <button type="button" class="theory-toolbar-btn icon-only" data-format="h2"><span class="font-serif text-[15px]">H₂</span></button>
-                <button type="button" class="theory-toolbar-btn icon-only" data-format="h3"><span class="font-serif text-[15px]">H₃</span></button>
-              </div>
-              
-              <div class="w-px h-5 bg-slate-200 mx-1.5"></div>
-              
-              <!-- Форматирование текста -->
-              <div class="flex items-center gap-0.5">
-                <button type="button" class="theory-toolbar-btn icon-only" data-format="bold"><span class="font-serif font-black text-[15px]">B</span></button>
-                <button type="button" class="theory-toolbar-btn icon-only" data-format="italic"><span class="font-serif italic font-bold text-[15px]">I</span></button>
-                <button type="button" class="theory-toolbar-btn icon-only" data-format="quote"><span class="underline underline-offset-2 decoration-2 text-[15px] font-bold">U</span></button>
-              </div>
+        <div class="flex-1 overflow-y-auto relative bg-white">
+          <div class="max-w-[800px] mx-auto w-full px-6 lg:px-12 relative">
+            
+            <!-- ИДЕАЛЬНЫЙ ТУЛБАР ФОРМАТИРОВАНИЯ (Как на Скрине 2) -->
+            <div class="sticky-toolbar-wrapper">
+              <div class="bg-white border border-slate-200 rounded-[16px] p-1.5 shadow-sm flex flex-wrap items-center gap-1 w-max transition-shadow">
+                
+                <div class="flex items-center gap-0.5">
+                  <button type="button" class="theory-toolbar-btn icon-only" data-format="h2"><span class="font-serif">H₂</span></button>
+                  <button type="button" class="theory-toolbar-btn icon-only" data-format="h3"><span class="font-serif">H₃</span></button>
+                </div>
+                
+                <div class="w-px h-5 bg-slate-200 mx-1"></div>
+                
+                <div class="flex items-center gap-0.5">
+                  <button type="button" class="theory-toolbar-btn icon-only" data-format="bold"><span class="font-serif font-bold">B</span></button>
+                  <button type="button" class="theory-toolbar-btn icon-only" data-format="italic"><span class="font-serif italic">I</span></button>
+                  <button type="button" class="theory-toolbar-btn icon-only" data-format="quote"><span class="underline underline-offset-2 decoration-2">U</span></button>
+                </div>
 
-              <div class="w-px h-5 bg-slate-200 mx-1.5"></div>
-              
-              <!-- Списки и цитаты -->
-              <div class="flex items-center gap-0.5">
-                <button type="button" class="theory-toolbar-btn icon-only" data-format="ul"><i class="ph-bold ph-list-bullets text-lg"></i></button>
-                <button type="button" class="theory-toolbar-btn icon-only font-serif font-black text-[15px]" data-format="quote">99</button>
+                <div class="w-px h-5 bg-slate-200 mx-1"></div>
+                
+                <div class="flex items-center gap-0.5">
+                  <button type="button" class="theory-toolbar-btn icon-only" data-format="ul"><i class="ph-bold ph-list-bullets text-base"></i></button>
+                  <button type="button" class="theory-toolbar-btn icon-only font-serif font-black" data-format="quote">99</button>
+                </div>
+
+                <div class="w-px h-5 bg-slate-200 mx-1 hidden sm:block"></div>
+
+                <div class="hidden sm:flex items-center gap-0.5">
+                  <button type="button" class="theory-toolbar-btn btn-code" data-format="code">
+                      <i class="ph-bold ph-file-code text-[15px] text-slate-400"></i> Код
+                  </button>
+                  <button type="button" class="theory-toolbar-btn btn-math" data-format="math">
+                      <span class="font-serif italic font-bold text-slate-400 text-[15px]">f</span> Формула
+                  </button>
+                  <button type="button" class="theory-toolbar-btn btn-attention hover-orange" data-format="attention">
+                      <i class="ph-fill ph-warning-circle text-[15px] text-orange-500"></i> Внимание
+                  </button>
+                  <button type="button" class="theory-toolbar-btn btn-practice hover-purple" data-format="practice">
+                      <i class="ph-bold ph-game-controller text-[15px] text-purple-500"></i> Задача
+                  </button>
+                </div>
+
               </div>
-
-              <div class="w-px h-5 bg-slate-200 mx-1.5 hidden sm:block"></div>
-
-              <!-- Вставка сложных блоков -->
-              <div class="hidden sm:flex items-center gap-1">
-                <button type="button" class="theory-toolbar-btn" data-format="code">
-                    <i class="ph-bold ph-file-code text-[16px] text-slate-400"></i> Код
-                </button>
-                <button type="button" class="theory-toolbar-btn" data-format="math">
-                    <span class="font-serif italic font-black text-slate-400 text-[16px]">f</span> Формула
-                </button>
-                <button type="button" class="theory-toolbar-btn hover-orange" data-format="attention">
-                    <i class="ph-fill ph-warning-circle text-[16px] text-orange-400"></i> Внимание
-                </button>
-                <button type="button" class="theory-toolbar-btn hover-purple" data-format="practice">
-                    <i class="ph-bold ph-game-controller text-[16px] text-purple-400"></i> Задача
-                </button>
-              </div>
-
             </div>
-          </div>
 
-          <!-- ПОЛЕ ВВОДА (Чистый холст) -->
-          <div class="max-w-[840px] mx-auto w-full px-8 pb-32 relative">
-            <!-- Инпуты -->
-            <input type="text" name="title" class="w-full text-4xl lg:text-5xl font-black text-slate-900 placeholder-slate-200 bg-transparent border-none outline-none mb-4 resize-none focus:ring-0 leading-tight" value="{{ (selected_block.title if selected_block else ('Задание ' ~ selected_task_number)) if selected_task_number else '' }}" placeholder="Заголовок темы">
-            
-            <input type="text" name="description" class="w-full text-lg font-medium text-slate-500 placeholder-slate-300 bg-transparent border-none px-0 py-2 mb-10 focus:outline-none focus:ring-0 transition-colors" value="{{ selected_block.description if selected_block and selected_block.description else '' }}" placeholder="Краткое описание (например: Таблицы истинности, законы Де Моргана)...">
-            
-            <!-- Raw Textarea -->
-            <textarea id="theoryContentInput" name="content" class="w-full min-h-[600px] bg-transparent border-none outline-none text-[16px] leading-[2.2] resize-y font-mono text-slate-700 placeholder-slate-300 focus:ring-0" placeholder="Начни писать теорию... Используй тулбар сверху для добавления блоков кода, формул и задач." spellcheck="false">{{ selected_clean_content }}</textarea>
-          </div>
+            <!-- ПОЛЕ ВВОДА (Content) -->
+            <div class="theory-editor-block relative mt-2 pb-32">
+              <input type="text" name="title" class="w-full text-4xl lg:text-5xl font-black text-slate-900 placeholder-slate-200 bg-transparent border-none outline-none mb-4 resize-none focus:ring-0 leading-tight" value="{{ (selected_block.title if selected_block else ('Задание ' ~ selected_task_number)) if selected_task_number else '' }}" placeholder="Заголовок темы">
+              
+              <input type="text" name="description" class="w-full text-sm font-medium text-slate-500 placeholder-slate-400 bg-transparent border-none px-0 py-2 mb-10 focus:outline-none focus:ring-0 transition-colors" value="{{ selected_block.description if selected_block and selected_block.description else '' }}" placeholder="Краткое описание (например: Таблицы истинности, законы Де Моргана)...">
+              
+              <!-- Raw Textarea -->
+              <textarea id="theoryContentInput" name="content" class="w-full min-h-[600px] bg-transparent border-none outline-none text-[15px] leading-[2.2] resize-y font-mono text-slate-700 placeholder-slate-300 focus:ring-0" placeholder="Начни писать теорию..." spellcheck="false">{{ selected_clean_content }}</textarea>
+            </div>
 
+          </div>
         </div>
       </form>
     </section>
@@ -333,22 +311,20 @@
   function setDraftState() {
     if (!statusInput || !statusBadge) return;
     statusInput.value = 'draft';
-    statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span> Черновик';
-    statusBadge.className = 'flex items-center gap-2 px-4 py-2.5 bg-orange-50 border border-orange-200 rounded-xl shadow-sm text-sm font-bold text-orange-600';
+    statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span> Черновик';
+    statusBadge.className = 'flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-xl shadow-sm text-sm font-bold text-orange-600';
   }
 
-  // Обновление бейджа на основе текущего значения
   if (statusInput && statusBadge) {
       if (statusInput.value === 'published') {
-        statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Опубликовано';
-        statusBadge.className = 'flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 rounded-xl shadow-sm text-sm font-bold text-green-700';
+        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span> Опубликовано';
+        statusBadge.className = 'flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-xl shadow-sm text-sm font-bold text-green-700';
       }
   }
 
   content && content.addEventListener('input', setDraftState);
   
   form && form.addEventListener('submit', () => {
-    // Сохраняем текущий статус перед отправкой
     if (statusInput.value !== 'published') statusInput.value = 'draft';
   });
 
