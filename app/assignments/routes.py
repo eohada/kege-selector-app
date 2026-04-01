@@ -430,6 +430,32 @@ def get_student_by_user_id(user_id):
             return st
     except Exception:
         pass
+
+    # Fallback через RBAC scope: для некоторых аккаунтов student_ids в scope
+    # содержат User.id, который нужно домапить в Student.
+    try:
+        scope = get_user_scope(user)
+        scope_user_ids = scope.get('student_ids') or []
+        if user.id not in scope_user_ids and user.is_student():
+            scope_user_ids = [user.id] + list(scope_user_ids)
+
+        if scope_user_ids:
+            st = Student.query.filter(Student.user_id.in_(scope_user_ids)).first()
+            if st:
+                return st
+
+            usernames = []
+            users = User.query.filter(User.id.in_(scope_user_ids)).all()
+            for u in users:
+                uname = (u.username or '').strip()
+                if uname:
+                    usernames.append(uname)
+            if usernames:
+                st = Student.query.filter(Student.platform_id.in_(usernames)).first()
+                if st:
+                    return st
+    except Exception:
+        pass
     return None
 
 
@@ -1833,6 +1859,11 @@ def assignment_view(assignment_id):
 @login_required
 def submissions_list():
     """Список назначенных работ для ученика"""
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+
     student = get_student_by_user_id(current_user.id)
     if not student:
         flash('Профиль ученика не найден', 'warning')
@@ -1893,6 +1924,11 @@ def submissions_list():
 @login_required
 def submission_view(submission_id):
     """Просмотр и выполнение работы"""
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+
     try:
         submission = Submission.query.options(
             joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
