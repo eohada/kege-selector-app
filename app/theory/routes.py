@@ -450,7 +450,12 @@ def manage_list():
         groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
 
     if request.method == 'POST':
-        action = (request.form.get('action') or 'save_block').strip()
+        action = (request.form.get('action') or '').strip()
+        legacy_task_number = request.form.get('task_number', type=int)
+        if not action and legacy_task_number is not None:
+            action = 'save_block'
+        if not action:
+            action = 'save_block'
         if action == 'create_group':
             name = (request.form.get('group_name') or '').strip()
             description = (request.form.get('group_description') or '').strip()
@@ -502,6 +507,7 @@ def manage_list():
             return redirect(url_for('theory.manage_list', course_id=course_id, group_id=group.id, block_id=block.id))
 
         block_id = request.form.get('block_id', type=int)
+        task_number = request.form.get('task_number', type=int)
         title = (request.form.get('title') or '').strip()
         description = (request.form.get('description') or '').strip()
         content = (request.form.get('content') or '').strip()
@@ -510,16 +516,22 @@ def manage_list():
         if status not in ('draft', 'published'):
             status = 'draft'
         group = TheoryGroup.query.filter_by(id=group_id, course_id=course_id).first()
+        if not group and groups:
+            group = groups[0]
         if not group:
             flash('Выберите корректную группу.', 'danger')
             return redirect(url_for('theory.manage_list', course_id=course_id))
         block = TheoryBlock.query.filter_by(id=block_id, course_id=course_id).first() if block_id else None
+        if not block and task_number is not None:
+            block = TheoryBlock.query.filter_by(course_id=course_id, task_number=task_number).first()
         content_with_status = _with_status_prefix(content, status)
         if not block:
             next_task = (db.session.query(func.coalesce(func.max(TheoryBlock.task_number), 0)).filter_by(course_id=course_id).scalar() or 0) + 1
             next_pos = (db.session.query(func.coalesce(func.max(TheoryBlock.position), 0)).filter_by(course_id=course_id, group_id=group.id).scalar() or 0) + 1
             block = TheoryBlock(course_id=course_id, group_id=group.id, task_number=next_task, position=next_pos, author_id=current_user.id)
             db.session.add(block)
+        elif task_number is not None:
+            block.task_number = task_number
 
         block.group_id = group.id
         block.title = title or f'Тема {block.task_number}'
@@ -529,13 +541,26 @@ def manage_list():
 
         db.session.commit()
         flash('Теория сохранена.' if status == 'draft' else 'Теория опубликована.', 'success')
-        return redirect(url_for('theory.manage_list', course_id=course_id, group_id=group.id, block_id=block.id))
+        return redirect(url_for('theory.manage_list', course_id=course_id, task_number=block.task_number))
 
     selected_group_id = request.args.get('group_id', type=int)
     selected_block_id = request.args.get('block_id', type=int)
+    selected_task_number = request.args.get('task_number', type=int)
     selected_group = next((g for g in groups if g.id == selected_group_id), None) if selected_group_id else (groups[0] if groups else None)
     group_blocks = blocks_by_group.get(selected_group.id, []) if selected_group else []
-    selected_block = next((b for b in group_blocks if b.id == selected_block_id), None) if selected_block_id else (group_blocks[0] if group_blocks else None)
+    selected_block = None
+    if selected_block_id:
+        selected_block = next((b for b in group_blocks if b.id == selected_block_id), None)
+    if selected_block is None and selected_task_number is not None:
+        selected_block = TheoryBlock.query.filter_by(course_id=course_id, task_number=selected_task_number).first()
+    if selected_block is None:
+        selected_block = group_blocks[0] if group_blocks else None
+    selected_task_number = selected_block.task_number if selected_block else None
+
+    all_blocks = TheoryBlock.query.filter_by(course_id=course_id).order_by(TheoryBlock.task_number).all()
+    grid_states = [{'task_number': b.task_number, 'state': _extract_status(b.content)} for b in all_blocks]
+    task_numbers = [b.task_number for b in all_blocks]
+    slots = [(b.task_number, b) for b in all_blocks]
 
     total_count = sum(len(v) for v in blocks_by_group.values())
     published_count = sum(1 for items in blocks_by_group.values() for b in items if _extract_status(b.content) == 'published')
@@ -574,6 +599,10 @@ def manage_list():
         blocks_by_group=blocks_by_group,
         selected_group=selected_group,
         selected_block=selected_block,
+        selected_task_number=selected_task_number,
+        grid_states=grid_states,
+        task_numbers=task_numbers,
+        slots=slots,
         selected_group_id=(selected_group.id if selected_group else None),
         selected_block_id=(selected_block.id if selected_block else None),
         completion_percent=completion_percent,
