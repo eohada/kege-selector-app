@@ -16,7 +16,7 @@
     .creator-avatar img { width:100%; height:100%; object-fit:cover; }
     .creator-online { position:absolute; left:11.25rem; top:.9rem; width:2.3rem; height:2.3rem; border-radius:999px; background:#22c55e; border:5px solid #fff; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(15,23,42,.2); }
     .creator-online > span { width:.7rem; height:.7rem; border-radius:999px; background:#fff; animation:pulse 2s infinite; }
-    .creator-head-content { margin-top:5.8rem; display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
+    .creator-head-content { margin-top:5.8rem; display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; padding-left:13rem; }
     .creator-name-row { display:flex; align-items:center; gap:.65rem; }
     .creator-name { font-size:clamp(2rem,4vw,3.2rem); font-weight:900; color:#0f172a; line-height:1; letter-spacing:-.02em; margin:0; }
     .creator-quote { margin:.65rem 0 0; color:#64748b; font-size:1.1rem; font-style:italic; }
@@ -35,8 +35,34 @@
     .creator-row-key { color:#64748b; font-size:.9rem; font-weight:700; display:flex; align-items:center; gap:.45rem; }
     .creator-row-value { color:#0f172a; font-size:.9rem; font-weight:700; text-align:right; }
     .creator-chip { padding:.35rem .7rem; border-radius:.55rem; border:1px solid #e2e8f0; background:#f8fafc; font-weight:800; font-size:.8rem; }
+    .creator-snowflakes { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+    .creator-snowflakes .snowflake { position: absolute; top: -10vh; color: rgba(255,255,255,.95); text-shadow: 0 0 14px rgba(123,92,255,.55), 0 0 26px rgba(6,182,212,.35); animation: creatorSnowFall linear infinite; }
+    .creator-snowflakes .snowflake:nth-child(odd) { font-size: 10px; }
+    .creator-snowflakes .snowflake:nth-child(even) { font-size: 12px; }
+    @keyframes creatorSnowFall {
+        0% { transform: translate3d(0, -12vh, 0) rotate(0deg); opacity: 0; }
+        10% { opacity: .95; }
+        90% { opacity: .95; }
+        100% { transform: translate3d(32px, 112vh, 0) rotate(300deg); opacity: 0; }
+    }
+    @keyframes creatorBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: .35; }
+    }
+    .creator-snowflakes .snowflake:nth-child(1) { left: 7%; animation-duration: 14s; animation-delay: -2s; }
+    .creator-snowflakes .snowflake:nth-child(2) { left: 12%; animation-duration: 20s; animation-delay: -8s; }
+    .creator-snowflakes .snowflake:nth-child(3) { left: 18%; animation-duration: 17s; animation-delay: -4s; }
+    .creator-snowflakes .snowflake:nth-child(4) { left: 26%; animation-duration: 23s; animation-delay: -12s; }
+    .creator-snowflakes .snowflake:nth-child(5) { left: 34%; animation-duration: 16s; animation-delay: -6s; }
+    .creator-snowflakes .snowflake:nth-child(6) { left: 43%; animation-duration: 19s; animation-delay: -9s; }
+    .creator-snowflakes .snowflake:nth-child(7) { left: 52%; animation-duration: 22s; animation-delay: -13s; }
+    .creator-snowflakes .snowflake:nth-child(8) { left: 60%; animation-duration: 15s; animation-delay: -5s; }
+    .creator-snowflakes .snowflake:nth-child(9) { left: 69%; animation-duration: 18s; animation-delay: -7s; }
+    .creator-snowflakes .snowflake:nth-child(10) { left: 76%; animation-duration: 24s; animation-delay: -14s; }
+    .creator-snowflakes .snowflake:nth-child(11) { left: 84%; animation-duration: 16s; animation-delay: -3s; }
+    .creator-snowflakes .snowflake:nth-child(12) { left: 92%; animation-duration: 21s; animation-delay: -10s; }
     @media (max-width: 1100px) { .creator-layout { flex-direction:column; } .creator-left,.creator-right { width:100%; } }
-    @media (max-width: 768px) { .creator-head { padding:0 1.25rem 1.5rem; } .creator-avatar { left:1.25rem; width:8.4rem; height:8.4rem; top:-4.2rem; border-radius:22px; } .creator-online { left:7.3rem; top:.25rem; } .creator-head-content { margin-top:4.4rem; } .creator-cover { height:13.5rem; } }
+    @media (max-width: 768px) { .creator-head { padding:0 1.25rem 1.5rem; } .creator-avatar { left:1.25rem; width:8.4rem; height:8.4rem; top:-4.2rem; border-radius:22px; } .creator-online { left:7.3rem; top:.25rem; } .creator-head-content { margin-top:4.4rem; padding-left:9.1rem; } .creator-cover { height:13.5rem; } }
 
     .public-profile-wrap { max-width: 1060px; margin: 1.25rem auto 3rem; padding: 0 1rem; }
     .public-hero { display:flex; gap: 1.25rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
@@ -95,9 +121,9 @@
     <div class="creator-public-wrap">
         <a class="creator-back-link" href="{{ request.referrer or url_for('main.dashboard') }}"><i class="ph-bold ph-arrow-left"></i> Назад</a>
 
-        {% set creator_cover = creator_cover_url|default(none) %}
+        {% set creator_cover = creator_cover_url or public_user.cover_url or (public_user.profile.cover_url if public_user.profile else none) or url_for('static', filename='images/demo_creator_cover.png') %}
         <section class="creator-hero-card" style="margin-top:1rem;">
-            <div class="creator-cover" {% if creator_cover %}style="background-image:url('{{ creator_cover }}');"{% endif %}></div>
+            <div class="creator-cover" style="background-image:url('{{ creator_cover }}');"></div>
             <div class="creator-head">
                 <div class="creator-avatar {% if _avatar_url %}profile-avatar-clickable{% endif %}" {% if _avatar_url %}data-avatar-url="{{ _avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
                     {% if _avatar_url %}<img src="{{ _avatar_url }}" alt="Avatar">{% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:3rem;font-weight:900;">{{ public_display_name[0]|upper }}</div>{% endif %}
@@ -136,7 +162,8 @@
                             </div>
                             <span style="font-size:.7rem;color:#94a3b8;font-family:'JetBrains Mono', monospace;font-weight:700;">creator_bio.md</span>
                         </div>
-                        <div class="creator-terminal-body">{% if _about_me %}{{ _about_me }}{% else %}Пока нет описания.{% endif %}</div>
+                        {% set about_text = (_about_me or '')|trim %}
+                        <div class="creator-terminal-body">{% if about_text and about_text|length > 120 %}{% for line in about_text.split('\n') if line.strip() %}<p><span style="color:#8f63ff;font-weight:800;">~</span> {{ line }}</p>{% endfor %}<p style="color:#a78bfa;animation:creatorBlink 2s infinite;">_</p>{% else %}<p><span style="color:#8f63ff;font-weight:800;">~</span> <span style="color:#22d3ee;">Инноватор</span> в сфере EdTech и практикующий IT-наставник.</p><p><span style="color:#8f63ff;font-weight:800;">~</span> Специалист, который не просто учит коду, а <span style="color:#f59e0b;">создает среду</span> для его изучения.</p><p><span style="color:#8f63ff;font-weight:800;">~</span> Путь от репетитора до разработчика собственной платформы позволил автоматизировать рутину и сфокусироваться на главном — прогрессе ученика.</p><p><span style="color:#8f63ff;font-weight:800;">~</span> В обучении информатике и математике делает ставку на алгоритмическое мышление и использование современных инструментов разработки.</p><p style="color:#a78bfa;animation:creatorBlink 2s infinite;">_</p>{% endif %}</div>
                     </div>
                 </div>
             </div>
