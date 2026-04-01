@@ -523,7 +523,7 @@
     <div class="app-main">
         {% include '_topbar.html' %}
         <main class="app-content" style="margin-top: 1.25rem; max-width: 1000px; margin-left: auto; margin-right: auto; padding-bottom: 120px;">
-        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost back-to-assignments" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.625rem 1rem; font-weight: 700; border-radius: 12px; background: rgba(255,255,255,0.8); border: 1px solid #e2e8f0;"><i class="ph-bold ph-arrow-left"></i> К списку заданий</a></p>
+        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
         <div class="submission-header">
             {% set should_hide_tasks = assignment.hide_before_start and submission.status == 'ASSIGNED' and not submission.started_at %}
             <div class="hero-grid">
@@ -534,13 +534,13 @@
                     </div>
                     <div class="meta-value">{{ assignment.title }}</div>
                 </div>
-                {% if should_hide_tasks %}
                 <div>
-                    <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1.25rem 2.8rem; font-size: 1.05rem; font-weight: 900; border-radius: 16px; box-shadow: 0 10px 30px rgba(123,92,255,.3); border-bottom-width:4px;">
-                        <i class="ph-fill ph-play-circle" style="font-size:1.25rem;"></i> Начать выполнение
+                    {% if should_hide_tasks %}
+                    <button type="button" id="start-btn" class="w-full md:w-auto px-8 py-5 bg-boo-primary text-white rounded-2xl font-black text-lg hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(123,92,255,0.3)] border-b-[4px] border-b-purple-800 active:translate-y-[3px] active:border-b-0 hover:-translate-y-1" data-prevent-double-submit="true">
+                        <i class="ph-fill ph-play-circle text-2xl"></i> Начать выполнение
                     </button>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
 
             <div class="hero-metrics">
@@ -577,7 +577,7 @@
         </div>
         
         <div class="task-nav" id="taskNav">
-            <span class="task-nav-label">Задания:</span>
+            <span class="task-nav-label">ЗАДАНИЯ:</span>
             {% for task_item in tasks_data %}
             {% set ti_answer = task_item.answer %}
             <a href="#task-{{ loop.index }}" class="task-nav-btn {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %}" title="Задание {{ loop.index }}">
@@ -596,7 +596,7 @@
                         <span style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.04em;">{{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }}</span>
                     </div>
                     <div style="color:#94a3b8;"><i class="ph-bold ph-warning-circle"></i></div>
-                    </div>
+                </div>
                 </div>
                 
                 {% if should_hide_tasks %}
