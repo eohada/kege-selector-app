@@ -2,7 +2,7 @@
 Маршруты расписания
 """
 import logging
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, date
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 
@@ -14,6 +14,22 @@ from core.audit_logger import audit_logger
 import secrets
 
 logger = logging.getLogger(__name__)
+
+RU_MONTHS_GEN = [
+    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+]
+RU_MONTHS_NOM = [
+    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+]
+
+
+def _add_months(src: date, months: int) -> date:
+    month_idx = src.month - 1 + months
+    year = src.year + month_idx // 12
+    month = month_idx % 12 + 1
+    return date(year, month, 1)
 
 def _resolve_accessible_student_ids_for_current_user() -> list[int] | None:
     """
@@ -244,7 +260,7 @@ def schedule():
 
     week_offset = request.args.get('week', 0, type=int)
     view_mode = (request.args.get('view') or 'week').strip().lower()
-    if view_mode not in ('week', 'agenda'):
+    if view_mode not in ('week', 'agenda', 'day', 'month'):
         view_mode = 'week'
     status_filter = request.args.get('status', '')
     category_filter = request.args.get('category', '')
@@ -254,9 +270,35 @@ def schedule():
     display_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
 
     today = moscow_now().date()
-    week_start = today - timedelta(days=today.weekday()) + timedelta(weeks=week_offset)
-    week_days = [week_start + timedelta(days=i) for i in range(7)]
-    week_end = week_days[-1]
+    month_weeks = []
+    month_start = None
+    month_end = None
+    day_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+    if view_mode in ('week', 'agenda'):
+        week_start = today - timedelta(days=today.weekday()) + timedelta(weeks=week_offset)
+        week_days = [week_start + timedelta(days=i) for i in range(7)]
+        week_end = week_days[-1]
+        period_start = week_start
+        period_end = week_end
+        week_label = f"{week_days[0].strftime('%d.%m.%Y')} — {week_days[-1].strftime('%d.%m.%Y')}"
+    elif view_mode == 'day':
+        day_date = today + timedelta(days=week_offset)
+        week_start = day_date
+        week_days = [day_date]
+        week_end = day_date
+        period_start = day_date
+        period_end = day_date
+        week_label = f"{day_date.day:02d} {RU_MONTHS_GEN[day_date.month - 1]} {day_date.year}"
+    else:
+        month_start = _add_months(today.replace(day=1), week_offset)
+        month_end = _add_months(month_start, 1) - timedelta(days=1)
+        week_start = month_start
+        week_end = month_end
+        week_days = []
+        period_start = month_start
+        period_end = month_end
+        week_label = f"{RU_MONTHS_NOM[month_start.month - 1]} {month_start.year}"
 
     slot_minutes = request.args.get('slot', 30, type=int)
     slot_minutes = slot_minutes if slot_minutes in (15, 30, 60) else 30
@@ -272,8 +314,8 @@ def schedule():
     total_slots = int(total_minutes / slot_minutes)
     time_labels = [f"{hour:02d}:00" for hour in range(day_start_hour, day_end_hour + 1)]
 
-    week_start_datetime = datetime.combine(week_start, time.min)
-    week_end_datetime = datetime.combine(week_end, time.max)
+    week_start_datetime = datetime.combine(period_start, time.min)
+    week_end_datetime = datetime.combine(period_end, time.max)
     
     query = Lesson.query.filter(
         Lesson.lesson_date >= week_start_datetime,
@@ -342,7 +384,8 @@ def schedule():
                 'duration_minutes': int(lesson.duration or 60)  # Сохраняем исходную длительность из БД
             })
 
-    day_events = {i: [] for i in range(7)}
+    day_columns_count = len(week_days) if view_mode in ('week', 'day') else 0
+    day_events = {i: [] for i in range(day_columns_count)}
     day_start_minutes = day_start_hour * 60
 
     for event in real_events:
@@ -356,7 +399,8 @@ def schedule():
         else:
             event['end_total'] = end_hour * 60 + end_minute
         event['duration_minutes'] = duration_minutes
-        day_events[event['day_index']].append(event)
+        if day_columns_count and event['day_index'] in day_events:
+            day_events[event['day_index']].append(event)
 
     for day_index, events in day_events.items():
         events.sort(key=lambda e: (e['start_total'], e['end_total']))
@@ -378,7 +422,7 @@ def schedule():
             event['left_percent'] = column_width * event['column_index']
             event['width_percent'] = max(column_width - 1.5, 8)
 
-    day_events_json = {i: [] for i in range(7)}
+    day_events_json = {i: [] for i in range(day_columns_count)}
     for day_index, events in day_events.items():
         for event in events:
             json_event = {
@@ -402,7 +446,39 @@ def schedule():
             json_event['is_conflict'] = bool((event.get('columns_total') or 1) > 1)
             day_events_json[day_index].append(json_event)
 
-    week_label = f"{week_days[0].strftime('%d.%m.%Y')} — {week_days[-1].strftime('%d.%m.%Y')}"
+    month_lessons_map = {}
+    if view_mode == 'month' and month_start and month_end:
+        for l in lessons:
+            if not l.student:
+                continue
+            dt = l.lesson_date.replace(tzinfo=MOSCOW_TZ).astimezone(display_tz)
+            day_key = dt.date().isoformat()
+            month_lessons_map.setdefault(day_key, []).append({
+                'time': dt.strftime('%H:%M'),
+                'student_name': l.student.name,
+                'status': l.status,
+                'lesson_url': url_for('lessons.lesson_view', lesson_id=l.lesson_id),
+            })
+
+        grid_start = month_start - timedelta(days=month_start.weekday())
+        grid_end = month_end + timedelta(days=(6 - month_end.weekday()))
+        cursor = grid_start
+        while cursor <= grid_end:
+            week_cells = []
+            for _ in range(7):
+                iso = cursor.isoformat()
+                items = month_lessons_map.get(iso, [])
+                week_cells.append({
+                    'date': cursor,
+                    'iso': iso,
+                    'in_month': cursor.month == month_start.month,
+                    'is_today': cursor == today,
+                    'day_name': day_names[cursor.weekday()],
+                    'events': items[:3],
+                    'events_count': len(items),
+                })
+                cursor += timedelta(days=1)
+            month_weeks.append(week_cells)
 
     students_q = Student.query.filter_by(is_active=True)
     if allowed_student_ids is not None:
@@ -444,6 +520,8 @@ def schedule():
     except Exception:
         agenda_week_sidebar = agenda
 
+    today_display_date = moscow_now().astimezone(display_tz).date()
+
     return render_template(
         'schedule.html',
         week_days=week_days,
@@ -468,6 +546,10 @@ def schedule():
         agenda=agenda,
         agenda_week_sidebar=agenda_week_sidebar,
         view_mode=view_mode,
+        today_display_date=today_display_date,
+        day_names=day_names,
+        day_columns_count=day_columns_count,
+        month_weeks=month_weeks,
     )
 
 @schedule_bp.route('/schedule/create-lesson', methods=['POST'])

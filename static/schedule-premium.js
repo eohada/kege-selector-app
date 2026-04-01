@@ -55,6 +55,14 @@
     const m = mins % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   };
+  const formatDurationLabel = (mins) => {
+    const total = parseInt(mins || '0', 10);
+    const hours = Math.floor(total / 60);
+    const rest = total % 60;
+    if (hours > 0 && rest > 0) return `${hours} ч ${String(rest).padStart(2, '0')} мин`;
+    if (hours > 0) return `${hours} ч 00 мин`;
+    return `${total} мин`;
+  };
 
   const snapMinutes = (mins) => Math.round(mins / slotMinutes) * slotMinutes;
 
@@ -360,10 +368,11 @@
     const lt = ev.lesson_type || 'regular';
     const icon = iconForLessonType(lt);
     const topic = ev.topic ? String(ev.topic) : '';
+    const durationLabel = formatDurationLabel(ev.duration_minutes || 60);
 
     el.innerHTML = `
       <div class="lesson-chip__top">
-        <div class="lesson-chip__time" data-role="time">${ev.start_time || ''}</div>
+        <div class="lesson-chip__time" data-role="time">${ev.start_time || ''}<br><span class="lesson-chip__meta">${durationLabel}</span></div>
         ${iconHtml(icon)}
       </div>
       <div class="lesson-chip__student">${ev.student || ''}</div>
@@ -602,9 +611,11 @@
     if (!line) {
       line = document.createElement('div');
       line.className = 'now-line';
-      line.innerHTML = `<div class="now-dot"></div>`;
+      line.innerHTML = `<div class="now-label"></div><div class="now-dot"></div>`;
       body.appendChild(line);
     }
+    const label = qs('.now-label', line);
+    if (label) label.textContent = formatMinutes(now.minutes);
     line.style.top = `${minutesToY(now.minutes)}px`;
 
     if (weekOffset === 0 && deck) {

@@ -5,87 +5,8 @@
 {% block head_css %}
 <style>
         .schedule-hero { margin-bottom: 2rem; }
-
         .schedule-shell { overflow: visible; }
         .schedule-controls, .schedule-filters, .actions-menu { overflow: visible; }
-
-        .schedule-controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.2rem;
-        }
-
-        .week-range {
-            font-size: 1.3rem;
-            font-weight: 900;
-            color: var(--text-primary);
-        }
-
-        .nav-buttons { display:flex; gap:0.6rem; }
-
-        .round-btn {
-            width: 44px;
-            height: 44px;
-            border-radius: 999px;
-            border: 1px solid var(--stroke-1);
-            background: var(--surface-2);
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all 0.22s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .round-btn:hover {
-            background: var(--surface-3);
-            border-color: var(--accent-1);
-            color: var(--accent-1);
-            transform: translateY(-1px);
-        }
-
-        .schedule-filters {
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .timezone-toggle {
-            display: flex;
-            gap: 0.4rem;
-            padding: 0.4rem;
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-sm);
-        }
-
-        .actions-menu {
-            position: relative;
-            display: inline-block;
-        }
-        .actions-menu > summary {
-            list-style: none;
-            cursor: pointer;
-        }
-        .actions-menu > summary::-webkit-details-marker { display: none; }
-        .actions-menu-panel {
-            position: absolute;
-            right: 0;
-            top: calc(100% + 8px);
-            z-index: 10000;
-            min-width: 240px;
-            padding: 0.6rem;
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--stroke-1);
-            background: var(--surface-1);
-            box-shadow: var(--shadow-soft);
-            display: grid;
-            gap: 0.5rem;
-        }
 
         .tpl-grid-2 {
             display: grid;
@@ -100,72 +21,6 @@
             margin-top: .75rem;
         }
 
-        .timezone-toggle button {
-            padding: 0.5rem 0.9rem;
-            border-radius: 0.6rem;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
-            font-weight: 800;
-        }
-
-        .timezone-toggle button.active {
-            background: linear-gradient(120deg, var(--accent-1-strong), var(--accent-2-strong));
-            color: #001b18;
-        }
-
-        .schedule-layout {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
-            gap: 1.25rem;
-            align-items: start;
-        }
-
-        .schedule-grid-wrap {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .schedule-grid-head {
-            display: grid;
-            grid-template-columns: 84px repeat(7, minmax(0, 1fr));
-            background: var(--surface-2);
-            border-bottom: 1px solid var(--stroke-1);
-        }
-
-        .schedule-grid-head .time-head {
-            padding: 0.85rem 0.6rem;
-            color: var(--text-muted);
-            font-weight: 900;
-            font-size: 0.9rem;
-            text-align: right;
-        }
-
-        .day-head {
-            padding: 0.85rem 0.6rem;
-            border-left: 1px solid var(--stroke-1);
-            text-align: center;
-        }
-
-        .day-head .dn {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            font-weight: 800;
-        }
-
-        .day-head .dd {
-            color: var(--text-primary);
-            font-size: 1.05rem;
-            font-weight: 900;
-            margin-top: 0.2rem;
-        }
-
         #scheduleGrid {
             display: grid;
             grid-template-columns: 84px repeat(7, minmax(0, 1fr));
@@ -175,11 +30,11 @@
         }
 
         .time-col {
-            background: var(--surface-2);
+            background: #ffffff;
             position: sticky;
             left: 0;
             z-index: 6;
-            border-right: 1px solid var(--stroke-1);
+            border-right: 1px solid #f1f5f9;
         }
 
         .time-label {
@@ -188,15 +43,15 @@
             align-items: center;
             justify-content: flex-end;
             padding-right: 0.6rem;
-            color: var(--text-muted);
+            color: #94a3b8;
             font-size: 0.85rem;
-            border-bottom: 1px solid var(--stroke-1);
+            border-bottom: 1px solid #f1f5f9;
             box-sizing: border-box;
         }
 
         .day-col {
             position: relative;
-            border-left: 1px solid var(--stroke-1);
+            border-left: 1px solid #f1f5f9;
         }
 
         .day-col__body {
@@ -207,24 +62,24 @@
                 to bottom,
                 transparent 0,
                 transparent calc(28px - 1px),
-                rgba(255,255,255,0.04) calc(28px - 1px),
-                rgba(255,255,255,0.04) 28px
+                #f8fafc calc(28px - 1px),
+                #f8fafc 28px
             );
             cursor: pointer;
         }
 
         .lesson-chip {
             position: absolute;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--stroke-1);
-            padding: 0.55rem 0.65rem;
+            border-radius: 16px;
+            border: 1px solid #cbd5e1;
+            padding: 0.75rem;
             cursor: grab;
             user-select: none;
             overflow: hidden;
-            box-shadow: var(--shadow-soft);
+            box-shadow: 0 4px 12px rgba(123, 92, 255, 0.15);
             transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
-            color: var(--text-primary);
-            background: var(--surface-2);
+            color: #0f172a;
+            background: #ffffff;
         }
 
         .lesson-chip::before {
@@ -233,13 +88,12 @@
             left: 0;
             top: 0;
             bottom: 0;
-            width: 4px;
-            background: rgba(255,255,255,0.12);
+            width: 0;
         }
 
         .lesson-chip:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 26px rgba(0,0,0,0.28);
+            transform: scale(1.02);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
             z-index: 10;
         }
 
@@ -259,8 +113,9 @@
         }
 
         .lesson-chip__time {
-            font-weight: 900;
-            font-size: 1rem;
+            font-weight: 700;
+            font-size: 0.9rem;
+            line-height: 1.2;
         }
 
         .lesson-chip__icon {
@@ -273,29 +128,45 @@
 
         .lesson-chip__student {
             font-weight: 800;
-            font-size: 0.95rem;
+            font-size: 0.875rem;
             margin-bottom: 0.15rem;
         }
 
         .lesson-chip__meta {
-            font-size: 0.8rem;
-            opacity: 0.85;
+            font-size: 0.75rem;
+            opacity: 0.9;
         }
 
-        .lesson-chip.status-planned { border-color: rgba(23, 96, 216, 0.55); background: rgba(23, 96, 216, 0.12); }
-        .lesson-chip.status-planned::before { background: rgba(23, 96, 216, 0.95); }
+        .lesson-chip.status-planned {
+            background: linear-gradient(135deg, #8e70ff 0%, #6a4ce5 100%);
+            border-color: #7b5cff;
+            border-bottom: 4px solid #5531d8;
+            color: #ffffff;
+        }
+        .lesson-chip.status-planned .lesson-chip__meta { color: #e9ddff; }
+        .lesson-chip.status-planned .lesson-chip__student { color: #ffffff; }
+        .lesson-chip.status-planned .lesson-chip__time { color: #ffffff; }
 
-        .lesson-chip.status-in_progress { border-color: rgba(0, 198, 164, 0.6); background: rgba(0, 198, 164, 0.12); }
-        .lesson-chip.status-in_progress::before { background: rgba(0, 198, 164, 0.95); }
+        .lesson-chip.status-in_progress {
+            border: 1px solid #c4b5fd;
+            border-bottom: 4px solid #7b5cff;
+            box-shadow: 0 4px 12px rgba(123, 92, 255, 0.2);
+        }
 
-        .lesson-chip.status-completed { border-color: rgba(170, 120, 255, 0.6); background: rgba(170, 120, 255, 0.12); }
-        .lesson-chip.status-completed::before { background: rgba(170, 120, 255, 0.95); }
+        .lesson-chip.status-completed {
+            border-color: #d1d5db;
+            background: #f8fafc;
+            color: #334155;
+        }
 
-        .lesson-chip.status-cancelled { border-color: rgba(255, 77, 109, 0.65); background: rgba(255, 77, 109, 0.12); }
-        .lesson-chip.status-cancelled::before { background: rgba(255, 77, 109, 0.95); }
+        .lesson-chip.status-cancelled {
+            border-color: #fecaca;
+            background: #fef2f2;
+            color: #b91c1c;
+        }
 
         .lesson-chip.is-conflict {
-            box-shadow: 0 0 0 2px rgba(255, 77, 109, 0.55), var(--shadow-soft);
+            box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.35);
         }
 
         .now-line {
@@ -303,10 +174,10 @@
             left: 0;
             right: 0;
             height: 2px;
-            background: rgba(255, 212, 92, 0.95);
-            box-shadow: 0 0 0 4px rgba(255, 212, 92, 0.12);
+            background: #ff9f1c;
             z-index: 9;
             pointer-events: none;
+            border-top: 2px dashed #ff9f1c;
         }
 
         .now-dot {
@@ -316,8 +187,19 @@
             width: 12px;
             height: 12px;
             border-radius: 999px;
-            background: rgba(255, 212, 92, 0.98);
-            box-shadow: 0 0 0 6px rgba(255, 212, 92, 0.14);
+            background: #ff9f1c;
+        }
+
+        .now-label {
+            position: absolute;
+            left: 0;
+            top: -14px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #ffffff;
+            background: #ff9f1c;
+            border-radius: 0 6px 6px 0;
+            padding: 1px 8px;
         }
 
         .schedule-inspector {
@@ -340,7 +222,7 @@
         .schedule-inspector__body {
             overflow: auto;
             padding-right: 0.4rem;
-            color: var(--text-muted);
+            color: #64748b;
         }
 
         .modal {
@@ -435,14 +317,16 @@
 
                     <div class="bg-white rounded-2xl p-2 border border-slate-200 border-b-[3px] border-b-slate-300 shadow-tactile mb-6 flex flex-wrap gap-3 items-center justify-between">
                         <div class="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200/50">
-                            <button class="px-5 py-1.5 {% if view_mode != 'agenda' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('week')">Неделя</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'day' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('day')">День</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'week' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('week')">Неделя</button>
+                            <button class="px-5 py-1.5 {% if view_mode == 'month' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('month')">Месяц</button>
                             <button class="px-5 py-1.5 {% if view_mode == 'agenda' %}bg-white text-slate-900 shadow-sm border border-slate-200/50{% else %}text-slate-500 hover:text-slate-900{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('agenda')">Список</button>
                         </div>
 
                         <div class="flex items-center gap-4">
-                            <button class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-boo-primary transition-all" data-week-offset="{{ week_offset - 1 }}" onclick="navigateWeek(this.dataset.weekOffset)"><i class="ph-bold ph-caret-left"></i></button>
+                            <button class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-boo-primary transition-all" data-week-offset="{{ week_offset - 1 }}" onclick="navigatePeriod(this.dataset.weekOffset)"><i class="ph-bold ph-caret-left"></i></button>
                             <h2 class="text-lg font-extrabold text-slate-900 tracking-tight w-72 text-center">{{ week_label }}</h2>
-                            <button class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-boo-primary transition-all" data-week-offset="{{ week_offset + 1 }}" onclick="navigateWeek(this.dataset.weekOffset)"><i class="ph-bold ph-caret-right"></i></button>
+                            <button class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-boo-primary transition-all" data-week-offset="{{ week_offset + 1 }}" onclick="navigatePeriod(this.dataset.weekOffset)"><i class="ph-bold ph-caret-right"></i></button>
                         </div>
 
                         <div class="flex items-center gap-2 pr-2 flex-wrap">
@@ -498,6 +382,37 @@
                                 {% endfor %}
                             </div>
                         </div>
+                    {% elif view_mode == 'month' %}
+                        <div class="bg-white rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-4">
+                            <div class="grid grid-cols-7 border border-slate-200 rounded-2xl overflow-hidden">
+                                {% for dn in day_names %}
+                                <div class="py-2 text-center text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-200">{{ dn }}</div>
+                                {% endfor %}
+                                {% for week in month_weeks %}
+                                    {% for cell in week %}
+                                    <div class="min-h-[140px] p-2 border-b border-r border-slate-100 {% if not cell.in_month %}bg-slate-50/50{% endif %} {% if cell.is_today %}ring-1 ring-boo-primary ring-inset{% endif %}">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <a href="{{ url_for('schedule.schedule', timezone=timezone, view='day', week=(cell.date - today_display_date).days) }}" class="text-sm font-extrabold {% if cell.is_today %}text-boo-primary{% else %}text-slate-700{% endif %} no-underline">
+                                                {{ cell.date.day }}
+                                            </a>
+                                            {% if cell.events_count %}
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-boo-primary font-bold">{{ cell.events_count }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="space-y-1">
+                                            {% for ev in cell.events %}
+                                            <a href="{{ ev.lesson_url }}" class="block no-underline">
+                                                <div class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 truncate">
+                                                    <span class="font-bold">{{ ev.time }}</span> {{ ev.student_name }}
+                                                </div>
+                                            </a>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                        </div>
                     {% else %}
                         <div class="flex-1 bg-white rounded-3xl border border-slate-200 shadow-tactile flex flex-col overflow-hidden relative"
                              data-schedule-root
@@ -517,28 +432,34 @@
                              data-icon-exam="{{ url_for('static', filename='icons/sprite.svg') }}#nav-stats"
                              data-icon-intro="{{ url_for('static', filename='icons/sprite.svg') }}#nav-help">
 
-                            <div class="schedule-grid-head grid grid-cols-8 border-b border-slate-100 bg-slate-50/50">
+                            <div class="schedule-grid-head grid grid-cols-8 border-b border-slate-100 bg-slate-50/50" style="grid-template-columns: 84px repeat({{ day_columns_count }}, minmax(0, 1fr));">
                                 <div class="p-4 border-r border-slate-100/50 text-center flex flex-col justify-center">
                                     <i class="ph-fill ph-clock text-slate-300 text-xl"></i>
                                 </div>
                                 {% for day in week_days %}
-                                <div class="p-4 {% if not loop.last %}border-r border-slate-100/50{% endif %} text-center">
-                                    <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{{ day.strftime('%a') }}</div>
-                                    <div class="text-2xl font-black text-slate-700">{{ day.strftime('%d') }}</div>
+                                {% set is_today = today_display_date and (day == today_display_date) %}
+                                {% set is_weekend = day.weekday() >= 5 %}
+                                <div class="p-4 {% if not loop.last %}border-r border-slate-100/50{% endif %} text-center {% if is_today %}bg-purple-50/50 relative overflow-hidden{% elif is_weekend %}opacity-70{% endif %}">
+                                    {% if is_today %}
+                                    <div class="absolute top-0 left-0 w-full h-1 bg-boo-primary"></div>
+                                    {% endif %}
+                                    <div class="text-xs font-bold {% if is_today %}text-boo-primary{% else %}text-slate-400{% endif %} uppercase tracking-widest mb-1">{{ day_names[loop.index0] }}</div>
+                                    <div class="text-2xl font-black {% if is_today %}text-slate-900{% else %}text-slate-700{% endif %}">{{ day.strftime('%d') }}</div>
                                 </div>
                                 {% endfor %}
                             </div>
 
                             <div class="flex-1 overflow-y-auto hide-scroll relative">
-                                <div id="scheduleGrid" class="grid grid-cols-8 relative">
+                                <div id="scheduleGrid" class="grid grid-cols-8 relative" style="grid-template-columns: 84px repeat({{ day_columns_count }}, minmax(0, 1fr));">
                                     <div class="border-r border-slate-100/50 relative bg-white z-10 time-col">
                                         {% for label in time_labels %}
                                         <div class="h-14 border-b border-slate-100 flex justify-center pt-2 time-label"><span class="text-xs font-bold text-slate-400">{{ label }}</span></div>
                                         {% endfor %}
                                     </div>
-                                    {% for day_index in range(7) %}
+                                    {% for day_index in range(day_columns_count) %}
                                     {% set day = week_days[day_index] %}
-                                    <div class="{% if not loop.last %}border-r border-slate-100/50{% endif %} relative bg-white day-col"
+                                    {% set is_weekend_col = day.weekday() >= 5 %}
+                                    <div class="{% if not loop.last %}border-r border-slate-100/50{% endif %} relative {% if is_weekend_col %}bg-slate-50/30{% else %}bg-white{% endif %} day-col"
                                          data-day="{{ day.isoformat() }}" data-day-index="{{ day_index }}" data-events='{{ day_events[day_index]|tojson }}'>
                                         <div class="day-col__body"></div>
                                     </div>
@@ -754,7 +675,7 @@
             window.location.href = '{{ url_for('schedule.schedule') }}' + '?' + params.toString();
         }
 
-        function navigateWeek(offset) {
+        function navigatePeriod(offset) {
             const params = new URLSearchParams(window.location.search);
             params.set('week', offset);
             params.set('timezone', currentTimezone);
