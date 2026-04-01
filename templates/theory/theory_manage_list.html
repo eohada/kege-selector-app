@@ -17,11 +17,11 @@
 {% if selected_block and selected_block.content %}
   {% set selected_clean_content = selected_block.content|replace('<!--status:published-->\n','')|replace('<!--status:draft-->\n','')|replace('<!--status:published-->','')|replace('<!--status:draft-->','') %}
 {% endif %}
-<main class="flex-1 pt-7 pb-10 px-6 lg:px-10 h-full flex justify-center">
-  <div class="w-full max-w-[1760px] flex flex-row gap-8 h-full items-stretch overflow-x-auto">
+<main class="flex-1 pt-6 pb-8 px-6 lg:px-8 h-full flex justify-center">
+  <div class="w-full max-w-[1700px] grid grid-cols-[420px_minmax(0,1fr)] gap-6 h-full items-stretch">
 
-    <aside class="w-[460px] min-w-[460px] shrink-0 h-full">
-      <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-7 lg:p-9 flex flex-col h-full overflow-hidden">
+    <aside class="w-full h-full">
+      <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col h-full overflow-hidden">
         <div class="mb-6 shrink-0">
           <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
             <i class="ph-fill ph-book-open"></i> База знаний
@@ -121,7 +121,7 @@
       </section>
     </aside>
 
-    <section class="flex-1 min-w-0 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden min-h-[780px]">
+    <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden min-h-[760px]">
       <form id="theoryEditorForm" method="post" action="{{ url_for('theory.manage_list', course_id=course_id, task_number=selected_task_number) }}" class="contents">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="task_number" value="{{ selected_task_number or '' }}">
@@ -154,7 +154,7 @@
         </div>
 
         <div class="flex-1 overflow-y-auto relative bg-white">
-          <div class="max-w-[1100px] mx-auto w-full px-10 py-12 relative">
+          <div class="max-w-[1200px] mx-auto w-full px-8 py-10 relative">
             <div class="sticky-toolbar">
               <div class="bg-white border border-slate-200 rounded-[20px] p-2.5 shadow-toolbar flex flex-wrap items-center gap-2.5 w-max transition-shadow">
                 <button type="button" class="theory-toolbar-btn" data-format="h2"><i class="ph-bold ph-text-h-two"></i></button>
