@@ -4,29 +4,11 @@
 
 {% block head_css %}
 <style>
-  .theory-toolbar-btn {
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
-    color: #334155;
-    border-radius: 10px;
-    height: 34px;
-    padding: 0 10px;
-    font-size: 12px;
-    font-weight: 800;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all .2s ease;
-    white-space: nowrap;
-  }
-  .theory-toolbar-btn:hover { border-color: #cbd5e1; background: #fff; color: #7B5CFF; }
-  .sticky-toolbar {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    background: linear-gradient(180deg, rgba(255,255,255,1) 70%, rgba(255,255,255,0) 100%);
-    padding-bottom: 18px;
-  }
+  .theory-toolbar-btn { border: 1px solid #e2e8f0; background: #fff; color: #334155; border-radius: 10px; height: 34px; padding: 0 10px; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; transition: all .2s ease; white-space: nowrap; }
+  .theory-toolbar-btn:hover { border-color: #cbd5e1; background: #f8fafc; color: #7B5CFF; }
+  .sticky-toolbar { position: sticky; top: 0; z-index: 35; background: linear-gradient(180deg, #fff 75%, rgba(255,255,255,0) 100%); padding-bottom: 18px; }
+  .hide-scroll::-webkit-scrollbar { display: none; }
+  .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 {% endblock %}
 
@@ -36,15 +18,15 @@
   {% set selected_clean_content = selected_block.content|replace('<!--status:published-->\n','')|replace('<!--status:draft-->\n','')|replace('<!--status:published-->','')|replace('<!--status:draft-->','') %}
 {% endif %}
 <main class="flex-1 pt-6 pb-8 px-6 lg:px-8 h-full flex justify-center">
-  <div class="w-full max-w-[1600px] flex flex-col lg:flex-row gap-6 h-full">
+  <div class="w-full max-w-[1600px] flex flex-col lg:flex-row gap-6 h-full items-stretch">
 
-    <aside class="w-full lg:w-[420px] shrink-0 flex flex-col gap-6 h-full">
+    <aside class="w-full lg:w-[420px] shrink-0 h-full">
       <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col h-full overflow-hidden">
-        <div class="mb-6 shrink-0">
+        <div class="mb-5 shrink-0">
           <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
             <i class="ph-fill ph-book-open"></i> База знаний
           </div>
-          <h2 class="text-4xl font-black text-slate-900 tracking-tight mb-4">Навигатор</h2>
+          <h2 class="text-5xl font-black text-slate-900 tracking-tight mb-4">Навигатор</h2>
           <div class="relative bg-slate-50 border border-slate-200 rounded-xl flex items-center px-4 py-3.5 shadow-sm">
             <i class="ph-fill ph-exam text-boo-primary text-xl mr-3"></i>
             <span class="font-bold text-slate-800 text-sm flex-1">{{ course.title if course else 'Курс' }}</span>
@@ -52,9 +34,9 @@
           </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto pr-2">
+        <div class="flex-1 overflow-y-auto pr-2 hide-scroll">
           <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 ml-1">Группы</div>
-          <div class="space-y-3 mb-6">
+          <div class="space-y-2.5 mb-4">
             {% for group in groups %}
             <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=group.id) }}"
                class="block {{ 'bg-purple-50 border-2 border-boo-primary text-boo-primary' if selected_group and selected_group.id == group.id else 'bg-white border border-slate-200 border-b-[3px] border-b-slate-300 text-slate-700 hover:-translate-y-0.5 hover:shadow-tactile' }} rounded-xl px-4 py-3 font-bold text-sm no-underline transition-all">
@@ -63,7 +45,7 @@
             {% endfor %}
           </div>
 
-          <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm h-12">
+          <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm h-11">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="create_group">
             <input type="text" name="group_name" placeholder="Новая группа" class="flex-1 bg-transparent border-none px-4 text-sm font-medium text-slate-700 focus:outline-none placeholder-slate-400 h-full">
@@ -73,7 +55,7 @@
           </form>
 
           {% if selected_group %}
-          <div class="grid grid-cols-2 gap-2 mt-3">
+          <div class="grid grid-cols-2 gap-2 mt-2">
             <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="action" value="rename_group">
@@ -92,13 +74,13 @@
           {% endif %}
 
           <div class="mt-8 pt-6 border-t border-slate-100">
-            <div class="flex justify-between items-end mb-3">
+            <div class="flex justify-between items-end mb-3 mt-6">
               <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Заполнение базы: <span class="text-slate-900 font-black">{{ completion_percent }}%</span></span>
             </div>
             <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-6 shadow-inner">
               <div class="h-full bg-boo-primary rounded-full" style="width: {{ completion_percent }}%;"></div>
             </div>
-            <div class="grid grid-cols-5 gap-3 p-1">
+            <div class="grid grid-cols-5 gap-3 p-1.5">
               {% for item in grid_states %}
                 {% set num = item.task_number %}
                 {% set st = item.state %}
@@ -139,7 +121,7 @@
       </section>
     </aside>
 
-    <section class="flex-1 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden">
+    <section class="flex-1 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden min-h-[760px]">
       <form id="theoryEditorForm" method="post" action="{{ url_for('theory.manage_list', course_id=course_id, task_number=selected_task_number) }}" class="contents">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="task_number" value="{{ selected_task_number or '' }}">
@@ -153,7 +135,7 @@
               <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span> Черновик
             </div>
           </div>
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
             <button id="previewTheoryBtn" type="button" class="px-5 py-2.5 bg-white text-slate-600 border border-slate-200 border-b-[3px] border-b-slate-300 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2 active:translate-y-[2px] active:border-b-0">
               <i class="ph-bold ph-eye text-lg"></i> Предпросмотр
             </button>
