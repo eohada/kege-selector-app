@@ -421,7 +421,6 @@ def theory_view_block(block_id):
 
     return render_template(
         'theory/theory_shell.html',
-        visible_groups=visible_groups,
         state_by_number=state_by_number,
         initial_block=block,
         initial_state=state,
