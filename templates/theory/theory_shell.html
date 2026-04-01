@@ -135,17 +135,47 @@
       {% for block in blocks %}
       {% set num = block.task_number %}
       {% set st = (state_by_number.get(num) if state_by_number is defined and state_by_number else {}) %}
+      {% set is_bookmarked = st.get('bookmarked') if st else False %}
       {% set is_read = st.get('read') if st else False %}
       {% set href = url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) %}
       {% set hx_href = href ~ '&fragment=1' %}
-      <a href="{{ href }}" class="theory-card bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer no-underline"
+      <a href="{{ href }}" class="theory-card bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
          hx-get="{{ hx_href }}" hx-target="#articleContainer" hx-swap="innerHTML" hx-push-url="{{ href }}"
-         data-task-number="{{ num }}" data-read="{{ '1' if is_read else '0' }}" data-title="{{ (block.title or ('Тема ' ~ num))|lower }}">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-xl font-black text-slate-900">{{ block.title or ('Тема ' ~ num) }}</h3>
-          <span class="text-xs font-bold {{ 'text-green-600' if is_read else 'text-slate-400' }}">{{ 'Изучено' if is_read else 'Новое' }}</span>
+         data-task-number="{{ num }}" data-bookmarked="{{ '1' if is_bookmarked else '0' }}" data-read="{{ '1' if is_read else '0' }}" data-title="{{ (block.title or ('Тема ' ~ num))|lower }}">
+        <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors pointer-events-none"></div>
+
+        <div class="flex justify-between items-start mb-5 relative z-10 gap-3">
+          <div class="w-12 h-12 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
+            <i class="ph-bold ph-book-open-text text-2xl"></i>
+          </div>
+          <span class="bg-white px-2.5 py-1 rounded-lg text-xs font-extrabold text-slate-400 border border-slate-200 shadow-sm flex items-center gap-1.5">
+            {% if is_read %}
+              <i class="ph-fill ph-check-circle text-green-500"></i> Изучено
+            {% else %}
+              <i class="ph-fill ph-clock text-slate-400"></i> Новое
+            {% endif %}
+          </span>
         </div>
-        <p class="text-sm text-slate-500 line-clamp-2">{{ (block.description or 'Открой тему для просмотра.')|truncate(110, True, '…') }}</p>
+
+        <div class="relative z-10 flex-1">
+          <h3 class="text-xl font-black text-slate-900 mb-1 group-hover:text-boo-primary transition-colors">
+            {{ block.title or ('Тема ' ~ num) }}
+          </h3>
+          <div class="flex flex-wrap gap-1.5 mb-4">
+            <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание {{ num }}</span>
+            {% if is_bookmarked %}
+            <span class="bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100">Сохранено</span>
+            {% endif %}
+          </div>
+          <p class="text-sm font-medium text-slate-500 mb-6 line-clamp-2">
+            {{ (block.description or 'Открой тему для просмотра.')|truncate(110, True, '…') }}
+          </p>
+        </div>
+
+        <div class="relative z-10 pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">Открыть</div>
+          <i class="ph-bold ph-arrow-right text-slate-300 group-hover:text-boo-primary transition-colors"></i>
+        </div>
       </a>
       {% endfor %}
     </div>
