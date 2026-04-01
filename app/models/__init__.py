@@ -76,9 +76,11 @@ from core.db_models import (
     TrainerLlmLog,
     UserConsent,
     TheoryBlock,
+    TheoryGroup,
     StudentTheoryAccess,
     StudentTheoryState,
     TheoryFeedback,
+    TheoryFeedbackHistory,
     StudentCourseEnrollment,
     GradingScale,
 )
@@ -157,9 +159,11 @@ __all__ = [
     'TrainerLlmLog',
     'UserConsent',
     'TheoryBlock',
+    'TheoryGroup',
     'StudentTheoryAccess',
     'StudentTheoryState',
     'TheoryFeedback',
+    'TheoryFeedbackHistory',
     'StudentCourseEnrollment',
     'GradingScale',
 ]

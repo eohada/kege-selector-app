@@ -1887,8 +1887,11 @@ class TheoryBlock(db.Model):
     __tablename__ = 'TheoryBlocks'
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('TheoryGroups.id', ondelete='SET NULL'), nullable=True, index=True)
     task_number = db.Column(db.Integer, nullable=False, index=True)
     title = db.Column(db.String(200), nullable=True)
+    description = db.Column(db.String(500), nullable=True)
+    position = db.Column(db.Integer, nullable=False, default=0, server_default='0', index=True)
     content = db.Column(db.Text, nullable=True)
     pdf_path = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
@@ -1896,6 +1899,7 @@ class TheoryBlock(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
 
     course = db.relationship('Course', foreign_keys=[course_id])
+    group = db.relationship('TheoryGroup', foreign_keys=[group_id], back_populates='blocks')
     author = db.relationship('User', foreign_keys=[author_id])
 
     __table_args__ = (
@@ -1919,6 +1923,27 @@ class StudentTheoryAccess(db.Model):
 
     student = db.relationship('Student', foreign_keys=[student_id])
     course = db.relationship('Course', foreign_keys=[course_id])
+
+
+class TheoryGroup(db.Model):
+    """Группа теории в рамках курса (например, Алгебра логики)."""
+    __tablename__ = 'TheoryGroups'
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id', ondelete='CASCADE'), nullable=True, index=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.String(500), nullable=True)
+    position = db.Column(db.Integer, nullable=False, default=0, server_default='0', index=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    course = db.relationship('Course', foreign_keys=[course_id])
+    creator = db.relationship('User', foreign_keys=[created_by])
+    blocks = db.relationship('TheoryBlock', back_populates='group', lazy='dynamic')
+
+    __table_args__ = (
+        db.UniqueConstraint('course_id', 'name', name='uq_theory_group_course_name'),
+    )
 
 
 class StudentTheoryState(db.Model):
@@ -1958,6 +1983,23 @@ class TheoryFeedback(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
 
     __table_args__ = (db.UniqueConstraint('student_id', 'course_id', 'task_number', name='uq_theory_feedback'),)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    user = db.relationship('User', foreign_keys=[user_id])
+    course = db.relationship('Course', foreign_keys=[course_id])
+
+
+class TheoryFeedbackHistory(db.Model):
+    """История комментариев/оценок по теории для аналитики преподавателя."""
+    __tablename__ = 'TheoryFeedbackHistory'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)
+    rating = db.Column(db.Integer, nullable=True)
+    comment = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
 
     student = db.relationship('Student', foreign_keys=[student_id])
     user = db.relationship('User', foreign_keys=[user_id])

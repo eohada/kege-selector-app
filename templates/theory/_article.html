@@ -3,7 +3,18 @@
 {% set state = (initial_state if initial_state is defined and initial_state else state) %}
 {% set feedback = (initial_feedback if initial_feedback is defined and initial_feedback else feedback) %}
 
-<div data-theory-article data-task-number="{{ block.task_number }}" class="flex flex-col gap-4">
+{% set current_group = None %}
+{% set current_group_blocks = [] %}
+{% if visible_groups %}
+  {% for gp in visible_groups %}
+    {% if gp.group.id == block.group_id %}
+      {% set current_group = gp.group %}
+      {% set current_group_blocks = gp.blocks %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+
+<div data-theory-article data-task-number="{{ block.task_number }}" data-block-id="{{ block.id }}" class="flex flex-col gap-4">
   <button type="button" data-action="back" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm w-fit transition-colors">
     <i class="ph-bold ph-arrow-left"></i> Назад в каталог
   </button>
@@ -13,11 +24,19 @@
       <div class="flex items-center gap-2 text-[10px] font-extrabold text-boo-primary uppercase tracking-widest mb-4">
         <i class="ph-fill ph-book-open-text"></i> Теория
       </div>
-      <h4 class="font-black text-slate-900 text-lg mb-6 leading-tight">Содержание модуля</h4>
+      <h4 class="font-black text-slate-900 text-lg mb-1 leading-tight">Содержание модуля</h4>
+      <p class="text-xs font-semibold text-slate-400 mb-4">{{ current_group.name if current_group else 'Группа' }}</p>
       <div class="space-y-1">
-        <a href="#" class="block px-3 py-2.5 bg-purple-50 text-boo-primary rounded-xl font-bold text-sm border border-purple-100 transition-colors">
-          1. {{ block.title or ('Задание ' ~ block.task_number) }}
+        {% for item in current_group_blocks %}
+        <a href="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}"
+           hx-get="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id, fragment=1) }}"
+           hx-target="#articleContainer"
+           hx-swap="innerHTML"
+           hx-push-url="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}"
+           class="block px-3 py-2.5 {{ 'bg-purple-50 text-boo-primary border-purple-100' if item.id == block.id else 'text-slate-600 hover:bg-slate-50 border-transparent' }} rounded-xl font-bold text-sm border transition-colors no-underline">
+          {{ loop.index }}. {{ item.title or ('Тема ' ~ item.task_number) }}
         </a>
+        {% endfor %}
       </div>
       <div class="mt-8 pt-6 border-t border-slate-100">
         <a href="{{ url_for('trainer.trainer_embed') }}" class="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-sm no-underline">
@@ -36,7 +55,10 @@
           <span class="bg-slate-100 text-slate-500 text-xs font-bold px-2.5 py-1 rounded-md border border-slate-200">Задание {{ block.task_number }}</span>
           <span class="text-slate-400 text-xs font-semibold flex items-center gap-1"><i class="ph-fill ph-clock"></i> 5 мин чтения</span>
         </div>
-        <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-8 leading-tight">{{ block.title or ('Задание ' ~ block.task_number) }}</h1>
+        <h1 class="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4 leading-tight">{{ block.title or ('Задание ' ~ block.task_number) }}</h1>
+        {% if block.description %}
+        <p class="text-base text-slate-500 font-medium mb-8">{{ block.description }}</p>
+        {% endif %}
 
         {% if custom_html %}
           {{ custom_html | safe }}
@@ -61,8 +83,8 @@
                 <i class="ph-fill ph-star text-xl"></i>
               </button>
               {% endfor %}
-              <button type="button" data-action="mark-read" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm">
-                <i class="ph-bold ph-check-circle text-lg"></i> Отметить как изученное
+              <button type="button" data-action="mark-read" class="px-6 py-3 {{ 'bg-green-600 border-b-green-800' if state and state.read else 'bg-boo-primary border-b-purple-800' }} text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] active:translate-y-[2px] active:border-b-0 text-sm">
+                <i class="ph-bold ph-check-circle text-lg"></i> {{ 'Изучено' if state and state.read else 'Отметить как изученное' }}
               </button>
             </div>
           </div>

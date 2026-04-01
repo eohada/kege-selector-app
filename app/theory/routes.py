@@ -7,14 +7,17 @@ import os
 import re
 import subprocess
 import html
+from collections import defaultdict
 from flask import render_template, request, redirect, url_for, flash, abort, jsonify, current_app
 from markupsafe import Markup
 from flask_login import login_required, current_user
+from sqlalchemy import func
 
 from app.theory import theory_bp
 from app.models import (
     db,
     TheoryBlock,
+    TheoryGroup,
     StudentTheoryAccess,
     Student,
     User,
@@ -23,6 +26,7 @@ from app.models import (
     StudentCourseEnrollment,
     StudentTheoryState,
     TheoryFeedback,
+    TheoryFeedbackHistory,
     moscow_now,
 )
 from app.auth.rbac_utils import has_permission
@@ -148,6 +152,27 @@ def _get_course_task_numbers(course_id):
     return sorted({t.task_number for t in templates})
 
 
+def _extract_status(content_value):
+    text = (content_value or '').strip()
+    if text.startswith('<!--status:published-->'):
+        return 'published'
+    if text.startswith('<!--status:draft-->'):
+        return 'draft'
+    if text:
+        return 'published'
+    return 'draft'
+
+
+def _with_status_prefix(content_value, status_value):
+    body = (content_value or '').strip()
+    if body.startswith('<!--status:published-->'):
+        body = body[len('<!--status:published-->'):].lstrip()
+    elif body.startswith('<!--status:draft-->'):
+        body = body[len('<!--status:draft-->'):].lstrip()
+    marker = '<!--status:published-->' if status_value == 'published' else '<!--status:draft-->'
+    return f'{marker}\n{body}'.strip()
+
+
 def _get_default_course_id():
     """Возвращает id первого активного курса (fallback при отсутствии course_id в запросе)."""
     course = Course.query.filter_by(is_active=True).order_by(Course.id).first()
@@ -160,7 +185,7 @@ def _get_allowed_task_numbers_for_student(student_id, course_id):
     Если записи в StudentTheoryAccess нет — доступ разрешён.
     can_view=False — запретить.
     """
-    task_numbers = _get_course_task_numbers(course_id)
+    task_numbers = [x.task_number for x in TheoryBlock.query.filter_by(course_id=course_id).order_by(TheoryBlock.position, TheoryBlock.id).all()]
     if not student_id:
         return set(task_numbers)
     rows = StudentTheoryAccess.query.filter_by(
@@ -181,28 +206,55 @@ def _student_can_view_task_number(student_id, task_number, course_id):
     return task_number in _get_allowed_task_numbers_for_student(student_id, course_id)
 
 
+def _ensure_default_group(course_id):
+    group = TheoryGroup.query.filter_by(course_id=course_id, name='Общая группа').first()
+    if group:
+        return group
+    group = TheoryGroup(
+        course_id=course_id,
+        name='Общая группа',
+        description='Группа по умолчанию',
+        position=0,
+        created_by=current_user.id if current_user.is_authenticated else None,
+    )
+    db.session.add(group)
+    db.session.flush()
+    return group
+
+
+def _get_course_groups_with_blocks(course_id):
+    groups = TheoryGroup.query.filter_by(course_id=course_id).order_by(TheoryGroup.position, TheoryGroup.id).all()
+    if not groups:
+        _ensure_default_group(course_id)
+        db.session.commit()
+        groups = TheoryGroup.query.filter_by(course_id=course_id).order_by(TheoryGroup.position, TheoryGroup.id).all()
+    blocks = TheoryBlock.query.filter_by(course_id=course_id).order_by(TheoryBlock.position, TheoryBlock.id).all()
+    blocks_by_group = defaultdict(list)
+    for block in blocks:
+        if not block.group_id and groups:
+            block.group_id = groups[0].id
+        if block.group_id:
+            blocks_by_group[block.group_id].append(block)
+    return groups, blocks_by_group
+
+
 def _build_visible_with_state(course_id):
-    """Common dataset for student theory shell (cards + read/bookmark state)."""
-    task_numbers = _get_course_task_numbers(course_id)
-    blocks = TheoryBlock.query.filter(
-        (TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))
-    ).order_by(TheoryBlock.task_number).all()
-    block_by_number = {b.task_number: b for b in blocks}
+    """Student dataset: groups + blocks + read/bookmark states."""
+    groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
+    student = Student.query.filter_by(user_id=current_user.id).first() if current_user.is_student() else None
+    allowed_numbers = None
+    if student:
+        allowed_numbers = _get_allowed_task_numbers_for_student(student.student_id, course_id)
 
-    allowed_numbers = set(task_numbers)
-    student = None
-    if current_user.is_student():
-        student = Student.query.filter_by(user_id=current_user.id).first()
-        if student:
-            allowed_numbers = _get_allowed_task_numbers_for_student(student.student_id, course_id)
-        else:
-            allowed_numbers = set()
-
-    visible = [
-        (num, block_by_number.get(num))
-        for num in task_numbers
-        if num in allowed_numbers and num in block_by_number
-    ]
+    visible_groups = []
+    for group in groups:
+        items = []
+        for block in blocks_by_group.get(group.id, []):
+            if allowed_numbers is not None and block.task_number not in allowed_numbers:
+                continue
+            items.append(block)
+        if items:
+            visible_groups.append({'group': group, 'blocks': items})
 
     state_by_number = {}
     if student:
@@ -212,7 +264,7 @@ def _build_visible_with_state(course_id):
                 'bookmarked': bool(r.is_bookmarked),
                 'read': bool(r.is_read),
             }
-    return visible, state_by_number
+    return visible_groups, state_by_number
 
 
 # --- Просмотр для учеников (и тьюторов) ---
@@ -220,7 +272,7 @@ def _build_visible_with_state(course_id):
 @theory_bp.route('/theory')
 @login_required
 def theory_index():
-    """Список теории по заданиям: только те номера, по которым есть блок и доступ разрешён."""
+    """Каталог теории по группам и темам."""
     if not has_permission(current_user, 'theory.view'):
         flash('У вас нет доступа к разделу «Теория».', 'warning')
         return redirect(url_for('main.dashboard'))
@@ -230,16 +282,16 @@ def theory_index():
         flash('Нет доступных курсов. Обратитесь к администратору.', 'warning')
         return render_template(
             'theory/theory_index.html',
-            visible=[],
+            visible_groups=[],
             course_id=None,
             active_page='theory',
         )
 
-    visible, state_by_number = _build_visible_with_state(course_id)
+    visible_groups, state_by_number = _build_visible_with_state(course_id)
 
     return render_template(
         'theory/theory_shell.html',
-        visible=visible,
+        visible_groups=visible_groups,
         state_by_number=state_by_number,
         course_id=course_id,
         active_page='theory',
@@ -250,7 +302,7 @@ def theory_index():
 @theory_bp.route('/theory/<int:task_number>')
 @login_required
 def theory_view(task_number):
-    """Просмотр одного блока теории по номеру задания."""
+    """Совместимость со старым URL: redirect в view по block_id."""
     if not has_permission(current_user, 'theory.view'):
         flash('У вас нет доступа к разделу «Теория».', 'warning')
         return redirect(url_for('main.dashboard'))
@@ -260,24 +312,38 @@ def theory_view(task_number):
         flash('Нет доступных курсов.', 'warning')
         return redirect(url_for('main.dashboard'))
 
-    task_numbers = _get_course_task_numbers(course_id)
-    if task_number not in task_numbers:
-        abort(404)
-
-    student = None
-    if current_user.is_student():
-        student = Student.query.filter_by(user_id=current_user.id).first()
-        if student and not _student_can_view_task_number(student.student_id, task_number, course_id):
-            flash('Просмотр теории по этому заданию для вас закрыт.', 'warning')
-            return redirect(url_for('theory.theory_index', course_id=course_id))
-
     block = TheoryBlock.query.filter(
-        ((TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))),
+        TheoryBlock.course_id == course_id,
         TheoryBlock.task_number == task_number,
     ).first()
     if not block:
         flash('Теория по заданию {} ещё не добавлена.'.format(task_number), 'info')
         return redirect(url_for('theory.theory_index', course_id=course_id))
+    return redirect(url_for('theory.theory_view_block', block_id=block.id, course_id=course_id))
+
+
+@theory_bp.route('/theory/topic/<int:block_id>')
+@login_required
+def theory_view_block(block_id):
+    """Просмотр одного блока теории по block_id."""
+    if not has_permission(current_user, 'theory.view'):
+        flash('У вас нет доступа к разделу «Теория».', 'warning')
+        return redirect(url_for('main.dashboard'))
+
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    if course_id is None:
+        flash('Нет доступных курсов.', 'warning')
+        return redirect(url_for('main.dashboard'))
+
+    block = TheoryBlock.query.filter_by(id=block_id, course_id=course_id).first_or_404()
+    task_number = block.task_number
+
+    student = None
+    if current_user.is_student():
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if student and not _student_can_view_task_number(student.student_id, task_number, course_id):
+            flash('Просмотр теории по этому разделу для вас закрыт.', 'warning')
+            return redirect(url_for('theory.theory_index', course_id=course_id))
 
     # IMPORTANT:
     # Source of truth for student theory is TheoryBlock.content
@@ -285,7 +351,7 @@ def theory_view(task_number):
     # legacy /theory/n*.html here to avoid duplicated layouts/nav.
     custom_html = None
 
-    visible, state_by_number = _build_visible_with_state(course_id)
+    visible_groups, state_by_number = _build_visible_with_state(course_id)
     feedback = None
     state = None
     if student:
@@ -308,6 +374,7 @@ def theory_view(task_number):
     template_ctx = dict(
         block=block,
         course_id=course_id,
+        visible_groups=visible_groups,
         active_page='theory',
         custom_html=custom_html,
         rendered_content_html=_render_theory_content_html(block.content or ''),
@@ -325,7 +392,7 @@ def theory_view(task_number):
 
     return render_template(
         'theory/theory_shell.html',
-        visible=visible,
+        visible_groups=visible_groups,
         state_by_number=state_by_number,
         initial_block=block,
         initial_state=state,
@@ -351,7 +418,7 @@ def _can_manage_theory():
 @theory_bp.route('/theory/manage', methods=['GET', 'POST'])
 @login_required
 def manage_list():
-    """Рабочее пространство теории: сетка + блочный редактор."""
+    """Рабочее пространство теории: группы, темы и редактор."""
     if not _can_manage_theory():
         flash('Недостаточно прав для управления теорией.', 'danger')
         return redirect(url_for('main.dashboard'))
@@ -361,104 +428,161 @@ def manage_list():
         flash('Нет доступных курсов. Создайте курс в настройках.', 'warning')
         return render_template(
             'theory/theory_manage_list.html',
-            slots=[],
+            groups=[],
+            blocks_by_group={},
+            selected_group=None,
+            selected_block=None,
+            selected_group_id=None,
+            selected_block_id=None,
+            completion_percent=0,
+            published_count=0,
+            total_count=0,
+            student_stats=[],
+            comments_history=[],
             course_id=None,
             active_page='theory_manage',
         )
 
-    task_numbers = _get_course_task_numbers(course_id)
-    blocks = TheoryBlock.query.filter(
-        (TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))
-    ).order_by(TheoryBlock.task_number).all()
-    block_by_number = {b.task_number: b for b in blocks}
-    slots = [(num, block_by_number.get(num)) for num in task_numbers]
-
-    def _extract_status(content_value):
-        text = (content_value or '').strip()
-        if text.startswith('<!--status:published-->'):
-            return 'published'
-        if text.startswith('<!--status:draft-->'):
-            return 'draft'
-        if text:
-            return 'published'
-        return 'draft'
-
-    def _with_status_prefix(content_value, status_value):
-        body = (content_value or '').strip()
-        if body.startswith('<!--status:published-->'):
-            body = body[len('<!--status:published-->'):].lstrip()
-        elif body.startswith('<!--status:draft-->'):
-            body = body[len('<!--status:draft-->'):].lstrip()
-        marker = '<!--status:published-->' if status_value == 'published' else '<!--status:draft-->'
-        return f'{marker}\n{body}'.strip()
+    groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
+    if not groups:
+        _ensure_default_group(course_id)
+        db.session.commit()
+        groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
 
     if request.method == 'POST':
-        task_number = request.form.get('task_number', type=int)
-        title = (request.form.get('title') or '').strip()
-        content = (request.form.get('content') or '').strip()
-        status = (request.form.get('editor_status') or 'draft').strip().lower()
-        if status not in ('draft', 'published'):
-            status = 'draft'
-
-        if task_number is None or task_number not in task_numbers:
-            flash('Выберите корректный номер задания.', 'danger')
+        action = (request.form.get('action') or 'save_block').strip()
+        if action == 'create_group':
+            name = (request.form.get('group_name') or '').strip()
+            description = (request.form.get('group_description') or '').strip()
+            if not name:
+                flash('Название группы обязательно.', 'danger')
+                return redirect(url_for('theory.manage_list', course_id=course_id))
+            position = (db.session.query(func.coalesce(func.max(TheoryGroup.position), 0)).filter_by(course_id=course_id).scalar() or 0) + 1
+            db.session.add(TheoryGroup(course_id=course_id, name=name, description=description or None, position=position, created_by=current_user.id))
+            db.session.commit()
+            flash('Группа создана.', 'success')
             return redirect(url_for('theory.manage_list', course_id=course_id))
-
-        block = block_by_number.get(task_number)
-        content_with_status = _with_status_prefix(content, status)
-        default_title = f'Задание {task_number}'
-
-        if block:
-            block.title = title or default_title
-            block.content = content_with_status
-            block.author_id = current_user.id
-        else:
+        if action == 'delete_group':
+            group_id = request.form.get('group_id', type=int)
+            group = TheoryGroup.query.filter_by(id=group_id, course_id=course_id).first()
+            if not group:
+                flash('Группа не найдена.', 'danger')
+                return redirect(url_for('theory.manage_list', course_id=course_id))
+            fallback = TheoryGroup.query.filter(TheoryGroup.course_id == course_id, TheoryGroup.id != group.id).order_by(TheoryGroup.position, TheoryGroup.id).first()
+            if fallback is None:
+                fallback = TheoryGroup(course_id=course_id, name='Общая группа', description='Группа по умолчанию', position=0, created_by=current_user.id)
+                db.session.add(fallback)
+                db.session.flush()
+            TheoryBlock.query.filter_by(course_id=course_id, group_id=group.id).update({'group_id': fallback.id})
+            db.session.delete(group)
+            db.session.commit()
+            flash('Группа удалена.', 'success')
+            return redirect(url_for('theory.manage_list', course_id=course_id, group_id=fallback.id))
+        if action == 'create_block':
+            group_id = request.form.get('group_id', type=int)
+            group = TheoryGroup.query.filter_by(id=group_id, course_id=course_id).first()
+            if not group:
+                flash('Выберите корректную группу.', 'danger')
+                return redirect(url_for('theory.manage_list', course_id=course_id))
+            next_task = (db.session.query(func.coalesce(func.max(TheoryBlock.task_number), 0)).filter_by(course_id=course_id).scalar() or 0) + 1
+            next_pos = (db.session.query(func.coalesce(func.max(TheoryBlock.position), 0)).filter_by(course_id=course_id, group_id=group.id).scalar() or 0) + 1
             block = TheoryBlock(
                 course_id=course_id,
-                task_number=task_number,
-                title=title or default_title,
-                content=content_with_status,
+                group_id=group.id,
+                task_number=next_task,
+                title=f'Тема {next_task}',
+                description='Краткое описание темы',
+                content='<!--status:draft-->\n',
+                position=next_pos,
                 author_id=current_user.id,
             )
             db.session.add(block)
+            db.session.commit()
+            flash('Теоретическая карточка создана.', 'success')
+            return redirect(url_for('theory.manage_list', course_id=course_id, group_id=group.id, block_id=block.id))
+
+        block_id = request.form.get('block_id', type=int)
+        title = (request.form.get('title') or '').strip()
+        description = (request.form.get('description') or '').strip()
+        content = (request.form.get('content') or '').strip()
+        status = (request.form.get('editor_status') or 'draft').strip().lower()
+        group_id = request.form.get('group_id', type=int)
+        if status not in ('draft', 'published'):
+            status = 'draft'
+        group = TheoryGroup.query.filter_by(id=group_id, course_id=course_id).first()
+        if not group:
+            flash('Выберите корректную группу.', 'danger')
+            return redirect(url_for('theory.manage_list', course_id=course_id))
+        block = TheoryBlock.query.filter_by(id=block_id, course_id=course_id).first() if block_id else None
+        content_with_status = _with_status_prefix(content, status)
+        if not block:
+            next_task = (db.session.query(func.coalesce(func.max(TheoryBlock.task_number), 0)).filter_by(course_id=course_id).scalar() or 0) + 1
+            next_pos = (db.session.query(func.coalesce(func.max(TheoryBlock.position), 0)).filter_by(course_id=course_id, group_id=group.id).scalar() or 0) + 1
+            block = TheoryBlock(course_id=course_id, group_id=group.id, task_number=next_task, position=next_pos, author_id=current_user.id)
+            db.session.add(block)
+
+        block.group_id = group.id
+        block.title = title or f'Тема {block.task_number}'
+        block.description = description or None
+        block.content = content_with_status
+        block.author_id = current_user.id
 
         db.session.commit()
         flash('Теория сохранена.' if status == 'draft' else 'Теория опубликована.', 'success')
-        return redirect(url_for('theory.manage_list', course_id=course_id, task_number=task_number))
+        return redirect(url_for('theory.manage_list', course_id=course_id, group_id=group.id, block_id=block.id))
 
-    selected_task_number = request.args.get('task_number', type=int)
-    if selected_task_number not in task_numbers:
-        selected_task_number = task_numbers[0] if task_numbers else None
-    selected_block = block_by_number.get(selected_task_number) if selected_task_number is not None else None
+    selected_group_id = request.args.get('group_id', type=int)
+    selected_block_id = request.args.get('block_id', type=int)
+    selected_group = next((g for g in groups if g.id == selected_group_id), None) if selected_group_id else (groups[0] if groups else None)
+    group_blocks = blocks_by_group.get(selected_group.id, []) if selected_group else []
+    selected_block = next((b for b in group_blocks if b.id == selected_block_id), None) if selected_block_id else (group_blocks[0] if group_blocks else None)
 
-    grid_states = []
-    existing_count = 0
-    published_count = 0
-    for num in task_numbers:
-        b = block_by_number.get(num)
-        if b is None:
-            grid_states.append({'task_number': num, 'state': 'empty'})
-            continue
-        existing_count += 1
-        state = _extract_status(b.content)
-        if state == 'published':
-            published_count += 1
-        grid_states.append({'task_number': num, 'state': state})
+    total_count = sum(len(v) for v in blocks_by_group.values())
+    published_count = sum(1 for items in blocks_by_group.values() for b in items if _extract_status(b.content) == 'published')
+    completion_percent = int(round((published_count / total_count) * 100)) if total_count else 0
+
+    student_stats = []
+    comments_history = []
+    if selected_block:
+        student_states = StudentTheoryState.query.filter_by(course_id=course_id, task_number=selected_block.task_number).all()
+        feedback_rows = TheoryFeedback.query.filter_by(course_id=course_id, task_number=selected_block.task_number).all()
+        feedback_by_student = {r.student_id: r for r in feedback_rows}
+        students = Student.query.filter(Student.student_id.in_([s.student_id for s in student_states] + [f.student_id for f in feedback_rows])).all()
+        student_map = {s.student_id: s for s in students}
+        involved_ids = sorted(set(list(feedback_by_student.keys()) + [s.student_id for s in student_states]))
+        for sid in involved_ids:
+            st_row = next((x for x in student_states if x.student_id == sid), None)
+            fb = feedback_by_student.get(sid)
+            student_stats.append({
+                'student': student_map.get(sid),
+                'is_read': bool(st_row.is_read) if st_row else False,
+                'rating': fb.rating if fb else None,
+                'comment': fb.comment if fb else None,
+                'updated_at': (fb.updated_at if fb else (st_row.updated_at if st_row else None)),
+            })
+        comments_history = TheoryFeedbackHistory.query.filter_by(
+            course_id=course_id,
+            task_number=selected_block.task_number,
+        ).order_by(TheoryFeedbackHistory.created_at.desc()).limit(100).all()
 
     from app.models import Course as ExamCourse
     course = ExamCourse.query.get(course_id) if course_id else None
 
     return render_template(
         'theory/theory_manage_list.html',
-        slots=slots,
-        grid_states=grid_states,
-        selected_task_number=selected_task_number,
+        groups=groups,
+        blocks_by_group=blocks_by_group,
+        selected_group=selected_group,
         selected_block=selected_block,
-        completion_percent=(int(round((existing_count / len(task_numbers)) * 100)) if task_numbers else 0),
+        selected_group_id=(selected_group.id if selected_group else None),
+        selected_block_id=(selected_block.id if selected_block else None),
+        completion_percent=completion_percent,
         published_count=published_count,
+        total_count=total_count,
+        student_stats=student_stats,
+        comments_history=comments_history,
         course_id=course_id,
         course=course,
-        task_numbers=task_numbers,
         active_page='theory_manage',
     )
 
@@ -538,7 +662,7 @@ def manage_new():
         flash('Нет доступных курсов. Создайте курс в настройках.', 'danger')
         return redirect(url_for('theory.manage_list'))
 
-    task_numbers = _get_course_task_numbers(course_id)
+    task_numbers = [x.task_number for x in TheoryBlock.query.filter_by(course_id=course_id).all()]
     existing_blocks = TheoryBlock.query.filter(
         (TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))
     ).all()
@@ -713,11 +837,12 @@ def manage_delete(block_id):
 
     block = TheoryBlock.query.get_or_404(block_id)
     num = block.task_number
+    group_id = block.group_id
     course_id = block.course_id or _get_default_course_id()
     db.session.delete(block)
     db.session.commit()
     flash('Блок теории по заданию {} удалён.'.format(num), 'success')
-    return redirect(url_for('theory.manage_list', course_id=course_id))
+    return redirect(url_for('theory.manage_list', course_id=course_id, group_id=group_id))
 
 
 @theory_bp.route('/theory/manage/preview', methods=['POST'])
@@ -733,6 +858,35 @@ def theory_manage_preview():
         f'{_render_theory_content_html(content)}</article>'
     )
     return jsonify({'success': True, 'html': html})
+
+
+@theory_bp.route('/theory/manage/stats', methods=['GET'])
+@login_required
+def theory_manage_stats():
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    if course_id is None:
+        return jsonify({'success': False, 'error': 'Курс не найден'}), 404
+    block_id = request.args.get('block_id', type=int)
+    block = TheoryBlock.query.filter_by(id=block_id, course_id=course_id).first()
+    if not block:
+        return jsonify({'success': False, 'error': 'Тема не найдена'}), 404
+    states = StudentTheoryState.query.filter_by(course_id=course_id, task_number=block.task_number).all()
+    feedback_rows = TheoryFeedback.query.filter_by(course_id=course_id, task_number=block.task_number).all()
+    ratings = [x.rating for x in feedback_rows if x.rating is not None]
+    payload = {
+        'success': True,
+        'topic': {
+            'id': block.id,
+            'title': block.title or f'Тема {block.task_number}',
+            'task_number': block.task_number,
+            'read_count': sum(1 for s in states if s.is_read),
+            'feedback_count': len(feedback_rows),
+            'avg_rating': round(sum(ratings) / len(ratings), 2) if ratings else None,
+        },
+    }
+    return jsonify(payload)
 
 
 @theory_bp.route('/theory/api/run-code', methods=['POST'])
@@ -844,6 +998,15 @@ def theory_api_feedback():
     except Exception:
         row.rating = None
     row.comment = comment or None
+    history_row = TheoryFeedbackHistory(
+        student_id=student.student_id,
+        user_id=current_user.id,
+        course_id=course_id,
+        task_number=task_number,
+        rating=row.rating,
+        comment=row.comment,
+    )
+    db.session.add(history_row)
     db.session.commit()
     return jsonify({'success': True})
 

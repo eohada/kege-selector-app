@@ -50,6 +50,16 @@
       </div>
     </div>
 
+    <div class="w-full lg:w-80">
+      <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">Группа теории</label>
+      <select id="groupFilter" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-700">
+        <option value="all">Все группы</option>
+        {% for group_pack in visible_groups %}
+        <option value="{{ group_pack.group.id }}">{{ group_pack.group.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
     <div class="flex gap-2 bg-slate-200/50 p-1.5 rounded-xl w-fit border border-slate-200/50">
       <button type="button" class="theory-filter px-6 py-2.5 bg-white text-slate-900 rounded-lg font-bold text-sm shadow-sm border border-slate-200/50 flex items-center gap-2 transition-all" data-filter="all">
         Все модули
@@ -57,18 +67,20 @@
       <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="bookmarked">
         <i class="ph-fill ph-bookmark-simple text-boo-accent"></i> Сохраненное
       </button>
-      <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="unread">
-        Непрочитанное
+      <button type="button" class="theory-filter px-6 py-2.5 text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="studied">
+        Изученное
       </button>
     </div>
 
-    {% if visible and visible|length > 0 %}
+    {% if visible_groups and visible_groups|length > 0 %}
     <div id="theoryGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-      {% for num, block in visible %}
+      {% for group_pack in visible_groups %}
+      {% for block in group_pack.blocks %}
+      {% set num = block.task_number %}
       {% set st = (state_by_number.get(num) if state_by_number is defined and state_by_number else {}) %}
       {% set is_bookmarked = st.get('bookmarked') if st else False %}
       {% set is_read = st.get('read') if st else False %}
-      {% set href = (url_for('theory.theory_view', task_number=num, course_id=course_id) if course_id else url_for('theory.theory_view', task_number=num)) %}
+      {% set href = (url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) if course_id else url_for('theory.theory_view_block', block_id=block.id)) %}
       {% set hx_href = (href ~ '&fragment=1') if ('?' in href) else (href ~ '?fragment=1') %}
 
       <a href="{{ href }}"
@@ -78,6 +90,7 @@
          hx-swap="innerHTML"
          hx-push-url="{{ href }}"
          data-task-number="{{ num }}"
+         data-group-id="{{ group_pack.group.id }}"
          data-title="{{ (block.title or ('Задание ' ~ num))|lower }}"
          data-bookmarked="{{ '1' if is_bookmarked else '0' }}"
          data-read="{{ '1' if is_read else '0' }}">
@@ -103,15 +116,16 @@
           </h3>
           <div class="flex flex-wrap gap-1.5 mb-4">
             <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание {{ num }}</span>
+            <span class="bg-purple-50 text-purple-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-purple-100">{{ group_pack.group.name }}</span>
             {% if is_bookmarked %}
             <span class="bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100">Сохранено</span>
             {% endif %}
           </div>
           <p class="text-sm font-medium text-slate-500 mb-6 line-clamp-2">
-            {% if block and block.content %}
-              {{ (block.content|striptags)|truncate(120, True, '…') }}
+            {% if block and block.description %}
+              {{ block.description|truncate(140, True, '…') }}
             {% else %}
-              Открой, чтобы прочитать материал.
+              Открой тему, чтобы прочитать материал.
             {% endif %}
           </p>
         </div>
@@ -121,6 +135,7 @@
           <i class="ph-bold ph-arrow-right text-slate-300 group-hover:text-boo-primary transition-colors"></i>
         </div>
       </a>
+      {% endfor %}
       {% endfor %}
     </div>
     {% else %}
@@ -171,32 +186,54 @@
   const viewArticle = document.getElementById('view-article');
   const grid = document.getElementById('theoryGrid');
   const search = document.getElementById('theorySearch');
+  const groupFilter = document.getElementById('groupFilter');
   const filterBtns = Array.from(document.querySelectorAll('.theory-filter'));
 
-  function highlightPython(text) {
-    let s = (text || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-    s = s.replace(/(\"[^\"]*\"|\'[^\']*\')/g, '<span data-hl="str">$1</span>');
-    s = s.replace(/\b(\d+)\b/g, '<span data-hl="num">$1</span>');
-    s = s.replace(/\b(for|in|if|else|elif|while|def|return|import|from|as|try|except|finally|with|class|pass|break|continue|and|or|not|True|False|None|print|range)\b/g, '<span data-hl="kw">$1</span>');
-    return s;
+  let cmBundle = null;
+  async function getCmBundle() {
+    if (cmBundle) return cmBundle;
+    const [{ EditorState }, { EditorView, keymap, lineNumbers }, { defaultKeymap, indentWithTab }, { python }, { cpp }] = await Promise.all([
+      import('https://esm.sh/@codemirror/state'),
+      import('https://esm.sh/@codemirror/view'),
+      import('https://esm.sh/@codemirror/commands'),
+      import('https://esm.sh/@codemirror/lang-python'),
+      import('https://esm.sh/@codemirror/lang-cpp'),
+    ]);
+    cmBundle = { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp };
+    return cmBundle;
   }
 
-  function setupCodeBlocks(root) {
+  async function setupCodeBlocks(root) {
     const blocks = Array.from((root || document).querySelectorAll('.theory-smart-code'));
+    const { EditorState, EditorView, keymap, lineNumbers, defaultKeymap, indentWithTab, python, cpp } = await getCmBundle();
+    const dark = document.documentElement.classList.contains('dark');
+    const cmTheme = EditorView.theme({
+      "&": { backgroundColor: dark ? "#0b1220" : "#f8fafc", color: dark ? "#dbeafe" : "#0f172a", minHeight: "120px" },
+      ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7" },
+      ".cm-gutters": { backgroundColor: dark ? "#0f172a" : "#eef2ff", color: dark ? "#64748b" : "#6366f1", border: "none" },
+      ".cm-activeLineGutter": { backgroundColor: "transparent" },
+    });
     blocks.forEach((card) => {
+      if (card.dataset.cmReady === '1') return;
+      card.dataset.cmReady = '1';
       const lang = card.dataset.lang || 'python';
       const input = card.querySelector('.theory-code-input');
       const preview = card.querySelector('.theory-code-highlight');
       if (!input || !preview) return;
-      const render = () => {
-        const code = input.value || '';
-        preview.innerHTML = lang === 'python' ? highlightPython(code) : code;
-      };
-      render();
-      input.addEventListener('input', render);
+      preview.innerHTML = '';
+      const state = EditorState.create({
+        doc: input.value || '',
+        extensions: [
+          lineNumbers(),
+          keymap.of([indentWithTab, ...defaultKeymap]),
+          (lang === 'cpp' ? cpp() : python()),
+          cmTheme,
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) input.value = update.state.doc.toString();
+          }),
+        ],
+      });
+      new EditorView({ state, parent: preview });
     });
   }
 
@@ -226,17 +263,20 @@
   function applyFilters() {
     if (!grid) return;
     const q = (search?.value || '').trim().toLowerCase();
+    const groupId = groupFilter?.value || 'all';
     const active = (filterBtns.find(b => b.classList.contains('bg-white'))?.dataset.filter) || 'all';
     const cards = Array.from(grid.querySelectorAll('.theory-card'));
     cards.forEach(card => {
       const title = (card.dataset.title || '');
       const read = card.dataset.read === '1';
       const bookmarked = card.dataset.bookmarked === '1';
+      const cardGroupId = card.dataset.groupId || '';
       const matchQuery = !q || title.includes(q);
+      const matchGroup = groupId === 'all' || groupId === cardGroupId;
       let matchFilter = true;
       if (active === 'bookmarked') matchFilter = bookmarked;
-      else if (active === 'unread') matchFilter = !read;
-      card.style.display = (matchQuery && matchFilter) ? '' : 'none';
+      else if (active === 'studied') matchFilter = read;
+      card.style.display = (matchQuery && matchFilter && matchGroup) ? '' : 'none';
     });
   }
 
@@ -264,6 +304,7 @@
     try { localStorage.setItem('ui.theory.filter', btn.dataset.filter); } catch(e) {}
   }));
   search?.addEventListener('input', applyFilters);
+  groupFilter?.addEventListener('change', applyFilters);
 
   // Restore filter
   try {
@@ -272,30 +313,18 @@
   } catch(e) {}
   if (!filterBtns.some(b => b.classList.contains('bg-white'))) setActiveFilter('all');
   applyFilters();
-  setupCodeBlocks(document);
+  setupCodeBlocks(document).catch(() => {});
 
   // Back button should return to catalog
   window.addEventListener('popstate', () => {
     if (location.pathname.endsWith('/theory')) openIndex(false);
   });
 
-  // HTMX swap: open article view and mark read
+  // HTMX swap: open article view only
   document.body.addEventListener('htmx:afterSwap', function(evt) {
     if (evt.target && evt.target.id === 'articleContainer') {
       openArticle(false);
-      setupCodeBlocks(evt.target);
-      const article = evt.target.querySelector('[data-theory-article]');
-      const taskNumber = article ? parseInt(article.dataset.taskNumber || '0') : 0;
-      if (taskNumber) {
-        fetch({{ url_for('theory.theory_api_read')|tojson }}, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ task_number: taskNumber, course_id: courseId }),
-        }).catch(() => {});
-        const card = grid?.querySelector(`.theory-card[data-task-number="${taskNumber}"]`);
-        if (card) { card.dataset.read = '1'; }
-      }
+      setupCodeBlocks(evt.target).catch(() => {});
     }
   });
 
