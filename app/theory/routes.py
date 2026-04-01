@@ -548,7 +548,7 @@ def manage_list():
                 course_id=course_id,
                 group_id=group.id,
                 task_number=next_task,
-                title=f'Тема {next_task}',
+                title=f'Тема {next_pos}',
                 description='Краткое описание темы',
                 content='<!--status:draft-->\n',
                 position=next_pos,
@@ -576,7 +576,9 @@ def manage_list():
             return redirect(url_for('theory.manage_list', course_id=course_id))
         block = TheoryBlock.query.filter_by(id=block_id, course_id=course_id).first() if block_id else None
         if not block and task_number is not None:
-            block = TheoryBlock.query.filter_by(course_id=course_id, task_number=task_number).first()
+            # Защита от "перекрестного" сохранения между группами:
+            # fallback по task_number допускаем только в рамках выбранной группы.
+            block = TheoryBlock.query.filter_by(course_id=course_id, group_id=group.id, task_number=task_number).first()
         content_with_status = _with_status_prefix(content, status)
         if not block:
             next_task = (db.session.query(func.coalesce(func.max(TheoryBlock.task_number), 0)).filter_by(course_id=course_id).scalar() or 0) + 1
@@ -587,14 +589,22 @@ def manage_list():
             block.task_number = task_number
 
         block.group_id = group.id
-        block.title = title or f'Тема {block.task_number}'
+        local_number = block.position or 1
+        block.title = title or f'Тема {local_number}'
         block.description = description or None
         block.content = content_with_status
         block.author_id = current_user.id
 
         db.session.commit()
         flash('Теория сохранена.' if status == 'draft' else 'Теория опубликована.', 'success')
-        return redirect(url_for('theory.manage_list', course_id=course_id, task_number=block.task_number))
+        return redirect(
+            url_for(
+                'theory.manage_list',
+                course_id=course_id,
+                group_id=block.group_id,
+                block_id=block.id,
+            )
+        )
 
     selected_group_id = request.args.get('group_id', type=int)
     selected_block_id = request.args.get('block_id', type=int)
@@ -604,18 +614,30 @@ def manage_list():
     selected_block = None
     if selected_block_id:
         selected_block = next((b for b in group_blocks if b.id == selected_block_id), None)
-    if selected_block is None and selected_task_number is not None:
-        selected_block = TheoryBlock.query.filter_by(course_id=course_id, task_number=selected_task_number).first()
+    if selected_block is None and selected_task_number is not None and selected_group:
+        selected_block = next((b for b in group_blocks if b.task_number == selected_task_number), None)
     if selected_block is None:
         selected_block = group_blocks[0] if group_blocks else None
     if selected_block and (selected_group is None or selected_group.id != selected_block.group_id):
         selected_group = next((g for g in groups if g.id == selected_block.group_id), selected_group)
     selected_task_number = selected_block.task_number if selected_block else None
+    selected_display_number = (selected_block.position if selected_block and selected_block.position else None)
+    selected_block_status = _extract_status(selected_block.content) if selected_block else 'draft'
 
-    all_blocks = TheoryBlock.query.filter_by(course_id=course_id).order_by(TheoryBlock.task_number).all()
-    grid_states = [{'task_number': b.task_number, 'state': _extract_status(b.content)} for b in all_blocks]
-    task_numbers = [b.task_number for b in all_blocks]
-    slots = [(b.task_number, b) for b in all_blocks]
+    # Для панели преподавателя показываем карточки только выбранной группы,
+    # чтобы теории не дублировались визуально между группами.
+    current_group_blocks = blocks_by_group.get(selected_group.id, []) if selected_group else []
+    grid_states = [
+        {
+            'block_id': b.id,
+            'task_number': b.task_number,  # тех. номер, используется в аналитике/истории
+            'display_number': (b.position or idx),  # локальная нумерация в группе
+            'state': _extract_status(b.content),
+        }
+        for idx, b in enumerate(current_group_blocks, start=1)
+    ]
+    task_numbers = [b.task_number for b in current_group_blocks]
+    slots = [(b.task_number, b) for b in current_group_blocks]
 
     total_count = sum(len(v) for v in blocks_by_group.values())
     published_count = sum(1 for items in blocks_by_group.values() for b in items if _extract_status(b.content) == 'published')
@@ -654,7 +676,9 @@ def manage_list():
         blocks_by_group=blocks_by_group,
         selected_group=selected_group,
         selected_block=selected_block,
+        selected_block_status=selected_block_status,
         selected_task_number=selected_task_number,
+        selected_display_number=selected_display_number,
         grid_states=grid_states,
         task_numbers=task_numbers,
         slots=slots,
