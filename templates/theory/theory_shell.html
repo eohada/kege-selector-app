@@ -119,6 +119,27 @@
       </a>
       {% endfor %}
     </div>
+    <div id="bookmarkedGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 hidden">
+      {% for group_pack in visible_groups %}
+        {% for block in group_pack.blocks %}
+          {% set st = (state_by_number.get(block.task_number) if state_by_number is defined and state_by_number else {}) %}
+          {% if st and st.get('bookmarked') %}
+            {% set href = url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) %}
+            {% set hx_href = href ~ '&fragment=1' %}
+            <a href="{{ href }}" class="theory-bookmark-card bg-white rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
+               hx-get="{{ hx_href }}" hx-target="#articleContainer" hx-swap="innerHTML" hx-push-url="{{ href }}"
+               data-title="{{ (block.title or ('Тема ' ~ block.task_number))|lower }}">
+              <div class="flex items-center justify-between mb-4">
+                <span class="bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100">Избранное</span>
+                <span class="text-[10px] font-bold text-slate-400">{{ group_pack.group.name }}</span>
+              </div>
+              <h3 class="text-xl font-black text-slate-900 mb-2">{{ block.title or ('Тема ' ~ block.task_number) }}</h3>
+              <p class="text-sm font-medium text-slate-500 line-clamp-2">{{ (block.description or 'Открой тему для просмотра.')|truncate(110, True, '…') }}</p>
+            </a>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
     {% else %}
     <div class="w-full bg-white rounded-[32px] border-2 border-slate-200 border-dashed p-12 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
       <div class="absolute inset-0 bg-slate-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
@@ -229,6 +250,7 @@
   const viewTopics = document.getElementById('view-topics');
   const viewArticle = document.getElementById('view-article');
   const grid = document.getElementById('theoryGrid');
+  const bookmarkedGrid = document.getElementById('bookmarkedGrid');
   const search = document.getElementById('theorySearch');
   const filterBtns = Array.from(document.querySelectorAll('.theory-filter'));
 
@@ -310,6 +332,19 @@
     const q = (search?.value || '').trim().toLowerCase();
     const active = (filterBtns.find(b => b.classList.contains('bg-white'))?.dataset.filter) || 'all';
     const cards = Array.from(grid.querySelectorAll('.theory-card'));
+    const bookmarkCards = Array.from((bookmarkedGrid || document).querySelectorAll('.theory-bookmark-card'));
+    if (bookmarkedGrid) bookmarkedGrid.classList.toggle('hidden', active !== 'bookmarked');
+    if (grid) grid.classList.toggle('hidden', active === 'bookmarked');
+
+    if (active === 'bookmarked') {
+      bookmarkCards.forEach(card => {
+        const title = (card.dataset.title || '');
+        const matchQuery = !q || title.includes(q);
+        card.style.display = matchQuery ? '' : 'none';
+      });
+      return;
+    }
+
     cards.forEach(card => {
       const title = (card.dataset.title || '');
       const read = card.dataset.read === '1';
@@ -318,11 +353,6 @@
       let matchFilter = true;
       if (active === 'nonempty') {
         matchFilter = cardCount > 0 || read;
-      } else if (active === 'bookmarked') {
-        const bookmarkedCount = parseInt(card.dataset.bookmarkedCount || '0');
-        // В "Избранном" не показываем всю группу из-за одной карточки:
-        // группа попадает только если ВСЕ ее карточки в избранном.
-        matchFilter = cardCount > 0 && bookmarkedCount === cardCount;
       }
       card.style.display = (matchQuery && matchFilter) ? '' : 'none';
     });
@@ -501,6 +531,8 @@
         btnRead.classList.add('text-white');
         btnRead.classList.remove('bg-boo-primary');
         btnRead.style.color = '#FFFFFF';
+        btnRead.style.background = '#16A34A';
+        btnRead.style.borderBottom = '3px solid #166534';
         btnRead.innerHTML = '<i class="ph-bold ph-check-circle text-lg"></i> Изучено';
       }
       if (window.toast) window.toast.success('Отмечено как изученное');
