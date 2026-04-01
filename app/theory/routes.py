@@ -513,6 +513,30 @@ def manage_list():
             db.session.commit()
             flash('Группа удалена.', 'success')
             return redirect(url_for('theory.manage_list', course_id=course_id, group_id=fallback.id))
+        if action == 'rename_group':
+            group_id = request.form.get('group_id', type=int)
+            new_name = (request.form.get('group_name') or '').strip()
+            new_description = (request.form.get('group_description') or '').strip()
+            group = TheoryGroup.query.filter_by(id=group_id, course_id=course_id).first()
+            if not group:
+                flash('Группа не найдена.', 'danger')
+                return redirect(url_for('theory.manage_list', course_id=course_id))
+            if not new_name:
+                flash('Введите название группы.', 'warning')
+                return redirect(url_for('theory.manage_list', course_id=course_id, group_id=group.id))
+            duplicate = TheoryGroup.query.filter(
+                TheoryGroup.course_id == course_id,
+                TheoryGroup.name == new_name,
+                TheoryGroup.id != group.id,
+            ).first()
+            if duplicate:
+                flash('Группа с таким названием уже существует.', 'warning')
+                return redirect(url_for('theory.manage_list', course_id=course_id, group_id=group.id))
+            group.name = new_name
+            group.description = new_description or None
+            db.session.commit()
+            flash('Группа обновлена.', 'success')
+            return redirect(url_for('theory.manage_list', course_id=course_id, group_id=group.id))
         if action == 'create_block':
             group_id = request.form.get('group_id', type=int)
             group = TheoryGroup.query.filter_by(id=group_id, course_id=course_id).first()

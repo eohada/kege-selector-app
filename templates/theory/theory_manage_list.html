@@ -50,6 +50,40 @@
         </div>
 
         <div class="flex-1 overflow-y-auto pr-2">
+          <div class="mb-4 p-3 rounded-xl border border-slate-200 bg-slate-50">
+            <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Группы</div>
+            <div class="space-y-1.5 max-h-28 overflow-y-auto pr-1 mb-2">
+              {% for group in groups %}
+              <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=group.id) }}"
+                 class="block px-2.5 py-2 rounded-lg text-xs font-bold no-underline {{ 'bg-purple-50 text-boo-primary border border-purple-100' if selected_group and selected_group.id == group.id else 'text-slate-600 hover:bg-white border border-transparent' }}">
+                {{ group.name }}
+              </a>
+              {% endfor %}
+            </div>
+            <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex gap-1.5 mb-1.5">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="create_group">
+              <input type="text" name="group_name" class="flex-1 px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold" placeholder="Новая группа">
+              <button type="submit" class="px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-black">+</button>
+            </form>
+            {% if selected_group %}
+            <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="space-y-1.5">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="rename_group">
+              <input type="hidden" name="group_id" value="{{ selected_group.id }}">
+              <input type="text" name="group_name" value="{{ selected_group.name }}" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold" placeholder="Переименовать группу">
+              <input type="text" name="group_description" value="{{ selected_group.description or '' }}" class="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium" placeholder="Описание группы">
+              <button type="submit" class="w-full py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold">Обновить</button>
+            </form>
+            <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="mt-1.5">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="delete_group">
+              <input type="hidden" name="group_id" value="{{ selected_group.id }}">
+              <button type="submit" class="w-full py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-bold">Удалить</button>
+            </form>
+            {% endif %}
+          </div>
+
           <div class="flex justify-between items-end mb-3">
             <span class="text-xs font-bold text-slate-500">Заполнение базы: <span class="text-slate-900 font-black">{{ completion_percent }}%</span></span>
           </div>
