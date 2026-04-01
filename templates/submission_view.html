@@ -87,7 +87,7 @@
         .task-card {
             background: #fff;
             border: 1px solid #e2e8f0;
-            border-radius: 28px;
+            border-radius: 32px;
             border-bottom: 4px solid #cbd5e1;
             padding: 0;
             margin-bottom: 1.5rem;
@@ -152,21 +152,23 @@
             justify-content: space-between;
             align-items: start;
             margin-bottom: 0;
-            padding: 1.1rem 1.35rem;
+            padding: 1.25rem 1.5rem;
             border-bottom: 1px solid #f1f5f9;
             background: rgba(248, 250, 252, 0.75);
-            border-radius: 28px 28px 0 0;
+            border-radius: 32px 32px 0 0;
         }
         
         .task-number {
-            font-size: 1.2em;
-            font-weight: 700;
-            color: var(--accent-1);
+            font-size: 1.9rem;
+            font-weight: 900;
+            color: #7B5CFF;
+            letter-spacing: -0.02em;
         }
         
         .task-score {
-            font-size: 0.9em;
-            color: var(--text-muted);
+            font-size: 1.1rem;
+            color: #64748b;
+            font-weight: 500;
         }
         
         .task-content {
@@ -183,12 +185,13 @@
         
         .answer-input {
             width: 100%;
-            min-height: 2.75rem;
-            padding: 0.6rem 0.9rem;
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-sm);
+            min-height: 5.2rem;
+            padding: 0.85rem 1rem;
+            border: 1px solid #dbe3ee;
+            border-radius: 12px;
             font-family: inherit;
-            font-size: 1em;
+            font-size: 1.15rem;
+            font-weight: 600;
             background: #f8fafc;
             color: #0f172a;
             resize: vertical;
@@ -418,6 +421,12 @@
             color: #94a3b8;
             font-size: 18px;
         }
+        .exec-unlocked {
+            padding: 1.5rem 1.5rem 1.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
     </style>
     <script>
         (function(){
@@ -520,7 +529,8 @@
                 {% endif %}
                 
                 {% if not should_hide_tasks %}
-                <div class="task-content" style="padding: 1.25rem 1.35rem 0;">
+                <div class="exec-unlocked">
+                <div class="task-content text-[15px] leading-relaxed text-slate-800 space-y-4">
                     {{ task_item.task.content_html|task_content_absolute_urls|strip_attachment_links|sanitize_html }}
                 </div>
                 {% if (not should_hide_tasks) and task_item.task.attached_files %}
@@ -553,7 +563,7 @@
                 {% endif %}
                 {% endif %}
                 
-                <div style="padding: 0 1.35rem 1.35rem;">
+                <div class="task-input bg-white border border-slate-200 rounded-[20px] p-2 transition-all shadow-sm">
                     {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task and task_item.answer %}
                     <div style="margin-bottom: 0.5rem; padding: 0.5rem 0; font-weight: 600;">
                         {% if task_item.answer.is_correct == True %}
@@ -565,7 +575,7 @@
                         {% endif %}
                         <span style="color: var(--text-muted); font-size: 0.9em; font-weight: 500;"> (попытки {{ task_item.task_attempts_used }}/{{ task_item.max_attempts_for_task }} исчерпаны)</span>
                     </div>
-                    <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Ваш ответ:</label>
+                    <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-2 mb-2 block">Ваш ответ:</label>
                     <div style="padding: 0.6rem 0.9rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); white-space: pre-wrap; color: var(--text-primary);">{{ task_item.answer.value or '(нет ответа)' }}</div>
                     {% if task_item.answer and task_item.answer.teacher_comment %}
                     <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
@@ -586,7 +596,7 @@
                         <span style="color: var(--text-muted); font-size: 0.9em; font-weight: 500;"> (попытка {{ task_item.task_attempts_used }}/{{ task_item.max_attempts_for_task }})</span>
                     </div>
                     {% endif %}
-                    <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Ваш ответ:</label>
+                    <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-2 mb-2 block">Ваш ответ:</label>
                     {% if task_item.requires_manual_review and submission.status in ['IN_PROGRESS', 'RETURNED'] and (not attempts_per_task or task_item.task_attempts_used < task_item.max_attempts_for_task) %}
                     <div class="file-upload-zone"
                          ondragover="event.preventDefault(); this.classList.add('bg-light')"
@@ -636,11 +646,12 @@
                     </div>
                     {% endif %}
                     {% if submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0) %}
-                    <div class="code-editor-wrap" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 0.75rem;">
-                        <button type="button" class="code-editor-toggle neo-button ghost sm" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.75rem; font-size: 0.9em;">
-                            <span class="code-editor-toggle-icon">▶</span> Редактор кода
+                    <div class="code-editor-wrap border border-slate-200 rounded-[24px] overflow-hidden" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 0.75rem;">
+                        <button type="button" class="code-editor-toggle w-full px-6 py-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-colors font-bold text-slate-700">
+                            <span class="flex items-center gap-2"><i class="ph-bold ph-code text-boo-primary text-lg"></i> Редактор кода</span>
+                            <span class="code-editor-toggle-icon">▶</span>
                         </button>
-                        <div class="code-editor-panel" style="display: none; margin-top: 0.75rem; padding: 1rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md);">
+                        <div class="code-editor-panel" style="display: none; padding: 1rem; background: #fff; border-top: 1px solid #e2e8f0;">
                             <p style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.5rem;">Python 3. Доступны только <code>itertools</code> и <code>math</code>.</p>
                             <div class="code-editor-cm-wrap" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
                                 <textarea class="code-editor-text" rows="14" placeholder="# Ваш код&#10;import math&#10;print(math.sqrt(16))" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; padding: 0.75rem; border: none; background: var(--surface-1); color: var(--text-primary); resize: vertical; box-sizing: border-box;">{{ task_item.answer.student_code if task_item.answer and task_item.answer.student_code else '' }}</textarea>
@@ -658,6 +669,7 @@
                     </div>
                     {% endif %}
                     {% endif %}
+                </div>
                 </div>
                 {% endif %}
             </div>
