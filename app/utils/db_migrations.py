@@ -1541,9 +1541,20 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
         Course as ExamCourse, CourseTaskTemplate, StudentCourseEnrollment,
         GradingScale, Student, Tasks, TheoryBlock, StudentTheoryAccess,
         StudentTaskStatistics, CallRequest, StudentTheoryState, TheoryFeedback,
+        TheoryGroup, TheoryFeedbackHistory,
     )
     try:
-        for model in [ExamCourse, CourseTaskTemplate, StudentCourseEnrollment, GradingScale, CallRequest, StudentTheoryState, TheoryFeedback]:
+        for model in [
+            ExamCourse,
+            CourseTaskTemplate,
+            StudentCourseEnrollment,
+            GradingScale,
+            CallRequest,
+            StudentTheoryState,
+            TheoryFeedback,
+            TheoryGroup,
+            TheoryFeedbackHistory,
+        ]:
             tname = model.__tablename__
             if tname.lower() not in [t.lower() for t in table_names]:
                 try:
@@ -1560,6 +1571,9 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
         _add_col('Tasks', 'course_id', 'INTEGER')
         _add_col('TheoryBlocks', 'course_id', 'INTEGER')
         _add_col('TheoryBlocks', 'pdf_path', 'VARCHAR(500)')
+        _add_col('TheoryBlocks', 'group_id', 'INTEGER')
+        _add_col('TheoryBlocks', 'description', 'VARCHAR(500)')
+        _add_col('TheoryBlocks', 'position', 'INTEGER DEFAULT 0')
         _add_col('StudentTheoryAccess', 'course_id', 'INTEGER')
         _add_col('StudentTaskStatistics', 'course_id', 'INTEGER')
         _add_col('Assignments', 'exam_course_id', 'INTEGER')
@@ -1649,6 +1663,38 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
                 logger.info(f"Backfilled course_id={ege.id} for {updated} TheoryBlocks")
         except Exception as e:
             logger.warning(f"Could not backfill TheoryBlock.course_id: {e}")
+            db.session.rollback()
+
+        # --- Backfill: TheoryGroups + TheoryBlocks.group_id/position ---
+        try:
+            groups_by_course = {}
+            existing_groups = TheoryGroup.query.all()
+            for g in existing_groups:
+                groups_by_course[g.course_id] = g
+
+            course_ids = [r[0] for r in db.session.query(TheoryBlock.course_id).distinct().all()]
+            for c_id in course_ids:
+                if c_id not in groups_by_course:
+                    grp = TheoryGroup(
+                        course_id=c_id,
+                        name='Общая группа',
+                        description='Группа, созданная автоматически',
+                        position=0,
+                    )
+                    db.session.add(grp)
+                    db.session.flush()
+                    groups_by_course[c_id] = grp
+
+            blocks = TheoryBlock.query.order_by(TheoryBlock.course_id, TheoryBlock.task_number).all()
+            for b in blocks:
+                if b.group_id is None:
+                    grp = groups_by_course.get(b.course_id)
+                    if grp:
+                        b.group_id = grp.id
+                if b.position is None:
+                    b.position = b.task_number or 0
+        except Exception as e:
+            logger.warning(f"Could not backfill theory groups/positions: {e}")
             db.session.rollback()
 
         # --- Backfill: StudentTheoryAccess ---
