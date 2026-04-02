@@ -377,7 +377,8 @@ def task_generator(lesson_id=None):
     course_task_numbers = {}
     try:
         for c in all_courses:
-            course_task_numbers[c.id] = [
+            # Строковые ключи — в JS объект из JSON всегда с строковыми ключами; так lookup надёжен.
+            course_task_numbers[str(c.id)] = [
                 t.task_number
                 for t in CourseTaskTemplate.query.filter_by(course_id=c.id)
                 .order_by(CourseTaskTemplate.task_number).all()

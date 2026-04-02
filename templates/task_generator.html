@@ -537,6 +537,19 @@
             manual: document.getElementById('gen-panel-manual'),
             bank: document.getElementById('gen-panel-bank'),
         };
+
+        function refreshManualTaskNumbers() {
+            const courseEl = document.getElementById('bankManualCourse');
+            const taskNumEl = document.getElementById('bankManualTaskNumber');
+            if (!courseEl || !taskNumEl) return;
+            const sid = String(courseEl.value || '').trim();
+            const map = window.__GEN_COURSE_TASK_NUMBERS__ || {};
+            const nums = sid && Object.prototype.hasOwnProperty.call(map, sid) ? map[sid] : [];
+            taskNumEl.innerHTML = nums.length
+                ? nums.map(n => `<option value="${n}">Задание ${n}</option>`).join('')
+                : '<option value="">—</option>';
+        }
+
         const validTabs = new Set(['stream', 'manual', 'bank']);
         const TAB_BTN_ON = 'gen-layout-tab-btn px-6 py-3 bg-white text-boo-primary rounded-xl font-black text-sm shadow-sm flex items-center gap-2 whitespace-nowrap transition-all border border-slate-200';
         const TAB_BTN_OFF = 'gen-layout-tab-btn px-6 py-3 text-slate-500 hover:text-slate-900 rounded-xl font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2';
@@ -555,6 +568,7 @@
                 if (!el) return;
                 el.classList.toggle('is-active', key === name);
             });
+            if (name === 'manual') refreshManualTaskNumbers();
         }
         window.switchGenTab = setGenTab;
         tabButtons.forEach((btn) => {
@@ -923,16 +937,8 @@
         const bankCreateBtn = document.getElementById('bankCreateBtn');
         const bankImageUpload = document.getElementById('bankImageUpload');
 
-        function refreshManualTaskNumbers() {
-            if (!bankManualCourse || !bankManualTaskNumber) return;
-            const cid = parseInt(bankManualCourse.value, 10);
-            const map = window.__GEN_COURSE_TASK_NUMBERS__ || {};
-            const nums = map[cid] || [];
-            bankManualTaskNumber.innerHTML = nums.length
-                ? nums.map(n => `<option value="${n}">Задание ${n}</option>`).join('')
-                : '<option value="">—</option>';
-        }
         bankManualCourse?.addEventListener('change', refreshManualTaskNumbers);
+        bankManualCourse?.addEventListener('input', refreshManualTaskNumbers);
         refreshManualTaskNumbers();
 
         bankImageUpload?.addEventListener('change', async function() {
