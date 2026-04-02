@@ -9,6 +9,7 @@ import uuid
 from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import or_, func, text
+from sqlalchemy.orm import joinedload
 
 from app.task_generator import task_generator_bp
 from app.task_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
@@ -27,6 +28,44 @@ logger = logging.getLogger(__name__)
 
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
+
+
+def _task_generator_page_url(
+    *,
+    lesson_id=None,
+    assignment_type='homework',
+    template_id=None,
+    exam_course_id=None,
+    recipient_ids=None,
+    bank_page=1,
+    bank_per_page=25,
+    bank_course_id=None,
+    bank_task_number=None,
+    bank_only_manual=False,
+    bank_open=False,
+):
+    """Единая точка сборки URL страницы генератора (поток + банк в одном месте)."""
+    kwargs = {'assignment_type': assignment_type or 'homework'}
+    if lesson_id is not None:
+        kwargs['lesson_id'] = lesson_id
+    if template_id is not None:
+        kwargs['template_id'] = template_id
+    if exam_course_id is not None:
+        kwargs['exam_course_id'] = exam_course_id
+    if recipient_ids:
+        kwargs['recipient_ids'] = ','.join(str(x) for x in recipient_ids)
+    kwargs['bank_page'] = max(1, int(bank_page or 1))
+    if bank_per_page and int(bank_per_page) != 25:
+        kwargs['bank_per_page'] = int(bank_per_page)
+    if bank_course_id is not None:
+        kwargs['bank_course_id'] = int(bank_course_id)
+    if bank_task_number is not None:
+        kwargs['bank_task_number'] = int(bank_task_number)
+    if bank_only_manual:
+        kwargs['bank_only_manual'] = 1
+    if bank_open:
+        kwargs['bank_open'] = 1
+    return url_for('task_generator.task_generator', **kwargs)
 
 
 def _require_task_generator_access() -> None:
@@ -324,6 +363,53 @@ def task_generator(lesson_id=None):
         logger.warning(f'course_task_numbers for generator: {e}')
         course_task_numbers = {}
 
+    bank_page = max(1, request.args.get('bank_page', type=int) or 1)
+    bank_per_page = min(100, max(10, request.args.get('bank_per_page', type=int) or 25))
+    bank_filter_course_id = request.args.get('bank_course_id', type=int)
+    bank_filter_task_number = request.args.get('bank_task_number', type=int)
+    bank_only_manual = request.args.get('bank_only_manual', type=int) == 1
+    bank_open = request.args.get('bank_open', type=int) == 1
+    bank_panel_open = bank_open or bool(bank_filter_course_id or bank_filter_task_number or bank_only_manual or bank_page > 1)
+
+    bank_tasks = []
+    bank_total = 0
+    bank_pagination = []
+    try:
+        bq = Tasks.query.options(joinedload(Tasks.course))
+        if bank_filter_course_id:
+            bq = bq.filter(Tasks.course_id == bank_filter_course_id)
+        if bank_filter_task_number:
+            bq = bq.filter(Tasks.task_number == bank_filter_task_number)
+        if bank_only_manual:
+            bq = bq.filter(Tasks.bank_origin == 'manual')
+        bq = bq.order_by(Tasks.task_id.desc())
+        bank_total = bq.count()
+        bank_tasks = bq.offset((bank_page - 1) * bank_per_page).limit(bank_per_page).all()
+        bank_pages_total = max(1, (bank_total + bank_per_page - 1) // bank_per_page)
+        for p in range(1, bank_pages_total + 1):
+            bank_pagination.append({
+                'page': p,
+                'url': _task_generator_page_url(
+                    lesson_id=lesson_id,
+                    assignment_type=assignment_type,
+                    template_id=template_id,
+                    exam_course_id=exam_course_id,
+                    recipient_ids=recipient_ids,
+                    bank_page=p,
+                    bank_per_page=bank_per_page,
+                    bank_course_id=bank_filter_course_id,
+                    bank_task_number=bank_filter_task_number,
+                    bank_only_manual=bank_only_manual,
+                    bank_open=True,
+                ),
+                'current': p == bank_page,
+            })
+    except Exception as e:
+        logger.warning(f'bank panel query failed (schema?): {e}')
+        bank_tasks = []
+        bank_total = 0
+        bank_pagination = []
+
     return render_template('task_generator.html',
                            selection_form=selection_form,
                            reset_form=reset_form,
@@ -339,7 +425,16 @@ def task_generator(lesson_id=None):
                            exam_course_id=exam_course_id,
                            all_courses=all_courses,
                            active_course=active_course,
-                           course_task_numbers=course_task_numbers)
+                           course_task_numbers=course_task_numbers,
+                           bank_tasks=bank_tasks,
+                           bank_total=bank_total,
+                           bank_page=bank_page,
+                           bank_per_page=bank_per_page,
+                           bank_filter_course_id=bank_filter_course_id,
+                           bank_filter_task_number=bank_filter_task_number,
+                           bank_only_manual=bank_only_manual,
+                           bank_panel_open=bank_panel_open,
+                           bank_pagination=bank_pagination)
 
 
 def _lesson_tag(lesson_id: int, assignment_type: str) -> str:
@@ -913,41 +1008,32 @@ def task_generator_bank_create():
 @task_generator_bp.route('/task-generator/bank', methods=['GET'])
 @login_required
 def task_generator_bank():
-    """Просмотр и фильтрация банка заданий."""
+    """Старый URL: переносим на страницу генератора с блоком банка (без отдельной страницы)."""
     _require_task_generator_access()
-    try:
-        course_id = request.args.get('course_id', type=int)
-    except (TypeError, ValueError):
-        course_id = None
-    task_number = request.args.get('task_number', type=int)
-    only_manual = request.args.get('only_manual', type=int) == 1
-    page = max(1, request.args.get('page', type=int) or 1)
-    per_page = min(100, max(10, request.args.get('per_page', type=int) or 30))
-
-    q = Tasks.query
-    if course_id:
-        q = q.filter(Tasks.course_id == course_id)
-    if task_number:
-        q = q.filter(Tasks.task_number == task_number)
-    if only_manual:
-        q = q.filter(Tasks.bank_origin == 'manual')
-
-    q = q.order_by(Tasks.task_id.desc())
-    total = q.count()
-    rows = q.offset((page - 1) * per_page).limit(per_page).all()
-
-    courses = Course.query.filter_by(is_active=True).order_by(Course.title).all()
-    return render_template(
-        'task_generator_bank.html',
-        tasks=rows,
-        total=total,
-        page=page,
-        per_page=per_page,
-        filter_course_id=course_id,
-        filter_task_number=task_number,
-        filter_only_manual=only_manual or (bank_origin == 'manual'),
-        all_courses=courses,
-    )
+    rd = {'bank_open': 1}
+    if request.args.get('course_id') not in (None, ''):
+        try:
+            rd['bank_course_id'] = int(request.args.get('course_id'))
+        except (TypeError, ValueError):
+            pass
+    if request.args.get('task_number') not in (None, ''):
+        try:
+            rd['bank_task_number'] = int(request.args.get('task_number'))
+        except (TypeError, ValueError):
+            pass
+    if request.args.get('page') not in (None, ''):
+        try:
+            rd['bank_page'] = int(request.args.get('page'))
+        except (TypeError, ValueError):
+            pass
+    if request.args.get('per_page') not in (None, ''):
+        try:
+            rd['bank_per_page'] = int(request.args.get('per_page'))
+        except (TypeError, ValueError):
+            pass
+    if request.args.get('only_manual'):
+        rd['bank_only_manual'] = 1
+    return redirect(url_for('task_generator.task_generator', **rd))
 
 
 @task_generator_bp.route('/results')

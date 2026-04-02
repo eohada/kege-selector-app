@@ -116,7 +116,8 @@
     {% set status_headline = 'Нет привязки к уроку' %}
 {% endif %}
 
-<div class="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6 items-start gen-premium-shell pb-8">
+<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 pb-8">
+<div class="flex flex-col lg:flex-row gap-6 items-start gen-premium-shell w-full">
     <div class="w-full lg:w-1/3 flex flex-col gap-6 min-w-0 lg:sticky lg:top-28">
         <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 relative overflow-hidden group">
             <div class="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-purple-50 to-cyan-50 rounded-full blur-3xl opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
@@ -129,10 +130,11 @@
                     Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной. Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
                 </p>
                 <div class="flex flex-wrap gap-2 mb-6">
-                    <a href="{{ url_for('task_generator.task_generator_bank') }}" class="neo-button outline text-sm no-underline inline-flex items-center gap-2">
+                    <button type="button" id="genBankScrollBtn" class="neo-button outline text-sm inline-flex items-center gap-2">
                         <i class="ph-bold ph-books" aria-hidden="true"></i> Банк заданий
-                    </a>
+                    </button>
                 </div>
+                <p class="text-xs text-muted m-0 mb-4 leading-relaxed">Таблица и фильтры банка — внизу на этой странице, без перехода в другой раздел.</p>
                 <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
                     <span class="text-xs font-bold text-muted uppercase tracking-widest">Режим работы</span>
                     <button type="button" class="text-sm font-bold text-boo-primary hover:text-boo-primaryHover transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-default font-inherit">
@@ -455,6 +457,8 @@
             </div>
         </div>
     </div>
+</div>
+{% include '_task_generator_bank_panel.html' %}
 </div>
 {% endblock %}
 
@@ -922,6 +926,14 @@
                 if (window.toast) window.toast.error(e.message || 'Ошибка');
             } finally {
                 bankCreateBtn.disabled = false;
+            }
+        });
+
+        document.getElementById('genBankScrollBtn')?.addEventListener('click', () => {
+            const det = document.getElementById('gen-bank-details');
+            if (det) {
+                det.open = true;
+                det.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
 

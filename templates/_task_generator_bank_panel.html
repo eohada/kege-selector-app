@@ -1,0 +1,98 @@
+{# Встроенная панель банка заданий (без extends). Требует: bank_* переменные из task_generator #}
+<details id="gen-bank-details" class="group bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile overflow-hidden w-full" {% if bank_panel_open %}open{% endif %}>
+    <summary class="flex items-center justify-between gap-4 cursor-pointer list-none px-8 py-5 bg-slate-50/50 border-b border-slate-100 [&::-webkit-details-marker]:hidden">
+        <div class="flex items-center gap-3 min-w-0">
+            <i class="ph-bold ph-caret-right transition-transform group-open:rotate-90 text-muted shrink-0" aria-hidden="true"></i>
+            <div class="min-w-0">
+                <h2 class="text-xl font-black text-primary m-0 tracking-tight">Банк заданий</h2>
+                <p class="text-sm text-muted m-0 mt-0.5">Фильтры и таблица на этой же странице. Всего записей: <strong class="text-primary">{{ bank_total }}</strong>.</p>
+            </div>
+        </div>
+        <span class="text-xs font-bold text-muted uppercase tracking-widest shrink-0 hidden sm:inline">Развернуть</span>
+    </summary>
+
+    <div class="p-8 pt-2 space-y-6 border-t border-slate-100">
+        <form method="get" action="{% if lesson_id %}{{ url_for('task_generator.task_generator', lesson_id=lesson_id) }}{% else %}{{ url_for('task_generator.task_generator') }}{% endif %}" class="flex flex-wrap gap-4 items-end">
+            {# Сохраняем контекст урока / шаблона при отправке фильтра #}
+            {% if lesson_id %}<input type="hidden" name="lesson_id" value="{{ lesson_id }}">{% endif %}
+            <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
+            {% if template_id %}<input type="hidden" name="template_id" value="{{ template_id }}">{% endif %}
+            {% if exam_course_id %}<input type="hidden" name="exam_course_id" value="{{ exam_course_id }}">{% endif %}
+            {% if generator_recipient_ids and generator_recipient_ids|length > 0 %}
+            <input type="hidden" name="recipient_ids" value="{{ generator_recipient_ids|join(',') }}">
+            {% endif %}
+            <input type="hidden" name="bank_page" value="1">
+            <input type="hidden" name="bank_open" value="1">
+            <input type="hidden" name="bank_per_page" value="{{ bank_per_page }}">
+
+            <div class="neo-field min-w-[200px]">
+                <label class="neo-label" for="bank_filter_course_id">Программа</label>
+                <select class="neo-select" id="bank_filter_course_id" name="bank_course_id">
+                    <option value="">Все</option>
+                    {% for c in all_courses %}
+                    <option value="{{ c.id }}" {% if bank_filter_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="neo-field w-32">
+                <label class="neo-label" for="bank_filter_task_number">№ задания</label>
+                <input class="neo-input" id="bank_filter_task_number" name="bank_task_number" type="number" min="1" placeholder="—"
+                       value="{{ bank_filter_task_number or '' }}">
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted mb-2">
+                <input type="checkbox" name="bank_only_manual" value="1" class="w-5 h-5 rounded border-slate-300 accent-boo-primary" {% if bank_only_manual %}checked{% endif %}>
+                Только созданные вручную
+            </label>
+            <button type="submit" class="neo-button accent">Показать</button>
+        </form>
+
+        <div class="rounded-[24px] border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-100 bg-slate-50/80 text-left text-[10px] font-extrabold text-muted uppercase tracking-widest">
+                            <th class="px-4 py-3">ID</th>
+                            <th class="px-4 py-3">Программа</th>
+                            <th class="px-4 py-3">№</th>
+                            <th class="px-4 py-3">site_task_id</th>
+                            <th class="px-4 py-3">Происхождение</th>
+                            <th class="px-4 py-3">Сложность</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in bank_tasks %}
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                            <td class="px-4 py-3 font-mono font-bold text-boo-primary">{{ t.task_id }}</td>
+                            <td class="px-4 py-3 text-muted">{{ t.course.title if t.course else '—' }}</td>
+                            <td class="px-4 py-3 font-bold">{{ t.task_number }}</td>
+                            <td class="px-4 py-3 font-mono text-xs text-muted max-w-[200px] truncate" title="{{ t.site_task_id or '' }}">{{ t.site_task_id or '—' }}</td>
+                            <td class="px-4 py-3">
+                                {% if t.bank_origin == 'manual' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-100 dark:border-indigo-800">Вручную</span>
+                                {% elif t.bank_origin %}
+                                <span class="text-muted">{{ t.bank_origin }}</span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-muted">{{ t.difficulty_level if t.difficulty_level is not none else '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="px-4 py-10 text-center text-muted font-medium">Нет записей по выбранным фильтрам.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if bank_pagination and bank_pagination|length > 1 %}
+            <div class="px-4 py-4 border-t border-slate-100 flex flex-wrap gap-2 justify-center">
+                {% for item in bank_pagination %}
+                <a class="px-3 py-1.5 rounded-lg text-sm font-bold no-underline {% if item.current %}bg-boo-primary text-white{% else %}bg-surface-alt text-muted border border-slate-200 hover:border-boo-primary{% endif %}"
+                   href="{{ item.url }}">{{ item.page }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</details>
