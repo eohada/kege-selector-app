@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=2.4">
+    {% include '_boo_select_head.html' %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -177,6 +178,7 @@
         .username-availability.busy { color: var(--danger, #ef4444); }
         .username-availability.checking { color: var(--text-muted); }
     </style>
+    {% include '_boo_select_scripts.html' %}
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
     <script>

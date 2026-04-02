@@ -141,6 +141,15 @@
       marker.appendChild(path);
       defs.appendChild(marker);
       this.svgEl.appendChild(defs);
+      try {
+        if (typeof window.initBooSelects === 'function') window.initBooSelects(this.rootEl);
+      } catch (e) { /* noop */ }
+    }
+
+    _booRefreshSelect(el) {
+      try {
+        if (el && typeof window.syncBooSelect === 'function') window.syncBooSelect(el);
+      } catch (e) { /* noop */ }
     }
 
     _mountDialog() {
@@ -304,6 +313,10 @@
       this.createDlgFamily.style.display = 'none';
       this.createDlgEnrollment.style.display = 'none';
       this.createDlgTypeSelect.onchange = null;
+      this._booRefreshSelect(this.createDlgTargetSelect);
+      this._booRefreshSelect(this.createDlgTypeSelect);
+      this._booRefreshSelect(this.createDlgAccess);
+      this._booRefreshSelect(this.createDlgStatus);
     }
 
     _openCreateLinkDialog() {
@@ -350,6 +363,7 @@
             this.createDlgTargetSelect.appendChild(opt);
           }
           this._updateCreateDialog();
+          this._booRefreshSelect(this.createDlgTargetSelect);
         };
 
         this.createDlgTypeSelect.onchange = updateTargetList;
@@ -371,6 +385,8 @@
         return;
       }
 
+      this._booRefreshSelect(this.createDlgTargetSelect);
+      this._booRefreshSelect(this.createDlgTypeSelect);
       this.createDialogEl.showModal();
     }
 
@@ -984,6 +1000,8 @@
         this.dlgStatus.value = e.status || 'active';
         this.dlgHint.textContent = 'Настройка: subject/тэг и статус контракта.';
       }
+      this._booRefreshSelect(this.dlgAccess);
+      this._booRefreshSelect(this.dlgStatus);
       this.dialogEl.showModal();
     }
 

@@ -213,6 +213,12 @@
       </div>
     `;
 
+    if (typeof window.initBooSelects === 'function') {
+      try {
+        window.initBooSelects(inspectorBody);
+      } catch (e) { /* noop */ }
+    }
+
     const dateInput = qs('#inspectorDate', inspectorBody);
     const timeInput = qs('#inspectorTime', inspectorBody);
     const statusSel = qs('#inspectorStatus', inspectorBody);
