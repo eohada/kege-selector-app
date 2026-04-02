@@ -370,6 +370,11 @@ def task_generator(lesson_id=None):
     bank_only_manual = request.args.get('bank_only_manual', type=int) == 1
     bank_open = request.args.get('bank_open', type=int) == 1
     bank_panel_open = bank_open or bool(bank_filter_course_id or bank_filter_task_number or bank_only_manual or bank_page > 1)
+    gen_tab_arg = (request.args.get('gen_tab') or '').strip().lower()
+    if gen_tab_arg in ('stream', 'manual', 'bank'):
+        initial_gen_tab = gen_tab_arg
+    else:
+        initial_gen_tab = 'bank' if bank_panel_open else 'stream'
 
     bank_tasks = []
     bank_total = 0
@@ -434,7 +439,8 @@ def task_generator(lesson_id=None):
                            bank_filter_task_number=bank_filter_task_number,
                            bank_only_manual=bank_only_manual,
                            bank_panel_open=bank_panel_open,
-                           bank_pagination=bank_pagination)
+                           bank_pagination=bank_pagination,
+                           initial_gen_tab=initial_gen_tab)
 
 
 def _lesson_tag(lesson_id: int, assignment_type: str) -> str:

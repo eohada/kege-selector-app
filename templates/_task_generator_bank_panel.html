@@ -1,17 +1,11 @@
 {# Встроенная панель банка заданий (без extends). Требует: bank_* переменные из task_generator #}
-<details id="gen-bank-details" class="group bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile overflow-hidden w-full" {% if bank_panel_open %}open{% endif %}>
-    <summary class="flex items-center justify-between gap-4 cursor-pointer list-none px-8 py-5 bg-slate-50/50 border-b border-slate-100 [&::-webkit-details-marker]:hidden">
-        <div class="flex items-center gap-3 min-w-0">
-            <i class="ph-bold ph-caret-right transition-transform group-open:rotate-90 text-muted shrink-0" aria-hidden="true"></i>
-            <div class="min-w-0">
-                <h2 class="text-xl font-black text-primary m-0 tracking-tight">Банк заданий</h2>
-                <p class="text-sm text-muted m-0 mt-0.5">Фильтры и таблица на этой же странице. Всего записей: <strong class="text-primary">{{ bank_total }}</strong>.</p>
-            </div>
-        </div>
-        <span class="text-xs font-bold text-muted uppercase tracking-widest shrink-0 hidden sm:inline">Развернуть</span>
-    </summary>
+<section id="gen-bank-panel" class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile overflow-hidden w-full">
+    <div class="px-8 py-5 bg-slate-50/50 border-b border-slate-100">
+        <h2 class="text-xl font-black text-primary m-0 tracking-tight">Банк заданий</h2>
+        <p class="text-sm text-muted m-0 mt-0.5">Фильтры и таблица ниже. Всего записей: <strong class="text-primary">{{ bank_total }}</strong>.</p>
+    </div>
 
-    <div class="p-8 pt-2 space-y-6 border-t border-slate-100">
+    <div class="p-8 pt-6 space-y-6 border-t border-slate-100">
         <form method="get" action="{% if lesson_id %}{{ url_for('task_generator.task_generator', lesson_id=lesson_id) }}{% else %}{{ url_for('task_generator.task_generator') }}{% endif %}" class="flex flex-wrap gap-4 items-end">
             {# Сохраняем контекст урока / шаблона при отправке фильтра #}
             {% if lesson_id %}<input type="hidden" name="lesson_id" value="{{ lesson_id }}">{% endif %}
@@ -95,4 +89,4 @@
             {% endif %}
         </div>
     </div>
-</details>
+</section>

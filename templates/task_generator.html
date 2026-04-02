@@ -69,6 +69,55 @@
         white-space: pre-wrap;
         word-break: break-word;
     }
+    /* Вкладки генератора */
+    .gen-tabs-bar {
+        scrollbar-width: thin;
+    }
+    .gen-tab-btn {
+        flex: 1 1 auto;
+        min-height: 3rem;
+        border-radius: 0.875rem;
+        font-size: 0.875rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        padding: 0.5rem 1rem;
+        border: 1px solid rgb(226 232 240);
+        background: rgb(255 255 255);
+        color: rgb(71 85 105);
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .gen-tab-btn:hover {
+        border-color: rgb(199 210 254);
+        color: rgb(76 29 149);
+        background: rgb(245 243 255);
+    }
+    .gen-tab-btn[aria-selected="true"] {
+        background: var(--boo-primary, #7c5cff);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: 0 4px 8px rgba(124, 92, 255, 0.35);
+    }
+    [data-theme="dark"] .gen-tab-btn {
+        background: rgba(30, 41, 59, 0.6);
+        border-color: rgba(148, 163, 184, 0.25);
+        color: rgb(203 213 225);
+    }
+    [data-theme="dark"] .gen-tab-btn:hover {
+        background: rgba(51, 65, 85, 0.8);
+        color: rgb(224 231 255);
+    }
+    [data-theme="dark"] .gen-tab-btn[aria-selected="true"] {
+        background: var(--boo-primary, #7c5cff);
+        color: #fff;
+    }
+    .gen-tab-panel.hidden {
+        display: none !important;
+    }
 </style>
 {% endblock %}
 
@@ -116,34 +165,45 @@
     {% set status_headline = 'Нет привязки к уроку' %}
 {% endif %}
 
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 pb-8">
-<div class="flex flex-col lg:flex-row gap-6 items-start gen-premium-shell w-full">
-    <div class="w-full lg:w-1/3 flex flex-col gap-6 min-w-0 lg:sticky lg:top-28">
-        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 relative overflow-hidden group">
-            <div class="absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br from-purple-50 to-cyan-50 rounded-full blur-3xl opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
-            <div class="relative z-10">
-                <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <i class="ph-fill ph-magic-wand text-boo-primary"></i> Генератор заданий
+<div class="w-full max-w-[1600px] mx-auto px-3 sm:px-5 pb-10 gen-layout-root">
+    <header class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-200/80 shadow-tactile p-6 sm:p-8 mb-6">
+        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+            <div class="flex items-start gap-4 min-w-0">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-100 to-cyan-50 dark:from-violet-950/50 dark:to-slate-800 border border-violet-100 dark:border-violet-900/40 flex items-center justify-center shrink-0 text-boo-primary">
+                    <i class="ph-fill ph-magic-wand text-2xl" aria-hidden="true"></i>
                 </div>
-                <h1 class="text-3xl font-black text-primary tracking-tight mb-3 leading-tight">Один поток. Одна задача. Максимум фокуса.</h1>
-                <p class="text-sm font-medium text-muted mb-6 leading-relaxed">
-                    Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной. Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
-                </p>
-                <div class="flex flex-wrap gap-2 mb-6">
-                    <button type="button" id="genBankScrollBtn" class="neo-button outline text-sm inline-flex items-center gap-2">
-                        <i class="ph-bold ph-books" aria-hidden="true"></i> Банк заданий
-                    </button>
-                </div>
-                <p class="text-xs text-muted m-0 mb-4 leading-relaxed">Таблица и фильтры банка — внизу на этой странице, без перехода в другой раздел.</p>
-                <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
-                    <span class="text-xs font-bold text-muted uppercase tracking-widest">Режим работы</span>
-                    <button type="button" class="text-sm font-bold text-boo-primary hover:text-boo-primaryHover transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-default font-inherit">
-                        {{ mode_text }} <i class="ph-bold ph-caret-down" aria-hidden="true"></i>
-                    </button>
+                <div class="min-w-0">
+                    <p class="text-[10px] font-extrabold text-muted uppercase tracking-widest m-0 mb-1">Генератор заданий</p>
+                    <h1 class="text-2xl sm:text-3xl font-black text-primary tracking-tight m-0 leading-tight">Поток, банк и ручное добавление</h1>
+                    <p class="text-sm text-muted mt-2 mb-0 max-w-2xl leading-relaxed">Используйте вкладки: подбор заданий, форма для банка или таблица с фильтрами — всё на одной странице.</p>
                 </div>
             </div>
+            <div class="flex flex-col sm:flex-row flex-wrap gap-2 shrink-0">
+                <span class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-600 text-sm font-bold text-secondary">{{ mode_text }}</span>
+                {% if lesson and student %}
+                <span class="inline-flex items-center px-4 py-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-sm font-bold text-boo-primary truncate max-w-[280px] xl:max-w-xs" title="{{ student.name }}">Урок · {{ student.name }}</span>
+                {% elif template_id %}
+                <span class="inline-flex items-center px-4 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-sm font-bold text-boo-primary">Шаблон №{{ template_id }}</span>
+                {% endif %}
+            </div>
         </div>
+    </header>
 
+    <div class="gen-tabs-bar flex flex-wrap sm:flex-nowrap gap-2 p-1.5 rounded-2xl bg-slate-100/90 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-600/60 mb-6" role="tablist" aria-label="Разделы генератора">
+        <button type="button" class="gen-tab-btn" role="tab" id="gen-tab-stream" aria-controls="gen-panel-stream" aria-selected="{{ 'true' if initial_gen_tab == 'stream' else 'false' }}" data-gen-tab="stream">
+            <i class="ph-bold ph-play-circle text-lg shrink-0" aria-hidden="true"></i><span class="whitespace-nowrap">Поток</span>
+        </button>
+        <button type="button" class="gen-tab-btn" role="tab" id="gen-tab-manual" aria-controls="gen-panel-manual" aria-selected="{{ 'true' if initial_gen_tab == 'manual' else 'false' }}" data-gen-tab="manual">
+            <i class="ph-bold ph-pencil-line text-lg shrink-0" aria-hidden="true"></i><span class="whitespace-nowrap">Новое в банк</span>
+        </button>
+        <button type="button" class="gen-tab-btn" role="tab" id="gen-tab-bank" aria-controls="gen-panel-bank" aria-selected="{{ 'true' if initial_gen_tab == 'bank' else 'false' }}" data-gen-tab="bank">
+            <i class="ph-bold ph-books text-lg shrink-0" aria-hidden="true"></i><span class="whitespace-nowrap">База заданий</span>
+        </button>
+    </div>
+
+    <div id="gen-panel-stream" class="gen-tab-panel space-y-6{% if initial_gen_tab != 'stream' %} hidden{% endif %}" role="tabpanel" aria-labelledby="gen-tab-stream"{% if initial_gen_tab != 'stream' %} hidden{% endif %}>
+    <div class="grid lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+    <aside class="lg:col-span-5 xl:col-span-4 flex flex-col gap-5 min-w-0 order-2 lg:order-1">
         {% if lesson and student %}
         <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col gap-4 generator-mode {{ mode_class }}">
             <div class="flex items-start gap-4">
@@ -187,11 +247,11 @@
         </div>
         {% endif %}
 
-        <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 generator-panel gen-start-card">
-            <div class="flex justify-between items-start mb-6 gap-3 flex-wrap">
+        <section class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 sm:p-7 generator-panel gen-start-card">
+            <div class="flex justify-between items-start mb-5 gap-3 flex-wrap">
                 <div>
-                    <h2 class="text-xl font-black text-primary m-0">Запуск</h2>
-                    <p class="text-sm font-medium text-muted m-0 mt-1">Выбери параметры и нажми старт.</p>
+                    <h2 class="text-lg sm:text-xl font-black text-primary m-0">Запуск потока</h2>
+                    <p class="text-sm text-muted m-0 mt-1">На широком экране программа и номер — в два столбца.</p>
                 </div>
                 {% if generator_recipient_ids %}
                 <button type="button" id="genCreateWorkBtnTop" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm shadow-md border-b-[3px] border-b-purple-800 border border-transparent hover:bg-boo-primaryHover active:translate-y-[1px] active:border-b-0 transition-all">{{ ui_icon('action.check', 'sm', decorative=true) }}<span id="genCreateWorkBtnTopText">Завершить и создать</span></button>
@@ -200,6 +260,7 @@
 
             <form id="genStartForm" class="space-y-5" onsubmit="return false;">
                 {{ selection_form.hidden_tag() }}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {% if all_courses and all_courses|length > 1 %}
                 <div class="space-y-1.5">
                     <label for="exam_course_id" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Программа подготовки</label>
@@ -213,12 +274,13 @@
                     </div>
                 </div>
                 {% endif %}
-                <div class="space-y-1.5">
+                <div class="space-y-1.5 {% if not (all_courses and all_courses|length > 1) %}sm:col-span-2{% endif %}">
                     <label for="taskTypeSelect" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Номер задания</label>
                     <div class="relative">
                         {{ selection_form.task_type(class_=gen_select_class, id='taskTypeSelect') }}
                         <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true"></i>
                     </div>
+                </div>
                 </div>
 
                 <div class="flex gap-2 pt-2">
@@ -286,79 +348,9 @@
                 </details>
             </form>
         </section>
+    </aside>
 
-        <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col gap-4">
-            <div>
-                <h2 class="text-xl font-black text-primary m-0">Создать задание вручную</h2>
-                <p class="text-sm text-muted m-0 mt-1">Условие, ответ, решение, код, сложность — попадает в банк выбранной программы с меткой «создано вручную».</p>
-            </div>
-            <div class="space-y-3">
-                <div class="space-y-1.5">
-                    <label for="bankManualCourse" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Программа</label>
-                    <div class="relative">
-                        <select id="bankManualCourse" class="{{ gen_select_class }}">
-                            {% for c in all_courses %}
-                            <option value="{{ c.id }}" {% if exam_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
-                            {% endfor %}
-                        </select>
-                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true"></i>
-                    </div>
-                </div>
-                <div class="space-y-1.5">
-                    <label for="bankManualTaskNumber" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Номер задания</label>
-                    <div class="relative">
-                        <select id="bankManualTaskNumber" class="{{ gen_select_class }}"></select>
-                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true"></i>
-                    </div>
-                </div>
-                <div class="neo-field">
-                    <label class="neo-label" for="bankContentHtml">Условие (HTML или текст)</label>
-                    <textarea id="bankContentHtml" class="neo-input font-mono text-sm min-h-[120px]" placeholder="Текст условия или HTML…"></textarea>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <label class="neo-button outline text-sm cursor-pointer inline-flex items-center gap-2 mb-0">
-                        <i class="ph-bold ph-image" aria-hidden="true"></i> Фото в условие
-                        <input type="file" id="bankImageUpload" accept="image/*" class="hidden">
-                    </label>
-                </div>
-                <div class="neo-field">
-                    <label class="neo-label" for="bankAnswer">Ответ</label>
-                    <input type="text" id="bankAnswer" class="neo-input" placeholder="Правильный ответ" autocomplete="off">
-                </div>
-                <div class="neo-field">
-                    <label class="neo-label" for="bankSolution">Решение (для себя / методичка)</label>
-                    <textarea id="bankSolution" class="neo-input text-sm min-h-[80px]" placeholder="Необязательно"></textarea>
-                </div>
-                <div class="neo-field">
-                    <label class="neo-label" for="bankStarterCode">Код (стартовый / для песочницы)</label>
-                    <textarea id="bankStarterCode" class="neo-input font-mono text-sm min-h-[72px]" placeholder="Python и т.д., необязательно"></textarea>
-                </div>
-                <div class="space-y-1.5">
-                    <label for="bankDifficulty" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Сложность (1 — лёгкая … 10 — сложная)</label>
-                    <select id="bankDifficulty" class="{{ gen_select_class }}">
-                        <option value="">Не указана</option>
-                        {% for d in range(1, 11) %}
-                        <option value="{{ d }}">{{ d }}{% if d <= 3 %} — лёгкая{% elif d <= 7 %} — средняя{% else %} — сложная{% endif %}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="neo-field">
-                    <label class="neo-label" for="bankHintsJson">Подсказки JSON (необязательно)</label>
-                    <input type="text" id="bankHintsJson" class="neo-input font-mono text-sm" placeholder='["подсказка 1", "…"]'>
-                </div>
-                <div class="neo-field">
-                    <label class="neo-label" for="bankAttachFiles">Вложения (после сохранения загрузятся на сервер)</label>
-                    <input type="file" id="bankAttachFiles" class="neo-input text-sm" multiple>
-                </div>
-                <button type="button" id="bankCreateBtn" class="w-full py-3 min-h-[48px] bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 text-sm border border-transparent">
-                    <i class="ph-bold ph-plus-circle" aria-hidden="true"></i> Сохранить в банк
-                </button>
-                <p id="bankCreateStatus" class="text-xs text-muted m-0 hidden"></p>
-            </div>
-        </section>
-    </div>
-
-    <div class="w-full lg:w-2/3 flex flex-col gap-6 min-w-0 gen-deck-wrap">
+    <div class="lg:col-span-7 xl:col-span-8 flex flex-col gap-5 min-w-0 gen-deck-wrap order-1 lg:order-2">
         <div class="bg-surface rounded-[24px] border border-slate-200 shadow-tactile p-6">
             <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-1">Что уже известно</div>
             <h2 class="text-2xl font-black text-boo-primary tracking-tight mb-3 break-words" id="genStatusHeadline">{{ status_headline }}</h2>
@@ -399,7 +391,7 @@
                     <div>
                         <div class="font-black text-lg text-primary">Готов к запуску</div>
                         <p class="text-sm font-medium text-muted m-0 mt-2 leading-relaxed">
-                            Выбери номер задания слева и нажми <strong class="text-primary">Старт</strong>. Дальше ты работаешь в потоке — быстро и без лишних кликов.
+                            В этой вкладке укажи программу и номер в колонке слева (или сверху на телефоне), затем <strong class="text-primary">Старт</strong>. Управление: A / S / B и пробел для ответа.
                         </p>
                     </div>
                 </div>
@@ -457,8 +449,90 @@
             </div>
         </div>
     </div>
-</div>
-{% include '_task_generator_bank_panel.html' %}
+    </div>
+    </div>
+
+    <div id="gen-panel-manual" class="gen-tab-panel space-y-6{% if initial_gen_tab != 'manual' %} hidden{% endif %}" role="tabpanel" aria-labelledby="gen-tab-manual"{% if initial_gen_tab != 'manual' %} hidden{% endif %}>
+        <section class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 sm:p-8 lg:p-10">
+            <div class="max-w-4xl">
+                <h2 class="text-xl sm:text-2xl font-black text-primary m-0">Создать задание вручную</h2>
+                <p class="text-sm text-muted m-0 mt-2 leading-relaxed">Поля ниже — широкая сетка на десктопе. Задача попадёт в банк выбранной программы с меткой «создано вручную».</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mt-8">
+                <div class="space-y-1.5">
+                    <label for="bankManualCourse" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Программа</label>
+                    <div class="relative">
+                        <select id="bankManualCourse" class="{{ gen_select_class }}">
+                            {% for c in all_courses %}
+                            <option value="{{ c.id }}" {% if exam_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+                            {% endfor %}
+                        </select>
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="space-y-1.5">
+                    <label for="bankManualTaskNumber" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Номер задания</label>
+                    <div class="relative">
+                        <select id="bankManualTaskNumber" class="{{ gen_select_class }}"></select>
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="md:col-span-2 neo-field">
+                    <label class="neo-label" for="bankContentHtml">Условие (HTML или текст)</label>
+                    <textarea id="bankContentHtml" class="neo-input font-mono text-sm min-h-[160px]" placeholder="Текст условия или HTML…"></textarea>
+                </div>
+                <div class="md:col-span-2 flex flex-wrap items-center gap-3">
+                    <label class="neo-button outline text-sm cursor-pointer inline-flex items-center gap-2 mb-0">
+                        <i class="ph-bold ph-image" aria-hidden="true"></i> Фото в условие
+                        <input type="file" id="bankImageUpload" accept="image/*" class="hidden">
+                    </label>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="bankAnswer">Ответ</label>
+                    <input type="text" id="bankAnswer" class="neo-input" placeholder="Правильный ответ" autocomplete="off">
+                </div>
+                <div class="space-y-1.5">
+                    <label for="bankDifficulty" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Сложность (1–10)</label>
+                    <div class="relative">
+                        <select id="bankDifficulty" class="{{ gen_select_class }}">
+                            <option value="">Не указана</option>
+                            {% for d in range(1, 11) %}
+                            <option value="{{ d }}">{{ d }}{% if d <= 3 %} — лёгкая{% elif d <= 7 %} — средняя{% else %} — сложная{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="md:col-span-2 neo-field">
+                    <label class="neo-label" for="bankSolution">Решение (для себя / методичка)</label>
+                    <textarea id="bankSolution" class="neo-input text-sm min-h-[100px]" placeholder="Необязательно"></textarea>
+                </div>
+                <div class="md:col-span-2 neo-field">
+                    <label class="neo-label" for="bankStarterCode">Код (стартовый / для песочницы)</label>
+                    <textarea id="bankStarterCode" class="neo-input font-mono text-sm min-h-[100px]" placeholder="Python и т.д., необязательно"></textarea>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="bankHintsJson">Подсказки JSON (необязательно)</label>
+                    <input type="text" id="bankHintsJson" class="neo-input font-mono text-sm" placeholder='["подсказка 1"]'>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="bankAttachFiles">Вложения</label>
+                    <input type="file" id="bankAttachFiles" class="neo-input text-sm" multiple>
+                    <p class="text-xs text-muted mt-1 mb-0">Загрузка после нажатия «Сохранить в банк».</p>
+                </div>
+                <div class="md:col-span-2 pt-2">
+                    <button type="button" id="bankCreateBtn" class="w-full sm:w-auto min-w-[240px] py-3 min-h-[48px] px-8 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 text-sm border border-transparent">
+                        <i class="ph-bold ph-plus-circle" aria-hidden="true"></i> Сохранить в банк
+                    </button>
+                    <p id="bankCreateStatus" class="text-xs text-muted m-0 mt-3 hidden"></p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="gen-panel-bank" class="gen-tab-panel{% if initial_gen_tab != 'bank' %} hidden{% endif %}" role="tabpanel" aria-labelledby="gen-tab-bank"{% if initial_gen_tab != 'bank' %} hidden{% endif %}>
+        {% include '_task_generator_bank_panel.html' %}
+    </div>
 </div>
 {% endblock %}
 
@@ -466,9 +540,37 @@
 <script>
     window.__GEN_SEED_TASK__ = {{ seed_task_payload | tojson if seed_task_payload else 'null' }};
     window.__GEN_COURSE_TASK_NUMBERS__ = {{ course_task_numbers | tojson if course_task_numbers is defined else '{}' }};
+    window.__GEN_INITIAL_TAB__ = {{ initial_gen_tab | default('stream') | tojson }};
 </script>
 <script>
     (function() {
+        const tabButtons = document.querySelectorAll('.gen-tab-btn[data-gen-tab]');
+        const tabPanels = {
+            stream: document.getElementById('gen-panel-stream'),
+            manual: document.getElementById('gen-panel-manual'),
+            bank: document.getElementById('gen-panel-bank'),
+        };
+        const validTabs = new Set(['stream', 'manual', 'bank']);
+        function setGenTab(name) {
+            if (!validTabs.has(name)) name = 'stream';
+            tabButtons.forEach((btn) => {
+                const on = btn.getAttribute('data-gen-tab') === name;
+                btn.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            Object.entries(tabPanels).forEach(([key, el]) => {
+                if (!el) return;
+                const on = key === name;
+                el.classList.toggle('hidden', !on);
+                if (on) el.removeAttribute('hidden');
+                else el.setAttribute('hidden', '');
+            });
+        }
+        window.switchGenTab = setGenTab;
+        tabButtons.forEach((btn) => {
+            btn.addEventListener('click', () => setGenTab(btn.getAttribute('data-gen-tab')));
+        });
+        setGenTab(window.__GEN_INITIAL_TAB__ || 'stream');
+
         const deck = document.getElementById('genDeck');
         const empty = document.getElementById('genEmpty');
         const card = document.getElementById('genTaskCard');
@@ -930,11 +1032,8 @@
         });
 
         document.getElementById('genBankScrollBtn')?.addEventListener('click', () => {
-            const det = document.getElementById('gen-bank-details');
-            if (det) {
-                det.open = true;
-                det.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            if (typeof window.switchGenTab === 'function') window.switchGenTab('bank');
+            document.getElementById('gen-panel-bank')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
 
         if (window.__GEN_SEED_TASK__) {
