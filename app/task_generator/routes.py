@@ -474,7 +474,8 @@ def task_generator(lesson_id=None):
                            bank_only_manual=bank_only_manual,
                            bank_panel_open=bank_panel_open,
                            bank_pagination=bank_pagination,
-                           initial_gen_tab=initial_gen_tab)
+                           initial_gen_tab=initial_gen_tab,
+                           show_bank_picker=bool(lesson_id or template_id))
 
 
 def _lesson_tag(lesson_id: int, assignment_type: str) -> str:
@@ -584,6 +585,271 @@ def _attach_task_to_lesson(task_id: int, lesson: Lesson, assignment_type: str) -
         lesson.homework_result_percent = None
         lesson.homework_result_notes = None
     return True
+
+
+def _picker_target_sets(lesson_id: int | None, template_id: int | None, assignment_type: str):
+    """Множества task_id, уже привязанных к уроку (с типом работы) и/или шаблону."""
+    lesson_ids: set[int] = set()
+    template_ids: set[int] = set()
+    if lesson_id:
+        lesson_ids = {
+            r[0]
+            for r in LessonTask.query.filter_by(
+                lesson_id=lesson_id, assignment_type=assignment_type
+            ).with_entities(LessonTask.task_id).all()
+        }
+    if template_id:
+        template_ids = {
+            r[0]
+            for r in TemplateTask.query.filter_by(template_id=template_id).with_entities(TemplateTask.task_id).all()
+        }
+    return lesson_ids, template_ids
+
+
+def _picker_fully_added(
+    task_id: int,
+    lesson_id: int | None,
+    template_id: int | None,
+    assignment_type: str,
+    lesson_ids: set[int],
+    template_ids: set[int],
+) -> bool:
+    """Все активные цели уже содержат task_id."""
+    has_lesson = lesson_id is not None
+    has_template = template_id is not None
+    if not has_lesson and not has_template:
+        return False
+    if has_lesson:
+        in_lesson = task_id in lesson_ids
+        if not has_template:
+            return in_lesson
+        return in_lesson and (task_id in template_ids)
+    return task_id in template_ids
+
+
+def _stream_accept_tasks_bundle(
+    task_ids_for_action: list,
+    *,
+    lesson_id: int | None,
+    template_id: int | None,
+    assignment_type: str,
+) -> tuple[str | None, tuple | None]:
+    """
+    Та же логика «принять», что в generator_stream_act (шаблон, затем урок либо record_usage).
+    Возвращает (message, None) или (None, (http_code, json_response)).
+    """
+    message = None
+    if template_id:
+        template = TaskTemplate.query.get(template_id)
+        if not template:
+            return None, (404, jsonify({'success': False, 'error': 'Шаблон не найден'}))
+        max_order = db.session.query(db.func.max(TemplateTask.order)).filter_by(template_id=template_id).scalar() or 0
+        for tid in task_ids_for_action:
+            existing = TemplateTask.query.filter_by(template_id=template_id, task_id=tid).first()
+            if not existing:
+                db.session.add(TemplateTask(template_id=template_id, task_id=tid, order=max_order + 1))
+                max_order += 1
+        db.session.commit()
+
+    if lesson_id:
+        lesson = Lesson.query.get(lesson_id)
+        if not lesson:
+            return None, (404, jsonify({'success': False, 'error': 'Урок не найден'}))
+        added_task_ids = []
+        for tid in task_ids_for_action:
+            existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=tid).first()
+            if not existing:
+                db.session.add(LessonTask(lesson_id=lesson_id, task_id=tid, assignment_type=assignment_type))
+                try:
+                    if lesson.student_id:
+                        db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=tid, source=f'lesson:{assignment_type}'))
+                except Exception:
+                    pass
+                added_task_ids.append(tid)
+        if assignment_type == 'homework':
+            lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
+            lesson.homework_result_percent = None
+            lesson.homework_result_notes = None
+
+        if added_task_ids and lesson.student:
+            atype = (assignment_type or 'homework').strip().lower()
+            link_url = url_for(
+                'lessons.lesson_homework_view' if atype == 'homework' else (
+                    'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
+                ),
+                lesson_id=lesson.lesson_id
+            )
+            enqueue_assignment_notification(
+                lesson=lesson,
+                assignment_type=atype,
+                task_ids=added_task_ids,
+                link_url=link_url,
+            )
+
+        db.session.commit()
+        if added_task_ids:
+            try:
+                from app.lessons.lesson_socket import emit_lesson_tasks_updated
+                emit_lesson_tasks_updated(lesson_id, assignment_type or 'homework')
+            except Exception:
+                pass
+        message = (
+            f"{'Задание' if len(added_task_ids) == 1 else 'Задания'} добавлено в урок."
+            if added_task_ids
+            else 'Задания уже в уроке.'
+        )
+    else:
+        record_usage(task_ids_for_action)
+        message = 'Задание принято.' if len(task_ids_for_action) == 1 else 'Тройка заданий 19–21 принята.'
+
+    return message, None
+
+
+@task_generator_bp.route('/task-generator/bank/picker/list', methods=['POST'])
+@login_required
+def task_generator_bank_picker_list():
+    """Список заданий из банка с пометкой «уже в цели / ещё нет» (урок и/или шаблон)."""
+    _require_task_generator_access()
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
+
+    assignment_type = (data.get('assignment_type') or 'homework').strip()
+    if assignment_type not in ('homework', 'classwork', 'exam'):
+        assignment_type = 'homework'
+
+    try:
+        lesson_id = int(data['lesson_id']) if data.get('lesson_id') not in (None, '', False) else None
+    except (TypeError, ValueError):
+        lesson_id = None
+    try:
+        template_id = int(data['template_id']) if data.get('template_id') not in (None, '', False) else None
+    except (TypeError, ValueError):
+        template_id = None
+
+    try:
+        exam_course_id = int(data['exam_course_id']) if data.get('exam_course_id') not in (None, '', False) else None
+    except (TypeError, ValueError):
+        exam_course_id = None
+
+    task_number = data.get('task_number')
+    try:
+        task_number = int(task_number) if task_number not in (None, '', False) else None
+    except (TypeError, ValueError):
+        task_number = None
+
+    page = max(1, int(data.get('page', 1) or 1))
+    per_page = min(30, max(5, int(data.get('per_page', 12) or 12)))
+
+    if not lesson_id and not template_id:
+        return jsonify({'success': False, 'error': 'Укажите урок или шаблон'}), 400
+
+    lesson_ids, template_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
+
+    bq = Tasks.query.options(joinedload(Tasks.course))
+    if exam_course_id:
+        bq = bq.filter(Tasks.course_id == exam_course_id)
+    if task_number is not None:
+        bq = bq.filter(Tasks.task_number == task_number)
+    bq = bq.order_by(Tasks.task_id.desc())
+
+    total = bq.count()
+    rows = bq.offset((page - 1) * per_page).limit(per_page).all()
+
+    items = []
+    for t in rows:
+        tid = t.task_id
+        fully = _picker_fully_added(tid, lesson_id, template_id, assignment_type, lesson_ids, template_ids)
+        items.append({
+            'task_id': tid,
+            'task_number': t.task_number,
+            'course_title': (t.course.title if t.course else None),
+            'bank_origin': t.bank_origin,
+            'content_html': (t.content_html or '')[:12000],
+            'already_added': fully,
+        })
+
+    return jsonify({
+        'success': True,
+        'items': items,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+    }), 200
+
+
+@task_generator_bp.route('/task-generator/bank/picker/add', methods=['POST'])
+@login_required
+def task_generator_bank_picker_add():
+    """Добавить задание из банка в урок/шаблон (как «Принять» в потоке)."""
+    _require_task_generator_access()
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
+
+    try:
+        task_id = int(data.get('task_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'task_id обязателен'}), 400
+
+    assignment_type = (data.get('assignment_type') or 'homework').strip()
+    if assignment_type not in ('homework', 'classwork', 'exam'):
+        assignment_type = 'homework'
+
+    try:
+        lesson_id = int(data['lesson_id']) if data.get('lesson_id') not in (None, '', False) else None
+    except (TypeError, ValueError):
+        lesson_id = None
+    try:
+        template_id = int(data['template_id']) if data.get('template_id') not in (None, '', False) else None
+    except (TypeError, ValueError):
+        template_id = None
+
+    if not lesson_id and not template_id:
+        return jsonify({'success': False, 'error': 'Укажите урок или шаблон'}), 400
+
+    task = Tasks.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+
+    task_ids_for_action = [task_id]
+    try:
+        triplet_ids = _get_triplet_task_ids(task)
+        if triplet_ids:
+            task_ids_for_action = triplet_ids
+    except Exception:
+        pass
+
+    lesson_ids, template_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
+    if all(
+        _picker_fully_added(tid, lesson_id, template_id, assignment_type, lesson_ids, template_ids)
+        for tid in task_ids_for_action
+    ):
+        return jsonify({'success': False, 'error': 'Задание (или вся тройка 19–21) уже добавлено по всем целям'}), 400
+
+    try:
+        message, err = _stream_accept_tasks_bundle(
+            task_ids_for_action,
+            lesson_id=lesson_id,
+            template_id=template_id,
+            assignment_type=assignment_type,
+        )
+        if err:
+            return err[1], err[0]
+    except Exception as e:
+        db.session.rollback()
+        logger.exception('task_generator_bank_picker_add failed')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    audit_logger.log(
+        action='bank_picker_add',
+        entity='Task',
+        entity_id=task_id,
+        status='success',
+        metadata={'lesson_id': lesson_id, 'template_id': template_id, 'assignment_type': assignment_type},
+    )
+
+    return jsonify({'success': True, 'message': message}), 200
 
 
 @task_generator_bp.route('/task-generator/stream/start', methods=['POST'])
