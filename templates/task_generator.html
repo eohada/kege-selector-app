@@ -421,59 +421,6 @@
             </div>
         </div>
 
-        {% if show_bank_picker %}
-        <div id="genBankPickerRoot"
-             class="bg-white rounded-[24px] border border-slate-200 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] overflow-hidden"
-             data-lesson-id="{{ lesson_id or '' }}"
-             data-template-id="{{ template_id or '' }}"
-             data-assignment-type="{{ assignment_type }}">
-            <details class="group gen-bank-picker-details" open>
-                <summary class="flex items-center justify-between gap-3 cursor-pointer select-none list-none px-6 py-4 bg-slate-50/80 border-b border-slate-100 [&::-webkit-details-marker]:hidden hover:bg-slate-50 transition-colors">
-                    <span class="flex items-center gap-2 text-sm font-black text-slate-800">
-                        <i class="ph-bold ph-database text-boo-primary text-lg" aria-hidden="true"></i>
-                        Добавить из базы заданий
-                    </span>
-                    <i class="ph-bold ph-caret-down text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true"></i>
-                </summary>
-                <div class="p-6 flex flex-col gap-4">
-                    <p class="text-xs font-medium text-slate-500 m-0">Подбирай задания по программе и номеру; для каждого показано, есть ли оно уже в этом уроке или шаблоне.</p>
-                    <div class="flex flex-col sm:flex-row gap-3 items-end flex-wrap">
-                        {% if all_courses and all_courses|length > 1 %}
-                        <div class="w-full sm:flex-1 min-w-0 space-y-1.5">
-                            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="genPickerCourse">Программа</label>
-                            <div class="relative">
-                                <select id="genPickerCourse" class="{{ gen_select_class }}">
-                                    {% for c in all_courses %}
-                                    <option value="{{ c.id }}" {% if exam_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
-                                    {% endfor %}
-                                </select>
-                                <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true"></i>
-                            </div>
-                        </div>
-                        {% else %}
-                        <input type="hidden" id="genPickerCourse" value="{{ exam_course_id or '' }}">
-                        {% endif %}
-                        <div class="w-full sm:w-40 shrink-0 space-y-1.5">
-                            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="genPickerTaskNum">Номер</label>
-                            <div class="relative">
-                                <select id="genPickerTaskNum" class="{{ gen_select_class }}">
-                                    <option value="">Все номера</option>
-                                </select>
-                                <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true"></i>
-                            </div>
-                        </div>
-                        <button type="button" id="genPickerLoadBtn" class="w-full sm:w-auto shrink-0 px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold shadow-sm hover:bg-boo-primaryHover transition-all text-sm border border-transparent">
-                            Показать
-                        </button>
-                    </div>
-                    <p id="genPickerStatus" class="text-xs font-medium text-slate-500 m-0 hidden" aria-live="polite"></p>
-                    <div id="genPickerList" class="flex flex-col gap-3 max-h-[min(70vh,520px)] overflow-y-auto pr-1"></div>
-                    <div class="flex justify-center" id="genPickerMoreWrap"></div>
-                </div>
-            </details>
-        </div>
-        {% endif %}
-
         <div class="bg-white rounded-[24px] border border-slate-200 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Что уже известно</div>
@@ -1134,158 +1081,39 @@
             }
         });
 
-        (function initGenBankPicker() {
-            const root = document.getElementById('genBankPickerRoot');
-            if (!root) return;
-
-            function pickerCourseValue() {
-                const el = document.getElementById('genPickerCourse');
-                return el ? String((el.value || '').trim()) : '';
-            }
-
-            function refreshPickerTaskNumbers() {
-                const sel = document.getElementById('genPickerTaskNum');
-                if (!sel) return;
-                const map = window.__GEN_COURSE_TASK_NUMBERS__ || {};
-                const cid = pickerCourseValue();
-                const nums = cid && Object.prototype.hasOwnProperty.call(map, cid) ? map[cid] : [];
-                const keep = sel.value;
-                sel.innerHTML = '<option value="">Все номера</option>' +
-                    (nums.length ? nums.map(n => `<option value="${n}">№ ${n}</option>`).join('') : '');
-                if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
-            }
-
-            let genPickerPage = 1;
-            let genPickerBusy = false;
-
-            function renderPickerCard(it) {
-                const title = it.course_title ? escapeHtml(String(it.course_title)) : '';
-                const badge = it.already_added
-                    ? '<span class="gen-picker-badge gen-picker-badge--done">Уже добавлялось</span>'
-                    : '<span class="gen-picker-badge gen-picker-badge--new">Еще не добавлялось</span>';
-                const addDisabled = it.already_added ? 'disabled' : '';
-                return (
-                    '<article class="border border-slate-200 rounded-2xl p-4 bg-white shadow-sm" data-task-id="' + it.task_id + '">' +
-                    '<div class="flex flex-wrap items-center justify-between gap-2 mb-3">' +
-                    '<div class="flex flex-wrap items-center gap-2 min-w-0">' +
-                    '<span class="font-black text-boo-primary tabular-nums">#' + it.task_id + '</span>' +
-                    '<span class="text-xs font-bold text-slate-600">№ ' + it.task_number + '</span>' +
-                    (title ? '<span class="text-xs text-slate-500 truncate max-w-[200px]" title="' + title + '">' + title + '</span>' : '') +
-                    '</div>' + badge + '</div>' +
-                    '<div class="task-content bank-task-preview text-sm text-slate-800 max-h-48 overflow-y-auto mb-3 min-h-0">' + (it.content_html || '') + '</div>' +
-                    '<button type="button" class="gen-picker-add-btn w-full py-2.5 rounded-xl font-bold text-sm border border-transparent ' +
-                    (it.already_added
-                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                        : 'bg-boo-primary text-white hover:bg-boo-primaryHover shadow-sm') + '" ' + addDisabled + '>Добавить в урок / шаблон</button>' +
-                    '</article>'
-                );
-            }
-
-            async function runGenPickerLoad(reset) {
-                if (genPickerBusy) return;
-                const courseRaw = pickerCourseValue();
-                const statusEl = document.getElementById('genPickerStatus');
-                const listEl = document.getElementById('genPickerList');
-                const moreWrap = document.getElementById('genPickerMoreWrap');
-                if (!courseRaw) {
-                    if (statusEl) {
-                        statusEl.textContent = 'Выберите программу.';
-                        statusEl.classList.remove('hidden');
-                    }
-                    return;
-                }
-                if (reset) genPickerPage = 1;
-                genPickerBusy = true;
-                if (statusEl) {
-                    statusEl.textContent = 'Загрузка…';
-                    statusEl.classList.remove('hidden');
-                }
-                const taskNumEl = document.getElementById('genPickerTaskNum');
-                const taskNumRaw = (taskNumEl && taskNumEl.value) ? taskNumEl.value.trim() : '';
-                const lid = (root.dataset.lessonId || '').trim();
-                const tid = (root.dataset.templateId || '').trim();
-                const payload = {
-                    exam_course_id: parseInt(courseRaw, 10),
-                    task_number: taskNumRaw ? parseInt(taskNumRaw, 10) : null,
-                    page: genPickerPage,
-                    per_page: 12,
-                    lesson_id: lid ? parseInt(lid, 10) : null,
-                    template_id: tid ? parseInt(tid, 10) : null,
-                    assignment_type: root.dataset.assignmentType || 'homework',
-                };
-                try {
-                    const data = await postJSON('/task-generator/bank/picker/list', payload);
-                    const items = data.items || [];
-                    const perPage = data.per_page || 12;
-                    const total = data.total || 0;
-                    const html = items.map(renderPickerCard).join('');
-                    if (genPickerPage === 1) listEl.innerHTML = html;
-                    else listEl.insertAdjacentHTML('beforeend', html);
-                    items.forEach((row) => {
-                        const card = listEl.querySelector('[data-task-id="' + row.task_id + '"]');
-                        if (card) renderMath(card.querySelector('.task-content'));
-                    });
-                    const hasMore = genPickerPage * perPage < total;
-                    moreWrap.innerHTML = hasMore
-                        ? '<button type="button" id="genPickerMoreBtn" class="px-5 py-2.5 rounded-xl font-bold text-sm border border-slate-200 bg-white text-slate-700 hover:border-boo-primary hover:text-boo-primary transition-colors">Показать ещё</button>'
-                        : (total > 0 ? '<span class="text-xs font-bold text-slate-400">Показано ' + Math.min(total, genPickerPage * perPage) + ' из ' + total + '</span>' : '');
-                    if (statusEl) {
-                        statusEl.textContent = total ? '' : 'Нет заданий по фильтру.';
-                        if (!total) statusEl.classList.remove('hidden');
-                        else statusEl.classList.add('hidden');
-                    }
-                } catch (e) {
-                    if (statusEl) {
-                        statusEl.textContent = e.message || 'Ошибка загрузки';
-                        statusEl.classList.remove('hidden');
-                    }
-                    if (window.toast) window.toast.error(e.message || 'Ошибка');
-                } finally {
-                    genPickerBusy = false;
-                }
-            }
-
-            refreshPickerTaskNumbers();
-            document.getElementById('genPickerCourse')?.addEventListener('change', refreshPickerTaskNumbers);
-            document.getElementById('genPickerLoadBtn')?.addEventListener('click', () => runGenPickerLoad(true));
-            document.getElementById('genPickerMoreWrap')?.addEventListener('click', (e) => {
-                if (e.target.closest('#genPickerMoreBtn')) {
-                    genPickerPage += 1;
-                    runGenPickerLoad(false);
-                }
-            });
-            document.getElementById('genPickerList')?.addEventListener('click', async (e) => {
-                const btn = e.target.closest('.gen-picker-add-btn');
-                if (!btn || btn.disabled) return;
-                const card = btn.closest('[data-task-id]');
-                const taskId = card ? parseInt(card.getAttribute('data-task-id'), 10) : NaN;
-                if (!taskId) return;
-                btn.disabled = true;
-                try {
-                    const lid = (root.dataset.lessonId || '').trim();
-                    const tid = (root.dataset.templateId || '').trim();
-                    const body = {
-                        task_id: taskId,
-                        lesson_id: lid ? parseInt(lid, 10) : null,
-                        template_id: tid ? parseInt(tid, 10) : null,
-                        assignment_type: root.dataset.assignmentType || 'homework',
-                    };
-                    const res = await postJSON('/task-generator/bank/picker/add', body);
-                    if (window.toast) window.toast.success(res.message || 'Добавлено');
-                    await runGenPickerLoad(true);
-                } catch (err) {
-                    if (window.toast) window.toast.error(err.message || 'Ошибка');
-                    btn.disabled = false;
-                }
-            });
-        })();
-
         document.getElementById('genBankScrollBtn')?.addEventListener('click', () => {
             if (typeof window.switchGenTab === 'function') window.switchGenTab('bank');
             document.getElementById('gen-panel-bank')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
 
         document.getElementById('gen-bank-panel')?.addEventListener('click', async (e) => {
+            const addTargetBtn = e.target.closest('.bank-task-add-to-target-btn');
+            if (addTargetBtn) {
+                if (addTargetBtn.disabled) return;
+                const panel = document.getElementById('gen-bank-panel');
+                if (!panel || !panel.dataset.bankAddAssignmentType) return;
+                const taskId = parseInt(addTargetBtn.getAttribute('data-task-id') || '', 10);
+                if (!taskId) return;
+                addTargetBtn.disabled = true;
+                try {
+                    const lid = (panel.dataset.bankAddLessonId || '').trim();
+                    const tid = (panel.dataset.bankAddTemplateId || '').trim();
+                    const body = {
+                        task_id: taskId,
+                        lesson_id: lid ? parseInt(lid, 10) : null,
+                        template_id: tid ? parseInt(tid, 10) : null,
+                        assignment_type: panel.dataset.bankAddAssignmentType || 'homework',
+                    };
+                    const res = await postJSON('/task-generator/bank/picker/add', body);
+                    if (window.toast) window.toast.success(res.message || 'Добавлено');
+                    window.location.reload();
+                } catch (err) {
+                    if (window.toast) window.toast.error(err.message || 'Ошибка');
+                    addTargetBtn.disabled = false;
+                }
+                return;
+            }
+
             const delBtn = e.target.closest('.bank-task-delete-btn');
             if (delBtn) {
                 const card = delBtn.closest('.bank-task-card');

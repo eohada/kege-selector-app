@@ -424,6 +424,22 @@ def task_generator(lesson_id=None):
         bq = bq.order_by(Tasks.task_id.desc())
         bank_total = bq.count()
         bank_tasks = bq.offset((bank_page - 1) * bank_per_page).limit(bank_per_page).all()
+        for t in bank_tasks:
+            t.bank_target_already_added = None
+        if lesson_id or template_id:
+            try:
+                _le_ids, _tpl_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
+                for t in bank_tasks:
+                    t.bank_target_already_added = _picker_fully_added(
+                        t.task_id,
+                        lesson_id,
+                        template_id,
+                        assignment_type,
+                        _le_ids,
+                        _tpl_ids,
+                    )
+            except Exception as ex:
+                logger.warning(f'bank_target status enrichment failed: {ex}')
         bank_pages_total = max(1, (bank_total + bank_per_page - 1) // bank_per_page)
         for p in range(1, bank_pages_total + 1):
             bank_pagination.append({
@@ -476,8 +492,7 @@ def task_generator(lesson_id=None):
                            bank_only_manual=bank_only_manual,
                            bank_panel_open=bank_panel_open,
                            bank_pagination=bank_pagination,
-                           initial_gen_tab=initial_gen_tab,
-                           show_bank_picker=bool(lesson_id or template_id))
+                           initial_gen_tab=initial_gen_tab)
 
 
 def _lesson_tag(lesson_id: int, assignment_type: str) -> str:
