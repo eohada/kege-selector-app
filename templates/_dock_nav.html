@@ -190,9 +190,9 @@
                 <div class="profile-dropdown" data-profile-dropdown>
                     <button class="dock-avatar-trigger" title="{{ current_user.username }}" data-profile-trigger type="button" aria-haspopup="menu" aria-expanded="false">
                         {% if current_user.is_demo_user %}
-                        <img src="{{ url_for('static', filename='images/demo_user_avatar.png') }}" alt="Avatar" class="dock-avatar-placeholder" style="object-fit:cover;">
+                        <img src="{{ url_for('static', filename='images/demo_user_avatar.png') }}" alt="Avatar" class="dock-user-avatar-img">
                         {% elif current_user.avatar_url %}
-                        <img src="{{ current_user.avatar_url }}" alt="Avatar" style="width:38px;height:38px;border-radius:12px;border:1px solid #E2E8F0;box-shadow:0 1px 3px rgba(15,23,42,0.06);object-fit:cover;">
+                        <img src="{{ current_user.avatar_url }}" alt="Avatar" class="dock-user-avatar-img" width="38" height="38">
                         {% else %}
                         <div class="dock-avatar-placeholder">{{ current_user.username[0].upper() }}</div>
                         {% endif %}
@@ -220,7 +220,7 @@
                                 <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
                             </div>
                         </div>
-                        <div style="height:1px;background:#F1F5F9;margin:0.35rem 0;"></div>
+                        <div class="profile-dropdown-divider" aria-hidden="true"></div>
                         <a href="{{ url_for('auth.logout') }}" class="profile-item" style="color:#EF4444;">
                             <i class="ph-bold ph-sign-out text-base"></i>
                             <span>Выход</span>
