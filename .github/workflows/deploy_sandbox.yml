@@ -31,10 +31,12 @@ jobs:
 
           while [[ "${attempt}" -le "${MAX_ATTEMPTS}" ]]; do
             echo "=== SSH deploy attempt ${attempt}/${MAX_ATTEMPTS} (${USERNAME}@${HOST}:${PORT}) ==="
-            if ssh -i "${KEY_FILE}" \
+            # -4: force IPv4 (some runners hit broken IPv6 routes → i/o timeout while sshd also listens on [::]:22)
+            if ssh -4 -i "${KEY_FILE}" \
               -p "${PORT}" \
               -o BatchMode=yes \
               -o StrictHostKeyChecking=accept-new \
+              -o AddressFamily=inet \
               -o ConnectTimeout=120 \
               -o ServerAliveInterval=25 \
               -o ServerAliveCountMax=8 \
