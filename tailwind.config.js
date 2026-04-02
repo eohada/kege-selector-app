@@ -12,6 +12,15 @@ module.exports = {
         mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
+        /* Airy Dark tokens — совпадает с boostudy2.0_examples/prepod/dark_mode*.html */
+        dark: {
+          bg:     '#09090B',
+          card:   '#131316',
+          inner:  '#18181B',
+          border: '#27272A',
+          text:   '#FAFAFA',
+          muted:  '#A1A1AA',
+        },
         boo: {
           bg:           '#E5E9F0',
           surface:      '#FFFFFF',
@@ -37,7 +46,8 @@ module.exports = {
         gamification: { DEFAULT: '#FBBF24', soft: '#FFFAE6' },
         success:      { DEFAULT: '#22D3EE', soft: '#ECFEFF' },
         error:        { DEFAULT: '#FB7185', soft: '#FFF1F5' },
-        warning:      { DEFAULT: '#FBBF24', soft: '#FFFBEB' },
+        /* Оранжевый «зона риска» как в эталоне (orange-500), не amber #FBBF24 */
+        warning:      { DEFAULT: '#F97316', soft: '#FFF7ED' },
         info:         { DEFAULT: '#8B5CF6', soft: '#EDE9FF' },
         'text-primary':   'var(--color-text-primary)',
         'text-secondary': 'var(--color-text-secondary)',
@@ -57,6 +67,13 @@ module.exports = {
         pill:      '999px',
       },
       boxShadow: {
+        'glass-dark':
+          '0 4px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        'nav-dark':
+          '0 10px 30px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.05)',
+        'neon-primary': '0 0 40px rgba(139, 92, 246, 0.2)',
+        'neon-orange':  '0 0 20px rgba(249, 115, 22, 0.1)',
+        'neon-red':     '0 0 20px rgba(251, 113, 133, 0.15)',
         tactile:       '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
         'tactile-hover':'0 16px 32px -8px rgba(15, 23, 42, 0.12)',
         nav:           '0 4px 20px rgba(15, 23, 42, 0.05)',
