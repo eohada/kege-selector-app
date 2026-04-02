@@ -13,7 +13,7 @@
   --no-soft-delete  не помечать is_active=False у записей вне whitelist-пула
   --skip-attachments  не скачивать вложения на диск после upsert
   --tasks 1,2,19   только указанные номера заданий (подмножество TASKS_TO_SCRAPE)
-  --debug-dom      после первого типа заданий: дамп фреймов, tr, href, первый tr (прислать в поддержку при 0 записей)
+  --debug-dom      дамп DOM только если после collect список пуст (диагностика «0 записей»; при API список не пуст — дамп не нужен)
 
 Требует: playwright + chromium (playwright install chromium).
 """
@@ -243,7 +243,7 @@ def main() -> int:
     parser.add_argument(
         "--debug-dom",
         action="store_true",
-        help="После первого загруженного типа заданий вывести фреймы, tr, href и образец HTML (для отладки селекторов)",
+        help="Если collect вернул пустой список — дамп фреймов/tr/href (при успешном API дамп не выводится)",
     )
     args = parser.parse_args()
 
@@ -350,7 +350,12 @@ def main() -> int:
                 if task_filter is not None and task_num not in task_filter:
                     continue
                 raw = collect_kompege_listing_raw_items(page, task_num, task_val)
-                if args.debug_dom and not debug_dom_once and raw is not None:
+                if (
+                    args.debug_dom
+                    and not debug_dom_once
+                    and raw is not None
+                    and len(raw) == 0
+                ):
                     if _debug_kompege_listing_page is None:
                         print(
                             "--debug-dom: в контейнере старый код без debug_kompege_listing_page. "
