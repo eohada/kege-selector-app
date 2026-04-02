@@ -272,9 +272,12 @@ def main() -> int:
         USER_AGENT as PW_UA,
         check_robots_txt,
         collect_kompege_listing_raw_items,
-        debug_kompege_listing_page,
         CRAWL_DELAY_SEC,
     )
+    try:
+        from scraper.playwright_parser import debug_kompege_listing_page as _debug_kompege_listing_page
+    except ImportError:
+        _debug_kompege_listing_page = None  # type: ignore[misc,assignment]
 
     app = create_app()
     with app.app_context():
@@ -348,7 +351,14 @@ def main() -> int:
                     continue
                 raw = collect_kompege_listing_raw_items(page, task_num, task_val)
                 if args.debug_dom and not debug_dom_once and raw is not None:
-                    debug_kompege_listing_page(page)
+                    if _debug_kompege_listing_page is None:
+                        print(
+                            "--debug-dom: в контейнере старый код без debug_kompege_listing_page. "
+                            "Сделайте git pull и пересоберите образ web_prod, затем повторите команду."
+                        )
+                        browser.close()
+                        return 8
+                    _debug_kompege_listing_page(page)
                     debug_dom_once = True
                 if raw is None:
                     continue
