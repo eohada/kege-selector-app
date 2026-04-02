@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Главная (Airy Dark V2)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Golos Text"', 'sans-serif'] },
+                    colors: {
+                        dark: {
+                            bg: '#09090B',       
+                            card: '#131316',     
+                            inner: '#18181B',    
+                            border: '#27272A',   
+                            text: '#FAFAFA',     
+                            muted: '#A1A1AA'     
+                        },
+                        boo: {
+                            primary: '#8B5CF6',
+                            cyan: '#22D3EE',
+                            coral: '#FB7185',
+                            accent: '#FBBF24',
+                        }
+                    },
+                    boxShadow: {
+                        'glass-dark': '0 4px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                        'nav-dark': '0 10px 30px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.05)',
+                        'neon-primary': '0 0 40px rgba(139, 92, 246, 0.2)',
+                        'neon-orange': '0 0 20px rgba(249, 115, 22, 0.1)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #09090B; color: #A1A1AA; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #27272A; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3F3F46; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative selection:bg-boo-primary selection:text-white">
+
+    <!-- ФОНОВЫЕ БЛИКИ -->
+    <div class="fixed top-[10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/5 rounded-full filter blur-[150px] pointer-events-none z-0"></div>
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ -->
+    <div class="fixed top-0 w-full z-50 pt-6 px-6 lg:px-8 pointer-events-none flex justify-center">
+        <header class="w-full max-w-[1200px] bg-[#09090B]/60 backdrop-blur-2xl border border-white/5 shadow-nav-dark rounded-[24px] px-5 py-3 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-1 cursor-pointer group">
+                <div class="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 text-white flex items-center justify-center shadow-inner group-hover:bg-white/10 transition-all">
+                    <i class="ph-fill ph-ghost text-xl text-boo-primary"></i>
+                </div>
+                <span class="font-extrabold text-lg tracking-tight text-white hidden sm:block">BooStudy</span>
+            </div>
+
+            <nav class="hidden md:flex items-center gap-2">
+                <a href="#" class="px-5 py-2.5 bg-white/10 text-white border border-white/5 shadow-glass-dark rounded-xl font-bold text-sm flex items-center gap-2 relative">
+                    <i class="ph-bold ph-house text-lg text-boo-primary"></i> Главная
+                </a>
+                <a href="#" class="px-5 py-2.5 text-dark-muted hover:text-white hover:bg-white/5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-users-three text-lg"></i> Комната
+                </a>
+                <a href="#" class="px-5 py-2.5 text-dark-muted hover:text-white hover:bg-white/5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-list-checks text-lg"></i> Задания
+                </a>
+                <a href="#" class="px-5 py-2.5 text-dark-muted hover:text-white hover:bg-white/5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-book-open-text text-lg"></i> Теория
+                </a>
+                <a href="#" class="px-5 py-2.5 text-dark-muted hover:text-white hover:bg-white/5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-chart-line-up text-lg"></i> Статистика
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-4 pr-1">
+                <button class="w-10 h-10 rounded-xl flex items-center justify-center text-dark-muted hover:text-white hover:bg-white/5 transition-colors relative">
+                    <i class="ph-bold ph-magnifying-glass text-xl"></i>
+                </button>
+                <div class="w-10 h-10 rounded-xl border border-white/10 overflow-hidden bg-dark-inner flex items-center justify-center cursor-pointer hover:border-white/20 transition-colors">
+                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=QaStudent1&backgroundColor=09090B" class="w-full h-full object-cover opacity-90">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-36 pb-24 px-4 lg:px-8 relative z-10">
+        <div class="w-full max-w-[1200px] mx-auto flex flex-col gap-6">
+
+            <!-- ВЕРХНИЙ РЯД (Траектория и Риски) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- HERO (Твой путь к цели) -->
+                <!-- Используем стекло с неоновым фиолетовым свечением, чтобы сохранить Airy-вид -->
+                <div class="lg:col-span-2 bg-purple-600/10 rounded-[32px] border border-purple-500/20 shadow-neon-primary p-8 lg:p-10 flex flex-col justify-between relative overflow-hidden group">
+                    
+                    <div class="flex justify-between items-start mb-10">
+                        <div>
+                            <div class="flex items-center gap-2 mb-4">
+                                <i class="ph-fill ph-graduation-cap text-boo-primary text-xl"></i>
+                                <span class="text-xs font-bold text-purple-300 uppercase tracking-widest">QA POOL STUDENT 1</span>
+                            </div>
+                            <h1 class="text-4xl sm:text-5xl font-black text-white tracking-tight leading-tight mb-2">Твой путь к цели</h1>
+                            <p class="text-purple-300/80 font-medium">xx.06.2027</p>
+                        </div>
+                        
+                        <!-- Бейдж 100 баллов -->
+                        <div class="flex items-center bg-white/5 border border-white/10 rounded-2xl p-2 shadow-[inset_0_2px_10px_rgba(255,255,255,0.05)] backdrop-blur-md">
+                            <div class="bg-purple-500/20 text-purple-300 font-black text-2xl w-14 h-14 rounded-xl flex items-center justify-center border border-purple-500/30">100</div>
+                            <div class="px-4">
+                                <div class="text-[10px] font-extrabold text-purple-300/70 uppercase tracking-widest mb-0.5">Траектория</div>
+                                <div class="text-sm font-bold text-white leading-none">Целевой балл</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Прогресс бар -->
+                    <div class="w-full">
+                        <div class="flex justify-between items-end mb-3">
+                            <span class="font-bold text-white text-sm">Общий прогресс выполнения</span>
+                            <span class="text-3xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">0%</span>
+                        </div>
+                        
+                        <div class="w-full h-4 bg-black/40 rounded-full overflow-hidden mb-3 border border-white/5 shadow-inner">
+                            <div class="h-full bg-boo-primary rounded-full w-0"></div>
+                        </div>
+                        
+                        <div class="flex justify-between text-[10px] font-extrabold text-purple-300/70 uppercase tracking-widest">
+                            <span>Начало</span>
+                            <span>Финиш</span>
+                        </div>
+                    </div>
+
+                    <!-- Нижние полупрозрачные кнопки -->
+                    <div class="flex gap-3 mt-8">
+                        <button class="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-purple-300 rounded-xl text-xs font-bold border border-white/5 transition-colors flex items-center gap-2">
+                            <i class="ph-bold ph-bell"></i> Уведомления (11)
+                        </button>
+                        <button class="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-purple-300 rounded-xl text-xs font-bold border border-white/5 transition-colors flex items-center gap-2">
+                            <i class="ph-bold ph-chart-line-up"></i> Аналитика
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ЗОНА РИСКА (Слабые темы) -->
+                <div class="bg-orange-500/5 rounded-[32px] border border-orange-500/20 shadow-neon-orange p-8 flex flex-col hover:bg-orange-500/10 transition-colors">
+                    <div>
+                        <div class="flex items-center gap-2 mb-6">
+                            <i class="ph-fill ph-warning-circle text-orange-500 text-lg"></i>
+                            <h3 class="font-extrabold text-orange-500 text-[10px] uppercase tracking-widest">Зона риска</h3>
+                        </div>
+
+                        <h4 class="text-2xl font-black text-white mb-2 leading-tight">Слабые темы</h4>
+                        
+                        <div class="mt-10 flex flex-col items-center justify-center text-center">
+                            <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center shadow-inner mb-6 border border-white/5">
+                                <i class="ph-fill ph-ghost text-3xl text-orange-500/50"></i>
+                            </div>
+                            <p class="text-dark-muted font-medium text-sm leading-relaxed mb-6 px-2">
+                                Пока недостаточно данных для анализа. Решай больше тестов, чтобы система выявила твои слабые места.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <button class="mt-auto w-full py-3 bg-transparent text-orange-400 border border-orange-500/30 rounded-xl font-bold hover:bg-orange-500/10 transition-all flex justify-center items-center gap-2 text-sm">
+                        <i class="ph-bold ph-magic-wand text-lg"></i> Подобрать тест
+                    </button>
+                </div>
+            </div>
+
+            <!-- СРЕДНИЙ РЯД (Статистика) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <!-- Уроки -->
+                <div class="bg-dark-card rounded-[28px] border border-white/5 shadow-glass-dark p-6 flex flex-col justify-between hover:bg-white/5 transition-colors group cursor-pointer relative overflow-hidden">
+                    <i class="ph-bold ph-arrow-up-right absolute top-6 right-6 text-dark-muted group-hover:text-white transition-colors"></i>
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20 mb-4">
+                        <i class="ph-fill ph-video-camera text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-black text-white tracking-tight">2</div>
+                        <div class="text-[10px] font-extrabold text-dark-muted uppercase tracking-widest mt-1">Всего занятий</div>
+                    </div>
+                </div>
+
+                <!-- Задания -->
+                <div class="bg-dark-card rounded-[28px] border border-white/5 shadow-glass-dark p-6 flex flex-col justify-between hover:bg-white/5 transition-colors group cursor-pointer relative overflow-hidden">
+                    <i class="ph-bold ph-arrow-up-right absolute top-6 right-6 text-dark-muted group-hover:text-white transition-colors"></i>
+                    <div class="w-12 h-12 rounded-xl bg-green-500/10 text-green-400 flex items-center justify-center border border-green-500/20 mb-4">
+                        <i class="ph-fill ph-check-square-offset text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-black text-white tracking-tight">1</div>
+                        <div class="text-[10px] font-extrabold text-dark-muted uppercase tracking-widest mt-1">Выполнено заданий</div>
+                    </div>
+                </div>
+
+                <!-- Средний балл -->
+                <div class="bg-dark-card rounded-[28px] border border-white/5 shadow-glass-dark p-6 flex flex-col justify-between hover:bg-white/5 transition-colors group cursor-pointer relative overflow-hidden">
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 text-boo-primary flex items-center justify-center border border-purple-500/20 mb-4">
+                        <i class="ph-fill ph-star text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-black text-white tracking-tight">0</div>
+                        <div class="text-[10px] font-extrabold text-dark-muted uppercase tracking-widest mt-1">Средний балл (GPA)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- НИЖНИЙ РЯД (Списки) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- АКТИВНЫЕ РАБОТЫ -->
+                <div class="bg-dark-card rounded-[32px] border border-white/5 shadow-glass-dark p-8 flex flex-col">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-2xl font-black text-white">Активные работы</h3>
+                        <button class="text-xs font-bold text-boo-primary hover:text-white transition-colors flex items-center gap-1">Все <i class="ph-bold ph-arrow-right"></i></button>
+                    </div>
+
+                    <div class="space-y-2 flex-1">
+                        <!-- Пункт 1 -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 cursor-pointer">
+                            <div>
+                                <h4 class="text-sm font-bold text-boo-primary mb-1">Новая работа (копия) (копия)</h4>
+                                <div class="text-xs font-medium text-dark-muted">Дедлайн: 08.04.2026 20:28</div>
+                            </div>
+                            <span class="px-2.5 py-1 bg-white/5 text-dark-muted text-[10px] font-extrabold uppercase tracking-widest rounded border border-white/5 whitespace-nowrap">IN_PROGRESS</span>
+                        </div>
+                        
+                        <div class="h-px w-full bg-white/5"></div>
+                        
+                        <!-- Пункт 2 -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 cursor-pointer">
+                            <div>
+                                <h4 class="text-sm font-bold text-boo-primary mb-1">Новая работа (копия)</h4>
+                                <div class="text-xs font-medium text-dark-muted">Дедлайн: 08.04.2026 20:24</div>
+                            </div>
+                            <span class="px-2.5 py-1 bg-white/5 text-dark-muted text-[10px] font-extrabold uppercase tracking-widest rounded border border-white/5 whitespace-nowrap">IN_PROGRESS</span>
+                        </div>
+                        
+                        <div class="h-px w-full bg-white/5"></div>
+
+                        <!-- Пункт 3 -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 cursor-pointer">
+                            <div>
+                                <h4 class="text-sm font-bold text-boo-primary mb-1">Новая работа</h4>
+                                <div class="text-xs font-medium text-dark-muted">Дедлайн: 03.04.2026 19:59</div>
+                            </div>
+                            <span class="px-2.5 py-1 bg-white/5 text-dark-muted text-[10px] font-extrabold uppercase tracking-widest rounded border border-white/5 whitespace-nowrap">IN_PROGRESS</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ПОСЛЕДНИЕ ОЦЕНКИ -->
+                <div class="bg-dark-card rounded-[32px] border border-white/5 shadow-glass-dark p-8 flex flex-col">
+                    <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-2xl font-black text-white">Последние оценки</h3>
+                        <button class="text-xs font-bold text-boo-primary hover:text-white transition-colors flex items-center gap-1">Все <i class="ph-bold ph-arrow-right"></i></button>
+                    </div>
+
+                    <div class="space-y-2 flex-1">
+                        <!-- Пункт 1 -->
+                        <div class="flex items-center justify-between gap-4 p-4 rounded-2xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5 cursor-pointer">
+                            <div>
+                                <h4 class="text-sm font-bold text-white mb-1">Новая работа (копия) (копия) (копия)</h4>
+                                <div class="text-xs font-medium text-dark-muted">01.04.2026</div>
+                            </div>
+                            <div class="text-sm font-black text-white">
+                                0/3
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>

@@ -16,8 +16,8 @@
     right: 0;
     bottom: 0;
     width: min(86vw, 320px);
-    background: #fff;
-    border-left: 1px solid #E2E8F0;
+    background: var(--color-bg-surface);
+    border-left: 1px solid var(--color-stroke);
     padding: 1rem;
     overflow-y: auto;
     transform: translateX(100%);
@@ -33,7 +33,7 @@
     justify-content: space-between;
     padding-bottom: 0.75rem;
     margin-bottom: 0.75rem;
-    border-bottom: 1px solid #F1F5F9;
+    border-bottom: 1px solid var(--color-stroke);
 }
 [data-mobile-menu-root] .mobile-nav-links {
     display: flex;
@@ -122,7 +122,7 @@
                 <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
             </a>
 
-            <div style="height:1px;background:#F1F5F9;margin:0.75rem 0;"></div>
+            <div style="height:1px;background:var(--color-stroke);margin:0.75rem 0;"></div>
             <div class="app-sidebar-group-title">Инструменты</div>
             {% if has_permission(current_user, 'assignment.view') %}
             <a href="{{ url_for('assignments.assignments_list') }}" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
@@ -149,7 +149,7 @@
             {% endif %}
             {% endif %}
 
-            <div style="height:1px;background:#F1F5F9;margin:0.75rem 0;"></div>
+            <div style="height:1px;background:var(--color-stroke);margin:0.75rem 0;"></div>
             <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления" style="margin:0.5rem 0;">
                 <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
                 <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
@@ -193,8 +193,8 @@ document.addEventListener('DOMContentLoaded', function() {
             menu.style.width = 'min(86vw, 320px)';
             menu.style.maxWidth = '320px';
             menu.style.height = '100dvh';
-            menu.style.background = '#fff';
-            menu.style.borderLeft = '1px solid #E2E8F0';
+            menu.style.background = 'var(--color-bg-surface)';
+            menu.style.borderLeft = '1px solid var(--color-stroke)';
             menu.style.overflowY = 'auto';
             menu.style.zIndex = '150';
             menu.style.transform = 'translateX(100%)';
