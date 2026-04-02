@@ -14,9 +14,10 @@
 
     if (!el.multiple) {
       opts.maxItems = 1;
-      opts.searchField = [];
+      /* controlInput: null — без видимого поля ввода (как нативный select).
+         Не ставить searchField: [] — тогда Sifter не находит ни одной опции и список пустой. */
       opts.controlInput = null;
-      opts.sortField = [{ field: '$order' }];
+      opts.sortField = [{ field: '$order' }, { field: '$score' }];
     }
 
     opts.onDropdownOpen = function () {
