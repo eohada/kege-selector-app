@@ -1,12 +1,7 @@
-{# Встроенная панель банка заданий (без extends). Требует: bank_* переменные из task_generator #}
-<section id="gen-bank-panel" class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile overflow-hidden w-full">
-    <div class="px-8 py-5 bg-slate-50/50 border-b border-slate-100">
-        <h2 class="text-xl font-black text-primary m-0 tracking-tight">Банк заданий</h2>
-        <p class="text-sm text-muted m-0 mt-0.5">Условие и ответ для каждой записи; сложность и ответ можно сохранить кнопкой. Всего записей: <strong class="text-primary">{{ bank_total }}</strong>.</p>
-    </div>
-
-    <div class="p-8 pt-6 space-y-6 border-t border-slate-100">
-        <form method="get" action="{% if lesson_id %}{{ url_for('task_generator.task_generator', lesson_id=lesson_id) }}{% else %}{{ url_for('task_generator.task_generator') }}{% endif %}" class="flex flex-wrap gap-4 items-end">
+{# Эталон generator_light.html: фильтры, заголовок, карточки #}
+<div id="gen-bank-panel" class="flex flex-col gap-6 w-full">
+    <div class="bg-white rounded-[24px] border border-slate-200 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] p-6 flex flex-col md:flex-row items-end gap-4">
+        <form method="get" action="{% if lesson_id %}{{ url_for('task_generator.task_generator', lesson_id=lesson_id) }}{% else %}{{ url_for('task_generator.task_generator') }}{% endif %}" class="flex-1 w-full flex flex-col md:flex-row gap-4 items-end">
             {% if lesson_id %}<input type="hidden" name="lesson_id" value="{{ lesson_id }}">{% endif %}
             <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
             {% if template_id %}<input type="hidden" name="template_id" value="{{ template_id }}">{% endif %}
@@ -19,124 +14,136 @@
             <input type="hidden" name="bank_per_page" value="{{ bank_per_page }}">
             <input type="hidden" name="gen_tab" value="bank">
 
-            <div class="neo-field min-w-[200px]">
-                <label class="neo-label" for="bank_filter_course_id">Программа</label>
-                <select class="neo-select" id="bank_filter_course_id" name="bank_course_id">
-                    <option value="">Все</option>
-                    {% for c in all_courses %}
-                    <option value="{{ c.id }}" {% if bank_filter_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
-                    {% endfor %}
-                </select>
+            <div class="flex-1 w-full flex gap-4">
+                <div class="w-full md:w-1/2 space-y-1.5">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_course_id">Программа</label>
+                    <div class="relative">
+                        <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm appearance-none cursor-pointer shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" id="bank_filter_course_id" name="bank_course_id">
+                            <option value="">Все программы</option>
+                            {% for c in all_courses %}
+                            <option value="{{ c.id }}" {% if bank_filter_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+                            {% endfor %}
+                        </select>
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    </div>
+                </div>
+                <div class="w-24 space-y-1.5 shrink-0">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_task_number">№ Задания</label>
+                    <input type="number" min="1" name="bank_task_number" id="bank_filter_task_number" placeholder="—" value="{{ bank_filter_task_number or '' }}"
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm text-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                </div>
             </div>
-            <div class="neo-field w-32">
-                <label class="neo-label" for="bank_filter_task_number">№ задания</label>
-                <input class="neo-input" id="bank_filter_task_number" name="bank_task_number" type="number" min="1" placeholder="—"
-                       value="{{ bank_filter_task_number or '' }}">
+
+            <div class="flex items-center gap-4 w-full md:w-auto shrink-0">
+                <label class="flex items-center gap-2 cursor-pointer group px-2">
+                    <div class="relative w-5 h-5 rounded border border-slate-300 bg-white group-hover:border-boo-primary flex items-center justify-center transition-colors">
+                        <input type="checkbox" name="bank_only_manual" value="1" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full m-0 accent-boo-primary" {% if bank_only_manual %}checked{% endif %}>
+                    </div>
+                    <span class="text-sm font-bold text-slate-600">Ручные</span>
+                </label>
+                <button type="submit" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold shadow-sm hover:bg-boo-primaryHover transition-all text-sm border border-transparent">
+                    Показать
+                </button>
             </div>
-            <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted mb-2">
-                <input type="checkbox" name="bank_only_manual" value="1" class="w-5 h-5 rounded border-slate-300 accent-boo-primary" {% if bank_only_manual %}checked{% endif %}>
-                Только созданные вручную
-            </label>
-            <button type="submit" class="neo-button accent">Показать</button>
         </form>
-
-        {% if bank_tasks %}
-        <div class="space-y-6">
-            {% for t in bank_tasks %}
-            <article class="bank-task-card rounded-[24px] border border-slate-200 border-b-[3px] border-b-slate-200/80 bg-surface shadow-sm overflow-hidden"
-                     data-task-id="{{ t.task_id }}">
-                <div class="px-5 py-4 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
-                    <div class="flex flex-wrap items-center gap-2 min-w-0 flex-1">
-                        <span class="font-mono font-black text-boo-primary text-sm">#{{ t.task_id }}</span>
-                        <span class="text-muted text-sm font-bold truncate max-w-[200px]" title="{{ t.course.title if t.course else '' }}">{{ t.course.title if t.course else '—' }}</span>
-                        <span class="text-xs font-black text-secondary bg-surface-alt border border-slate-200 rounded-lg px-2 py-0.5">№{{ t.task_number }}</span>
-                        {% if t.bank_origin == 'manual' %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-100 dark:border-indigo-800">Вручную</span>
-                        {% elif t.bank_origin %}
-                        <span class="text-xs font-medium text-muted">{{ t.bank_origin }}</span>
-                        {% endif %}
-                        {% if t.site_task_id %}
-                        <span class="text-[10px] font-mono text-muted truncate max-w-[180px] md:max-w-xs" title="{{ t.site_task_id }}">{{ t.site_task_id }}</span>
-                        {% endif %}
-                    </div>
-                    <div class="shrink-0 w-full sm:w-auto flex justify-end">
-                        <button type="button" class="bank-task-delete-btn neo-button danger text-xs py-2 px-3 whitespace-nowrap w-full sm:w-auto justify-center"
-                                title="Безвозвратно удалить задание и очистить связи в БД">
-                            <i class="ph-bold ph-trash" aria-hidden="true"></i> Удалить из базы
-                        </button>
-                    </div>
-                </div>
-
-                <div class="p-5 space-y-5">
-                    <div>
-                        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Условие</div>
-                        <div
-                            class="bank-task-preview task-content text-[14px] leading-relaxed text-primary max-h-72 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/40 dark:bg-slate-900/20 p-4 max-w-none [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-xl">
-                            {{ (t.content_html or '')|safe }}
-                        </div>
-                    </div>
-
-                    {% if t.starter_code %}
-                    <details class="group rounded-xl border border-slate-100 bg-slate-50/30 overflow-hidden">
-                        <summary class="px-4 py-3 cursor-pointer text-sm font-bold text-secondary list-none flex items-center gap-2 [&::-webkit-details-marker]:hidden">
-                            <i class="ph-bold ph-caret-right group-open:rotate-90 transition-transform text-muted" aria-hidden="true"></i>
-                            Стартовый код
-                        </summary>
-                        <pre class="px-4 pb-4 m-0 text-xs font-mono text-primary whitespace-pre-wrap break-words">{{ t.starter_code }}</pre>
-                    </details>
-                    {% endif %}
-
-                    {% if t.task_solution and t.task_solution.solution_text %}
-                    <details class="group rounded-xl border border-indigo-100 bg-indigo-50/20 dark:bg-indigo-950/20 overflow-hidden">
-                        <summary class="px-4 py-3 cursor-pointer text-sm font-bold text-secondary list-none flex items-center gap-2 [&::-webkit-details-marker]:hidden">
-                            <i class="ph-bold ph-caret-right group-open:rotate-90 transition-transform text-muted" aria-hidden="true"></i>
-                            Решение (методичка)
-                        </summary>
-                        <div class="px-4 pb-4 text-sm text-primary whitespace-pre-wrap">{{ t.task_solution.solution_text }}</div>
-                    </details>
-                    {% endif %}
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="neo-field m-0">
-                            <label class="neo-label" for="bank-answer-{{ t.task_id }}">Ответ в банке</label>
-                            <textarea id="bank-answer-{{ t.task_id }}" class="neo-input font-mono text-sm min-h-[88px] bank-task-answer" rows="3"
-                                      autocomplete="off">{{ t.answer or '' }}</textarea>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="neo-label m-0" for="bank-diff-{{ t.task_id }}">Сложность (1–10)</label>
-                            <div class="relative">
-                                <select id="bank-diff-{{ t.task_id }}" class="neo-select w-full bank-task-difficulty">
-                                    <option value="" {% if t.difficulty_level is none %}selected{% endif %}>Не указана</option>
-                                    {% for d in range(1, 11) %}
-                                    <option value="{{ d }}" {% if t.difficulty_level is not none and t.difficulty_level == d %}selected{% endif %}>{{ d }}{% if d <= 3 %} — лёгкая{% elif d <= 7 %} — средняя{% else %} — сложная{% endif %}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="flex flex-wrap items-center gap-3 pt-1">
-                                <button type="button" class="bank-task-save-btn neo-button accent text-sm">
-                                    Сохранить ответ и сложность
-                                </button>
-                                <span class="bank-task-save-status text-xs font-medium hidden" aria-live="polite"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </article>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="rounded-[24px] border border-dashed border-slate-200 py-14 text-center text-muted font-medium">
-            Нет записей по выбранным фильтрам.
-        </div>
-        {% endif %}
-
-        {% if bank_pagination and bank_pagination|length > 1 %}
-        <div class="flex flex-wrap gap-2 justify-center pt-2">
-            {% for item in bank_pagination %}
-            <a class="px-3 py-1.5 rounded-lg text-sm font-bold no-underline {% if item.current %}bg-boo-primary text-white{% else %}bg-surface-alt text-muted border border-slate-200 hover:border-boo-primary{% endif %}"
-               href="{{ item.url }}">{{ item.page }}</a>
-            {% endfor %}
-        </div>
-        {% endif %}
     </div>
-</section>
+
+    <div class="flex justify-between items-end px-2 flex-wrap gap-2">
+        <h2 class="text-2xl font-black text-slate-900 tracking-tight m-0">Банк заданий</h2>
+        <span class="text-sm font-bold text-slate-500">Всего записей: <span class="text-slate-900 font-black">{{ bank_total }}</span></span>
+    </div>
+
+    {% if bank_tasks %}
+    {% for t in bank_tasks %}
+    <article class="bank-task-card bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] p-8 flex flex-col gap-6 group"
+             data-task-id="{{ t.task_id }}">
+        <div class="flex flex-wrap items-center justify-between pb-4 border-b border-slate-100 gap-3">
+            <div class="flex flex-wrap items-center gap-3 min-w-0">
+                <span class="text-lg font-black text-boo-primary">#{{ t.task_id }}</span>
+                <span class="text-sm font-extrabold text-slate-700 truncate max-w-[200px] md:max-w-md" title="{{ t.course.title if t.course else '' }}">{{ t.course.title if t.course else '—' }}</span>
+                <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-black border border-slate-200 uppercase">№ {{ t.task_number }}</span>
+                {% if t.bank_origin == 'manual' %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">Вручную</span>
+                {% elif t.bank_origin %}
+                <span class="text-xs font-bold text-slate-400 ml-1">{{ t.bank_origin }}</span>
+                {% endif %}
+                {% if t.site_task_id %}
+                <span class="text-xs font-bold text-slate-400 ml-1 truncate max-w-[200px]" title="{{ t.site_task_id }}">{{ t.site_task_id }}</span>
+                {% endif %}
+            </div>
+            <button type="button" class="bank-task-delete-btn px-4 py-2 bg-red-50 text-boo-coral border border-red-200 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors flex items-center gap-1.5 shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-full sm:w-auto justify-center"
+                    title="Безвозвратно удалить задание из базы">
+                <i class="ph-bold ph-trash" aria-hidden="true"></i> Удалить из базы
+            </button>
+        </div>
+
+        <div>
+            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Условие</label>
+            <div class="bank-task-preview task-content bg-slate-50/50 border border-slate-200 rounded-2xl p-6 text-[15px] leading-relaxed text-slate-800 shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] max-h-96 overflow-y-auto [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-xl">
+                {{ (t.content_html or '')|safe }}
+            </div>
+        </div>
+
+        {% if t.starter_code %}
+        <details class="group rounded-xl border border-slate-100 bg-slate-50/80 overflow-hidden">
+            <summary class="px-4 py-3 cursor-pointer text-sm font-bold text-slate-700 list-none flex items-center gap-2 [&::-webkit-details-marker]:hidden">
+                <i class="ph-bold ph-caret-right group-open:rotate-90 transition-transform text-slate-400" aria-hidden="true"></i>
+                Стартовый код
+            </summary>
+            <pre class="px-4 pb-4 m-0 text-xs font-mono text-slate-800 whitespace-pre-wrap break-words">{{ t.starter_code }}</pre>
+        </details>
+        {% endif %}
+
+        {% if t.task_solution and t.task_solution.solution_text %}
+        <details class="group rounded-xl border border-indigo-100 bg-indigo-50/30 overflow-hidden">
+            <summary class="px-4 py-3 cursor-pointer text-sm font-bold text-slate-700 list-none flex items-center gap-2 [&::-webkit-details-marker]:hidden">
+                <i class="ph-bold ph-caret-right group-open:rotate-90 transition-transform text-slate-400" aria-hidden="true"></i>
+                Решение (методичка)
+            </summary>
+            <div class="px-4 pb-4 text-sm text-slate-800 whitespace-pre-wrap">{{ t.task_solution.solution_text }}</div>
+        </details>
+        {% endif %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+            <div class="space-y-1.5">
+                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank-answer-{{ t.task_id }}">Ответ в банке</label>
+                <textarea id="bank-answer-{{ t.task_id }}" rows="3" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm md:text-base focus:outline-none focus:border-boo-primary shadow-sm bank-task-answer resize-y">{{ t.answer or '' }}</textarea>
+            </div>
+            <div class="space-y-1.5 flex flex-col justify-between">
+                <div>
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank-diff-{{ t.task_id }}">Сложность (1-10)</label>
+                    <div class="relative mt-1.5">
+                        <select id="bank-diff-{{ t.task_id }}" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 font-bold text-slate-700 text-sm appearance-none cursor-pointer shadow-sm bank-task-difficulty">
+                            <option value="" {% if t.difficulty_level is none %}selected{% endif %}>Не указана</option>
+                            {% for d in range(1, 11) %}
+                            <option value="{{ d }}" {% if t.difficulty_level is not none and t.difficulty_level == d %}selected{% endif %}>{{ d }}{% if d <= 3 %} — лёгкая{% elif d <= 7 %} — средняя{% else %} — сложная{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2 mt-4 md:mt-0">
+                    <button type="button" class="bank-task-save-btn w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold shadow-sm hover:bg-boo-primaryHover transition-colors text-sm border border-transparent">
+                        Сохранить ответ и сложность
+                    </button>
+                    <span class="bank-task-save-status text-xs font-medium hidden text-center" aria-live="polite"></span>
+                </div>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+    {% else %}
+    <div class="bg-white rounded-[24px] border border-dashed border-slate-200 py-14 text-center text-slate-500 font-medium">
+        Нет записей по выбранным фильтрам.
+    </div>
+    {% endif %}
+
+    {% if bank_pagination and bank_pagination|length > 1 %}
+    <div class="flex flex-wrap gap-2 justify-center pt-2">
+        {% for item in bank_pagination %}
+        <a class="px-3 py-1.5 rounded-lg text-sm font-bold no-underline {% if item.current %}bg-boo-primary text-white{% else %}bg-slate-50 text-slate-600 border border-slate-200 hover:border-boo-primary{% endif %}"
+           href="{{ item.url }}">{{ item.page }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
