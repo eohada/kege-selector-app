@@ -243,6 +243,16 @@ html[data-theme="dark"][data-student-lesson-room="1"] .lesson-tabs {
   border-color: rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
 }
+html[data-theme="dark"][data-student-lesson-room="1"] .lesson-back-link {
+  background: rgba(19, 19, 22, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-text-muted) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+html[data-theme="dark"][data-student-lesson-room="1"] .lesson-back-link:hover {
+  color: #c4b5fd !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+}
 
 /*
  * Выполнение работы (submission_view): перебиваем белые !important из встроенного <style>
@@ -393,6 +403,25 @@ html[data-theme="dark"][data-student-submission="1"] .locked-card__fake {
 }
 html[data-theme="dark"][data-student-submission="1"] .code-editor-wrap {
   border-color: rgba(255, 255, 255, 0.1) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .code-editor-panel {
+  background: var(--color-bg-inset) !important;
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .code-editor-toggle {
+  background: var(--color-bg-surface-alt) !important;
+  color: var(--color-text-secondary) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .code-editor-hint {
+  color: var(--color-text-muted) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .code-editor-hint code {
+  background: rgba(0, 0, 0, 0.35) !important;
+  color: #e4e4e7 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .code-editor-output-label {
+  color: var(--color-text-muted) !important;
 }
 
 /*
