@@ -16,8 +16,8 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           # The deploy step failed with: "dial tcp ...:22: i/o timeout".
-          # Increase SSH connect timeout to reduce flakiness when the host is slow/unreachable.
-          timeout: 2m
-          command_timeout: 20m
+          # appleboy/ssh-action expects these values in seconds (numbers), not duration strings.
+          timeout: 120
+          command_timeout: 1200
           script: |
             /opt/boostudy/deploy_sandbox.sh
