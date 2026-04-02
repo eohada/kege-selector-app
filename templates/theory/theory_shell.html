@@ -52,13 +52,13 @@
     </div>
 
     <div class="flex gap-2 bg-slate-200/50 dark:bg-dark-inner/60 p-1.5 rounded-xl w-fit border border-slate-200/50 dark:border-white/[0.08]">
-      <button type="button" class="theory-filter px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 dark:bg-white/10 dark:text-white dark:border-white/[0.08] flex items-center gap-2 transition-all" data-filter="all">
+      <button type="button" class="theory-filter px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-transparent dark:bg-white/10 dark:text-white outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-boo-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-200/50 dark:focus-visible:ring-offset-zinc-900 flex items-center gap-2 transition-[background-color,box-shadow,color] duration-150" data-filter="all">
         Все группы
       </button>
-      <button type="button" class="theory-filter px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="nonempty">
+      <button type="button" class="theory-filter px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5 rounded-lg font-bold text-sm border border-transparent outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-boo-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-200/50 dark:focus-visible:ring-offset-zinc-900 transition-[background-color,color] duration-150 flex items-center gap-2" data-filter="nonempty">
         Непустые
       </button>
-      <button type="button" class="theory-filter px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="bookmarked">
+      <button type="button" class="theory-filter px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5 rounded-lg font-bold text-sm border border-transparent outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-boo-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-200/50 dark:focus-visible:ring-offset-zinc-900 transition-[background-color,color] duration-150 flex items-center gap-2" data-filter="bookmarked">
         Избранное
       </button>
     </div>
@@ -417,15 +417,15 @@
   }
   window.__theoryOpenIndex = openGroups;
 
-  const theoryFilterActiveDark = ['dark:bg-white/10', 'dark:text-white', 'dark:border-white/[0.08]'];
+  const theoryFilterActiveDark = ['dark:bg-white/10', 'dark:text-white'];
 
   function setActiveFilter(id) {
     filterBtns.forEach(b => {
       if (b.dataset.filter === id) {
-        b.classList.add('bg-surface', 'text-primary', 'shadow-sm', 'dark:shadow-none', 'border', 'border-slate-200/50', ...theoryFilterActiveDark);
+        b.classList.add('bg-surface', 'text-primary', 'shadow-sm', 'dark:shadow-none', ...theoryFilterActiveDark);
         b.classList.remove('text-muted', 'dark:text-dark-muted');
       } else {
-        b.classList.remove('bg-surface', 'text-primary', 'shadow-sm', 'dark:shadow-none', 'border', 'border-slate-200/50', ...theoryFilterActiveDark);
+        b.classList.remove('bg-surface', 'text-primary', 'shadow-sm', 'dark:shadow-none', ...theoryFilterActiveDark);
         b.classList.add('text-muted', 'dark:text-dark-muted');
       }
     });
