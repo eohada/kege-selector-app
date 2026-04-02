@@ -655,7 +655,10 @@ def api_analytics_summary():
         all_nodes = KnowledgeNode.query.filter_by(subject_id=subject.id).order_by(KnowledgeNode.id).all()
         node_ids = [n.id for n in all_nodes]
         task_numbers_by_node = {}
-        for t in Tasks.query.filter(Tasks.knowledge_node_id.in_(node_ids)).all():
+        for t in Tasks.query.filter(
+            Tasks.knowledge_node_id.in_(node_ids),
+            Tasks.is_active.is_(True),
+        ).all():
             if t.knowledge_node_id and t.knowledge_node_id not in task_numbers_by_node:
                 task_numbers_by_node[t.knowledge_node_id] = t.task_number
         code_to_task = {}

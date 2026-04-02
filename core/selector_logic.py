@@ -1,6 +1,18 @@
 from .db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, moscow_now, Lesson, LessonTask, StudentTaskSeen
 from sqlalchemy import text
 
+
+def _tasks_active_sql_fragment():
+    """Фрагмент AND ... для сырого SQL: только активные строки банка (is_active)."""
+    try:
+        dialect = db.engine.dialect.name
+    except Exception:
+        dialect = 'sqlite'
+    if dialect == 'postgresql':
+        return ' AND (T.is_active IS TRUE)'
+    return ' AND (IFNULL(T.is_active, 1) != 0)'
+
+
 # Импорт для подзапроса «уже в работах у учеников» (избегаем циклического импорта через text/SQL)
 def get_task_ids_in_assignments_for_students(student_ids):
     """
@@ -69,6 +81,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
         course_filter = ' AND T.course_id = :course_id'
         params_extra['course_id'] = course_id
 
+    active_sql = _tasks_active_sql_fragment()
     if student_id:
         params = {'task_type': task_type, 'limit_count': limit_count, 'student_id': student_id, **params_extra}
         if use_skipped:
@@ -76,6 +89,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                 SELECT T.task_id
                 FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
+                    """ + active_sql + """
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                     AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                     AND T.task_id NOT IN (
@@ -98,6 +112,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                 SELECT T.task_id
                 FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
+                    """ + active_sql + """
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                     AND T.task_id NOT IN (SELECT task_fk FROM "SkippedTasks")
                     AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
@@ -124,6 +139,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                 SELECT T.task_id
                 FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
+                    """ + active_sql + """
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                     AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                     """ + assign_excl + course_filter + """
@@ -135,6 +151,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                 SELECT T.task_id
                 FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
+                    """ + active_sql + """
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                     AND T.task_id NOT IN (SELECT task_fk FROM "SkippedTasks")
                     AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
@@ -184,12 +201,14 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
         course_filter = " AND T.course_id = :course_id"
         params['course_id'] = course_id
 
+    active_sql = _tasks_active_sql_fragment()
     if student_id:
         params['student_id'] = student_id
         sql_query = text(f"""
             SELECT T.task_id
             FROM "Tasks" AS T
             WHERE T.task_number = :task_type
+                {active_sql}
                 AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                 AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                 {skip_where}
@@ -214,6 +233,7 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
             SELECT T.task_id
             FROM "Tasks" AS T
             WHERE T.task_number = :task_type
+                {active_sql}
                 AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                 AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                 {skip_where}

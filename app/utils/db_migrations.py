@@ -1507,6 +1507,28 @@ def ensure_schema_columns(app):
                         if 'starter_code' not in cols:
                             db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN starter_code TEXT'))
                             logger.info("Added starter_code to Tasks")
+                        if 'is_active' not in cols:
+                            if is_postgres:
+                                db.session.execute(text(
+                                    f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN is_active BOOLEAN DEFAULT TRUE NOT NULL'
+                                ))
+                            else:
+                                db.session.execute(text(
+                                    f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN is_active INTEGER DEFAULT 1 NOT NULL'
+                                ))
+                            logger.info("Added is_active to Tasks (KEGE bank soft-delete)")
+                        else:
+                            try:
+                                if is_postgres:
+                                    db.session.execute(text(
+                                        f'UPDATE "{tasks_table_resolved}" SET is_active = TRUE WHERE is_active IS NULL'
+                                    ))
+                                else:
+                                    db.session.execute(text(
+                                        f'UPDATE "{tasks_table_resolved}" SET is_active = 1 WHERE is_active IS NULL'
+                                    ))
+                            except Exception as _ie:
+                                logger.warning(f"Tasks.is_active NULL backfill skipped: {_ie}")
                         # Индекс для difficulty_level
                         try:
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_tasks_difficulty_level ON "{tasks_table_resolved}"(difficulty_level)'))

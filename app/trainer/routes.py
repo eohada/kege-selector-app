@@ -636,7 +636,7 @@ def trainer_recommendations():
     masteries = UserMastery.query.filter_by(user_id=user.id).order_by(UserMastery.rating.asc()).limit(3).all()
     for m in masteries:
         # Пытаемся найти подходящую задачу для этого узла
-        t = Tasks.query.filter_by(knowledge_node_id=m.node_id).order_by(db.func.random()).first()
+        t = Tasks.query.filter_by(knowledge_node_id=m.node_id, is_active=True).order_by(db.func.random()).first()
         if t:
             recommendations.append(_task_to_payload(t))
             
@@ -645,7 +645,7 @@ def trainer_recommendations():
     if st:
         # Исключаем виденные
         seen_q = db.session.query(StudentTaskSeen.task_id).filter(StudentTaskSeen.student_id == st.student_id)
-        q = Tasks.query.filter(~Tasks.task_id.in_(seen_q))
+        q = Tasks.query.filter(~Tasks.task_id.in_(seen_q), Tasks.is_active.is_(True))
         if exclude_ids:
             q = q.filter(~Tasks.task_id.in_(exclude_ids))
         
@@ -655,7 +655,7 @@ def trainer_recommendations():
             
     # Если всё еще мало, просто рандом
     if len(recommendations) < 5:
-        q = Tasks.query
+        q = Tasks.query.filter(Tasks.is_active.is_(True))
         exclude_ids = [r['task_id'] for r in recommendations if r]
         if exclude_ids:
             q = q.filter(~Tasks.task_id.in_(exclude_ids))
@@ -842,7 +842,7 @@ def trainer_fallback_candidates():
             task_type_filter = None
     course_id = request.args.get('course_id', type=int)
 
-    q = db.session.query(Tasks.task_number, Tasks.task_id, Tasks.hints)
+    q = db.session.query(Tasks.task_number, Tasks.task_id, Tasks.hints).filter(Tasks.is_active.is_(True))
     if task_type_filter is not None:
         q = q.filter(Tasks.task_number == task_type_filter)
     if course_id is not None:
@@ -916,7 +916,7 @@ def trainer_stream_start():
     if pinned_task and int(getattr(pinned_task, 'task_number', 0) or 0) == task_type:
         task = pinned_task
     else:
-        q = Tasks.query.filter(Tasks.task_number == task_type)
+        q = Tasks.query.filter(Tasks.task_number == task_type, Tasks.is_active.is_(True))
         if course_id is not None:
             q = q.filter(Tasks.course_id == course_id)
         if exclude_ids:
@@ -970,7 +970,7 @@ def trainer_stream_act():
             except Exception:
                 continue
 
-    q = Tasks.query.filter(Tasks.task_number == task_type)
+    q = Tasks.query.filter(Tasks.task_number == task_type, Tasks.is_active.is_(True))
     if course_id is not None:
         q = q.filter(Tasks.course_id == course_id)
     if exclude_ids:

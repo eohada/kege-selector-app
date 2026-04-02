@@ -63,6 +63,7 @@ def _task_generator_page_url(
     bank_task_id=None,
     bank_only_manual=False,
     bank_open=False,
+    bank_show_inactive=False,
 ):
     """Единая точка сборки URL страницы генератора (поток + банк в одном месте)."""
     kwargs = {'assignment_type': assignment_type or 'homework'}
@@ -88,6 +89,8 @@ def _task_generator_page_url(
     if bank_open:
         kwargs['bank_open'] = 1
         kwargs['gen_tab'] = 'bank'
+    if bank_show_inactive:
+        kwargs['bank_show_inactive'] = 1
     return url_for('task_generator.task_generator', **kwargs)
 
 
@@ -393,9 +396,11 @@ def task_generator(lesson_id=None):
     bank_filter_task_number = request.args.get('bank_task_number', type=int)
     bank_filter_task_id = request.args.get('bank_task_id', type=int)
     bank_only_manual = request.args.get('bank_only_manual', type=int) == 1
+    bank_show_inactive = request.args.get('bank_show_inactive', type=int) == 1
     bank_open = request.args.get('bank_open', type=int) == 1
     bank_panel_open = bank_open or bool(
-        bank_filter_course_id or bank_filter_task_number or bank_filter_task_id or bank_only_manual or bank_page > 1
+        bank_filter_course_id or bank_filter_task_number or bank_filter_task_id
+        or bank_only_manual or bank_show_inactive or bank_page > 1
     )
     gen_tab_arg = (request.args.get('gen_tab') or '').strip().lower()
     if gen_tab_arg in ('stream', 'manual', 'bank'):
@@ -421,6 +426,8 @@ def task_generator(lesson_id=None):
                 bq = bq.filter(Tasks.task_number == bank_filter_task_number)
         if bank_only_manual and not bank_filter_task_id:
             bq = bq.filter(Tasks.bank_origin == 'manual')
+        if not bank_filter_task_id and not bank_show_inactive:
+            bq = bq.filter(Tasks.is_active.is_(True))
         bq = bq.order_by(Tasks.task_id.desc())
         bank_total = bq.count()
         bank_tasks = bq.offset((bank_page - 1) * bank_per_page).limit(bank_per_page).all()
@@ -457,6 +464,7 @@ def task_generator(lesson_id=None):
                     bank_task_id=bank_filter_task_id,
                     bank_only_manual=bank_only_manual,
                     bank_open=True,
+                    bank_show_inactive=bank_show_inactive,
                 ),
                 'current': p == bank_page,
             })
@@ -490,6 +498,7 @@ def task_generator(lesson_id=None):
                            bank_filter_task_number=bank_filter_task_number,
                            bank_filter_task_id=bank_filter_task_id,
                            bank_only_manual=bank_only_manual,
+                           bank_show_inactive=bank_show_inactive,
                            bank_panel_open=bank_panel_open,
                            bank_pagination=bank_pagination,
                            initial_gen_tab=initial_gen_tab)

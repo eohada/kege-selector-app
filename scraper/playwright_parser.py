@@ -1,3 +1,9 @@
+"""
+Парсер kompege.ru → локальная SQLite data/keg_tasks.db (legacy).
+
+Прод-синхронизация банка в основную БД приложения: scripts/sync_kege_informatics_bank.py
+(whitelist источников, is_active, soft-delete, вложения).
+"""
 import os
 import sys
 import re
@@ -285,440 +291,183 @@ def check_robots_txt():
         print(f"[ETL] Ошибка при чтении robots.txt: {e}. (Продолжаем с осторожностью)")
         return True
 
-def fetch_tasks(page: Page, task_number: int, task_value_url: str):
+
+def collect_kompege_listing_raw_items(page: Page, task_number: int, task_value_url: str):
+    """
+    Строки таблицы заданий на kompege.ru/task после выбора типа и «Найти все задачи».
+    None — тип недоступен в списке (пропуск). Иначе список {taskId, contentHtml, details, files, answer}.
+    Общая точка для fetch_tasks и scripts/sync_kege_informatics_bank.py.
+    """
     print(f"[ETL] 3. Выбор типа задания {task_number} (value='{task_value_url}')...")
 
+    if page.is_closed():
+        print(f"[ETL] Ошибка: Страница была закрыта. Перезагружаем...")
+        page.goto(MAIN_PAGE_URL, wait_until='domcontentloaded', timeout=60000)
+        page.wait_for_timeout(2000)
+
+    dropdown_found = False
+    actual_selector = DROPDOWN_SELECTOR
+    selectors_to_try = [
+        DROPDOWN_SELECTOR,
+        "select[name='tasktype']",
+        "select#tasktype",
+        "select.tasktype",
+        "select",
+    ]
+    for selector in selectors_to_try:
+        try:
+            if page.locator(selector).count() > 0:
+                page.wait_for_selector(selector, state='visible', timeout=5000)
+                actual_selector = selector
+                dropdown_found = True
+                print(f"[ETL] Селектор найден: {selector}")
+                break
+        except Exception:
+            continue
+    if not dropdown_found:
+        raise RuntimeError("Не удалось найти выпадающий список на странице")
+
     try:
-        if page.is_closed():
-            print(f"[ETL] Ошибка: Страница была закрыта. Перезагружаем...")
-            page.goto(MAIN_PAGE_URL, wait_until='domcontentloaded', timeout=60000)
-            page.wait_for_timeout(2000)
-
-        dropdown_found = False
-        actual_selector = DROPDOWN_SELECTOR
-
-        selectors_to_try = [
-            DROPDOWN_SELECTOR,
-            "select[name='tasktype']",
-            "select#tasktype",
-            "select.tasktype",
-            "select",
-        ]
-
-        for selector in selectors_to_try:
-            try:
-                if page.locator(selector).count() > 0:
-                    page.wait_for_selector(selector, state='visible', timeout=5000)
-                    actual_selector = selector
-                    dropdown_found = True
-                    print(f"[ETL] Селектор найден: {selector}")
-                    break
-            except:
-                continue
-
-        if not dropdown_found:
-            raise Exception("Не удалось найти выпадающий список на странице")
-
-        try:
-            available_options = page.evaluate("""
-                (selector) => {
-                    const select = document.querySelector(selector);
-                    if (!select) return [];
-                    return Array.from(select.options).map(opt => opt.value);
-                }
-            """, actual_selector)
-
-            if task_value_url not in available_options:
-                print(f"[ETL] ПРЕДУПРЕЖДЕНИЕ: Опция '{task_value_url}' недоступна для задания {task_number}. Доступны: {available_options}")
-                print(f"[ETL] Пропускаем задание {task_number}.")
-                return 0
-
-            page.select_option(actual_selector, value=task_value_url, timeout=10000)
-            print(f"[ETL] Выбрана опция: {task_value_url}")
-        except Exception as e:
-            print(f"[ETL] ОШИБКА при выборе опции '{task_value_url}' для задания {task_number}: {e}")
+        available_options = page.evaluate("""
+            (selector) => {
+                const select = document.querySelector(selector);
+                if (!select) return [];
+                return Array.from(select.options).map(opt => opt.value);
+            }
+        """, actual_selector)
+        if task_value_url not in available_options:
+            print(f"[ETL] ПРЕДУПРЕЖДЕНИЕ: Опция '{task_value_url}' недоступна для задания {task_number}. Доступны: {available_options}")
             print(f"[ETL] Пропускаем задание {task_number}.")
-            return 0
+            return None
+        page.select_option(actual_selector, value=task_value_url, timeout=10000)
+        print(f"[ETL] Выбрана опция: {task_value_url}")
+    except Exception as e:
+        print(f"[ETL] ОШИБКА при выборе опции '{task_value_url}' для задания {task_number}: {e}")
+        print(f"[ETL] Пропускаем задание {task_number}.")
+        return None
 
-        button_found = False
-        button_selectors = [
-            "input[type='button'][value='Найти все задачи']",
-            "input[type='button'][value*='Найти все задачи']",
-            "input[value='Найти все задачи']",
-            "input[type='button']",
-        ]
-
-        for button_selector in button_selectors:
-            try:
-                button_locator = page.locator(button_selector)
-                if button_locator.count() > 0:
-                    if button_selector == "input[type='button']":
-                        all_buttons = button_locator.all()
-                        for btn in all_buttons:
-                            try:
-                                value = btn.get_attribute('value') or ''
-                                if 'найти' in value.lower() and 'задач' in value.lower():
-                                    btn.scroll_into_view_if_needed()
-                                    btn.click()
-                                    print(f"[ETL] Нажата кнопка поиска (найдена по value): {value}")
-                                    button_found = True
-                                    break
-                            except:
-                                continue
-                        if button_found:
-                            break
-                    else:
-                        button_locator.first.scroll_into_view_if_needed()
-                        page.wait_for_selector(button_selector, state='visible', timeout=5000)
-                        button_locator.first.click()
-                        print(f"[ETL] Нажата кнопка поиска: {button_selector}")
-                        button_found = True
+    button_found = False
+    button_selectors = [
+        "input[type='button'][value='Найти все задачи']",
+        "input[type='button'][value*='Найти все задачи']",
+        "input[value='Найти все задачи']",
+        "input[type='button']",
+    ]
+    for button_selector in button_selectors:
+        try:
+            button_locator = page.locator(button_selector)
+            if button_locator.count() > 0:
+                if button_selector == "input[type='button']":
+                    for btn in button_locator.all():
+                        try:
+                            value = btn.get_attribute('value') or ''
+                            if 'найти' in value.lower() and 'задач' in value.lower():
+                                btn.scroll_into_view_if_needed()
+                                btn.click()
+                                print(f"[ETL] Нажата кнопка поиска (найдена по value): {value}")
+                                button_found = True
+                                break
+                        except Exception:
+                            continue
+                    if button_found:
                         break
-            except Exception as e:
-                continue
+                else:
+                    button_locator.first.scroll_into_view_if_needed()
+                    page.wait_for_selector(button_selector, state='visible', timeout=5000)
+                    button_locator.first.click()
+                    print(f"[ETL] Нажата кнопка поиска: {button_selector}")
+                    button_found = True
+                    break
+        except Exception:
+            continue
+    if not button_found:
+        raise RuntimeError("Не удалось найти и нажать кнопку 'Найти все задачи'")
 
-        if not button_found:
-            raise Exception("Не удалось найти и нажать кнопку 'Найти все задачи'")
-
-        page.wait_for_timeout(2000)  # Увеличиваем ожидание после нажатия кнопки
-
+    page.wait_for_timeout(2000)
+    try:
+        page.wait_for_selector("table tbody tr", timeout=20000)
+    except Exception as e:
+        print(f"[ETL] Предупреждение: таблица не найдена за 20 сек: {e}")
         try:
-            page.wait_for_selector("table tbody tr", timeout=20000)
-        except Exception as e:
-            print(f"[ETL] Предупреждение: таблица не найдена за 20 сек: {e}")
-            try:
-                page.wait_for_selector("table tr", timeout=5000)
-            except:
-                pass
-        
-        try:
-            page.wait_for_selector("div.task-text", timeout=5000, state='visible')
+            page.wait_for_selector("table tr", timeout=5000)
         except Exception:
             pass
-        
-        page.wait_for_timeout(1000)
-        
-        rows_count = page.locator("table tbody tr").count()
-        print(f"[ETL] Найдено строк в таблице: {rows_count}")
-        
-        print(f"[ETL] Данные для задания {task_number} загружены.")
+    try:
+        page.wait_for_selector("div.task-text", timeout=5000, state='visible')
+    except Exception:
+        pass
+    page.wait_for_timeout(1000)
+    rows_count = page.locator("table tbody tr").count()
+    print(f"[ETL] Найдено строк в таблице: {rows_count}")
+    print(f"[ETL] Данные для задания {task_number} загружены.")
 
-        try:
-            print("[ETL] Быстрый режим: извлекаем задания через evaluate()...")
-            items = page.evaluate("""
-                () => {
-                    const rows = document.querySelectorAll('table tbody tr');
-                    const result = [];
-                    rows.forEach(row => {
-                        const taskIdCell = row.querySelector('td:first-child a');
-                        const contentCell = row.querySelector('td:nth-child(2) div.task-text');
-                        const detailsCell = row.querySelector('td:nth-child(2) span.details');
-                        const fileLinks = row.querySelectorAll('td:nth-child(2) a[href*="/file/"]');
-                        
-                        if (!taskIdCell || !contentCell) return;
-                        
-                        const taskId = taskIdCell.getAttribute('href')?.match(/id=(\\d+)/)?.[1];
-                        if (!taskId) return;
-                        
-                        const contentHtml = contentCell.innerHTML || '';
-                        const details = detailsCell ? detailsCell.textContent.trim() : '';
-                        
-                        const files = [];
-                        fileLinks.forEach(link => {
-                            const href = link.getAttribute('href') || '';
-                            const text = link.textContent.trim();
-                            files.push({ href: href, text: text });
-                        });
-                        
-                        // Извлекаем ответ, если он есть на странице
-                        let answer = '';
-                        const answerCell = row.querySelector('td:nth-child(2) .answer, td:nth-child(2) [class*="answer"], td:nth-child(2) [id*="answer"]');
-                        if (answerCell) {
-                            answer = answerCell.textContent.trim() || answerCell.innerText.trim();
-                        }
-                        // Также проверяем кнопку "Показать ответ"
-                        const showAnswerBtn = row.querySelector('button[onclick*="answer"], button[onclick*="Ответ"], .show-answer, [class*="show-answer"]');
-                        if (showAnswerBtn && !answer) {
-                            // Пытаемся найти ответ рядом с кнопкой
-                            const answerNearBtn = showAnswerBtn.closest('td')?.querySelector('.answer-text, [class*="answer"]');
-                            if (answerNearBtn) {
-                                answer = answerNearBtn.textContent.trim();
-                            }
-                        }
-                        
-                        result.push({
-                            taskId: taskId,
-                            contentHtml: contentHtml,
-                            details: details,
-                            files: files,
-                            answer: answer
-                        });
-                    });
-                    return result;
+    print("[ETL] Быстрый режим: извлекаем задания через evaluate()...")
+    items = page.evaluate("""
+        () => {
+            const rows = document.querySelectorAll('table tbody tr');
+            const result = [];
+            rows.forEach(row => {
+                const taskIdCell = row.querySelector('td:first-child a');
+                const contentCell = row.querySelector('td:nth-child(2) div.task-text');
+                const detailsCell = row.querySelector('td:nth-child(2) span.details');
+                const fileLinks = row.querySelectorAll('td:nth-child(2) a[href*="/file/"]');
+                if (!taskIdCell || !contentCell) return;
+                const taskId = taskIdCell.getAttribute('href')?.match(/id=(\\d+)/)?.[1];
+                if (!taskId) return;
+                const contentHtml = contentCell.innerHTML || '';
+                const details = detailsCell ? detailsCell.textContent.trim() : '';
+                const files = [];
+                fileLinks.forEach(link => {
+                    const href = link.getAttribute('href') || '';
+                    const text = link.textContent.trim();
+                    files.push({ href: href, text: text });
+                });
+                let answer = '';
+                const answerCell = row.querySelector('td:nth-child(2) .answer, td:nth-child(2) [class*="answer"], td:nth-child(2) [id*="answer"]');
+                if (answerCell) {
+                    answer = answerCell.textContent.trim() || answerCell.innerText.trim();
                 }
-            """)
-            print(f"[ETL] Быстрый режим: получено {len(items)} записей.")
+                const showAnswerBtn = row.querySelector('button[onclick*="answer"], button[onclick*="Ответ"], .show-answer, [class*="show-answer"]');
+                if (showAnswerBtn && !answer) {
+                    const answerNearBtn = showAnswerBtn.closest('td')?.querySelector('.answer-text, [class*="answer"]');
+                    if (answerNearBtn) {
+                        answer = answerNearBtn.textContent.trim();
+                    }
+                }
+                result.push({
+                    taskId: taskId,
+                    contentHtml: contentHtml,
+                    details: details,
+                    files: files,
+                    answer: answer
+                });
+            });
+            return result;
+        }
+    """)
+    print(f"[ETL] Быстрый режим: получено {len(items)} записей.")
+    return items
 
-            def _full_url(href: str) -> str:
-                if not href:
-                    return href
-                if href.startswith('http'):
-                    return href
-                if href.startswith('/'):
-                    return f"{SITE_DOMAIN}{href}"
-                return f"{SITE_DOMAIN}/{href}"
 
-            pre_urls = []
-            for idx, it in enumerate(items, 1):
-                if it.get('taskId'):
-                    pre_urls.append(f"{SITE_DOMAIN}/task?id={it['taskId']}")
-            existing_by_url = {}
-            if pre_urls:
-                try:
-                    existing_tasks = session.query(Tasks).filter(Tasks.source_url.in_(pre_urls)).all()
-                    existing_by_url = {t.source_url: t for t in existing_tasks}
-                except Exception as e:
-                    print(f"[ETL] Предупреждение: не удалось выполнить пакетный запрос существующих задач: {e}")
-                    existing_by_url = {}
-
-            # Для заданий 19: загрузка троек (19, 20, 21) по task_group_id и старый формат (одно задание 19 по source_url)
-            existing_by_group = {}
-            existing_19_by_source = {}
-            if task_number == 19 and pre_urls:
-                try:
-                    site_ids = [it.get('taskId') for it in items if it.get('taskId')]
-                    if site_ids:
-                        trio_tasks = session.query(Tasks).filter(
-                            Tasks.task_group_id.in_(site_ids),
-                            Tasks.task_number.in_([19, 20, 21])
-                        ).all()
-                        for t in trio_tasks:
-                            gid = t.task_group_id
-                            if gid not in existing_by_group:
-                                existing_by_group[gid] = {}
-                            existing_by_group[gid][t.task_number] = t
-                    old_19 = session.query(Tasks).filter(Tasks.source_url.in_(pre_urls), Tasks.task_number == 19).all()
-                    existing_19_by_source = {t.source_url: t for t in old_19}
-                except Exception as e:
-                    print(f"[ETL] Предупреждение: не удалось загрузить тройки 19-21: {e}")
-
-            count_added = 0
-            count_skipped = 0
-            count_updated = 0
-            new_tasks_bulk = []
-
-            for idx, it in enumerate(items, 1):
-                if not it.get('taskId'):
-                    continue
-
-                content_html = it.get('contentHtml') or ''
-                if not content_html or len(content_html.strip()) < 10:
-                    continue
-
-                real_task_number = task_number
-                content_html = clean_html_content(content_html, task_number=real_task_number)
-
-                if not content_html or len(content_html.strip()) < 10:
-                    continue
-
-                attached_files = []
-                for f in it.get('files', []):
-                    href = f.get('href')
-                    text = (f.get('text') or '').strip()
-                    url = _full_url(href)
-                    name = text if text else (href.split('/')[-1] if href else '')
-                    if url:
-                        attached_files.append({'name': name, 'url': url})
-                attached_files_json = json.dumps(attached_files, ensure_ascii=False) if attached_files else None
-
-                source_url = f"{SITE_DOMAIN}/task?id={it['taskId']}"
-                
-                answer = it.get('answer', '').strip()
-                if not answer and it.get('taskId'):
-                    try:
-                        task_page_url = f"{SITE_DOMAIN}/task?id={it['taskId']}"
-                        page.goto(task_page_url, wait_until='domcontentloaded', timeout=30000)
-                        page.wait_for_timeout(1000)  # Небольшая задержка для загрузки
-                        
-                        answer_selectors = [
-                            '.answer',
-                            '[class*="answer"]',
-                            '[id*="answer"]',
-                            '.solution',
-                            '[class*="solution"]',
-                            'button[onclick*="answer"]',
-                            'button[onclick*="Ответ"]'
-                        ]
-                        
-                        for selector in answer_selectors:
-                            try:
-                                answer_elem = page.locator(selector).first
-                                if answer_elem.count() > 0:
-                                    answer_text = answer_elem.inner_text(timeout=2000)
-                                    if answer_text and len(answer_text.strip()) > 0:
-                                        answer = answer_text.strip()
-                                        break
-                            except:
-                                continue
-                        
-                        if not answer:
-                            try:
-                                show_answer_btn = page.locator('button:has-text("Показать ответ"), button:has-text("показать ответ"), button[onclick*="answer"]').first
-                                if show_answer_btn.count() > 0:
-                                    show_answer_btn.click()
-                                    page.wait_for_timeout(500)
-                                    for selector in answer_selectors:
-                                        try:
-                                            answer_elem = page.locator(selector).first
-                                            if answer_elem.count() > 0:
-                                                answer_text = answer_elem.inner_text(timeout=2000)
-                                                if answer_text and len(answer_text.strip()) > 0:
-                                                    answer = answer_text.strip()
-                                                    break
-                                        except:
-                                            continue
-                            except:
-                                pass
-                        
-                        page.goto(f"{MAIN_PAGE_URL}?tasktype={task_value_url}", wait_until='domcontentloaded', timeout=30000)
-                        page.wait_for_timeout(500)
-                    except Exception as e:
-                        print(f"[ETL] Предупреждение: не удалось извлечь ответ для задания {it.get('taskId')}: {e}")
-
-                # Задания 19–21: одна задача на источнике = три задания; контент режем по «Задание 20.» / «Задание 21.»
-                if task_number == 19:
-                    answer_lines = _parse_answer_19_21(answer)
-                    content_19, content_20, content_21 = _split_content_19_21(content_html)
-                    if not content_20 and not content_21:
-                        content_20 = content_21 = content_html
-                    elif not content_20:
-                        content_20 = content_html
-                    elif not content_21:
-                        content_21 = content_html
-                    group_id = str(it.get('taskId') or '')
-                    group_tasks = existing_by_group.get(group_id, {})
-                    old_single_19 = existing_19_by_source.get(source_url)
-                    contents_by_num = {19: content_19, 20: content_20, 21: content_21}
-
-                    if len(group_tasks) >= 3:
-                        any_updated = False
-                        for num in (19, 20, 21):
-                            t = group_tasks.get(num)
-                            if t:
-                                part = contents_by_num.get(num) or content_html
-                                if t.content_html != part:
-                                    t.content_html = part
-                                    t.last_scraped = moscow_now()
-                                    any_updated = True
-                                if t.attached_files != attached_files_json:
-                                    t.attached_files = attached_files_json
-                                    t.last_scraped = moscow_now()
-                                    any_updated = True
-                                ans = answer_lines[num - 19] if num - 19 < len(answer_lines) else ''
-                                if ans and t.answer != ans:
-                                    t.answer = ans
-                                    t.last_scraped = moscow_now()
-                                    any_updated = True
-                        if any_updated:
-                            count_updated += 1
-                        else:
-                            count_skipped += 1
-                    elif old_single_19:
-                        old_single_19.content_html = content_19
-                        old_single_19.attached_files = attached_files_json
-                        old_single_19.answer = answer_lines[0] if answer_lines else None
-                        old_single_19.task_group_id = group_id
-                        old_single_19.site_task_id = it.get('taskId')
-                        old_single_19.last_scraped = moscow_now()
-                        session.add(old_single_19)
-                        count_updated += 1
-                        for sub_num, ans in [(20, answer_lines[1] if len(answer_lines) > 1 else ''), (21, answer_lines[2] if len(answer_lines) > 2 else '')]:
-                            new_tasks_bulk.append(Tasks(
-                                task_number=sub_num,
-                                task_group_id=group_id,
-                                site_task_id=it.get('taskId'),
-                                source_url=source_url,
-                                content_html=contents_by_num.get(sub_num) or content_html,
-                                answer=ans or None,
-                                attached_files=attached_files_json,
-                                last_scraped=moscow_now()
-                            ))
-                        count_added += 2
-                    else:
-                        for sub_num, ans in [(19, answer_lines[0] if answer_lines else ''), (20, answer_lines[1] if len(answer_lines) > 1 else ''), (21, answer_lines[2] if len(answer_lines) > 2 else '')]:
-                            new_tasks_bulk.append(Tasks(
-                                task_number=sub_num,
-                                task_group_id=group_id,
-                                site_task_id=it.get('taskId'),
-                                source_url=source_url if sub_num == 19 else source_url,
-                                content_html=contents_by_num.get(sub_num) or content_html,
-                                answer=ans or None,
-                                attached_files=attached_files_json,
-                                last_scraped=moscow_now()
-                            ))
-                        count_added += 3
-                    continue
-
-                existing_task = existing_by_url.get(source_url)
-
-                if existing_task:
-                    updated = False
-                    if existing_task.content_html != content_html:
-                        existing_task.content_html = content_html
-                        existing_task.last_scraped = moscow_now()
-                        updated = True
-                    if existing_task.attached_files != attached_files_json:
-                        existing_task.attached_files = attached_files_json
-                        existing_task.last_scraped = moscow_now()
-                        updated = True
-                    if answer and existing_task.answer != answer:
-                        existing_task.answer = answer
-                        existing_task.last_scraped = moscow_now()
-                        updated = True
-                    if it.get('taskId') and not existing_task.site_task_id:
-                        existing_task.site_task_id = it.get('taskId')
-                        updated = True
-                    if updated:
-                        count_updated += 1
-                    else:
-                        count_skipped += 1
-                else:
-                    new_tasks_bulk.append(Tasks(
-                        task_number=real_task_number,
-                        site_task_id=it.get('taskId'),
-                        source_url=source_url,
-                        content_html=content_html,
-                        answer=answer if answer else None,
-                        attached_files=attached_files_json,
-                        last_scraped=moscow_now()
-                    ))
-                    count_added += 1
-
-            if new_tasks_bulk:
-                try:
-                    session.bulk_save_objects(new_tasks_bulk)
-                except Exception as e:
-                    print(f"[ETL] Предупреждение: пакетная вставка не удалась, сохраняем по одной: {e}")
-                    for obj in new_tasks_bulk:
-                        session.add(obj)
-
-            try:
-                session.commit()
-            except Exception as e:
-                print(f"[ETL] ОШИБКА при сохранении (быстрый режим): {e}")
-                session.rollback()
-
-            print(f"[ETL] (FAST) Добавлено {count_added}, обновлено {count_updated}, пропущено {count_skipped} для типа {task_number}.")
-            return count_added
-        except Exception as fast_e:
-            print(f"[ETL] КРИТИЧЕСКАЯ ОШИБКА: Быстрый режим не сработал для задания {task_number}: {fast_e}")
-            import traceback
-            traceback.print_exc()
-            try:
-                session.rollback()
-            except Exception:
-                pass
+def fetch_tasks(page: Page, task_number: int, task_value_url: str):
+    try:
+        items = collect_kompege_listing_raw_items(page, task_number, task_value_url)
+        if items is None:
             return 0
+        from scraper.kompege_upsert import upsert_kompege_listing_items
+
+        added, upd, skip = upsert_kompege_listing_items(
+            session,
+            page,
+            items,
+            task_number,
+            task_value_url,
+            course_id=None,
+            dry_run=False,
+            apply_bank_flags=False,
+        )
+        print(f"[ETL] (FAST) Добавлено {added}, обновлено {upd}, пропущено {skip} для типа {task_number}.")
+        return added
     except Exception as e:
         print(f"[ETL] КРИТИЧЕСКАЯ ОШИБКА при обработке задания {task_number}: {e}")
         import traceback

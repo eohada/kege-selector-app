@@ -53,6 +53,10 @@
                         <input type="checkbox" name="bank_only_manual" value="1" class="w-5 h-5 shrink-0 rounded border border-slate-300 accent-boo-primary cursor-pointer m-0" {% if bank_only_manual %}checked{% endif %}>
                         <span class="text-sm font-bold text-slate-600 whitespace-nowrap">Ручные</span>
                     </label>
+                    <label class="flex items-center gap-2 cursor-pointer group shrink-0 py-1 sm:py-0 sm:pb-3 px-1">
+                        <input type="checkbox" name="bank_show_inactive" value="1" class="w-5 h-5 shrink-0 rounded border border-slate-300 accent-boo-primary cursor-pointer m-0" {% if bank_show_inactive %}checked{% endif %}>
+                        <span class="text-sm font-bold text-slate-600 whitespace-nowrap">Неактивные</span>
+                    </label>
                     <button type="submit" class="w-full sm:flex-1 min-h-[2.75rem] px-6 py-3 bg-boo-primary text-white rounded-xl font-bold shadow-sm hover:bg-boo-primaryHover transition-all text-sm border border-transparent shrink-0">
                         Показать
                     </button>
@@ -82,6 +86,9 @@
                 <span class="text-lg font-black text-boo-primary">#{{ t.task_id }}</span>
                 <span class="text-sm font-extrabold text-slate-700 truncate max-w-[200px] md:max-w-md" title="{{ t.course.title if t.course else '' }}">{{ t.course.title if t.course else '—' }}</span>
                 <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-black border border-slate-200 uppercase">№ {{ t.task_number }}</span>
+                {% if not t.is_active %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200">Неактивна</span>
+                {% endif %}
                 {% if t.bank_origin == 'manual' %}
                 <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">Вручную</span>
                 {% elif t.bank_origin %}

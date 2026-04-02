@@ -416,7 +416,9 @@ def demo_start():
                         trainer_task_num = int(_c['trainer_task_number'])
         except Exception:
             pass
-        task_query = Tasks.query.filter(Tasks.answer.isnot(None), Tasks.answer != '')
+        task_query = Tasks.query.filter(
+            Tasks.answer.isnot(None), Tasks.answer != '', Tasks.is_active.is_(True),
+        )
         if course_id:
             task_query = task_query.filter_by(course_id=course_id)
         for tn in demo_task_numbers:
@@ -425,12 +427,24 @@ def demo_start():
             if chosen:
                 demo_tasks.append(chosen)
         if not demo_tasks:
-            demo_tasks = (task_query.limit(5).all() if course_id else Tasks.query.limit(5).all())
+            demo_tasks = (
+                task_query.limit(5).all()
+                if course_id
+                else Tasks.query.filter(Tasks.is_active.is_(True)).limit(5).all()
+            )
 
-    first_task = demo_tasks[0] if demo_tasks else (Tasks.query.filter_by(course_id=course_id).first() if course_id else Tasks.query.first())
+    first_task = demo_tasks[0] if demo_tasks else (
+        Tasks.query.filter_by(course_id=course_id, is_active=True).first()
+        if course_id
+        else Tasks.query.filter(Tasks.is_active.is_(True)).first()
+    )
 
     # --- 8 completed lessons with varied LessonTasks for realistic analytics ---
-    all_task_pool = (Tasks.query.filter_by(course_id=course_id).limit(30).all() if course_id else Tasks.query.limit(30).all())
+    all_task_pool = (
+        Tasks.query.filter_by(course_id=course_id, is_active=True).limit(30).all()
+        if course_id
+        else Tasks.query.filter(Tasks.is_active.is_(True)).limit(30).all()
+    )
     lesson_topics = [
         'Системы счисления', 'Логические выражения', 'Графы и деревья',
         'Алгоритмы обработки данных', 'Программирование на Python',
@@ -543,7 +557,9 @@ def demo_start():
             lesson_tasks_for_demo = [demo_tasks[i] for i in lesson_indices if 0 <= i < len(demo_tasks)]
         else:
             lesson_tasks_for_demo = []
-            task_query = Tasks.query.filter(Tasks.answer.isnot(None), Tasks.answer != '')
+            task_query = Tasks.query.filter(
+                Tasks.answer.isnot(None), Tasks.answer != '', Tasks.is_active.is_(True),
+            )
             if course_id:
                 task_query = task_query.filter_by(course_id=course_id)
             for tn in lesson_task_numbers:
@@ -604,6 +620,7 @@ def demo_start():
             Tasks.task_number == trainer_task_num,
             Tasks.answer.isnot(None),
             Tasks.answer != '',
+            Tasks.is_active.is_(True),
         )
         if course_id:
             trainer_query = trainer_query.filter_by(course_id=course_id)
@@ -615,7 +632,9 @@ def demo_start():
         if not trainer_task and trainer_candidates:
             trainer_task = trainer_candidates[0]
         if not trainer_task:
-            trainer_query = Tasks.query.filter(Tasks.answer.isnot(None), Tasks.answer != '')
+            trainer_query = Tasks.query.filter(
+                Tasks.answer.isnot(None), Tasks.answer != '', Tasks.is_active.is_(True),
+            )
             if course_id:
                 trainer_query = trainer_query.filter_by(course_id=course_id)
             trainer_task = trainer_query.first()
