@@ -28,6 +28,8 @@
   .btn-code:hover { color: #1E293B; background: #F1F5F9; }
   .btn-math:hover { color: #1E293B; background: #F1F5F9; }
   .btn-attention:hover { color: #F97316; background: #FFF7ED; }
+  .btn-tip:hover { color: #0891B2; background: #ECFEFF; }
+  .btn-danger-callout:hover { color: #DC2626; background: #FEF2F2; }
   .btn-practice:hover { color: #7B5CFF; background: #FAF5FF; }
 
   /* Скрытие скроллбара */
@@ -39,14 +41,15 @@
   input[name="title"]::placeholder { color: #E2E8F0; }
   input[name="description"]::placeholder { color: #94A3B8; font-weight: 500; }
   
+  /* Прозрачный фон: без «второго» прямоугольника вокруг скруглённой панели */
   .sticky-toolbar-wrapper { 
       position: sticky; 
       top: 0; 
       z-index: 40; 
-      /* Используем цвета темы, чтобы не появлялась "белая полоса" на тёмном визуале */
-      background: linear-gradient(180deg, var(--color-bg-surface, #ffffff) 85%, transparent 100%);
+      background: transparent;
       padding-top: 16px;
       padding-bottom: 24px;
+      isolation: isolate;
   }
   .live-preview-shell {
       border: 1px solid #E2E8F0;
@@ -304,7 +307,7 @@
             
             <!-- ИДЕАЛЬНЫЙ ШИРОКИЙ ТУЛБАР -->
             <div class="sticky-toolbar-wrapper">
-              <div class="bg-surface border border-slate-200 rounded-[20px] p-2 shadow-sm dark:shadow-none dark:shadow-none flex flex-wrap items-center justify-start gap-2 lg:gap-3 w-full transition-shadow overflow-x-visible">
+              <div class="theory-format-toolbar bg-surface border border-slate-200 dark:border-white/[0.08] rounded-[20px] p-2 shadow-sm dark:shadow-glass-dark flex flex-wrap items-center justify-start gap-2 lg:gap-3 w-full transition-shadow overflow-x-visible">
                 
                 <div class="flex items-center gap-1">
                   <button type="button" class="theory-toolbar-btn icon-only" data-format="h2" title="Заголовок 2"><span class="font-serif text-[15px] font-bold">H₂</span></button>
@@ -337,6 +340,12 @@
                   </button>
                   <button type="button" class="theory-toolbar-btn btn-attention hover-orange" data-format="attention">
                       <i class="ph-fill ph-warning-circle text-[17px] text-primary"></i> <span class="text-muted">Внимание</span>
+                  </button>
+                  <button type="button" class="theory-toolbar-btn btn-tip" data-format="tip" title="Лайфхак / запомнить">
+                      <i class="ph-fill ph-lightbulb text-[17px] text-primary"></i> <span class="text-muted">Лайфхак</span>
+                  </button>
+                  <button type="button" class="theory-toolbar-btn btn-danger-callout" data-format="danger" title="Предупреждение">
+                      <i class="ph-fill ph-shield-warning text-[17px] text-primary"></i> <span class="text-muted">Осторожно</span>
                   </button>
                   <button type="button" class="theory-toolbar-btn btn-practice hover-purple" data-format="practice">
                       <i class="ph-bold ph-game-controller text-[17px] text-primary"></i> <span class="text-muted">Задача</span>
@@ -476,10 +485,38 @@
     }
     let html = '';
     let tail = source;
-    const calloutRegex = /\[CALLOUT\s+type="attention"\]([\s\S]*?)\[\/CALLOUT\]/gi;
-    tail = tail.replace(calloutRegex, (_, body) => {
+    const calloutPreview = {
+      attention: {
+        title: 'Внимание',
+        wrapClass: '',
+        dotClass: '',
+        dotIcon: 'ph-fill ph-warning-circle',
+        titleStyle: '',
+        textStyle: '',
+      },
+      tip: {
+        title: 'Лайфхак',
+        wrapClass: ' style="border-color:#A5F3FC;background:#ECFEFF;"',
+        dotClass: ' style="border-color:#67E8F9;color:#0891B2;background:#CFFAFE;"',
+        dotIcon: 'ph-fill ph-lightbulb',
+        titleStyle: '',
+        textStyle: ' style="color:#0E7490;"',
+      },
+      danger: {
+        title: 'Осторожно',
+        wrapClass: ' style="border-color:#FECACA;background:#FEF2F2;"',
+        dotClass: ' style="border-color:#FCA5A5;color:#DC2626;background:#FEE2E2;"',
+        dotIcon: 'ph-fill ph-shield-warning',
+        titleStyle: ' style="color:#991B1B;"',
+        textStyle: ' style="color:#7F1D1D;"',
+      },
+    };
+    const calloutRegex = /\[CALLOUT\s+type="(attention|tip|danger)"\]([\s\S]*?)\[\/CALLOUT\]/gi;
+    tail = tail.replace(calloutRegex, (_, kind, body) => {
+      const meta = calloutPreview[kind] || calloutPreview.attention;
       const clean = (body || '').trim();
-      html += `<div class="preview-callout"><div class="preview-callout-dot"><i class="ph-fill ph-warning-circle text-[20px]"></i></div><div><div class="preview-callout-title">Внимание</div><div class="preview-callout-text">${toInlineHtml(clean)}</div></div></div>`;
+      html += `<div class="preview-callout"${meta.wrapClass}><div class="preview-callout-dot"${meta.dotClass
+      }><i class="${meta.dotIcon} text-[20px]"></i></div><div><div class="preview-callout-title"${meta.titleStyle}>${meta.title}</div><div class="preview-callout-text"${meta.textStyle}>${toInlineHtml(clean)}</div></div></div>`;
       return '';
     });
     const codeRegex = /\[CODE(?:\s+lang="([^"]+)")?\]([\s\S]*?)\[\/CODE\]/gi;
@@ -546,6 +583,10 @@
         return appendToContent('### Формула\n$$\\neg(A \\land B) \\equiv \\neg A \\lor \\neg B$$\n> Разбор: закон Де Моргана для отрицания конъюнкции.');
       case 'attention':
         return appendToContent('[CALLOUT type="attention"]\n**Важно:** проверь граничные случаи и типы входных данных перед запуском.\n[/CALLOUT]');
+      case 'tip':
+        return appendToContent('[CALLOUT type="tip"]\nЛАЙФХАК: кратко опиши приём или способ ускорить решение.\n[/CALLOUT]');
+      case 'danger':
+        return appendToContent('[CALLOUT type="danger"]\n**Осторожно:** опиши риск или типичную ошибку, которой стоит избегать.\n[/CALLOUT]');
       case 'practice':
         return appendToContent('### Практика\n[PRACTICE_TASK id="10452"]\n> Подсказка: сначала реши вручную, затем проверь кодом.');
       default: return;

@@ -92,7 +92,7 @@ def _render_theory_content_html(content_value):
         body = re.sub(r'\*(.+?)\*', r'<em>\1</em>', body)
         theme = {
             'attention': {'title': 'Внимание', 'bg': '#FFF7ED', 'border': '#FED7AA', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FFFFFF', 'icon_color': '#EA580C'},
-            'tip': {'title': 'Что нужно запомнить?', 'bg': '#ECFEFF', 'border': '#A5F3FC', 'icon': 'ph-fill ph-info', 'icon_bg': '#FFFFFF', 'icon_color': '#06B6D4'},
+            'tip': {'title': 'Лайфхак', 'bg': '#ECFEFF', 'border': '#A5F3FC', 'icon': 'ph-fill ph-lightbulb', 'icon_bg': '#FFFFFF', 'icon_color': '#06B6D4'},
             'danger': {'title': 'Осторожно', 'bg': '#FEF2F2', 'border': '#FECACA', 'icon': 'ph-fill ph-shield-warning', 'icon_bg': '#FFFFFF', 'icon_color': '#DC2626'},
         }.get(ctype, {'title': 'Заметка', 'bg': '#ECFEFF', 'border': '#A5F3FC', 'icon': 'ph-fill ph-info', 'icon_bg': '#FFFFFF', 'icon_color': '#0891B2'})
         return (
