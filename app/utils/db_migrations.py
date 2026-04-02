@@ -1640,9 +1640,9 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
         if existing_oge_templates == 0:
             oge_scores = {
                 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1,
-                11: 1, 12: 1, 13: 2, 14: 2, 15: 2,
+                11: 1, 12: 1, 13: 2, 14: 2, 15: 2, 16: 2,
             }
-            for tn in range(1, 16):
+            for tn in range(1, 17):
                 tmpl = CourseTaskTemplate(
                     course_id=oge.id,
                     task_number=tn,
@@ -1650,16 +1650,24 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
                     requires_manual_review=(tn >= 13),
                 )
                 db.session.add(tmpl)
-            logger.info("Seeded 15 CourseTaskTemplates for ОГЭ Информатика")
+            logger.info("Seeded 16 CourseTaskTemplates for ОГЭ Информатика")
+        elif not CourseTaskTemplate.query.filter_by(course_id=oge.id, task_number=16).first():
+            db.session.add(CourseTaskTemplate(
+                course_id=oge.id,
+                task_number=16,
+                max_primary_score=2,
+                requires_manual_review=True,
+            ))
+            logger.info("Added missing CourseTaskTemplate 16 for ОГЭ Информатика")
 
-        # --- Seed: GradingScale для ОГЭ (оценка 2-5) ---
+        # --- Seed: GradingScale для ОГЭ (оценка 2-5); макс. первичных 12 + 4×2 = 20 ---
         existing_oge_scales = GradingScale.query.filter_by(course_id=oge.id).count()
         if existing_oge_scales == 0:
             oge_scale = [
                 (0, 4, 2, 'Неудовлетворительно'),
                 (5, 10, 3, 'Удовлетворительно'),
                 (11, 15, 4, 'Хорошо'),
-                (16, 19, 5, 'Отлично'),
+                (16, 20, 5, 'Отлично'),
             ]
             for min_p, max_p, grade, label in oge_scale:
                 db.session.add(GradingScale(
@@ -1667,6 +1675,14 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
                     final_grade=grade, label=label,
                 ))
             logger.info("Seeded GradingScale for ОГЭ Информатика")
+        else:
+            try:
+                top_oge = GradingScale.query.filter_by(course_id=oge.id, final_grade=5).first()
+                if top_oge is not None and getattr(top_oge, 'max_primary', None) is not None and top_oge.max_primary < 20:
+                    top_oge.max_primary = 20
+                    logger.info("Updated ОГЭ Информатика GradingScale: max primary for grade 5 → 20")
+            except Exception as _oge_scale_err:
+                logger.warning(f"Could not adjust OGE GradingScale ceiling: {_oge_scale_err}")
 
         # --- Seed: ЕГЭ Математика (профиль), ЕГЭ Математика (база), ОГЭ Математика ---
         math_profile = ExamCourse.query.filter_by(slug='ege_math_profile').first()
@@ -1707,6 +1723,22 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
                     course_id=oge_math.id, task_number=tn, max_primary_score=1, requires_manual_review=False,
                 ))
             logger.info("Seeded 25 CourseTaskTemplates for ОГЭ Математика")
+
+        # --- Seed: Программирование (единый номер задания 777 в спецификации) ---
+        programming = ExamCourse.query.filter_by(slug='programming').first()
+        if not programming:
+            programming = ExamCourse(title='Программирование', slug='programming', is_active=True)
+            db.session.add(programming)
+            db.session.flush()
+            logger.info("Seeded ExamCourse: Программирование")
+        if not CourseTaskTemplate.query.filter_by(course_id=programming.id, task_number=777).first():
+            db.session.add(CourseTaskTemplate(
+                course_id=programming.id,
+                task_number=777,
+                max_primary_score=1,
+                requires_manual_review=False,
+            ))
+            logger.info("Seeded CourseTaskTemplate 777 for Программирование")
 
         # --- Backfill: присвоить course_id=1 всем Tasks без course_id ---
         try:

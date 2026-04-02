@@ -1011,8 +1011,11 @@
                     if (!r.ok || !att.success) throw new Error(att.error || `Вложение: ${file.name}`);
                 }
                 const sid = data.task && data.task.site_task_id;
-                setStatus(`Сохранено. ID ${taskId}` + (sid ? `, ${sid}` : ''), false);
-                if (window.toast) window.toast.success('Задание добавлено в банк');
+                const resolvedId = data.task_id != null ? data.task_id : taskId;
+                setStatus(`Сохранено. ID в базе: ${resolvedId}` + (sid ? ` (${sid})` : ''), false);
+                if (window.toast) {
+                    window.toast.success(`Задание добавлено в банк. ID в базе: ${resolvedId}`);
+                }
                 if (filesInput) filesInput.value = '';
             } catch (e) {
                 setStatus(e.message || 'Ошибка', true);

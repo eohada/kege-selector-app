@@ -60,6 +60,7 @@ def _task_generator_page_url(
     bank_per_page=25,
     bank_course_id=None,
     bank_task_number=None,
+    bank_task_id=None,
     bank_only_manual=False,
     bank_open=False,
 ):
@@ -80,6 +81,8 @@ def _task_generator_page_url(
         kwargs['bank_course_id'] = int(bank_course_id)
     if bank_task_number is not None:
         kwargs['bank_task_number'] = int(bank_task_number)
+    if bank_task_id is not None:
+        kwargs['bank_task_id'] = int(bank_task_id)
     if bank_only_manual:
         kwargs['bank_only_manual'] = 1
     if bank_open:
@@ -387,9 +390,12 @@ def task_generator(lesson_id=None):
     bank_per_page = min(100, max(10, request.args.get('bank_per_page', type=int) or 25))
     bank_filter_course_id = request.args.get('bank_course_id', type=int)
     bank_filter_task_number = request.args.get('bank_task_number', type=int)
+    bank_filter_task_id = request.args.get('bank_task_id', type=int)
     bank_only_manual = request.args.get('bank_only_manual', type=int) == 1
     bank_open = request.args.get('bank_open', type=int) == 1
-    bank_panel_open = bank_open or bool(bank_filter_course_id or bank_filter_task_number or bank_only_manual or bank_page > 1)
+    bank_panel_open = bank_open or bool(
+        bank_filter_course_id or bank_filter_task_number or bank_filter_task_id or bank_only_manual or bank_page > 1
+    )
     gen_tab_arg = (request.args.get('gen_tab') or '').strip().lower()
     if gen_tab_arg in ('stream', 'manual', 'bank'):
         initial_gen_tab = gen_tab_arg
@@ -408,6 +414,8 @@ def task_generator(lesson_id=None):
             bq = bq.filter(Tasks.course_id == bank_filter_course_id)
         if bank_filter_task_number:
             bq = bq.filter(Tasks.task_number == bank_filter_task_number)
+        if bank_filter_task_id:
+            bq = bq.filter(Tasks.task_id == bank_filter_task_id)
         if bank_only_manual:
             bq = bq.filter(Tasks.bank_origin == 'manual')
         bq = bq.order_by(Tasks.task_id.desc())
@@ -427,6 +435,7 @@ def task_generator(lesson_id=None):
                     bank_per_page=bank_per_page,
                     bank_course_id=bank_filter_course_id,
                     bank_task_number=bank_filter_task_number,
+                    bank_task_id=bank_filter_task_id,
                     bank_only_manual=bank_only_manual,
                     bank_open=True,
                 ),
@@ -460,6 +469,7 @@ def task_generator(lesson_id=None):
                            bank_per_page=bank_per_page,
                            bank_filter_course_id=bank_filter_course_id,
                            bank_filter_task_number=bank_filter_task_number,
+                           bank_filter_task_id=bank_filter_task_id,
                            bank_only_manual=bank_only_manual,
                            bank_panel_open=bank_panel_open,
                            bank_pagination=bank_pagination,
@@ -1058,6 +1068,7 @@ def task_generator_bank_create():
 
     return jsonify({
         'success': True,
+        'task_id': task.task_id,
         'task': _task_to_payload(task),
     }), 201
 
@@ -1178,6 +1189,13 @@ def task_generator_bank():
             rd['bank_task_number'] = int(request.args.get('task_number'))
         except (TypeError, ValueError):
             pass
+    for _tid_key in ('bank_task_id', 'task_id'):
+        if request.args.get(_tid_key) not in (None, ''):
+            try:
+                rd['bank_task_id'] = int(request.args.get(_tid_key))
+                break
+            except (TypeError, ValueError):
+                pass
     if request.args.get('page') not in (None, ''):
         try:
             rd['bank_page'] = int(request.args.get('page'))

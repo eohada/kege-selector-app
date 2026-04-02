@@ -14,8 +14,8 @@
             <input type="hidden" name="bank_per_page" value="{{ bank_per_page }}">
             <input type="hidden" name="gen_tab" value="bank">
 
-            <div class="flex-1 w-full flex gap-4">
-                <div class="w-full md:w-1/2 space-y-1.5">
+            <div class="flex-1 w-full flex flex-col sm:flex-row gap-4">
+                <div class="w-full sm:flex-1 space-y-1.5">
                     <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_course_id">Программа</label>
                     <div class="relative">
                         <select class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm appearance-none cursor-pointer shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" id="bank_filter_course_id" name="bank_course_id">
@@ -27,10 +27,17 @@
                         <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                     </div>
                 </div>
-                <div class="w-24 space-y-1.5 shrink-0">
+                <div class="w-full sm:w-24 space-y-1.5 shrink-0">
                     <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_task_number">№ Задания</label>
                     <input type="number" min="1" name="bank_task_number" id="bank_filter_task_number" placeholder="—" value="{{ bank_filter_task_number or '' }}"
-                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm text-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm text-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
+                           title="Номер задания в билете для выбранной программы">
+                </div>
+                <div class="w-full sm:w-28 space-y-1.5 shrink-0">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_task_id">ID в базе</label>
+                    <input type="number" min="1" name="bank_task_id" id="bank_filter_task_id" placeholder="—" value="{{ bank_filter_task_id or '' }}"
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm text-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
+                           title="Внутренний ID строки Tasks (как после ручного создания)">
                 </div>
             </div>
 
