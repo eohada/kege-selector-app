@@ -99,6 +99,113 @@ def _extract_listing_items_from_frame(frame) -> list:
     return frame.evaluate(KOMPEGE_LISTING_EXTRACT_JS)
 
 
+def _merge_listing_batches(merged: list, seen: set, batch: list) -> None:
+    for it in batch or []:
+        tid = str((it or {}).get("taskId") or "")
+        if tid and tid not in seen:
+            seen.add(tid)
+            merged.append(it)
+
+
+def _scroll_collect_listing_items(page: Page, frame, rows_count: int) -> list:
+    """
+    kompege.ru отрисовывает длинный список через виртуализацию: в DOM много пустых tr,
+    ссылки и div.task-text появляются только у прокрученных во view строк.
+    """
+    if rows_count <= 0:
+        return []
+    merged: list = []
+    seen: set = set()
+    try:
+        step = max(1, int(os.environ.get("KOMPEGE_LIST_SCROLL_STEP", "2")))
+    except ValueError:
+        step = 2
+
+    _merge_listing_batches(merged, seen, _extract_listing_items_from_frame(frame))
+
+    indices = list(range(0, rows_count, step))
+    last = rows_count - 1
+    if last >= 0 and last not in indices:
+        indices.append(last)
+
+    for idx in indices:
+        try:
+            frame.evaluate(
+                """(idx) => {
+                    const rows = document.querySelectorAll('table tbody tr');
+                    if (idx < 0 || idx >= rows.length) return;
+                    const r = rows[idx];
+                    if (r) r.scrollIntoView({ block: 'center', inline: 'nearest' });
+                }""",
+                idx,
+            )
+        except Exception:
+            continue
+        page.wait_for_timeout(80)
+        _merge_listing_batches(merged, seen, _extract_listing_items_from_frame(frame))
+
+    # Прокрутка overflow-контейнера и окна — на случай если список привязан не к tr
+    try:
+        stagnant = 0
+        for _ in range(48):
+            prev_n = len(merged)
+            frame.evaluate(
+                r"""() => {
+                    let el = document.querySelector('table');
+                    while (el && el !== document.body) {
+                        const y = getComputedStyle(el);
+                        if ((y.overflowY === 'auto' || y.overflowY === 'scroll') &&
+                            el.scrollHeight > el.clientHeight + 15) {
+                            const step = Math.max(120, Math.floor(el.clientHeight * 0.88));
+                            const maxS = el.scrollHeight - el.clientHeight;
+                            el.scrollTop = Math.min(maxS, el.scrollTop + step);
+                            return 1;
+                        }
+                        el = el.parentElement;
+                    }
+                    const sc = document.scrollingElement || document.documentElement;
+                    const step = Math.max(120, Math.floor(sc.clientHeight * 0.88));
+                    const maxS = sc.scrollHeight - sc.clientHeight;
+                    sc.scrollTop = Math.min(maxS, sc.scrollTop + step);
+                    return 0;
+                }"""
+            )
+            page.wait_for_timeout(120)
+            _merge_listing_batches(merged, seen, _extract_listing_items_from_frame(frame))
+            if len(merged) == prev_n:
+                stagnant += 1
+            else:
+                stagnant = 0
+            at_bottom = frame.evaluate(
+                r"""() => {
+                    let el = document.querySelector('table');
+                    while (el && el !== document.body) {
+                        const y = getComputedStyle(el);
+                        if ((y.overflowY === 'auto' || y.overflowY === 'scroll') &&
+                            el.scrollHeight > el.clientHeight + 15) {
+                            return el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+                        }
+                        el = el.parentElement;
+                    }
+                    const sc = document.scrollingElement || document.documentElement;
+                    return sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 8;
+                }"""
+            )
+            if stagnant >= 5 and at_bottom:
+                break
+            if stagnant >= 14:
+                break
+    except Exception:
+        pass
+
+    if merged:
+        print(
+            f"[ETL] Виртуальный список: собрано {len(merged)} уникальных записей "
+            f"(строк в таблице ≈{rows_count}, шаг индекса при прокрутке={step})."
+        )
+    return merged
+
+
 def debug_kompege_listing_page(page: Page) -> None:
     """
     Диагностика DOM после «Найти все задачи»: фреймы, число tr, образец href, первые строки.
@@ -531,6 +638,36 @@ def collect_kompege_listing_raw_items(page: Page, task_number: int, task_value_u
                     break
             except Exception:
                 continue
+
+    if not items and rows_count > 0:
+        print(
+            "[ETL] Пустой список при ненулевом числе tr — вероятна виртуализация таблицы; "
+            "прокручиваем строки и контейнер..."
+        )
+        items = _scroll_collect_listing_items(page, page.main_frame, rows_count)
+
+    if not items:
+        for fr in page.frames:
+            if fr == page.main_frame:
+                continue
+            try:
+                rc = fr.evaluate(
+                    "() => document.querySelectorAll('table tbody tr').length"
+                )
+                rc = int(rc or 0)
+            except Exception:
+                rc = 0
+            if rc <= 0:
+                continue
+            try:
+                alt = _scroll_collect_listing_items(page, fr, rc)
+            except Exception:
+                alt = []
+            if alt:
+                print(f"[ETL] Список после прокрутки iframe ({len(alt)} шт.): {getattr(fr, 'url', '')!r}")
+                items = alt
+                break
+
     print(f"[ETL] Быстрый режим: получено {len(items)} записей.")
     return items
 
