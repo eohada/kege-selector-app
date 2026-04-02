@@ -58,9 +58,21 @@ def _render_theory_content_html(content_value):
         )
         return escaped
 
+    def _normalize_code_body_for_theory(raw):
+        """Strip spacer markers leaked into legacy CODE bodies (they must stay real newlines only)."""
+        s = raw or ''
+        s = s.replace('__THEORY_SPACER__', '\n')
+        s = re.sub(
+            r'<div\b[^>]*\bclass="[^"]*theory-spacer[^"]*"[^>]*>\s*</div>',
+            '\n',
+            s,
+            flags=re.IGNORECASE,
+        )
+        return s
+
     def _code_repl(match):
         lang = (match.group(1) or 'python').strip().lower()
-        code_body = (match.group(2) or '').strip()
+        code_body = _normalize_code_body_for_theory(match.group(2) or '').strip()
         highlighted = _highlight_python_html(code_body) if lang == 'python' else html.escape(code_body)
         return (
             '<div class="theory-smart-code theory-embed-code my-8 rounded-[24px] border border-slate-200 overflow-hidden bg-white shadow-sm" '
@@ -122,7 +134,23 @@ def _render_theory_content_html(content_value):
             src,
         )
 
-    text = _preserve_blank_lines(text)
+    _CODE_BLOCK_RE = re.compile(
+        r'\[CODE\s+lang="([^"]+)"\](.*?)\[/CODE\]',
+        re.DOTALL | re.IGNORECASE,
+    )
+
+    def _preserve_blank_lines_outside_code_blocks(src):
+        """Do not insert __THEORY_SPACER__ inside [CODE]…[/CODE] — it would leak into the student editor."""
+        parts = []
+        pos = 0
+        for m in _CODE_BLOCK_RE.finditer(src):
+            parts.append(_preserve_blank_lines(src[pos : m.start()]))
+            parts.append(m.group(0))
+            pos = m.end()
+        parts.append(_preserve_blank_lines(src[pos:]))
+        return ''.join(parts)
+
+    text = _preserve_blank_lines_outside_code_blocks(text)
     text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
