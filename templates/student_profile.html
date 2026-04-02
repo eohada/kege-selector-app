@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Комната · {{ student.name }} · BooStudy{% endblock %}
 {% set active_page = 'student_profile' %}
+{% block html_attrs %}data-student-room="1"{% endblock %}
 {% block body_class %}{{ super() }}{% endblock %}
 
 {% block content %}
@@ -16,45 +17,46 @@
 
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
 
-    <!-- ВЕРХНИЙ РЯД (Hero & Mentor) -->
+    <!-- ВЕРХНИЙ РЯД (Hero & Mentor) — пиксель-пер-пиксель с dark_,ode1.html -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- ГЛАВНАЯ КАРТОЧКА -->
-        <div class="lg:col-span-2 bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/5 border-b-[4px] border-b-slate-300 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col justify-between relative overflow-hidden group">
-            <i class="ph-fill ph-ghost absolute -right-10 -bottom-10 text-[200px] text-slate-50 dark:text-white/[0.04] group-hover:rotate-12 group-hover:scale-110 transition-transform duration-700 pointer-events-none"></i>
+        <div class="lg:col-span-2 bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col justify-between relative overflow-hidden group">
+            <div class="absolute right-0 top-0 w-64 h-64 bg-boo-primary/10 rounded-full blur-3xl opacity-0 dark:opacity-0 group-hover:opacity-100 dark:group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+            <i class="ph-fill ph-ghost absolute -right-10 -bottom-10 text-[200px] text-slate-50 dark:text-white/[0.06] group-hover:rotate-12 group-hover:scale-110 transition-transform duration-700 pointer-events-none"></i>
 
             <div class="relative z-10 flex justify-between items-start mb-12 gap-6">
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 mb-3 flex-wrap">
-                        <span class="px-3 py-1 bg-boo-cyanLight text-boo-cyan text-xs font-extrabold rounded-lg uppercase tracking-wider border border-cyan-100/50">
+                        <span class="px-3 py-1 text-xs font-bold rounded-lg uppercase tracking-wider border bg-cyan-500/10 text-cyan-600 border-cyan-500/20 dark:bg-boo-cyan/10 dark:text-boo-cyan dark:border-boo-cyan/20">
                             {{ 'ЕГЭ Информатика' if (student.category or '')|upper != 'ОГЭ' else 'ОГЭ Информатика' }}
                         </span>
                         {% if student.school_class %}
-                        <span class="px-3 py-1 bg-surface-alt text-muted text-xs font-bold rounded-lg border border-slate-200/50">
+                        <span class="px-3 py-1 bg-surface-alt text-muted text-xs font-bold rounded-lg border border-slate-200/50 dark:bg-dark-inner/60 dark:border-white/[0.08] dark:text-dark-muted">
                             {{ student.school_class }} класс
                         </span>
                         {% endif %}
                         {% if student_user and student_user.is_demo_user %}
-                        <span class="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-extrabold rounded-lg uppercase tracking-wider border border-orange-100/70">
+                        <span class="px-3 py-1 bg-orange-50 text-orange-600 text-xs font-extrabold rounded-lg uppercase tracking-wider border border-orange-100/70 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/25">
                             Демо
                         </span>
                         {% endif %}
                     </div>
 
-                    <h1 class="text-4xl font-black text-primary dark:text-white tracking-tight mb-2">Привет, {{ first_name }}!</h1>
-                    <p class="text-muted font-medium text-lg">
-                        {% if student.deadline %}До экзамена: {{ student.deadline }}{% else %}Продолжаем двигаться к твоей цели.{% endif %}
+                    <h1 class="text-4xl sm:text-5xl font-black text-primary dark:text-white tracking-tight leading-tight mb-2">Привет, {{ first_name }}!</h1>
+                    <p class="text-muted dark:text-dark-muted font-medium text-lg">
+                        {% if student.deadline %}До экзамена: <span class="text-secondary dark:text-white font-semibold">{{ student.deadline }}</span>{% else %}Продолжаем двигаться к твоей цели.{% endif %}
                     </p>
                 </div>
 
                 <div class="shrink-0 hidden sm:flex items-center gap-2">
                     <a href="{{ url_for('auth.user_profile') if (current_user.is_student() and student.user_id == current_user.id) else url_for('students.student_info', student_id=student.student_id) }}"
-                       class="px-4 py-2.5 bg-slate-100/70 hover:bg-surface-alt text-secondary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/50 no-underline">
-                        <i class="ph-bold ph-user text-lg text-muted"></i> Профиль
+                       class="px-4 py-2.5 bg-slate-100/70 hover:bg-surface-alt text-secondary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/50 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/[0.08] dark:text-white no-underline">
+                        <i class="ph-bold ph-user text-lg text-muted dark:text-boo-primary"></i> Профиль
                     </a>
                     <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
-                       class="px-4 py-2.5 bg-surface text-boo-primary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/60 shadow-sm dark:shadow-none dark:shadow-none no-underline">
-                        <i class="ph-bold ph-chart-line-up text-lg"></i> Статистика
+                       class="px-4 py-2.5 bg-slate-100/70 hover:bg-surface-alt text-secondary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/50 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/[0.08] dark:text-white no-underline">
+                        <i class="ph-bold ph-chart-line-up text-lg dark:text-boo-primary"></i> Статистика
                     </a>
                 </div>
             </div>
@@ -79,7 +81,7 @@
             {% endif %}
 
             <!-- Траектория и Прогресс -->
-            <div class="relative z-10 bg-surface-alt dark:bg-dark-inner/80 rounded-2xl p-6 border border-slate-100 dark:border-white/5">
+            <div class="relative z-10 bg-surface-alt dark:bg-dark-inner/50 rounded-2xl p-6 border border-slate-100 dark:border-white/[0.06]">
                 <div class="flex justify-between items-end mb-3 gap-4">
                     <h3 class="font-bold text-secondary dark:text-white flex items-center gap-2">
                         <i class="ph-fill ph-target text-boo-primary text-xl"></i>
@@ -88,13 +90,13 @@
                     <span class="text-2xl font-black text-primary dark:text-white">{{ progress_pct }}%</span>
                 </div>
 
-                <div class="w-full h-4 bg-slate-200 dark:bg-black/40 rounded-full overflow-hidden mb-4 border border-slate-200/50 dark:border-white/5">
-                    <div class="h-full bg-gradient-to-r from-boo-primary to-boo-cyan rounded-full relative" style="width: {{ progress_pct }}%">
+                <div class="w-full h-3 sm:h-4 bg-slate-200 dark:bg-black/40 rounded-full overflow-hidden mb-4 border border-slate-200/50 dark:border-white/[0.06]">
+                    <div class="h-full bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6] rounded-full relative" style="width: {{ progress_pct }}%">
                         <div class="absolute inset-0 bg-white/20 w-full" style="background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
                     </div>
                 </div>
 
-                <div class="flex justify-between text-sm font-bold text-muted">
+                <div class="flex justify-between text-xs sm:text-sm font-bold text-muted dark:text-dark-muted">
                     <span>Завершено уроков: {{ completed_lessons }}</span>
                     <span>Всего уроков: {{ total_lessons }}</span>
                 </div>
@@ -104,25 +106,25 @@
         <!-- КАРТОЧКА НАСТАВНИКА -->
         {% if mentor %}
         <a href="{{ url_for('auth.user_public_profile', user_id=mentor.id) }}"
-           class="student-mentor-gradient bg-gradient-to-b from-[#F9F7FF] to-white rounded-[32px] border border-purple-200 dark:border-white/5 border-b-[4px] border-b-purple-300 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col justify-between hover:shadow-tactile-hover transition-shadow relative overflow-hidden no-underline group">
+           class="student-mentor-gradient bg-gradient-to-b from-[#F9F7FF] to-white rounded-[32px] border border-purple-200 dark:border-white/[0.06] border-b-[4px] border-b-purple-300 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col justify-between hover:shadow-tactile-hover transition-shadow relative overflow-hidden no-underline group">
         {% else %}
-        <div class="student-mentor-gradient bg-gradient-to-b from-[#F9F7FF] to-white rounded-[32px] border border-purple-200 dark:border-white/5 border-b-[4px] border-b-purple-300 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col justify-between transition-shadow relative overflow-hidden">
+        <div class="student-mentor-gradient bg-gradient-to-b from-[#F9F7FF] to-white rounded-[32px] border border-purple-200 dark:border-white/[0.06] border-b-[4px] border-b-purple-300 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col justify-between transition-shadow relative overflow-hidden">
         {% endif %}
             <div class="relative z-10">
                 <div class="flex justify-between items-start mb-6">
-                    <h3 class="font-extrabold text-fuchsia-600 dark:text-boo-primary text-xs uppercase tracking-widest">Твой наставник</h3>
+                    <h3 class="font-extrabold text-fuchsia-600 dark:text-boo-primary text-[10px] uppercase tracking-widest">Твой наставник</h3>
                 </div>
 
                 <div class="flex items-center gap-4 mb-6">
                     <div class="relative">
                         {% if mentor and mentor.avatar_url %}
-                        <img src="{{ mentor.avatar_url }}" class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm dark:shadow-none dark:shadow-none bg-purple-100 object-cover" alt="Аватар наставника">
+                        <img src="{{ mentor.avatar_url }}" class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-2 border-white dark:border-dark-card shadow-sm dark:shadow-none bg-purple-100 object-cover" alt="Аватар наставника">
                         {% else %}
-                        <div class="w-16 h-16 rounded-[20px] border-2 border-white shadow-sm dark:shadow-none dark:shadow-none bg-purple-100 flex items-center justify-center text-boo-primary font-black text-2xl">
-                            {{ (mentor.username[0]|upper) if mentor else '—' }}
+                        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-2 border-purple-500/30 dark:border-purple-500/20 shadow-sm dark:shadow-none bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                            <i class="ph-fill ph-ghost text-2xl"></i>
                         </div>
                         {% endif %}
-                        <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" title="Онлайн"></div>
+                        <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white dark:border-dark-card" title="Онлайн"></div>
                     </div>
                     <div class="min-w-0">
                         <h4 class="text-xl font-black text-primary dark:text-white truncate">
@@ -142,7 +144,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white/70 dark:bg-dark-inner/80 border border-purple-100 dark:border-white/5 rounded-2xl p-4 shadow-sm dark:shadow-none dark:shadow-none">
+                <div class="bg-white/70 dark:bg-dark-inner/50 border border-purple-100 dark:border-white/[0.06] rounded-2xl p-4 shadow-sm dark:shadow-none dark:shadow-none">
                     <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Статус преподавателя</div>
                     <div class="text-sm font-black text-primary dark:text-boo-primary mt-0.5">
                         {% if mentor and mentor.custom_status %}{{ mentor.custom_status }}{% else %}—{% endif %}
@@ -153,11 +155,11 @@
                 </div>
             </div>
             {% if mentor %}
-            <div class="mt-6 relative z-10 flex items-center justify-between text-xs font-bold text-muted">
+            <div class="mt-6 relative z-10 flex items-center justify-between text-sm font-bold text-boo-primary hover:text-white transition-colors">
                 <span class="inline-flex items-center gap-1.5">
-                    <i class="ph-bold ph-cursor-click text-sm text-boo-primary"></i> Открыть профиль
+                    <i class="ph-bold ph-cursor-click text-sm"></i> Открыть профиль
                 </span>
-                <i class="ph-bold ph-arrow-up-right text-sm text-muted group-hover:text-boo-primary transition-colors"></i>
+                <i class="ph-bold ph-arrow-up-right text-sm opacity-70 group-hover:opacity-100"></i>
             </div>
             {% endif %}
         {% if mentor %}
@@ -170,137 +172,138 @@
     <!-- НИЖНИЙ РЯД (Action Items) -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        <div class="bg-surface dark:bg-dark-card rounded-[32px] border {% if active_cnt > 0 %}border-red-200 dark:border-red-500/20 border-b-boo-coral dark:shadow-neon-red dark:bg-red-500/5{% else %}border-slate-200 dark:border-white/5 border-b-slate-300{% endif %} border-b-[4px] shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 transition-transform duration-300 {% if active_cnt > 0 %}hover:bg-red-50/80 dark:hover:bg-red-500/10{% endif %}">
-            <div class="flex justify-between items-start mb-6">
-                <div class="w-12 h-12 rounded-2xl {% if active_cnt > 0 %}bg-red-50 text-boo-coral border-red-100{% else %}bg-surface-alt text-muted border-slate-200{% endif %} flex items-center justify-center border">
-                    <i class="ph-fill {% if active_cnt > 0 %}ph-warning-circle{% else %}ph-check-circle{% endif %} text-2xl"></i>
+        <div class="rounded-[32px] border border-b-[4px] shadow-tactile p-8 flex flex-col justify-between transition-colors duration-300 {% if active_cnt > 0 %}bg-surface dark:bg-red-500/5 border-red-200 dark:border-red-500/20 border-b-boo-coral dark:shadow-[0_0_20px_rgba(251,113,133,0.18)] hover:bg-red-50/80 dark:hover:bg-red-500/10{% else %}bg-surface dark:bg-dark-card border-slate-200 dark:border-white/[0.06] border-b-slate-300 dark:shadow-glass-dark hover:-translate-y-1{% endif %}">
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <div class="w-10 h-10 rounded-full {% if active_cnt > 0 %}bg-red-500/15 text-red-500 dark:text-red-400 border border-red-500/30{% else %}bg-surface-alt text-muted border border-slate-200 dark:bg-white/5 dark:border-white/10{% endif %} flex items-center justify-center">
+                        <i class="ph-bold {% if active_cnt > 0 %}ph-warning{% else %}ph-check-circle{% endif %} text-lg"></i>
+                    </div>
+                    <span class="px-3 py-1 {% if active_cnt > 0 %}bg-slate-900 dark:bg-dark-card text-white text-xs font-bold rounded-lg border border-white/10{% else %}bg-surface-alt text-muted text-xs font-bold rounded-lg border border-slate-200/50 dark:bg-white/5 dark:border-white/10{% endif %}">{{ active_cnt }} работ</span>
                 </div>
-                <span class="bg-slate-900 text-white font-black text-sm px-3 py-1 rounded-full shadow-sm dark:shadow-none dark:shadow-none">{{ active_cnt }} работ</span>
+
+                <h3 class="{% if active_cnt > 0 %}text-3xl{% else %}text-2xl{% endif %} font-black text-primary dark:text-white mb-2">{% if active_cnt > 0 %}Сдать ДЗ{% else %}Всё сдано{% endif %}</h3>
+                <p class="text-sm font-medium {% if active_cnt > 0 %}text-red-700 dark:text-red-200/80{% else %}text-muted dark:text-dark-muted{% endif %} mb-8 flex-1 leading-relaxed">
+                    {% if active_cnt > 0 %}
+                        У тебя есть активные работы. Проверь дедлайны и продолжай решение.
+                    {% else %}
+                        Нет активных работ. Можно повторить теорию или порешать тренажёр.
+                    {% endif %}
+                </p>
             </div>
 
-            <h3 class="text-2xl font-black text-primary dark:text-white mb-2">{% if active_cnt > 0 %}Сдать ДЗ{% else %}Всё сдано{% endif %}</h3>
-            <p class="text-sm font-medium {% if active_cnt > 0 %}text-red-700 dark:text-red-200/70{% else %}text-muted{% endif %} mb-6 flex-1">
-                {% if active_cnt > 0 %}
-                    У тебя есть активные работы. Проверь дедлайны и продолжай решение.
-                {% else %}
-                    Нет активных работ. Можно повторить теорию или порешать тренажёр.
-                {% endif %}
-            </p>
-
             <a href="{{ url_for('assignments.submissions_list') }}"
-               class="w-full py-4 {% if active_cnt > 0 %}bg-boo-coral hover:bg-red-500 border-b-red-700 shadow-[0_0_15px_rgba(251,113,133,0.4)]{% else %}bg-slate-900 hover:bg-slate-800 border-b-black dark:bg-white/10 dark:hover:bg-white/20 dark:border-white/5 dark:border-b-0 dark:shadow-none{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm {% if active_cnt > 0 %}border-b-[3px]{% else %}border-b-[3px] dark:border-0{% endif %} active:translate-y-1 active:border-b-0 no-underline">
+               class="w-full py-4 {% if active_cnt > 0 %}bg-boo-coral hover:bg-red-500 text-white shadow-[0_0_15px_rgba(251,113,133,0.45)]{% else %}bg-slate-900 hover:bg-slate-800 text-white dark:bg-white/10 dark:hover:bg-white/20 dark:text-white dark:border dark:border-white/[0.08]{% endif %} rounded-xl font-bold transition-all flex justify-center items-center gap-2 text-sm no-underline">
                 Перейти к заданиям <i class="ph-bold ph-arrow-right"></i>
             </a>
         </div>
 
-        <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/5 border-b-[4px] border-b-slate-300 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 transition-transform duration-300">
-            <div class="flex justify-between items-start mb-6">
-                <div class="w-12 h-12 rounded-2xl bg-cyan-50 dark:bg-cyan-500/10 text-boo-cyan flex items-center justify-center border border-cyan-100 dark:border-cyan-500/20">
-                    <i class="ph-fill ph-video-camera text-2xl"></i>
+        <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col justify-between hover:-translate-y-1 transition-transform duration-300">
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center border border-cyan-100 dark:border-cyan-500/20">
+                        <i class="ph-fill ph-video-camera text-lg"></i>
+                    </div>
+                    <span class="text-xs font-bold text-muted dark:text-dark-muted">
+                        {% if upcoming and upcoming.lesson_date %}{{ upcoming.lesson_date.strftime('%d.%m') }}{% else %}—{% endif %}
+                    </span>
                 </div>
-                <span class="bg-surface-alt text-muted font-bold text-xs px-2.5 py-1 rounded-lg border border-slate-200/50 uppercase tracking-wide">
-                    {% if upcoming and upcoming.lesson_date %}{{ upcoming.lesson_date.strftime('%d.%m') }}{% else %}—{% endif %}
-                </span>
-            </div>
 
-            <h3 class="text-2xl font-black text-primary dark:text-white mb-2">
-                {% if upcoming and upcoming.topic %}{{ upcoming.topic }}{% elif in_progress_lesson and in_progress_lesson.topic %}{{ in_progress_lesson.topic }}{% else %}Следующий урок{% endif %}
-            </h3>
-            <div class="text-sm font-bold text-muted mb-6 flex-1 flex flex-col gap-2">
-                <span class="flex items-center gap-2"><i class="ph-bold ph-clock text-boo-primary"></i>
+                <h3 class="text-2xl font-black text-primary dark:text-white mb-3">
+                    {% if upcoming and upcoming.topic %}{{ upcoming.topic }}{% elif in_progress_lesson and in_progress_lesson.topic %}{{ in_progress_lesson.topic }}{% else %}Следующий урок{% endif %}
+                </h3>
+                <div class="text-sm text-muted dark:text-dark-muted font-medium mb-2 flex items-center gap-2">
+                    <i class="ph-bold ph-clock text-boo-primary"></i>
                     {% if upcoming and upcoming.lesson_date %}{{ upcoming.lesson_date.strftime('%H:%M') }}{% else %}—{% endif %}
                     — {% if upcoming and upcoming.duration %}{{ upcoming.duration }} мин{% else %}—{% endif %}
-                </span>
-                <span class="flex items-center gap-2"><i class="ph-bold ph-chalkboard-teacher text-muted"></i> Онлайн</span>
+                </div>
+                <div class="text-sm text-muted dark:text-dark-muted font-medium mb-8 flex items-center gap-2">
+                    <i class="ph-bold ph-chalkboard-teacher text-boo-primary"></i> Онлайн
+                </div>
             </div>
 
             {% if upcoming %}
             <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=upcoming.lesson_id) }}"
-               class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 no-underline">
+               class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 no-underline dark:bg-white/10 dark:hover:bg-white/20 dark:border dark:border-white/[0.08] dark:border-b-0 dark:shadow-none">
                 Открыть урок
             </a>
             {% else %}
-            <div class="w-full py-3 bg-surface-alt text-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-200">
+            <div class="w-full py-4 bg-surface-alt text-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-200 dark:bg-white/5 dark:border-white/10">
                 Уроков пока нет
             </div>
             {% endif %}
         </div>
 
-        <div class="bg-surface rounded-[32px] border {% if trainer_is_available %}border-slate-200 border-b-slate-300 hover:-translate-y-1{% else %}border-slate-200/80 border-b-slate-300 bg-slate-50/60{% endif %} border-b-[4px] shadow-tactile p-6 flex flex-col transition-transform duration-300 relative overflow-hidden {% if not trainer_is_available %}opacity-95{% endif %}">
-            <div class="flex justify-between items-start mb-6">
-                <div class="w-12 h-12 rounded-2xl {% if trainer_is_available %}bg-orange-50 dark:bg-slate-800 text-boo-accent dark:text-slate-400 border-orange-100 dark:border-slate-700{% else %}bg-slate-200 dark:bg-slate-800 text-muted border-slate-300 dark:border-slate-700{% endif %} flex items-center justify-center border">
-                    <i class="ph-fill ph-game-controller text-2xl"></i>
+        <div class="rounded-[32px] border border-b-[4px] shadow-tactile p-8 flex flex-col justify-between relative overflow-hidden transition-transform duration-300 {% if trainer_is_available %}bg-surface dark:bg-dark-card border-slate-200 dark:border-white/[0.06] border-b-slate-300 dark:shadow-glass-dark hover:-translate-y-1{% else %}bg-surface dark:bg-dark-card/80 border-slate-200/80 dark:border-white/[0.06] border-b-slate-300 dark:shadow-glass-dark opacity-90 dark:opacity-80{% endif %}">
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <div class="w-10 h-10 rounded-xl {% if trainer_is_available %}bg-orange-50 dark:bg-orange-500/10 text-boo-accent dark:text-amber-400 border-orange-100 dark:border-amber-500/20{% else %}bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-300 dark:border-slate-700{% endif %} flex items-center justify-center border">
+                        <i class="ph-fill ph-game-controller text-lg"></i>
+                    </div>
+                    {% if not trainer_is_available %}
+                    <span class="px-3 py-1 bg-slate-800 text-slate-400 text-[10px] font-extrabold uppercase tracking-widest rounded-lg border border-slate-700">
+                        Нет доступа
+                    </span>
+                    {% endif %}
                 </div>
-                {% if not trainer_is_available %}
-                <span class="px-2.5 py-1 rounded-lg bg-slate-800 dark:bg-slate-800 text-slate-400 text-[10px] font-extrabold uppercase tracking-wider border border-slate-700 shadow-sm dark:shadow-none">
-                    Нет доступа
-                </span>
-                {% endif %}
-            </div>
 
-            <h3 class="text-2xl font-black {% if trainer_is_available %}text-primary dark:text-white{% else %}text-muted dark:text-slate-300{% endif %} mb-2">Тренажёр</h3>
-            <p class="text-sm font-medium {% if trainer_is_available %}text-muted dark:text-dark-muted{% else %}text-muted dark:text-slate-500{% endif %} mb-6 flex-1">
-                Закрепи теорию практикой. Решай задачи каждый день, чтобы улучшать результат.
-            </p>
+                <h3 class="text-2xl font-black {% if trainer_is_available %}text-primary dark:text-white{% else %}text-slate-600 dark:text-slate-300{% endif %} mb-2">Тренажёр</h3>
+                <p class="text-sm font-medium {% if trainer_is_available %}text-muted dark:text-dark-muted{% else %}text-slate-500 dark:text-slate-500{% endif %} mb-8">
+                    Закрепи теорию практикой. Решай задачи каждый день, чтобы улучшать результат.
+                </p>
+            </div>
 
             {% if trainer_is_available %}
             <a href="{{ url_for('trainer.trainer_v2') }}"
-               class="w-full py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt hover:text-boo-primary transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
+               class="w-full py-4 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt hover:text-boo-primary transition-all flex justify-center items-center gap-2 text-sm no-underline dark:bg-white/10 dark:text-white dark:border-white/[0.08] dark:hover:bg-white/20">
                 Подобрать задачу <i class="ph-bold ph-magic-wand text-boo-primary"></i>
             </a>
             {% else %}
-            <div class="w-full py-3.5 bg-gradient-to-r from-slate-100 to-slate-200 text-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-300 cursor-not-allowed select-none">
-                <i class="ph-bold ph-lock-key"></i> Тренажёр недоступен в текущем тарифе
+            <div class="w-full py-4 bg-slate-800/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-500 rounded-xl font-bold text-sm text-center border border-slate-700/50 dark:border-slate-700/50 flex items-center justify-center gap-2 cursor-not-allowed select-none">
+                <i class="ph-bold ph-lock"></i> Тренажёр недоступен в текущем тарифе
             </div>
-            {% endif %}
-            {% if not trainer_is_available %}
-            <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.12),transparent_45%)]"></div>
             {% endif %}
         </div>
     </div>
 
     <!-- ЛЕНТА УРОКОВ -->
-    <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/5 border-b-[4px] border-b-slate-300 shadow-tactile dark:shadow-glass-dark p-8">
-        <div class="flex justify-between items-end mb-6 gap-4 flex-wrap">
-            <div>
-                <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Лента уроков</h3>
-                <p class="text-sm font-medium text-muted">История занятий и быстрый доступ к материалам.</p>
-            </div>
+    <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 shadow-tactile dark:shadow-glass-dark p-8">
+        <div class="mb-8">
+            <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Лента уроков</h3>
+            <p class="text-sm font-medium text-muted dark:text-dark-muted">История занятий и быстрый доступ к материалам.</p>
         </div>
 
         {% if other_lessons and other_lessons|length > 0 %}
-        <div class="divide-y divide-slate-100">
+        <div class="space-y-2">
             {% for l in other_lessons[:20] %}
             <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=l.lesson_id) }}"
-               class="py-4 flex items-center gap-4 hover:bg-slate-50/60 dark:hover:bg-white/5 transition-colors rounded-2xl px-3 -mx-3 no-underline border border-transparent dark:hover:border-white/5">
-                <div class="w-14 h-14 rounded-2xl bg-surface-alt border border-slate-200 flex flex-col items-center justify-center">
-                    <div class="text-lg font-black text-primary">{% if l.lesson_date %}{{ l.lesson_date.strftime('%d') }}{% else %}—{% endif %}</div>
-                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">{% if l.lesson_date %}{{ l.lesson_date.strftime('%b') }}{% else %}—{% endif %}</div>
+               class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-4 rounded-2xl hover:bg-slate-50/60 dark:hover:bg-white/[0.04] transition-colors border border-transparent dark:hover:border-white/[0.06] no-underline group">
+                <div class="text-center sm:w-16 shrink-0">
+                    <div class="text-xl font-black text-boo-primary">{% if l.lesson_date %}{{ l.lesson_date.strftime('%d') }}{% else %}—{% endif %}</div>
+                    <div class="text-[10px] font-bold text-muted dark:text-dark-muted uppercase tracking-widest">{% if l.lesson_date %}{{ l.lesson_date.strftime('%b') }}{% else %}—{% endif %}</div>
                 </div>
                 <div class="min-w-0 flex-1">
-                    <div class="text-sm font-black text-primary truncate">{{ l.topic or 'Урок' }}</div>
-                    <div class="text-xs font-bold text-muted mt-1 flex items-center gap-2 flex-wrap">
-                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-clock text-muted"></i> {% if l.lesson_date %}{{ l.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}</span>
-                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-timer text-muted"></i> {{ l.duration or 60 }} мин</span>
-                        <span class="inline-flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full {% if l.status == 'completed' %}bg-green-500{% elif l.status == 'in_progress' %}bg-boo-primary{% else %}bg-slate-400{% endif %}"></span>
+                    <h4 class="text-sm font-bold text-boo-primary mb-1 group-hover:text-boo-primaryHover transition-colors truncate">{{ l.topic or 'Урок' }}</h4>
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-muted dark:text-dark-muted">
+                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-clock"></i> {% if l.lesson_date %}{{ l.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}</span>
+                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-hourglass"></i> {{ l.duration or 60 }} мин</span>
+                        <span class="inline-flex items-center gap-1.5 {% if l.status == 'completed' %}text-green-500{% elif l.status == 'in_progress' %}text-boo-primary{% else %}text-slate-400{% endif %}">
+                            <span class="w-2 h-2 rounded-full {% if l.status == 'completed' %}bg-green-500{% elif l.status == 'in_progress' %}bg-boo-primary{% else %}bg-slate-500{% endif %}"></span>
                             {{ 'Завершен' if l.status == 'completed' else ('В процессе' if l.status == 'in_progress' else 'Запланирован') }}
                         </span>
                     </div>
                 </div>
-                <div class="shrink-0 text-slate-300">
-                    <i class="ph-bold ph-arrow-right"></i>
-                </div>
+                <i class="ph-bold ph-arrow-right text-slate-300 dark:text-dark-muted group-hover:text-white transition-colors hidden sm:block shrink-0"></i>
             </a>
+            {% if not loop.last %}<div class="h-px w-full bg-slate-100 dark:bg-white/[0.06]"></div>{% endif %}
             {% endfor %}
         </div>
         {% else %}
-        <div class="w-full bg-slate-50/50 rounded-[24px] border-2 border-slate-200 border-dashed p-10 text-center">
-            <div class="w-16 h-16 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none mx-auto mb-4">
-                <i class="ph-fill ph-ghost text-3xl text-slate-300"></i>
+        <div class="w-full bg-slate-50/50 dark:bg-white/[0.03] rounded-[24px] border-2 border-slate-200 dark:border-white/[0.08] border-dashed p-10 text-center">
+            <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center border border-white/[0.06] mx-auto mb-4">
+                <i class="ph-fill ph-ghost text-3xl text-slate-300 dark:text-dark-muted"></i>
             </div>
-            <h4 class="text-lg font-bold text-primary mb-1">Уроков пока нет</h4>
-            <p class="text-sm font-medium text-muted">Когда занятия появятся, они будут отображаться здесь.</p>
+            <h4 class="text-lg font-bold text-primary dark:text-white mb-1">Уроков пока нет</h4>
+            <p class="text-sm font-medium text-muted dark:text-dark-muted">Когда занятия появятся, они будут отображаться здесь.</p>
         </div>
         {% endif %}
     </div>

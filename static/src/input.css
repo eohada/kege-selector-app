@@ -156,6 +156,82 @@
   opacity: 0.7;
 }
 
+/*
+ * Комната ученика (`student_profile.html`): эталон Airy Dark — глубокий чёрный,
+ * насыщенные акценты, без «выгоревшего» фона от ambient.
+ */
+html[data-theme="dark"][data-student-room="1"] {
+  --color-bg-app: #000000;
+  --color-bg-surface: #131316;
+  --color-bg-surface-alt: #18181b;
+  --color-bg-inset: #18181b;
+  --color-bg-sidebar: #131316;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #a1a1aa;
+  --color-text-body: #a1a1aa;
+  --color-stroke: #27272a;
+}
+
+html[data-theme="dark"][data-student-room="1"] body::before {
+  opacity: 0.38;
+  filter: blur(96px);
+  background:
+    radial-gradient(circle at 14% 18%, rgba(139, 92, 246, 0.22), transparent 42%),
+    radial-gradient(circle at 88% 22%, rgba(34, 211, 238, 0.16), transparent 40%),
+    radial-gradient(circle at 52% 92%, rgba(251, 113, 133, 0.12), transparent 48%);
+}
+
+html[data-theme="dark"][data-student-room="1"] body::after {
+  opacity: 0.18;
+  filter: blur(120px);
+}
+
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock {
+  background: rgba(9, 9, 11, 0.72);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item {
+  color: #a1a1aa;
+  border: 1px solid transparent;
+}
+
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #8b5cf6;
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active i {
+  color: #8b5cf6;
+}
+
+html[data-theme="dark"][data-student-room="1"] .dock-brand-text {
+  color: #ffffff;
+}
+
+html[data-theme="dark"][data-student-room="1"] .student-mentor-gradient {
+  background-color: #131316 !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
 /* ── FORCE DARK MODE FOR LEGACY PAGES ── */
 [data-theme="dark"] .bg-white { background-color: var(--color-bg-surface) !important; }
 [data-theme="dark"] .bg-slate-50 { background-color: var(--color-bg-inset) !important; }
