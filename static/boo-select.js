@@ -1,6 +1,5 @@
 /**
  * Единая инициализация выпадающих списков (Tom Select) в стиле платформы.
- * Для одиночного выбора: без поля ввода/поиска — только список, как у нативного select.
  */
 (function () {
   'use strict';
@@ -14,10 +13,16 @@
 
     if (!el.multiple) {
       opts.maxItems = 1;
-      /* controlInput: null — без видимого поля ввода (как нативный select).
-         Не ставить searchField: [] — тогда Sifter не находит ни одной опции и список пустой. */
-      opts.controlInput = null;
-      opts.sortField = [{ field: '$order' }, { field: '$score' }];
+      /* Не использовать controlInput: null — ломает открытие списка в части окружений.
+         Вместо этого визуально прячем служебный input в CSS (.ts-wrapper.single .ts-control > input). */
+      opts.onInitialize = function () {
+        var inp = this.control_input;
+        if (inp) {
+          inp.setAttribute('readonly', 'readonly');
+          inp.setAttribute('inputmode', 'none');
+          inp.setAttribute('autocomplete', 'off');
+        }
+      };
     }
 
     opts.onDropdownOpen = function () {

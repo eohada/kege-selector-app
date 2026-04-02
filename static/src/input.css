@@ -1136,142 +1136,6 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   .neo-checkbox { @apply flex items-center gap-2 cursor-pointer; font-size: 0.875rem; color: #475569; }
   .neo-checkbox-input { @apply w-[18px] h-[18px]; border-radius: 6px; accent-color: var(--color-accent); }
 
-  /* ═══════════════ TOM SELECT (CUSTOM PLATFORM STYLE + MOTION) ═══════════════ */
-  @keyframes boo-select-dd-in {
-    from {
-      opacity: 0;
-      transform: translateY(-6px) scale(0.98);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-  @keyframes boo-select-dd-out {
-    from {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-    to {
-      opacity: 0;
-      transform: translateY(-4px) scale(0.99);
-    }
-  }
-  .ts-wrapper {
-    margin-bottom: 0;
-    transition: transform 0.18s ease;
-  }
-  .ts-wrapper.boo-select-open {
-    z-index: 40;
-  }
-  /* Одиночный выбор: без поля ввода — только подпись выбранного пункта */
-  .ts-wrapper.single .ts-control {
-    cursor: pointer;
-    min-height: 2.75rem;
-  }
-  .ts-wrapper.single .item {
-    padding: 0 !important;
-    margin: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    font: inherit !important;
-    color: inherit !important;
-    line-height: 1.35;
-  }
-  .ts-wrapper .ts-control {
-    @apply w-full outline-none font-medium flex items-center relative;
-    padding: 0.6rem 0.9rem;
-    padding-right: 2.5rem;
-    border-radius: 14px;
-    border: 1px solid var(--color-stroke, #E2E8F0);
-    border-bottom-width: 2px;
-    border-bottom-color: var(--color-stroke-strong, #CBD5E1);
-    background: var(--color-bg-surface, #FFFFFF);
-    font-size: 0.875rem;
-    color: var(--color-text-primary, #1E293B);
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
-    min-height: calc(2.25rem + 4px);
-  }
-  [data-theme="dark"] .ts-wrapper .ts-control {
-    background: var(--color-bg-surface-alt);
-    border-color: var(--color-stroke);
-    border-bottom-color: var(--color-stroke-strong);
-    color: var(--color-text-primary);
-  }
-  .ts-wrapper.focus .ts-control,
-  .ts-wrapper.dropdown-active .ts-control {
-    border-bottom-color: var(--color-accent);
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
-  }
-  .ts-dropdown {
-    border-radius: 14px;
-    border: 1px solid var(--color-stroke);
-    box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
-    background: var(--color-bg-surface);
-    margin-top: 6px;
-    overflow: hidden;
-    transform-origin: top center;
-    animation: boo-select-dd-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  [data-theme="dark"] .ts-dropdown {
-    background: var(--color-bg-surface-alt);
-    border-color: var(--color-stroke);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
-  }
-  .ts-dropdown .option {
-    padding: 0.6rem 0.9rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #475569;
-    cursor: pointer;
-    transition: background-color 0.14s ease, color 0.14s ease, transform 0.12s ease;
-  }
-  [data-theme="dark"] .ts-dropdown .option {
-    color: var(--color-text-primary);
-  }
-  .ts-dropdown .option:hover,
-  .ts-dropdown .active {
-    background-color: #F8FAFC !important;
-    color: #0F172A !important;
-    transform: translateX(2px);
-  }
-  [data-theme="dark"] .ts-dropdown .option:hover,
-  [data-theme="dark"] .ts-dropdown .active {
-    background-color: var(--color-stroke) !important;
-    color: #FFFFFF !important;
-  }
-  .ts-dropdown .option.active {
-    background: linear-gradient(90deg, rgba(139, 92, 246, 0.08), transparent) !important;
-  }
-  [data-theme="dark"] .ts-dropdown .option.active {
-    background: linear-gradient(90deg, rgba(139, 92, 246, 0.2), transparent) !important;
-  }
-  /* Chevron как у neo-select (не треугольник ОС) */
-  .ts-wrapper.single .ts-control::after {
-    content: '' !important;
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    margin-top: -8px;
-    width: 16px;
-    height: 16px;
-    border: none !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
-    transform: rotate(0deg);
-    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-    pointer-events: none;
-  }
-  .ts-wrapper.single.dropdown-active .ts-control::after {
-    transform: rotate(180deg);
-  }
-  [data-theme="dark"] .ts-wrapper.single .ts-control::after {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  }
-
   /* ═══════════════ HERO ═══════════════ */
 
   .hero-eyebrow {
@@ -2324,4 +2188,162 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   /* Scrollbar overlays (keeps strong contrast in dark) */
   [data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(39, 39, 42, 0.9); }
   [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(71, 71, 80, 0.95); }
+}
+
+/*
+ * Tom Select: стили ВНЕ @layer — иначе не-слоевой tom-select.css с CDN выигрывает каскад
+ * над всеми правилами из @layer components (квадратные углы, серая обводка после init).
+ */
+@keyframes boo-select-dd-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ts-wrapper {
+  margin-bottom: 0;
+  transition: transform 0.18s ease;
+}
+
+.ts-wrapper.boo-select-open {
+  z-index: 40;
+}
+
+.ts-wrapper.single .ts-control {
+  cursor: pointer;
+  min-height: 2.75rem;
+}
+
+/* Служебный input Tom Select: не раздувает контрол, без «поля ввода» визуально */
+.ts-wrapper.single .ts-control > input {
+  flex: 0 1 4px !important;
+  min-width: 2px !important;
+  max-width: 100% !important;
+  width: 2px !important;
+  margin: 0 2px 0 0 !important;
+  padding: 0 !important;
+  opacity: 0 !important;
+  caret-color: transparent;
+  cursor: pointer;
+}
+
+.ts-wrapper.single .item {
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  font: inherit !important;
+  color: inherit !important;
+  line-height: 1.35;
+}
+
+.ts-wrapper .ts-control {
+  @apply w-full outline-none font-medium flex items-center relative;
+  padding: 0.6rem 0.9rem !important;
+  padding-right: 2.5rem !important;
+  border-radius: 14px !important;
+  border: 1px solid var(--color-stroke, #e2e8f0) !important;
+  border-bottom-width: 2px !important;
+  border-bottom-color: var(--color-stroke-strong, #cbd5e1) !important;
+  background: var(--color-bg-surface, #ffffff) !important;
+  font-size: 0.875rem !important;
+  color: var(--color-text-primary, #1e293b) !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
+  min-height: calc(2.25rem + 4px);
+}
+
+[data-theme="dark"] .ts-wrapper .ts-control {
+  background: var(--color-bg-surface-alt) !important;
+  border-color: var(--color-stroke) !important;
+  border-bottom-color: var(--color-stroke-strong) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.ts-wrapper.focus .ts-control,
+.ts-wrapper.dropdown-active .ts-control {
+  border-bottom-color: var(--color-accent) !important;
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1) !important;
+}
+
+.ts-dropdown {
+  border-radius: 14px !important;
+  border: 1px solid var(--color-stroke) !important;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12) !important;
+  background: var(--color-bg-surface) !important;
+  margin-top: 6px !important;
+  overflow: hidden;
+  transform-origin: top center;
+  animation: boo-select-dd-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+[data-theme="dark"] .ts-dropdown {
+  background: var(--color-bg-surface-alt) !important;
+  border-color: var(--color-stroke) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45) !important;
+}
+
+.ts-dropdown .option {
+  padding: 0.6rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: background-color 0.14s ease, color 0.14s ease, transform 0.12s ease;
+}
+
+[data-theme="dark"] .ts-dropdown .option {
+  color: var(--color-text-primary);
+}
+
+.ts-dropdown .option:hover,
+.ts-dropdown .active {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  transform: translateX(2px);
+}
+
+[data-theme="dark"] .ts-dropdown .option:hover,
+[data-theme="dark"] .ts-dropdown .active {
+  background-color: var(--color-stroke) !important;
+  color: #ffffff !important;
+}
+
+.ts-dropdown .option.active {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.08), transparent) !important;
+}
+
+[data-theme="dark"] .ts-dropdown .option.active {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.2), transparent) !important;
+}
+
+.ts-wrapper.single .ts-control::after {
+  content: '' !important;
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  margin-top: -8px;
+  width: 16px;
+  height: 16px;
+  border: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  transform: rotate(0deg);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+.ts-wrapper.single.dropdown-active .ts-control::after {
+  transform: rotate(180deg);
+}
+
+[data-theme="dark"] .ts-wrapper.single .ts-control::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
