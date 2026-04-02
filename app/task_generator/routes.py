@@ -411,13 +411,15 @@ def task_generator(lesson_id=None):
             joinedload(Tasks.course),
             joinedload(Tasks.task_solution),
         )
-        if bank_filter_course_id:
-            bq = bq.filter(Tasks.course_id == bank_filter_course_id)
-        if bank_filter_task_number:
-            bq = bq.filter(Tasks.task_number == bank_filter_task_number)
+        # Поиск по внутреннему ID — однозначен: не сужаем программой/номером (иначе «нет записей» при несовпадении курса).
         if bank_filter_task_id:
             bq = bq.filter(Tasks.task_id == bank_filter_task_id)
-        if bank_only_manual:
+        else:
+            if bank_filter_course_id:
+                bq = bq.filter(Tasks.course_id == bank_filter_course_id)
+            if bank_filter_task_number:
+                bq = bq.filter(Tasks.task_number == bank_filter_task_number)
+        if bank_only_manual and not bank_filter_task_id:
             bq = bq.filter(Tasks.bank_origin == 'manual')
         bq = bq.order_by(Tasks.task_id.desc())
         bank_total = bq.count()

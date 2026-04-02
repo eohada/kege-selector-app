@@ -1116,9 +1116,14 @@
                 }
                 const sid = data.task && data.task.site_task_id;
                 const resolvedId = data.task_id != null ? data.task_id : taskId;
-                setStatus(`Сохранено. ID в базе: ${resolvedId}` + (sid ? ` (${sid})` : ''), false);
+                setStatus(
+                    `Сохранено. Внутренний ID строки (поле «ID» в банке): ${resolvedId}` + (sid ? ` · ${sid}` : ''),
+                    false,
+                );
                 if (window.toast) {
-                    window.toast.success(`Задание добавлено в банк. ID в базе: ${resolvedId}`);
+                    window.toast.success(
+                        `Задание в банке. Ищите по полю «ID»: ${resolvedId} (программа в фильтре не важна).`,
+                    );
                 }
                 if (filesInput) filesInput.value = '';
             } catch (e) {
