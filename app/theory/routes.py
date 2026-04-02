@@ -34,6 +34,39 @@ from app.auth.rbac_utils import has_permission
 logger = logging.getLogger(__name__)
 
 
+def _theory_normalize_stdin_for_run(s):
+    """Each answer for input() must end with \\n so stdin.readline() does not block until timeout."""
+    if s is None:
+        return ''
+    t = str(s).replace('\r\n', '\n')
+    if not t.strip():
+        return ''
+    if not t.endswith('\n'):
+        t += '\n'
+    return t
+
+
+def _theory_wrap_python_for_stdio_transcript(code: str) -> str:
+    """
+    Patch builtins.input so prompts, typed answers (from stdin), and the next prints
+    appear as a readable console transcript (subprocess does not echo stdin to stdout).
+    """
+    return (
+        "import sys as _th_sys, builtins as _th_builtins\n"
+        "def _th_input(_th_p=''):\n"
+        "    if _th_p:\n"
+        "        print(_th_p, end='', flush=True)\n"
+        "    _th_ln = _th_sys.stdin.readline()\n"
+        "    if _th_ln == '':\n"
+        "        raise EOFError('EOF when reading a line')\n"
+        "    _th_ln = _th_ln.rstrip('\\r\\n')\n"
+        "    print(_th_ln, flush=True)\n"
+        "    return _th_ln\n"
+        "_th_builtins.input = _th_input\n"
+        f"exec(compile({code!r}, '<theory>', 'exec'))\n"
+    )
+
+
 def _strip_status_marker(content_value):
     text = (content_value or '').strip()
     if text.startswith('<!--status:published-->'):
@@ -83,10 +116,11 @@ def _render_theory_content_html(content_value):
             '<div class="w-2.5 h-2.5 rounded-full" style="background:#F59E0B;border:1px solid #D97706;"></div>'
             '<div class="w-2.5 h-2.5 rounded-full" style="background:#4ADE80;border:1px solid #22C55E;"></div>'
             f'<span class="text-[10px] font-mono font-bold text-slate-500 uppercase ml-1">{lang}</span></div>'
-            '<div class="flex items-center gap-2">'
-            '<input type="text" class="theory-code-args bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] text-slate-700" '
-            'placeholder="Аргументы / stdin">'
-            '<button type="button" class="theory-run-btn px-2.5 py-1 text-xs font-bold rounded-md shadow-sm focus:outline-none" style="color:#FFFFFF;background:#15803D;border:1px solid #14532D;">Run</button>'
+            '<div class="flex items-start gap-2 flex-1 justify-end min-w-0">'
+            '<textarea class="theory-code-args bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] text-slate-700 font-mono min-w-[180px] max-w-[min(340px,48vw)] min-h-[2.75rem] max-h-28 resize-y leading-snug" rows="2" wrap="off" '
+            'title="Одна строка — один ответ для очередного input(). Пустые строки между ответами не ставьте." '
+            'placeholder="Ответ 1 для 1-го input()&#10;Ответ 2 для 2-го input()"></textarea>'
+            '<button type="button" class="theory-run-btn self-center shrink-0 px-2.5 py-1 text-xs font-bold rounded-md shadow-sm focus:outline-none" style="color:#FFFFFF;background:#15803D;border:1px solid #14532D;">Run</button>'
             '</div>'
             '</div>'
             f'<textarea class="theory-code-input hidden">{html.escape(code_body)}</textarea>'
@@ -1040,15 +1074,16 @@ def theory_api_run_code():
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
     payload = request.get_json(silent=True) or {}
     lang = (payload.get('lang') or 'python').strip().lower()
-    code = (payload.get('code') or '').strip()
-    args = (payload.get('args') or '').strip()
-    if not code:
+    code = (payload.get('code') or '')
+    if not code.strip():
         return jsonify({'success': False, 'error': 'Пустой код'}), 400
     if lang != 'python':
         return jsonify({'success': False, 'error': 'Пока поддержан только Python'}), 400
+    args = _theory_normalize_stdin_for_run(payload.get('args'))
+    script = _theory_wrap_python_for_stdio_transcript(code)
     try:
         proc = subprocess.run(
-            ['python', '-c', code],
+            ['python', '-c', script],
             input=args,
             text=True,
             capture_output=True,

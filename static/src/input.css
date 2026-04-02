@@ -438,6 +438,14 @@ html[data-theme="dark"][data-student-submission="1"] .code-editor-output-label {
 /*
  * Теория (контент из markdown /_theory/routes.py): код, callout, матблоки
  */
+html[data-student-theory="1"] .theory-smart-code .theory-code-highlight,
+html[data-student-theory="1"] .theory-smart-code .theory-code-output,
+html[data-student-theory="1"] .theory-smart-code .theory-code-args,
+html[data-student-theory="1"] .theory-smart-code .cm-content,
+html[data-student-theory="1"] .prose-article code {
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
 html[data-theme="dark"][data-student-theory="1"] .prose-article a {
   color: #c4b5fd;
 }

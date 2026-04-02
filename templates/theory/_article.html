@@ -33,7 +33,7 @@
            hx-swap="innerHTML"
            hx-push-url="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}"
            class="block px-3 py-2.5 {{ 'bg-purple-50 text-boo-primary border-purple-100 dark:bg-purple-500/15 dark:text-purple-200 dark:border-purple-500/30' if item.id == block.id else 'text-muted dark:text-white/85 hover:bg-surface-alt dark:hover:bg-white/5 border-transparent dark:border-transparent hover:border-slate-200/50 dark:hover:border-white/[0.06]' }} rounded-xl font-bold text-sm border transition-colors no-underline">
-          {{ loop.index }}. {{ item.title or ('Тема ' ~ item.task_number) }}
+          {{ item.title or ('Тема ' ~ item.task_number) }}
         </a>
         {% endfor %}
       </div>
@@ -50,9 +50,9 @@
       </button>
 
       <div class="max-w-3xl mx-auto prose-article">
-        <div class="flex items-center gap-2 mb-4 flex-wrap">
-          <span class="bg-surface-alt dark:bg-white/5 text-muted dark:text-dark-muted text-xs font-bold px-2.5 py-1 rounded-md border border-slate-200 dark:border-white/[0.08]">Задание {{ block.task_number }}</span>
-          <span class="text-muted dark:text-white/80 text-xs font-semibold flex items-center gap-1"><i class="ph-fill ph-clock"></i> {{ block.read_minutes or 5 }} мин чтения</span>
+        <div class="flex items-center gap-3 mb-4 flex-wrap text-xs font-semibold">
+          <span class="text-muted dark:text-dark-muted max-w-[min(100%,28rem)] leading-snug">{{ ns_group.current_group.name if ns_group.current_group else 'Теория' }}</span>
+          <span class="text-muted dark:text-white/80 flex items-center gap-1.5 shrink-0"><i class="ph-fill ph-clock"></i> {{ block.read_minutes or 5 }} мин чтения</span>
         </div>
         <h1 class="text-4xl md:text-5xl font-black text-primary dark:text-white tracking-tight mb-4 leading-tight">{{ block.title or ('Задание ' ~ block.task_number) }}</h1>
         {% if block.description %}

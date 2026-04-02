@@ -22,6 +22,17 @@
   .prose-article .theory-code-highlight [data-hl="kw"] { color: #7c3aed; font-weight: 700; }
   .prose-article .theory-code-highlight [data-hl="str"] { color: #0f766e; }
   .prose-article .theory-code-highlight [data-hl="num"] { color: #ea580c; }
+  /* JetBrains Mono и др.: не сливать != и пр. в лигатуры */
+  .prose-article .theory-code-highlight,
+  .prose-article .theory-code-output,
+  .prose-article .theory-code-args,
+  .prose-article .theory-smart-code .cm-content,
+  .prose-article .theory-smart-code textarea.theory-code-input,
+  .prose-article code {
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .prose-article .theory-code-output { white-space: pre-wrap; word-break: break-word; }
 </style>
 {% endblock %}
 
@@ -338,11 +349,12 @@
       closeBracketsKeymap,
     } = bundle;
     const isDarkTheory = document.documentElement.getAttribute("data-theme") === "dark";
+    const cmNoLiga = { fontVariantLigatures: "none", fontFeatureSettings: '"liga" 0, "calt" 0' };
     const cmTheme = EditorView.theme(
       isDarkTheory
         ? {
             "&": { backgroundColor: "#09090b", color: "#fafafa", minHeight: "120px", height: "auto" },
-            ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7", caretColor: "#fafafa" },
+            ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7", caretColor: "#fafafa", ...cmNoLiga },
             ".cm-scroller": { overflowX: "auto", overflowY: "hidden", minHeight: "120px" },
             ".cm-gutters": { backgroundColor: "#18181b", borderColor: "rgba(255,255,255,0.08)", color: "#a1a1aa" },
             ".cm-activeLineGutter": { backgroundColor: "rgba(139,92,246,0.12)" },
@@ -351,7 +363,7 @@
           }
         : {
             "&": { backgroundColor: "#ffffff", color: "#0f172a", minHeight: "120px", height: "auto" },
-            ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7" },
+            ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7", ...cmNoLiga },
             ".cm-scroller": { overflowX: "auto", overflowY: "hidden", minHeight: "120px" },
             ".cm-focused": { outline: "none !important" },
             "&.cm-focused": { outline: "none !important", boxShadow: "none !important" },
