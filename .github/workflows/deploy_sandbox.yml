@@ -3,21 +3,57 @@ name: Deploy Sandbox (AUTO)
 on:
   push:
     branches:
-      - main 
+      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
+      # appleboy/ssh-action often fails with dial tcp …:22: i/o timeout when the host does not
+      # accept connections from GitHub-hosted runners (firewall / allowlist / provider filter).
+      # This step retries a few times (transient routing) and supports optional secrets.SSH_PORT.
       - name: SSH into server and update sandbox
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # Drone SSH parses these as Go durations and requires a unit (e.g. 120s, 20m).
-          # Bare numbers like 120 fail with: missing unit in duration "120".
-          timeout: 120s
-          command_timeout: 20m
-          script: |
-            /opt/boostudy/deploy_sandbox.sh
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY_FILE=$(mktemp)
+          umask 077
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${KEY_FILE}"
+          cleanup() { rm -f "${KEY_FILE}"; }
+          trap cleanup EXIT
+
+          PORT="${SSH_PORT:-22}"
+          MAX_ATTEMPTS=4
+          DELAY_SEC=50
+          attempt=1
+
+          while [[ "${attempt}" -le "${MAX_ATTEMPTS}" ]]; do
+            echo "=== SSH deploy attempt ${attempt}/${MAX_ATTEMPTS} (${USERNAME}@${HOST}:${PORT}) ==="
+            if ssh -i "${KEY_FILE}" \
+              -p "${PORT}" \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=120 \
+              -o ServerAliveInterval=25 \
+              -o ServerAliveCountMax=8 \
+              "${USERNAME}@${HOST}" \
+              'bash -lc /opt/boostudy/deploy_sandbox.sh'; then
+              echo "Deploy finished successfully."
+              exit 0
+            fi
+            if [[ "${attempt}" -lt "${MAX_ATTEMPTS}" ]]; then
+              echo "SSH failed; waiting ${DELAY_SEC}s before retry..."
+              sleep "${DELAY_SEC}"
+            fi
+            attempt=$((attempt + 1))
+          done
+
+          echo "::error::SSH failed after ${MAX_ATTEMPTS} attempts (i/o timeout = host or port 22/tcp not reachable from GitHub). Check: VPS up; sshd listening; firewall allows GitHub Actions (see https://api.github.com/meta); optional bastion or self-hosted runner in same LAN."
+          exit 1
+        env:
+          HOST: ${{ secrets.HOST }}
+          USERNAME: ${{ secrets.USERNAME }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
