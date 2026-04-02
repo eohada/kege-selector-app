@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% block title %}Профиль · BooStudy{% endblock %}
 
+{% block html_attrs %}
+{% if current_user and (current_user.is_student() or current_user.is_parent()) %}data-student-room="1"{% endif %}
+{% endblock %}
+
 {% set use_custom_theme = current_user and (current_user.id == custom_theme_user_id or (current_user.numeric_id is not none and (current_user.numeric_id|string) == (custom_theme_user_id|string))) %}
 
 {% block head_css %}
@@ -83,7 +87,6 @@
 {% if current_user %}
 {% if current_user.is_student() %}layout-student {% elif not current_user.is_parent() %}layout-teacher {% endif %}
 {% endif %}
-bg-boo-bg text-boo-textMain
 {% endblock %}
 
 {% set active_page = None %}

@@ -254,6 +254,17 @@ html[data-theme="dark"][data-student-lesson-room="1"] .lesson-back-link:hover {
   border-color: rgba(139, 92, 246, 0.35) !important;
 }
 
+html[data-theme="dark"][data-student-room="1"] .student-surface-back-link {
+  background: rgba(19, 19, 22, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-text-muted) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+html[data-theme="dark"][data-student-room="1"] .student-surface-back-link:hover {
+  color: #c4b5fd !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+}
+
 /*
  * Выполнение работы (submission_view): перебиваем белые !important из встроенного <style>
  */
@@ -1540,6 +1551,24 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   }
   .theme-toggle-btn[aria-pressed="true"] { background: #FFFFFF; color: var(--color-accent); box-shadow: 0 1px 3px rgba(15,23,42,0.06); }
 
+  [data-theme="dark"] .theme-toggle {
+    background: var(--color-bg-inset);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  [data-theme="dark"] .theme-toggle-btn {
+    color: var(--color-text-muted);
+  }
+  [data-theme="dark"] .theme-toggle-btn:hover:not([aria-pressed="true"]) {
+    color: var(--color-text-primary);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  [data-theme="dark"] .theme-toggle-btn[aria-pressed="true"] {
+    background: rgba(139, 92, 246, 0.24);
+    color: #c4b5fd;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
   /* ═══════════════ MOBILE MENU ═══════════════ */
 
   .mobile-menu-overlay { @apply fixed inset-0 hidden; z-index: var(--z-mobile-overlay); background: rgba(15,23,42,0.4); }
@@ -1981,6 +2010,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   }
   [data-theme="dark"] .profile-item { color: var(--color-text-secondary); }
   [data-theme="dark"] .profile-item:hover { background: rgba(255,255,255,0.06); color: var(--color-text-primary); }
+  [data-theme="dark"] .profile-section-title { color: var(--color-text-muted); }
 
   [data-theme="dark"] .tactile-card, [data-theme="dark"] .glass-panel {
     background: var(--color-bg-surface);
