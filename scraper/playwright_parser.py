@@ -8,6 +8,8 @@ import os
 import sys
 import re
 import json
+import urllib.error
+import urllib.request
 from playwright.sync_api import sync_playwright, Page
 from playwright_stealth import Stealth
 from urllib.robotparser import RobotFileParser
@@ -18,6 +20,95 @@ SITE_DOMAIN = "https://kompege.ru"
 MAIN_PAGE_URL = f"{SITE_DOMAIN}/task"
 ROBOTS_URL = f"{SITE_DOMAIN}/robots.txt"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+
+KOMPEGE_API_LIST_URL_TMPL = f"{SITE_DOMAIN}/api/v1/task/number/{{}}"
+
+
+def _kompege_api_listing_enabled() -> bool:
+    v = (os.environ.get("KOMPEGE_USE_API") or "1").strip().lower()
+    return v not in ("0", "false", "no", "off")
+
+
+def fetch_kompege_listing_from_api(task_number: int) -> list:
+    """
+    Публичный JSON со списком заданий номера ЕГЭ (тот же источник, что SPA после «Найти все задачи»).
+    Возвращает [] при ошибке сети/формата. Поля совместимы с upsert_kompege_listing_items.
+    """
+    if not _kompege_api_listing_enabled():
+        return []
+    url = KOMPEGE_API_LIST_URL_TMPL.format(int(task_number))
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            raw = resp.read()
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
+        print(f"[ETL] API списка заданий: ошибка запроса {url!r}: {e}")
+        return []
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        print(f"[ETL] API списка заданий: невалидный JSON: {e}")
+        return []
+    if not isinstance(data, list):
+        return []
+
+    out: list = []
+    for o in data:
+        if not isinstance(o, dict):
+            continue
+        tid = o.get("taskId")
+        if tid is None:
+            continue
+        task_id_str = str(int(tid)) if isinstance(tid, (int, float)) else str(tid).strip()
+        if not task_id_str:
+            continue
+
+        files: list = []
+        for f in o.get("files") or []:
+            if not isinstance(f, dict):
+                continue
+            href = f.get("url") or f.get("href") or ""
+            text = (f.get("name") or f.get("text") or "").strip()
+            if href:
+                files.append({"href": href, "text": text})
+
+        details = (o.get("comment") or "").strip()
+
+        if int(task_number) == 19:
+            base = (o.get("text") or "").strip()
+            subs = [st for st in (o.get("subTask") or []) if isinstance(st, dict)]
+            subs.sort(key=lambda x: int(x.get("number") or 0))
+            parts = [base]
+            for st in subs:
+                n = st.get("number")
+                tx = (st.get("text") or "").strip()
+                if n == 20:
+                    parts.append("<p>Задание 20.</p>" + tx)
+                elif n == 21:
+                    parts.append("<p>Задание 21.</p>" + tx)
+            content_html = "".join(parts)
+            ans_parts = [str(o.get("key") or "").strip()]
+            for st in subs:
+                ans_parts.append(str(st.get("key") or "").strip())
+            answer = "\n".join(x for x in ans_parts if x)
+        else:
+            content_html = (o.get("text") or "").strip()
+            k = o.get("key")
+            answer = str(k).strip() if k is not None else ""
+            if not answer:
+                answer = (o.get("solve_text") or "").strip()
+
+        out.append(
+            {
+                "taskId": task_id_str,
+                "contentHtml": content_html,
+                "details": details,
+                "files": files,
+                "answer": answer,
+            }
+        )
+    return out
+
 
 # Скрипт для evaluate: строки таблицы заданий (главный документ или iframe).
 KOMPEGE_LISTING_EXTRACT_JS = r"""
@@ -517,10 +608,19 @@ def check_robots_txt():
 
 def collect_kompege_listing_raw_items(page: Page, task_number: int, task_value_url: str):
     """
-    Строки таблицы заданий на kompege.ru/task после выбора типа и «Найти все задачи».
+    Список заданий номера ЕГЭ: сначала GET /api/v1/task/number/{N} (см. fetch_kompege_listing_from_api),
+    иначе legacy — DOM на kompege.ru/task после выбора типа и «Найти все задачи».
     None — тип недоступен в списке (пропуск). Иначе список {taskId, contentHtml, details, files, answer}.
-    Общая точка для fetch_tasks и scripts/sync_kege_informatics_bank.py.
+    Отключить API: переменная окружения KOMPEGE_USE_API=0.
     """
+    api_items = fetch_kompege_listing_from_api(task_number)
+    if api_items:
+        print(
+            f"[ETL] Список типа {task_number} загружен через API "
+            f"({len(api_items)} записей): {KOMPEGE_API_LIST_URL_TMPL.format(task_number)}"
+        )
+        return api_items
+
     print(f"[ETL] 3. Выбор типа задания {task_number} (value='{task_value_url}')...")
 
     if page.is_closed():
