@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
+{% from '_ui_icon.html' import ui_icon %}
 {% block title %}Аналитика - {{ student.name }} · BooStudy{% endblock %}
-{% set active_page = 'dashboard' %}
+{% set active_page = 'student_analytics' %}
+{% block html_attrs %}data-student-analytics="1"{% endblock %}
 
 {% block head_css %}
 <style>
@@ -30,6 +32,7 @@
 {% endblock %}
 
 {% block content %}
+<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
         <section class="glass-panel mb-8">
             <div class="flex items-center gap-4 mb-4">
                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">
@@ -53,7 +56,7 @@
                     </div>
                 </div>
                 <div class="mt-4 pt-4 border-t border-stroke">
-                    <span class="text-text-muted text-sm">
+                    <span class="text-muted text-sm">
                         {% if metrics.delta > 0 %}
                             <span class="text-success">+{{ metrics.delta }}%</span> с прошлого месяца
                         {% elif metrics.delta < 0 %}
@@ -73,7 +76,7 @@
                     </div>
                 </div>
                 <div class="mt-4 pt-4 border-t border-stroke">
-                    <span class="text-text-muted text-sm">
+                    <span class="text-muted text-sm">
                         Всего уроков: {{ metrics.total_lessons }}
                     </span>
                 </div>
@@ -87,7 +90,7 @@
                     </div>
                 </div>
                 <div class="mt-4 pt-4 border-t border-stroke">
-                    <span class="text-text-muted text-sm">
+                    <span class="text-muted text-sm">
                         Завершенных уроков
                     </span>
                 </div>
@@ -141,15 +144,15 @@
                 </div>
             </div>
             <div class="mt-6">
-                <p class="text-text-muted mb-4">
+                <p class="text-muted mb-4">
                     Темы, по которым успеваемость ниже 60%:
                 </p>
                 <div class="grid gap-4">
                     {% for topic in problem_topics %}
-                    <div class="flex items-center justify-between p-4 bg-bg-surface-alt rounded-card shadow-card">
+                    <div class="flex items-center justify-between p-4 bg-surface-alt dark:bg-dark-inner/80 rounded-2xl border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-none">
                         <div>
-                            <span class="font-medium">{{ topic.name }}</span>
-                            <span class="text-text-muted ml-4">{{ topic.avg_score }}%</span>
+                            <span class="font-medium text-primary dark:text-white">{{ topic.name }}</span>
+                            <span class="text-muted ml-4">{{ topic.avg_score }}%</span>
                         </div>
                         <a href="{{ url_for('task_generator.task_generator') }}?student_id={{ student.student_id }}" class="neo-button accent">
                             Создать отработку
@@ -164,13 +167,14 @@
         {% if not charts.trend_dates or charts.trend_dates == '[]' %}
         <section class="glass-panel">
             <div class="text-center px-8 py-12">
-                <h3 class="mb-4">Нет данных для аналитики</h3>
-                <p class="text-text-muted">
+                <h3 class="mb-4 text-primary dark:text-white">Нет данных для аналитики</h3>
+                <p class="text-muted">
                     Выполните задания и проведите автопроверку, чтобы увидеть аналитику.
                 </p>
             </div>
         </section>
         {% endif %}
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -199,9 +203,10 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        plugins: { legend: { display: true, position: 'top' } },
+                        plugins: { legend: { display: true, position: 'top', labels: { color: textPrimary } } },
                         scales: {
-                            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }
+                            x: { ticks: { color: textMuted }, grid: { color: stroke1 } },
+                            y: { beginAtZero: true, max: 100, ticks: { color: textMuted, callback: v => v + '%' }, grid: { color: stroke1 } }
                         }
                     }
                 });
@@ -268,7 +273,11 @@
                             borderWidth: 2
                         }]
                     },
-                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: true, position: 'right' } } }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: { legend: { display: true, position: 'right', labels: { color: textPrimary } } }
+                    }
                 });
             }
         });

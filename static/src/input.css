@@ -157,10 +157,10 @@
 }
 
 /*
- * Комната, главная, задания (`student_profile`, `student_dashboard`, `submissions_list`):
+ * Комната, главная, задания, теория, аналитика:
  * эталон Airy Dark — глубокий чёрный, насыщенные акценты.
  */
-html[data-theme="dark"][data-student-room="1"], html[data-theme="dark"][data-student-dashboard="1"], html[data-theme="dark"][data-student-assignments="1"] {
+html[data-theme="dark"][data-student-room="1"], html[data-theme="dark"][data-student-dashboard="1"], html[data-theme="dark"][data-student-assignments="1"], html[data-theme="dark"][data-student-theory="1"], html[data-theme="dark"][data-student-analytics="1"] {
   --color-bg-app: #000000;
   --color-bg-surface: #131316;
   --color-bg-surface-alt: #18181b;
@@ -173,7 +173,7 @@ html[data-theme="dark"][data-student-room="1"], html[data-theme="dark"][data-stu
   --color-stroke: #27272a;
 }
 
-html[data-theme="dark"][data-student-room="1"] body::before, html[data-theme="dark"][data-student-dashboard="1"] body::before, html[data-theme="dark"][data-student-assignments="1"] body::before {
+html[data-theme="dark"][data-student-room="1"] body::before, html[data-theme="dark"][data-student-dashboard="1"] body::before, html[data-theme="dark"][data-student-assignments="1"] body::before, html[data-theme="dark"][data-student-theory="1"] body::before, html[data-theme="dark"][data-student-analytics="1"] body::before {
   opacity: 0.38;
   filter: blur(96px);
   background:
@@ -182,12 +182,12 @@ html[data-theme="dark"][data-student-room="1"] body::before, html[data-theme="da
     radial-gradient(circle at 52% 92%, rgba(251, 113, 133, 0.12), transparent 48%);
 }
 
-html[data-theme="dark"][data-student-room="1"] body::after, html[data-theme="dark"][data-student-dashboard="1"] body::after, html[data-theme="dark"][data-student-assignments="1"] body::after {
+html[data-theme="dark"][data-student-room="1"] body::after, html[data-theme="dark"][data-student-dashboard="1"] body::after, html[data-theme="dark"][data-student-assignments="1"] body::after, html[data-theme="dark"][data-student-theory="1"] body::after, html[data-theme="dark"][data-student-analytics="1"] body::after {
   opacity: 0.18;
   filter: blur(120px);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock {
   background: rgba(9, 9, 11, 0.72);
   border-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
@@ -195,41 +195,129 @@ html[data-theme="dark"][data-student-room="1"] .layout-student .dock, html[data-
   -webkit-backdrop-filter: blur(24px);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav {
   background: transparent;
   border: none;
   box-shadow: none;
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item {
   color: #a1a1aa;
   border: 1px solid transparent;
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item:hover {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item:hover {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.06);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item.active {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item.active {
   background: rgba(255, 255, 255, 0.1);
   color: #8b5cf6;
   border-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item.active i {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item.active i {
   color: #8b5cf6;
 }
 
-html[data-theme="dark"][data-student-room="1"] .dock-brand-text, html[data-theme="dark"][data-student-dashboard="1"] .dock-brand-text, html[data-theme="dark"][data-student-assignments="1"] .dock-brand-text {
+html[data-theme="dark"][data-student-room="1"] .dock-brand-text, html[data-theme="dark"][data-student-dashboard="1"] .dock-brand-text, html[data-theme="dark"][data-student-assignments="1"] .dock-brand-text, html[data-theme="dark"][data-student-theory="1"] .dock-brand-text, html[data-theme="dark"][data-student-analytics="1"] .dock-brand-text {
   color: #ffffff;
 }
 
-html[data-theme="dark"][data-student-room="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-dashboard="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-assignments="1"] .student-mentor-gradient {
+html[data-theme="dark"][data-student-room="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-dashboard="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-assignments="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-theory="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-analytics="1"] .student-mentor-gradient {
   background-color: #131316 !important;
   background-image: none !important;
   border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/*
+ * Теория (контент из markdown /_theory/routes.py): код, callout, матблоки
+ */
+html[data-theme="dark"][data-student-theory="1"] .prose-article a {
+  color: #c4b5fd;
+}
+html[data-theme="dark"][data-student-theory="1"] .prose-article strong {
+  color: #fafafa;
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-smart-code,
+html[data-theme="dark"][data-student-theory="1"] .theory-embed-code {
+  background-color: var(--color-bg-inset) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-smart-code .bg-slate-50 {
+  background-color: rgba(0, 0, 0, 0.35) !important;
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-code-highlight {
+  background-color: var(--color-bg-app) !important;
+  color: #e4e4e7 !important;
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-code-output:not(.hidden) {
+  background-color: var(--color-bg-inset) !important;
+  color: #a1a1aa !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-code-args {
+  background: var(--color-bg-surface) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #fafafa !important;
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-callout {
+  background: rgba(24, 24, 27, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-callout h4 {
+  color: #fafafa !important;
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-callout p {
+  color: #d4d4d8 !important;
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-practice-block {
+  background: var(--color-bg-inset) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-display-math {
+  background: var(--color-bg-inset) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slate-800 {
+  color: #fafafa !important;
+}
+
+[data-theme="dark"] .hero-title {
+  color: var(--color-text-primary);
+}
+[data-theme="dark"] .hero-subtitle {
+  color: var(--color-text-muted);
+}
+[data-theme="dark"] .hero-eyebrow {
+  color: var(--color-text-muted);
+}
+
+[data-theme="dark"] .stats-tab.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+[data-theme="dark"] .stats-tab:not(.active) {
+  color: var(--color-text-muted);
+}
+[data-theme="dark"] .stats-tab:not(.active):hover {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .panel-head h2,
+[data-theme="dark"] .glass-panel h2:not(.text-accent) {
+  color: var(--color-text-primary);
+}
+[data-theme="dark"] .glass-panel h3 {
+  color: var(--color-text-primary);
+}
+[data-theme="dark"] .eyebrow {
+  color: var(--color-text-muted);
 }
 
 /* ── FORCE DARK MODE FOR LEGACY PAGES ── */

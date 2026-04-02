@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% set active_page = active_page|default('theory') %}
 {% block title %}База знаний · Теория · BooStudy{% endblock %}
+{% block html_attrs %}data-student-theory="1"{% endblock %}
 {% block body_attrs %}data-cinema-scene="theory"{% endblock %}
 
 {% block head_css %}
@@ -8,14 +9,14 @@
   .view-section { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
   .view-section.active { display: flex; opacity: 1; animation: fadeIn 0.4s ease-out forwards; }
   @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
-  .prose-article h2 { font-size: 1.5rem; font-weight: 800; color: #1E293B; margin-top: 2rem; margin-bottom: 1rem; }
-  .prose-article h3 { font-size: 1.25rem; font-weight: 700; color: #334155; margin-top: 1.5rem; margin-bottom: 0.75rem; }
-  .prose-article p { margin-bottom: 1rem; line-height: 1.7; color: #475569; }
-  .prose-article ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; color: #475569; }
+  .prose-article h2 { font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-top: 2rem; margin-bottom: 1rem; }
+  .prose-article h3 { font-size: 1.25rem; font-weight: 700; color: var(--color-text-secondary); margin-top: 1.5rem; margin-bottom: 0.75rem; }
+  .prose-article p { margin-bottom: 1rem; line-height: 1.7; color: var(--color-text-secondary); }
+  .prose-article ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; color: var(--color-text-secondary); }
   .prose-article li { margin-bottom: 0.5rem; }
   .prose-article .theory-spacer { height: 18px; }
   .prose-article .theory-smart-code { border-radius: 24px; }
-  .prose-article code { background: #f1f5f9; color: #334155; padding: .15rem .35rem; border-radius: .35rem; font-weight: 700; }
+  .prose-article code { background: var(--color-bg-inset); color: var(--color-text-primary); padding: .15rem .35rem; border-radius: .35rem; font-weight: 700; border: 1px solid var(--color-stroke); }
   .prose-article .theory-code-highlight { border-top: 1px dashed rgba(148,163,184,.25); white-space: pre; }
   .prose-article .theory-code-input.hidden { display: none; }
   .prose-article .theory-code-highlight [data-hl="kw"] { color: #7c3aed; font-weight: 700; }
@@ -34,30 +35,30 @@
   <!-- ========================================== -->
   <div id="view-groups" class="view-section {% if initial_view == 'groups' %}active{% endif %} flex-col gap-8">
 
-    <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+    <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
       <div>
-        <h1 class="text-4xl font-black text-primary tracking-tight mb-2">Группы теории</h1>
-        <p class="text-muted font-medium text-lg">Сначала выбери группу, затем открой нужную тему.</p>
+        <h1 class="text-4xl font-black text-primary dark:text-white tracking-tight mb-2">Группы теории</h1>
+        <p class="text-muted dark:text-dark-muted font-medium text-lg">Сначала выбери группу, затем открой нужную тему.</p>
       </div>
 
       <div class="w-full lg:w-96 relative">
         <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-muted text-lg"></i>
         <input id="theorySearch" type="text" placeholder="Поиск по группе..."
-               class="w-full bg-surface-alt border border-slate-200 rounded-xl pl-11 pr-4 py-3.5 text-sm font-medium text-secondary placeholder-slate-400 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-inner-soft">
-        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 bg-surface text-muted p-1.5 rounded-lg border border-slate-200 hover:text-boo-primary transition-colors shadow-sm dark:shadow-none dark:shadow-none" title="Фильтры">
+               class="w-full bg-surface-alt dark:bg-dark-inner/80 border border-slate-200 dark:border-white/[0.08] rounded-xl pl-11 pr-4 py-3.5 text-sm font-medium text-secondary dark:text-white placeholder-slate-400 dark:placeholder-dark-muted focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/25 transition-all shadow-inner-soft">
+        <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 bg-surface dark:bg-white/5 text-muted p-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] hover:text-boo-primary transition-colors shadow-sm dark:shadow-none" title="Фильтры">
           <i class="ph-bold ph-sliders-horizontal"></i>
         </button>
       </div>
     </div>
 
-    <div class="flex gap-2 bg-slate-200/50 p-1.5 rounded-xl w-fit border border-slate-200/50">
-      <button type="button" class="theory-filter px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50 flex items-center gap-2 transition-all" data-filter="all">
+    <div class="flex gap-2 bg-slate-200/50 dark:bg-dark-inner/60 p-1.5 rounded-xl w-fit border border-slate-200/50 dark:border-white/[0.08]">
+      <button type="button" class="theory-filter px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 dark:bg-white/10 dark:text-white dark:border-white/[0.08] flex items-center gap-2 transition-all" data-filter="all">
         Все группы
       </button>
-      <button type="button" class="theory-filter px-6 py-2.5 text-muted hover:text-primary hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="nonempty">
+      <button type="button" class="theory-filter px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="nonempty">
         Непустые
       </button>
-      <button type="button" class="theory-filter px-6 py-2.5 text-muted hover:text-primary hover:bg-white/60 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="bookmarked">
+      <button type="button" class="theory-filter px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5 rounded-lg font-bold text-sm transition-all flex items-center gap-2" data-filter="bookmarked">
         Избранное
       </button>
     </div>
@@ -75,19 +76,19 @@
       {% endfor %}
 
       <a href="{{ href }}"
-         class="theory-card bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
+         class="theory-card bg-surface dark:bg-dark-card rounded-[28px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.45)] transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
          data-group-id="{{ group_pack.group.id }}"
          data-title="{{ (group_pack.group.name or '')|lower }}"
          data-count="{{ group_pack.blocks|length }}"
          data-bookmarked-count="{{ ns.bookmarked_count }}">
 
-        <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors pointer-events-none"></div>
+        <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 dark:bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-100 dark:group-hover:bg-purple-500/15 transition-colors pointer-events-none"></div>
 
         <div class="flex justify-between items-start mb-5 relative z-10 gap-3">
-          <div class="w-12 h-12 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
+          <div class="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-500/10 text-boo-primary flex items-center justify-center border border-purple-100 dark:border-purple-500/25 group-hover:scale-110 transition-transform">
             <i class="ph-bold ph-book-open-text text-2xl"></i>
           </div>
-          <span class="bg-surface px-2.5 py-1 rounded-lg text-xs font-extrabold text-muted border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-1.5">
+          <span class="bg-surface dark:bg-dark-inner/80 px-2.5 py-1 rounded-lg text-xs font-extrabold text-muted border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-none flex items-center gap-1.5">
             {% if group_pack.blocks|length > 0 %}
               <i class="ph-fill ph-stack text-boo-primary"></i> {{ group_pack.blocks|length }} тем
             {% else %}
@@ -97,13 +98,13 @@
         </div>
 
         <div class="relative z-10 flex-1">
-          <h3 class="text-xl font-black text-primary mb-1 group-hover:text-boo-primary transition-colors">
+          <h3 class="text-xl font-black text-primary dark:text-white mb-1 group-hover:text-boo-primary transition-colors">
             {{ group_pack.group.name }}
           </h3>
           <div class="flex flex-wrap gap-1.5 mb-4">
-            <span class="bg-purple-50 text-purple-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-purple-100">Группа</span>
+            <span class="bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-purple-100 dark:border-purple-500/25">Группа</span>
           </div>
-          <p class="text-sm font-medium text-muted mb-6 line-clamp-2">
+          <p class="text-sm font-medium text-muted dark:text-white/80 mb-6 line-clamp-2">
             {% if group_pack.group.description %}
               {{ group_pack.group.description|truncate(140, True, '…') }}
             {% else %}
@@ -112,9 +113,9 @@
           </p>
         </div>
 
-        <div class="relative z-10 pt-4 border-t border-slate-100 flex items-center justify-between">
-          <div class="text-xs font-bold text-muted uppercase tracking-widest">Открыть</div>
-          <i class="ph-bold ph-arrow-right text-slate-300 group-hover:text-boo-primary transition-colors"></i>
+        <div class="relative z-10 pt-4 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between">
+          <div class="text-xs font-bold text-muted dark:text-dark-muted uppercase tracking-widest">Открыть</div>
+          <i class="ph-bold ph-arrow-right text-slate-300 dark:text-white/70 group-hover:text-boo-primary transition-colors"></i>
         </div>
       </a>
       {% endfor %}
@@ -126,14 +127,14 @@
           {% if st and st.get('bookmarked') %}
             {% set href = url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) %}
             {% set hx_href = href ~ '&fragment=1' %}
-            <a href="{{ href }}" class="theory-bookmark-card bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
+            <a href="{{ href }}" class="theory-bookmark-card bg-surface dark:bg-dark-card rounded-[28px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.45)] transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
                hx-get="{{ hx_href }}" hx-target="#articleContainer" hx-swap="innerHTML" hx-push-url="{{ href }}"
                data-title="{{ (block.title or ('Тема ' ~ block.task_number))|lower }}">
               <div class="flex items-center justify-between mb-4">
-                <span class="bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100">Избранное</span>
-                <span class="text-[10px] font-bold text-muted">{{ group_pack.group.name }}</span>
+                <span class="bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100 dark:border-orange-500/25">Избранное</span>
+                <span class="text-[10px] font-bold text-muted dark:text-dark-muted">{{ group_pack.group.name }}</span>
               </div>
-              <h3 class="text-xl font-black text-primary mb-2">{{ block.title or ('Тема ' ~ block.task_number) }}</h3>
+              <h3 class="text-xl font-black text-primary dark:text-white mb-2">{{ block.title or ('Тема ' ~ block.task_number) }}</h3>
               <p class="text-sm font-medium text-muted line-clamp-2">{{ (block.description or 'Открой тему для просмотра.')|truncate(110, True, '…') }}</p>
             </a>
           {% endif %}
@@ -141,13 +142,13 @@
       {% endfor %}
     </div>
     {% else %}
-    <div class="w-full bg-surface rounded-[32px] border-2 border-slate-200 border-dashed p-12 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
-      <div class="absolute inset-0 bg-slate-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-      <div class="relative z-10 w-28 h-28 bg-cyan-50 rounded-[32px] rotate-3 flex items-center justify-center mb-6 border-4 border-white shadow-lg">
-        <i class="ph-fill ph-ghost text-[64px] text-boo-cyan"></i>
+    <div class="w-full bg-surface dark:bg-dark-card rounded-[32px] border-2 border-slate-200 dark:border-white/[0.08] border-dashed p-12 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
+      <div class="absolute inset-0 bg-slate-50/50 dark:bg-white/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+      <div class="relative z-10 w-28 h-28 bg-cyan-50 dark:bg-boo-cyan/10 rounded-[32px] rotate-3 flex items-center justify-center mb-6 border-4 border-white dark:border-white/[0.08] shadow-lg dark:shadow-glass-dark">
+        <i class="ph-fill ph-ghost text-[64px] text-boo-cyan dark:text-boo-cyan"></i>
       </div>
-      <h2 class="relative z-10 text-2xl font-black text-primary tracking-tight mb-3">Пока нет доступной теории</h2>
-      <p class="relative z-10 text-muted font-medium max-w-md mx-auto leading-relaxed">
+      <h2 class="relative z-10 text-2xl font-black text-primary dark:text-white tracking-tight mb-3">Пока нет доступной теории</h2>
+      <p class="relative z-10 text-muted dark:text-dark-muted font-medium max-w-md mx-auto leading-relaxed">
         Обратитесь к преподавателю — он откроет доступ к модулям.
       </p>
     </div>
@@ -160,12 +161,12 @@
   <div id="view-topics" class="view-section {% if initial_view == 'topics' %}active{% endif %} flex-col gap-8">
     {% set g = selected_group if selected_group is defined else None %}
     {% set blocks = selected_group_blocks if selected_group_blocks is defined else [] %}
-    <button type="button" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary bg-white/50 px-4 py-2 rounded-xl border border-slate-200/50 shadow-sm dark:shadow-none dark:shadow-none w-fit" onclick="window.location.href='{{ url_for('theory.theory_index', course_id=course_id) }}'">
+    <button type="button" class="flex items-center gap-2 text-muted dark:text-dark-muted font-bold text-sm hover:text-boo-primary dark:hover:text-white bg-white/50 dark:bg-white/5 px-4 py-2 rounded-xl border border-slate-200/50 dark:border-white/[0.08] shadow-sm dark:shadow-none w-fit transition-colors" onclick="window.location.href='{{ url_for('theory.theory_index', course_id=course_id) }}'">
       <i class="ph-bold ph-arrow-left"></i> Назад к группам
     </button>
-    <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
-      <h2 class="text-3xl font-black text-primary mb-2">{{ g.name if g else 'Группа' }}</h2>
-      <p class="text-muted font-medium">{{ g.description if g and g.description else 'Список карточек теории в выбранной группе.' }}</p>
+    <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
+      <h2 class="text-3xl font-black text-primary dark:text-white mb-2">{{ g.name if g else 'Группа' }}</h2>
+      <p class="text-muted dark:text-dark-muted font-medium">{{ g.description if g and g.description else 'Список карточек теории в выбранной группе.' }}</p>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
       {% for block in blocks %}
@@ -175,18 +176,18 @@
       {% set is_read = st.get('read') if st else False %}
       {% set href = url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) %}
       {% set hx_href = href ~ '&fragment=1' %}
-      <a href="{{ href }}" class="theory-card bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
+      <a href="{{ href }}" class="theory-card bg-surface dark:bg-dark-card rounded-[28px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.45)] transition-all duration-300 cursor-pointer group relative overflow-hidden no-underline"
          hx-get="{{ hx_href }}" hx-target="#articleContainer" hx-swap="innerHTML" hx-push-url="{{ href }}"
          data-task-number="{{ num }}" data-bookmarked="{{ '1' if is_bookmarked else '0' }}" data-read="{{ '1' if is_read else '0' }}" data-title="{{ (block.title or ('Тема ' ~ num))|lower }}">
-        <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 rounded-full blur-2xl group-hover:bg-purple-100 transition-colors pointer-events-none"></div>
+        <div class="absolute -right-6 -top-6 w-32 h-32 bg-purple-50 dark:bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-100 dark:group-hover:bg-purple-500/15 transition-colors pointer-events-none"></div>
 
         <div class="flex justify-between items-start mb-5 relative z-10 gap-3">
-          <div class="w-12 h-12 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
+          <div class="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-500/10 text-boo-primary flex items-center justify-center border border-purple-100 dark:border-purple-500/25 group-hover:scale-110 transition-transform">
             <i class="ph-bold ph-book-open-text text-2xl"></i>
           </div>
-          <span class="bg-surface px-2.5 py-1 rounded-lg text-xs font-extrabold text-muted border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-1.5">
+          <span class="bg-surface dark:bg-dark-inner/80 px-2.5 py-1 rounded-lg text-xs font-extrabold text-muted border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-none flex items-center gap-1.5">
             {% if is_read %}
-              <i class="ph-fill ph-check-circle text-green-500"></i> Изучено
+              <i class="ph-fill ph-check-circle text-green-500 dark:text-green-400"></i> Изучено
             {% else %}
               <i class="ph-fill ph-clock text-muted"></i> Новое
             {% endif %}
@@ -194,23 +195,23 @@
         </div>
 
         <div class="relative z-10 flex-1">
-          <h3 class="text-xl font-black text-primary mb-1 group-hover:text-boo-primary transition-colors">
+          <h3 class="text-xl font-black text-primary dark:text-white mb-1 group-hover:text-boo-primary transition-colors">
             {{ block.title or ('Тема ' ~ num) }}
           </h3>
           <div class="flex flex-wrap gap-1.5 mb-4">
-            <span class="bg-surface-alt text-muted text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200">Задание {{ num }}</span>
+            <span class="bg-surface-alt text-muted dark:bg-white/5 dark:text-dark-muted text-[10px] font-bold px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/[0.08]">Задание {{ num }}</span>
             {% if is_bookmarked %}
-            <span class="bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100">Сохранено</span>
+            <span class="bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100 dark:border-orange-500/25">Сохранено</span>
             {% endif %}
           </div>
-          <p class="text-sm font-medium text-muted mb-6 line-clamp-2">
+          <p class="text-sm font-medium text-muted dark:text-white/80 mb-6 line-clamp-2">
             {{ (block.description or 'Открой тему для просмотра.')|truncate(110, True, '…') }}
           </p>
         </div>
 
-        <div class="relative z-10 pt-4 border-t border-slate-100 flex items-center justify-between">
-          <div class="text-xs font-bold text-muted uppercase tracking-widest">Открыть</div>
-          <i class="ph-bold ph-arrow-right text-slate-300 group-hover:text-boo-primary transition-colors"></i>
+        <div class="relative z-10 pt-4 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between">
+          <div class="text-xs font-bold text-muted dark:text-dark-muted uppercase tracking-widest">Открыть</div>
+          <i class="ph-bold ph-arrow-right text-slate-300 dark:text-white/70 group-hover:text-boo-primary transition-colors"></i>
         </div>
       </a>
       {% endfor %}
@@ -224,13 +225,13 @@
       {% if initial_view == 'article' and initial_block %}
         {% include 'theory/_article.html' with context %}
       {% else %}
-      <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-12 text-center">
-        <div class="w-16 h-16 bg-surface-alt rounded-full flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none mx-auto mb-4 border border-slate-200">
-          <i class="ph-fill ph-book-open-text text-3xl text-slate-300"></i>
+      <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-12 text-center">
+        <div class="w-16 h-16 bg-surface-alt dark:bg-dark-inner rounded-full flex items-center justify-center shadow-sm dark:shadow-none mx-auto mb-4 border border-slate-200 dark:border-white/[0.08]">
+          <i class="ph-fill ph-book-open-text text-3xl text-slate-300 dark:text-dark-muted"></i>
         </div>
-        <div class="text-lg font-black text-primary mb-1">Выбери модуль</div>
-        <div class="text-sm font-medium text-muted">Открой тему из группы — статья загрузится здесь.</div>
-        <button type="button" class="mt-6 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 text-sm" onclick="window.__theoryOpenIndex?.()">
+        <div class="text-lg font-black text-primary dark:text-white mb-1">Выбери модуль</div>
+        <div class="text-sm font-medium text-muted dark:text-dark-muted">Открой тему из группы — статья загрузится здесь.</div>
+        <button type="button" class="mt-6 px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-zinc-200 transition-all inline-flex items-center gap-2 shadow-sm dark:shadow-none border-b-[3px] border-b-black dark:border-b-zinc-400 active:translate-y-1 active:border-b-0 text-sm" onclick="window.__theoryOpenIndex?.()">
           В каталог <i class="ph-bold ph-arrow-right"></i>
         </button>
       </div>
@@ -336,13 +337,26 @@
       closeBrackets,
       closeBracketsKeymap,
     } = bundle;
-    const cmTheme = EditorView.theme({
-      "&": { backgroundColor: "#ffffff", color: "#0f172a", minHeight: "120px", height: "auto" },
-      ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7" },
-      ".cm-scroller": { overflowX: "auto", overflowY: "hidden", minHeight: "120px" },
-      ".cm-focused": { outline: "none !important" },
-      "&.cm-focused": { outline: "none !important", boxShadow: "none !important" },
-    });
+    const isDarkTheory = document.documentElement.getAttribute("data-theme") === "dark";
+    const cmTheme = EditorView.theme(
+      isDarkTheory
+        ? {
+            "&": { backgroundColor: "#09090b", color: "#fafafa", minHeight: "120px", height: "auto" },
+            ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7", caretColor: "#fafafa" },
+            ".cm-scroller": { overflowX: "auto", overflowY: "hidden", minHeight: "120px" },
+            ".cm-gutters": { backgroundColor: "#18181b", borderColor: "rgba(255,255,255,0.08)", color: "#a1a1aa" },
+            ".cm-activeLineGutter": { backgroundColor: "rgba(139,92,246,0.12)" },
+            ".cm-focused": { outline: "none !important" },
+            "&.cm-focused": { outline: "none !important", boxShadow: "none !important" },
+          }
+        : {
+            "&": { backgroundColor: "#ffffff", color: "#0f172a", minHeight: "120px", height: "auto" },
+            ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7" },
+            ".cm-scroller": { overflowX: "auto", overflowY: "hidden", minHeight: "120px" },
+            ".cm-focused": { outline: "none !important" },
+            "&.cm-focused": { outline: "none !important", boxShadow: "none !important" },
+          },
+    );
     blocks.forEach((card) => {
       if (card.dataset.cmReady === '1') return;
       card.dataset.cmReady = '1';
@@ -403,14 +417,16 @@
   }
   window.__theoryOpenIndex = openGroups;
 
+  const theoryFilterActiveDark = ['dark:bg-white/10', 'dark:text-white', 'dark:border-white/[0.08]'];
+
   function setActiveFilter(id) {
     filterBtns.forEach(b => {
       if (b.dataset.filter === id) {
-        b.classList.add('bg-surface','text-primary','shadow-sm dark:shadow-none dark:shadow-none','border','border-slate-200/50');
-        b.classList.remove('text-muted');
+        b.classList.add('bg-surface', 'text-primary', 'shadow-sm', 'dark:shadow-none', 'border', 'border-slate-200/50', ...theoryFilterActiveDark);
+        b.classList.remove('text-muted', 'dark:text-dark-muted');
       } else {
-        b.classList.remove('bg-surface','text-primary','shadow-sm dark:shadow-none dark:shadow-none','border','border-slate-200/50');
-        b.classList.add('text-muted');
+        b.classList.remove('bg-surface', 'text-primary', 'shadow-sm', 'dark:shadow-none', 'border', 'border-slate-200/50', ...theoryFilterActiveDark);
+        b.classList.add('text-muted', 'dark:text-dark-muted');
       }
     });
   }
@@ -456,7 +472,7 @@
     if (bookmarked && !existing) {
       const span = document.createElement('span');
       span.setAttribute('data-bookmark-chip', '1');
-      span.className = 'bg-orange-50 text-orange-600 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100';
+      span.className = 'bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-orange-100 dark:border-orange-500/25';
       span.textContent = 'Сохранено';
       chips.appendChild(span);
     } else if (!bookmarked && existing) {

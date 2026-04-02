@@ -3,6 +3,7 @@ module.exports = {
   content: [
     './templates/**/*.html',
     './static/src/**/*.js',
+    './app/theory/routes.py',
   ],
   darkMode: ['selector', '[data-theme="dark"]'],
   theme: {

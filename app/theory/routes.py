@@ -63,7 +63,7 @@ def _render_theory_content_html(content_value):
         code_body = (match.group(2) or '').strip()
         highlighted = _highlight_python_html(code_body) if lang == 'python' else html.escape(code_body)
         return (
-            '<div class="theory-smart-code my-8 rounded-[24px] border border-slate-200 overflow-hidden bg-white shadow-sm" '
+            '<div class="theory-smart-code theory-embed-code my-8 rounded-[24px] border border-slate-200 overflow-hidden bg-white shadow-sm" '
             f'data-lang="{lang}">'
             '<div class="px-4 py-2.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">'
             '<div class="flex items-center gap-2.5">'
@@ -96,7 +96,7 @@ def _render_theory_content_html(content_value):
             'danger': {'title': 'Осторожно', 'bg': '#FEF2F2', 'border': '#FECACA', 'icon': 'ph-fill ph-shield-warning', 'icon_bg': '#FFFFFF', 'icon_color': '#DC2626'},
         }.get(ctype, {'title': 'Заметка', 'bg': '#ECFEFF', 'border': '#A5F3FC', 'icon': 'ph-fill ph-info', 'icon_bg': '#FFFFFF', 'icon_color': '#0891B2'})
         return (
-            f'<div class="my-8 rounded-[24px] p-6 flex gap-4 shadow-sm" style="background:{theme["bg"]};border:1px solid {theme["border"]};">'
+            f'<div class="theory-callout theory-callout--{html.escape(ctype)} my-8 rounded-[24px] p-6 flex gap-4 shadow-sm" style="background:{theme["bg"]};border:1px solid {theme["border"]};">'
             f'<div class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center shadow-sm" style="background:{theme["icon_bg"]};color:{theme["icon_color"]};border:1px solid {theme["border"]};">'
             f'<i class="{theme["icon"]} text-xl"></i></div>'
             f'<div><h4 class="font-black text-[46px] leading-[1.05] text-slate-900 mb-1">{theme["title"]}</h4>'
@@ -107,7 +107,7 @@ def _render_theory_content_html(content_value):
     def _practice_repl(match):
         task_id = (match.group(1) or '').strip()
         return (
-            '<div class="my-8 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">'
+            '<div class="theory-practice-block my-8 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">'
             '<div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-2">Интерактивный блок</div>'
             f'<div class="text-2xl font-black text-slate-900 mb-3">Практика · ID: {task_id}</div>'
             '<button type="button" class="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors">Открыть в тренажере</button>'
@@ -129,7 +129,7 @@ def _render_theory_content_html(content_value):
     text = re.sub(
         r"\$\$(.+?)\$\$",
         lambda m: (
-            '<div class="my-8 bg-slate-50 p-6 rounded-2xl border border-slate-200/70 shadow-inner">'
+            '<div class="theory-display-math my-8 bg-slate-50 p-6 rounded-2xl border border-slate-200/70 shadow-inner">'
             f'<div class="font-mono text-lg text-slate-800 font-bold tracking-wide whitespace-pre-wrap">{m.group(1).strip()}</div>'
             '</div>'
         ),

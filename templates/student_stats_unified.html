@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Статистика · {{ student.name }} · BooStudy{% endblock %}
 {% set active_page = 'student_analytics' %}
+{% block html_attrs %}data-student-analytics="1"{% endblock %}
 {% block body_attrs %}data-cinema-scene="analytics"{% endblock %}
 
 {% block head_css %}
@@ -19,27 +20,27 @@
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-8">
 
   <!-- ШАПКА И ТАБЫ -->
-  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-surface rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile relative overflow-hidden">
-    <i class="ph-bold ph-chart-bar absolute -right-10 -bottom-10 text-[200px] text-slate-50 pointer-events-none"></i>
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark relative overflow-hidden">
+    <i class="ph-bold ph-chart-bar absolute -right-10 -bottom-10 text-[200px] text-slate-50 dark:text-white/[0.06] pointer-events-none"></i>
     <div class="relative z-10">
       <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="flex items-center gap-3 text-muted font-bold text-sm mb-3 hover:text-boo-primary cursor-pointer w-fit transition-colors no-underline">
         <i class="ph-bold ph-arrow-left"></i> В профиль
       </a>
       {% if current_user.is_student() and student.user_id == current_user.id %}
-      <h1 class="text-4xl font-black text-primary tracking-tight mb-2">Твоя аналитика</h1>
-      <p class="text-muted font-medium text-lg">Следи за прогрессом и находи слабые места. Цифры не врут.</p>
+      <h1 class="text-4xl font-black text-primary dark:text-white tracking-tight mb-2">Твоя аналитика</h1>
+      <p class="text-muted dark:text-dark-muted font-medium text-lg">Следи за прогрессом и находи слабые места. Цифры не врут.</p>
       {% else %}
-      <h1 class="text-4xl font-black text-primary tracking-tight mb-2">Аналитика ученика: {{ student.name }}</h1>
-      <p class="text-muted font-medium text-lg">Прогресс ученика и точки роста по всем ключевым метрикам.</p>
+      <h1 class="text-4xl font-black text-primary dark:text-white tracking-tight mb-2">Аналитика ученика: {{ student.name }}</h1>
+      <p class="text-muted dark:text-dark-muted font-medium text-lg">Прогресс ученика и точки роста по всем ключевым метрикам.</p>
       {% endif %}
     </div>
 
-    <div class="relative z-10 bg-slate-100/80 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50">
-      <button id="btn-skills" data-tab="skills" onclick="switchTab('skills', this)" class="stats-tab px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50 flex items-center gap-2 whitespace-nowrap transition-all">
+    <div class="relative z-10 bg-slate-100/80 dark:bg-dark-inner/60 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50 dark:border-white/[0.08]">
+      <button id="btn-skills" data-tab="skills" onclick="switchTab('skills', this)" class="stats-tab px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 dark:bg-white/10 dark:text-white dark:border-white/[0.08] flex items-center gap-2 whitespace-nowrap transition-all">
         Навыки и Темы
       </button>
-      <button id="btn-exam" data-tab="exam" onclick="switchTab('exam', this)" class="stats-tab px-6 py-2.5 text-muted hover:text-primary rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2">
-        Аналитика ЕГЭ <span class="bg-purple-100 text-boo-primary px-2 py-0.5 rounded-md text-[10px] uppercase tracking-widest">Прогноз</span>
+      <button id="btn-exam" data-tab="exam" onclick="switchTab('exam', this)" class="stats-tab px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2">
+        Аналитика ЕГЭ <span class="bg-purple-100 text-boo-primary dark:bg-purple-500/15 dark:text-purple-300 px-2 py-0.5 rounded-md text-[10px] uppercase tracking-widest border border-purple-200/50 dark:border-purple-500/25">Прогноз</span>
       </button>
     </div>
   </div>
@@ -49,12 +50,12 @@
 
     <!-- Метрики -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="bg-surface rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+      <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
         <div class="flex justify-between items-start mb-4">
           <div class="text-xs font-bold text-muted uppercase tracking-widest">Выполнение работ</div>
           <i class="ph-fill ph-checks text-xl text-boo-cyan"></i>
         </div>
-        <div class="text-4xl font-black text-primary">
+        <div class="text-4xl font-black text-primary dark:text-white">
           {{ metrics.current_gpa }}%
         </div>
         {% if metrics.delta != 0 %}
@@ -64,37 +65,37 @@
         {% endif %}
       </div>
 
-      <div class="bg-surface rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+      <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
         <div class="flex justify-between items-start mb-4">
           <div class="text-xs font-bold text-muted uppercase tracking-widest">GPA по ДЗ</div>
           <i class="ph-fill ph-star text-xl text-boo-accent"></i>
         </div>
-        <div class="text-4xl font-black text-primary">{{ gpa_by_type.homework }}%</div>
+        <div class="text-4xl font-black text-primary dark:text-white">{{ gpa_by_type.homework }}%</div>
       </div>
 
-      <div class="bg-surface rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+      <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
         <div class="flex justify-between items-start mb-4">
           <div class="text-xs font-bold text-muted uppercase tracking-widest">GPA по пробникам</div>
           <i class="ph-fill ph-exam text-xl text-boo-primary"></i>
         </div>
-        <div class="text-4xl font-black text-primary">{{ gpa_by_type.exam }}%</div>
+        <div class="text-4xl font-black text-primary dark:text-white">{{ gpa_by_type.exam }}%</div>
       </div>
 
-      <div class="bg-surface rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between hover:-translate-y-1 transition-transform">
+      <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
         <div class="flex justify-between items-start mb-4">
           <div class="text-xs font-bold text-muted uppercase tracking-widest">Проведено уроков</div>
           <i class="ph-fill ph-video-camera text-xl text-muted"></i>
         </div>
-        <div class="text-4xl font-black text-primary">{{ metrics.completed_lessons }}</div>
+        <div class="text-4xl font-black text-primary dark:text-white">{{ metrics.completed_lessons }}</div>
         <div class="text-xs font-bold text-muted mt-2">из {{ metrics.total_lessons }}</div>
       </div>
     </div>
 
     <!-- Графики -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-surface rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col">
+      <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col">
         <div class="mb-6">
-          <h3 class="text-2xl font-black text-primary mb-1">Динамика успеваемости</h3>
+          <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Динамика успеваемости</h3>
           <p class="text-sm font-medium text-muted">Изменение процента выполнения работ по месяцам</p>
         </div>
         <div class="relative h-64">
@@ -102,9 +103,9 @@
         </div>
       </div>
 
-      <div class="bg-surface rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col">
+      <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col">
         <div class="mb-6">
-          <h3 class="text-2xl font-black text-primary mb-1">Карта навыков</h3>
+          <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Карта навыков</h3>
           <p class="text-sm font-medium text-muted">Оценка на основе твоих ответов</p>
         </div>
         <div class="relative h-64">
@@ -119,9 +120,9 @@
     </div>
 
     <!-- Процент выполнения по номерам -->
-    <div class="bg-surface rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+    <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
       <div class="mb-6">
-        <h3 class="text-2xl font-black text-primary mb-1">Процент выполнения по номерам</h3>
+        <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Процент выполнения по номерам</h3>
         <p class="text-sm font-medium text-muted">Готовность к каждому заданию</p>
       </div>
       {% if chart_data %}
@@ -129,7 +130,7 @@
         <canvas id="statisticsChart"></canvas>
       </div>
       {% else %}
-      <div class="w-full bg-slate-50/50 rounded-[24px] border-2 border-slate-200 border-dashed p-12 text-center">
+      <div class="w-full bg-slate-50/50 dark:bg-white/[0.03] rounded-[24px] border-2 border-slate-200 dark:border-white/[0.1] border-dashed p-12 text-center">
         <div class="w-16 h-16 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none mx-auto mb-4">
           <i class="ph-fill ph-chart-line-up text-4xl text-slate-300"></i>
         </div>
@@ -141,10 +142,10 @@
 
     {% if chart_data and can_edit is defined and can_edit %}
     <!-- Ручное редактирование (для админа/тьютора) -->
-    <div class="bg-surface rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+    <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
       <div class="flex justify-between items-end gap-4 flex-wrap">
         <div>
-          <h3 class="text-2xl font-black text-primary mb-1">Изменить статистику</h3>
+          <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Изменить статистику</h3>
           <p class="text-sm font-medium text-muted">Режимы: добавить / установить / вычесть.</p>
         </div>
         <button type="button" id="resetAllStats" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border-b-[3px] border-b-black active:translate-y-1 active:border-b-0 text-sm">
@@ -152,7 +153,7 @@
         </button>
       </div>
 
-      <div class="mt-6 bg-surface-alt rounded-2xl border border-slate-100 p-6">
+      <div class="mt-6 bg-surface-alt dark:bg-dark-inner/50 rounded-2xl border border-slate-100 dark:border-white/[0.08] p-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div>
             <label class="block text-xs font-extrabold text-muted uppercase tracking-widest mb-3">Режим</label>
@@ -209,9 +210,9 @@
     {% endif %}
 
     {% if problem_topics %}
-    <div class="bg-surface rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+    <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
       <div class="mb-6">
-        <h3 class="text-2xl font-black text-primary mb-1">Проблемные темы</h3>
+        <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Проблемные темы</h3>
         <p class="text-sm font-medium text-muted">Что требует внимания прямо сейчас.</p>
       </div>
       <div class="grid gap-4">
@@ -235,13 +236,13 @@
   <!-- ВКЛАДКА 2: АНАЛИТИКА -->
   <div id="tab-exam" class="stats-tab-content flex-col gap-8">
 
-    <div id="analytics-loading" class="bg-surface rounded-[32px] p-12 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile text-center">
+    <div id="analytics-loading" class="bg-surface dark:bg-dark-card rounded-[32px] p-12 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark text-center">
       <div class="w-14 h-14 mx-auto mb-4 rounded-full border-4 border-slate-200 border-t-boo-primary animate-spin"></div>
       <div class="text-sm font-bold text-secondary">Загрузка аналитики…</div>
       <div class="text-sm font-medium text-muted mt-1">Собираем прогноз и рейтинги по темам.</div>
     </div>
 
-    <div id="analytics-error" class="bg-surface rounded-[32px] p-12 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile text-center" style="display:none;">
+    <div id="analytics-error" class="bg-surface dark:bg-dark-card rounded-[32px] p-12 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark text-center" style="display:none;">
       <div class="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none mx-auto mb-4 border border-orange-100">
         <i class="ph-fill ph-warning-circle text-4xl text-boo-accent"></i>
       </div>
@@ -254,7 +255,7 @@
     <div id="analytics-content" class="flex flex-col gap-8" style="display:none;">
 
       <!-- HERO ПРОГНОЗ -->
-      <div class="student-hero-gradient bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-[32px] p-10 border border-purple-400/50 dark:border-purple-500/20 border-b-[4px] border-b-purple-700 shadow-tactile dark:shadow-neon-primary text-white flex flex-col justify-center items-center text-center relative overflow-hidden group">
+      <div class="student-hero-gradient bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-[32px] p-10 border border-purple-400/50 dark:border-purple-500/20 border-b-[4px] border-b-purple-700 dark:border-b-0 shadow-tactile dark:shadow-neon-primary text-white flex flex-col justify-center items-center text-center relative overflow-hidden group">
         <div class="absolute inset-0 opacity-10 mix-blend-overlay"></div>
         <div class="absolute top-[-50%] left-[-10%] w-[800px] h-[800px] bg-white/10 rounded-full blur-[100px] group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
 
@@ -287,9 +288,9 @@
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-surface rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col">
+        <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col">
           <div class="mb-6">
-            <h3 class="text-2xl font-black text-primary mb-1">Радар навыков (КЕГЭ)</h3>
+            <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Радар навыков (КЕГЭ)</h3>
             <p class="text-sm font-medium text-muted">По осям — задания. Чем выше, тем сильнее тема.</p>
           </div>
           <div class="relative h-[520px]">
@@ -297,9 +298,9 @@
           </div>
         </div>
 
-        <div class="bg-surface rounded-[32px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile">
+        <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
           <div class="mb-6">
-            <h3 class="text-2xl font-black text-primary mb-1">Рейтинги по узлам знаний</h3>
+            <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Рейтинги по узлам знаний</h3>
             <p class="text-sm font-medium text-muted">ELO-рейтинг по темам (800–2500, старт 1000).</p>
           </div>
 
@@ -333,13 +334,22 @@
         let analyticsRadarChartInstance = null;
         let analyticsDataLoaded = false;
 
+        const statsTabsDarkActive = ['dark:bg-white/10', 'dark:text-white', 'dark:border-white/[0.08]'];
+
         function switchTab(tabName, btn) {
             document.querySelectorAll('.stats-tab-content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.stats-tab').forEach(t => {
+                t.classList.remove('active');
+                t.classList.remove('bg-surface', 'text-primary', 'shadow-sm', 'dark:shadow-none', 'border', 'border-slate-200/50', ...statsTabsDarkActive);
+                t.classList.add('text-muted', 'dark:text-dark-muted');
+            });
             const content = document.getElementById('tab-' + tabName);
             if (content) content.classList.add('active');
-            if (btn) btn.classList.add('active');
-            else document.querySelector('.stats-tab[data-tab="' + tabName + '"]')?.classList.add('active');
+            const el = btn || document.querySelector('.stats-tab[data-tab="' + tabName + '"]');
+            if (el) {
+                el.classList.add('active', 'bg-surface', 'text-primary', 'shadow-sm', 'dark:shadow-none', 'border', 'border-slate-200/50', ...statsTabsDarkActive);
+                el.classList.remove('text-muted', 'dark:text-dark-muted');
+            }
             if (tabName === 'exam' && !analyticsDataLoaded) loadAnalyticsTab();
         }
 
