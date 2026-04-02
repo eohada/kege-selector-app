@@ -594,7 +594,7 @@
       const w = window.open('', '_blank');
       if (!w) return;
       const origin = window.location.origin;
-      w.document.write(`<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Предпросмотр</title><link rel="stylesheet" href="${origin}/static/dist/boostudy.css?v=2.3"></head><body style="background:#E5E9F0;margin:0"><main style="max-width:1100px;margin:24px auto;padding:0 16px"><section style="background:#fff;border:1px solid #e2e8f0;border-bottom:4px solid #cbd5e1;border-radius:32px;box-shadow:0 8px 24px -4px rgba(15,23,42,.08);padding:40px">${data.html}</section></main></body></html>`);
+      w.document.write(`<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Предпросмотр</title><link rel="stylesheet" href="${origin}/static/dist/boostudy.css?v=2.4"></head><body style="background:#E5E9F0;margin:0"><main style="max-width:1100px;margin:24px auto;padding:0 16px"><section style="background:#fff;border:1px solid #e2e8f0;border-bottom:4px solid #cbd5e1;border-radius:32px;box-shadow:0 8px 24px -4px rgba(15,23,42,.08);padding:40px">${data.html}</section></main></body></html>`);
       w.document.close();
     } catch (e) {
         console.error("Preview error:", e);

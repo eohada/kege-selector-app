@@ -172,11 +172,11 @@
     <!-- НИЖНИЙ РЯД (Action Items) -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        <div class="rounded-[32px] border border-b-[4px] shadow-tactile p-8 flex flex-col justify-between transition-colors duration-300 {% if active_cnt > 0 %}bg-surface dark:bg-red-500/5 border-red-200 dark:border-red-500/20 border-b-boo-coral dark:shadow-[0_0_20px_rgba(251,113,133,0.18)] hover:bg-red-50/80 dark:hover:bg-red-500/10{% else %}bg-surface dark:bg-dark-card border-slate-200 dark:border-white/[0.06] border-b-slate-300 dark:shadow-glass-dark hover:-translate-y-1{% endif %}">
+        <div class="rounded-[32px] border border-b-[4px] p-8 flex flex-col justify-between group transition-all duration-300 ease-out {% if active_cnt > 0 %}bg-surface dark:bg-red-500/5 border-red-200 dark:border-red-500/25 border-b-boo-coral shadow-md hover:shadow-lg dark:shadow-[0_0_22px_rgba(251,113,133,0.22)] dark:hover:shadow-[0_0_42px_rgba(251,113,133,0.38)] hover:bg-red-50/90 dark:hover:bg-red-500/12 hover:-translate-y-1 hover:border-red-300 dark:hover:border-red-400/40{% else %}bg-surface dark:bg-dark-card border-slate-200 dark:border-white/[0.06] border-b-slate-300 shadow-tactile dark:shadow-glass-dark hover:-translate-y-1{% endif %}">
             <div>
                 <div class="flex justify-between items-center mb-4">
-                    <div class="w-10 h-10 rounded-full {% if active_cnt > 0 %}bg-red-500/15 text-red-500 dark:text-red-400 border border-red-500/30{% else %}bg-surface-alt text-muted border border-slate-200 dark:bg-white/5 dark:border-white/10{% endif %} flex items-center justify-center">
-                        <i class="ph-bold {% if active_cnt > 0 %}ph-warning{% else %}ph-check-circle{% endif %} text-lg"></i>
+                    <div class="w-10 h-10 rounded-full transition-transform duration-300 {% if active_cnt > 0 %}bg-red-500/15 text-red-500 dark:text-red-400 border border-red-500/30 group-hover:scale-105 group-hover:bg-red-500/25 dark:group-hover:bg-red-500/20{% else %}bg-surface-alt text-muted border border-slate-200 dark:bg-white/5 dark:border-white/10{% endif %} flex items-center justify-center">
+                        <i class="ph-bold {% if active_cnt > 0 %}ph-warning{% else %}ph-check-circle{% endif %} text-lg {% if active_cnt > 0 %}group-hover:text-red-600 dark:group-hover:text-red-300{% endif %} transition-colors"></i>
                     </div>
                     <span class="px-3 py-1 {% if active_cnt > 0 %}bg-slate-900 dark:bg-dark-card text-white text-xs font-bold rounded-lg border border-white/10{% else %}bg-surface-alt text-muted text-xs font-bold rounded-lg border border-slate-200/50 dark:bg-white/5 dark:border-white/10{% endif %}">{{ active_cnt }} работ</span>
                 </div>
@@ -279,20 +279,20 @@
                class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-4 rounded-2xl hover:bg-slate-50/60 dark:hover:bg-white/[0.04] transition-colors border border-transparent dark:hover:border-white/[0.06] no-underline group">
                 <div class="text-center sm:w-16 shrink-0">
                     <div class="text-xl font-black text-boo-primary">{% if l.lesson_date %}{{ l.lesson_date.strftime('%d') }}{% else %}—{% endif %}</div>
-                    <div class="text-[10px] font-bold text-muted dark:text-dark-muted uppercase tracking-widest">{% if l.lesson_date %}{{ l.lesson_date.strftime('%b') }}{% else %}—{% endif %}</div>
+                    <div class="text-[10px] font-bold text-muted dark:text-white/75 dark:group-hover:text-dark-muted uppercase tracking-widest transition-colors">{% if l.lesson_date %}{{ l.lesson_date.strftime('%b') }}{% else %}—{% endif %}</div>
                 </div>
                 <div class="min-w-0 flex-1">
                     <h4 class="text-sm font-bold text-boo-primary mb-1 group-hover:text-boo-primaryHover transition-colors truncate">{{ l.topic or 'Урок' }}</h4>
-                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-muted dark:text-dark-muted">
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-slate-600 dark:text-white/85 dark:group-hover:text-dark-muted transition-colors">
                         <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-clock"></i> {% if l.lesson_date %}{{ l.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}</span>
                         <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-hourglass"></i> {{ l.duration or 60 }} мин</span>
-                        <span class="inline-flex items-center gap-1.5 {% if l.status == 'completed' %}text-green-500{% elif l.status == 'in_progress' %}text-boo-primary{% else %}text-slate-400{% endif %}">
-                            <span class="w-2 h-2 rounded-full {% if l.status == 'completed' %}bg-green-500{% elif l.status == 'in_progress' %}bg-boo-primary{% else %}bg-slate-500{% endif %}"></span>
+                        <span class="inline-flex items-center gap-1.5 transition-colors {% if l.status == 'completed' %}text-green-600 dark:text-green-400 dark:group-hover:text-green-500/90{% elif l.status == 'in_progress' %}text-boo-primary dark:group-hover:text-boo-primary{% else %}text-slate-600 dark:text-white/75 dark:group-hover:text-dark-muted{% endif %}">
+                            <span class="w-2 h-2 rounded-full {% if l.status == 'completed' %}bg-green-500{% elif l.status == 'in_progress' %}bg-boo-primary{% else %}bg-zinc-400 dark:bg-white/45 dark:group-hover:bg-slate-500{% endif %} transition-colors"></span>
                             {{ 'Завершен' if l.status == 'completed' else ('В процессе' if l.status == 'in_progress' else 'Запланирован') }}
                         </span>
                     </div>
                 </div>
-                <i class="ph-bold ph-arrow-right text-slate-300 dark:text-dark-muted group-hover:text-white transition-colors hidden sm:block shrink-0"></i>
+                <i class="ph-bold ph-arrow-right text-slate-400 dark:text-white/90 dark:group-hover:text-dark-muted transition-colors hidden sm:block shrink-0"></i>
             </a>
             {% if not loop.last %}<div class="h-px w-full bg-slate-100 dark:bg-white/[0.06]"></div>{% endif %}
             {% endfor %}
