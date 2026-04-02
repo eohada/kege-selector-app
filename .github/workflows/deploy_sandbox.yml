@@ -15,5 +15,9 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # The deploy step failed with: "dial tcp ...:22: i/o timeout".
+          # Increase SSH connect timeout to reduce flakiness when the host is slow/unreachable.
+          timeout: 2m
+          command_timeout: 20m
           script: |
             /opt/boostudy/deploy_sandbox.sh
