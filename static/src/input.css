@@ -157,10 +157,10 @@
 }
 
 /*
- * Комната ученика (`student_profile.html`): эталон Airy Dark — глубокий чёрный,
- * насыщенные акценты, без «выгоревшего» фона от ambient.
+ * Комната + главная ученика (`student_profile.html`, `student_dashboard.html`):
+ * эталон Airy Dark — глубокий чёрный, насыщенные акценты.
  */
-html[data-theme="dark"][data-student-room="1"] {
+html[data-theme="dark"][data-student-room="1"], html[data-theme="dark"][data-student-dashboard="1"] {
   --color-bg-app: #000000;
   --color-bg-surface: #131316;
   --color-bg-surface-alt: #18181b;
@@ -173,7 +173,7 @@ html[data-theme="dark"][data-student-room="1"] {
   --color-stroke: #27272a;
 }
 
-html[data-theme="dark"][data-student-room="1"] body::before {
+html[data-theme="dark"][data-student-room="1"] body::before, html[data-theme="dark"][data-student-dashboard="1"] body::before {
   opacity: 0.38;
   filter: blur(96px);
   background:
@@ -182,12 +182,12 @@ html[data-theme="dark"][data-student-room="1"] body::before {
     radial-gradient(circle at 52% 92%, rgba(251, 113, 133, 0.12), transparent 48%);
 }
 
-html[data-theme="dark"][data-student-room="1"] body::after {
+html[data-theme="dark"][data-student-room="1"] body::after, html[data-theme="dark"][data-student-dashboard="1"] body::after {
   opacity: 0.18;
   filter: blur(120px);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock {
   background: rgba(9, 9, 11, 0.72);
   border-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
@@ -195,38 +195,38 @@ html[data-theme="dark"][data-student-room="1"] .layout-student .dock {
   -webkit-backdrop-filter: blur(24px);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav {
   background: transparent;
   border: none;
   box-shadow: none;
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item {
   color: #a1a1aa;
   border: 1px solid transparent;
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item:hover {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item:hover {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.06);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item.active {
   background: rgba(255, 255, 255, 0.1);
   color: #8b5cf6;
   border-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active i {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item.active i {
   color: #8b5cf6;
 }
 
-html[data-theme="dark"][data-student-room="1"] .dock-brand-text {
+html[data-theme="dark"][data-student-room="1"] .dock-brand-text, html[data-theme="dark"][data-student-dashboard="1"] .dock-brand-text {
   color: #ffffff;
 }
 
-html[data-theme="dark"][data-student-room="1"] .student-mentor-gradient {
+html[data-theme="dark"][data-student-room="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-dashboard="1"] .student-mentor-gradient {
   background-color: #131316 !important;
   background-image: none !important;
   border-color: rgba(255, 255, 255, 0.06) !important;
