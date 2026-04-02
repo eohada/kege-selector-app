@@ -1501,9 +1501,19 @@ def ensure_schema_columns(app):
                         if 'task_group_id' not in cols:
                             db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN task_group_id VARCHAR(64)'))
                             logger.info("Added task_group_id to Tasks (19-21 triplets)")
+                        if 'bank_origin' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN bank_origin VARCHAR(32)'))
+                            logger.info("Added bank_origin to Tasks")
+                        if 'starter_code' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN starter_code TEXT'))
+                            logger.info("Added starter_code to Tasks")
                         # Индекс для difficulty_level
                         try:
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_tasks_difficulty_level ON "{tasks_table_resolved}"(difficulty_level)'))
+                        except Exception:
+                            pass
+                        try:
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_tasks_bank_origin ON "{tasks_table_resolved}"(bank_origin)'))
                         except Exception:
                             pass
                 except Exception as e:
@@ -1657,6 +1667,46 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
                     final_grade=grade, label=label,
                 ))
             logger.info("Seeded GradingScale for ОГЭ Информатика")
+
+        # --- Seed: ЕГЭ Математика (профиль), ЕГЭ Математика (база), ОГЭ Математика ---
+        math_profile = ExamCourse.query.filter_by(slug='ege_math_profile').first()
+        if not math_profile:
+            math_profile = ExamCourse(title='ЕГЭ Математика — профиль', slug='ege_math_profile', is_active=True)
+            db.session.add(math_profile)
+            db.session.flush()
+            logger.info("Seeded ExamCourse: ЕГЭ Математика — профиль")
+        if CourseTaskTemplate.query.filter_by(course_id=math_profile.id).count() == 0:
+            for tn in range(1, 20):
+                db.session.add(CourseTaskTemplate(
+                    course_id=math_profile.id, task_number=tn, max_primary_score=1, requires_manual_review=False,
+                ))
+            logger.info("Seeded 19 CourseTaskTemplates for ЕГЭ Математика — профиль")
+
+        math_base = ExamCourse.query.filter_by(slug='ege_math_base').first()
+        if not math_base:
+            math_base = ExamCourse(title='ЕГЭ Математика — база', slug='ege_math_base', is_active=True)
+            db.session.add(math_base)
+            db.session.flush()
+            logger.info("Seeded ExamCourse: ЕГЭ Математика — база")
+        if CourseTaskTemplate.query.filter_by(course_id=math_base.id).count() == 0:
+            for tn in range(1, 22):
+                db.session.add(CourseTaskTemplate(
+                    course_id=math_base.id, task_number=tn, max_primary_score=1, requires_manual_review=False,
+                ))
+            logger.info("Seeded 21 CourseTaskTemplates for ЕГЭ Математика — база")
+
+        oge_math = ExamCourse.query.filter_by(slug='oge_math').first()
+        if not oge_math:
+            oge_math = ExamCourse(title='ОГЭ Математика', slug='oge_math', is_active=True)
+            db.session.add(oge_math)
+            db.session.flush()
+            logger.info("Seeded ExamCourse: ОГЭ Математика")
+        if CourseTaskTemplate.query.filter_by(course_id=oge_math.id).count() == 0:
+            for tn in range(1, 26):
+                db.session.add(CourseTaskTemplate(
+                    course_id=oge_math.id, task_number=tn, max_primary_score=1, requires_manual_review=False,
+                ))
+            logger.info("Seeded 25 CourseTaskTemplates for ОГЭ Математика")
 
         # --- Backfill: присвоить course_id=1 всем Tasks без course_id ---
         try:

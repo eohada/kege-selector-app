@@ -29,6 +29,46 @@
         border-color: rgba(129, 140, 248, 0.35);
         background: rgba(99, 102, 241, 0.08);
     }
+    .gen-manual-badge {
+        display: none;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.65rem;
+        border-radius: 0.5rem;
+        font-size: 0.65rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        background: rgb(238 242 255);
+        color: rgb(67 56 202);
+        border: 1px solid rgb(199 210 254);
+    }
+    [data-theme="dark"] .gen-manual-badge {
+        background: rgba(99, 102, 241, 0.15);
+        color: rgb(199 210 254);
+        border-color: rgba(129, 140, 248, 0.35);
+    }
+    .gen-manual-badge.is-visible { display: inline-flex; }
+    .gen-starter-wrap {
+        margin: 0 2rem 1rem;
+        padding: 1rem 1.25rem;
+        border-radius: 1rem;
+        border: 1px solid rgb(226 232 240);
+        background: rgb(248 250 252);
+        display: none;
+    }
+    .gen-starter-wrap.is-visible { display: block; }
+    [data-theme="dark"] .gen-starter-wrap {
+        border-color: rgba(148, 163, 184, 0.25);
+        background: rgba(15, 23, 42, 0.35);
+    }
+    .gen-starter-pre {
+        margin: 0.5rem 0 0;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
 </style>
 {% endblock %}
 
@@ -88,6 +128,11 @@
                 <p class="text-sm font-medium text-muted mb-6 leading-relaxed">
                     Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной. Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
                 </p>
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <a href="{{ url_for('task_generator.task_generator_bank') }}" class="neo-button outline text-sm no-underline inline-flex items-center gap-2">
+                        <i class="ph-bold ph-books" aria-hidden="true"></i> Банк заданий
+                    </a>
+                </div>
                 <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
                     <span class="text-xs font-bold text-muted uppercase tracking-widest">Режим работы</span>
                     <button type="button" class="text-sm font-bold text-boo-primary hover:text-boo-primaryHover transition-colors flex items-center gap-1 bg-transparent border-0 p-0 cursor-default font-inherit">
@@ -239,6 +284,76 @@
                 </details>
             </form>
         </section>
+
+        <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col gap-4">
+            <div>
+                <h2 class="text-xl font-black text-primary m-0">Создать задание вручную</h2>
+                <p class="text-sm text-muted m-0 mt-1">Условие, ответ, решение, код, сложность — попадает в банк выбранной программы с меткой «создано вручную».</p>
+            </div>
+            <div class="space-y-3">
+                <div class="space-y-1.5">
+                    <label for="bankManualCourse" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Программа</label>
+                    <div class="relative">
+                        <select id="bankManualCourse" class="{{ gen_select_class }}">
+                            {% for c in all_courses %}
+                            <option value="{{ c.id }}" {% if exam_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+                            {% endfor %}
+                        </select>
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="space-y-1.5">
+                    <label for="bankManualTaskNumber" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Номер задания</label>
+                    <div class="relative">
+                        <select id="bankManualTaskNumber" class="{{ gen_select_class }}"></select>
+                        <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-muted pointer-events-none" aria-hidden="true"></i>
+                    </div>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="bankContentHtml">Условие (HTML или текст)</label>
+                    <textarea id="bankContentHtml" class="neo-input font-mono text-sm min-h-[120px]" placeholder="Текст условия или HTML…"></textarea>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <label class="neo-button outline text-sm cursor-pointer inline-flex items-center gap-2 mb-0">
+                        <i class="ph-bold ph-image" aria-hidden="true"></i> Фото в условие
+                        <input type="file" id="bankImageUpload" accept="image/*" class="hidden">
+                    </label>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="bankAnswer">Ответ</label>
+                    <input type="text" id="bankAnswer" class="neo-input" placeholder="Правильный ответ" autocomplete="off">
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="bankSolution">Решение (для себя / методичка)</label>
+                    <textarea id="bankSolution" class="neo-input text-sm min-h-[80px]" placeholder="Необязательно"></textarea>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="bankStarterCode">Код (стартовый / для песочницы)</label>
+                    <textarea id="bankStarterCode" class="neo-input font-mono text-sm min-h-[72px]" placeholder="Python и т.д., необязательно"></textarea>
+                </div>
+                <div class="space-y-1.5">
+                    <label for="bankDifficulty" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 block">Сложность (1 — лёгкая … 10 — сложная)</label>
+                    <select id="bankDifficulty" class="{{ gen_select_class }}">
+                        <option value="">Не указана</option>
+                        {% for d in range(1, 11) %}
+                        <option value="{{ d }}">{{ d }}{% if d <= 3 %} — лёгкая{% elif d <= 7 %} — средняя{% else %} — сложная{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="bankHintsJson">Подсказки JSON (необязательно)</label>
+                    <input type="text" id="bankHintsJson" class="neo-input font-mono text-sm" placeholder='["подсказка 1", "…"]'>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="bankAttachFiles">Вложения (после сохранения загрузятся на сервер)</label>
+                    <input type="file" id="bankAttachFiles" class="neo-input text-sm" multiple>
+                </div>
+                <button type="button" id="bankCreateBtn" class="w-full py-3 min-h-[48px] bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 text-sm border border-transparent">
+                    <i class="ph-bold ph-plus-circle" aria-hidden="true"></i> Сохранить в банк
+                </button>
+                <p id="bankCreateStatus" class="text-xs text-muted m-0 hidden"></p>
+            </div>
+        </section>
     </div>
 
     <div class="w-full lg:w-2/3 flex flex-col gap-6 min-w-0 gen-deck-wrap">
@@ -290,8 +405,9 @@
 
             <div class="gen-task-card is-entering bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col overflow-hidden" id="genTaskCard" style="display:none;">
                 <div class="px-8 py-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50 rounded-t-[32px]">
-                    <div class="flex items-center gap-3 min-w-0">
+                    <div class="flex items-center gap-3 min-w-0 flex-wrap">
                         <div class="w-8 h-8 shrink-0 rounded-full bg-surface-alt border border-slate-200 text-secondary font-black text-sm flex items-center justify-center shadow-inner tabular-nums" id="genTaskNumber" aria-hidden="true">—</div>
+                        <span id="genManualBadge" class="gen-manual-badge" aria-hidden="true"><i class="ph-fill ph-hand-palm" aria-hidden="true"></i> Создано вручную</span>
                         <span id="genTaskTitle" class="sr-only">Задание</span>
                         <a id="genSourceLink" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-slate-200 text-muted rounded-lg text-xs font-bold hover:bg-surface-alt hover:text-boo-primary transition-colors shadow-sm dark:shadow-none dark:shadow-none no-underline shrink-0" href="#" target="_blank" rel="noopener" style="display:none;">
                             <i class="ph-bold ph-link" aria-hidden="true"></i> источник
@@ -303,6 +419,10 @@
                 </div>
 
                 <div class="task-content text-[15px] leading-relaxed text-primary space-y-4 p-8" id="genTaskBody"></div>
+                <div id="genStarterWrap" class="gen-starter-wrap">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Код к заданию</div>
+                    <pre class="gen-starter-pre text-primary" id="genStarterCode"></pre>
+                </div>
                 <div class="gen-answer" id="genAnswer"></div>
 
                 <div class="p-6 bg-slate-50/30 border-t border-slate-100 rounded-b-[32px] flex flex-col sm:flex-row gap-3">
@@ -341,6 +461,7 @@
 {% block scripts_extra %}
 <script>
     window.__GEN_SEED_TASK__ = {{ seed_task_payload | tojson if seed_task_payload else 'null' }};
+    window.__GEN_COURSE_TASK_NUMBERS__ = {{ course_task_numbers | tojson if course_task_numbers is defined else '{}' }};
 </script>
 <script>
     (function() {
@@ -352,6 +473,9 @@
         const title = document.getElementById('genTaskTitle');
         const taskNumEl = document.getElementById('genTaskNumber');
         const sourceLink = document.getElementById('genSourceLink');
+        const manualBadge = document.getElementById('genManualBadge');
+        const starterWrap = document.getElementById('genStarterWrap');
+        const starterPre = document.getElementById('genStarterCode');
 
         const startBtn = document.getElementById('genStartBtn');
         const stopBtn = document.getElementById('genStopBtn');
@@ -443,11 +567,28 @@
                     taskNumEl.textContent = '—';
                     taskNumEl.removeAttribute('title');
                 }
+                if (manualBadge) manualBadge.classList.remove('is-visible');
+                if (starterWrap) starterWrap.classList.remove('is-visible');
                 return;
             }
 
             empty.style.display = 'none';
             card.style.display = 'flex';
+
+            if (manualBadge) {
+                if ((task.bank_origin || '') === 'manual') manualBadge.classList.add('is-visible');
+                else manualBadge.classList.remove('is-visible');
+            }
+            if (starterWrap && starterPre) {
+                const sc = (task.starter_code && String(task.starter_code).trim()) ? String(task.starter_code).trim() : '';
+                if (sc) {
+                    starterPre.textContent = sc;
+                    starterWrap.classList.add('is-visible');
+                } else {
+                    starterPre.textContent = '';
+                    starterWrap.classList.remove('is-visible');
+                }
+            }
 
             const isTriplet = task.is_triplet_19_21 && Array.isArray(task.triplet_answers);
             const titleText = isTriplet
@@ -677,6 +818,110 @@
                 blacklistBtn?.click();
             } else if (e.key === 'Escape') {
                 stopBtn?.click();
+            }
+        });
+
+        const bankManualCourse = document.getElementById('bankManualCourse');
+        const bankManualTaskNumber = document.getElementById('bankManualTaskNumber');
+        const bankCreateBtn = document.getElementById('bankCreateBtn');
+        const bankImageUpload = document.getElementById('bankImageUpload');
+
+        function refreshManualTaskNumbers() {
+            if (!bankManualCourse || !bankManualTaskNumber) return;
+            const cid = parseInt(bankManualCourse.value, 10);
+            const map = window.__GEN_COURSE_TASK_NUMBERS__ || {};
+            const nums = map[cid] || [];
+            bankManualTaskNumber.innerHTML = nums.length
+                ? nums.map(n => `<option value="${n}">Задание ${n}</option>`).join('')
+                : '<option value="">—</option>';
+        }
+        bankManualCourse?.addEventListener('change', refreshManualTaskNumbers);
+        refreshManualTaskNumbers();
+
+        bankImageUpload?.addEventListener('change', async function() {
+            const f = this.files && this.files[0];
+            if (!f) return;
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const fd = new FormData();
+            fd.append('file', f);
+            try {
+                const r = await fetch('/task-generator/upload-image', { method: 'POST', headers: { 'X-CSRFToken': token }, body: fd });
+                const data = await r.json();
+                if (!data.success) throw new Error(data.error || 'Ошибка');
+                const ta = document.getElementById('bankContentHtml');
+                const img = `<p><img src="${data.url}" alt="" style="max-width:100%;height:auto;border-radius:12px;" loading="lazy"></p>`;
+                ta.value = (ta.value || '') + img;
+                if (window.toast) window.toast.success('Изображение вставлено в условие');
+            } catch (e) {
+                if (window.toast) window.toast.error(e.message || 'Ошибка загрузки');
+            }
+            this.value = '';
+        });
+
+        bankCreateBtn?.addEventListener('click', async () => {
+            const statusEl = document.getElementById('bankCreateStatus');
+            const setStatus = (msg, isErr) => {
+                if (!statusEl) return;
+                statusEl.textContent = msg;
+                statusEl.classList.toggle('hidden', !msg);
+                statusEl.classList.toggle('text-red-600', !!isErr);
+                statusEl.classList.toggle('text-muted', !isErr);
+            };
+            const courseId = bankManualCourse?.value;
+            const taskNum = bankManualTaskNumber?.value;
+            if (!courseId || !taskNum) {
+                setStatus('Выберите программу и номер задания.', true);
+                return;
+            }
+            const hintsRaw = (document.getElementById('bankHintsJson')?.value || '').trim();
+            let hintsPayload = undefined;
+            if (hintsRaw) {
+                try {
+                    hintsPayload = JSON.parse(hintsRaw);
+                } catch (_) {
+                    setStatus('Подсказки: неверный JSON.', true);
+                    return;
+                }
+            }
+            const diffRaw = (document.getElementById('bankDifficulty')?.value || '').trim();
+            const payload = {
+                exam_course_id: parseInt(courseId, 10),
+                task_number: parseInt(taskNum, 10),
+                content_html: document.getElementById('bankContentHtml')?.value || '',
+                answer: document.getElementById('bankAnswer')?.value || '',
+                solution: document.getElementById('bankSolution')?.value || '',
+                starter_code: document.getElementById('bankStarterCode')?.value || '',
+                difficulty_level: diffRaw ? parseInt(diffRaw, 10) : null,
+            };
+            if (hintsPayload !== undefined) payload.hints = hintsPayload;
+            bankCreateBtn.disabled = true;
+            setStatus('Сохранение…', false);
+            try {
+                const data = await postJSON('/task-generator/bank/create', payload);
+                const taskId = data.task && data.task.task_id;
+                const filesInput = document.getElementById('bankAttachFiles');
+                const filesList = filesInput && filesInput.files ? Array.from(filesInput.files) : [];
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                for (const file of filesList) {
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    const r = await fetch(`/task-generator/bank/${taskId}/attach`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': token },
+                        body: fd,
+                    });
+                    const att = await r.json().catch(() => ({}));
+                    if (!r.ok || !att.success) throw new Error(att.error || `Вложение: ${file.name}`);
+                }
+                const sid = data.task && data.task.site_task_id;
+                setStatus(`Сохранено. ID ${taskId}` + (sid ? `, ${sid}` : ''), false);
+                if (window.toast) window.toast.success('Задание добавлено в банк');
+                if (filesInput) filesInput.value = '';
+            } catch (e) {
+                setStatus(e.message || 'Ошибка', true);
+                if (window.toast) window.toast.error(e.message || 'Ошибка');
+            } finally {
+                bankCreateBtn.disabled = false;
             }
         });
 

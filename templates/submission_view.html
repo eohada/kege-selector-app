@@ -594,9 +594,12 @@
             {% for task_item in tasks_data %}
             <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
-                    <div style="display:flex; align-items:center; gap:.6rem;">
+                    <div style="display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;">
                         <span class="task-number">Задание {{ loop.index }}</span>
                         <span class="submission-type-chip submission-score-chip" style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.04em;">{{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }}</span>
+                        {% if task_item.task and task_item.task.is_manual_bank_task %}
+                        <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">Создано вручную</span>
+                        {% endif %}
                     </div>
                     <div style="color:#94a3b8;"><i class="ph-bold ph-warning-circle"></i></div>
                 </div>
@@ -615,6 +618,12 @@
                 <div class="task-content text-[15px] leading-relaxed text-primary space-y-4">
                     {{ task_item.task.content_html|task_content_absolute_urls|strip_attachment_links|sanitize_html }}
                 </div>
+                {% if (not should_hide_tasks) and task_item.task.starter_code %}
+                <div class="mt-4 p-4 rounded-[16px] border border-slate-200 bg-slate-50 text-[15px]">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
+                    <pre class="m-0 text-sm font-mono whitespace-pre-wrap text-primary">{{ task_item.task.starter_code }}</pre>
+                </div>
+                {% endif %}
                 {% if (not should_hide_tasks) and task_item.task.attached_files %}
                 {% set files = task_item.task.attached_files | from_json %}
                 {% if files %}
@@ -794,15 +803,24 @@
         {% for task_item in tasks_data %}
         <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% elif task_item.answer %} task-pending-review{% endif %}" id="task-{{ loop.index }}">
             <div class="task-header">
-                <div>
+                <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                     <span class="task-number">Задание {{ loop.index }}</span>
                     <span class="task-score">({{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }})</span>
+                    {% if task_item.task and task_item.task.is_manual_bank_task %}
+                    <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">Создано вручную</span>
+                    {% endif %}
                 </div>
             </div>
             
             <div class="task-content">
                 {{ task_item.task.content_html|task_content_absolute_urls|strip_attachment_links|sanitize_html }}
             </div>
+            {% if task_item.task.starter_code %}
+            <div class="mt-4 p-4 rounded-[16px] border border-slate-200 bg-slate-50 text-[15px]">
+                <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
+                <pre class="m-0 text-sm font-mono whitespace-pre-wrap text-primary">{{ task_item.task.starter_code }}</pre>
+            </div>
+            {% endif %}
 
             {% if task_item.task.attached_files %}
             {% set files = task_item.task.attached_files | from_json %}

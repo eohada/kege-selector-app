@@ -1008,6 +1008,9 @@
                 <section id="task-{{ lt19.lesson_task_id }}" class="task-card" data-task-id="{{ lt19.lesson_task_id }}" data-task-status="triplet">
                     <div class="task-header">
                         <span class="task-number">№{{ loop.index }} <span style="font-weight: 400; opacity: 0.7; font-size: 0.9em; margin-left: 0.5rem;">(Задания 19–21)</span></span>
+                        {% if lt19.task and lt19.task.is_manual_bank_task %}
+                        <span class="status-badge status-info" style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Создано вручную</span>
+                        {% endif %}
                         <div class="task-meta" style="margin-left: auto;">
                             {% if (not is_student_view) and (not is_parent_view) and lt19.task and lt19.task.source_url %}
                             <a class="neo-button ghost sm" href="{{ lt19.task.source_url }}" target="_blank" rel="noopener noreferrer" title="Открыть источник" style="text-decoration:none;"><i class="fas fa-external-link-alt"></i> Источник</a>
@@ -1016,6 +1019,12 @@
                     </div>
                     <div class="task-content">
                         {{ lt19.task.content_html|sanitize_html }}
+                        {% if lt19.task.starter_code %}
+                        <div class="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50/80 dark:bg-slate-900/30">
+                            <div class="text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
+                            <pre class="m-0 text-sm font-mono whitespace-pre-wrap text-primary">{{ lt19.task.starter_code }}</pre>
+                        </div>
+                        {% endif %}
                         {% if lt19.task.attached_files %}
                         {% set files = lt19.task.attached_files | from_json %}
                         {% if files %}
@@ -1106,6 +1115,9 @@
                             <span style="font-weight: 400; opacity: 0.7; font-size: 0.9em; margin-left: 0.5rem;">(из базы #{{ hw_task.task.task_number }})</span>
                             {% endif %}
                         </span>
+                        {% if hw_task.task and hw_task.task.is_manual_bank_task %}
+                        <span class="status-badge status-info" style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Создано вручную</span>
+                        {% endif %}
 
                         <span class="status-badge status-info" style="opacity: 0.9;">
                             Попытки: {{ attempts_used }}/{{ effective_max_attempts }}
@@ -1157,6 +1169,12 @@
                     
                     <div class="task-content">
                         {{ hw_task.task.content_html|sanitize_html }}
+                        {% if hw_task.task.starter_code %}
+                        <div class="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50/80 dark:bg-slate-900/30">
+                            <div class="text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
+                            <pre class="m-0 text-sm font-mono whitespace-pre-wrap text-primary">{{ hw_task.task.starter_code }}</pre>
+                        </div>
+                        {% endif %}
                         {% if hw_task.task.attached_files %}
                         {% set files = hw_task.task.attached_files | from_json %}
                         {% if files %}

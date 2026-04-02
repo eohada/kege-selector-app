@@ -1,16 +1,19 @@
 """
 Маршруты генератора заданий (универсальный — ЕГЭ / ОГЭ)
 """
+import json
 import logging
 import os
-from flask import render_template, request, redirect, url_for, flash, jsonify
+import re
+import uuid
+from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, text
 
 from app.task_generator import task_generator_bp
 from app.task_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
 from app.models import Lesson, Tasks, LessonTask, StudentTaskSeen, UsageHistory, db
-from app.models import TaskTemplate, TemplateTask, Course, CourseTaskTemplate
+from app.models import TaskTemplate, TemplateTask, Course, CourseTaskTemplate, TaskSolution
 from app.auth.rbac_utils import has_permission
 from core.selector_logic import (
     get_unique_tasks, record_usage, record_skipped, record_blacklist,
@@ -309,6 +312,18 @@ def task_generator(lesson_id=None):
     all_courses = Course.query.filter_by(is_active=True).order_by(Course.title).all()
     active_course = Course.query.get(exam_course_id) if exam_course_id else None
 
+    course_task_numbers = {}
+    try:
+        for c in all_courses:
+            course_task_numbers[c.id] = [
+                t.task_number
+                for t in CourseTaskTemplate.query.filter_by(course_id=c.id)
+                .order_by(CourseTaskTemplate.task_number).all()
+            ]
+    except Exception as e:
+        logger.warning(f'course_task_numbers for generator: {e}')
+        course_task_numbers = {}
+
     return render_template('task_generator.html',
                            selection_form=selection_form,
                            reset_form=reset_form,
@@ -323,7 +338,8 @@ def task_generator(lesson_id=None):
                            generator_recipient_ids=recipient_ids,
                            exam_course_id=exam_course_id,
                            all_courses=all_courses,
-                           active_course=active_course)
+                           active_course=active_course,
+                           course_task_numbers=course_task_numbers)
 
 
 def _lesson_tag(lesson_id: int, assignment_type: str) -> str:
@@ -357,6 +373,8 @@ def _task_to_payload(task: Tasks):
         'content_html': task.content_html,
         'answer': task.answer,
         'attached_files': task.attached_files,
+        'bank_origin': task.bank_origin,
+        'starter_code': task.starter_code,
     }
     triplet_ids = _get_triplet_task_ids(task)
     if triplet_ids:
@@ -661,6 +679,276 @@ def generator_stream_act():
         'done': not bool(next_task),
         'task': _task_to_payload(next_task),
     }), 200
+
+
+def _normalize_manual_content_html(raw: str) -> str:
+    text = (raw or '').strip()
+    if not text:
+        return '<div class="task-text"></div>'
+    if re.search(r'<[a-zA-Z!?][^>]*>', text):
+        return text
+    escape = (
+        text.replace('&', '&amp;')
+        .replace('<', '&lt;')
+        .replace('>', '&gt;')
+    )
+    return f'<div class="task-text">{escape}</div>'
+
+
+def _parse_hints_payload(raw):
+    if raw is None:
+        return None
+    if isinstance(raw, (list, dict)):
+        return raw
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return None
+        try:
+            return json.loads(s)
+        except Exception:
+            return None
+    return None
+
+
+def _parse_difficulty_level(raw):
+    if raw is None or raw == '':
+        return None
+    try:
+        d = int(raw)
+        if 1 <= d <= 10:
+            return d
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
+def _attached_files_list(task: Tasks) -> list:
+    if not task.attached_files:
+        return []
+    try:
+        data = json.loads(task.attached_files) if isinstance(task.attached_files, str) else task.attached_files
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _attached_files_append(task: Tasks, entry: dict) -> None:
+    items = _attached_files_list(task)
+    items.append(entry)
+    task.attached_files = json.dumps(items, ensure_ascii=False)
+
+
+def _fix_tasks_pk_sequence():
+    """Выравнивание sequence Tasks.task_id в PostgreSQL после ручных вставок."""
+    try:
+        db_url = current_app.config.get('SQLALCHEMY_DATABASE_URI', '') or ''
+        is_pg = ('postgresql' in db_url) or ('postgres' in db_url)
+        if is_pg:
+            db.session.execute(text(
+                'SELECT setval(pg_get_serial_sequence(\'"Tasks"\', \'task_id\'), '
+                'COALESCE((SELECT MAX("task_id") FROM "Tasks"), 0), true)'
+            ))
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+@task_generator_bp.route('/task-generator/upload-image', methods=['POST'])
+@login_required
+def task_generator_upload_image():
+    """Картинка для вставки в условие (возвращает URL под /static/...)."""
+    _require_task_generator_access()
+    file = request.files.get('file')
+    if not file or not file.filename:
+        return jsonify({'success': False, 'error': 'Файл не выбран'}), 400
+    try:
+        from app.uploads.service import save_uploaded_file
+        static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+        upload_folder = os.path.join(static_root, 'uploads', 'task_bank', str(current_user.id))
+        _orig, abs_path, _size = save_uploaded_file(
+            file=file,
+            base_folder=upload_folder,
+            allowed_exts={'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'},
+            max_bytes=15 * 1024 * 1024,
+        )
+        rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
+        url = url_for('static', filename=rel)
+        return jsonify({'success': True, 'url': url})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logger.exception('task_generator_upload_image failed')
+        return jsonify({'success': False, 'error': 'Ошибка загрузки'}), 500
+
+
+@task_generator_bp.route('/task-generator/bank/<int:task_id>/attach', methods=['POST'])
+@login_required
+def task_generator_bank_attach(task_id: int):
+    """Прикрепить файл к уже созданной задаче банка."""
+    _require_task_generator_access()
+    task = Tasks.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+    if (task.bank_origin or '').strip() != 'manual':
+        return jsonify({'success': False, 'error': 'Вложения таким способом только для задач, созданных вручную в банке'}), 400
+    file = request.files.get('file')
+    if not file or not file.filename:
+        return jsonify({'success': False, 'error': 'Файл не выбран'}), 400
+    try:
+        from app.uploads.service import save_uploaded_file
+        static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+        upload_folder = os.path.join(static_root, 'uploads', 'task_bank', str(current_user.id), str(task_id))
+        orig_name, abs_path, _size = save_uploaded_file(
+            file=file,
+            base_folder=upload_folder,
+            allowed_exts={
+                'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'txt', 'doc', 'docx',
+                'xls', 'xlsx', 'zip', 'rar', '7z', 'py', 'csv',
+            },
+            max_bytes=30 * 1024 * 1024,
+        )
+        rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
+        url = url_for('static', filename=rel)
+        _attached_files_append(task, {'name': orig_name, 'url': url})
+        db.session.commit()
+        return jsonify({'success': True, 'name': orig_name, 'url': url})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        logger.exception('task_generator_bank_attach failed')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@task_generator_bp.route('/task-generator/bank/create', methods=['POST'])
+@login_required
+def task_generator_bank_create():
+    """Создать задание в банке вручную (JSON)."""
+    _require_task_generator_access()
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
+
+    try:
+        course_id = int(data.get('exam_course_id') or data.get('course_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'exam_course_id обязателен'}), 400
+
+    course = Course.query.filter_by(id=course_id, is_active=True).first()
+    if not course:
+        return jsonify({'success': False, 'error': 'Программа не найдена или неактивна'}), 404
+
+    try:
+        task_number = int(data.get('task_number'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'task_number обязателен'}), 400
+
+    valid_numbers = {t.task_number for t in CourseTaskTemplate.query.filter_by(course_id=course_id).all()}
+    if valid_numbers and task_number not in valid_numbers:
+        return jsonify({'success': False, 'error': f'Номер {task_number} не входит в спецификацию выбранной программы'}), 400
+
+    content_html = _normalize_manual_content_html(data.get('content_html') or data.get('content') or '')
+    answer = (data.get('answer') or '').strip() or None
+    solution_text = (data.get('solution') or '').strip()
+    starter_code = (data.get('starter_code') or '').strip() or None
+    difficulty_level = _parse_difficulty_level(data.get('difficulty_level'))
+    hints = _parse_hints_payload(data.get('hints'))
+
+    site_task_id = f'manual:{uuid.uuid4()}'
+
+    _fix_tasks_pk_sequence()
+
+    try:
+        task = Tasks(
+            course_id=course_id,
+            task_number=task_number,
+            site_task_id=site_task_id,
+            source_url=None,
+            content_html=content_html,
+            answer=answer,
+            attached_files=None,
+            bank_origin='manual',
+            starter_code=starter_code,
+            difficulty_level=difficulty_level,
+            hints=hints,
+        )
+        db.session.add(task)
+        db.session.flush()
+
+        if solution_text:
+            sol = TaskSolution.query.filter_by(task_id=task.task_id).first()
+            if sol:
+                sol.solution_text = solution_text
+                sol.source = 'manual'
+                sol.needs_manual_review = False
+            else:
+                db.session.add(TaskSolution(
+                    task_id=task.task_id,
+                    solution_text=solution_text,
+                    source='manual',
+                    needs_manual_review=False,
+                ))
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.exception('task_generator_bank_create failed')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    audit_logger.log(
+        action='bank_create_manual_task',
+        entity='Task',
+        entity_id=task.task_id,
+        status='success',
+        metadata={'course_id': course_id, 'task_number': task_number, 'site_task_id': site_task_id},
+    )
+
+    return jsonify({
+        'success': True,
+        'task': _task_to_payload(task),
+    }), 201
+
+
+@task_generator_bp.route('/task-generator/bank', methods=['GET'])
+@login_required
+def task_generator_bank():
+    """Просмотр и фильтрация банка заданий."""
+    _require_task_generator_access()
+    try:
+        course_id = request.args.get('course_id', type=int)
+    except (TypeError, ValueError):
+        course_id = None
+    task_number = request.args.get('task_number', type=int)
+    only_manual = request.args.get('only_manual', type=int) == 1
+    page = max(1, request.args.get('page', type=int) or 1)
+    per_page = min(100, max(10, request.args.get('per_page', type=int) or 30))
+
+    q = Tasks.query
+    if course_id:
+        q = q.filter(Tasks.course_id == course_id)
+    if task_number:
+        q = q.filter(Tasks.task_number == task_number)
+    if only_manual:
+        q = q.filter(Tasks.bank_origin == 'manual')
+
+    q = q.order_by(Tasks.task_id.desc())
+    total = q.count()
+    rows = q.offset((page - 1) * per_page).limit(per_page).all()
+
+    courses = Course.query.filter_by(is_active=True).order_by(Course.title).all()
+    return render_template(
+        'task_generator_bank.html',
+        tasks=rows,
+        total=total,
+        page=page,
+        per_page=per_page,
+        filter_course_id=course_id,
+        filter_task_number=task_number,
+        filter_only_manual=only_manual or (bank_origin == 'manual'),
+        all_courses=courses,
+    )
+
 
 @task_generator_bp.route('/results')
 @login_required

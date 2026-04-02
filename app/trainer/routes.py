@@ -82,6 +82,8 @@ def _task_to_payload(task: Tasks) -> dict[str, Any] | None:
         'answer': task.answer,
         'attached_files': task.attached_files,
         'has_hints_in_db': has_hints,
+        'bank_origin': getattr(task, 'bank_origin', None),
+        'starter_code': getattr(task, 'starter_code', None),
     }
 
 

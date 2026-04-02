@@ -4,6 +4,7 @@
 import logging
 import os
 import json
+import uuid
 from werkzeug.utils import secure_filename
 from app.uploads.service import save_uploaded_file
 from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
@@ -16,7 +17,7 @@ from app.auth.rbac_utils import check_access, get_user_scope
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, get_assignment_blocks, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, Course, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, Course, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
@@ -2403,17 +2404,36 @@ def lesson_manual_create(lesson_id):
             count = 0
             created_task_ids = []
             for task_data in tasks_data:
+                course_id = lesson.exam_course_id
+                raw_cid = task_data.get('course_id') or task_data.get('exam_course_id')
+                if raw_cid not in (None, ''):
+                    try:
+                        course_id = int(raw_cid)
+                    except (TypeError, ValueError):
+                        pass
+                starter = (task_data.get('starter_code') or '').strip() or None
+                sol_text = (task_data.get('solution') or '').strip()
                 new_task = Tasks(
+                    course_id=course_id,
                     task_number=int(task_data.get('number', 1)),
                     content_html=f'<div class="task-text">{task_data.get("content", "")}</div>',
-                    answer=task_data.get('answer', ''),
-                    site_task_id=None, # Indicates manual
-                    source_url=None
+                    answer=task_data.get('answer', '') or '',
+                    site_task_id=f'manual:{uuid.uuid4()}',
+                    source_url=None,
+                    bank_origin='manual',
+                    starter_code=starter,
                 )
                 db.session.add(new_task)
-                db.session.flush() # Get task_id
+                db.session.flush()
+                if sol_text:
+                    db.session.add(TaskSolution(
+                        task_id=new_task.task_id,
+                        solution_text=sol_text,
+                        source='manual',
+                        needs_manual_review=False,
+                    ))
                 created_task_ids.append(new_task.task_id)
-                
+
                 lesson_task = LessonTask(
                     lesson_id=lesson.lesson_id,
                     task_id=new_task.task_id,

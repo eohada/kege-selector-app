@@ -95,6 +95,10 @@ class Tasks(db.Model):
     hints = db.Column(JSONBCompat, nullable=True)
     # source_prototype: путь к эталонному JSON (напр. task_19/medium/task_19_medium.json) для upsert при синхронизации
     source_prototype = db.Column(db.String(256), nullable=True, index=True)
+    # Происхождение записи в банке: manual | scraped | imported | legacy (NULL = до введения поля, считать банковым импортом/парсингом)
+    bank_origin = db.Column(db.String(32), nullable=True, index=True)
+    # Стартовый код для песочницы / подсказки ученику (опционально)
+    starter_code = db.Column(db.Text, nullable=True)
 
     # --- Константы маппинга сложности ---
     DIFFICULTY_EASY_MAX = 3      # 1–3 = Easy
@@ -130,6 +134,10 @@ class Tasks(db.Model):
     blacklist_tasks = db.relationship('BlacklistTasks', back_populates='task', lazy=True)
     topics = db.relationship('Topic', secondary=task_topics, backref='tasks', lazy=True)
     knowledge_node = db.relationship('KnowledgeNode', foreign_keys=[knowledge_node_id], backref='tasks')
+
+    @property
+    def is_manual_bank_task(self) -> bool:
+        return (self.bank_origin or '').strip() == 'manual'
 
 class TaskReview(db.Model):
     """Результат ручной проверки задания (фундамент для формироватора банка заданий)."""

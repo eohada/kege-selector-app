@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% set active_page = 'generator' %}
+{% block title %}Банк заданий{% endblock %}
+
+{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-[1200px] mx-auto flex flex-col gap-6 pb-10">
+    <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Генератор</div>
+                <h1 class="text-2xl font-black text-primary m-0 tracking-tight">Банк заданий</h1>
+                <p class="text-sm text-muted mt-2 mb-0 max-w-xl">Фильтрация по программе, номеру и признаку «создано вручную». Всего записей: <strong class="text-primary">{{ total }}</strong>.</p>
+            </div>
+            <a href="{{ url_for('task_generator.task_generator') }}" class="neo-button outline no-underline inline-flex items-center gap-2">
+                <i class="ph-bold ph-arrow-left" aria-hidden="true"></i> К генератору
+            </a>
+        </div>
+
+        <form method="get" action="{{ url_for('task_generator.task_generator_bank') }}" class="mt-6 flex flex-wrap gap-4 items-end">
+            <div class="neo-field min-w-[200px]">
+                <label class="neo-label" for="filter_course_id">Программа</label>
+                <select class="neo-select" id="filter_course_id" name="course_id">
+                    <option value="">Все</option>
+                    {% for c in all_courses %}
+                    <option value="{{ c.id }}" {% if filter_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="neo-field w-32">
+                <label class="neo-label" for="filter_task_number">№ задания</label>
+                <input class="neo-input" id="filter_task_number" name="task_number" type="number" min="1" placeholder="—"
+                       value="{{ filter_task_number or '' }}">
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer text-sm font-medium text-muted mb-2">
+                <input type="checkbox" name="only_manual" value="1" class="w-5 h-5 rounded border-slate-300 accent-boo-primary" {% if filter_only_manual %}checked{% endif %}>
+                Только созданные вручную
+            </label>
+            <input type="hidden" name="per_page" value="{{ per_page }}">
+            <button type="submit" class="neo-button accent">Показать</button>
+        </form>
+    </div>
+
+    <div class="bg-surface rounded-[24px] border border-slate-200 shadow-tactile overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-100 bg-slate-50/80 text-left text-[10px] font-extrabold text-muted uppercase tracking-widest">
+                        <th class="px-4 py-3">ID</th>
+                        <th class="px-4 py-3">Программа</th>
+                        <th class="px-4 py-3">№</th>
+                        <th class="px-4 py-3">site_task_id</th>
+                        <th class="px-4 py-3">Происхождение</th>
+                        <th class="px-4 py-3">Сложность</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tasks %}
+                    <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                        <td class="px-4 py-3 font-mono font-bold text-boo-primary">{{ t.task_id }}</td>
+                        <td class="px-4 py-3 text-muted">{{ t.course.title if t.course else '—' }}</td>
+                        <td class="px-4 py-3 font-bold">{{ t.task_number }}</td>
+                        <td class="px-4 py-3 font-mono text-xs text-muted max-w-[200px] truncate" title="{{ t.site_task_id or '' }}">{{ t.site_task_id or '—' }}</td>
+                        <td class="px-4 py-3">
+                            {% if t.bank_origin == 'manual' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-100 dark:border-indigo-800">Вручную</span>
+                            {% elif t.bank_origin %}
+                            <span class="text-muted">{{ t.bank_origin }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-muted">{{ t.difficulty_level if t.difficulty_level is not none else '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-4 py-10 text-center text-muted font-medium">Нет записей по выбранным фильтрам.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if total > per_page %}
+        {% set pages = (total + per_page - 1) // per_page %}
+        <div class="px-4 py-4 border-t border-slate-100 flex flex-wrap gap-2 justify-center">
+            {% for p in range(1, pages + 1) %}
+            <a class="px-3 py-1.5 rounded-lg text-sm font-bold no-underline {% if p == page %}bg-boo-primary text-white{% else %}bg-surface-alt text-muted border border-slate-200 hover:border-boo-primary{% endif %}"
+               href="{{ url_for('task_generator.task_generator_bank') }}?page={{ p }}&per_page={{ per_page }}{% if filter_course_id %}&course_id={{ filter_course_id }}{% endif %}{% if filter_task_number %}&task_number={{ filter_task_number }}{% endif %}{% if filter_only_manual %}&only_manual=1{% endif %}">{{ p }}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
