@@ -118,6 +118,7 @@
     .gen-tab-panel.hidden {
         display: none !important;
     }
+    .bank-task-preview p:last-child { margin-bottom: 0; }
 </style>
 {% endblock %}
 
@@ -1034,6 +1035,46 @@
         document.getElementById('genBankScrollBtn')?.addEventListener('click', () => {
             if (typeof window.switchGenTab === 'function') window.switchGenTab('bank');
             document.getElementById('gen-panel-bank')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        document.getElementById('gen-bank-panel')?.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.bank-task-save-btn');
+            if (!btn) return;
+            const card = btn.closest('.bank-task-card');
+            if (!card) return;
+            const taskId = card.getAttribute('data-task-id');
+            const ta = card.querySelector('.bank-task-answer');
+            const sel = card.querySelector('.bank-task-difficulty');
+            const statusEl = card.querySelector('.bank-task-save-status');
+            if (!taskId || !ta || !sel) return;
+            const setSt = (msg, isErr) => {
+                if (!statusEl) return;
+                statusEl.textContent = msg || '';
+                statusEl.classList.toggle('hidden', !msg);
+                statusEl.classList.toggle('text-red-600', !!isErr);
+                statusEl.classList.toggle('text-emerald-700', !isErr && !!msg);
+            };
+            btn.disabled = true;
+            setSt('Сохранение…', false);
+            try {
+                const diffVal = sel.value === '' ? null : parseInt(sel.value, 10);
+                await postJSON(`/task-generator/bank/${taskId}/save`, {
+                    answer: ta.value,
+                    difficulty_level: diffVal,
+                });
+                setSt('Сохранено', false);
+                if (window.toast) window.toast.success('Сохранено в банке');
+                window.setTimeout(() => {
+                    if (!statusEl || statusEl.textContent !== 'Сохранено') return;
+                    statusEl.classList.add('hidden');
+                    statusEl.textContent = '';
+                }, 2400);
+            } catch (err) {
+                setSt(err.message || 'Ошибка', true);
+                if (window.toast) window.toast.error(err.message || 'Ошибка');
+            } finally {
+                btn.disabled = false;
+            }
         });
 
         if (window.__GEN_SEED_TASK__) {

@@ -65,6 +65,7 @@ def _task_generator_page_url(
         kwargs['bank_only_manual'] = 1
     if bank_open:
         kwargs['bank_open'] = 1
+        kwargs['gen_tab'] = 'bank'
     return url_for('task_generator.task_generator', **kwargs)
 
 
@@ -380,7 +381,10 @@ def task_generator(lesson_id=None):
     bank_total = 0
     bank_pagination = []
     try:
-        bq = Tasks.query.options(joinedload(Tasks.course))
+        bq = Tasks.query.options(
+            joinedload(Tasks.course),
+            joinedload(Tasks.task_solution),
+        )
         if bank_filter_course_id:
             bq = bq.filter(Tasks.course_id == bank_filter_course_id)
         if bank_filter_task_number:
@@ -1009,6 +1013,64 @@ def task_generator_bank_create():
         'success': True,
         'task': _task_to_payload(task),
     }), 201
+
+
+@task_generator_bp.route('/task-generator/bank/<int:task_id>/save', methods=['POST'])
+@login_required
+def task_generator_bank_save(task_id: int):
+    """Обновить ответ и/или уровень сложности записи в банке (для преподавателей с task.manage)."""
+    _require_task_generator_access()
+    task = Tasks.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
+
+    if 'answer' not in data and 'difficulty_level' not in data:
+        return jsonify({'success': False, 'error': 'Передайте поля answer и/или difficulty_level'}), 400
+
+    try:
+        if 'answer' in data:
+            raw_ans = data.get('answer')
+            if raw_ans is None:
+                task.answer = None
+            else:
+                task.answer = str(raw_ans).strip() or None
+
+        if 'difficulty_level' in data:
+            raw_d = data.get('difficulty_level')
+            if raw_d is None or raw_d == '':
+                task.difficulty_level = None
+            else:
+                try:
+                    d = int(raw_d)
+                except (TypeError, ValueError):
+                    return jsonify({'success': False, 'error': 'Сложность: целое число 1–10 или пусто'}), 400
+                if not (1 <= d <= 10):
+                    return jsonify({'success': False, 'error': 'Сложность от 1 до 10'}), 400
+                task.difficulty_level = d
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.exception('task_generator_bank_save failed')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    audit_logger.log(
+        action='bank_update_task',
+        entity='Task',
+        entity_id=task.task_id,
+        status='success',
+        metadata={'updated': [k for k in ('answer', 'difficulty_level') if k in data]},
+    )
+    return jsonify({
+        'success': True,
+        'task_id': task.task_id,
+        'answer': task.answer,
+        'difficulty_level': task.difficulty_level,
+    })
 
 
 @task_generator_bp.route('/task-generator/bank', methods=['GET'])
