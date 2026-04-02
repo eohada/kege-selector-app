@@ -1,16 +1,24 @@
 /**
  * Единая инициализация выпадающих списков (Tom Select) в стиле платформы.
- * Нативный <select> остаётся в DOM для форм и доступности; виджет синхронизируется с ним.
+ * Для одиночного выбора: без поля ввода/поиска — только список, как у нативного select.
  */
 (function () {
   'use strict';
 
-  function tomSelectOptions() {
+  function buildTomSelectOptions(el) {
     var opts = {
       create: false,
       allowEmptyOption: true,
       dropdownParent: typeof document !== 'undefined' ? document.body : null,
     };
+
+    if (!el.multiple) {
+      opts.maxItems = 1;
+      opts.searchField = [];
+      opts.controlInput = null;
+      opts.sortField = [{ field: '$order' }];
+    }
+
     opts.onDropdownOpen = function () {
       var w = this.wrapper || (this.control && this.control.closest && this.control.closest('.ts-wrapper'));
       if (w) w.classList.add('boo-select-open');
@@ -42,7 +50,7 @@
       if (shouldSkipSelect(el)) continue;
       if (el.tomselect) continue;
       try {
-        new TomSelect(el, tomSelectOptions());
+        new TomSelect(el, buildTomSelectOptions(el));
       } catch (err) {
         if (typeof console !== 'undefined' && console.warn) {
           console.warn('[boo-select] init failed', err);
@@ -68,7 +76,7 @@
     }
     try {
       if (typeof TomSelect !== 'undefined' && !shouldSkipSelect(el)) {
-        new TomSelect(el, tomSelectOptions());
+        new TomSelect(el, buildTomSelectOptions(el));
       }
     } catch (err1) {
       if (typeof console !== 'undefined' && console.warn) {

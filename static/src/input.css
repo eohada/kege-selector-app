@@ -1164,11 +1164,25 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   .ts-wrapper.boo-select-open {
     z-index: 40;
   }
+  /* Одиночный выбор: без поля ввода — только подпись выбранного пункта */
+  .ts-wrapper.single .ts-control {
+    cursor: pointer;
+    min-height: 2.75rem;
+  }
+  .ts-wrapper.single .item {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    font: inherit !important;
+    color: inherit !important;
+    line-height: 1.35;
+  }
   .ts-wrapper .ts-control {
     @apply w-full outline-none font-medium flex items-center relative;
     padding: 0.6rem 0.9rem;
     padding-right: 2.5rem;
-    border-radius: 12px;
+    border-radius: 14px;
     border: 1px solid var(--color-stroke, #E2E8F0);
     border-bottom-width: 2px;
     border-bottom-color: var(--color-stroke-strong, #CBD5E1);
@@ -1192,7 +1206,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
   }
   .ts-dropdown {
-    border-radius: 12px;
+    border-radius: 14px;
     border: 1px solid var(--color-stroke);
     box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
     background: var(--color-bg-surface);
