@@ -402,30 +402,56 @@ def collect_kompege_listing_raw_items(page: Page, task_number: int, task_value_u
     print(f"[ETL] Данные для задания {task_number} загружены.")
 
     print("[ETL] Быстрый режим: извлекаем задания через evaluate()...")
+    # Вёрстка kompege.ru менялась (лишняя колонка, обёртки): ищем ссылку на задачу и .task-text по всей строке.
     items = page.evaluate("""
         () => {
             const rows = document.querySelectorAll('table tbody tr');
             const result = [];
             rows.forEach(row => {
-                const taskIdCell = row.querySelector('td:first-child a');
-                const contentCell = row.querySelector('td:nth-child(2) div.task-text');
-                const detailsCell = row.querySelector('td:nth-child(2) span.details');
-                const fileLinks = row.querySelectorAll('td:nth-child(2) a[href*="/file/"]');
-                if (!taskIdCell || !contentCell) return;
-                const taskId = taskIdCell.getAttribute('href')?.match(/id=(\\d+)/)?.[1];
-                if (!taskId) return;
-                const contentHtml = contentCell.innerHTML || '';
+                const idLink = row.querySelector(
+                    'a[href*="task?id="], a[href*="/task?id="], a[href^="task?id="], a[href*="?id="]'
+                );
+                if (!idLink) return;
+                const href = idLink.getAttribute('href') || '';
+                const idMatch = href.match(/[?&]id=(\\d+)/);
+                if (!idMatch) return;
+                const taskId = idMatch[1];
+                let contentCell = row.querySelector('div.task-text');
+                if (!contentCell) {
+                    const tds = row.querySelectorAll('td');
+                    for (let i = 0; i < tds.length; i++) {
+                        const td = tds[i];
+                        const hasTaskLink = td.querySelector('a[href*="task?id="], a[href*="/task?id="], a[href*="?id="]');
+                        const html = (td.innerHTML || '').trim();
+                        if (hasTaskLink && html.length > 40) {
+                            contentCell = td;
+                            break;
+                        }
+                    }
+                }
+                if (!contentCell) return;
+                const detailsCell = row.querySelector('span.details');
+                const fileLinks = row.querySelectorAll('a[href*="/file/"]');
+                const contentHtml = (contentCell.innerHTML || '').trim();
+                if (contentHtml.length < 10) return;
                 const details = detailsCell ? detailsCell.textContent.trim() : '';
                 const files = [];
                 fileLinks.forEach(link => {
-                    const href = link.getAttribute('href') || '';
+                    const h = link.getAttribute('href') || '';
                     const text = link.textContent.trim();
-                    files.push({ href: href, text: text });
+                    files.push({ href: h, text: text });
                 });
                 let answer = '';
-                const answerCell = row.querySelector('td:nth-child(2) .answer, td:nth-child(2) [class*="answer"], td:nth-child(2) [id*="answer"]');
-                if (answerCell) {
-                    answer = answerCell.textContent.trim() || answerCell.innerText.trim();
+                const taskTd = contentCell.closest('td');
+                if (taskTd) {
+                    const answerCell = taskTd.querySelector('.answer, [class*="answer"], [id*="answer"]');
+                    if (answerCell) {
+                        answer = (answerCell.textContent || answerCell.innerText || '').trim();
+                    }
+                }
+                if (!answer) {
+                    const ac = row.querySelector('.answer, [class*="answer"]');
+                    if (ac) answer = (ac.textContent || ac.innerText || '').trim();
                 }
                 const showAnswerBtn = row.querySelector('button[onclick*="answer"], button[onclick*="Ответ"], .show-answer, [class*="show-answer"]');
                 if (showAnswerBtn && !answer) {
