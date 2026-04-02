@@ -157,10 +157,10 @@
 }
 
 /*
- * Комната, главная, задания, теория, аналитика:
+ * Комната, главная, задания, теория, аналитика, урок (lesson_homework), сдача работы:
  * эталон Airy Dark — глубокий чёрный, насыщенные акценты.
  */
-html[data-theme="dark"][data-student-room="1"], html[data-theme="dark"][data-student-dashboard="1"], html[data-theme="dark"][data-student-assignments="1"], html[data-theme="dark"][data-student-theory="1"], html[data-theme="dark"][data-student-analytics="1"] {
+html[data-theme="dark"][data-student-room="1"], html[data-theme="dark"][data-student-dashboard="1"], html[data-theme="dark"][data-student-assignments="1"], html[data-theme="dark"][data-student-theory="1"], html[data-theme="dark"][data-student-analytics="1"], html[data-theme="dark"][data-student-lesson-room="1"], html[data-theme="dark"][data-student-submission="1"] {
   --color-bg-app: #000000;
   --color-bg-surface: #131316;
   --color-bg-surface-alt: #18181b;
@@ -173,7 +173,7 @@ html[data-theme="dark"][data-student-room="1"], html[data-theme="dark"][data-stu
   --color-stroke: #27272a;
 }
 
-html[data-theme="dark"][data-student-room="1"] body::before, html[data-theme="dark"][data-student-dashboard="1"] body::before, html[data-theme="dark"][data-student-assignments="1"] body::before, html[data-theme="dark"][data-student-theory="1"] body::before, html[data-theme="dark"][data-student-analytics="1"] body::before {
+html[data-theme="dark"][data-student-room="1"] body::before, html[data-theme="dark"][data-student-dashboard="1"] body::before, html[data-theme="dark"][data-student-assignments="1"] body::before, html[data-theme="dark"][data-student-theory="1"] body::before, html[data-theme="dark"][data-student-analytics="1"] body::before, html[data-theme="dark"][data-student-lesson-room="1"] body::before, html[data-theme="dark"][data-student-submission="1"] body::before {
   opacity: 0.38;
   filter: blur(96px);
   background:
@@ -182,12 +182,12 @@ html[data-theme="dark"][data-student-room="1"] body::before, html[data-theme="da
     radial-gradient(circle at 52% 92%, rgba(251, 113, 133, 0.12), transparent 48%);
 }
 
-html[data-theme="dark"][data-student-room="1"] body::after, html[data-theme="dark"][data-student-dashboard="1"] body::after, html[data-theme="dark"][data-student-assignments="1"] body::after, html[data-theme="dark"][data-student-theory="1"] body::after, html[data-theme="dark"][data-student-analytics="1"] body::after {
+html[data-theme="dark"][data-student-room="1"] body::after, html[data-theme="dark"][data-student-dashboard="1"] body::after, html[data-theme="dark"][data-student-assignments="1"] body::after, html[data-theme="dark"][data-student-theory="1"] body::after, html[data-theme="dark"][data-student-analytics="1"] body::after, html[data-theme="dark"][data-student-lesson-room="1"] body::after, html[data-theme="dark"][data-student-submission="1"] body::after {
   opacity: 0.18;
   filter: blur(120px);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock, html[data-theme="dark"][data-student-lesson-room="1"] .layout-student .dock, html[data-theme="dark"][data-student-submission="1"] .layout-student .dock {
   background: rgba(9, 9, 11, 0.72);
   border-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
@@ -195,41 +195,204 @@ html[data-theme="dark"][data-student-room="1"] .layout-student .dock, html[data-
   -webkit-backdrop-filter: blur(24px);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-lesson-room="1"] .layout-student .dock-nav, html[data-theme="dark"][data-student-submission="1"] .layout-student .dock-nav {
   background: transparent;
   border: none;
   box-shadow: none;
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-lesson-room="1"] .layout-student .dock-nav-item, html[data-theme="dark"][data-student-submission="1"] .layout-student .dock-nav-item {
   color: #a1a1aa;
   border: 1px solid transparent;
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item:hover {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-lesson-room="1"] .layout-student .dock-nav-item:hover, html[data-theme="dark"][data-student-submission="1"] .layout-student .dock-nav-item:hover {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.06);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item.active {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-lesson-room="1"] .layout-student .dock-nav-item.active, html[data-theme="dark"][data-student-submission="1"] .layout-student .dock-nav-item.active {
   background: rgba(255, 255, 255, 0.1);
   color: #8b5cf6;
   border-color: rgba(255, 255, 255, 0.06);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item.active i {
+html[data-theme="dark"][data-student-room="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-lesson-room="1"] .layout-student .dock-nav-item.active i, html[data-theme="dark"][data-student-submission="1"] .layout-student .dock-nav-item.active i {
   color: #8b5cf6;
 }
 
-html[data-theme="dark"][data-student-room="1"] .dock-brand-text, html[data-theme="dark"][data-student-dashboard="1"] .dock-brand-text, html[data-theme="dark"][data-student-assignments="1"] .dock-brand-text, html[data-theme="dark"][data-student-theory="1"] .dock-brand-text, html[data-theme="dark"][data-student-analytics="1"] .dock-brand-text {
+html[data-theme="dark"][data-student-room="1"] .dock-brand-text, html[data-theme="dark"][data-student-dashboard="1"] .dock-brand-text, html[data-theme="dark"][data-student-assignments="1"] .dock-brand-text, html[data-theme="dark"][data-student-theory="1"] .dock-brand-text, html[data-theme="dark"][data-student-analytics="1"] .dock-brand-text, html[data-theme="dark"][data-student-lesson-room="1"] .dock-brand-text, html[data-theme="dark"][data-student-submission="1"] .dock-brand-text {
   color: #ffffff;
 }
 
-html[data-theme="dark"][data-student-room="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-dashboard="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-assignments="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-theory="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-analytics="1"] .student-mentor-gradient {
+html[data-theme="dark"][data-student-room="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-dashboard="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-assignments="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-theory="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-analytics="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-lesson-room="1"] .student-mentor-gradient, html[data-theme="dark"][data-student-submission="1"] .student-mentor-gradient {
   background-color: #131316 !important;
   background-image: none !important;
   border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Конспект урока: карточка шапки и вкладки в том же «rim», что и остальной Airy Dark */
+html[data-theme="dark"][data-student-lesson-room="1"] .lesson-header {
+  border-bottom-width: 1px;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+html[data-theme="dark"][data-student-lesson-room="1"] .lesson-tabs {
+  background: rgba(19, 19, 22, 0.88) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+/*
+ * Выполнение работы (submission_view): перебиваем белые !important из встроенного <style>
+ */
+html[data-theme="dark"][data-student-submission="1"] body {
+  background: var(--color-bg-app) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .submission-back-link {
+  background: rgba(19, 19, 22, 0.72) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-text-muted) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .submission-back-link:hover {
+  color: #c4b5fd !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .submission-type-chip {
+  background: rgba(139, 92, 246, 0.22) !important;
+  color: #c4b5fd !important;
+  border-color: rgba(139, 92, 246, 0.38) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .submission-header {
+  background: var(--color-bg-surface) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .submission-header h1 {
+  color: var(--color-text-primary) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .meta-label,
+html[data-theme="dark"][data-student-submission="1"] .task-nav-label {
+  color: var(--color-text-muted) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .meta-value {
+  color: var(--color-text-primary) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .hero-metrics {
+  border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .hero-metrics > div + div {
+  border-left-color: rgba(255, 255, 255, 0.1) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .status-pill {
+  background: var(--color-bg-inset) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-text-secondary) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-nav {
+  background: var(--color-bg-surface) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-nav-btn {
+  background: var(--color-bg-inset) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-text-muted) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-nav-btn:hover {
+  border-color: rgba(139, 92, 246, 0.45) !important;
+  background: rgba(139, 92, 246, 0.12) !important;
+  color: #c4b5fd !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-nav-btn.active {
+  background: #7b5cff !important;
+  color: #fff !important;
+  border-color: #7b5cff !important;
+  box-shadow: inset 0 -3px 0 rgba(74, 29, 150, 0.45) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-card {
+  background: var(--color-bg-surface) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-card.task-correct {
+  border-color: rgba(34, 211, 238, 0.45) !important;
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-card.task-incorrect {
+  border-color: rgba(251, 113, 133, 0.45) !important;
+  box-shadow: 0 0 16px rgba(251, 113, 133, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-card.task-pending-review {
+  border-color: rgba(251, 191, 36, 0.4) !important;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-header {
+  background: var(--color-bg-inset) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-number {
+  color: #c4b5fd !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-score {
+  color: var(--color-text-muted) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-content {
+  color: var(--color-text-secondary) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-content .katex {
+  color: var(--color-text-primary);
+}
+html[data-theme="dark"][data-student-submission="1"] .answer-input {
+  background: var(--color-bg-inset) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: var(--color-text-primary) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .answer-input:focus {
+  border-color: rgba(139, 92, 246, 0.55) !important;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-input {
+  background: var(--color-bg-surface) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .submit-section {
+  background: rgba(19, 19, 22, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.55) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .correct-answer-block {
+  background: rgba(34, 211, 238, 0.1) !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .correct-answer-block .correct-answer-label {
+  color: #5eead4 !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .correct-answer-block .correct-answer-value {
+  color: var(--color-text-primary) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .locked-card__icon {
+  background: var(--color-bg-inset) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-text-muted) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .locked-card__title {
+  color: var(--color-text-primary) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .locked-card__text {
+  color: var(--color-text-muted) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .locked-card__fake {
+  background: var(--color-bg-inset) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: var(--color-text-muted) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .code-editor-wrap {
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /*

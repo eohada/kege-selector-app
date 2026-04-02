@@ -1,6 +1,6 @@
 {% from '_ui_icon.html' import ui_icon %}
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-student-submission="1">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +13,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=2.8">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
@@ -517,19 +517,19 @@
         })();
     </script>
 </head>
-<body data-cinema-scene="submission-work">
+<body data-cinema-scene="submission-work" class="{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student {% endif %}min-h-screen">
     <div class="app-layout">
         {% set active_page = 'assignments' %}
         {% include '_dock_nav.html' %}
     <div class="app-main">
         <main class="app-content" style="margin-top: 1.25rem; max-width: 1000px; margin-left: auto; margin-right: auto; padding-bottom: 120px;">
-        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
+        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
         <div class="submission-header">
             {% set should_hide_tasks = assignment.hide_before_start and submission.status == 'ASSIGNED' and not submission.started_at %}
             <div class="hero-grid">
                 <div>
                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:.5rem;">
-                        <span style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:8px; padding:4px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.08em;">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else 'Проверочная') }}</span>
+                        <span class="submission-type-chip" style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:8px; padding:4px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.08em;">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else 'Проверочная') }}</span>
                         <span style="font-size:14px; color:#94a3b8; font-weight:800;">#{{ assignment.assignment_id }}</span>
                     </div>
                     <div class="meta-value">{{ assignment.title }}</div>
@@ -593,7 +593,7 @@
                 <div class="task-header">
                     <div style="display:flex; align-items:center; gap:.6rem;">
                         <span class="task-number">Задание {{ loop.index }}</span>
-                        <span style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.04em;">{{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }}</span>
+                        <span class="submission-type-chip submission-score-chip" style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.04em;">{{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }}</span>
                     </div>
                     <div style="color:#94a3b8;"><i class="ph-bold ph-warning-circle"></i></div>
                 </div>
@@ -1613,6 +1613,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
     <script>if (typeof window._initReadonlyEditors === 'function') window._initReadonlyEditors();</script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
+    <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
     <script>
         document.querySelectorAll('.task-nav-btn').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
