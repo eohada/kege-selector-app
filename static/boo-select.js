@@ -8,7 +8,13 @@
     var opts = {
       create: false,
       allowEmptyOption: true,
-      dropdownParent: typeof document !== 'undefined' ? document.body : null,
+      /*
+       * Только строка 'body': в Tom Select positionDropdown() сравнивает
+       * settings.dropdownParent === 'body' и только тогда задаёт top/left/width.
+       * При document.body (HTMLElement) ветка не срабатывает — dropdown остаётся
+       * с top:100% от body и уезжает за пределы экрана (список «пустой»).
+       */
+      dropdownParent: 'body',
     };
 
     if (!el.multiple) {
