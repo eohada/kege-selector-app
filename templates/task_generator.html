@@ -73,6 +73,32 @@
     .gen-tabs-bar {
         scrollbar-width: thin;
     }
+    .gen-tab-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.5rem;
+        height: 1.5rem;
+        padding: 0 0.35rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 900;
+        background: rgb(226 232 240);
+        color: rgb(71 85 105);
+        flex-shrink: 0;
+    }
+    .gen-tab-btn[aria-selected="true"] .gen-tab-num {
+        background: rgba(255, 255, 255, 0.28);
+        color: #fff;
+    }
+    [data-theme="dark"] .gen-tab-num {
+        background: rgba(148, 163, 184, 0.25);
+        color: rgb(226 232 240);
+    }
+    [data-theme="dark"] .gen-tab-btn[aria-selected="true"] .gen-tab-num {
+        background: rgba(255, 255, 255, 0.28);
+        color: #fff;
+    }
     .gen-tab-btn {
         flex: 1 1 auto;
         min-height: 3rem;
@@ -83,8 +109,8 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.35rem;
-        padding: 0.5rem 1rem;
+        gap: 0.45rem;
+        padding: 0.5rem 0.75rem;
         border: 1px solid rgb(226 232 240);
         background: rgb(255 255 255);
         color: rgb(71 85 105);
@@ -167,6 +193,21 @@
 {% endif %}
 
 <div class="w-full max-w-[1600px] mx-auto px-3 sm:px-5 pb-10 gen-layout-root">
+    <div class="gen-tabs-bar flex flex-wrap sm:flex-nowrap gap-2 p-1.5 rounded-2xl bg-slate-100/90 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-600/60 mb-6" role="tablist" aria-label="Разделы генератора (нумерованные шаги)">
+        <button type="button" class="gen-tab-btn" role="tab" id="gen-tab-stream" aria-controls="gen-panel-stream" aria-selected="{{ 'true' if initial_gen_tab == 'stream' else 'false' }}" data-gen-tab="stream">
+            <span class="gen-tab-num" aria-hidden="true">1</span>
+            <i class="ph-bold ph-play-circle text-lg shrink-0" aria-hidden="true"></i><span class="whitespace-nowrap">Поток</span>
+        </button>
+        <button type="button" class="gen-tab-btn" role="tab" id="gen-tab-manual" aria-controls="gen-panel-manual" aria-selected="{{ 'true' if initial_gen_tab == 'manual' else 'false' }}" data-gen-tab="manual">
+            <span class="gen-tab-num" aria-hidden="true">2</span>
+            <i class="ph-bold ph-pencil-line text-lg shrink-0" aria-hidden="true"></i><span class="whitespace-nowrap">Новое в банк</span>
+        </button>
+        <button type="button" class="gen-tab-btn" role="tab" id="gen-tab-bank" aria-controls="gen-panel-bank" aria-selected="{{ 'true' if initial_gen_tab == 'bank' else 'false' }}" data-gen-tab="bank">
+            <span class="gen-tab-num" aria-hidden="true">3</span>
+            <i class="ph-bold ph-books text-lg shrink-0" aria-hidden="true"></i><span class="whitespace-nowrap">База заданий</span>
+        </button>
+    </div>
+
     <header class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-200/80 shadow-tactile p-6 sm:p-8 mb-6">
         <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
             <div class="flex items-start gap-4 min-w-0">
@@ -189,18 +230,6 @@
             </div>
         </div>
     </header>
-
-    <div class="gen-tabs-bar flex flex-wrap sm:flex-nowrap gap-2 p-1.5 rounded-2xl bg-slate-100/90 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-600/60 mb-6" role="tablist" aria-label="Разделы генератора">
-        <button type="button" class="gen-tab-btn" role="tab" id="gen-tab-stream" aria-controls="gen-panel-stream" aria-selected="{{ 'true' if initial_gen_tab == 'stream' else 'false' }}" data-gen-tab="stream">
-            <i class="ph-bold ph-play-circle text-lg shrink-0" aria-hidden="true"></i><span class="whitespace-nowrap">Поток</span>
-        </button>
-        <button type="button" class="gen-tab-btn" role="tab" id="gen-tab-manual" aria-controls="gen-panel-manual" aria-selected="{{ 'true' if initial_gen_tab == 'manual' else 'false' }}" data-gen-tab="manual">
-            <i class="ph-bold ph-pencil-line text-lg shrink-0" aria-hidden="true"></i><span class="whitespace-nowrap">Новое в банк</span>
-        </button>
-        <button type="button" class="gen-tab-btn" role="tab" id="gen-tab-bank" aria-controls="gen-panel-bank" aria-selected="{{ 'true' if initial_gen_tab == 'bank' else 'false' }}" data-gen-tab="bank">
-            <i class="ph-bold ph-books text-lg shrink-0" aria-hidden="true"></i><span class="whitespace-nowrap">База заданий</span>
-        </button>
-    </div>
 
     <div id="gen-panel-stream" class="gen-tab-panel space-y-6{% if initial_gen_tab != 'stream' %} hidden{% endif %}" role="tabpanel" aria-labelledby="gen-tab-stream"{% if initial_gen_tab != 'stream' %} hidden{% endif %}>
     <div class="grid lg:grid-cols-12 gap-6 lg:gap-8 items-start">
@@ -1038,6 +1067,29 @@
         });
 
         document.getElementById('gen-bank-panel')?.addEventListener('click', async (e) => {
+            const delBtn = e.target.closest('.bank-task-delete-btn');
+            if (delBtn) {
+                const card = delBtn.closest('.bank-task-card');
+                if (!card) return;
+                const taskIdRaw = card.getAttribute('data-task-id');
+                const taskId = parseInt(taskIdRaw, 10);
+                if (!taskId) return;
+                const sure = window.confirm(
+                    `Удалить задание #${taskId} из базы безвозвратно?\n\nБудут удалены связи с уроками, шаблонами, работами (если есть) и история использования этой задачи. Действие нельзя отменить.`
+                );
+                if (!sure) return;
+                delBtn.disabled = true;
+                try {
+                    await postJSON(`/task-generator/bank/${taskId}/delete`, { confirm_task_id: taskId });
+                    if (window.toast) window.toast.success('Задание удалено');
+                    window.location.reload();
+                } catch (err) {
+                    if (window.toast) window.toast.error(err.message || 'Ошибка удаления');
+                    delBtn.disabled = false;
+                }
+                return;
+            }
+
             const btn = e.target.closest('.bank-task-save-btn');
             if (!btn) return;
             const card = btn.closest('.bank-task-card');

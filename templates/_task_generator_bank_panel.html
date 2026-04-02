@@ -46,7 +46,7 @@
             <article class="bank-task-card rounded-[24px] border border-slate-200 border-b-[3px] border-b-slate-200/80 bg-surface shadow-sm overflow-hidden"
                      data-task-id="{{ t.task_id }}">
                 <div class="px-5 py-4 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
-                    <div class="flex flex-wrap items-center gap-2 min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 min-w-0 flex-1">
                         <span class="font-mono font-black text-boo-primary text-sm">#{{ t.task_id }}</span>
                         <span class="text-muted text-sm font-bold truncate max-w-[200px]" title="{{ t.course.title if t.course else '' }}">{{ t.course.title if t.course else '—' }}</span>
                         <span class="text-xs font-black text-secondary bg-surface-alt border border-slate-200 rounded-lg px-2 py-0.5">№{{ t.task_number }}</span>
@@ -58,6 +58,12 @@
                         {% if t.site_task_id %}
                         <span class="text-[10px] font-mono text-muted truncate max-w-[180px] md:max-w-xs" title="{{ t.site_task_id }}">{{ t.site_task_id }}</span>
                         {% endif %}
+                    </div>
+                    <div class="shrink-0 w-full sm:w-auto flex justify-end">
+                        <button type="button" class="bank-task-delete-btn neo-button danger text-xs py-2 px-3 whitespace-nowrap w-full sm:w-auto justify-center"
+                                title="Безвозвратно удалить задание и очистить связи в БД">
+                            <i class="ph-bold ph-trash" aria-hidden="true"></i> Удалить из базы
+                        </button>
                     </div>
                 </div>
 

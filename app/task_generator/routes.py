@@ -8,13 +8,32 @@ import re
 import uuid
 from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
-from sqlalchemy import or_, func, text
+from sqlalchemy import or_, func, text, delete
 from sqlalchemy.orm import joinedload
 
 from app.task_generator import task_generator_bp
 from app.task_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
-from app.models import Lesson, Tasks, LessonTask, StudentTaskSeen, UsageHistory, db
-from app.models import TaskTemplate, TemplateTask, Course, CourseTaskTemplate, TaskSolution
+from app.models import (
+    Lesson,
+    Tasks,
+    LessonTask,
+    StudentTaskSeen,
+    UsageHistory,
+    db,
+    TaskTemplate,
+    TemplateTask,
+    Course,
+    CourseTaskTemplate,
+    TaskSolution,
+    SkippedTasks,
+    BlacklistTasks,
+    TaskReview,
+    AssignmentTask,
+    TrainerSession,
+    TrainerLlmLog,
+    AnalyticsEvent,
+    task_topics,
+)
 from app.auth.rbac_utils import has_permission
 from core.selector_logic import (
     get_unique_tasks, record_usage, record_skipped, record_blacklist,
@@ -465,6 +484,34 @@ def _get_triplet_task_ids(task: Tasks):
         return [t.task_id for t in trio]
     except Exception:
         return None
+
+
+def _purge_task_dependencies(task_id: int) -> None:
+    """
+    Удаляет/отвязывает все ссылки на задание перед удалением строки Tasks.
+    Вызывать внутри одной транзакции с последующим db.session.delete(task).
+    """
+    db.session.execute(delete(task_topics).where(task_topics.c.task_id == task_id))
+    UsageHistory.query.filter_by(task_fk=task_id).delete(synchronize_session=False)
+    SkippedTasks.query.filter_by(task_fk=task_id).delete(synchronize_session=False)
+    BlacklistTasks.query.filter_by(task_fk=task_id).delete(synchronize_session=False)
+    for lt in LessonTask.query.filter_by(task_id=task_id).all():
+        db.session.delete(lt)
+    TemplateTask.query.filter_by(task_id=task_id).delete(synchronize_session=False)
+    for at in AssignmentTask.query.filter_by(task_id=task_id).all():
+        db.session.delete(at)
+    TaskReview.query.filter_by(task_id=task_id).delete(synchronize_session=False)
+    TaskSolution.query.filter_by(task_id=task_id).delete(synchronize_session=False)
+    StudentTaskSeen.query.filter_by(task_id=task_id).delete(synchronize_session=False)
+    TrainerSession.query.filter_by(task_id=task_id).update(
+        {'task_id': None}, synchronize_session=False
+    )
+    TrainerLlmLog.query.filter_by(task_id=task_id).update(
+        {'task_id': None}, synchronize_session=False
+    )
+    AnalyticsEvent.query.filter_by(task_id=task_id).update(
+        {'task_id': None}, synchronize_session=False
+    )
 
 
 def _task_to_payload(task: Tasks):
@@ -1071,6 +1118,48 @@ def task_generator_bank_save(task_id: int):
         'answer': task.answer,
         'difficulty_level': task.difficulty_level,
     })
+
+
+@task_generator_bp.route('/task-generator/bank/<int:task_id>/delete', methods=['POST'])
+@login_required
+def task_generator_bank_delete(task_id: int):
+    """Полное удаление задания из таблицы Tasks (с очисткой зависимостей)."""
+    _require_task_generator_access()
+    data = request.get_json(silent=True) or {}
+    try:
+        confirm = int(data.get('confirm_task_id'))
+    except (TypeError, ValueError):
+        confirm = None
+    if confirm != task_id:
+        return jsonify({
+            'success': False,
+            'error': 'Подтвердите удаление: в теле запроса укажите confirm_task_id, совпадающий с ID в URL.',
+        }), 400
+
+    task = Tasks.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+
+    try:
+        _purge_task_dependencies(task_id)
+        db.session.delete(task)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.exception('task_generator_bank_delete failed')
+        return jsonify({
+            'success': False,
+            'error': str(e) or 'Не удалось удалить задание (возможны связи в БД).',
+        }), 500
+
+    audit_logger.log(
+        action='bank_delete_task',
+        entity='Task',
+        entity_id=task_id,
+        status='success',
+        metadata={},
+    )
+    return jsonify({'success': True, 'task_id': task_id})
 
 
 @task_generator_bp.route('/task-generator/bank', methods=['GET'])
