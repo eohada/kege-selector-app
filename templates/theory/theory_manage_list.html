@@ -43,7 +43,8 @@
       position: sticky; 
       top: 0; 
       z-index: 40; 
-      background: linear-gradient(180deg, rgba(255,255,255,1) 85%, rgba(255,255,255,0) 100%);
+      /* Используем цвета темы, чтобы не появлялась "белая полоса" на тёмном визуале */
+      background: linear-gradient(180deg, var(--color-bg-surface, #ffffff) 85%, transparent 100%);
       padding-top: 16px;
       padding-bottom: 24px;
   }
@@ -303,7 +304,7 @@
             
             <!-- ИДЕАЛЬНЫЙ ШИРОКИЙ ТУЛБАР -->
             <div class="sticky-toolbar-wrapper">
-              <div class="bg-surface border border-slate-200 rounded-[20px] p-2 shadow-sm dark:shadow-none dark:shadow-none flex flex-nowrap items-center justify-start gap-2 lg:gap-3 w-full transition-shadow overflow-x-auto hide-scroll">
+              <div class="bg-surface border border-slate-200 rounded-[20px] p-2 shadow-sm dark:shadow-none dark:shadow-none flex flex-wrap items-center justify-start gap-2 lg:gap-3 w-full transition-shadow overflow-x-visible">
                 
                 <div class="flex items-center gap-1">
                   <button type="button" class="theory-toolbar-btn icon-only" data-format="h2" title="Заголовок 2"><span class="font-serif text-[15px] font-bold">H₂</span></button>

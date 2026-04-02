@@ -99,8 +99,8 @@ def _render_theory_content_html(content_value):
             f'<div class="theory-callout theory-callout--{html.escape(ctype)} my-8 rounded-[24px] p-6 flex gap-4 shadow-sm" style="background:{theme["bg"]};border:1px solid {theme["border"]};">'
             f'<div class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center shadow-sm" style="background:{theme["icon_bg"]};color:{theme["icon_color"]};border:1px solid {theme["border"]};">'
             f'<i class="{theme["icon"]} text-xl"></i></div>'
-            f'<div><h4 class="font-black text-[46px] leading-[1.05] text-slate-900 mb-1">{theme["title"]}</h4>'
-            f'<p class="text-[38px] leading-[1.35] font-extrabold text-slate-800 uppercase">{body}</p></div>'
+            f'<div><h4 class="font-black text-2xl leading-snug text-slate-900 mb-1">{theme["title"]}</h4>'
+            f'<p class="text-sm leading-relaxed font-extrabold text-slate-800 uppercase tracking-wide">{body}</p></div>'
             '</div>'
         )
 
