@@ -26,6 +26,14 @@
     }
 
     opts.onDropdownOpen = function () {
+      /* Tom Select кладёт в control_input текст/метку выбранного пункта; Sifter фильтрует по нему.
+         Для «Все типы» и т.п. это отсекает все опции — список пустой при открытии. */
+      if (!el.multiple) {
+        try {
+          this.setTextboxValue('');
+          if (typeof this.refreshOptions === 'function') this.refreshOptions(false);
+        } catch (e) {}
+      }
       var w = this.wrapper || (this.control && this.control.closest && this.control.closest('.ts-wrapper'));
       if (w) w.classList.add('boo-select-open');
     };
