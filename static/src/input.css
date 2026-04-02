@@ -160,7 +160,47 @@
 [data-theme="dark"] .text-slate-400 { color: var(--color-text-muted) !important; }
 [data-theme="dark"] .border-slate-200,
 [data-theme="dark"] .border-slate-300 { border-color: var(--color-stroke) !important; }
+[data-theme="dark"] .border-b-slate-200,
+[data-theme="dark"] .border-b-slate-300 { border-bottom-color: var(--color-stroke) !important; }
+[data-theme="dark"] .border-b-orange-300 { border-bottom-color: rgba(251, 191, 36, 0.30) !important; }
 [data-theme="dark"] .shadow-sm { box-shadow: none !important; }
+
+/* Extra legacy overrides: Tailwind light utilities with opacity & variant suffixes */
+[data-theme="dark"] [class*="bg-white/"] { background-color: rgba(255, 255, 255, 0.04) !important; }
+[data-theme="dark"] [class*="bg-slate-50/"] { background-color: rgba(255, 255, 255, 0.03) !important; }
+[data-theme="dark"] [class*="bg-slate-100/"] { background-color: rgba(255, 255, 255, 0.04) !important; }
+
+[data-theme="dark"] [class*="bg-orange-50"] { background-color: rgba(251, 191, 36, 0.10) !important; }
+[data-theme="dark"] [class*="bg-orange-100"] { background-color: rgba(251, 191, 36, 0.08) !important; }
+[data-theme="dark"] [class*="bg-blue-50"] { background-color: rgba(34, 211, 238, 0.10) !important; }
+[data-theme="dark"] [class*="bg-green-50"] { background-color: rgba(34, 211, 238, 0.10) !important; }
+[data-theme="dark"] [class*="bg-purple-50"] { background-color: rgba(139, 92, 246, 0.12) !important; }
+[data-theme="dark"] [class*="bg-red-50"] { background-color: rgba(251, 113, 133, 0.10) !important; }
+
+/* Border color harmonization for legacy light accents */
+[data-theme="dark"] [class*="border-slate-200"] { border-color: var(--color-stroke) !important; }
+[data-theme="dark"] [class*="border-slate-300"] { border-color: var(--color-stroke) !important; }
+[data-theme="dark"] [class*="border-orange-200"] { border-color: rgba(251, 191, 36, 0.30) !important; }
+[data-theme="dark"] [class*="border-orange-100"] { border-color: rgba(251, 191, 36, 0.25) !important; }
+[data-theme="dark"] [class*="border-blue-100"] { border-color: rgba(34, 211, 238, 0.25) !important; }
+[data-theme="dark"] [class*="border-green-100"] { border-color: rgba(34, 211, 238, 0.25) !important; }
+[data-theme="dark"] [class*="border-purple-100"] { border-color: rgba(139, 92, 246, 0.25) !important; }
+
+/* Text color harmonization for common light-utility grays */
+[data-theme="dark"] .text-slate-300,
+[data-theme="dark"] .text-slate-200 { color: var(--color-text-muted) !important; }
+[data-theme="dark"] .text-slate-100,
+[data-theme="dark"] .text-slate-50 { color: var(--color-text-secondary) !important; }
+
+/* Text harmonization for common light accent colors */
+[data-theme="dark"] .text-orange-600,
+[data-theme="dark"] .text-orange-500 { color: var(--color-warning) !important; }
+[data-theme="dark"] .text-orange-300 { color: var(--color-warning) !important; }
+
+[data-theme="dark"] .text-blue-500,
+[data-theme="dark"] .text-blue-400 { color: var(--color-success) !important; }
+[data-theme="dark"] .text-green-600,
+[data-theme="dark"] .text-green-500 { color: var(--color-success) !important; }
 
 /* ============================================================
    @layer base
