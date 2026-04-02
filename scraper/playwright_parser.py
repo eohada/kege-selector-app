@@ -19,6 +19,122 @@ MAIN_PAGE_URL = f"{SITE_DOMAIN}/task"
 ROBOTS_URL = f"{SITE_DOMAIN}/robots.txt"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
 
+# Скрипт для evaluate: строки таблицы заданий (главный документ или iframe).
+KOMPEGE_LISTING_EXTRACT_JS = r"""
+() => {
+    const rows = document.querySelectorAll('table tbody tr');
+    const result = [];
+    rows.forEach(row => {
+        const idLink = row.querySelector(
+            'a[href*="task?id="], a[href*="/task?id="], a[href^="task?id="], a[href*="?id="], a[href*="/task/"]'
+        );
+        if (!idLink) return;
+        const href = idLink.getAttribute('href') || '';
+        let idMatch = href.match(/[?&]id=(\d+)/);
+        if (!idMatch) idMatch = href.match(/\/task\/(\d+)/i);
+        if (!idMatch) return;
+        const taskId = idMatch[1];
+        let contentCell = row.querySelector('div.task-text');
+        if (!contentCell) {
+            const tds = row.querySelectorAll('td');
+            for (let i = 0; i < tds.length; i++) {
+                const td = tds[i];
+                const hasTaskLink = td.querySelector(
+                    'a[href*="task?id="], a[href*="/task?id="], a[href*="?id="], a[href*="/task/"]'
+                );
+                const html = (td.innerHTML || '').trim();
+                if (hasTaskLink && html.length > 40) {
+                    contentCell = td;
+                    break;
+                }
+            }
+        }
+        if (!contentCell) return;
+        const detailsCell = row.querySelector('span.details');
+        const fileLinks = row.querySelectorAll('a[href*="/file/"]');
+        const contentHtml = (contentCell.innerHTML || '').trim();
+        if (contentHtml.length < 10) return;
+        const details = detailsCell ? detailsCell.textContent.trim() : '';
+        const files = [];
+        fileLinks.forEach(link => {
+            const h = link.getAttribute('href') || '';
+            const text = link.textContent.trim();
+            files.push({ href: h, text: text });
+        });
+        let answer = '';
+        const taskTd = contentCell.closest('td');
+        if (taskTd) {
+            const answerCell = taskTd.querySelector('.answer, [class*="answer"], [id*="answer"]');
+            if (answerCell) {
+                answer = (answerCell.textContent || answerCell.innerText || '').trim();
+            }
+        }
+        if (!answer) {
+            const ac = row.querySelector('.answer, [class*="answer"]');
+            if (ac) answer = (ac.textContent || ac.innerText || '').trim();
+        }
+        const showAnswerBtn = row.querySelector(
+            'button[onclick*="answer"], button[onclick*="Ответ"], .show-answer, [class*="show-answer"]'
+        );
+        if (showAnswerBtn && !answer) {
+            const answerNearBtn = showAnswerBtn.closest('td')?.querySelector('.answer-text, [class*="answer"]');
+            if (answerNearBtn) {
+                answer = answerNearBtn.textContent.trim();
+            }
+        }
+        result.push({
+            taskId: taskId,
+            contentHtml: contentHtml,
+            details: details,
+            files: files,
+            answer: answer
+        });
+    });
+    return result;
+}
+"""
+
+
+def _extract_listing_items_from_frame(frame) -> list:
+    return frame.evaluate(KOMPEGE_LISTING_EXTRACT_JS)
+
+
+def debug_kompege_listing_page(page: Page) -> None:
+    """
+    Диагностика DOM после «Найти все задачи»: фреймы, число tr, образец href, первые строки.
+    Запуск: python scripts/sync_kege_informatics_bank.py --tasks 1 --debug-dom
+    """
+    print("[debug-dom] ========== kompege listing DOM ==========")
+    for i, fr in enumerate(page.frames):
+        try:
+            info = fr.evaluate(
+                r"""() => {
+                const rows = document.querySelectorAll('table tbody tr');
+                const r0 = rows[0];
+                const links = [];
+                document.querySelectorAll('a[href]').forEach((a, j) => {
+                    if (j < 25) links.push(a.getAttribute('href'));
+                });
+                return {
+                    tr: rows.length,
+                    iframeN: document.querySelectorAll('iframe').length,
+                    row0slice: r0 ? r0.outerHTML.slice(0, 4000) : '',
+                    links25: links
+                };
+            }"""
+            )
+            url = getattr(fr, "url", "") or ""
+            print(f"[debug-dom] frame[{i}] url={url[:160]!r}")
+            print(f"  table tbody tr: {info.get('tr')}, iframe elements: {info.get('iframeN')}")
+            print(f"  first 12 hrefs: {info.get('links25', [])[:12]}")
+            rs = info.get("row0slice") or ""
+            if rs:
+                print(f"  first tr outerHTML (до 4000 симв.):\n{rs}")
+        except Exception as e:
+            print(f"[debug-dom] frame[{i}] error: {e}")
+    print("[debug-dom] =========================================")
+
+
 TASKS_TO_SCRAPE = {
     1: "1",
     2: "2",
@@ -402,75 +518,19 @@ def collect_kompege_listing_raw_items(page: Page, task_number: int, task_value_u
     print(f"[ETL] Данные для задания {task_number} загружены.")
 
     print("[ETL] Быстрый режим: извлекаем задания через evaluate()...")
-    # Вёрстка kompege.ru менялась (лишняя колонка, обёртки): ищем ссылку на задачу и .task-text по всей строке.
-    items = page.evaluate("""
-        () => {
-            const rows = document.querySelectorAll('table tbody tr');
-            const result = [];
-            rows.forEach(row => {
-                const idLink = row.querySelector(
-                    'a[href*="task?id="], a[href*="/task?id="], a[href^="task?id="], a[href*="?id="]'
-                );
-                if (!idLink) return;
-                const href = idLink.getAttribute('href') || '';
-                const idMatch = href.match(/[?&]id=(\\d+)/);
-                if (!idMatch) return;
-                const taskId = idMatch[1];
-                let contentCell = row.querySelector('div.task-text');
-                if (!contentCell) {
-                    const tds = row.querySelectorAll('td');
-                    for (let i = 0; i < tds.length; i++) {
-                        const td = tds[i];
-                        const hasTaskLink = td.querySelector('a[href*="task?id="], a[href*="/task?id="], a[href*="?id="]');
-                        const html = (td.innerHTML || '').trim();
-                        if (hasTaskLink && html.length > 40) {
-                            contentCell = td;
-                            break;
-                        }
-                    }
-                }
-                if (!contentCell) return;
-                const detailsCell = row.querySelector('span.details');
-                const fileLinks = row.querySelectorAll('a[href*="/file/"]');
-                const contentHtml = (contentCell.innerHTML || '').trim();
-                if (contentHtml.length < 10) return;
-                const details = detailsCell ? detailsCell.textContent.trim() : '';
-                const files = [];
-                fileLinks.forEach(link => {
-                    const h = link.getAttribute('href') || '';
-                    const text = link.textContent.trim();
-                    files.push({ href: h, text: text });
-                });
-                let answer = '';
-                const taskTd = contentCell.closest('td');
-                if (taskTd) {
-                    const answerCell = taskTd.querySelector('.answer, [class*="answer"], [id*="answer"]');
-                    if (answerCell) {
-                        answer = (answerCell.textContent || answerCell.innerText || '').trim();
-                    }
-                }
-                if (!answer) {
-                    const ac = row.querySelector('.answer, [class*="answer"]');
-                    if (ac) answer = (ac.textContent || ac.innerText || '').trim();
-                }
-                const showAnswerBtn = row.querySelector('button[onclick*="answer"], button[onclick*="Ответ"], .show-answer, [class*="show-answer"]');
-                if (showAnswerBtn && !answer) {
-                    const answerNearBtn = showAnswerBtn.closest('td')?.querySelector('.answer-text, [class*="answer"]');
-                    if (answerNearBtn) {
-                        answer = answerNearBtn.textContent.trim();
-                    }
-                }
-                result.push({
-                    taskId: taskId,
-                    contentHtml: contentHtml,
-                    details: details,
-                    files: files,
-                    answer: answer
-                });
-            });
-            return result;
-        }
-    """)
+    items = _extract_listing_items_from_frame(page.main_frame)
+    if not items:
+        for fr in page.frames:
+            if fr == page.main_frame:
+                continue
+            try:
+                alt = _extract_listing_items_from_frame(fr)
+                if alt:
+                    print(f"[ETL] Список заданий прочитан из iframe ({len(alt)} шт.): {getattr(fr, 'url', '')!r}")
+                    items = alt
+                    break
+            except Exception:
+                continue
     print(f"[ETL] Быстрый режим: получено {len(items)} записей.")
     return items
 

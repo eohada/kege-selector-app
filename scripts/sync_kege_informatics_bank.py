@@ -13,6 +13,7 @@
   --no-soft-delete  не помечать is_active=False у записей вне whitelist-пула
   --skip-attachments  не скачивать вложения на диск после upsert
   --tasks 1,2,19   только указанные номера заданий (подмножество TASKS_TO_SCRAPE)
+  --debug-dom      после первого типа заданий: дамп фреймов, tr, href, первый tr (прислать в поддержку при 0 записей)
 
 Требует: playwright + chromium (playwright install chromium).
 """
@@ -239,6 +240,11 @@ def main() -> int:
     parser.add_argument("--skip-attachments", action="store_true")
     parser.add_argument("--tasks", type=str, default="", help="Например: 1,2,19,27")
     parser.add_argument("--no-playwright-delay", action="store_true", help="Не ждать между типами заданий")
+    parser.add_argument(
+        "--debug-dom",
+        action="store_true",
+        help="После первого загруженного типа заданий вывести фреймы, tr, href и образец HTML (для отладки селекторов)",
+    )
     args = parser.parse_args()
 
     if args.backup_only:
@@ -266,6 +272,7 @@ def main() -> int:
         USER_AGENT as PW_UA,
         check_robots_txt,
         collect_kompege_listing_raw_items,
+        debug_kompege_listing_page,
         CRAWL_DELAY_SEC,
     )
 
@@ -335,10 +342,14 @@ def main() -> int:
                 return 4
 
             total_added = total_updated = total_skipped = 0
+            debug_dom_once = False
             for task_num, task_val in TASKS_TO_SCRAPE.items():
                 if task_filter is not None and task_num not in task_filter:
                     continue
                 raw = collect_kompege_listing_raw_items(page, task_num, task_val)
+                if args.debug_dom and not debug_dom_once and raw is not None:
+                    debug_kompege_listing_page(page)
+                    debug_dom_once = True
                 if raw is None:
                     continue
                 filtered = [it for it in raw if details_passes_whitelist(it.get("details"))]
