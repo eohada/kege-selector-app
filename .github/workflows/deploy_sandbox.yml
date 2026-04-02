@@ -15,9 +15,9 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # The deploy step failed with: "dial tcp ...:22: i/o timeout".
-          # appleboy/ssh-action expects these values in seconds (numbers), not duration strings.
-          timeout: 120
-          command_timeout: 1200
+          # Drone SSH parses these as Go durations and requires a unit (e.g. 120s, 20m).
+          # Bare numbers like 120 fail with: missing unit in duration "120".
+          timeout: 120s
+          command_timeout: 20m
           script: |
             /opt/boostudy/deploy_sandbox.sh
