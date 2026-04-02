@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Жёсткий whitelist источников по тексту span.details на kompege.ru (подстроки, lower-case).
+Жёсткий whitelist источников по тексту span.details / полю comment в API (подстроки, lower-case).
+
+Синк по умолчанию отбрасывает задачи без совпадения — на kompege у многих comment пустой или без
+слов «фипи», «статград» и т.д., поэтому «в пуле» может быть сильно меньше, чем строк в API.
+Полный импорт: scripts/sync_kege_informatics_bank.py --skip-whitelist (осознанно к soft-delete).
 """
 
 from __future__ import annotations
