@@ -89,7 +89,7 @@ class Tasks(db.Model):
     knowledge_node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='SET NULL'), nullable=True, index=True)
 
     # --- Фаза 0: сложность задачи и подсказки ---
-    # difficulty_level: 1–3 = Easy, 4–7 = Medium, 8–10 = Hard; NULL = не размечено (считать Medium)
+    # difficulty_level: 1 = лёгкий, 2 = средний, 3 = сложный; NULL = не размечено (считать средний)
     difficulty_level = db.Column(db.Integer, nullable=True, index=True)
     # hints: лестница подсказок; в PostgreSQL — JSONB (индексируемый), в SQLite — JSON
     hints = db.Column(JSONBCompat, nullable=True)
@@ -106,20 +106,17 @@ class Tasks(db.Model):
     # 1 = базовый, 2 = средний, 3 = сложный (как на сайте); NULL — до синка или не КЕГЭ
     kege_difficulty_tier = db.Column(db.Integer, nullable=True, index=True)
 
-    # --- Константы маппинга сложности ---
-    DIFFICULTY_EASY_MAX = 3      # 1–3 = Easy
-    DIFFICULTY_MEDIUM_MAX = 7    # 4–7 = Medium
-    DIFFICULTY_HARD_MIN = 8      # 8–10 = Hard
+    DIFFICULTY_LEVEL_EASY = 1
+    DIFFICULTY_LEVEL_MEDIUM = 2
+    DIFFICULTY_LEVEL_HARD = 3
 
     @property
     def difficulty_label(self) -> str:
-        """Человекочитаемая метка сложности: Easy / Medium / Hard."""
+        """Человекочитаемая метка сложности: easy / medium / hard."""
         v = self.difficulty_level
-        if v is None or 4 <= v <= 7:
-            return 'medium'
-        if 1 <= v <= 3:
+        if v == 1:
             return 'easy'
-        if v >= 8:
+        if v == 3:
             return 'hard'
         return 'medium'
 
@@ -598,7 +595,7 @@ class LessonTask(db.Model):
     status = db.Column(db.String(20), default='pending') # pending, submitted, graded, returned
     submission_files = db.Column(db.JSON, nullable=True) # Список путей к файлам
     teacher_comment = db.Column(db.Text, nullable=True) # Комментарий преподавателя к задаче
-    # Рейтинг задания в этой работе: 1–3 = лёгкий, 4–7 = средний, 8–10 = сложный. NULL = брать из Task.difficulty_level
+    # Рейтинг задания в этой работе: 1 = лёгкий, 2 = средний, 3 = сложный. NULL = брать из Task.difficulty_level
     difficulty_level = db.Column(db.Integer, nullable=True, index=True)
     # Время, потраченное учеником на это задание (сек). Передаётся с фронта при сдаче или фиксируется на бэке
     time_spent_sec = db.Column(db.Integer, nullable=True)
@@ -614,11 +611,9 @@ class LessonTask(db.Model):
     def difficulty_label(self) -> str:
         """Лёгкий / средний / сложный по difficulty_level (для отображения и аналитики)."""
         v = self.difficulty_level
-        if v is None or 4 <= v <= 7:
-            return 'medium'
-        if 1 <= v <= 3:
+        if v == 1:
             return 'easy'
-        if v >= 8:
+        if v == 3:
             return 'hard'
         return 'medium'
 

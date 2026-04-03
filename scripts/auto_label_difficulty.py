@@ -13,9 +13,9 @@
   - AnalyticsEvent.is_correct      (логи аналитики)
 
 Пороги:
-  correct_rate >= 0.80 → Easy  (difficulty_level = 2)
-  0.40 <= correct_rate < 0.80 → Medium (difficulty_level = 5)
-  correct_rate < 0.40 → Hard (difficulty_level = 9)
+  correct_rate >= 0.80 → Easy  (difficulty_level = 1)
+  0.40 <= correct_rate < 0.80 → Medium (difficulty_level = 2)
+  correct_rate < 0.40 → Hard (difficulty_level = 3)
 
 Запуск:
   python scripts/auto_label_difficulty.py [--dry-run] [--min-answers 3] [--force]
@@ -140,25 +140,21 @@ def gather_statistics(db_session):
 
 
 def correct_rate_to_difficulty(rate: float) -> int:
-    """Конвертирует процент правильных ответов в difficulty_level."""
+    """Конвертирует процент правильных ответов в difficulty_level (1–3)."""
     if rate >= 0.80:
-        return 2   # Easy
-    elif rate >= 0.40:
-        return 5   # Medium
-    else:
-        return 9   # Hard
+        return 1
+    if rate >= 0.40:
+        return 2
+    return 3
 
 
 def base_rating_to_difficulty(base_rating: float) -> int:
-    """Эвристика: конвертирует base_rating узла в difficulty_level (фоллбэк)."""
-    if base_rating <= 800:
-        return 3    # Easy
-    elif base_rating <= 1000:
-        return 5    # Medium
-    elif base_rating <= 1150:
-        return 7    # Medium-Hard
-    else:
-        return 9    # Hard
+    """Эвристика: base_rating узла → difficulty_level 1–3."""
+    if base_rating <= 900:
+        return 1
+    if base_rating <= 1050:
+        return 2
+    return 3
 
 
 def main():

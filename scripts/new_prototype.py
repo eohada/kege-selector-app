@@ -20,7 +20,7 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 PROTOTYPES_DIR = os.path.join(REPO_ROOT, 'data', 'reference_prototypes')
 TEMPLATE_PATH = os.path.join(PROTOTYPES_DIR, '_template_example.json')
 
-DIFFICULTY_LEVEL_MAP = {'easy': 2, 'medium': 5, 'hard': 9}
+DIFFICULTY_LEVEL_MAP = {'easy': 1, 'medium': 2, 'hard': 3}
 
 
 def next_available_name(dirpath: str, base: str = 'proto') -> str:

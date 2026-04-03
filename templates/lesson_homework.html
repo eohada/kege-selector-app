@@ -859,8 +859,8 @@
                                 <select class="neo-select" id="bulk_difficulty_level">
                                     <option value="">— не менять</option>
                                     <option value="1">Лёгкий</option>
-                                    <option value="5">Средний</option>
-                                    <option value="10">Сложный</option>
+                                    <option value="2">Средний</option>
+                                    <option value="3">Сложный</option>
                                 </select>
                                 <button type="button" class="neo-button ghost sm" onclick="applyBulkDifficultyLevel()">
                                     Применить ко всем
@@ -1304,9 +1304,9 @@
                             <label class="neo-label" for="difficulty_level_{{ hw_task.lesson_task_id }}" style="margin: 0;">Уровень:</label>
                             <select class="neo-select" id="difficulty_level_{{ hw_task.lesson_task_id }}" name="difficulty_level_{{ hw_task.lesson_task_id }}" style="max-width: 11rem;">
                                 <option value="">— не задан</option>
-                                <option value="1" {% if hw_task.difficulty_level is not none and 1 <= hw_task.difficulty_level <= 3 %}selected{% endif %}>Лёгкий</option>
-                                <option value="5" {% if hw_task.difficulty_level is not none and 4 <= hw_task.difficulty_level <= 7 %}selected{% endif %}>Средний</option>
-                                <option value="10" {% if hw_task.difficulty_level is not none and hw_task.difficulty_level >= 8 %}selected{% endif %}>Сложный</option>
+                                <option value="1" {% if hw_task.difficulty_level == 1 %}selected{% endif %}>Лёгкий</option>
+                                <option value="2" {% if hw_task.difficulty_level == 2 %}selected{% endif %}>Средний</option>
+                                <option value="3" {% if hw_task.difficulty_level == 3 %}selected{% endif %}>Сложный</option>
                             </select>
                             <span class="muted" style="font-size: 0.85rem;">Влияет на рейтинг (Elo).</span>
                         </div>

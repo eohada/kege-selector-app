@@ -5,7 +5,7 @@
 Проверяет:
   - JSON парсится без ошибок
   - Все обязательные поля из prototype_schema.json присутствуют
-  - task_number 1–27, difficulty_level 1–10, difficulty_label in (easy, medium, hard)
+  - task_number 1–27, difficulty_level 1–3, difficulty_label in (easy, medium, hard)
   - prototype.text, input_format, answer_format; solution.steps; каждый step: step, explanation
 
 Запуск:
@@ -45,8 +45,8 @@ def validate_one(proto: dict, path: str, strict: bool) -> list:
         errors.append(f"{path}: task_number должен быть целым 1–27, получено: {tn!r}")
 
     dl = proto.get('difficulty_level')
-    if not isinstance(dl, int) or dl < 1 or dl > 10:
-        errors.append(f"{path}: difficulty_level должен быть целым 1–10, получено: {dl!r}")
+    if not isinstance(dl, int) or dl < 1 or dl > 3:
+        errors.append(f"{path}: difficulty_level должен быть целым 1–3, получено: {dl!r}")
 
     label = proto.get('difficulty_label')
     if label not in ('easy', 'medium', 'hard'):
@@ -54,8 +54,8 @@ def validate_one(proto: dict, path: str, strict: bool) -> list:
 
     # Соответствие label и level
     if dl is not None and label is not None:
-        if (label == 'easy' and not (1 <= dl <= 3)) or (label == 'medium' and not (4 <= dl <= 7)) or (label == 'hard' and not (8 <= dl <= 10)):
-            errors.append(f"{path}: difficulty_label '{label}' не соответствует difficulty_level {dl} (easy=1-3, medium=4-7, hard=8-10)")
+        if (label == 'easy' and dl != 1) or (label == 'medium' and dl != 2) or (label == 'hard' and dl != 3):
+            errors.append(f"{path}: difficulty_label '{label}' не соответствует difficulty_level {dl} (easy=1, medium=2, hard=3)")
 
     p = proto.get('prototype')
     if not isinstance(p, dict):

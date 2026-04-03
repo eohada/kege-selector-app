@@ -1177,8 +1177,12 @@ def _parse_difficulty_level(raw):
         return None
     try:
         d = int(raw)
-        if 1 <= d <= 10:
+        if 1 <= d <= 3:
             return d
+        if 4 <= d <= 7:
+            return 2
+        if 8 <= d <= 10:
+            return 3
     except (TypeError, ValueError):
         pass
     return None
@@ -1401,12 +1405,9 @@ def task_generator_bank_save(task_id: int):
             if raw_d is None or raw_d == '':
                 task.difficulty_level = None
             else:
-                try:
-                    d = int(raw_d)
-                except (TypeError, ValueError):
-                    return jsonify({'success': False, 'error': 'Сложность: целое число 1–10 или пусто'}), 400
-                if not (1 <= d <= 10):
-                    return jsonify({'success': False, 'error': 'Сложность от 1 до 10'}), 400
+                d = _parse_difficulty_level(raw_d)
+                if d is None:
+                    return jsonify({'success': False, 'error': 'Сложность: целое 1–3 (лёгкая/средняя/сложная) или пусто'}), 400
                 task.difficulty_level = d
 
         db.session.commit()

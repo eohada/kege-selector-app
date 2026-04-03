@@ -1544,7 +1544,7 @@ def lesson_homework_save(lesson_id):
             else:
                 try:
                     n = int(v)
-                    if 1 <= n <= 10:
+                    if 1 <= n <= 3:
                         hw_task.difficulty_level = n
                 except ValueError:
                     pass
@@ -1644,7 +1644,7 @@ def lesson_classwork_save(lesson_id):  # comment
             else:  # comment
                 try:  # comment
                     n = int(v)  # comment
-                    if 1 <= n <= 10:  # comment
+                    if 1 <= n <= 3:  # comment
                         t.difficulty_level = n  # comment
                 except ValueError:  # comment
                     pass  # comment
@@ -1689,7 +1689,7 @@ def lesson_exam_save(lesson_id):  # comment
             else:  # comment
                 try:  # comment
                     n = int(v)  # comment
-                    if 1 <= n <= 10:  # comment
+                    if 1 <= n <= 3:  # comment
                         t.difficulty_level = n  # comment
                 except ValueError:  # comment
                     pass  # comment
@@ -1780,11 +1780,11 @@ def lesson_task_teacher_feedback_save(lesson_id, lesson_task_id):  # comment
         lesson_task.submission_correct = data.get('submission_correct', None)  # comment
     if 'difficulty_level' in data:  # comment
         v = data.get('difficulty_level')
-        if v is None or (isinstance(v, int) and 1 <= v <= 10):
-            lesson_task.difficulty_level = v
-        elif isinstance(v, str) and v.strip() == '':
+        if isinstance(v, str) and v.strip() == '':
             lesson_task.difficulty_level = None
-        elif isinstance(v, (int, float)) and 1 <= v <= 10:
+        elif v is None:
+            lesson_task.difficulty_level = None
+        elif isinstance(v, (int, float)) and 1 <= int(v) <= 3:
             lesson_task.difficulty_level = int(v)
     try:  # comment
         db.session.commit()  # comment

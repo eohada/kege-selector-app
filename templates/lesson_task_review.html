@@ -241,9 +241,9 @@
                         <label class="neo-label" for="difficulty_level">Уровень сложности</label>
                         <select class="neo-select" id="difficulty_level">
                             <option value="">— не задан</option>
-                            <option value="1" {% if lesson_task.difficulty_level is not none and 1 <= lesson_task.difficulty_level <= 3 %}selected{% endif %}>Лёгкий</option>
-                            <option value="5" {% if lesson_task.difficulty_level is not none and 4 <= lesson_task.difficulty_level <= 7 %}selected{% endif %}>Средний</option>
-                            <option value="10" {% if lesson_task.difficulty_level is not none and lesson_task.difficulty_level >= 8 %}selected{% endif %}>Сложный</option>
+                            <option value="1" {% if lesson_task.difficulty_level == 1 %}selected{% endif %}>Лёгкий</option>
+                            <option value="2" {% if lesson_task.difficulty_level == 2 %}selected{% endif %}>Средний</option>
+                            <option value="3" {% if lesson_task.difficulty_level == 3 %}selected{% endif %}>Сложный</option>
                         </select>
                         <div class="muted" style="font-size: 0.85rem; margin-top: 0.35rem;">Влияет на рейтинг в аналитике (Elo).</div>
                     </div>
@@ -376,7 +376,7 @@
                 teacher_comment,
                 answer_key,
                 submission_correct: (currentCorrectness === 'none' ? null : (currentCorrectness === 'correct')),
-                difficulty_level: (difficulty_level >= 1 && difficulty_level <= 10) ? difficulty_level : null,
+                difficulty_level: (difficulty_level >= 1 && difficulty_level <= 3) ? difficulty_level : null,
             };
             try {
                 await jsonPost(`/lesson/${LESSON_ID}/task/${LESSON_TASK_ID}/teacher-feedback/save`, payload);

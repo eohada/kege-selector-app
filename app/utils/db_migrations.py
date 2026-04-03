@@ -126,6 +126,95 @@ def _resolve_table_name(table_names, preferred):
         return lower
     return None
 
+
+DIFFICULTY_SCALE_PATCH_ID = "tasks_difficulty_1_3_scale_v1"
+
+
+def _maybe_migrate_difficulty_level_to_three(app, inspector, tasks_table_resolved: str) -> None:
+    """
+    Однократно: difficulty_level 1–10 (лестница easy/medium/hard) → 1 / 2 / 3.
+    Таблица _boo_schema_patches не даёт повторно схлопнуть уже новые значения.
+    """
+    try:
+        db.session.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS _boo_schema_patches (
+                    patch_id VARCHAR(64) PRIMARY KEY,
+                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.warning(f"Could not ensure _boo_schema_patches: {e}")
+        return
+    try:
+        row = db.session.execute(
+            text("SELECT 1 FROM _boo_schema_patches WHERE patch_id = :p"),
+            {"p": DIFFICULTY_SCALE_PATCH_ID},
+        ).fetchone()
+        if row:
+            return
+    except Exception as e:
+        db.session.rollback()
+        logger.warning(f"Could not read _boo_schema_patches: {e}")
+        return
+
+    is_pg = _is_postgres(app)
+    q_task = f"""
+        UPDATE "{tasks_table_resolved}" SET difficulty_level = CASE
+            WHEN difficulty_level IS NULL THEN NULL
+            WHEN difficulty_level BETWEEN 1 AND 3 THEN 1
+            WHEN difficulty_level BETWEEN 4 AND 7 THEN 2
+            WHEN difficulty_level BETWEEN 8 AND 10 THEN 3
+            ELSE difficulty_level
+        END
+        WHERE difficulty_level IS NOT NULL
+    """
+    table_names = inspector.get_table_names()
+    lt = _resolve_table_name(table_names, "LessonTasks")
+    q_lt = None
+    if lt:
+        q_lt = f"""
+            UPDATE "{lt}" SET difficulty_level = CASE
+                WHEN difficulty_level IS NULL THEN NULL
+                WHEN difficulty_level BETWEEN 1 AND 3 THEN 1
+                WHEN difficulty_level BETWEEN 4 AND 7 THEN 2
+                WHEN difficulty_level BETWEEN 8 AND 10 THEN 3
+                ELSE difficulty_level
+            END
+            WHERE difficulty_level IS NOT NULL
+        """
+    try:
+        db.session.execute(text(q_task))
+        if q_lt:
+            db.session.execute(text(q_lt))
+        if is_pg:
+            db.session.execute(
+                text(
+                    "INSERT INTO _boo_schema_patches (patch_id) VALUES (:p) ON CONFLICT (patch_id) DO NOTHING"
+                ),
+                {"p": DIFFICULTY_SCALE_PATCH_ID},
+            )
+        else:
+            db.session.execute(
+                text("INSERT OR IGNORE INTO _boo_schema_patches (patch_id) VALUES (:p)"),
+                {"p": DIFFICULTY_SCALE_PATCH_ID},
+            )
+        db.session.commit()
+        logger.info(
+            "Applied patch %s: difficulty_level compressed to 1–3 (Tasks%s)",
+            DIFFICULTY_SCALE_PATCH_ID,
+            ", LessonTasks" if lt else "",
+        )
+    except Exception as e:
+        db.session.rollback()
+        logger.warning(f"difficulty_level 1–3 migration skipped: {e}")
+
+
 def _fix_postgres_sequences(app, inspector):
     if not _is_postgres(app):
         return
@@ -695,7 +784,7 @@ def ensure_schema_columns(app):
                 safe_add_lesson_task_column('status', 'TEXT DEFAULT \'pending\'')  # comment
                 safe_add_lesson_task_column('submission_files', 'JSON')  # comment
                 safe_add_lesson_task_column('teacher_comment', 'TEXT')  # comment
-                safe_add_lesson_task_column('difficulty_level', 'INTEGER')  # рейтинг: 1–3 лёгкий, 4–7 средний, 8–10 сложный
+                safe_add_lesson_task_column('difficulty_level', 'INTEGER')  # 1 лёгкий, 2 средний, 3 сложный
                 safe_add_lesson_task_column('time_spent_sec', 'INTEGER')  # время на задание (сек)
                 safe_add_lesson_task_column('max_attempts', 'INTEGER')  # лимит попыток на задание (override)
                 try:  # comment
@@ -1561,6 +1650,12 @@ def ensure_schema_columns(app):
                             )
                         except Exception:
                             pass
+                        try:
+                            _maybe_migrate_difficulty_level_to_three(
+                                app, inspector, tasks_table_resolved
+                            )
+                        except Exception as _me:
+                            logger.warning(f"difficulty 1–3 migration hook: {_me}")
                 except Exception as e:
                     logger.warning(f"Could not add knowledge_node_id/difficulty/hints to Tasks: {e}")
                     db.session.rollback()

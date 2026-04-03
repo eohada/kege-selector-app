@@ -69,8 +69,8 @@ def validate_prototype(proto: dict, schema: dict) -> list:
             errors.append(f"Отсутствует обязательное поле: {field}")
     # Проверка диапазонов
     dl = proto.get('difficulty_level')
-    if dl is not None and not (1 <= dl <= 10):
-        errors.append(f"difficulty_level={dl} вне диапазона 1–10")
+    if dl is not None and not (1 <= dl <= 3):
+        errors.append(f"difficulty_level={dl} вне диапазона 1–3")
     tn = proto.get('task_number')
     if tn is not None and not (1 <= tn <= 27):
         errors.append(f"task_number={tn} вне диапазона 1–27")
@@ -183,7 +183,7 @@ def prototype_to_difficulty_sample(proto: dict) -> dict:
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Задание #{proto.get('task_number', '?')}:\n{task_text}"},
-            {"role": "assistant", "content": str(proto.get('difficulty_level', 5))},
+            {"role": "assistant", "content": str(proto.get('difficulty_level', 2))},
         ]
     }
 

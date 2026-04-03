@@ -2,11 +2,11 @@
 Движок аналитики: обновление рейтинга по узлам знаний и прогноз балла ЕГЭ.
 Основан на модифицированной системе Elo/Glicko.
 
-Фаза 0: используем per-task difficulty_level (1–10) для расчёта Elo-рейтинга задачи:
+Фаза 0: per-task difficulty_level (1=лёгкий, 2=средний, 3=сложный) для Elo-рейтинга задачи:
   - Easy (1–3)   → base_rating − 100
   - Medium (4–7)  → base_rating
   - Hard (8–10)   → base_rating + 150
-  Если difficulty_level = NULL → считаем Medium (без смещения).
+  Если difficulty_level = NULL → Medium (без смещения).
 """
 import math
 import logging
@@ -75,12 +75,12 @@ class AnalyticsEngine:
 
     @classmethod
     def _task_rating_from_difficulty(cls, base_rating: float, difficulty_level: int | None) -> float:
-        """Рейтинг задачи для Elo по difficulty_level: 1–3 easy, 4–7 medium, 8–10 hard."""
-        if difficulty_level is None or 4 <= difficulty_level <= 7:
+        """Рейтинг задачи для Elo: 1 лёгкий, 2 средний, 3 сложный."""
+        if difficulty_level is None or difficulty_level == 2:
             return base_rating
-        if 1 <= difficulty_level <= 3:
+        if difficulty_level == 1:
             return base_rating - 100.0
-        if difficulty_level >= 8:
+        if difficulty_level == 3:
             return base_rating + 150.0
         return base_rating
 
@@ -144,7 +144,11 @@ class AnalyticsEngine:
 
         # --- Детектор поведения (используем override для определения Hard при быстром успехе) ---
         _effective_difficulty = difficulty_level_override if difficulty_level_override is not None else getattr(task, 'difficulty_level', None)
-        _effective_label = 'hard' if (_effective_difficulty is not None and _effective_difficulty >= 8) else ('easy' if (_effective_difficulty is not None and 1 <= _effective_difficulty <= 3) else 'medium')
+        _effective_label = (
+            'hard'
+            if _effective_difficulty == 3
+            else ('easy' if _effective_difficulty == 1 else 'medium')
+        )
         _task_for_behavior = type('Task', (), {'difficulty_label': _effective_label})()
         behavior = cls._detect_behavior(is_correct, time_spent_sec, _task_for_behavior)
 

@@ -8,8 +8,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# Соответствие уровня КЕГЭ (1–3) полю difficulty_level (лестница 1–10 в приложении)
-KEGE_TIER_TO_DIFFICULTY_LEVEL = {1: 2, 2: 5, 3: 9}
+# kege_difficulty_tier и difficulty_level в банке — одна шкала 1–3
+KEGE_TIER_TO_DIFFICULTY_LEVEL = {1: 1, 2: 2, 3: 3}
 
 # Первое совпадение по подстроке в comment + начало HTML; иначе «Авторские»
 SOURCE_TAG_RULES: list[tuple[tuple[str, ...], str]] = [
