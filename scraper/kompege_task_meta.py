@@ -32,8 +32,6 @@ SOURCE_TAG_RULES: list[tuple[tuple[str, ...], str]] = [
 
 DEFAULT_SOURCE_TAG = "Авторские"
 
-TIER_LABELS_RU: dict[int, str] = {1: "Базовый", 2: "Средний", 3: "Сложный"}
-
 _LEVEL_RE = re.compile(
     r"Уровень\s*:\s*(Базовый|Средний|Сложный)",
     re.IGNORECASE | re.UNICODE,
