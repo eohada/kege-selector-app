@@ -634,6 +634,17 @@ def _split_content_19_21(full_html: str):
     return (part_19, part_20, part_21)
 
 
+def _bs4_node_parent(node):
+    """Родитель узла BeautifulSoup; в bs4 4.14+ у NavigableString иногда нет .parent, есть .parents."""
+    try:
+        return node.parent
+    except AttributeError:
+        try:
+            return next(node.parents)
+        except (AttributeError, StopIteration, TypeError):
+            return None
+
+
 def clean_html_content(html: str, task_number: int = None) -> str:
     """Очистка HTML-контента заданий: удаление фамилий, пустых строк, ответов, видео"""
     if not html:
@@ -657,7 +668,8 @@ def clean_html_content(html: str, task_number: int = None) -> str:
     soup = BeautifulSoup(html_str, 'html.parser')
     
     for text_node in soup.find_all(string=True):
-        if text_node.parent and text_node.parent.name not in ['script', 'style']:
+        _tn_par = _bs4_node_parent(text_node)
+        if _tn_par and _tn_par.name not in ['script', 'style']:
             text = str(text_node)
             cleaned = re.sub(r'[Фф]айлы?\s+к\s+заданию[:\s-]*[^\n<]*', '', text, flags=re.IGNORECASE)
             cleaned = re.sub(r'[Фф]айлы?\s+к\s+задаче[:\s-]*[^\n<]*', '', cleaned, flags=re.IGNORECASE)
@@ -691,8 +703,8 @@ def clean_html_content(html: str, task_number: int = None) -> str:
                     pass
         # Дополнительно: удалить узлы, в которых только ответ (число/короткий текст после «Ответ»)
         for elem in soup.find_all(string=re.compile(r'[Оо]твет[а-яё]*\s*[:\s]*\s*[^\n<]{0,80}', re.IGNORECASE)):
-            parent = elem.parent
-            if parent and parent.name not in ('script', 'style'):
+            parent = _bs4_node_parent(elem)
+            if parent and getattr(parent, "name", None) not in ('script', 'style'):
                 parent.decompose()
         html_str = str(soup)
         html_str = re.sub(r'<[^>]*>.*?[Оо]твет[а-яё]*[:\s]*[^<]*</[^>]*>', '', html_str, flags=re.IGNORECASE | re.DOTALL)
