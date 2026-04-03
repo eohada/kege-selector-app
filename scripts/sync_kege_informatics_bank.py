@@ -283,6 +283,7 @@ def main() -> int:
         check_robots_txt,
         collect_kompege_listing_raw_items,
         CRAWL_DELAY_SEC,
+        kompege_api_listing_enabled,
     )
     try:
         from scraper.playwright_parser import debug_kompege_listing_page as _debug_kompege_listing_page
@@ -335,24 +336,32 @@ def main() -> int:
             page.goto(MAIN_PAGE_URL, wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(3000)
 
-            dropdown_found = False
-            for selector in [
-                "select",
-                "select[name='tasktype']",
-                "select#tasktype",
-                "select.tasktype",
-            ]:
-                try:
-                    if page.locator(selector).count() > 0:
-                        page.wait_for_selector(selector, state="visible", timeout=10000)
-                        dropdown_found = True
-                        break
-                except Exception:
-                    continue
-            if not dropdown_found:
-                print("Не удалось найти выпадающий список на kompege.ru/task")
-                browser.close()
-                return 4
+            if kompege_api_listing_enabled():
+                print(
+                    "[sync] Список заданий через API (KOMPEGE_USE_API) — обязательный <select> на /task не проверяем."
+                )
+            else:
+                dropdown_found = False
+                for selector in [
+                    "select",
+                    "select[name='tasktype']",
+                    "select#tasktype",
+                    "select.tasktype",
+                ]:
+                    try:
+                        if page.locator(selector).count() > 0:
+                            page.wait_for_selector(selector, state="visible", timeout=10000)
+                            dropdown_found = True
+                            break
+                    except Exception:
+                        continue
+                if not dropdown_found:
+                    print(
+                        "Не удалось найти выпадающий список на kompege.ru/task "
+                        "(legacy DOM; включите список через API: KOMPEGE_USE_API=1 по умолчанию)."
+                    )
+                    browser.close()
+                    return 4
 
             total_added = total_updated = total_skipped = 0
             debug_dom_once = False

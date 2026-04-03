@@ -40,6 +40,11 @@ def _kompege_api_listing_enabled() -> bool:
     return v not in ("0", "false", "no", "off")
 
 
+def kompege_api_listing_enabled() -> bool:
+    """Публичный флаг: список номеров заданий брать из /api/v1/task/number/{{N}} (по умолчанию да)."""
+    return _kompege_api_listing_enabled()
+
+
 def fetch_kompege_listing_from_api(task_number: int) -> list:
     """
     Публичный JSON со списком заданий номера ЕГЭ (тот же источник, что SPA после «Найти все задачи»).
