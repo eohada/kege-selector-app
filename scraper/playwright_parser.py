@@ -625,9 +625,20 @@ def check_robots_txt():
             )
             return True
 
+        if _kompege_api_listing_enabled():
+            print(
+                f"[ETL] ПРЕДУПРЕЖДЕНИЕ: robots.txt для этого User-Agent запрещает и {MAIN_PAGE_URL}, и {KOMPEGE_ROBOTS_CHECK_API_URL}. "
+                "Режим API (KOMPEGE_USE_API) включён — синк списка продолжаем теми же GET, что запрашивает сайт в браузере. "
+                "Playwright при необходимости всё равно откроет страницы заданий (ответы/вложения). "
+                "При необходимости полного отключения проверки задайте KOMPEGE_IGNORE_ROBOTS=1; "
+                "для строгой остановки при запрете в robots — KOMPEGE_USE_API=0."
+            )
+            return True
+
         print(
-            f"[ETL] КРИТИЧЕСКАЯ ОШИБКА: robots.txt запрещает и {MAIN_PAGE_URL}, и {KOMPEGE_ROBOTS_CHECK_API_URL}. "
-            "При необходимости синка по согласованию с владельцем kompege.ru задайте KOMPEGE_IGNORE_ROBOTS=1."
+            f"[ETL] КРИТИЧЕСКАЯ ОШИБКА: robots.txt запрещает {MAIN_PAGE_URL} и {KOMPEGE_ROBOTS_CHECK_API_URL}, "
+            "режим API отключён (KOMPEGE_USE_API=0) — парсеру нужна страница /task. "
+            "Задайте KOMPEGE_IGNORE_ROBOTS=1 или включите API (KOMPEGE_USE_API=1 по умолчанию)."
         )
         return False
     except Exception as e:
