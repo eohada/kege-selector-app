@@ -17,6 +17,8 @@
   --whitelist-only  импорт только заданий с comment/details по scraper/kege_whitelist.py (узкий пул)
                     по умолчанию импортируются все задачи API; источник и уровень 1–3 пишутся в Tasks.kege_*
 
+  KOMPEGE_IGNORE_ROBOTS=1  пропустить проверку robots.txt (только если есть право на обход; иначе не задавать)
+
 Требует: playwright + chromium (playwright install chromium).
 """
 from __future__ import annotations

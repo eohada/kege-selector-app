@@ -22,6 +22,17 @@ ROBOTS_URL = f"{SITE_DOMAIN}/robots.txt"
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
 
 KOMPEGE_API_LIST_URL_TMPL = f"{SITE_DOMAIN}/api/v1/task/number/{{}}"
+# URL для проверки robots, если /task запрещён, а JSON-API — нет (частый случай 2025–2026)
+KOMPEGE_ROBOTS_CHECK_API_URL = f"{SITE_DOMAIN}/api/v1/task/number/1"
+
+
+def _kompege_ignore_robots() -> bool:
+    return (os.environ.get("KOMPEGE_IGNORE_ROBOTS") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 def _kompege_api_listing_enabled() -> bool:
@@ -585,6 +596,12 @@ def clean_html_content(html: str, task_number: int = None) -> str:
 
 def check_robots_txt():
     print(f"[ETL] 1. Проверка {ROBOTS_URL} для User-Agent: {USER_AGENT}...")
+    if _kompege_ignore_robots():
+        print(
+            "[ETL] ВНИМАНИЕ: KOMPEGE_IGNORE_ROBOTS включён — проверка robots.txt пропущена "
+            "(используйте только при праве на обход по договору/политике сайта)."
+        )
+        return True
     try:
         rp = RobotFileParser()
         rp.set_url(ROBOTS_URL)
@@ -596,12 +613,23 @@ def check_robots_txt():
             CRAWL_DELAY_SEC = delay
             print(f"[ETL] Установлена задержка (Crawl-delay) из robots.txt: {CRAWL_DELAY_SEC} сек.")
 
-        if not rp.can_fetch(USER_AGENT, MAIN_PAGE_URL):
-            print(f"[ETL] КРИТИЧЕСКАЯ ОШИБКА: robots.txt ЗАПРЕЩАЕТ доступ к {MAIN_PAGE_URL}")
-            return False
+        ok_task = rp.can_fetch(USER_AGENT, MAIN_PAGE_URL)
+        ok_api = rp.can_fetch(USER_AGENT, KOMPEGE_ROBOTS_CHECK_API_URL)
+        if ok_task:
+            print("[ETL] Проверка robots.txt пройдена (страница /task разрешена).")
+            return True
+        if ok_api:
+            print(
+                f"[ETL] robots.txt: доступ к {MAIN_PAGE_URL} запрещён, "
+                f"но {KOMPEGE_ROBOTS_CHECK_API_URL} разрешён — продолжаем (список через API; Playwright может открывать /task при догрузке ответов)."
+            )
+            return True
 
-        print("[ETL] Проверка robots.txt пройдена.")
-        return True
+        print(
+            f"[ETL] КРИТИЧЕСКАЯ ОШИБКА: robots.txt запрещает и {MAIN_PAGE_URL}, и {KOMPEGE_ROBOTS_CHECK_API_URL}. "
+            "При необходимости синка по согласованию с владельцем kompege.ru задайте KOMPEGE_IGNORE_ROBOTS=1."
+        )
+        return False
     except Exception as e:
         print(f"[ETL] Ошибка при чтении robots.txt: {e}. (Продолжаем с осторожностью)")
         return True
