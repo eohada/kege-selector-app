@@ -565,6 +565,9 @@ def _task_to_payload(task: Tasks):
         'attached_files': task.attached_files,
         'bank_origin': task.bank_origin,
         'starter_code': task.starter_code,
+        'kege_source_tag': task.kege_source_tag,
+        'kege_difficulty_tier': task.kege_difficulty_tier,
+        'kege_tier_label_ru': task.kege_tier_label_ru,
     }
     triplet_ids = _get_triplet_task_ids(task)
     if triplet_ids:
@@ -791,6 +794,9 @@ def task_generator_bank_picker_list():
             'task_number': t.task_number,
             'course_title': (t.course.title if t.course else None),
             'bank_origin': t.bank_origin,
+            'kege_source_tag': t.kege_source_tag,
+            'kege_difficulty_tier': t.kege_difficulty_tier,
+            'kege_tier_label_ru': t.kege_tier_label_ru,
             'content_html': (t.content_html or '')[:12000],
             'already_added': fully,
         })

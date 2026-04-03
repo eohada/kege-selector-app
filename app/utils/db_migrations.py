@@ -1538,6 +1538,29 @@ def ensure_schema_columns(app):
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_tasks_bank_origin ON "{tasks_table_resolved}"(bank_origin)'))
                         except Exception:
                             pass
+                        if 'kege_source_tag' not in cols:
+                            db.session.execute(
+                                text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN kege_source_tag VARCHAR(64)')
+                            )
+                            logger.info("Added kege_source_tag to Tasks (kompege bank badge)")
+                        if 'kege_difficulty_tier' not in cols:
+                            db.session.execute(
+                                text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN kege_difficulty_tier INTEGER')
+                            )
+                            logger.info("Added kege_difficulty_tier to Tasks (1–3 KEGE level)")
+                        try:
+                            db.session.execute(
+                                text(
+                                    f'CREATE INDEX IF NOT EXISTS ix_tasks_kege_source_tag ON "{tasks_table_resolved}"(kege_source_tag)'
+                                )
+                            )
+                            db.session.execute(
+                                text(
+                                    f'CREATE INDEX IF NOT EXISTS ix_tasks_kege_difficulty_tier ON "{tasks_table_resolved}"(kege_difficulty_tier)'
+                                )
+                            )
+                        except Exception:
+                            pass
                 except Exception as e:
                     logger.warning(f"Could not add knowledge_node_id/difficulty/hints to Tasks: {e}")
                     db.session.rollback()

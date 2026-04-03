@@ -105,6 +105,7 @@ def fetch_kompege_listing_from_api(task_number: int) -> list:
                 "details": details,
                 "files": files,
                 "answer": answer,
+                "apiDifficulty": o.get("difficulty"),
             }
         )
     return out

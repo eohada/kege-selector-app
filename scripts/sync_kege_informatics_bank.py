@@ -13,8 +13,9 @@
   --no-soft-delete  не помечать is_active=False у записей вне whitelist-пула
   --skip-attachments  не скачивать вложения на диск после upsert
   --tasks 1,2,19   только указанные номера заданий (подмножество TASKS_TO_SCRAPE)
-  --debug-dom      дамп DOM только если после collect список пуст (диагностика «0 записей»; при API список не пуст — дамп не нужен)
-  --skip-whitelist не отфильтровывать по comment/details (все задачи из API); по умолчанию берутся только строки с метками источника из scraper/kege_whitelist.py
+  --debug-dom       дамп DOM только если после collect список пуст (диагностика «0 записей»)
+  --whitelist-only  импорт только заданий с comment/details по scraper/kege_whitelist.py (узкий пул)
+                    по умолчанию импортируются все задачи API; источник и уровень 1–3 пишутся в Tasks.kege_*
 
 Требует: playwright + chromium (playwright install chromium).
 """
@@ -239,9 +240,9 @@ def main() -> int:
     parser.add_argument("--backup-only", action="store_true", help="Только текст про бэкап")
     parser.add_argument("--no-soft-delete", action="store_true")
     parser.add_argument(
-        "--skip-whitelist",
+        "--whitelist-only",
         action="store_true",
-        help="Не фильтровать по полю details (comment в API): импортировать все задачи типа; см. scraper/kege_whitelist.py",
+        help="Только строки с метками источника из kege_whitelist.py (узкий пул); иначе — все задачи из API",
     )
     parser.add_argument("--skip-attachments", action="store_true")
     parser.add_argument("--tasks", type=str, default="", help="Например: 1,2,19,27")
@@ -373,20 +374,20 @@ def main() -> int:
                     debug_dom_once = True
                 if raw is None:
                     continue
-                if args.skip_whitelist:
-                    filtered = list(raw)
-                    print(f"[whitelist] тип {task_num}: --skip-whitelist, в пул {len(filtered)} из {len(raw)}")
-                else:
+                if args.whitelist_only:
                     empty_details = sum(
                         1 for it in raw if not str(it.get("details") or "").strip()
                     )
                     filtered = [it for it in raw if details_passes_whitelist(it.get("details"))]
                     no_substring = len(raw) - empty_details - len(filtered)
                     print(
-                        f"[whitelist] тип {task_num}: всего {len(raw)}, в пул {len(filtered)} "
+                        f"[whitelist-only] тип {task_num}: всего {len(raw)}, в пул {len(filtered)} "
                         f"(пустой comment/details: {empty_details}, "
                         f"есть текст, нет подстроки из whitelist: {no_substring})"
                     )
+                else:
+                    filtered = list(raw)
+                    print(f"[sync] тип {task_num}: в пул импорта {len(filtered)} задач (все из API)")
                 for it in filtered:
                     if it.get("taskId"):
                         active_kege_ids.add(str(it["taskId"]))

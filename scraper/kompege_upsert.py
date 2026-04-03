@@ -26,6 +26,7 @@ def upsert_kompege_listing_items(
     """
     Возвращает (count_added, count_updated, count_skipped) — в dry_run счётчики «как если бы» применили.
     """
+    from scraper.kompege_task_meta import kompege_bank_fields_from_item
     from scraper.playwright_parser import (
         MAIN_PAGE_URL,
         SITE_DOMAIN,
@@ -101,6 +102,8 @@ def upsert_kompege_listing_items(
         content_html = clean_html_content(content_html, task_number=real_task_number)
         if not content_html or len(content_html.strip()) < 10:
             continue
+
+        _kege = kompege_bank_fields_from_item(it, content_html=content_html)
 
         attached_files = []
         for f in it.get("files", []):
@@ -197,6 +200,16 @@ def upsert_kompege_listing_items(
                             t.answer = ans
                             t.last_scraped = moscow_now()
                             any_updated = True
+                        if (
+                            t.kege_source_tag != _kege["kege_source_tag"]
+                            or t.kege_difficulty_tier != _kege["kege_difficulty_tier"]
+                            or t.difficulty_level != _kege["difficulty_level"]
+                        ):
+                            t.kege_source_tag = _kege["kege_source_tag"]
+                            t.kege_difficulty_tier = _kege["kege_difficulty_tier"]
+                            t.difficulty_level = _kege["difficulty_level"]
+                            t.last_scraped = moscow_now()
+                            any_updated = True
                         _touch_bank_fields(t)
                 if any_updated:
                     count_updated += 1
@@ -208,6 +221,9 @@ def upsert_kompege_listing_items(
                 old_single_19.answer = answer_lines[0] if answer_lines else None
                 old_single_19.task_group_id = group_id
                 old_single_19.site_task_id = it.get("taskId")
+                old_single_19.kege_source_tag = _kege["kege_source_tag"]
+                old_single_19.kege_difficulty_tier = _kege["kege_difficulty_tier"]
+                old_single_19.difficulty_level = _kege["difficulty_level"]
                 old_single_19.last_scraped = moscow_now()
                 _touch_bank_fields(old_single_19)
                 session.add(old_single_19)
@@ -230,6 +246,7 @@ def upsert_kompege_listing_items(
                         kw["course_id"] = course_id
                         kw["bank_origin"] = "scraped"
                         kw["is_active"] = True
+                    kw.update(_kege)
                     new_tasks_bulk.append(Tasks(**kw))
                 count_added += 2
             else:
@@ -252,6 +269,7 @@ def upsert_kompege_listing_items(
                         kw["course_id"] = course_id
                         kw["bank_origin"] = "scraped"
                         kw["is_active"] = True
+                    kw.update(_kege)
                     new_tasks_bulk.append(Tasks(**kw))
                 count_added += 3
             continue
@@ -274,6 +292,16 @@ def upsert_kompege_listing_items(
             if it.get("taskId") and not existing_task.site_task_id:
                 existing_task.site_task_id = it.get("taskId")
                 updated = True
+            if (
+                existing_task.kege_source_tag != _kege["kege_source_tag"]
+                or existing_task.kege_difficulty_tier != _kege["kege_difficulty_tier"]
+                or existing_task.difficulty_level != _kege["difficulty_level"]
+            ):
+                existing_task.kege_source_tag = _kege["kege_source_tag"]
+                existing_task.kege_difficulty_tier = _kege["kege_difficulty_tier"]
+                existing_task.difficulty_level = _kege["difficulty_level"]
+                existing_task.last_scraped = moscow_now()
+                updated = True
             _touch_bank_fields(existing_task)
             if updated:
                 count_updated += 1
@@ -293,6 +321,7 @@ def upsert_kompege_listing_items(
                 kw["course_id"] = course_id
                 kw["bank_origin"] = "scraped"
                 kw["is_active"] = True
+            kw.update(_kege)
             new_tasks_bulk.append(Tasks(**kw))
             count_added += 1
 

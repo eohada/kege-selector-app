@@ -101,6 +101,10 @@ class Tasks(db.Model):
     starter_code = db.Column(db.Text, nullable=True)
     # Мягкое отключение записей банка (синхронизация КЕГЭ); генераторы выбирают только is_active=True
     is_active = db.Column(db.Boolean, default=True, nullable=False)
+    # Метки синхронизации с kompege.ru (API / парсер)
+    kege_source_tag = db.Column(db.String(64), nullable=True, index=True)
+    # 1 = базовый, 2 = средний, 3 = сложный (как на сайте); NULL — до синка или не КЕГЭ
+    kege_difficulty_tier = db.Column(db.Integer, nullable=True, index=True)
 
     # --- Константы маппинга сложности ---
     DIFFICULTY_EASY_MAX = 3      # 1–3 = Easy
@@ -118,6 +122,18 @@ class Tasks(db.Model):
         if v >= 8:
             return 'hard'
         return 'medium'
+
+    @property
+    def kege_tier_label_ru(self) -> str | None:
+        """Подпись уровня КЕГЭ (базовый/средний/сложный) для UI."""
+        t = self.kege_difficulty_tier
+        if t == 1:
+            return "Базовый"
+        if t == 2:
+            return "Средний"
+        if t == 3:
+            return "Сложный"
+        return None
 
     def get_elo_rating(self) -> float:
         """Рейтинг задачи для формул Elo с учётом difficulty_level и base_rating узла."""
