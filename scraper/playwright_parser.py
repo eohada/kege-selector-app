@@ -144,6 +144,8 @@ def fetch_kompege_listing_from_api(task_number: int) -> list:
         "User-Agent": USER_AGENT,
         "Accept": "application/json, text/plain, */*",
         "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
+        # Снижает шанс обрезанного JSON при «битом» keep-alive за прокси/CDN
+        "Connection": "close",
     }
     n_try = _kompege_api_retry_count()
     last_err: Exception | None = None
@@ -152,8 +154,25 @@ def fetch_kompege_listing_from_api(task_number: int) -> list:
         try:
             r = requests.get(url, headers=headers, timeout=(30, 240))
             r.raise_for_status()
+            raw_bytes = r.content
+            cl_hdr = (r.headers.get("Content-Length") or "").strip()
+            if cl_hdr.isdigit():
+                expected = int(cl_hdr)
+                if expected > 0 and len(raw_bytes) != expected:
+                    print(
+                        f"[ETL] API списка заданий: неполное тело {len(raw_bytes)}/{expected} байт "
+                        f"(попытка {attempt}/{n_try}) — повтор."
+                    )
+                    last_err = RuntimeError("Incomplete body vs Content-Length")
+                    if attempt < n_try:
+                        time.sleep(1.5 * attempt)
+                    continue
+            try:
+                body_preview = raw_bytes.decode("utf-8", errors="replace")
+            except Exception:
+                body_preview = ""
             ct = (r.headers.get("Content-Type") or "").lower()
-            if "text/html" in ct and "<html" in (r.text or "")[:2000].lower():
+            if "text/html" in ct and "<html" in body_preview[:2000].lower():
                 print(
                     f"[ETL] API списка заданий {url!r}: ответ похож на HTML (попытка {attempt}/{n_try}) — "
                     "возможна блокировка или капча."
@@ -162,13 +181,21 @@ def fetch_kompege_listing_from_api(task_number: int) -> list:
                 if attempt < n_try:
                     time.sleep(1.5 * attempt)
                 continue
-            items = _kompege_api_text_to_items(r.text, task_number)
+            text = raw_bytes.decode("utf-8")
+            items = _kompege_api_text_to_items(text, task_number)
             return items
         except json.JSONDecodeError as e:
-            preview = ((r.text if r is not None else "") or "")[:320].replace("\n", " ")
+            preview = ""
+            if r is not None:
+                try:
+                    preview = r.content[:320].decode("utf-8", errors="replace").replace("\n", " ")
+                except Exception:
+                    preview = ""
+            final = attempt >= n_try
             print(
                 f"[ETL] API списка заданий: невалидный JSON (попытка {attempt}/{n_try}): {e}; "
                 f"prefix={preview!r}"
+                + ("" if final else " — часто обрыв ответа; повтор.")
             )
             last_err = e
             if attempt < n_try:
