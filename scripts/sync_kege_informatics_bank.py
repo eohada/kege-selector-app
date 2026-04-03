@@ -19,6 +19,7 @@
 
   KOMPEGE_USE_API=0      строгий robots: остановка, если /task и API запрещены (по умолчанию API=1 — список не блокируется)
   KOMPEGE_IGNORE_ROBOTS=1  полностью пропустить чтение robots.txt
+  KOMPEGE_API_RETRIES=3  повторы запроса API списка при обрыве/битом JSON (1–10)
 
 Требует: playwright + chromium (playwright install chromium).
 """

@@ -45,29 +45,16 @@ def kompege_api_listing_enabled() -> bool:
     return _kompege_api_listing_enabled()
 
 
-def fetch_kompege_listing_from_api(task_number: int) -> list:
-    """
-    Публичный JSON со списком заданий номера ЕГЭ (тот же источник, что SPA после «Найти все задачи»).
-    Возвращает [] при ошибке сети/формата. Поля совместимы с upsert_kompege_listing_items.
-    """
-    if not _kompege_api_listing_enabled():
-        return []
-    url = KOMPEGE_API_LIST_URL_TMPL.format(int(task_number))
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+def _kompege_api_retry_count() -> int:
     try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            raw = resp.read()
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
-        print(f"[ETL] API списка заданий: ошибка запроса {url!r}: {e}")
-        return []
-    try:
-        data = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as e:
-        print(f"[ETL] API списка заданий: невалидный JSON: {e}")
-        return []
-    if not isinstance(data, list):
-        return []
+        n = int((os.environ.get("KOMPEGE_API_RETRIES") or "3").strip())
+    except ValueError:
+        n = 3
+    return max(1, min(n, 10))
 
+
+def _kompege_api_objects_to_items(data: list, task_number: int) -> list:
+    """Преобразует массив объектов API в список словарей для upsert."""
     out: list = []
     for o in data:
         if not isinstance(o, dict):
@@ -125,6 +112,162 @@ def fetch_kompege_listing_from_api(task_number: int) -> list:
             }
         )
     return out
+
+
+def _kompege_api_text_to_items(text: str, task_number: int) -> list:
+    """Разбор тела ответа API; при невалидном JSON бросает json.JSONDecodeError."""
+    raw = (text or "").strip()
+    if raw.startswith("\ufeff"):
+        raw = raw[1:]
+    data = json.loads(raw)
+    if not isinstance(data, list):
+        return []
+    return _kompege_api_objects_to_items(data, task_number)
+
+
+def fetch_kompege_listing_from_api(task_number: int) -> list:
+    """
+    Публичный JSON со списком заданий номера ЕГЭ (тот же источник, что SPA после «Найти все задачи»).
+    Возвращает [] при ошибке сети/формата. Поля совместимы с upsert_kompege_listing_items.
+    Использует requests (корректнее gzip/br и таймауты, чем urllib); повторы при обрыве JSON.
+    """
+    if not _kompege_api_listing_enabled():
+        return []
+    try:
+        import requests
+    except ImportError:
+        print("[ETL] API списка заданий: нет пакета requests — установите requests или включите резерв Playwright.")
+        return _fetch_kompege_listing_from_api_urllib(task_number)
+
+    url = KOMPEGE_API_LIST_URL_TMPL.format(int(task_number))
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
+    }
+    n_try = _kompege_api_retry_count()
+    last_err: Exception | None = None
+    for attempt in range(1, n_try + 1):
+        r = None
+        try:
+            r = requests.get(url, headers=headers, timeout=(30, 240))
+            r.raise_for_status()
+            ct = (r.headers.get("Content-Type") or "").lower()
+            if "text/html" in ct and "<html" in (r.text or "")[:2000].lower():
+                print(
+                    f"[ETL] API списка заданий {url!r}: ответ похож на HTML (попытка {attempt}/{n_try}) — "
+                    "возможна блокировка или капча."
+                )
+                last_err = RuntimeError("HTML response")
+                if attempt < n_try:
+                    time.sleep(1.5 * attempt)
+                continue
+            items = _kompege_api_text_to_items(r.text, task_number)
+            return items
+        except json.JSONDecodeError as e:
+            preview = ((r.text if r is not None else "") or "")[:320].replace("\n", " ")
+            print(
+                f"[ETL] API списка заданий: невалидный JSON (попытка {attempt}/{n_try}): {e}; "
+                f"prefix={preview!r}"
+            )
+            last_err = e
+            if attempt < n_try:
+                time.sleep(1.5 * attempt)
+            continue
+        except Exception as e:
+            print(f"[ETL] API списка заданий: запрос {url!r} (попытка {attempt}/{n_try}): {e}")
+            last_err = e
+            if attempt < n_try:
+                time.sleep(1.5 * attempt)
+            continue
+    if last_err:
+        print(f"[ETL] API списка заданий: исчерпаны попытки для {url!r}: {last_err}")
+    return []
+
+
+def _fetch_kompege_listing_from_api_urllib(task_number: int) -> list:
+    """Резерв без requests (как раньше)."""
+    url = KOMPEGE_API_LIST_URL_TMPL.format(int(task_number))
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            raw = resp.read()
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
+        print(f"[ETL] API (urllib) ошибка запроса {url!r}: {e}")
+        return []
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as e:
+        print(f"[ETL] API (urllib) неверная кодировка: {e}")
+        return []
+    try:
+        return _kompege_api_text_to_items(text, task_number)
+    except json.JSONDecodeError as e:
+        preview = text[:320].replace("\n", " ")
+        print(f"[ETL] API (urllib) невалидный JSON: {e}; prefix={preview!r}")
+        return []
+
+
+def fetch_kompege_listing_from_api_playwright(page: Page, task_number: int) -> list:
+    """
+    Тот же endpoint, что и fetch_kompege_listing_from_api, но через сетевой стек Playwright
+    (иногда стабильнее при антиботе/обрывах, чем отдельный HTTP-клиент).
+    """
+    if not _kompege_api_listing_enabled():
+        return []
+    if page is None:
+        return []
+    try:
+        if page.is_closed():
+            return []
+    except Exception:
+        return []
+
+    url = KOMPEGE_API_LIST_URL_TMPL.format(int(task_number))
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json, text/plain, */*",
+    }
+    n_try = _kompege_api_retry_count()
+    last_err: Exception | None = None
+    for attempt in range(1, n_try + 1):
+        try:
+            resp = page.request.get(url, headers=headers, timeout=240_000)
+            status = resp.status
+            if status != 200:
+                print(f"[ETL] API (Playwright) {url!r}: HTTP {status} (попытка {attempt}/{n_try})")
+                last_err = RuntimeError(f"HTTP {status}")
+                if attempt < n_try:
+                    time.sleep(1.5 * attempt)
+                continue
+            try:
+                data = resp.json()
+            except Exception as e:
+                txt = ""
+                try:
+                    txt = resp.text()
+                except Exception:
+                    pass
+                preview = txt[:320].replace("\n", " ")
+                print(
+                    f"[ETL] API (Playwright) не JSON (попытка {attempt}/{n_try}): {e}; prefix={preview!r}"
+                )
+                last_err = e
+                if attempt < n_try:
+                    time.sleep(1.5 * attempt)
+                continue
+            if not isinstance(data, list):
+                return []
+            return _kompege_api_objects_to_items(data, task_number)
+        except Exception as e:
+            print(f"[ETL] API (Playwright) {url!r} (попытка {attempt}/{n_try}): {e}")
+            last_err = e
+            if attempt < n_try:
+                time.sleep(1.5 * attempt)
+            continue
+    if last_err:
+        print(f"[ETL] API (Playwright): исчерпаны попытки для {url!r}: {last_err}")
+    return []
 
 
 # Скрипт для evaluate: строки таблицы заданий (главный документ или iframe).
@@ -659,9 +802,14 @@ def collect_kompege_listing_raw_items(page: Page, task_number: int, task_value_u
     Отключить API: переменная окружения KOMPEGE_USE_API=0.
     """
     api_items = fetch_kompege_listing_from_api(task_number)
+    api_via = "HTTP (requests)"
+    if not api_items:
+        api_items = fetch_kompege_listing_from_api_playwright(page, task_number)
+        if api_items:
+            api_via = "Playwright"
     if api_items:
         print(
-            f"[ETL] Список типа {task_number} загружен через API "
+            f"[ETL] Список типа {task_number} загружен через API [{api_via}] "
             f"({len(api_items)} записей): {KOMPEGE_API_LIST_URL_TMPL.format(task_number)}"
         )
         return api_items
