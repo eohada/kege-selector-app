@@ -814,14 +814,6 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     .layout-student .dock { max-width: 1400px; }
   }
 
-  /* Список заданий и экран работы: dock и колонка одной ширины (узкая колонка фокуса) */
-  .layout-student.student-tasks-shell .dock {
-    max-width: 860px !important;
-  }
-  .layout-student.student-tasks-shell .app-content {
-    max-width: 860px !important;
-  }
-
   .layout-teacher .dock-wrapper {
     @apply pt-3 px-3 sm:pt-5 sm:px-8 lg:px-12 flex justify-center;
     padding-bottom: 0;

@@ -13,7 +13,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.1">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
@@ -209,7 +209,7 @@
             left: 50%;
             transform: translateX(-50%);
             bottom: 16px;
-            width: min(860px, calc(100% - 32px));
+            width: min(1400px, calc(100% - 32px));
             max-width: calc(100vw - 32px);
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(12px);
@@ -394,12 +394,12 @@
         })();
     </script>
 </head>
-<body data-cinema-scene="submission-work" class="{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student student-tasks-shell {% endif %}min-h-screen">
+<body data-cinema-scene="submission-work" class="{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student {% endif %}min-h-screen">
     <div class="app-layout">
         {% set active_page = 'assignments' %}
         {% include '_dock_nav.html' %}
     <div class="app-main">
-        <main class="app-content w-full mx-auto mt-5 pb-32 max-w-[860px]">
+        <main class="app-content w-full mx-auto mt-5 pb-32">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
         <div class="submission-header relative overflow-hidden">
             {% set should_hide_tasks = assignment.hide_before_start and submission.status == 'ASSIGNED' and not submission.started_at %}
