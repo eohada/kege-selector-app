@@ -16,6 +16,7 @@ from app.task_generator.forms import TaskSelectionForm, ResetForm, TaskSearchFor
 from app.models import (
     Lesson,
     Student,
+    Assignment,
     Tasks,
     LessonTask,
     StudentTaskSeen,
@@ -165,6 +166,7 @@ def task_generator(lesson_id=None):
     assignment_type = request.args.get('assignment_type') or request.form.get('assignment_type') or 'homework'
     assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
     template_id = request.args.get('template_id', type=int)  # Получаем template_id из запроса
+    return_edit = request.args.get('return_edit', type=int)
     seed_task_id = request.args.get('seed_task_id', type=int)
     seed_task = None
     
@@ -462,6 +464,18 @@ def task_generator(lesson_id=None):
     bank_tasks = []
     bank_total = 0
     bank_pagination = []
+    assignment_task_ids = set()
+    if return_edit:
+        try:
+            assignment = Assignment.query.get(return_edit)
+            if assignment:
+                assignment_task_ids = {
+                    int(r[0]) for r in AssignmentTask.query.filter_by(assignment_id=assignment.assignment_id)
+                    .with_entities(AssignmentTask.task_id).all() if r and r[0] is not None
+                }
+        except Exception as ex:
+            logger.warning(f'assignment target enrichment failed: {ex}')
+            assignment_task_ids = set()
     try:
         bq = Tasks.query.options(
             joinedload(Tasks.course),
@@ -497,6 +511,8 @@ def task_generator(lesson_id=None):
             t.bank_target_already_added = None
             t.difficulty_label_ru = _difficulty_label_ru(t)
             t.student_task_mmr = _get_user_task_mmr(target_user_id, t.task_number)
+            if return_edit:
+                t.bank_target_already_added = int(t.task_id) in assignment_task_ids
         if lesson_id or template_id:
             try:
                 _le_ids, _tpl_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
@@ -565,6 +581,7 @@ def task_generator(lesson_id=None):
                            bank_filter_task_id=bank_filter_task_id,
                            bank_origin_filter=bank_origin_filter,
                            bank_filter_difficulty=bank_filter_difficulty,
+                           return_edit=return_edit,
                            bank_only_manual=bank_only_manual,
                            bank_show_inactive=bank_show_inactive,
                            bank_panel_open=bank_panel_open,

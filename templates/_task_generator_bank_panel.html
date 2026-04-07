@@ -4,6 +4,8 @@
      data-bank-add-lesson-id="{{ lesson_id or '' }}"
      data-bank-add-template-id="{{ template_id or '' }}"
      data-bank-add-assignment-type="{{ assignment_type }}"
+     {% elif return_edit %}
+     data-bank-add-assignment-id="{{ return_edit }}"
      {% endif %}>
     <div class="bg-white rounded-[24px] border border-slate-200 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] p-6">
         <form method="get" action="{% if lesson_id %}{{ url_for('task_generator.task_generator', lesson_id=lesson_id) }}{% else %}{{ url_for('task_generator.task_generator') }}{% endif %}" class="w-full min-w-0 flex flex-col gap-4">
@@ -79,7 +81,7 @@
                         <input type="checkbox" name="bank_show_inactive" value="1" class="w-5 h-5 shrink-0 rounded border border-slate-300 accent-boo-primary cursor-pointer m-0" {% if bank_show_inactive %}checked{% endif %}>
                         <span class="text-sm font-bold text-slate-600 whitespace-nowrap">Неактивные</span>
                     </label>
-                    <button type="submit" class="w-full sm:flex-1 min-h-[2.75rem] px-6 py-3 bg-boo-primary text-white rounded-xl font-bold shadow-sm hover:bg-boo-primaryHover transition-all text-sm border border-transparent shrink-0">
+                    <button type="submit" class="w-full sm:w-auto min-h-[2.75rem] px-6 py-3 bg-boo-primary text-white rounded-xl font-bold shadow-sm hover:bg-boo-primaryHover transition-all text-sm border border-transparent shrink-0">
                         Показать
                     </button>
                 </div>
@@ -92,9 +94,9 @@
             <h2 class="text-2xl font-black text-slate-900 tracking-tight m-0">Банк заданий</h2>
             <span class="text-sm font-bold text-slate-500">Всего записей: <span class="text-slate-900 font-black">{{ bank_total }}</span></span>
         </div>
-        {% if lesson_id or template_id %}
+        {% if lesson_id or template_id or return_edit %}
         <p class="text-xs font-medium text-slate-600 m-0 max-w-3xl leading-relaxed">
-            Режим добавления в {% if lesson_id %}урок{% endif %}{% if lesson_id and template_id %} и {% endif %}{% if template_id %}шаблон{% endif %}: у каждой карточки — статус по этой цели и кнопка «Добавить».
+            Режим добавления: у каждой карточки — статус по цели и кнопка «Добавить».
         </p>
         {% endif %}
     </div>
@@ -130,7 +132,7 @@
                 {% if t.site_task_id %}
                 <span class="text-xs font-bold text-slate-400 ml-1 truncate max-w-[200px]" title="{{ t.site_task_id }}">{{ t.site_task_id }}</span>
                 {% endif %}
-                {% if lesson_id or template_id %}
+                {% if lesson_id or template_id or return_edit %}
                     {% if t.bank_target_already_added %}
                     <span class="gen-picker-badge gen-picker-badge--done shrink-0">Уже добавлялось</span>
                     {% else %}
@@ -139,14 +141,14 @@
                 {% endif %}
             </div>
             <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end shrink-0">
-                {% if lesson_id or template_id %}
+                {% if lesson_id or template_id or return_edit %}
                 <button type="button"
                         class="bank-task-add-to-target-btn px-4 py-2 bg-emerald-50 text-emerald-900 border border-emerald-200 rounded-xl font-bold text-xs hover:bg-emerald-100 transition-colors flex items-center gap-1.5 shadow-sm justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
                         data-task-id="{{ t.task_id }}"
                         {% if t.bank_target_already_added %}disabled{% endif %}
-                        title="Добавить задание в урок и/или шаблон (как «Принять» в потоке)">
+                        title="Добавить задание в целевую сущность">
                     <i class="ph-bold ph-plus-circle" aria-hidden="true"></i>
-                    Добавить{% if lesson_id and template_id %} в урок/шаблон{% elif lesson_id %} в урок{% else %} в шаблон{% endif %}
+                    Добавить{% if lesson_id and template_id %} в урок/шаблон{% elif lesson_id %} в урок{% elif template_id %} в шаблон{% elif return_edit %} в работу{% endif %}
                 </button>
                 {% endif %}
                 <button type="button" class="bank-task-delete-btn px-4 py-2 bg-red-50 text-boo-coral border border-red-200 rounded-xl font-bold text-xs hover:bg-red-100 transition-colors flex items-center gap-1.5 shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-full sm:w-auto justify-center"

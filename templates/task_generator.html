@@ -1105,16 +1105,58 @@
             document.getElementById('gen-panel-bank')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
 
+        function markBankCardAsAdded(taskId) {
+            const card = document.querySelector('.bank-task-card[data-task-id="' + taskId + '"]');
+            if (!card) return;
+            const btn = card.querySelector('.bank-task-add-to-target-btn');
+            if (btn) btn.disabled = true;
+            const badge = card.querySelector('.gen-picker-badge');
+            if (badge) {
+                badge.className = 'gen-picker-badge gen-picker-badge--done shrink-0';
+                badge.textContent = 'Уже добавлялось';
+            }
+        }
+        function removeBankCard(taskId) {
+            const card = document.querySelector('.bank-task-card[data-task-id="' + taskId + '"]');
+            if (!card) return;
+            card.style.transition = 'opacity 180ms ease, transform 180ms ease';
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(-8px)';
+            setTimeout(() => card.remove(), 180);
+            const totalEl = document.querySelector('span.text-sm.font-bold.text-slate-500 span.text-slate-900.font-black');
+            if (totalEl) {
+                const n = parseInt((totalEl.textContent || '').replace(/[^\d]/g, ''), 10);
+                if (Number.isFinite(n) && n > 0) totalEl.textContent = String(n - 1);
+            }
+        }
+
         document.getElementById('gen-bank-panel')?.addEventListener('click', async (e) => {
             const addTargetBtn = e.target.closest('.bank-task-add-to-target-btn');
             if (addTargetBtn) {
                 if (addTargetBtn.disabled) return;
                 const panel = document.getElementById('gen-bank-panel');
-                if (!panel || !panel.dataset.bankAddAssignmentType) return;
+                if (!panel) return;
                 const taskId = parseInt(addTargetBtn.getAttribute('data-task-id') || '', 10);
                 if (!taskId) return;
                 addTargetBtn.disabled = true;
                 try {
+                    const assignmentIdRaw = (panel.dataset.bankAddAssignmentId || '').trim();
+                    if (assignmentIdRaw) {
+                        const assignmentId = parseInt(assignmentIdRaw, 10);
+                        if (!assignmentId) throw new Error('Некорректный ID работы');
+                        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                        const r = await fetch('/assignments/' + assignmentId + '/tasks', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
+                            body: JSON.stringify({ task_ids: [taskId] })
+                        });
+                        const data = await r.json().catch(() => ({}));
+                        if (!r.ok || !data.success) throw new Error(data.error || 'Ошибка добавления в работу');
+                        if (window.toast) window.toast.success('Задание добавлено в работу');
+                        markBankCardAsAdded(taskId);
+                        return;
+                    }
+                    if (!panel.dataset.bankAddAssignmentType) throw new Error('Не задана цель добавления');
                     const lid = (panel.dataset.bankAddLessonId || '').trim();
                     const tid = (panel.dataset.bankAddTemplateId || '').trim();
                     const body = {
@@ -1125,7 +1167,7 @@
                     };
                     const res = await postJSON('/task-generator/bank/picker/add', body);
                     if (window.toast) window.toast.success(res.message || 'Добавлено');
-                    window.location.reload();
+                    markBankCardAsAdded(taskId);
                 } catch (err) {
                     if (window.toast) window.toast.error(err.message || 'Ошибка');
                     addTargetBtn.disabled = false;
@@ -1148,7 +1190,7 @@
                 try {
                     await postJSON(`/task-generator/bank/${taskId}/delete`, { confirm_task_id: taskId });
                     if (window.toast) window.toast.success('Задание удалено');
-                    window.location.reload();
+                    removeBankCard(taskId);
                 } catch (err) {
                     if (window.toast) window.toast.error(err.message || 'Ошибка удаления');
                     delBtn.disabled = false;
