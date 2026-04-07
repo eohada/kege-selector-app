@@ -2034,6 +2034,10 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     border-color: transparent;
     box-shadow: 0 0 40px rgba(139, 92, 246, 0.20);
   }
+  [data-theme="dark"] .neo-button.outline:hover {
+    background: rgba(139, 92, 246, 0.14);
+    color: var(--color-text-primary);
+  }
   [data-theme="dark"] .neo-input, [data-theme="dark"] .neo-select, [data-theme="dark"] .neo-textarea {
     background: var(--color-bg-inset);
     border-color: var(--color-stroke);

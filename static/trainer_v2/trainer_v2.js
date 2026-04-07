@@ -279,8 +279,11 @@
 
   function effectiveTheme(mode) {
     if (mode === 'dark' || mode === 'light') return mode;
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    return isLight ? 'light' : 'dark';
+    const t = document.documentElement.getAttribute('data-theme');
+    if (t === 'light') return 'light';
+    if (t === 'dark') return 'dark';
+    /* auto на сайте: без data-theme приложение остаётся в светлых токенах :root */
+    return 'light';
   }
 
   function applyTrainerTheme(mode) {
@@ -314,6 +317,18 @@
         logEvent('theme_change', { mode });
       });
     });
+  }
+
+  function initTrainerSiteThemeSync() {
+    try {
+      const html = document.documentElement;
+      const obs = new MutationObserver(() => {
+        try {
+          applyTrainerTheme(getTrainerThemeMode());
+        } catch (_) {}
+      });
+      obs.observe(html, { attributes: true, attributeFilter: ['data-theme', 'data-theme-mode'] });
+    } catch (_) {}
   }
 
   function initZenToggle() {
@@ -3023,6 +3038,7 @@
     initVisited();
     loadPending();
     initThemeToggle();
+    initTrainerSiteThemeSync();
     initZenToggle();
     initControls();
     initCmdPalette();

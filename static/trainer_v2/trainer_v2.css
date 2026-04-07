@@ -23,8 +23,9 @@
 }
 
 :root[data-theme="light"] .trainer-v2-zen-body,
+:root:not([data-theme]) .trainer-v2-zen-body,
 .trainer-v2-zen-body:has(.trainer-v2-root[data-tv2-theme="light"]) {
-  background: #F5F5F7;
+  background: var(--color-bg-app, #E5E9F0);
 }
 
 .trainer-v2-shell.is-zen .trainer-v2-hero {
@@ -58,12 +59,14 @@
 }
 
 .trainer-v2-root[data-tv2-theme="light"] .trainer-v2-zen-overlay,
-:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .trainer-v2-zen-overlay {
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .trainer-v2-zen-overlay,
+:root:not([data-theme]) .trainer-v2-root[data-tv2-theme="auto"] .trainer-v2-zen-overlay {
   background: rgba(255, 255, 255, 0.75);
 }
 
 .trainer-v2-shell.is-zen .trainer-v2-root[data-tv2-theme="light"] .trainer-v2-topbar,
-:root[data-theme="light"] .trainer-v2-shell.is-zen .trainer-v2-root[data-tv2-theme="auto"] .trainer-v2-topbar {
+:root[data-theme="light"] .trainer-v2-shell.is-zen .trainer-v2-root[data-tv2-theme="auto"] .trainer-v2-topbar,
+:root:not([data-theme]) .trainer-v2-shell.is-zen .trainer-v2-root[data-tv2-theme="auto"] .trainer-v2-topbar {
   background: rgba(245, 245, 247, 0.85);
 }
 
@@ -164,8 +167,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Светлая оболочка tv2: локально light, светлая тема сайта, либо auto без data-theme (как у theme-switcher) */
 .trainer-v2-root[data-tv2-theme="light"],
-:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] {
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"],
+:root:not([data-theme]) .trainer-v2-root[data-tv2-theme="auto"] {
   --tv2-bg: #F5F5F7;
   --tv2-surface-1: #FFFFFF;
   --tv2-surface-2: #F0F0F3;
@@ -181,10 +186,7 @@
   --tv2-focus: 0 0 0 3px rgba(91, 91, 240, 0.18);
 }
 
-.trainer-v2-root[data-tv2-theme="dark"],
-:root:not([data-theme="light"]) .trainer-v2-root[data-tv2-theme="auto"] {
-  /* default tokens already dark */
-}
+/* Тёмная оболочка: локально dark или сайт data-theme="dark" — токены по умолчанию из блока .trainer-v2-root выше */
 
 .trainer-v2-root {
   background: var(--tv2-bg);
@@ -608,7 +610,8 @@ mark.tv2-hl:hover {
 }
 
 .trainer-v2-root[data-tv2-theme="light"] .tv2-popover,
-:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-popover {
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-popover,
+:root:not([data-theme]) .trainer-v2-root[data-tv2-theme="auto"] .tv2-popover {
   background: #FFFFFF;
   border-color: #D4D4D8;
   box-shadow: 0 12px 40px rgba(0,0,0,0.12);
@@ -921,7 +924,8 @@ mark.tv2-hl:hover {
 }
 
 .trainer-v2-root[data-tv2-theme="light"] .tv2-chat-msg.is-user .tv2-chat-bubble,
-:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-chat-msg.is-user .tv2-chat-bubble {
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-chat-msg.is-user .tv2-chat-bubble,
+:root:not([data-theme]) .trainer-v2-root[data-tv2-theme="auto"] .tv2-chat-msg.is-user .tv2-chat-bubble {
   background: rgba(91, 91, 240, 0.07);
 }
 
@@ -1089,7 +1093,8 @@ mark.tv2-hl:hover {
 }
 
 .trainer-v2-root[data-tv2-theme="light"] .tv2-cmd-backdrop,
-:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-cmd-backdrop {
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-cmd-backdrop,
+:root:not([data-theme]) .trainer-v2-root[data-tv2-theme="auto"] .tv2-cmd-backdrop {
   background: rgba(0, 0, 0, 0.22);
 }
 
@@ -1110,7 +1115,8 @@ mark.tv2-hl:hover {
 }
 
 .trainer-v2-root[data-tv2-theme="light"] .tv2-cmd-box,
-:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-cmd-box {
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-cmd-box,
+:root:not([data-theme]) .trainer-v2-root[data-tv2-theme="auto"] .tv2-cmd-box {
   box-shadow: 0 16px 64px rgba(0, 0, 0, 0.12);
 }
 
