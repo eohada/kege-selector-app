@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Выполнение работы (SPA Light)</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты: Golos Text для UI, JetBrains Mono для кода -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Golos Text"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        boo: {
+                            bg: '#F8FAFC', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.04)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.03)',
+                        'bottom-bar': '0 -10px 40px rgba(15, 23, 42, 0.05)',
+                        'inner-soft': 'inset 0 2px 10px rgba(0, 0, 0, 0.015)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Анимация переключения задач (Fade in) */
+        .task-view { display: none; opacity: 0; }
+        .task-view.active { display: flex; opacity: 1; animation: fadeTask 0.3s ease-out forwards; }
+        
+        @keyframes fadeTask {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .task-input-wrapper:focus-within {
+            box-shadow: 0 0 0 3px rgba(123, 92, 255, 0.15);
+            border-color: #7B5CFF;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden relative">
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none flex justify-center">
+        <header class="w-full max-w-[1000px] bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer group">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm group-hover:scale-105 transition-all">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-slate-900 hidden sm:block">BooStudy</span>
+            </div>
+
+            <nav class="hidden md:flex items-center gap-1 bg-slate-100/60 p-1 rounded-xl border border-slate-200/50">
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-house text-lg"></i> Главная
+                </a>
+                <a href="#" class="px-5 py-2 bg-white text-boo-primary shadow-sm border border-slate-100 rounded-lg font-bold text-sm flex items-center gap-2">
+                    <i class="ph-bold ph-list-checks text-lg"></i> Задания
+                </a>
+                <a href="#" class="px-5 py-2 text-slate-500 hover:text-slate-900 hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <div class="w-10 h-10 rounded-xl shadow-sm border border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center cursor-pointer hover:border-boo-primary transition-colors">
+                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=QaStudent1&backgroundColor=06B6D4" class="w-full h-full object-cover">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-32 px-4 lg:px-8">
+        <div class="w-full max-w-[860px] mx-auto flex flex-col gap-6">
+
+            <!-- КРОШКИ -->
+            <a href="#" class="flex items-center gap-2 text-slate-500 hover:text-boo-primary font-bold text-sm w-fit transition-colors px-2 py-1 rounded-lg hover:bg-slate-100">
+                <i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий
+            </a>
+
+            <!-- БЛОК 1: HERO КАРТОЧКА РАБОТЫ -->
+            <div class="bg-white rounded-[32px] border border-slate-200 shadow-tactile p-8 lg:p-10">
+                
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="px-2.5 py-1 bg-purple-50 text-boo-primary border border-purple-100 rounded-lg text-[10px] font-extrabold uppercase tracking-widest">Домашняя работа</span>
+                    <span class="text-xs font-bold text-slate-400">#82</span>
+                </div>
+
+                <h1 class="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-8">
+                    Эло-тест
+                </h1>
+
+                <!-- Метаданные (Таблица) -->
+                <div class="flex flex-wrap lg:flex-nowrap gap-y-6 pt-6 border-t border-slate-100">
+                    <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 px-2 lg:px-4 first:pl-0">
+                        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Статус</div>
+                        <div class="inline-flex items-center gap-1.5 bg-white border border-slate-200 shadow-sm text-slate-700 px-3 py-1.5 rounded-xl font-bold text-sm">
+                            <span class="w-2 h-2 rounded-full bg-boo-primary animate-pulse"></span> В процессе
+                        </div>
+                    </div>
+                    <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 px-2 lg:px-4">
+                        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Дедлайн</div>
+                        <div class="text-slate-800 font-bold text-sm flex items-center gap-1.5 mt-2">
+                            <i class="ph-bold ph-calendar-blank text-boo-coral"></i> 08.04.2026 19:59
+                        </div>
+                    </div>
+                    <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 px-2 lg:px-4">
+                        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Попытки</div>
+                        <div class="text-slate-800 font-bold text-sm flex items-center gap-1.5 mt-2">
+                            <i class="ph-bold ph-arrows-clockwise text-boo-primary"></i> 0 / 2
+                        </div>
+                    </div>
+                    <div class="w-1/2 lg:flex-1 px-2 lg:px-4">
+                        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Начато</div>
+                        <div class="text-slate-800 font-bold text-sm flex items-center gap-1.5 mt-2">
+                            <i class="ph-bold ph-clock text-boo-cyan"></i> 07.04.2026 13:52
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- БЛОК 2: ПАНЕЛЬ НАВИГАЦИИ ПО ЗАДАНИЯМ -->
+            <!-- Она остается на месте, переключая только контент ниже -->
+            <div class="bg-white/80 backdrop-blur-xl p-3 rounded-[24px] shadow-sm border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all">
+                <span class="text-xs font-extrabold text-slate-500 uppercase tracking-widest pl-3">Задания:</span>
+                
+                <div class="flex gap-2 overflow-x-auto hide-scroll w-full sm:w-auto">
+                    <!-- Активная кнопка -->
+                    <button onclick="switchTask(1)" id="btn-task-1" class="w-11 h-11 shrink-0 rounded-[14px] bg-boo-primary text-white font-black text-lg flex items-center justify-center shadow-[0_4px_10px_rgba(123,92,255,0.3)] border-b-2 border-purple-800 active:translate-y-[1px] active:border-b-0 transition-all">1</button>
+                    <!-- Пройденная / Неактивная кнопка -->
+                    <button onclick="switchTask(2)" id="btn-task-2" class="w-11 h-11 shrink-0 rounded-[14px] bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-colors shadow-sm">2</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-colors shadow-sm">3</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-colors shadow-sm">4</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-colors shadow-sm">5</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-colors shadow-sm">6</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-colors shadow-sm hidden md:flex">7</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-colors shadow-sm hidden md:flex">8</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-colors shadow-sm hidden md:flex">9</button>
+                </div>
+            </div>
+
+            <!-- БЛОК 3: КАРТОЧКА ТЕКУЩЕГО ЗАДАНИЯ (SPA КОНТЕНТ) -->
+            <!-- Сюда подставляется контент. Все карточки лежат в DOM, но активна только одна -->
+            
+            <!-- ====== ЗАДАНИЕ 1 (АКТИВНОЕ, НУЖЕН ОТВЕТ) ====== -->
+            <div id="content-task-1" class="task-view active flex-col gap-6">
+                <div class="bg-white rounded-[32px] border border-slate-200 shadow-tactile flex flex-col relative overflow-hidden">
+                    
+                    <!-- Шапка задачи -->
+                    <div class="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <h2 class="text-2xl font-black text-boo-primary">Задание 1</h2>
+                            <span class="bg-purple-50 text-boo-primary text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-purple-100">1 балл</span>
+                            <span class="bg-slate-100 text-slate-600 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-slate-200">База</span>
+                            <span class="bg-cyan-50 text-cyan-700 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-cyan-200 flex items-center gap-1"><i class="ph-bold ph-code"></i> 4C - Run</span>
+                        </div>
+                        <button class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex items-center justify-center border border-slate-200" title="Сообщить об ошибке">
+                            <i class="ph-bold ph-info"></i>
+                        </button>
+                    </div>
+
+                    <!-- Текст задачи -->
+                    <div class="p-8 lg:px-10 text-[15px] leading-loose text-slate-800 space-y-5">
+                        <p><b>0)</b> Автомат получает на вход пятизначное число <code>N</code>. По этому числу строится новое число <code>Z</code> по следующим правилам.</p>
+                        
+                        <p><b>1)</b> Вычисляется число <code>S</code> - сумма всех цифр числа N.<br>
+                        <b>2)</b> Вычисляется число <code>M</code> - сумма максимальной и минимальной цифры в записи числа N.<br>
+                        <b>3)</b> Вычисляется число <code>L</code> - самая левая цифра числа N.<br>
+                        <b>4)</b> Вычисляется число <code>R</code> - самая правая цифра числа N.<br>
+                        <b>5)</b> Вычисляется <code>P₁ = S - L</code><br>
+                        <b>6)</b> Вычисляется <code>P₂ = M - R</code></p>
+
+                        <p>Новое число <code>Z</code> получается в результате записи рядом, без пробелов, чисел <code>P₁</code> и <code>P₂</code> таким образом, чтобы они следовали слева направо в неубывающем порядке.</p>
+
+                        <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-inner-soft text-sm text-slate-600 italic">
+                            <p class="mb-2"><span class="font-bold not-italic text-slate-800">Пример:</span> Исходное число K = 12502. S = 1 + 2 + 5 + 0 + 2 = 10. M = 0 + 5 = 5. L = 1. R = 2. P₁ = 9. P₂ = 3.</p>
+                            <p><span class="font-bold not-italic text-slate-800">Результат:</span> Z = 39</p>
+                        </div>
+
+                        <p class="font-bold text-slate-900 mt-6">
+                            Укажите наибольшее число N, при обработке которого автомат выдаст число Z = 222.
+                        </p>
+                    </div>
+
+                    <!-- Поле ввода ответа -->
+                    <div class="px-8 pb-8 lg:px-10">
+                        <div class="bg-slate-50/50 rounded-[24px] p-6 border border-slate-200 task-input-wrapper transition-all">
+                            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 block">Ваш ответ:</label>
+                            <input type="text" placeholder="Введи ответ здесь..." class="w-full bg-white border border-slate-200 rounded-xl px-5 py-4 font-mono text-slate-900 text-xl focus:outline-none transition-colors shadow-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Комментарии привязаны к конкретной задаче -->
+                <div class="bg-white rounded-[32px] border border-slate-200 shadow-tactile p-8">
+                    <h3 class="text-xl font-black text-slate-900 mb-6">Комментарии к Заданию 1</h3>
+                    <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-[20px] border border-slate-100 mb-6">
+                        <p class="text-sm font-medium text-slate-500">Нет комментариев. Если не понимаешь условие — спроси!</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <input type="text" placeholder="Написать сообщение..." class="flex-1 bg-white border border-slate-200 rounded-xl px-5 py-3.5 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-sm">
+                        <button class="px-8 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-md text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 shrink-0">
+                            Отправить
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== ЗАДАНИЕ 2 (ПРОВЕРЕННОЕ) ====== -->
+            <div id="content-task-2" class="task-view flex-col gap-6">
+                <div class="bg-white rounded-[32px] border border-slate-200 shadow-tactile flex flex-col relative overflow-hidden opacity-95">
+                    
+                    <div class="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <h2 class="text-2xl font-black text-slate-900">Задание 2</h2>
+                            <span class="bg-purple-50 text-boo-primary text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-purple-100">1 балл</span>
+                            <span class="bg-slate-100 text-slate-600 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-slate-200">База</span>
+                        </div>
+                    </div>
+
+                    <div class="p-8 lg:px-10 text-[15px] leading-loose text-slate-800 space-y-5">
+                        <p>Укажите наименьшее число N, при обработке которого автомат выдаст число Z = 111.</p>
+                    </div>
+
+                    <!-- Статус ответа "ВЕРНО" -->
+                    <div class="px-8 pb-8 lg:px-10">
+                        <div class="bg-green-50 rounded-[24px] p-6 border border-green-200 shadow-sm relative overflow-hidden">
+                            <!-- Акцентная полоса -->
+                            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-green-500"></div>
+                            
+                            <div class="flex items-center gap-2 mb-4 pl-2">
+                                <i class="ph-bold ph-check text-green-500 text-xl"></i>
+                                <span class="font-bold text-green-700 text-base">Верно — 1/1 баллов</span>
+                                <span class="text-sm font-medium text-slate-500 ml-1">(попытки 2/2 исчерпаны)</span>
+                            </div>
+
+                            <div class="pl-2">
+                                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2 block">Ваш ответ:</label>
+                                <input type="text" value="99607" disabled class="w-full bg-white/70 border border-slate-200 rounded-xl px-5 py-4 font-mono text-slate-900 text-xl opacity-80 cursor-not-allowed shadow-inner-soft">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-[32px] border border-slate-200 shadow-tactile p-8 mt-2">
+                    <h3 class="text-xl font-black text-slate-900 mb-6">Комментарии к Заданию 2</h3>
+                    <div class="flex flex-col gap-4 mb-6">
+                        <!-- Пример комментария препода -->
+                        <div class="flex gap-4">
+                            <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator&backgroundColor=7B5CFF" class="w-10 h-10 rounded-full border border-slate-200 bg-purple-50 shrink-0">
+                            <div class="bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-none p-4 text-sm text-slate-700 shadow-sm">
+                                <div class="font-bold text-slate-900 mb-1">Alex Creator</div>
+                                Молодец, со второй попытки понял подвох с наименьшим числом!
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <input type="text" placeholder="Ответить..." class="flex-1 bg-white border border-slate-200 rounded-xl px-5 py-3.5 font-medium text-slate-700 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-sm">
+                        <button class="px-8 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-md text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 shrink-0">
+                            Отправить
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ПЛАВАЮЩАЯ ПАНЕЛЬ СДАЧИ -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[860px] px-4 z-50 pointer-events-none">
+        <div class="bg-white/90 backdrop-blur-xl border border-slate-200 shadow-[0_20px_40px_-10px_rgba(123,92,255,0.15)] rounded-2xl p-2.5 flex items-center justify-between gap-4 pointer-events-auto">
+            
+            <button class="px-6 py-3.5 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl font-bold text-sm transition-colors flex items-center gap-2 border border-transparent hover:border-slate-200">
+                <i class="ph-bold ph-floppy-disk text-lg"></i> <span class="hidden sm:inline">Сохранить черновик</span>
+            </button>
+
+            <button class="px-10 py-3.5 bg-boo-primary text-white rounded-xl font-black hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-base">
+                <i class="ph-bold ph-check-circle text-xl"></i> Сдать работу
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Скрипт переключения заданий -->
+    <script>
+        function switchTask(taskId) {
+            // Классы для кнопок-номеров
+            const activeBtnClass = 'w-11 h-11 shrink-0 rounded-[14px] bg-boo-primary text-white font-black text-lg flex items-center justify-center shadow-[0_4px_10px_rgba(123,92,255,0.3)] border-b-2 border-purple-800 active:translate-y-[1px] active:border-b-0 transition-all';
+            const inactiveBtnClass = 'w-11 h-11 shrink-0 rounded-[14px] bg-white border border-slate-200 text-slate-600 font-bold text-lg hover:bg-slate-50 transition-colors shadow-sm';
+
+            // Все вкладки заданий
+            const tasks = [1, 2]; // В демо у нас только 2 контента
+
+            tasks.forEach(id => {
+                const btn = document.getElementById(`btn-task-${id}`);
+                const content = document.getElementById(`content-task-${id}`);
+                
+                if (!btn || !content) return;
+
+                if (id === taskId) {
+                    btn.className = activeBtnClass;
+                    content.classList.add('active');
+                } else {
+                    btn.className = inactiveBtnClass;
+                    content.classList.remove('active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

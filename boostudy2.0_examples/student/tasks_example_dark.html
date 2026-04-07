@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy - Выполнение работы (SPA Airy Dark)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Golos Text"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        dark: {
+                            bg: '#09090B',       
+                            card: '#131316',     
+                            inner: '#18181B',    
+                            border: '#27272A',   
+                            text: '#FAFAFA',     
+                            muted: '#A1A1AA'     
+                        },
+                        boo: {
+                            primary: '#8B5CF6',
+                            primaryHover: '#A78BFA',
+                            cyan: '#22D3EE',
+                            coral: '#FB7185',
+                            accent: '#FBBF24',
+                        }
+                    },
+                    boxShadow: {
+                        'glass-dark': '0 4px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+                        'nav-dark': '0 10px 30px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.05)',
+                        'inner-dark': 'inset 0 2px 10px rgba(0, 0, 0, 0.3)',
+                        'neon-primary': '0 0 20px rgba(139, 92, 246, 0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-dark-bg); color: var(--tw-colors-dark-text); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #27272A; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3F3F46; }
+        
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .task-view { display: none; opacity: 0; }
+        .task-view.active { display: flex; opacity: 1; animation: fadeTask 0.3s ease-out forwards; }
+        
+        @keyframes fadeTask {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dark-input { background-color: #18181B; border-color: #27272A; color: #FAFAFA; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2); }
+        .dark-input:focus-within { border-color: #8B5CF6; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2), 0 0 0 2px rgba(139,92,246,0.2); }
+        
+        .task-content code { background-color: #18181B; padding: 2px 6px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.9em; font-weight: 700; color: #A78BFA; border: 1px solid #27272A; }
+    </style>
+</head>
+<body class="bg-dark-bg text-dark-text flex flex-col h-screen overflow-hidden relative selection:bg-boo-primary selection:text-white">
+
+    <!-- ФОНОВЫЕ БЛИКИ -->
+    <div class="fixed top-[-20%] left-[20%] w-[500px] h-[500px] bg-purple-600/10 rounded-full filter blur-[150px] pointer-events-none z-0"></div>
+
+    <!-- ПАРЯЩИЙ ДОК НАВИГАЦИИ -->
+    <div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none flex justify-center">
+        <header class="w-full max-w-[1000px] bg-dark-card/80 backdrop-blur-xl border border-white/5 shadow-nav-dark rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <div class="flex items-center gap-3 pl-2 cursor-pointer group">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-boo-primary flex items-center justify-center border border-purple-500/20 shadow-neon-primary group-hover:scale-105 transition-all">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight text-white hidden sm:block">BooStudy</span>
+            </div>
+
+            <nav class="hidden md:flex items-center gap-1 bg-dark-inner/80 p-1 rounded-xl border border-dark-border/50">
+                <a href="#" class="px-5 py-2 text-dark-muted hover:text-white hover:bg-white/5 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-house text-lg"></i> Главная
+                </a>
+                <a href="#" class="px-5 py-2 bg-dark-card border border-white/10 text-white shadow-glass-dark rounded-lg font-bold text-sm flex items-center gap-2">
+                    <i class="ph-bold ph-list-checks text-lg text-boo-primary"></i> Задания
+                </a>
+                <a href="#" class="px-5 py-2 text-dark-muted hover:text-white hover:bg-white/5 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
+                </a>
+            </nav>
+
+            <div class="flex items-center gap-3 pr-1">
+                <div class="w-10 h-10 rounded-xl shadow-sm border border-dark-border overflow-hidden bg-dark-inner flex items-center justify-center cursor-pointer hover:border-boo-primary transition-colors">
+                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=QaStudent1&backgroundColor=09090B" class="w-full h-full object-cover opacity-90">
+                </div>
+            </div>
+        </header>
+    </div>
+
+    <!-- ОСНОВНАЯ РАБОЧАЯ ОБЛАСТЬ (Узкая колонка для фокуса) -->
+    <main class="flex-1 overflow-y-auto pt-32 pb-32 px-4 lg:px-8 relative z-10" id="mainScrollArea">
+        <div class="w-full max-w-[860px] mx-auto flex flex-col gap-6">
+
+            <!-- КРОШКИ -->
+            <a href="#" class="flex items-center gap-2 text-dark-muted hover:text-white font-bold text-sm w-fit transition-colors px-2 py-1 rounded-lg hover:bg-white/5">
+                <i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий
+            </a>
+
+            <!-- БЛОК 1: HERO КАРТОЧКА РАБОТЫ (Dark Bento) -->
+            <div class="bg-dark-card rounded-[32px] border border-white/5 shadow-glass-dark p-8 lg:p-10 relative overflow-hidden group">
+                <div class="absolute -right-20 -top-20 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="relative z-10">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="px-2.5 py-1 bg-purple-500/10 text-purple-300 border border-purple-500/20 shadow-[0_0_10px_rgba(139,92,246,0.1)] rounded-lg text-[10px] font-extrabold uppercase tracking-widest">Домашняя работа</span>
+                        <span class="text-xs font-bold text-dark-muted">#82</span>
+                    </div>
+
+                    <h1 class="text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-8">
+                        Эло-тест
+                    </h1>
+
+                    <!-- Метаданные (Таблица) -->
+                    <div class="flex flex-wrap lg:flex-nowrap gap-y-6 pt-6 border-t border-dark-border/50">
+                        <div class="w-1/2 lg:flex-1 lg:border-r border-dark-border/50 px-2 lg:px-4 first:pl-0">
+                            <div class="text-[10px] font-extrabold text-dark-muted uppercase tracking-widest mb-2">Статус</div>
+                            <div class="inline-flex items-center gap-1.5 bg-dark-inner border border-dark-border shadow-inner-dark text-slate-300 px-3 py-1.5 rounded-xl font-bold text-sm">
+                                <span class="w-2 h-2 rounded-full bg-boo-primary animate-pulse shadow-[0_0_5px_rgba(139,92,246,0.8)]"></span> В процессе
+                            </div>
+                        </div>
+                        <div class="w-1/2 lg:flex-1 lg:border-r border-dark-border/50 px-2 lg:px-4">
+                            <div class="text-[10px] font-extrabold text-dark-muted uppercase tracking-widest mb-2">Дедлайн</div>
+                            <div class="text-white font-bold text-sm flex items-center gap-1.5 mt-2">
+                                <i class="ph-bold ph-calendar-blank text-boo-coral"></i> 08.04.2026 19:59
+                            </div>
+                        </div>
+                        <div class="w-1/2 lg:flex-1 lg:border-r border-dark-border/50 px-2 lg:px-4">
+                            <div class="text-[10px] font-extrabold text-dark-muted uppercase tracking-widest mb-2">Попытки</div>
+                            <div class="text-white font-bold text-sm flex items-center gap-1.5 mt-2">
+                                <i class="ph-bold ph-arrows-clockwise text-boo-primary drop-shadow-[0_0_5px_rgba(139,92,246,0.5)]"></i> 0 / 2
+                            </div>
+                        </div>
+                        <div class="w-1/2 lg:flex-1 px-2 lg:px-4">
+                            <div class="text-[10px] font-extrabold text-dark-muted uppercase tracking-widest mb-2">Начато</div>
+                            <div class="text-white font-bold text-sm flex items-center gap-1.5 mt-2">
+                                <i class="ph-bold ph-clock text-boo-cyan"></i> 07.04.2026 13:52
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- БЛОК 2: ПАНЕЛЬ НАВИГАЦИИ ПО ЗАДАНИЯМ (Dark Glass Pill) -->
+            <div class="sticky top-20 z-40 bg-dark-card/80 backdrop-blur-xl p-2.5 rounded-[20px] shadow-nav-dark border border-white/5 flex items-center justify-between gap-4 transition-all mt-2 mb-2">
+                <span class="text-[11px] font-extrabold text-dark-muted uppercase tracking-widest pl-2 hidden sm:block">Задания:</span>
+                
+                <div class="flex gap-1.5 overflow-x-auto hide-scroll flex-1 sm:flex-none justify-start sm:justify-end">
+                    <button onclick="switchTask(1)" id="btn-task-1" class="w-11 h-11 shrink-0 rounded-[14px] bg-boo-primary text-white font-black text-lg flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.4)] border border-purple-400/50 transition-all">1</button>
+                    <button onclick="switchTask(2)" id="btn-task-2" class="w-11 h-11 shrink-0 rounded-[14px] bg-dark-inner border border-dark-border text-dark-muted font-bold text-lg hover:bg-dark-card hover:text-white transition-colors shadow-inner-dark">2</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-dark-inner border border-dark-border text-dark-muted font-bold text-lg hover:bg-dark-card hover:text-white transition-colors shadow-inner-dark">3</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-dark-inner border border-dark-border text-dark-muted font-bold text-lg hover:bg-dark-card hover:text-white transition-colors shadow-inner-dark">4</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-dark-inner border border-dark-border text-dark-muted font-bold text-lg hover:bg-dark-card hover:text-white transition-colors shadow-inner-dark">5</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-dark-inner border border-dark-border text-dark-muted font-bold text-lg hover:bg-dark-card hover:text-white transition-colors shadow-inner-dark">6</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-dark-inner border border-dark-border text-dark-muted font-bold text-lg hover:bg-dark-card hover:text-white transition-colors shadow-inner-dark hidden md:flex">7</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-dark-inner border border-dark-border text-dark-muted font-bold text-lg hover:bg-dark-card hover:text-white transition-colors shadow-inner-dark hidden md:flex">8</button>
+                    <button class="w-11 h-11 shrink-0 rounded-[14px] bg-dark-inner border border-dark-border text-dark-muted font-bold text-lg hover:bg-dark-card hover:text-white transition-colors shadow-inner-dark hidden md:flex">9</button>
+                </div>
+            </div>
+
+            <!-- БЛОК 3: КАРТОЧКА ТЕКУЩЕГО ЗАДАНИЯ (SPA КОНТЕНТ) -->
+            
+            <!-- ====== ЗАДАНИЕ 1 (АКТИВНОЕ, НУЖЕН ОТВЕТ) ====== -->
+            <div id="content-task-1" class="task-view active flex-col gap-6">
+                <div class="bg-dark-card rounded-[32px] border border-white/5 border-b-[4px] border-b-dark-borderDark shadow-glass-dark flex flex-col relative overflow-hidden">
+                    
+                    <div class="px-8 py-6 border-b border-dark-border/50 flex items-center justify-between bg-dark-inner/30">
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <h2 class="text-2xl font-black text-boo-primary drop-shadow-[0_0_5px_rgba(139,92,246,0.4)]">Задание 1</h2>
+                            <span class="bg-purple-500/10 text-purple-300 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-purple-500/20">1 балл</span>
+                            <span class="bg-dark-inner text-slate-400 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-dark-border">База</span>
+                            <span class="bg-cyan-900/30 text-cyan-400 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-cyan-800/50 flex items-center gap-1"><i class="ph-bold ph-code"></i> 4C - Run</span>
+                        </div>
+                        <button class="w-8 h-8 rounded-full bg-dark-inner text-dark-muted hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center border border-dark-border shadow-inner-dark" title="Сообщить об ошибке">
+                            <i class="ph-bold ph-info"></i>
+                        </button>
+                    </div>
+
+                    <div class="p-8 lg:px-10 text-[15px] leading-loose text-slate-300 space-y-5 task-content">
+                        <p><b class="text-white">0)</b> Автомат получает на вход пятизначное число <code>N</code>. По этому числу строится новое число <code>Z</code> по следующим правилам.</p>
+                        
+                        <p><b class="text-white">1)</b> Вычисляется число <code>S</code> - сумма всех цифр числа N.<br>
+                        <b class="text-white">2)</b> Вычисляется число <code>M</code> - сумма максимальной и минимальной цифры в записи числа N.<br>
+                        <b class="text-white">3)</b> Вычисляется число <code>L</code> - самая левая цифра числа N.<br>
+                        <b class="text-white">4)</b> Вычисляется число <code>R</code> - самая правая цифра числа N.<br>
+                        <b class="text-white">5)</b> Вычисляется <code>P₁ = S - L</code><br>
+                        <b class="text-white">6)</b> Вычисляется <code>P₂ = M - R</code></p>
+
+                        <p>Новое число <code>Z</code> получается в результате записи рядом, без пробелов, чисел <code>P₁</code> и <code>P₂</code> таким образом, чтобы они следовали слева направо в неубывающем порядке.</p>
+
+                        <div class="bg-dark-inner/50 p-5 rounded-2xl border border-dark-border shadow-inner-dark text-sm text-dark-muted italic">
+                            <p class="mb-2"><span class="font-bold not-italic text-white">Пример:</span> Исходное число K = 12502. S = 1 + 2 + 5 + 0 + 2 = 10. M = 0 + 5 = 5. L = 1. R = 2. P₁ = 9. P₂ = 3.</p>
+                            <p><span class="font-bold not-italic text-white">Результат:</span> Z = 39</p>
+                        </div>
+
+                        <p class="font-bold text-white mt-6">
+                            Укажите наибольшее число N, при обработке которого автомат выдаст число Z = 222.
+                        </p>
+                    </div>
+
+                    <!-- Поле ввода ответа (Темное вдавленное) -->
+                    <div class="px-8 pb-8 lg:px-10">
+                        <div class="dark-input rounded-[24px] p-6 transition-all">
+                            <label class="text-[10px] font-extrabold text-dark-muted uppercase tracking-widest mb-3 block">Ваш ответ:</label>
+                            <input type="text" placeholder="Введи ответ здесь..." class="w-full bg-transparent font-mono text-white text-xl focus:outline-none transition-colors placeholder-slate-600">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Комментарии -->
+                <div class="bg-dark-card rounded-[32px] border border-white/5 shadow-glass-dark p-8">
+                    <h3 class="text-xl font-black text-white mb-6">Комментарии к Заданию 1</h3>
+                    <div class="flex flex-col items-center justify-center py-8 text-center bg-dark-inner/50 rounded-[20px] border border-dark-border mb-6">
+                        <p class="text-sm font-medium text-dark-muted">Нет комментариев. Задайте вопрос преподавателю!</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <input type="text" placeholder="Написать сообщение..." class="flex-1 dark-input rounded-xl px-5 py-3.5 font-medium text-sm transition-all">
+                        <button class="px-8 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-[0_0_15px_rgba(139,92,246,0.3)] text-sm border-b-[3px] border-b-purple-900 active:translate-y-[2px] active:border-b-0 shrink-0">
+                            Отправить
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== ЗАДАНИЕ 2 (ПРОВЕРЕННОЕ) ====== -->
+            <div id="content-task-2" class="task-view flex-col gap-6">
+                <div class="bg-dark-card rounded-[32px] border border-white/5 shadow-glass-dark flex flex-col relative overflow-hidden opacity-90">
+                    
+                    <div class="px-8 py-6 border-b border-dark-border/50 flex items-center justify-between">
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <h2 class="text-2xl font-black text-white">Задание 2</h2>
+                            <span class="bg-purple-500/10 text-purple-300 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-purple-500/20">1 балл</span>
+                            <span class="bg-dark-inner text-slate-400 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border border-dark-border">База</span>
+                        </div>
+                    </div>
+
+                    <div class="p-8 lg:px-10 text-[15px] leading-loose text-slate-300 space-y-5 task-content">
+                        <p>Укажите наименьшее число N, при обработке которого автомат выдаст число Z = 111.</p>
+                    </div>
+
+                    <!-- Статус ответа "ВЕРНО" (Dark Green Neon) -->
+                    <div class="px-8 pb-8 lg:px-10">
+                        <div class="bg-green-500/5 rounded-[24px] p-6 border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.05)] relative overflow-hidden">
+                            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+                            
+                            <div class="flex items-center gap-2 mb-4 pl-2">
+                                <i class="ph-bold ph-check text-green-400 text-xl drop-shadow-[0_0_5px_rgba(34,197,94,0.5)]"></i>
+                                <span class="font-bold text-green-400 text-base">Верно — 1/1 баллов</span>
+                                <span class="text-sm font-medium text-dark-muted ml-1">(попытки 2/2 исчерпаны)</span>
+                            </div>
+
+                            <div class="pl-2">
+                                <label class="text-[10px] font-extrabold text-dark-muted uppercase tracking-widest mb-2 block">Ваш ответ:</label>
+                                <input type="text" value="99607" disabled class="w-full bg-black/40 border border-dark-border rounded-xl px-5 py-4 font-mono text-white text-xl opacity-70 cursor-not-allowed shadow-inner-dark">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-dark-card rounded-[32px] border border-white/5 shadow-glass-dark p-8 mt-2">
+                    <h3 class="text-xl font-black text-white mb-6">Комментарии к Заданию 2</h3>
+                    <div class="flex flex-col gap-4 mb-6">
+                        <div class="flex gap-4">
+                            <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator&backgroundColor=7B5CFF" class="w-10 h-10 rounded-full border border-dark-border bg-dark-inner shrink-0 opacity-90">
+                            <div class="bg-dark-inner/50 border border-dark-border rounded-2xl rounded-tl-none p-4 text-sm text-slate-300 shadow-inner-dark">
+                                <div class="font-bold text-white mb-1">Alex Creator</div>
+                                Молодец, со второй попытки понял подвох с наименьшим числом!
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <input type="text" placeholder="Ответить..." class="flex-1 dark-input rounded-xl px-5 py-3.5 font-medium text-sm transition-all">
+                        <button class="px-8 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-[0_0_15px_rgba(139,92,246,0.3)] text-sm border-b-[3px] border-b-purple-900 active:translate-y-[2px] active:border-b-0 shrink-0">
+                            Отправить
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ПЛАВАЮЩАЯ ПАНЕЛЬ СДАЧИ -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[860px] px-4 z-50 pointer-events-none">
+        <div class="bg-dark-card/90 backdrop-blur-xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] rounded-2xl p-2.5 flex items-center justify-between gap-4 pointer-events-auto">
+            
+            <button class="px-6 py-3.5 bg-dark-inner border border-dark-border text-dark-muted hover:text-white rounded-xl font-bold text-sm transition-colors flex items-center gap-2 shadow-inner-dark">
+                <i class="ph-bold ph-floppy-disk text-lg"></i> <span class="hidden sm:inline">Сохранить черновик</span>
+            </button>
+
+            <button class="px-10 py-3.5 bg-boo-primary text-white rounded-xl font-black hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(139,92,246,0.4)] border-b-[3px] border-b-purple-900 active:translate-y-[2px] active:border-b-0 text-base">
+                <i class="ph-bold ph-check-circle text-xl"></i> Сдать работу
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Скрипт переключения заданий -->
+    <script>
+        function switchTask(taskId) {
+            const activeBtnClass = 'w-11 h-11 shrink-0 rounded-[14px] bg-boo-primary text-white font-black text-lg flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.4)] border border-purple-400/50 transition-all';
+            const inactiveBtnClass = 'w-11 h-11 shrink-0 rounded-[14px] bg-dark-inner border border-dark-border text-dark-muted font-bold text-lg hover:bg-dark-card hover:text-white transition-colors shadow-inner-dark';
+
+            const tasks = [1, 2];
+
+            tasks.forEach(id => {
+                const btn = document.getElementById(`btn-task-${id}`);
+                const content = document.getElementById(`content-task-${id}`);
+                
+                if (!btn || !content) return;
+
+                if (id === taskId) {
+                    btn.className = activeBtnClass;
+                    content.classList.add('active');
+                } else {
+                    btn.className = inactiveBtnClass;
+                    content.classList.remove('active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
