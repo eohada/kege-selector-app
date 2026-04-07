@@ -196,7 +196,6 @@ def create_app(config_name=None):
         
         try:
             with app.app_context():
-                from app.models import Reminder  # Явный импорт для создания таблицы
                 from app.models import Assignment, AssignmentTask, Submission, Answer  # Импортируем новые модели
                 from app.models import LessonWhiteboard  # Интерактивная доска Miro
                 from app.models import Subject, KnowledgeNode, UserMastery, AnalyticsEvent  # Аналитика (граф знаний)
@@ -262,17 +261,13 @@ def create_app(config_name=None):
     from app.api import api_bp
     from app.schedule import schedule_bp
     from app.templates_manager import templates_bp
-    from app.reminders import reminders_bp
     from app.parents import parents_bp
-    from app.designer import designer_bp
     from app.assignments import assignments_bp
     from app.remote_admin import remote_admin_bp
     from app.courses import courses_bp
     from app.library import library_bp
     from app.groups import groups_bp
     from app.notifications import notifications_bp
-    from app.onboarding import onboarding_bp
-    from app.rubrics import rubrics_bp
     from app.billing import billing_bp
     from app.trainer import trainer_bp
     from app.uploads import uploads_bp
@@ -292,17 +287,13 @@ def create_app(config_name=None):
     app.register_blueprint(api_bp)
     app.register_blueprint(schedule_bp)
     app.register_blueprint(templates_bp)
-    app.register_blueprint(reminders_bp)
     app.register_blueprint(parents_bp)
-    app.register_blueprint(designer_bp)
     app.register_blueprint(assignments_bp)
     app.register_blueprint(remote_admin_bp)
     app.register_blueprint(courses_bp)
     app.register_blueprint(library_bp)
     app.register_blueprint(groups_bp)
     app.register_blueprint(notifications_bp)
-    app.register_blueprint(onboarding_bp)
-    app.register_blueprint(rubrics_bp)
     app.register_blueprint(billing_bp)
     app.register_blueprint(trainer_bp)
     app.register_blueprint(uploads_bp)
@@ -387,15 +378,35 @@ def create_app(config_name=None):
     from app.admin.routes import maintenance_status_api
     csrf.exempt(maintenance_status_api)
 
-    from app.api.routes import api_telegram_link_bot
+    from app.api.routes import api_telegram_link_bot, api_internal_telegram_dispatch
     csrf.exempt(api_telegram_link_bot)
+    csrf.exempt(api_internal_telegram_dispatch)
 
     from app.telegram.webhook import telegram_webhook, set_webhook
     csrf.exempt(telegram_webhook)
     csrf.exempt(set_webhook)
 
-    from app.telegram.mini_app import mini_app_api_dashboard
-    csrf.exempt(mini_app_api_dashboard)
+    from app.telegram.mini_app import (
+        mini_app_api_dashboard,
+        mini_app_api_schedule,
+        mini_app_api_progress,
+        mini_app_api_theory_index,
+        mini_app_api_theory_article,
+        mini_app_api_profile,
+        mini_app_api_broadcast_create,
+        mini_app_api_creator_students,
+    )
+    for _fn in (
+        mini_app_api_dashboard,
+        mini_app_api_schedule,
+        mini_app_api_progress,
+        mini_app_api_theory_index,
+        mini_app_api_theory_article,
+        mini_app_api_profile,
+        mini_app_api_broadcast_create,
+        mini_app_api_creator_students,
+    ):
+        csrf.exempt(_fn)
 
     @app.context_processor
     def inject_csrf_token():

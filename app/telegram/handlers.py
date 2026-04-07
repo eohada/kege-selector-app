@@ -7,11 +7,19 @@ Flask's application context.
 """
 import html
 import logging
+import os
 import random
 from datetime import datetime, timezone
 from typing import Optional
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    WebAppInfo,
+)
 from telegram.ext import ContextTypes
 from sqlalchemy import text
 
@@ -33,7 +41,96 @@ from urep_bot.bot import (
 )
 from urep_bot.config import APP_URL, APP_OPEN_URL
 
+from app.telegram.link_api import call_link_bot_api
+
 logger = logging.getLogger(__name__)
+
+
+def _mini_app_url() -> str:
+    base = (APP_URL or os.environ.get('APP_URL') or '').strip().rstrip('/')
+    return f'{base}/tg-app/' if base else ''
+
+
+def touch_telegram_activity(chat_id: int) -> None:
+    """Обновить время последней активности в боте (для панели создателя)."""
+    try:
+        now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+        session = get_session()
+        try:
+            session.execute(
+                text('''
+                    UPDATE "UserProfiles"
+                    SET telegram_last_interaction_at = :ts, updated_at = :ts
+                    WHERE telegram_chat_id = :cid
+                '''),
+                {'ts': now_naive, 'cid': chat_id},
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+        finally:
+            close_session(session)
+    except Exception:
+        logger.debug('touch_telegram_activity failed for chat_id=%s', chat_id, exc_info=True)
+
+
+def _reply_keyboard_with_mini_app(user: dict | None) -> ReplyKeyboardMarkup | None:
+    """Нижняя клавиатура с кнопкой Mini App (Telegram WebApp)."""
+    url = _mini_app_url()
+    if not url or not user:
+        return None
+    return ReplyKeyboardMarkup(
+        [[KeyboardButton(text='📱 Открыть BooStudy', web_app=WebAppInfo(url=url))]],
+        resize_keyboard=True,
+    )
+
+
+async def _apply_link_result(
+    update: Update,
+    *,
+    chat_id: int,
+    result: dict | None,
+) -> bool:
+    """Обработать ответ API привязки; при успехе — поздравление и меню. Возвращает True если успех."""
+    if not result:
+        await update.message.reply_text(
+            '❌ Не удалось связаться с сервером BooStudy. Попробуй позже или напиши в поддержку.',
+            parse_mode='HTML',
+        )
+        return False
+    data = result.get('data') or {}
+    err = data.get('error')
+    if result.get('status') == 200 and data.get('success'):
+        user = _get_linked_user(chat_id)
+        name = (user or {}).get('first_name') or (user or {}).get('username') or 'пользователь'
+        mini_kb = _reply_keyboard_with_mini_app(user)
+        await update.message.reply_text(
+            f'✅ <b>Аккаунт привязан!</b>\n\nПривет, {esc(name)}!\n'
+            'Открой Mini App кнопкой ниже или /menu.',
+            parse_mode='HTML',
+            reply_markup=mini_kb,
+        )
+        await update.message.reply_text(
+            '📋 <b>Меню</b>',
+            parse_mode='HTML',
+            reply_markup=_menu_keyboard(user),
+        )
+        return True
+    if err == 'already_linked':
+        await update.message.reply_text(
+            'ℹ️ Этот Telegram уже привязан. Используй /unlink на сайте в профиле или напиши администратору.',
+            parse_mode='HTML',
+        )
+    elif err == 'expired_code':
+        await update.message.reply_text('⌛ Код или ссылка устарели. Сгенерируй новые в профиле на сайте.', parse_mode='HTML')
+    elif err == 'invalid_code':
+        await update.message.reply_text('❌ Неверный код или ссылка. Проверь данные в профиле BooStudy.', parse_mode='HTML')
+    else:
+        await update.message.reply_text(
+            f'❌ Не удалось привязать: {esc(str(err or "ошибка"))}',
+            parse_mode='HTML',
+        )
+    return False
 
 # ---------------------------------------------------------------------------
 # Keyboard builders
@@ -93,18 +190,44 @@ def _get_linked_user(chat_id) -> Optional[dict]:
 # ---------------------------------------------------------------------------
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Greet the user; show different text if already linked."""
+    """Greet the user; deep link ``/start TOKEN`` привязывает аккаунт."""
     chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
+
+    if update.message and context.args:
+        token = (context.args[0] or '').strip()
+        if token and len(token) >= 16:
+            uname = (update.effective_user.username or '').strip()
+            tg_identifier = f'@{uname}' if uname else None
+            result = call_link_bot_api(
+                chat_id=chat_id,
+                telegram_id=tg_identifier,
+                link_token=token,
+                app_url=APP_URL,
+            )
+            await _apply_link_result(update, chat_id=chat_id, result=result)
+            return
+
     user = _get_linked_user(chat_id)
+    mini_kb = _reply_keyboard_with_mini_app(user)
 
     if user:
         name = user.get('first_name') or user.get('username') or 'пользователь'
         msg = (
             f'👋 <b>Привет, {esc(name)}!</b>\n\n'
             f'Ты привязан к BooStudy как <b>{esc(user.get("username", ""))}</b>.\n'
-            'Нажми /menu для навигации.'
+            'Нажми /menu для навигации или открой Mini App кнопкой ниже.'
         )
-        await update.message.reply_text(msg, parse_mode='HTML', reply_markup=_menu_keyboard(user))
+        await update.message.reply_text(
+            msg,
+            parse_mode='HTML',
+            reply_markup=mini_kb,
+        )
+        await update.message.reply_text(
+            '📋 Меню',
+            parse_mode='HTML',
+            reply_markup=_menu_keyboard(user),
+        )
     else:
         msg = (
             WELCOME_MESSAGE
@@ -114,12 +237,39 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ---------------------------------------------------------------------------
+# /link
+# ---------------------------------------------------------------------------
+
+async def cmd_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Привязка: /link КОД из профиля сайта."""
+    chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
+    if not context.args:
+        await update.message.reply_text(
+            'ℹ️ Укажи код: <code>/link ABCDEF</code>\nКод выдаётся в профиле на сайте BooStudy.',
+            parse_mode='HTML',
+        )
+        return
+    code = context.args[0].strip().upper()
+    uname = (update.effective_user.username or '').strip()
+    tg_identifier = f'@{uname}' if uname else None
+    result = call_link_bot_api(
+        chat_id=chat_id,
+        telegram_id=tg_identifier,
+        code=code,
+        app_url=APP_URL,
+    )
+    await _apply_link_result(update, chat_id=chat_id, result=result)
+
+
+# ---------------------------------------------------------------------------
 # /menu
 # ---------------------------------------------------------------------------
 
 async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show role-based inline menu."""
     chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
     user = _get_linked_user(chat_id)
 
     if not user:
@@ -129,6 +279,13 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    mini_kb = _reply_keyboard_with_mini_app(user)
+    if mini_kb:
+        await update.message.reply_text(
+            '👇 Mini App',
+            parse_mode='HTML',
+            reply_markup=mini_kb,
+        )
     await update.message.reply_text(
         '📋 <b>Меню BooStudy</b>',
         parse_mode='HTML',
@@ -141,6 +298,7 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ---------------------------------------------------------------------------
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    touch_telegram_activity(update.effective_chat.id)
     await update.message.reply_text(HELP_MESSAGE, parse_mode='HTML')
 
 
@@ -149,9 +307,10 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ---------------------------------------------------------------------------
 
 async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Placeholder for private text messages (link codes, error reports, etc.)."""
+    """Приватный текст: подсказка; активность фиксируется."""
     if not update.message or update.message.chat.type != 'private':
         return
+    touch_telegram_activity(update.effective_chat.id)
     msg = (update.message.text or '').strip()
     if not msg:
         return
@@ -170,6 +329,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = query.data
     chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
 
     session = get_session()
     try:

@@ -873,6 +873,24 @@ def student_gradebook_create(student_id: int):
         flash('Не удалось добавить запись в журнал.', 'danger')
         return redirect(url_for('students.student_gradebook', student_id=student.student_id))
 
+    if student.user_id:
+        try:
+            from app.telegram.notifications import notify_new_gradebook_entry
+            parts = []
+            if entry.score is not None:
+                parts.append(f'Баллы: {entry.score}' + (f' / {entry.max_score}' if entry.max_score else ''))
+            if entry.grade_text:
+                parts.append(str(entry.grade_text))
+            score_line = ' · '.join(parts) if parts else ''
+            notify_new_gradebook_entry(
+                student_user_id=int(student.user_id),
+                student_id=int(student.student_id),
+                entry_title=entry.title or 'Запись',
+                score_text=score_line,
+            )
+        except Exception:
+            logger.warning('notify_new_gradebook_entry after gradebook_create failed', exc_info=True)
+
     try:
         audit_logger.log(
             action='gradebook_create',
@@ -2234,11 +2252,17 @@ def student_start_lesson(student_id):
 
     if upcoming_lesson:
         upcoming_lesson.status = 'in_progress'
+        lid = upcoming_lesson.lesson_id
         try:
             db.session.commit()
         except Exception as e:
             db.session.rollback()
             raise
+        try:
+            from app.telegram.notifications import notify_lesson_started_for_lesson
+            notify_lesson_started_for_lesson(int(lid))
+        except Exception:
+            logger.warning('notify_lesson_started_for_lesson after student_start_lesson failed', exc_info=True)
         flash(f'Урок начат!', 'success')
     else:
         new_lesson = Lesson(
@@ -2255,6 +2279,11 @@ def student_start_lesson(student_id):
         except Exception as e:
             db.session.rollback()
             raise
+        try:
+            from app.telegram.notifications import notify_lesson_started_for_lesson
+            notify_lesson_started_for_lesson(int(new_lesson.lesson_id))
+        except Exception:
+            logger.warning('notify_lesson_started_for_lesson after student_start_lesson (new) failed', exc_info=True)
         flash(f'Новый урок создан и начат!', 'success')
 
     return redirect(url_for('students.student_profile', student_id=student_id))

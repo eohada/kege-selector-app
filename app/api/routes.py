@@ -478,10 +478,14 @@ def api_templates():
 
 
 
+def _telegram_bot_username() -> str:
+    return (os.environ.get('TELEGRAM_BOT_USERNAME') or '').strip().lstrip('@')
+
+
 @api_bp.route('/api/telegram/link-code', methods=['POST'])
 @login_required
 def api_telegram_link_code():
-    """Генерация одноразового кода для привязки Telegram аккаунта"""
+    """Генерация одноразового кода и deep-link токена для привязки Telegram аккаунта"""
     try:
         profile = current_user.profile
         if not profile:
@@ -489,14 +493,26 @@ def api_telegram_link_code():
             db.session.add(profile)
         
         code = secrets.token_hex(3).upper()  # 6 символов, например A1B2C3
+        # До 64 символов для параметра ?start= (Telegram)
+        link_token = secrets.token_hex(24)  # 48 hex
         profile.telegram_link_code = code
         profile.telegram_link_code_expires = datetime.utcnow() + timedelta(minutes=15)
+        profile.telegram_link_token = link_token
+        profile.telegram_link_token_expires = datetime.utcnow() + timedelta(minutes=15)
         
         db.session.commit()
+
+        bot_username = _telegram_bot_username()
+        deep_link = (
+            f'https://t.me/{bot_username}?start={link_token}' if bot_username else None
+        )
         
         return jsonify({
             'success': True,
             'code': code,
+            'link_token': link_token,
+            'deep_link': deep_link,
+            'bot_username': bot_username or None,
             'expires_in': 900  # 15 минут в секундах
         })
     except Exception as e:
@@ -507,7 +523,7 @@ def api_telegram_link_code():
 
 @api_bp.route('/api/telegram/link-bot', methods=['POST'])
 def api_telegram_link_bot():
-    """Привязка Telegram аккаунта ботом по одноразовому коду"""
+    """Привязка Telegram аккаунта ботом по коду /link или по deep-link токену ?start="""
     try:
         expected = (os.environ.get('BOT_INTERNAL_TOKEN') or '').strip()
         provided = (request.headers.get('X-Bot-Token') or '').strip()
@@ -519,10 +535,13 @@ def api_telegram_link_bot():
 
         data = request.get_json() or {}
         code = (data.get('code') or '').strip().upper()
+        link_token = (data.get('link_token') or data.get('start_payload') or '').strip()
         chat_id = data.get('chat_id')
         telegram_id = (data.get('telegram_id') or '').strip() or None
 
-        if not code or chat_id is None:
+        if chat_id is None:
+            return jsonify({'success': False, 'error': 'invalid_payload'}), 400
+        if not code and not link_token:
             return jsonify({'success': False, 'error': 'invalid_payload'}), 400
 
         try:
@@ -534,19 +553,29 @@ def api_telegram_link_bot():
         if existing:
             return jsonify({'success': False, 'error': 'already_linked'}), 409
 
-        profile = UserProfile.query.filter(
-            func.upper(UserProfile.telegram_link_code) == code
-        ).first()
-        if not profile:
-            return jsonify({'success': False, 'error': 'invalid_code'}), 404
+        profile = None
+        if link_token:
+            profile = UserProfile.query.filter_by(telegram_link_token=link_token).first()
+            if not profile:
+                return jsonify({'success': False, 'error': 'invalid_code'}), 404
+            if profile.telegram_link_token_expires and profile.telegram_link_token_expires < datetime.utcnow():
+                return jsonify({'success': False, 'error': 'expired_code'}), 410
+        else:
+            profile = UserProfile.query.filter(
+                func.upper(UserProfile.telegram_link_code) == code
+            ).first()
+            if not profile:
+                return jsonify({'success': False, 'error': 'invalid_code'}), 404
 
-        if profile.telegram_link_code_expires and profile.telegram_link_code_expires < datetime.utcnow():
-            return jsonify({'success': False, 'error': 'expired_code'}), 410
+            if profile.telegram_link_code_expires and profile.telegram_link_code_expires < datetime.utcnow():
+                return jsonify({'success': False, 'error': 'expired_code'}), 410
 
         logger.info("api_telegram_link_bot: linking chat_id=%s (int) to user_id=%s profile_id=%s", chat_id, profile.user_id, profile.profile_id)
         profile.telegram_chat_id = chat_id
         profile.telegram_link_code = None
         profile.telegram_link_code_expires = None
+        profile.telegram_link_token = None
+        profile.telegram_link_token_expires = None
         if telegram_id and not profile.telegram_id:
             profile.telegram_id = telegram_id
 
@@ -574,6 +603,8 @@ def api_telegram_unlink():
         profile.telegram_chat_id = None
         profile.telegram_link_code = None
         profile.telegram_link_code_expires = None
+        profile.telegram_link_token = None
+        profile.telegram_link_token_expires = None
         
         db.session.commit()
         
@@ -930,4 +961,41 @@ def api_analytics_history():
         return jsonify({'success': True, 'history': history})
     except Exception as e:
         logger.error(f'Ошибка /api/analytics/history: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _internal_telegram_token_ok() -> bool:
+    secret = (os.environ.get('TELEGRAM_INTERNAL_API_SECRET') or os.environ.get('BOT_INTERNAL_TOKEN') or '').strip()
+    if not secret:
+        logger.warning('internal telegram: no TELEGRAM_INTERNAL_API_SECRET / BOT_INTERNAL_TOKEN')
+        return False
+    provided = (request.headers.get('X-Internal-Token') or request.headers.get('X-Bot-Token') or '').strip()
+    return secrets.compare_digest(provided, secret)
+
+
+@api_bp.route('/api/internal/telegram/dispatch', methods=['POST'])
+def api_internal_telegram_dispatch():
+    """
+    Внутренний API: поставить в очередь отправку пользователю в Telegram.
+    Заголовок: X-Internal-Token (или X-Bot-Token) = BOT_INTERNAL_TOKEN или TELEGRAM_INTERNAL_API_SECRET.
+    """
+    if not _internal_telegram_token_ok():
+        return jsonify({'success': False, 'error': 'unauthorized'}), 401
+    data = request.get_json() or {}
+    event = (data.get('event') or '').strip()
+    payload = data.get('payload') or {}
+    if event != 'send_to_user':
+        return jsonify({'success': False, 'error': 'unknown_event'}), 400
+    uid = payload.get('user_id')
+    text = (payload.get('text') or '').strip()
+    kind = (payload.get('kind') or '').strip() or None
+    if uid is None or not text:
+        return jsonify({'success': False, 'error': 'invalid_payload'}), 400
+    try:
+        from app.tasks.telegram_dispatch import telegram_notify_user_task
+
+        telegram_notify_user_task.delay(int(uid), text, kind)
+        return jsonify({'success': True, 'queued': True})
+    except Exception as e:
+        logger.error('api_internal_telegram_dispatch: %s', e, exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500

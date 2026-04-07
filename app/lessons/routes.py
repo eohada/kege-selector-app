@@ -308,6 +308,11 @@ def lesson_start(lesson_id):
     except Exception as e:
         db.session.rollback()
         raise
+    try:
+        from app.telegram.notifications import notify_lesson_started_for_lesson
+        notify_lesson_started_for_lesson(int(lesson.lesson_id))
+    except Exception:
+        logger.warning('notify_lesson_started_for_lesson after lesson_start failed', exc_info=True)
     flash(f'Урок начат! Используй зеленую панель сверху для управления уроком.', 'success')
     return redirect(url_for('students.student_profile', student_id=lesson.student_id))
 

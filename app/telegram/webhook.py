@@ -61,6 +61,7 @@ def _register_handlers(app: Application) -> None:
     """Attach all command / callback / message handlers."""
     from app.telegram.handlers import (
         cmd_start,
+        cmd_link,
         cmd_menu,
         cmd_help,
         callback_handler,
@@ -68,6 +69,7 @@ def _register_handlers(app: Application) -> None:
     )
 
     app.add_handler(CommandHandler('start', cmd_start))
+    app.add_handler(CommandHandler('link', cmd_link))
     app.add_handler(CommandHandler('menu', cmd_menu))
     app.add_handler(CommandHandler('help', cmd_help))
     app.add_handler(CallbackQueryHandler(callback_handler))

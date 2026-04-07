@@ -372,6 +372,9 @@ def register_hooks(app):
 
         if request.path.startswith('/internal/trainer/'):
             return
+
+        if request.path.startswith('/api/internal/'):
+            return
         
         if not current_user.is_authenticated:
             if request.endpoint and request.endpoint != 'auth.login':

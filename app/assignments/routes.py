@@ -352,6 +352,12 @@ def submission_quick_return(submission_id: int):
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
     try:
+        from app.telegram.notifications import on_submission_status_changed
+        on_submission_status_changed(submission)
+    except Exception:
+        logger.warning('on_submission_status_changed after quick return failed', exc_info=True)
+
+    try:
         audit_logger.log(
             action='submission_quick_returned',
             entity='Submission',
@@ -2700,6 +2706,12 @@ def submission_submit(submission_id):
         
         db.session.commit()
 
+        try:
+            from app.telegram.notifications import on_submission_status_changed
+            on_submission_status_changed(submission)
+        except Exception:
+            logger.warning('on_submission_status_changed after submission_submit failed', exc_info=True)
+
         creator_id = getattr(assignment, 'created_by_id', None) or (assignment.created_by.id if getattr(assignment, 'created_by', None) else None)
         if creator_id and assignment.created_by_id:
             student_name = getattr(submission.student, 'name', None) or 'Ученик'
@@ -3241,6 +3253,12 @@ def submission_grade_save(submission_id):
                     logger.warning("Analytics process_submission (grade_save) failed: %s", anal_err)
         
         db.session.commit()
+
+        try:
+            from app.telegram.notifications import on_submission_status_changed
+            on_submission_status_changed(submission)
+        except Exception:
+            logger.warning('on_submission_status_changed after grade_save failed', exc_info=True)
         
         audit_logger.log(
             action='grade_submission',

@@ -1,3 +1,6 @@
 from app.tasks.code_check import check_code_task
 from app.tasks.notifications import send_notification_task
 from app.tasks.submissions import process_submission_task
+from app.tasks.telegram_dispatch import telegram_notify_user_task
+from app.tasks.telegram_deadlines import telegram_deadline_reminders_task
+from app.tasks.telegram_broadcast import process_telegram_broadcast_batch

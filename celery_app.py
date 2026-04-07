@@ -2,6 +2,8 @@
 Celery application factory for BooStudy.
 Shares Flask config and app context with Celery workers.
 """
+import os
+
 from celery import Celery
 
 
@@ -30,6 +32,17 @@ def make_celery(app=None):
         worker_prefetch_multiplier=1,
         worker_max_tasks_per_child=100,
     )
+
+    beat = dict(app.config.get('CELERY_BEAT_SCHEDULE') or {})
+    if os.environ.get('TELEGRAM_DEADLINE_REMINDERS_DISABLED', '').strip().lower() not in ('1', 'true', 'yes'):
+        beat.setdefault(
+            'telegram-deadline-reminders',
+            {
+                'task': 'app.tasks.telegram_deadlines.telegram_deadline_reminders_task',
+                'schedule': float(os.environ.get('TELEGRAM_DEADLINE_BEAT_SECONDS', '900')),
+            },
+        )
+    celery.conf.beat_schedule = beat
 
     class ContextTask(celery.Task):
         abstract = True

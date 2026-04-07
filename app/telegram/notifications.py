@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 def send_telegram_message(
     chat_id: int,
     text_body: str,
-    parse_mode: str = 'HTML',
+    parse_mode: str | None = 'HTML',
     reply_markup: dict | None = None,
     disable_web_page_preview: bool = True,
 ) -> Optional[dict]:
@@ -38,9 +38,10 @@ def send_telegram_message(
     payload: dict = {
         'chat_id': chat_id,
         'text': text_body,
-        'parse_mode': parse_mode,
         'disable_web_page_preview': disable_web_page_preview,
     }
+    if parse_mode:
+        payload['parse_mode'] = parse_mode
     if reply_markup:
         payload['reply_markup'] = reply_markup
 
@@ -57,6 +58,47 @@ def send_telegram_message(
         return None
     except Exception as e:
         logger.error('send_telegram_message to %s failed: %s', chat_id, e)
+        return None
+
+
+def send_telegram_photo(
+    chat_id: int,
+    photo_url: str,
+    caption: str | None = None,
+    parse_mode: str | None = 'HTML',
+    reply_markup: dict | None = None,
+) -> Optional[dict]:
+    """Отправить фото по URL (Telegram скачивает сам)."""
+    token = os.environ.get('BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not token:
+        logger.warning('send_telegram_photo: no bot token configured')
+        return None
+
+    url = f'https://api.telegram.org/bot{token}/sendPhoto'
+    payload: dict = {
+        'chat_id': chat_id,
+        'photo': photo_url,
+    }
+    if parse_mode:
+        payload['parse_mode'] = parse_mode
+    if caption:
+        payload['caption'] = caption
+    if reply_markup:
+        payload['reply_markup'] = reply_markup
+
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(
+        url, data=data, headers={'Content-Type': 'application/json'},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            return json.loads(resp.read().decode('utf-8'))
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8', errors='replace')
+        logger.error('Telegram sendPhoto HTTP %s for chat %s: %s', e.code, chat_id, body[:300])
+        return None
+    except Exception as e:
+        logger.error('send_telegram_photo to %s failed: %s', chat_id, e)
         return None
 
 
@@ -102,7 +144,7 @@ def notify_teacher_manual_review(submission_id: int) -> bool:
             )
             return False
 
-        grade_url = f'{APP_URL}/submission/{submission_id}/grade' if APP_URL else ''
+        grade_url = f'{APP_URL.rstrip("/")}/submissions/{submission_id}/grade' if APP_URL else ''
         msg = (
             '📝 <b>Работа ожидает проверки</b>\n\n'
             f'📄 {_esc(title or "Без названия")}\n'
@@ -120,6 +162,12 @@ def notify_teacher_manual_review(submission_id: int) -> bool:
                 }]],
             }
 
+        from app.telegram.user_notify import user_allows_telegram_notification, get_profile_for_user
+
+        prof = get_profile_for_user(int(teacher_uid))
+        if not user_allows_telegram_notification(prof, 'homework_submitted'):
+            return False
+
         result = send_telegram_message(int(chat_id), msg, reply_markup=reply_markup)
         return result is not None and result.get('ok', False)
     except Exception as e:
@@ -129,31 +177,111 @@ def notify_teacher_manual_review(submission_id: int) -> bool:
         close_session(session)
 
 
-def notify_student_graded(submission_id: int) -> bool:
-    """Notify a student that their submission has been graded."""
+def notify_submission_submitted_to_staff(submission_id: int) -> int:
+    """
+    Учитель (автор работы) и создатели/chief_admin получают уведомление о сдаче (статус SUBMITTED).
+    Возвращает число успешных отправок.
+    """
     from urep_bot.db import get_session, close_session
     from urep_bot.config import APP_URL
+    from app.telegram.user_notify import user_allows_telegram_notification, get_profile_for_user
+
+    session = get_session()
+    sent = 0
+    try:
+        row = session.execute(text("""
+            SELECT s.submission_id,
+                   a.title,
+                   a.created_by_id,
+                   st.name AS student_name
+            FROM "Submissions" s
+            JOIN "Assignments" a ON a.assignment_id = s.assignment_id
+            JOIN "Students" st ON st.student_id = s.student_id
+            WHERE s.submission_id = :sid
+        """), {'sid': submission_id}).fetchone()
+        if not row:
+            return 0
+        _, title, teacher_uid, student_name = row
+        admin_rows = session.execute(text("""
+            SELECT id FROM "Users" WHERE role IN ('creator', 'chief_admin')
+        """)).fetchall()
+        admin_ids = [r[0] for r in admin_rows] if admin_rows else []
+
+        base = (APP_URL or '').rstrip('/')
+        grade_url = f'{base}/submissions/{submission_id}/grade' if base else ''
+        msg = (
+            '📤 <b>Работа сдана на проверку</b>\n\n'
+            f'📄 {_esc(title or "Без названия")}\n'
+            f'👤 {_esc(student_name or "Ученик")}\n'
+        )
+        if grade_url:
+            msg += f'\n🔗 {grade_url}'
+        reply_markup = None
+        if grade_url:
+            reply_markup = {
+                'inline_keyboard': [[{'text': '✅ Открыть проверку', 'url': grade_url}]],
+            }
+
+        seen_chats: set[int] = set()
+
+        def _send_to_user(uid: int, kind: str | None) -> None:
+            nonlocal sent
+            if not uid:
+                return
+            p = get_profile_for_user(int(uid))
+            if not p or not p.telegram_chat_id:
+                return
+            cid = int(p.telegram_chat_id)
+            if cid in seen_chats:
+                return
+            if kind and not user_allows_telegram_notification(p, kind):
+                return
+            if not kind and not user_allows_telegram_notification(p, None):
+                return
+            r = send_telegram_message(cid, msg, reply_markup=reply_markup)
+            if r and r.get('ok'):
+                sent += 1
+                seen_chats.add(cid)
+
+        if teacher_uid:
+            _send_to_user(int(teacher_uid), 'homework_submitted')
+
+        for aid in admin_ids:
+            if teacher_uid and aid == teacher_uid:
+                continue
+            _send_to_user(int(aid), None)
+
+        return sent
+    except Exception as e:
+        logger.error('notify_submission_submitted_to_staff error: %s', e, exc_info=True)
+        return sent
+    finally:
+        close_session(session)
+
+
+def notify_student_graded(submission_id: int) -> bool:
+    """Notify a student that their submission has been graded (с учётом настроек профиля)."""
+    from urep_bot.db import get_session, close_session
+    from urep_bot.config import APP_URL
+    from app.telegram.user_notify import notify_user_by_id
 
     session = get_session()
     try:
         row = session.execute(text("""
             SELECT a.title,
-                   st.name,
                    st.user_id,
-                   up.telegram_chat_id,
                    s.status
             FROM "Submissions" s
             JOIN "Assignments" a  ON a.assignment_id = s.assignment_id
             JOIN "Students"    st ON st.student_id   = s.student_id
-            JOIN "UserProfiles" up ON up.user_id     = st.user_id
             WHERE s.submission_id = :sid
         """), {'sid': submission_id}).fetchone()
 
         if not row:
             return False
 
-        title, student_name, student_uid, chat_id, status = row
-        if not chat_id:
+        title, student_uid, status = row
+        if not student_uid:
             return False
 
         status_text = {
@@ -162,7 +290,7 @@ def notify_student_graded(submission_id: int) -> bool:
             'AUTO_GRADED': '🤖 Автопроверка завершена',
         }.get(status, f'Статус: {status}')
 
-        view_url = f'{APP_URL}/submissions' if APP_URL else ''
+        view_url = f'{(APP_URL or "").rstrip("/")}/submissions' if APP_URL else ''
         msg = (
             f'📝 <b>{status_text}</b>\n\n'
             f'📄 {_esc(title or "Работа")}\n'
@@ -178,14 +306,77 @@ def notify_student_graded(submission_id: int) -> bool:
                     'url': view_url,
                 }]],
             }
-
-        result = send_telegram_message(int(chat_id), msg, reply_markup=reply_markup)
-        return result is not None and result.get('ok', False)
+        kind = 'homework_returned' if status == 'RETURNED' else 'homework_checked'
+        return notify_user_by_id(int(student_uid), msg, kind=kind, reply_markup=reply_markup)
     except Exception as e:
         logger.error('notify_student_graded error: %s', e, exc_info=True)
         return False
     finally:
         close_session(session)
+
+
+def notify_new_gradebook_entry(*, student_user_id: int, student_id: int, entry_title: str, score_text: str) -> bool:
+    """Новая запись в журнале оценок — уведомление ученику."""
+    from urep_bot.config import APP_URL
+    from app.telegram.user_notify import notify_user_by_id
+
+    base = (APP_URL or '').rstrip('/')
+    gb_url = f'{base}/student/{student_id}/gradebook' if base else ''
+    msg = (
+        '📒 <b>Новая запись в журнале</b>\n\n'
+        f'{_esc(entry_title or "Оценка")}\n'
+        f'{_esc(score_text or "")}\n'
+    )
+    if gb_url:
+        msg += f'\n🔗 {gb_url}'
+    reply_markup = None
+    if gb_url:
+        reply_markup = {'inline_keyboard': [[{'text': '📒 Журнал', 'url': gb_url}]]}
+    return notify_user_by_id(
+        int(student_user_id), msg, kind='homework_checked', reply_markup=reply_markup,
+    )
+
+
+def notify_lesson_started_for_lesson(lesson_id: int) -> None:
+    """Отправить ученику уведомление «урок начался» по id урока (после commit)."""
+    try:
+        from app.models import Lesson
+
+        lesson = Lesson.query.get(lesson_id)
+        if not lesson:
+            return
+        st = lesson.student
+        if not st or not st.user_id:
+            return
+        notify_lesson_started_to_student(
+            student_user_id=int(st.user_id),
+            lesson_id=int(lesson.lesson_id),
+            topic=lesson.topic or 'Занятие',
+        )
+    except Exception as e:
+        logger.warning('notify_lesson_started_for_lesson %s: %s', lesson_id, e, exc_info=True)
+
+
+def notify_lesson_started_to_student(*, student_user_id: int, lesson_id: int, topic: str) -> bool:
+    """Урок переведён в in_progress — ученик."""
+    from urep_bot.config import APP_URL
+    from app.telegram.user_notify import notify_user_by_id
+
+    base = (APP_URL or '').rstrip('/')
+    room_url = f'{base}/lesson/{lesson_id}/classwork-tasks' if base else ''
+    msg = (
+        '▶️ <b>Урок начался</b>\n\n'
+        f'{_esc(topic or "Занятие")}\n'
+    )
+    if room_url:
+        msg += f'\n🔗 {room_url}'
+    reply_markup = None
+    if room_url:
+        reply_markup = {'inline_keyboard': [[{'text': '🚪 В классную комнату', 'url': room_url}]]}
+    # kind=None: только глобальный переключатель — старт урока важнее тематических «напоминаний».
+    return notify_user_by_id(
+        int(student_user_id), msg, kind=None, reply_markup=reply_markup,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +401,9 @@ def on_submission_status_changed(submission) -> None:
     if not sid or not status:
         return
 
+    if isinstance(status, str):
+        status = status.strip().upper()
+
     if status == SubmissionStatus.NEEDS_MANUAL_REVIEW:
         try:
             notify_teacher_manual_review(sid)
@@ -225,6 +419,12 @@ def on_submission_status_changed(submission) -> None:
             )
         except Exception:
             pass
+
+    elif status in (SubmissionStatus.SUBMITTED, SubmissionStatus.LATE):
+        try:
+            notify_submission_submitted_to_staff(sid)
+        except Exception:
+            logger.exception('on_submission_status_changed: notify_submission_submitted_to_staff failed for %s', sid)
 
     elif status in (SubmissionStatus.GRADED, SubmissionStatus.RETURNED, SubmissionStatus.AUTO_GRADED):
         try:

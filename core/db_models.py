@@ -1256,6 +1256,9 @@ class UserProfile(db.Model):
     telegram_chat_id = db.Column(db.BigInteger, nullable=True, unique=True, index=True)  # Chat ID для отправки уведомлений
     telegram_link_code = db.Column(db.String(32), nullable=True)  # Одноразовый код привязки
     telegram_link_code_expires = db.Column(db.DateTime, nullable=True)  # Срок действия кода
+    telegram_link_token = db.Column(db.String(64), nullable=True, unique=True, index=True)  # Токен для t.me deep link ?start=
+    telegram_link_token_expires = db.Column(db.DateTime, nullable=True)
+    telegram_last_interaction_at = db.Column(db.DateTime, nullable=True, index=True)  # Последняя активность в боте (webhook)
     telegram_notifications_enabled = db.Column(db.Boolean, default=True, nullable=False)  # Включены ли уведомления
     
     tg_notify_lesson_reminder = db.Column(db.Boolean, default=True, nullable=False)  # Напоминания об уроках
@@ -1279,6 +1282,47 @@ class UserProfile(db.Model):
     
     def __repr__(self):
         return f'<UserProfile {self.user_id}: {self.first_name} {self.last_name}>'
+
+
+class TelegramBroadcast(db.Model):
+    """Массовая рассылка в Telegram (инициатор — creator/chief_admin через Mini App)."""
+    __tablename__ = 'TelegramBroadcasts'
+    broadcast_id = db.Column(db.Integer, primary_key=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    message_text = db.Column(db.Text, nullable=False)
+    photo_url = db.Column(db.String(2000), nullable=True)  # Опционально URL для sendPhoto
+    status = db.Column(db.String(32), default='pending', nullable=False)  # pending|running|completed|failed|cancelled
+    recipient_scope = db.Column(db.String(64), default='all_linked_students', nullable=False)
+    total_planned = db.Column(db.Integer, default=0, nullable=False)
+    sent_ok = db.Column(db.Integer, default=0, nullable=False)
+    sent_failed = db.Column(db.Integer, default=0, nullable=False)
+    cursor_last_user_id = db.Column(db.Integer, nullable=True, index=True)  # для пошаговой обработки
+    error_message = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    creator = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    def __repr__(self):
+        return f'<TelegramBroadcast {self.broadcast_id} status={self.status}>'
+
+
+class SubmissionTelegramDeadlineSent(db.Model):
+    """Факт отправки напоминания о дедлайне работы (антиспам)."""
+    __tablename__ = 'SubmissionTelegramDeadlineSents'
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False, index=True)
+    window_key = db.Column(db.String(16), nullable=False)  # e.g. 24h, 1h
+    sent_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('submission_id', 'window_key', name='uq_submission_deadline_window'),
+    )
+
+    def __repr__(self):
+        return f'<SubmissionTelegramDeadlineSent sub={self.submission_id} {self.window_key}>'
 
 
 class BotAdmin(db.Model):

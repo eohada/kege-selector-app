@@ -832,15 +832,21 @@
             if (data.success) {
                 telegramLinkCode = data.code;
                 telegramCodeExpires = Date.now() + (data.expires_in * 1000);
+                const botHref = data.deep_link || (data.bot_username ? 'https://t.me/' + data.bot_username : 'https://t.me/urep_notify_bot');
+                const botLabel = data.bot_username ? ('@' + data.bot_username) : '@urep_notify_bot';
+                const deepBtn = data.deep_link
+                    ? `<a class="neo-button accent sm" href="${data.deep_link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;margin-bottom:0.75rem;">Открыть бота и привязать</a>`
+                    : '';
                 area.innerHTML = `
                     <div style="background: var(--surface-2); padding: 1rem; border-radius: var(--radius-md);">
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">1. Откройте бота <a href="https://t.me/urep_notify_bot" target="_blank" style="color: var(--accent-1);">@urep_notify_bot</a></div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">2. Отправьте команду:</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;"><b>Способ 1.</b> Нажмите кнопку — откроется ${botLabel} с автоматической привязкой:</div>
+                        ${deepBtn}
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.75rem 0 0.5rem;"><b>Способ 2.</b> Или откройте <a href="${botHref}" target="_blank" style="color: var(--accent-1);">${botLabel}</a> и отправьте:</div>
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
                             <code style="background: var(--surface-1); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 1.1rem; font-weight: 600; letter-spacing: 0.05em;">/link ${data.code}</code>
                             <button class="neo-button ghost sm" onclick="copyTelegramCode()" title="Скопировать">📋</button>
                         </div>
-                        <div style="font-size: 0.8rem; color: var(--warning);">Код действителен 15 минут. Один код — одна привязка.</div>
+                        <div style="font-size: 0.8rem; color: var(--warning);">Ссылка и код действительны 15 минут. Один сеанс — одна привязка.</div>
                     </div>
                     <button class="neo-button ghost sm" style="margin-top: 0.75rem;" onclick="loadTelegramStatus()">← Назад</button>`;
             } else {

@@ -22,6 +22,16 @@
     .grade-good { background: #d1fae5; color: #065f46; }
     .grade-mid  { background: #fef3c7; color: #92400e; }
     .grade-low  { background: #fee2e2; color: #991b1b; }
+    .tab-bar { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px; -webkit-overflow-scrolling: touch; }
+    .tab-btn {
+        flex: 0 0 auto; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 600;
+        border: none; background: var(--tg-theme-secondary-bg-color); color: var(--tg-theme-text-color);
+    }
+    .tab-btn.active { background: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .article-html { font-size: 14px; line-height: 1.45; max-height: 62vh; overflow-y: auto; }
+    .article-html img { max-width: 100%; height: auto; }
 </style>
 {% endblock %}
 
@@ -30,7 +40,6 @@
 {% block body %}
 <div id="app" class="min-h-screen px-4 pt-3 pb-8 max-w-lg mx-auto">
 
-    <!-- Loading state -->
     <div id="loading" class="flex flex-col items-center justify-center min-h-[60vh] gap-3">
         <svg class="animate-spin h-8 w-8 text-[var(--tg-theme-button-color)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -39,51 +48,82 @@
         <p class="text-sm text-[var(--tg-theme-hint-color)]">Загрузка…</p>
     </div>
 
-    <!-- Error state -->
     <div id="error" class="hidden flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
         <span class="text-4xl">😿</span>
         <p id="error-text" class="text-sm text-[var(--tg-theme-hint-color)]">Не удалось загрузить данные</p>
-        <button onclick="loadDashboard()" class="mt-2 px-5 py-2 rounded-xl text-sm font-semibold"
+        <button onclick="boot()" class="mt-2 px-5 py-2 rounded-xl text-sm font-semibold"
                 style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">
             Повторить
         </button>
     </div>
 
-    <!-- Dashboard -->
-    <div id="dashboard" class="hidden space-y-4 fade-in">
-
-        <!-- Greeting -->
-        <div class="flex items-center gap-3 mb-2">
+    <div id="main-shell" class="hidden space-y-3 fade-in">
+        <div class="flex items-center gap-3 mb-1">
             <div id="avatar" class="w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold"
-                 style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">
-            </div>
+                 style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)"></div>
             <div>
                 <p class="font-bold text-lg leading-tight" id="user-name"></p>
                 <p class="text-xs text-[var(--tg-theme-hint-color)]">BooStudy</p>
             </div>
         </div>
 
-        <!-- Pending HW card -->
-        <div class="card p-4 flex items-center gap-4" style="background:var(--tg-theme-secondary-bg-color)">
-            <span class="text-3xl">📝</span>
+        <div class="tab-bar" id="tabs"></div>
+
+        <div id="pane-overview" class="tab-panel active space-y-4">
+            <div class="card p-4 flex items-center gap-4" style="background:var(--tg-theme-secondary-bg-color)">
+                <span class="text-3xl">📝</span>
+                <div>
+                    <p class="text-2xl font-extrabold leading-none" id="hw-count">0</p>
+                    <p class="text-xs text-[var(--tg-theme-hint-color)] mt-0.5">невыполненных заданий</p>
+                </div>
+            </div>
             <div>
-                <p class="text-2xl font-extrabold leading-none" id="hw-count">0</p>
-                <p class="text-xs text-[var(--tg-theme-hint-color)] mt-0.5">невыполненных заданий</p>
+                <h2 class="font-bold text-sm uppercase tracking-wide text-[var(--tg-theme-hint-color)] mb-2">📅 Расписание</h2>
+                <div id="schedule-list" class="space-y-2"></div>
+                <p id="schedule-empty" class="hidden text-sm text-[var(--tg-theme-hint-color)]">Ближайших уроков нет</p>
+            </div>
+            <div>
+                <h2 class="font-bold text-sm uppercase tracking-wide text-[var(--tg-theme-hint-color)] mb-2">📊 Последние оценки</h2>
+                <div id="grades-list" class="space-y-2"></div>
+                <p id="grades-empty" class="hidden text-sm text-[var(--tg-theme-hint-color)]">Оценок пока нет</p>
             </div>
         </div>
 
-        <!-- Schedule -->
-        <div>
-            <h2 class="font-bold text-sm uppercase tracking-wide text-[var(--tg-theme-hint-color)] mb-2">📅 Расписание</h2>
-            <div id="schedule-list" class="space-y-2"></div>
-            <p id="schedule-empty" class="hidden text-sm text-[var(--tg-theme-hint-color)]">Ближайших уроков нет</p>
+        <div id="pane-theory" class="tab-panel space-y-2">
+            <p class="text-xs text-[var(--tg-theme-hint-color)]">Теория по заданиям (список блоков)</p>
+            <div id="theory-list" class="space-y-2 max-h-[52vh] overflow-y-auto"></div>
+            <div id="theory-article-wrap" class="hidden card p-3" style="background:var(--tg-theme-secondary-bg-color)">
+                <button type="button" class="text-xs font-bold mb-2" style="color:var(--tg-theme-link-color)" onclick="theoryBack()">← К списку</button>
+                <h3 id="theory-title" class="font-bold text-sm mb-2"></h3>
+                <div id="theory-body" class="article-html theory-mini"></div>
+            </div>
         </div>
 
-        <!-- Recent Grades -->
-        <div>
-            <h2 class="font-bold text-sm uppercase tracking-wide text-[var(--tg-theme-hint-color)] mb-2">📊 Последние оценки</h2>
-            <div id="grades-list" class="space-y-2"></div>
-            <p id="grades-empty" class="hidden text-sm text-[var(--tg-theme-hint-color)]">Оценок пока нет</p>
+        <div id="pane-progress" class="tab-panel space-y-3">
+            <p class="text-xs text-[var(--tg-theme-hint-color)]">Сдачи и журнал</p>
+            <div id="progress-submissions" class="space-y-2 max-h-[40vh] overflow-y-auto"></div>
+            <h3 class="font-bold text-xs uppercase text-[var(--tg-theme-hint-color)]">Журнал</h3>
+            <div id="progress-gradebook" class="space-y-2 max-h-[28vh] overflow-y-auto"></div>
+        </div>
+
+        <div id="pane-profile" class="tab-panel space-y-3 text-sm">
+            <div id="profile-fields" class="space-y-2"></div>
+        </div>
+
+        <div id="pane-broadcast" class="tab-panel space-y-3">
+            <p class="text-xs text-[var(--tg-theme-hint-color)]">Сообщение уйдёт ученикам с привязанным Telegram</p>
+            <textarea id="bc-text" rows="4" class="w-full rounded-xl p-3 text-sm border border-slate-200" placeholder="Текст рассылки"></textarea>
+            <input id="bc-photo" class="w-full rounded-xl p-2 text-sm border border-slate-200" placeholder="URL картинки (необязательно)">
+            <button type="button" onclick="sendBroadcast()" class="w-full py-3 rounded-xl font-bold text-sm"
+                    style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">
+                Запустить рассылку
+            </button>
+            <p id="bc-status" class="text-xs text-[var(--tg-theme-hint-color)]"></p>
+        </div>
+
+        <div id="pane-students_creator" class="tab-panel">
+            <p class="text-xs text-[var(--tg-theme-hint-color)] mb-2">Ученики и привязка к боту</p>
+            <div id="creator-students" class="space-y-2 max-h-[65vh] overflow-y-auto text-sm"></div>
         </div>
     </div>
 </div>
@@ -92,7 +132,7 @@
 {% block scripts_extra %}
 <script>
 (function() {
-    const tg = window.Telegram && window.Telegram.WebApp;
+    var tg = window.Telegram && window.Telegram.WebApp;
     if (tg) {
         tg.ready();
         tg.expand();
@@ -104,33 +144,95 @@
         document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
         document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#f4f4f8');
     }
-    window.loadDashboard = loadDashboard;
-    loadDashboard();
 
-    function loadDashboard() {
-        show('loading'); hide('error'); hide('dashboard');
+    var state = { creatorMode: false, activeTab: 'overview' };
 
-        var initData = (tg && tg.initData) || '';
+    window.boot = boot;
+    boot();
 
-        fetch('/tg-app/api/dashboard', {
+    function initData() { return (tg && tg.initData) || ''; }
+
+    function apiPost(path, extra) {
+        return fetch(path, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({init_data: initData}),
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
+            body: JSON.stringify(Object.assign({ init_data: initData() }, extra || {})),
+        }).then(function(r) { return r.json(); });
+    }
+
+    function showError(msg) {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('main-shell').classList.add('hidden');
+        document.getElementById('error-text').textContent = msg || 'Ошибка';
+        document.getElementById('error').classList.remove('hidden');
+    }
+
+    function hideErrorShowMain() {
+        document.getElementById('error').classList.add('hidden');
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('main-shell').classList.remove('hidden');
+    }
+
+    function boot() {
+        document.getElementById('error').classList.add('hidden');
+        document.getElementById('main-shell').classList.add('hidden');
+        document.getElementById('loading').classList.remove('hidden');
+
+        apiPost('/tg-app/api/dashboard', {}).then(function(data) {
             if (!data.ok) {
                 showError(data.error === 'not_linked'
-                    ? 'Аккаунт не привязан. Используй /link в боте.'
+                    ? 'Аккаунт не привязан. Используйте /link в боте.'
                     : 'Ошибка авторизации');
                 return;
             }
-            render(data);
-        })
-        .catch(function() { showError('Нет связи с сервером'); });
+            state.creatorMode = !!data.creator_mode;
+            renderTabs();
+            renderOverview(data);
+            hideErrorShowMain();
+            if (state.activeTab === 'progress') loadProgress();
+            if (state.activeTab === 'theory') loadTheoryIndex();
+            if (state.activeTab === 'profile') loadProfile();
+            if (state.creatorMode && state.activeTab === 'students') loadCreatorStudents();
+        }).catch(function() { showError('Нет связи с сервером'); });
     }
 
-    function render(data) {
+    function renderTabs() {
+        var tabs = document.getElementById('tabs');
+        tabs.innerHTML = '';
+        function addTab(id, label) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'tab-btn' + (state.activeTab === id ? ' active' : '');
+            b.textContent = label;
+            b.onclick = function() { setTab(id); };
+            tabs.appendChild(b);
+        }
+        addTab('overview', 'Обзор');
+        addTab('theory', 'Теория');
+        addTab('progress', 'Прогресс');
+        addTab('profile', 'Профиль');
+        if (state.creatorMode) {
+            addTab('broadcast', 'Рассылка');
+            addTab('students', 'Ученики');
+        }
+        document.querySelectorAll('.tab-panel').forEach(function(p) {
+            p.classList.remove('active');
+        });
+        var pane = document.getElementById('pane-' + (state.activeTab === 'students' ? 'students_creator' : state.activeTab));
+        if (pane) pane.classList.add('active');
+        else document.getElementById('pane-overview').classList.add('active');
+    }
+
+    function setTab(id) {
+        state.activeTab = id;
+        renderTabs();
+        if (id === 'progress') loadProgress();
+        if (id === 'theory') loadTheoryIndex();
+        if (id === 'profile') loadProfile();
+        if (id === 'students' && state.creatorMode) loadCreatorStudents();
+    }
+
+    function renderOverview(data) {
         var u = data.user || {};
         var name = u.name || 'Ученик';
         document.getElementById('user-name').textContent = name;
@@ -150,14 +252,18 @@
                 var card = document.createElement('div');
                 card.className = 'card p-3 flex items-center gap-3';
                 card.style.background = 'var(--tg-theme-secondary-bg-color)';
+                var linkBtn = l.lesson_url
+                    ? '<a href="' + escAttr(l.lesson_url) + '" target="_blank" rel="noopener" class="text-xs font-bold px-2 py-1 rounded-lg no-underline" style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">В класс</a>'
+                    : '';
                 card.innerHTML =
-                    '<div class="text-center min-w-[48px]">' +
+                    '<div class="text-center min-w-[52px]">' +
                         '<p class="text-xs text-[var(--tg-theme-hint-color)]">' + dateStr + '</p>' +
                     '</div>' +
                     '<div class="flex-1 min-w-0">' +
                         '<p class="font-semibold text-sm truncate">' + esc(l.topic) + '</p>' +
                         '<p class="text-xs text-[var(--tg-theme-hint-color)]">' + (l.duration || 60) + ' мин</p>' +
-                    '</div>';
+                    '</div>' +
+                    '<div class="shrink-0">' + linkBtn + '</div>';
                 scheduleEl.appendChild(card);
             });
         } else {
@@ -184,25 +290,147 @@
         } else {
             emptyGrades.classList.remove('hidden');
         }
-
-        hide('loading'); hide('error');
-        document.getElementById('dashboard').classList.remove('hidden');
     }
 
-    function showError(msg) {
-        hide('loading'); hide('dashboard');
-        document.getElementById('error-text').textContent = msg || 'Ошибка';
-        document.getElementById('error').classList.remove('hidden');
+    function loadProgress() {
+        apiPost('/tg-app/api/progress', {}).then(function(data) {
+            if (!data.ok) return;
+            document.getElementById('progress-submissions').innerHTML = '';
+            (data.submissions || []).forEach(function(s) {
+                var row = document.createElement('div');
+                row.className = 'card p-2';
+                row.style.background = 'var(--tg-theme-secondary-bg-color)';
+                row.innerHTML = '<div class="font-semibold text-xs">' + esc(s.title) + '</div>' +
+                    '<div class="text-[11px] text-[var(--tg-theme-hint-color)]">' + esc(s.status) +
+                    (s.percentage != null ? ' · ' + Math.round(s.percentage) + '%' : '') + '</div>';
+                document.getElementById('progress-submissions').appendChild(row);
+            });
+            document.getElementById('progress-gradebook').innerHTML = '';
+            (data.gradebook || []).forEach(function(g) {
+                var row = document.createElement('div');
+                row.className = 'card p-2';
+                row.style.background = 'var(--tg-theme-secondary-bg-color)';
+                var sc = (g.score != null ? g.score : '—') + (g.max_score != null ? '/' + g.max_score : '');
+                row.innerHTML = '<div class="font-semibold text-xs">' + esc(g.title) + '</div>' +
+                    '<div class="text-[11px]">' + esc(sc) + ' ' + esc(g.grade_text || '') + '</div>';
+                document.getElementById('progress-gradebook').appendChild(row);
+            });
+        });
     }
 
-    function show(id) { document.getElementById(id).classList.remove('hidden'); }
-    function hide(id) { document.getElementById(id).classList.add('hidden'); }
+    function loadTheoryIndex() {
+        document.getElementById('theory-article-wrap').classList.add('hidden');
+        document.getElementById('theory-list').classList.remove('hidden');
+        apiPost('/tg-app/api/theory/index', {}).then(function(data) {
+            var el = document.getElementById('theory-list');
+            el.innerHTML = '';
+            if (!data.ok) {
+                el.innerHTML = '<p class="text-xs text-[var(--tg-theme-hint-color)]">Нет доступа к теории или ошибка загрузки</p>';
+                return;
+            }
+            (data.blocks || []).forEach(function(b) {
+                var row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'card p-3 w-full text-left';
+                row.style.background = 'var(--tg-theme-secondary-bg-color)';
+                row.innerHTML = '<div class="font-semibold text-sm">' + esc(b.title) + '</div>' +
+                    '<div class="text-xs text-[var(--tg-theme-hint-color)]">#' + b.task_number + '</div>';
+                row.onclick = function() { loadTheoryArticle(b.id); };
+                el.appendChild(row);
+            });
+        });
+    }
+
+    window.theoryBack = function() {
+        document.getElementById('theory-article-wrap').classList.add('hidden');
+        document.getElementById('theory-list').classList.remove('hidden');
+    };
+
+    function loadTheoryArticle(blockId) {
+        apiPost('/tg-app/api/theory/article', { block_id: blockId }).then(function(data) {
+            if (!data.ok) return;
+            document.getElementById('theory-list').classList.add('hidden');
+            document.getElementById('theory-article-wrap').classList.remove('hidden');
+            document.getElementById('theory-title').textContent = data.title || '';
+            document.getElementById('theory-body').innerHTML = data.html || '';
+        });
+    }
+
+    function loadProfile() {
+        apiPost('/tg-app/api/profile', {}).then(function(data) {
+            var el = document.getElementById('profile-fields');
+            el.innerHTML = '';
+            if (!data.ok) return;
+            var p = data.profile || {};
+            function line(label, val) {
+                if (!val) return;
+                var d = document.createElement('div');
+                d.className = 'card p-3';
+                d.style.background = 'var(--tg-theme-secondary-bg-color)';
+                d.innerHTML = '<div class="text-xs text-[var(--tg-theme-hint-color)]">' + esc(label) + '</div>' +
+                    '<div class="font-medium">' + esc(val) + '</div>';
+                el.appendChild(d);
+            }
+            line('Имя', p.name);
+            line('Логин', p.username);
+            line('Телефон', p.phone);
+            line('Email', p.email);
+            if (p.subscription) {
+                line('Подписка', (p.subscription.status || '') + (p.subscription.ends_at ? ' до ' + p.subscription.ends_at : ''));
+            }
+            var u = p.unlink || {};
+            var unlink = document.createElement('div');
+            unlink.className = 'card p-3 space-y-2';
+            unlink.style.background = 'var(--tg-theme-secondary-bg-color)';
+            unlink.innerHTML = '<div class="text-xs text-[var(--tg-theme-hint-color)]">Отвязать Telegram</div>' +
+                '<p class="text-xs">Откройте профиль на сайте или отправьте боту команду <b>' + esc(u.bot_unlink_command || '/unlink') + '</b></p>' +
+                (u.profile_url ? '<a href="' + escAttr(u.profile_url) + '" target="_blank" class="text-xs font-bold" style="color:var(--tg-theme-link-color)">Профиль на сайте</a>' : '') +
+                (u.bot_open ? '<a href="' + escAttr(u.bot_open) + '" target="_blank" class="text-xs font-bold" style="color:var(--tg-theme-link-color)">Открыть бота</a>' : '');
+            el.appendChild(unlink);
+        });
+    }
+
+    window.sendBroadcast = function() {
+        var txt = (document.getElementById('bc-text').value || '').trim();
+        var photo = (document.getElementById('bc-photo').value || '').trim();
+        var st = document.getElementById('bc-status');
+        if (!txt) { st.textContent = 'Введите текст'; return; }
+        st.textContent = 'Отправка…';
+        apiPost('/tg-app/api/broadcast/create', { message: txt, photo_url: photo || null }).then(function(data) {
+            if (!data.ok) { st.textContent = data.error || 'Ошибка'; return; }
+            st.textContent = 'Рассылка #' + data.broadcast_id + ' запущена';
+            document.getElementById('bc-text').value = '';
+            document.getElementById('bc-photo').value = '';
+        }).catch(function() { st.textContent = 'Сеть'; });
+    };
+
+    function loadCreatorStudents() {
+        apiPost('/tg-app/api/creator/students', {}).then(function(data) {
+            var el = document.getElementById('creator-students');
+            el.innerHTML = '';
+            if (!data.ok) return;
+            (data.students || []).forEach(function(s) {
+                var row = document.createElement('div');
+                row.className = 'card p-3 flex justify-between gap-2';
+                row.style.background = 'var(--tg-theme-secondary-bg-color)';
+                var badge = s.telegram_linked ? '<span class="text-green-700 font-bold text-xs">TG</span>' : '<span class="text-slate-400 text-xs">—</span>';
+                row.innerHTML = '<div><div class="font-semibold">' + esc(s.name) + '</div>' +
+                    '<div class="text-[11px] text-[var(--tg-theme-hint-color)]">id ' + s.student_id + '</div></div>' +
+                    '<div class="text-right text-[11px]">' + badge + '<div class="text-[var(--tg-theme-hint-color)]">' + esc(s.last_activity_at || '—') + '</div></div>';
+                el.appendChild(row);
+            });
+        });
+    }
 
     function esc(s) {
         if (!s) return '';
         var el = document.createElement('span');
         el.textContent = s;
         return el.innerHTML;
+    }
+    function escAttr(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
     }
 })();
 </script>
