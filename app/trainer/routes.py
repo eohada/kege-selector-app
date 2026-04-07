@@ -754,7 +754,7 @@ def trainer_submit_answer():
     current_mmr = float(mmr_row.mmr if mmr_row else get_mmr_config().get('initial_mmr', 1000.0))
     manual_low_mmr_mode = (mode == 'trainer_manual') and (current_mmr < 1800.0)
 
-    new_rating = AnalyticsEngine.process_submission(
+    details = AnalyticsEngine.process_submission_details(
         user_id=user.id,
         task_id=task.task_id,
         is_correct=is_correct,
@@ -781,7 +781,14 @@ def trainer_submit_answer():
         'success': True,
         'is_correct': is_correct,
         'expected': task.answer,
-        'new_rating': new_rating,
+        'new_rating': (details or {}).get('new_rating'),
+        'mmr_delta': (details or {}).get('mmr_delta'),
+        'difficulty_label': (details or {}).get('difficulty_label'),
+        'time_coeff': (details or {}).get('time_coeff'),
+        'attempt_coeff': (details or {}).get('attempt_coeff'),
+        'calibration_multiplier': (details or {}).get('calibration_multiplier'),
+        'time_band': (details or {}).get('time_band'),
+        't_ref_sec': (details or {}).get('t_ref_sec'),
         'manual_low_mmr_mode': manual_low_mmr_mode,
     })
 

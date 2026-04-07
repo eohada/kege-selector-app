@@ -13,7 +13,7 @@ from app.limiter import limiter
 from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
     Student, User, Tasks, Lesson, LessonTask, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate,
-    TaskTemplate, TemplateTask, CourseTaskTemplate, GroupStudent
+    TaskTemplate, TemplateTask, CourseTaskTemplate, GroupStudent, AnalyticsEvent
 )
 from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment, MOSCOW_TZ
@@ -1986,6 +1986,20 @@ def submission_view(submission_id):
                 now_utc = now.astimezone(timezone.utc)
                 limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
                 timer_expired = now_utc > limit_end_utc
+        events = (
+            AnalyticsEvent.query
+            .filter(AnalyticsEvent.submission_id == submission_id)
+            .order_by(AnalyticsEvent.id.desc())
+            .all()
+        )
+        event_by_answer: dict[int, AnalyticsEvent] = {}
+        event_by_task: dict[int, AnalyticsEvent] = {}
+        for ev in events:
+            if ev.answer_id and ev.answer_id not in event_by_answer:
+                event_by_answer[int(ev.answer_id)] = ev
+            if ev.task_id and ev.task_id not in event_by_task:
+                event_by_task[int(ev.task_id)] = ev
+
         tasks_data = []
         for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
             answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
@@ -1994,6 +2008,25 @@ def submission_view(submission_id):
             task = assignment_task.task
             template = _get_task_template(task)
             requires_manual_review = bool(template and template.requires_manual_review)
+            ev = None
+            if answer and getattr(answer, 'answer_id', None):
+                ev = event_by_answer.get(int(answer.answer_id))
+            if ev is None and task and getattr(task, 'task_id', None):
+                ev = event_by_task.get(int(task.task_id))
+            flags = (ev.behavior_flags or {}) if ev else {}
+            rating_meta = None
+            if ev:
+                rating_meta = {
+                    'mmr_delta': float(ev.mmr_delta or 0.0),
+                    'new_rating': float(ev.new_rating) if ev.new_rating is not None else None,
+                    'difficulty_label': flags.get('difficulty_label') or (
+                        'База' if ev.task_difficulty == 1 else ('Хард' if ev.task_difficulty == 3 else 'Стандарт')
+                    ),
+                    'time_coeff': flags.get('time_coeff'),
+                    'attempt_coeff': flags.get('attempt_coeff'),
+                    'time_spent_sec': ev.time_spent_sec,
+                    'time_band': flags.get('time_band'),
+                }
             tasks_data.append({
                 'assignment_task': assignment_task,
                 'task': task,
@@ -2001,6 +2034,7 @@ def submission_view(submission_id):
                 'max_attempts_for_task': max_for_task,
                 'task_attempts_used': task_attempts_used,
                 'requires_manual_review': requires_manual_review,
+                'rating_meta': rating_meta,
             })
         
         return render_template('submission_view.html',
@@ -2451,6 +2485,21 @@ def submission_submit_task(submission_id):
         if is_correct is not None:
             answer.is_correct = is_correct
             answer.score = score if score is not None else (assignment_task.max_score if is_correct else 0)
+            try:
+                from app.analytics import AnalyticsEngine
+                details = AnalyticsEngine.process_submission_details(
+                    user_id=current_user.id,
+                    task_id=assignment_task.task.task_id,
+                    is_correct=is_correct,
+                    time_spent_sec=None,
+                    submission_id=submission_id,
+                    answer_id=answer.answer_id,
+                    attempt_no=max(1, int(answer.attempts_used or 1)),
+                    mode='homework_manual',
+                )
+            except Exception as anal_err:
+                logger.warning("Analytics process_submission (submit_task) failed: %s", anal_err)
+                details = None
         if submission.status in ['ASSIGNED', 'RETURNED']:
             submission.status = 'IN_PROGRESS'
             if not submission.started_at:
@@ -2463,7 +2512,8 @@ def submission_submit_task(submission_id):
             'score': answer.score,
             'max_score': assignment_task.max_score,
             'attempts_used': answer.attempts_used,
-            'max_attempts': max_for_task
+            'max_attempts': max_for_task,
+            'rating_meta': details,
         }), 200
     except Exception as e:
         db.session.rollback()
@@ -2749,6 +2799,20 @@ def submission_grade_view(submission_id):
     attempts_left = max(0, effective_max_attempts - attempts_used)
     attempts_per_task = getattr(assignment, 'attempts_per_task', False)
 
+    events = (
+        AnalyticsEvent.query
+        .filter(AnalyticsEvent.submission_id == submission_id)
+        .order_by(AnalyticsEvent.id.desc())
+        .all()
+    )
+    event_by_answer: dict[int, AnalyticsEvent] = {}
+    event_by_task: dict[int, AnalyticsEvent] = {}
+    for ev in events:
+        if ev.answer_id and ev.answer_id not in event_by_answer:
+            event_by_answer[int(ev.answer_id)] = ev
+        if ev.task_id and ev.task_id not in event_by_task:
+            event_by_task[int(ev.task_id)] = ev
+
     tasks_data = []
     for assignment_task in sorted(assignment.tasks or [], key=lambda t: getattr(t, 'order_index', 0)):
         if getattr(assignment_task, 'task', None) is None:
@@ -2759,12 +2823,32 @@ def submission_grade_view(submission_id):
         except Exception:
             max_for_task = 1
         task_attempts_used = (getattr(answer, 'attempts_used', None) or 0) if answer else 0
+        ev = None
+        if answer and getattr(answer, 'answer_id', None):
+            ev = event_by_answer.get(int(answer.answer_id))
+        if ev is None and assignment_task.task and getattr(assignment_task.task, 'task_id', None):
+            ev = event_by_task.get(int(assignment_task.task.task_id))
+        flags = (ev.behavior_flags or {}) if ev else {}
+        rating_meta = None
+        if ev:
+            rating_meta = {
+                'mmr_delta': float(ev.mmr_delta or 0.0),
+                'new_rating': float(ev.new_rating) if ev.new_rating is not None else None,
+                'difficulty_label': flags.get('difficulty_label') or (
+                    'База' if ev.task_difficulty == 1 else ('Хард' if ev.task_difficulty == 3 else 'Стандарт')
+                ),
+                'time_coeff': flags.get('time_coeff'),
+                'attempt_coeff': flags.get('attempt_coeff'),
+                'time_spent_sec': ev.time_spent_sec,
+                'time_band': flags.get('time_band'),
+            }
         tasks_data.append({
             'assignment_task': assignment_task,
             'task': assignment_task.task,
             'answer': answer,
             'max_attempts_for_task': max_for_task,
             'task_attempts_used': task_attempts_used,
+            'rating_meta': rating_meta,
         })
 
     rubric_template = None

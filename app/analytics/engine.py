@@ -40,24 +40,60 @@ class AnalyticsEngine:
         return float(weights.get("standard", 1500.0))
 
     @classmethod
-    def _time_coeff(cls, is_correct: bool, time_spent_sec: int | None) -> float:
-        if time_spent_sec is None:
-            return 1.0
+    def _get_task_t_ref_sec(cls, task_number: int | None) -> int:
         cfg = cls._cfg()
-        thr = cfg.get("thresholds", {})
-        if is_correct:
-            values = cfg.get("time_coeff_correct", {})
-            if time_spent_sec <= int(thr.get("blunder_fast_sec", 10)):
-                return float(values.get("fast", 1.2))
-            if time_spent_sec >= int(thr.get("long_effort_sec", 900)):
-                return float(values.get("slow", 0.7))
-            return float(values.get("normal", 1.0))
-        penalties = cfg.get("penalty_coeff_wrong", {})
-        if time_spent_sec <= int(thr.get("blunder_fast_sec", 10)):
-            return float(penalties.get("blunder_fast", 1.5))
-        if time_spent_sec >= int(thr.get("long_effort_sec", 900)):
-            return float(penalties.get("long_effort", 0.7))
-        return float(penalties.get("default", 1.0))
+        ttl = cfg.get("task_time_limits", {})
+        groups = ttl.get("groups", [])
+        tn = int(task_number or 0)
+        for g in groups:
+            numbers = set(int(x) for x in (g.get("task_numbers") or []))
+            if tn in numbers:
+                return int(g.get("t_ref_sec", 420))
+        return int(ttl.get("fallback_t_ref_sec", 420))
+
+    @classmethod
+    def _time_coeff(cls, is_correct: bool, time_spent_sec: int | None, task_number: int | None) -> tuple[float, dict]:
+        meta = {"time_band": "unknown"}
+        if time_spent_sec is None:
+            return 1.0, meta
+        cfg = cls._cfg()
+        bands = cfg.get("time_bands", {})
+        t_ref = max(1, cls._get_task_t_ref_sec(task_number))
+        effective_time = int(time_spent_sec)
+        ratio = float(effective_time) / float(t_ref)
+        if ratio > float(bands.get("afk_gt_ratio", 3.0)):
+            effective_time = int(float(bands.get("afk_gt_ratio", 3.0)) * t_ref)
+            ratio = float(effective_time) / float(t_ref)
+            meta["afk_clamped"] = True
+        meta["t_ref_sec"] = t_ref
+        meta["effective_time_sec"] = effective_time
+        meta["time_ratio"] = round(ratio, 4)
+        spiral_ratio = float(bands.get("spiral_lt_ratio", 0.15))
+        fast_ratio = float(bands.get("fast_lt_ratio", 0.8))
+        normal_ratio = float(bands.get("normal_lte_ratio", 1.5))
+        if ratio < spiral_ratio:
+            if is_correct:
+                meta["time_band"] = "spiral_success"
+                meta["suspicious"] = True
+                return 0.0, meta
+            meta["time_band"] = "spiral_fail"
+            return 1.5, meta
+        if ratio < fast_ratio:
+            meta["time_band"] = "fast"
+            return 1.2, meta
+        if ratio <= normal_ratio:
+            meta["time_band"] = "normal"
+            return 1.0, meta
+        meta["time_band"] = "slow"
+        return 0.7, meta
+
+    @classmethod
+    def _difficulty_label(cls, difficulty_level: int | None) -> str:
+        if difficulty_level == 1:
+            return "База"
+        if difficulty_level == 3:
+            return "Хард"
+        return "Стандарт"
 
     @classmethod
     def _attempt_coeff(cls, is_correct: bool, attempt_no: int | None) -> float:
@@ -177,7 +213,7 @@ class AnalyticsEngine:
 
         difficulty_level = difficulty_level_override if difficulty_level_override is not None else task.difficulty_level
         d_value = cls._difficulty_weight(difficulty_level)
-        c_time = cls._time_coeff(is_correct, time_spent_sec)
+        c_time, time_meta = cls._time_coeff(is_correct, time_spent_sec, task_type)
         c_attempt = cls._attempt_coeff(is_correct, attempt_no)
         calibration = cls._calibration_multiplier(int(mmr_row.solved_count or 0))
 
@@ -207,6 +243,8 @@ class AnalyticsEngine:
             "calibration_multiplier": calibration,
             "time_coeff": c_time,
             "attempt_coeff": c_attempt,
+            "difficulty_label": cls._difficulty_label(difficulty_level),
+            **time_meta,
         }
         event = AnalyticsEvent(
             user_id=user_id,
@@ -222,7 +260,7 @@ class AnalyticsEngine:
             task_type=task_type,
             attempt_no=attempt_no,
             mode=mode,
-            time_spent_sec=time_spent_sec,
+            time_spent_sec=time_meta.get("effective_time_sec", time_spent_sec),
             behavior_flags=behavior,
         )
         db.session.add(event)
@@ -230,10 +268,64 @@ class AnalyticsEngine:
             user_id=user_id,
             task=task,
             attempt_no=int(attempt_no or 1),
-            time_spent_sec=time_spent_sec,
+            time_spent_sec=time_meta.get("effective_time_sec", time_spent_sec),
             is_correct=is_correct,
+            etalon_sec=cls._get_task_t_ref_sec(task_type),
         )
         return new_rating
+
+    @classmethod
+    def process_submission_details(
+        cls,
+        user_id: int,
+        task_id: int,
+        is_correct: bool,
+        time_spent_sec: int | None = None,
+        submission_id: int | None = None,
+        answer_id: int | None = None,
+        difficulty_level_override: int | None = None,
+        attempt_no: int | None = None,
+        mode: str | None = None,
+        manual_low_mmr_mode: bool = False,
+    ) -> dict | None:
+        new_rating = cls.process_submission(
+            user_id=user_id,
+            task_id=task_id,
+            is_correct=is_correct,
+            time_spent_sec=time_spent_sec,
+            submission_id=submission_id,
+            answer_id=answer_id,
+            difficulty_level_override=difficulty_level_override,
+            attempt_no=attempt_no,
+            mode=mode,
+            manual_low_mmr_mode=manual_low_mmr_mode,
+        )
+        if new_rating is None:
+            return None
+        ev = (
+            AnalyticsEvent.query.filter_by(
+                user_id=user_id,
+                task_id=task_id,
+                answer_id=answer_id,
+            )
+            .order_by(AnalyticsEvent.id.desc())
+            .first()
+        )
+        if not ev:
+            return {"new_rating": new_rating}
+        flags = ev.behavior_flags or {}
+        return {
+            "new_rating": float(ev.new_rating or new_rating),
+            "mmr_delta": float(ev.mmr_delta or 0.0),
+            "difficulty_label": str(flags.get("difficulty_label") or cls._difficulty_label(ev.task_difficulty)),
+            "time_coeff": float(flags.get("time_coeff") or 1.0),
+            "attempt_coeff": float(flags.get("attempt_coeff") or 1.0),
+            "calibration_multiplier": float(flags.get("calibration_multiplier") or 1.0),
+            "time_band": flags.get("time_band"),
+            "task_type": ev.task_type,
+            "effective_time_sec": flags.get("effective_time_sec", ev.time_spent_sec),
+            "t_ref_sec": flags.get("t_ref_sec"),
+        }
 
     @classmethod
     def _subject_from_course(cls, course_id: int) -> Subject | None:

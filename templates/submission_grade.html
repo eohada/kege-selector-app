@@ -263,6 +263,17 @@
                             <span style="margin-left: 0.5rem;">· Попытки по заданию: {{ task_item.task_attempts_used }} / {{ task_item.max_attempts_for_task }}</span>
                             {% endif %}
                         </div>
+                        {% if task_item.rating_meta %}
+                        <div style="margin-top:.45rem; display:flex; gap:.45rem; flex-wrap:wrap;">
+                            <span style="font-size:.78rem; font-weight:800; color:#4338ca; background:#eef2ff; border:1px solid #c7d2fe; border-radius:999px; padding:.2rem .55rem;">{{ task_item.rating_meta.difficulty_label }}</span>
+                            {% if task_item.rating_meta.time_spent_sec is not none %}
+                            <span style="font-size:.78rem; font-weight:700; color:#475569; background:#f8fafc; border:1px solid #e2e8f0; border-radius:999px; padding:.2rem .55rem;">{{ task_item.rating_meta.time_spent_sec }}с</span>
+                            {% endif %}
+                            {% if task_item.rating_meta.mmr_delta is not none %}
+                            <span style="font-size:.78rem; font-weight:800; color:{% if task_item.rating_meta.mmr_delta >= 0 %}#047857{% else %}#b91c1c{% endif %}; background:{% if task_item.rating_meta.mmr_delta >= 0 %}#ecfdf5{% else %}#fef2f2{% endif %}; border:1px solid {% if task_item.rating_meta.mmr_delta >= 0 %}#a7f3d0{% else %}#fecaca{% endif %}; border-radius:999px; padding:.2rem .55rem;">ΔMMR {% if task_item.rating_meta.mmr_delta >= 0 %}+{% endif %}{{ task_item.rating_meta.mmr_delta|round|int }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% if task_item.assignment_task.requires_manual_grading %}
                     <span class="badge" style="background: var(--warning); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm);">

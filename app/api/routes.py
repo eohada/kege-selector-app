@@ -783,3 +783,62 @@ def api_analytics_summary():
     except Exception as e:
         logger.error(f'Ошибка api/analytics/summary: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/analytics/history')
+@login_required
+def api_analytics_history():
+    """Detailed rating history for student and teacher analytics views."""
+    try:
+        from core.db_models import AnalyticsEvent
+
+        user_id = current_user.id
+        student_id = request.args.get('student_id', type=int)
+        if student_id:
+            scope = get_user_scope(current_user)
+            if not scope['can_see_all']:
+                allowed_user_ids = scope.get('student_ids') or []
+                allowed_student_ids = [s.student_id for s in Student.query.filter(Student.user_id.in_(allowed_user_ids)).all()]
+                if student_id not in allowed_student_ids:
+                    return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+            student = Student.query.get(student_id)
+            if not student or not student.user_id:
+                return jsonify({'success': False, 'error': 'Ученик не найден'}), 404
+            user_id = student.user_id
+
+        rows = (
+            db.session.query(AnalyticsEvent, Tasks.task_number)
+            .outerjoin(Tasks, AnalyticsEvent.task_id == Tasks.task_id)
+            .filter(AnalyticsEvent.user_id == user_id)
+            .order_by(AnalyticsEvent.timestamp.desc(), AnalyticsEvent.id.desc())
+            .limit(200)
+            .all()
+        )
+        history = []
+        for ev, task_number in rows:
+            flags = ev.behavior_flags or {}
+            difficulty = ev.task_difficulty
+            if difficulty == 1:
+                difficulty_label = 'База'
+            elif difficulty == 3:
+                difficulty_label = 'Хард'
+            else:
+                difficulty_label = 'Стандарт'
+            history.append({
+                'timestamp': ev.timestamp.isoformat() if ev.timestamp else None,
+                'task_number': int(task_number) if task_number is not None else (int(ev.task_type) if ev.task_type else None),
+                'is_correct': bool(ev.is_correct),
+                'mmr_delta': round(float(ev.mmr_delta or 0.0), 2),
+                'new_rating': round(float(ev.new_rating or 0.0), 2) if ev.new_rating is not None else None,
+                'difficulty_label': flags.get('difficulty_label') or difficulty_label,
+                'time_spent_sec': ev.time_spent_sec,
+                'time_coeff': flags.get('time_coeff'),
+                'attempt_coeff': flags.get('attempt_coeff'),
+                'calibration_multiplier': flags.get('calibration_multiplier'),
+                'time_band': flags.get('time_band'),
+                'mode': ev.mode,
+            })
+        return jsonify({'success': True, 'history': history})
+    except Exception as e:
+        logger.error(f'Ошибка /api/analytics/history: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500

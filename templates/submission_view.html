@@ -597,6 +597,14 @@
                     <div style="display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;">
                         <span class="task-number">Задание {{ loop.index }}</span>
                         <span class="submission-type-chip submission-score-chip" style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.04em;">{{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }}</span>
+                        {% if task_item.rating_meta and task_item.rating_meta.difficulty_label %}
+                        <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">{{ task_item.rating_meta.difficulty_label }}</span>
+                        {% endif %}
+                        {% if task_item.rating_meta and task_item.rating_meta.mmr_delta is not none %}
+                        <span class="submission-type-chip" style="background:{% if task_item.rating_meta.mmr_delta >= 0 %}#ecfdf5; color:#047857; border:1px solid #a7f3d0{% else %}#fef2f2; color:#b91c1c; border:1px solid #fecaca{% endif %}; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">
+                            ΔMMR {% if task_item.rating_meta.mmr_delta >= 0 %}+{% endif %}{{ task_item.rating_meta.mmr_delta|round|int }}
+                        </span>
+                        {% endif %}
                         {% if task_item.task and task_item.task.is_manual_bank_task %}
                         <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">Создано вручную</span>
                         {% endif %}
@@ -861,6 +869,17 @@
                     <span style="color: #ef4444;">{{ ui_icon('action.warning', 'sm') }} Неверно</span> — {{ task_item.answer.score or 0 }}/{{ task_item.assignment_task.max_score }} баллов
                     {% else %}
                     <span style="color: var(--text-muted);">{{ ui_icon('action.clock', 'sm') }} Ожидает проверки</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% if task_item.rating_meta %}
+                <div style="margin-bottom: 0.75rem; display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;">
+                    <span style="font-size:.8rem; font-weight:700; color:#475569; background:#f8fafc; border:1px solid #e2e8f0; border-radius:999px; padding:.2rem .6rem;">Сложность: {{ task_item.rating_meta.difficulty_label }}</span>
+                    {% if task_item.rating_meta.time_spent_sec is not none %}
+                    <span style="font-size:.8rem; font-weight:700; color:#475569; background:#f8fafc; border:1px solid #e2e8f0; border-radius:999px; padding:.2rem .6rem;">Время: {{ task_item.rating_meta.time_spent_sec }}с</span>
+                    {% endif %}
+                    {% if task_item.rating_meta.mmr_delta is not none %}
+                    <span style="font-size:.8rem; font-weight:800; color:{% if task_item.rating_meta.mmr_delta >= 0 %}#047857{% else %}#b91c1c{% endif %}; background:{% if task_item.rating_meta.mmr_delta >= 0 %}#ecfdf5{% else %}#fef2f2{% endif %}; border:1px solid {% if task_item.rating_meta.mmr_delta >= 0 %}#a7f3d0{% else %}#fecaca{% endif %}; border-radius:999px; padding:.2rem .6rem;">ΔMMR {% if task_item.rating_meta.mmr_delta >= 0 %}+{% endif %}{{ task_item.rating_meta.mmr_delta|round|int }}</span>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -1379,7 +1398,12 @@
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
-                        if (typeof showToast === 'function') showToast('Задание сдано. Страница обновляется...', 'success');
+                        if (typeof showToast === 'function') {
+                            var rm = data.rating_meta || {};
+                            var d = (typeof rm.mmr_delta === 'number') ? (rm.mmr_delta >= 0 ? '+' + Math.round(rm.mmr_delta) : String(Math.round(rm.mmr_delta))) : '—';
+                            var dl = rm.difficulty_label || '—';
+                            showToast('Задание сдано · ' + dl + ' · ΔMMR ' + d + '. Страница обновляется...', 'success');
+                        }
                         setTimeout(function() { location.reload(); }, 800);
                     } else {
                         btn.disabled = false;

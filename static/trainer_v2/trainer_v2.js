@@ -1295,14 +1295,17 @@
           mode: 'trainer_auto'
         });
         const ok = !!res.is_correct;
+        const delta = (typeof res.mmr_delta === 'number') ? res.mmr_delta : null;
+        const diffLabel = res.difficulty_label ? String(res.difficulty_label) : '—';
         if (ok) {
           setAttempts(task.task_id, nextUsedBase);
           setStreak(getStreak() + 1);
           updateAttemptsUI(task.task_id);
+          const deltaLabel = delta == null ? '—' : (delta >= 0 ? `+${Math.round(delta)}` : `${Math.round(delta)}`);
           pushInlineToast({
             kind: 'success',
             title: 'проверка',
-            message: `верно · рейтинг: ${res.new_rating != null ? res.new_rating : '—'}`
+            message: `верно · ${diffLabel} · ΔMMR ${deltaLabel} · рейтинг: ${res.new_rating != null ? Math.round(res.new_rating) : '—'}`
           });
         } else {
           setAttempts(task.task_id, nextUsedBase);
@@ -1311,7 +1314,7 @@
           pushInlineToast({
             kind: 'error',
             title: 'проверка',
-            message: 'неверно · можно попробовать ещё раз'
+            message: `неверно · ${diffLabel} · ΔMMR ${delta != null ? Math.round(delta) : '—'}`
           });
         }
         logEvent('submit_done', { task_id: task.task_id, is_correct: ok, new_rating: res.new_rating });

@@ -50,6 +50,24 @@ MMR_DEFAULTS: dict[str, object] = {
         "blunder_fast_sec": 10,
         "long_effort_sec": 900,
     },
+    # Time reference by exam task groups (T_ref)
+    "task_time_limits": {
+        "groups": [
+            {"task_numbers": [1, 2, 3, 4, 10, 11], "t_ref_sec": 240},
+            {"task_numbers": [5, 6, 7, 8, 12, 14, 16, 22], "t_ref_sec": 420},
+            {"task_numbers": [9, 13, 15, 17, 19, 20, 21, 23], "t_ref_sec": 720},
+            {"task_numbers": [24, 25], "t_ref_sec": 1200},
+            {"task_numbers": [26, 27], "t_ref_sec": 2100},
+        ],
+        "fallback_t_ref_sec": 420,
+    },
+    # Ratio-based time bands from concept screenshots
+    "time_bands": {
+        "spiral_lt_ratio": 0.15,
+        "fast_lt_ratio": 0.8,
+        "normal_lte_ratio": 1.5,
+        "afk_gt_ratio": 3.0,
+    },
     # Rematch ("Реванш") logic
     "rematch": {
         "trigger_attempts_gte": 2,
