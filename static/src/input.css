@@ -292,31 +292,26 @@ html[data-theme="dark"][data-student-submission="1"] .submission-header {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
-html[data-theme="dark"][data-student-submission="1"] .submission-header h1 {
+html[data-theme="dark"][data-student-submission="1"] .submission-header h1,
+html[data-theme="dark"][data-student-submission="1"] .submission-title {
   color: var(--color-text-primary) !important;
 }
 html[data-theme="dark"][data-student-submission="1"] .meta-label,
 html[data-theme="dark"][data-student-submission="1"] .task-nav-label {
   color: var(--color-text-muted) !important;
 }
-html[data-theme="dark"][data-student-submission="1"] .meta-value {
-  color: var(--color-text-primary) !important;
-}
-html[data-theme="dark"][data-student-submission="1"] .hero-metrics {
-  border-top-color: rgba(255, 255, 255, 0.1) !important;
-}
-html[data-theme="dark"][data-student-submission="1"] .hero-metrics > div + div {
-  border-left-color: rgba(255, 255, 255, 0.1) !important;
-}
-html[data-theme="dark"][data-student-submission="1"] .status-pill {
+/* Цветные pill по классам статуса — из шаблона; для «Назначено» в тёмной теме — нейтральная плашка */
+html[data-theme="dark"][data-student-submission="1"] .status-pill.status-assigned {
   background: var(--color-bg-inset) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
   color: var(--color-text-secondary) !important;
 }
 html[data-theme="dark"][data-student-submission="1"] .task-nav {
-  background: var(--color-bg-surface) !important;
+  background: rgba(19, 19, 22, 0.88) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.05) !important;
 }
 html[data-theme="dark"][data-student-submission="1"] .task-nav-btn {
   background: var(--color-bg-inset) !important;
@@ -777,6 +772,14 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   }
   @media (min-width: 1024px) {
     .layout-student .dock { max-width: 1400px; }
+  }
+
+  /* Список заданий и экран работы: как в tasks_example_* — dock 1000px, колонка контента 860px */
+  .layout-student.student-tasks-shell .dock {
+    max-width: 1000px !important;
+  }
+  .layout-student.student-tasks-shell .app-content {
+    max-width: 860px !important;
   }
 
   .layout-teacher .dock-wrapper {

@@ -3,6 +3,7 @@
 {% set active_page = 'assignments' %}
 {% block html_attrs %}data-student-assignments="1"{% endblock %}
 {% block body_attrs %}data-cinema-scene="submissions"{% endblock %}
+{% block body_class %}{{ super() }} student-tasks-shell{% endblock %}
 
 {% block content %}
 {% set in_work_statuses = ['ASSIGNED','IN_PROGRESS','RETURNED'] %}
@@ -12,13 +13,13 @@
 {% set on_review_count = (submissions|selectattr('status','in',on_review_statuses)|list)|length if submissions else 0 %}
 {% set completed_count = (submissions|selectattr('status','in',completed_statuses)|list)|length if submissions else 0 %}
 
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-8">
+<div class="w-full max-w-[860px] mx-auto flex flex-col gap-6">
 
   <!-- ШАПКА И ФИЛЬТРЫ -->
-  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
-    <div>
-      <h1 class="text-4xl font-black text-primary dark:text-white tracking-tight mb-2">Твои задания</h1>
-      <p class="text-muted dark:text-dark-muted font-medium text-lg">Решай задачи, получай баллы и повышай свой скилл.</p>
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-surface dark:bg-dark-card rounded-[32px] p-8 lg:p-10 border border-slate-200 dark:border-white/5 shadow-tactile dark:shadow-glass-dark">
+    <div class="min-w-0">
+      <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] font-black text-primary dark:text-white tracking-tight leading-tight mb-2">Твои задания</h1>
+      <p class="text-muted dark:text-dark-muted font-medium text-sm sm:text-base leading-relaxed">Решай задачи, получай баллы и повышай свой скилл.</p>
     </div>
 
     <div class="bg-slate-100/80 dark:bg-dark-inner/60 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50 dark:border-white/[0.08]">
@@ -36,19 +37,19 @@
 
   <!-- СЕКЦИЯ 1: РАБОТЫ С ДЕДЛАЙНОМ -->
   <div>
-    <h3 class="text-xl font-extrabold text-primary dark:text-white mb-5 flex items-center gap-2">
-      <i class="ph-fill ph-clock-countdown text-boo-accent dark:text-boo-cyan"></i> Работы с дедлайном
+    <h3 class="text-base sm:text-lg font-extrabold text-primary dark:text-white mb-4 flex items-center gap-2">
+      <i class="ph-fill ph-clock-countdown text-boo-accent dark:text-boo-cyan text-lg sm:text-xl"></i> Работы с дедлайном
     </h3>
 
     {% if submissions and submissions|length > 0 %}
-    <div id="deadlineGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div id="deadlineGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
       {% for submission in submissions %}
       {% set status = submission.status %}
       {% set filter_group = ('in_work' if status in in_work_statuses else ('on_review' if status in on_review_statuses else 'completed')) %}
       {% set display_status = (submission_display_status.get(submission.submission_id) if submission_display_status and submission_display_status.get(submission.submission_id) else None) %}
       {% set is_burning = (submission.is_late if submission.is_late is defined else False) or (display_status and 'сегодня' in display_status|lower) %}
 
-      <div class="task-card bg-surface dark:bg-dark-card rounded-[28px] border border-b-[4px] shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.45)] transition-all duration-300 group relative {% if is_burning %}border-red-200 border-b-boo-coral dark:border-red-500/25 dark:border-b-0 dark:shadow-[0_0_22px_rgba(248,113,113,0.14)]{% else %}border-slate-200 border-b-slate-300 dark:border-white/[0.06] dark:border-b-0{% endif %}"
+      <div class="task-card bg-surface dark:bg-dark-card rounded-[24px] border shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-0.5 dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.45)] transition-all duration-300 group relative {% if is_burning %}border-red-200 dark:border-red-500/25 dark:shadow-[0_0_22px_rgba(248,113,113,0.14)]{% else %}border-slate-200 dark:border-white/5{% endif %}"
            data-filter-group="{{ filter_group }}"
            data-status="{{ status }}">
         {% if is_burning %}
@@ -79,7 +80,7 @@
             {% endif %}
           </div>
 
-          <h4 class="text-xl font-black text-primary dark:text-white leading-tight mb-2 group-hover:{% if is_burning %}text-boo-coral{% else %}text-boo-primary{% endif %} dark:group-hover:{% if is_burning %}text-red-400{% else %}text-purple-300{% endif %} transition-colors">
+          <h4 class="text-lg sm:text-xl font-black text-primary dark:text-white leading-tight mb-2 group-hover:{% if is_burning %}text-boo-coral{% else %}text-boo-primary{% endif %} dark:group-hover:{% if is_burning %}text-red-400{% else %}text-purple-300{% endif %} transition-colors">
             {{ submission.assignment.title if submission.assignment else ('Работа #' ~ submission.submission_id) }}
           </h4>
 
@@ -144,15 +145,15 @@
 
   <!-- СЕКЦИЯ 2: ЗАДАНИЯ ПО ЗАНЯТИЯМ -->
   <div class="mt-4">
-    <h3 class="text-xl font-extrabold text-primary dark:text-white mb-5 flex items-center gap-2 {% if not lesson_workspaces or lesson_workspaces|length == 0 %}opacity-50 dark:opacity-40{% endif %}">
-      <i class="ph-fill ph-chalkboard-teacher text-muted dark:text-dark-muted"></i> Задания по занятиям (Классные работы)
+    <h3 class="text-base sm:text-lg font-extrabold text-primary dark:text-white mb-4 flex items-center gap-2 {% if not lesson_workspaces or lesson_workspaces|length == 0 %}opacity-50 dark:opacity-40{% endif %}">
+      <i class="ph-fill ph-chalkboard-teacher text-muted dark:text-dark-muted text-lg sm:text-xl"></i> Задания по занятиям (Классные работы)
     </h3>
 
     {% if lesson_workspaces and lesson_workspaces|length > 0 %}
     <div class="grid grid-cols-1 gap-4">
       {% for item in lesson_workspaces %}
       <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=item.lesson.lesson_id) }}"
-         class="group bg-surface dark:bg-dark-card rounded-[28px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 hover:-translate-y-1 dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.45)] transition-all duration-300 no-underline">
+         class="group bg-surface dark:bg-dark-card rounded-[24px] border border-slate-200 dark:border-white/5 shadow-tactile dark:shadow-glass-dark p-6 hover:-translate-y-0.5 dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.45)] transition-all duration-300 no-underline">
         <div class="flex items-center justify-between gap-4 flex-wrap">
           <div class="min-w-0">
             <div class="text-lg font-black text-primary dark:text-white truncate">{{ item.lesson.topic or 'Урок' }}</div>

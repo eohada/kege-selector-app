@@ -13,7 +13,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=2.8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=2.9">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
@@ -32,23 +32,22 @@
     {% include '_ux_enhancements.html' %}
     
     <style>
-        body { background: #E5E9F0; }
+        /* Визуал как tasks_example_light / tasks_example_dark; размеры hero и task-nav — в разметке */
+        body {
+            background: var(--color-bg-app);
+            color: var(--color-text-primary);
+        }
         .submission-header {
-            background: #fff;
-            border: 1px solid #e2e8f0;
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-stroke);
             border-radius: 32px;
-            border-bottom: 4px solid #cbd5e1;
-            padding: 2rem 2.25rem;
-            margin-bottom: 1.25rem;
+            padding: 2rem;
+            margin-bottom: 0;
             box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
         }
-        
-        .submission-header h1 {
-            font-size: 2em;
-            font-weight: 800;
-            margin-bottom: 1rem;
+        @media (min-width: 1024px) {
+            .submission-header { padding: 2.5rem; }
         }
-        
         .submission-info {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -57,23 +56,19 @@
             padding-top: 1rem;
             border-top: 1px solid var(--stroke-1);
         }
-        
         .info-item {
             display: flex;
             flex-direction: column;
             gap: 0.25rem;
         }
-        
         .info-label {
             font-size: 0.85em;
             color: var(--text-muted);
         }
-        
         .info-value {
             font-weight: 700;
             color: var(--text-primary);
         }
-        
         .deadline-warning {
             background: var(--warning);
             color: white;
@@ -88,14 +83,14 @@
         }
         
         .task-card {
-            background: #fff;
-            border: 1px solid #e2e8f0;
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-stroke);
             border-radius: 32px;
-            border-bottom: 4px solid #cbd5e1;
             padding: 0;
             margin-bottom: 1.5rem;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
             box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
+            overflow: hidden;
         }
         .task-card.task-panel-hidden { display: none !important; }
         .task-card.task-panel-active {
@@ -162,18 +157,20 @@
         .task-header {
             display: flex;
             justify-content: space-between;
-            align-items: start;
+            align-items: flex-start;
             margin-bottom: 0;
             padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid #f1f5f9;
-            background: rgba(248, 250, 252, 0.75);
+            border-bottom: 1px solid var(--color-stroke);
+            background: var(--color-bg-surface-alt);
             border-radius: 32px 32px 0 0;
         }
-        
-        .task-number { font-size: 1.75rem; font-weight: 900; color: #7B5CFF; letter-spacing: -0.01em; }
+        @media (min-width: 640px) {
+            .task-header { padding: 1.25rem 2rem; }
+        }
+        .task-number { font-size: 1.5rem; font-weight: 900; color: #7B5CFF; letter-spacing: -0.01em; }
         .task-score { font-size: 1rem; color: #64748b; font-weight: 500; }
         
-        .task-content { margin-bottom: 1.25rem; font-size: 15px; line-height: 1.65; color: #1e293b; }
+        .task-content { margin-bottom: 1.25rem; font-size: 15px; line-height: 1.65; color: var(--color-text-secondary); }
         .task-content img {
             max-width: 100%;
             height: auto;
@@ -182,23 +179,22 @@
         
         .answer-input {
             width: 100%;
-            min-height: 4.25rem;
-            padding: 0.85rem 1rem;
-            border: 1px solid #e2e8f0;
+            min-height: 5rem;
+            padding: 0.875rem 1rem;
+            border: 1px solid var(--color-stroke);
             border-radius: 14px;
             font-family: inherit;
-            font-size: 1.05rem;
+            font-size: 1rem;
             font-weight: 600;
-            background: #f8fafc;
-            color: #0f172a;
+            background: var(--color-bg-surface-alt);
+            color: var(--color-text-primary);
             resize: vertical;
             max-height: 12rem;
         }
-        
         .answer-input:focus {
             outline: none;
-            border-color: #7B5CFF;
-            box-shadow: 0 0 0 4px rgba(123, 92, 255, 0.15);
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
         }
         
         .autosave-indicator {
@@ -213,16 +209,19 @@
             left: 50%;
             transform: translateX(-50%);
             bottom: 16px;
-            width: min(1000px, calc(100% - 48px));
+            width: min(860px, calc(100% - 32px));
+            max-width: calc(100vw - 32px);
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(12px);
-            border: 1px solid #e2e8f0;
-            border-radius: 24px;
-            padding: 1rem 1.15rem;
-            margin-top: 0;
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--color-stroke);
+            border-radius: 1rem;
+            padding: 0.75rem 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
             z-index: 70;
             box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.08);
         }
@@ -256,31 +255,32 @@
             cursor: not-allowed;
         }
         
-        .status-assigned { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--stroke-1); }
-        .status-in_progress { background: var(--accent-1); color: white; border: 1px solid var(--accent-1-strong); }
-        .status-submitted { background: var(--accent-1); color: white; }
-        .status-graded { background: var(--success); color: white; }
-        .status-returned { background: var(--warning); color: white; }
-        .meta-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #94a3b8; margin-bottom: 6px; }
-        .meta-value { font-size: 30px; font-weight: 900; color: #0f172a; line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 1.1rem; }
-        .hero-grid { display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: end; }
-        .hero-metrics { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 0; border-top: 1px solid #e2e8f0; padding-top: 1rem; }
-        .hero-metrics > div { padding-right: 1.25rem; }
-        .hero-metrics > div + div { border-left: 1px solid #e2e8f0; padding-left: 1.25rem; }
         .status-pill {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            border-radius: 999px;
-            padding: 7px 14px;
-            font-size: 14px;
-            font-weight: 800;
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            color: #334155;
+            gap: 0.375rem;
+            border-radius: 0.75rem;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            font-weight: 700;
+            border: 1px solid var(--color-stroke);
+            background: var(--color-bg-surface-alt);
+            color: var(--color-text-secondary);
+        }
+        .status-pill.status-assigned { background: var(--surface-2); color: var(--text-primary); border-color: var(--stroke-1); }
+        .status-pill.status-in_progress { background: var(--accent-1); color: white; border-color: var(--accent-1-strong); }
+        .status-pill.status-submitted { background: var(--accent-1); color: white; border-color: transparent; }
+        .status-pill.status-graded { background: var(--success); color: white; border-color: transparent; }
+        .status-pill.status-auto_graded { background: var(--success); color: white; border-color: transparent; }
+        .status-pill.status-returned { background: var(--warning); color: white; border-color: transparent; }
+        .status-pill.status-needs_manual_review { background: var(--accent-1); color: white; border-color: transparent; }
+        .status-pill.status-overdue-timer,
+        .status-pill.status-overdue-deadline {
+            background: rgba(239, 68, 68, 0.2) !important;
+            color: #ef4444 !important;
+            border-color: #ef4444 !important;
         }
         .back-to-assignments .ui-icon-slot { display: inline-flex; min-width: 1.25em; min-height: 1.25em; vertical-align: middle; }
-        
         .file-upload-zone {
             border: 2px dashed var(--stroke-1);
             border-radius: var(--radius-md);
@@ -290,66 +290,29 @@
             transition: background 0.2s ease;
         }
         .file-upload-zone:hover, .file-upload-zone.bg-light { background: rgba(255,255,255,0.04); }
-
-        .task-nav {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding: 0.55rem 0.6rem;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 18px;
-            position: sticky;
-            top: 82px;
-            z-index: 50;
-        }
-        .task-nav-label {
-            font-size: 0.95rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .12em;
-            color: #64748b;
-            margin-right: auto;
-            margin-left: .65rem;
-        }
         .task-nav-btn {
-            width: 46px;
-            height: 46px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #dbe3ee;
-            border-radius: 12px;
-            background: #f1f5f9;
-            color: #64748b;
-            font-weight: 800;
-            font-size: 1.3rem;
             cursor: pointer;
-            transition: all .15s ease;
             text-decoration: none;
+            transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
         }
         .task-nav-btn:hover {
-            border-color: var(--accent-1);
-            background: rgba(0, 255, 213, 0.08);
-            color: var(--accent-1);
+            border-color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.08);
+            color: #8b5cf6;
             transform: translateY(-1px);
         }
         .task-nav-btn.active {
-            background: #7B5CFF;
+            background: #8b5cf6;
             color: #fff;
-            border-color: #7B5CFF;
-            box-shadow: inset 0 -3px 0 rgba(74, 29, 150, .35);
+            border-color: #8b5cf6;
+            box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3), inset 0 -2px 0 rgba(74, 29, 150, 0.35);
         }
         .task-nav-btn.correct {
             border-color: rgba(16, 185, 129, 0.5);
             background: rgba(16, 185, 129, 0.1);
             color: rgb(16, 185, 129);
         }
-        .task-single-shell {
-            min-height: 280px;
-        }
+        .task-single-shell { min-height: 280px; }
         .task-nav-btn.incorrect {
             border-color: rgba(239, 68, 68, 0.5);
             background: rgba(239, 68, 68, 0.1);
@@ -361,21 +324,13 @@
             color: rgb(251, 191, 36);
         }
         @media (max-width: 768px) {
-            .task-nav {
-                top: 3.5rem;
-                padding: 0.75rem;
-                gap: 0.35rem;
-            }
             .task-nav-btn {
-                width: 34px;
-                height: 34px;
-                font-size: 0.82rem;
+                width: 2.5rem !important;
+                height: 2.5rem !important;
+                font-size: 0.9rem !important;
             }
         }
-
-        .scroll-to-top {
-            bottom: 6rem !important;
-        }
+        .scroll-to-top { bottom: 6rem !important; }
         .locked-card {
             padding: 2.6rem 1.5rem 2.4rem;
             display: flex;
@@ -387,9 +342,9 @@
             width: 78px;
             height: 78px;
             border-radius: 20px;
-            border: 2px solid #e2e8f0;
-            background: #f8fafc;
-            color: #94a3b8;
+            border: 2px solid var(--color-stroke);
+            background: var(--color-bg-surface-alt);
+            color: var(--color-text-muted);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -398,11 +353,11 @@
         }
         .locked-card__title {
             font-weight: 900;
-            color: #0f172a;
+            color: var(--color-text-primary);
             margin-bottom: 0.35rem;
         }
         .locked-card__text {
-            color: #64748b;
+            color: var(--color-text-muted);
             max-width: 560px;
             font-size: 14px;
             line-height: 1.45;
@@ -410,111 +365,18 @@
         }
         .locked-card__fake {
             width: min(100%, 740px);
-            border: 2px solid #e2e8f0;
-            background: #f8fafc;
+            border: 2px solid var(--color-stroke);
+            background: var(--color-bg-surface-alt);
             border-radius: 16px;
             height: 92px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #94a3b8;
+            color: var(--color-text-muted);
             font-size: 18px;
         }
-        /* Direct transfer overrides from reference */
-        .submission-header {
-            border-radius: 32px !important;
-            border: 1px solid #e2e8f0 !important;
-            border-bottom: 4px solid #cbd5e1 !important;
-            box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06) !important;
-            padding: 2rem 2rem 1.75rem !important;
-        }
-        .meta-value {
-            font-size: 4rem !important;
-            line-height: 1.02 !important;
-            font-weight: 900 !important;
-            letter-spacing: -0.03em !important;
-            margin-bottom: 1.25rem !important;
-        }
-        .meta-label {
-            font-size: 10px !important;
-            font-weight: 800 !important;
-            letter-spacing: .16em !important;
-            text-transform: uppercase !important;
-            color: #94a3b8 !important;
-            margin-bottom: .35rem !important;
-        }
-        .hero-grid { gap: 2rem !important; align-items: end !important; }
-        .hero-metrics { padding-top: 1rem !important; }
-        .status-pill {
-            border-radius: 12px !important;
-            padding: .45rem .85rem !important;
-            font-size: 14px !important;
-            font-weight: 800 !important;
-        }
-        #start-btn {
-            border-radius: 16px !important;
-            padding: 1.25rem 2.5rem !important;
-            font-size: 1.05rem !important;
-            font-weight: 900 !important;
-            border-bottom-width: 4px !important;
-            box-shadow: 0 10px 30px rgba(123, 92, 255, 0.3) !important;
-        }
-        .task-nav {
-            border-radius: 18px !important;
-            border: 1px solid #e2e8f0 !important;
-            padding: .55rem .75rem !important;
-            background: #fff !important;
-            min-height: 74px !important;
-        }
-        .task-nav-label {
-            margin-left: .35rem !important;
-            margin-right: auto !important;
-            font-size: .95rem !important;
-            font-weight: 800 !important;
-            letter-spacing: .14em !important;
-            text-transform: uppercase !important;
-            color: #64748b !important;
-        }
-        .task-nav-btn {
-            width: 40px !important;
-            height: 40px !important;
-            border-radius: 12px !important;
-            font-size: 1.1rem !important;
-            font-weight: 800 !important;
-            border: 1px solid #dbe3ee !important;
-            background: #f1f5f9 !important;
-            color: #64748b !important;
-        }
-        .task-nav-btn.active {
-            background: #7B5CFF !important;
-            color: #fff !important;
-            border-color: #7B5CFF !important;
-            box-shadow: inset 0 -3px 0 rgba(74, 29, 150, .35) !important;
-        }
-        .task-card {
-            border-radius: 32px !important;
-            border: 1px solid #e2e8f0 !important;
-            border-bottom: 4px solid #cbd5e1 !important;
-            overflow: hidden !important;
-        }
-        .task-header {
-            border-bottom: 1px solid #e2e8f0 !important;
-            background: #f8fafc !important;
-            padding: 1rem 1.45rem !important;
-        }
-        .task-number { font-size: 2rem !important; font-weight: 900 !important; color: #7B5CFF !important; line-height: 1; }
-        .task-content { font-size: 15px !important; line-height: 1.65 !important; color: #1e293b !important; }
-        .exec-unlocked { padding: 1.5rem 1.5rem 1.5rem !important; gap: 1rem !important; }
-        .task-input { border-radius: 20px !important; border: 1px solid #e2e8f0 !important; background: #fff !important; padding: .5rem !important; }
-        .answer-input {
-            background: #f8fafc !important;
-            border: 1px solid #dbe3ee !important;
-            border-radius: 12px !important;
-            font-size: 1.15rem !important;
-            font-weight: 600 !important;
-            min-height: 84px !important;
-        }
-        .code-editor-wrap { border-radius: 24px !important; overflow: hidden !important; border: 1px solid #e2e8f0 !important; }
+        .code-editor-wrap { border-radius: 24px; overflow: hidden; border: 1px solid var(--color-stroke); }
+        .task-input { border-radius: 20px; border: 1px solid var(--color-stroke); background: var(--color-bg-surface); padding: 0.5rem; }
         .exec-unlocked {
             padding: 1.5rem 1.5rem 1.75rem;
             display: flex;
@@ -532,37 +394,37 @@
         })();
     </script>
 </head>
-<body data-cinema-scene="submission-work" class="{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student {% endif %}min-h-screen">
+<body data-cinema-scene="submission-work" class="{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student student-tasks-shell {% endif %}min-h-screen">
     <div class="app-layout">
         {% set active_page = 'assignments' %}
         {% include '_dock_nav.html' %}
     <div class="app-main">
-        <main class="app-content" style="margin-top: 1.25rem; max-width: 1000px; margin-left: auto; margin-right: auto; padding-bottom: 120px;">
+        <main class="app-content w-full mx-auto mt-5 pb-32 max-w-[860px]">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
-        <div class="submission-header">
+        <div class="submission-header relative overflow-hidden">
             {% set should_hide_tasks = assignment.hide_before_start and submission.status == 'ASSIGNED' and not submission.started_at %}
-            <div class="hero-grid">
-                <div>
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:.5rem;">
-                        <span class="submission-type-chip" style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:8px; padding:4px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.08em;">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else 'Проверочная') }}</span>
-                        <span style="font-size:14px; color:#94a3b8; font-weight:800;">#{{ assignment.assignment_id }}</span>
+            <div class="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="submission-type-chip text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg border bg-purple-50 text-boo-primary border-purple-100">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else 'Проверочная') }}</span>
+                        <span class="text-xs font-bold text-muted">#{{ assignment.assignment_id }}</span>
                     </div>
-                    <div class="meta-value">{{ assignment.title }}</div>
+                    <h1 class="submission-title text-3xl sm:text-4xl lg:text-5xl font-black text-primary dark:text-white tracking-tight leading-tight">{{ assignment.title }}</h1>
                 </div>
-                <div>
-                    {% if should_hide_tasks %}
-                    <button type="button" id="start-btn" class="w-full md:w-auto px-8 py-5 bg-boo-primary text-white rounded-2xl font-black text-lg hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(123,92,255,0.3)] border-b-[4px] border-b-purple-800 active:translate-y-[3px] active:border-b-0 hover:-translate-y-1" data-prevent-double-submit="true">
-                        <i class="ph-fill ph-play-circle text-2xl"></i> Начать выполнение
+                {% if should_hide_tasks %}
+                <div class="shrink-0 w-full lg:w-auto">
+                    <button type="button" id="start-btn" class="w-full lg:w-auto px-8 py-4 bg-boo-primary text-white rounded-2xl font-black text-base hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(123,92,255,0.3)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0" data-prevent-double-submit="true">
+                        <i class="ph-fill ph-play-circle text-xl"></i> Начать выполнение
                     </button>
-                    {% endif %}
                 </div>
+                {% endif %}
             </div>
 
-            <div class="hero-metrics">
-                <div>
-                    <div class="meta-label">Статус</div>
-                    <span class="status-pill status-{{ submission.status.lower() }}{% if timer_expired and time_limit_strict %} status-overdue-timer{% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %} status-overdue-deadline{% endif %}">
-                        <i class="ph-bold {% if submission.status == 'ASSIGNED' %}ph-lock{% elif submission.status == 'IN_PROGRESS' %}ph-circle{% elif submission.status == 'SUBMITTED' %}ph-check-circle{% else %}ph-clock{% endif %}" style="font-size:.9rem;"></i>
+            <div class="submission-hero-metrics flex flex-wrap lg:flex-nowrap gap-y-6 pt-6 mt-6 border-t border-slate-100 dark:border-white/10 relative z-10">
+                <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 first:pl-0">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Статус</div>
+                    <span class="status-pill status-{{ submission.status.lower() }}{% if timer_expired and time_limit_strict %} status-overdue-timer{% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %} status-overdue-deadline{% endif %} inline-flex items-center gap-1.5">
+                        <i class="ph-bold {% if submission.status == 'ASSIGNED' %}ph-lock{% elif submission.status == 'IN_PROGRESS' %}ph-circle{% elif submission.status == 'SUBMITTED' %}ph-check-circle{% else %}ph-clock{% endif %} text-base"></i>
                         {% if timer_expired and time_limit_strict %}Просрочено по таймеру
                         {% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}Просрочено по дедлайну
                         {% elif submission.status == 'ASSIGNED' %}Назначено
@@ -574,31 +436,33 @@
                         {% else %}{{ submission.status }}{% endif %}
                     </span>
                 </div>
-                <div>
-                    <div class="meta-label">Дедлайн</div>
-                    <div class="info-value"><i class="ph-bold ph-calendar-blank" style="font-size:1rem;color:#fb7185;margin-right:.35rem;"></i>{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
+                <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Дедлайн</div>
+                    <div class="text-primary dark:text-white font-bold text-sm flex items-center gap-1.5 mt-2"><i class="ph-bold ph-calendar-blank text-boo-coral"></i>{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
-                <div>
-                    <div class="meta-label">Попытки</div>
-                    <div class="info-value"><i class="ph-bold ph-arrows-clockwise" style="font-size:1rem;color:#7B5CFF;margin-right:.35rem;"></i>{{ attempts_used }} / {{ effective_max_attempts }}</div>
+                <div class="w-1/2 lg:flex-1 {% if submission.started_at %}lg:border-r border-slate-100 dark:border-white/10{% endif %} px-2 lg:px-4">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Попытки</div>
+                    <div class="text-primary dark:text-white font-bold text-sm flex items-center gap-1.5 mt-2"><i class="ph-bold ph-arrows-clockwise text-boo-primary"></i>{{ attempts_used }} / {{ effective_max_attempts }}</div>
                 </div>
                 {% if submission.started_at %}
-                <div>
-                    <div class="meta-label">Начато</div>
-                    <div class="info-value"><i class="ph-bold ph-clock" style="font-size:1rem;color:#06b6d4;margin-right:.35rem;"></i>{{ submission.started_at.strftime('%d.%m.%Y %H:%M') }}</div>
+                <div class="w-1/2 lg:flex-1 px-2 lg:px-4">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Начато</div>
+                    <div class="text-primary dark:text-white font-bold text-sm flex items-center gap-1.5 mt-2"><i class="ph-bold ph-clock text-boo-cyan"></i>{{ submission.started_at.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
                 {% endif %}
             </div>
         </div>
         
-        <div class="task-nav" id="taskNav">
-            <span class="task-nav-label">ЗАДАНИЯ:</span>
+        <div class="task-nav sticky top-20 z-40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2.5 rounded-[20px] mt-2 mb-2 bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-nav dark:shadow-nav-dark" id="taskNav">
+            <span class="task-nav-label text-[11px] font-extrabold text-slate-500 dark:text-dark-muted uppercase tracking-widest pl-2 shrink-0 hidden sm:block">Задания:</span>
+            <div class="task-strip flex gap-1.5 overflow-x-auto hide-scroll w-full sm:w-auto sm:flex-1 sm:justify-end">
             {% for task_item in tasks_data %}
             {% set ti_answer = task_item.answer %}
-            <a href="#task-{{ loop.index }}" class="task-nav-btn {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %}" title="Задание {{ loop.index }}">
+            <a href="#task-{{ loop.index }}" class="task-nav-btn {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} w-11 h-11 shrink-0 rounded-[14px] flex items-center justify-center font-black text-base no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="Задание {{ loop.index }}">
                 {{ loop.index }}
             </a>
             {% endfor %}
+            </div>
         </div>
 
         {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0 and can_submit) %}
