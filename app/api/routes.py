@@ -688,12 +688,13 @@ def api_analytics_summary():
         all_nodes = KnowledgeNode.query.filter_by(subject_id=subject.id).order_by(KnowledgeNode.id).all()
         node_ids = [n.id for n in all_nodes]
         task_numbers_by_node = {}
-        for t in Tasks.query.filter(
-            Tasks.knowledge_node_id.in_(node_ids),
-            Tasks.is_active.is_(True),
-        ).all():
-            if t.knowledge_node_id and t.knowledge_node_id not in task_numbers_by_node:
-                task_numbers_by_node[t.knowledge_node_id] = t.task_number
+        if node_ids:
+            for t in Tasks.query.filter(
+                Tasks.knowledge_node_id.in_(node_ids),
+                Tasks.is_active.is_(True),
+            ).all():
+                if t.knowledge_node_id and t.knowledge_node_id not in task_numbers_by_node:
+                    task_numbers_by_node[t.knowledge_node_id] = t.task_number
         code_to_task = {}
         try:
             data_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'analytics_kege_difficulty.json')
@@ -726,6 +727,34 @@ def api_analytics_summary():
                 'streak_days': (m.streak_days or 0) if m else 0,
                 'last_practiced_at': _safe_isoformat(m.last_practiced_at if m else None),
             })
+
+        # Fallback: if analytics nodes are not seeded in DB, still build a full 1..27 view
+        # from available tasks and per-task MMR so UI is never empty.
+        if not by_node:
+            task_numbers = []
+            tn_rows = (
+                db.session.query(Tasks.task_number)
+                .filter(Tasks.is_active.is_(True), Tasks.task_number.isnot(None))
+                .distinct()
+                .order_by(Tasks.task_number.asc())
+                .all()
+            )
+            task_numbers = [int(r[0]) for r in tn_rows if r and r[0] is not None]
+            for task_num in task_numbers:
+                mmr_for_task = task_mmr.get(int(task_num))
+                by_node.append({
+                    'node_code': f'TASK-{task_num}',
+                    'node_name': f'Задание {task_num}',
+                    'task_number': task_num,
+                    'base_rating': 1500,
+                    'exam_points': 1,
+                    'rating': round(mmr_for_task.mmr, 1) if mmr_for_task else AnalyticsEngine.INITIAL_RATING,
+                    'task_mmr': round(mmr_for_task.mmr, 1) if mmr_for_task else AnalyticsEngine.INITIAL_RATING,
+                    'rematch_pending': int(rematch_by_type.get(int(task_num), 0)),
+                    'volatility': 350.0,
+                    'streak_days': 0,
+                    'last_practiced_at': None,
+                })
         by_node.sort(key=lambda x: (x['task_number'] is None, x['task_number'] or 0))
         predicted = AnalyticsEngine.predict_exam_score(user_id, subject_id=subject.id, course_id=course_id)
 
