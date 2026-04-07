@@ -1116,6 +1116,18 @@
                 badge.textContent = 'Уже добавлялось';
             }
         }
+        function getAcceptedSessionSet() {
+            if (!Array.isArray(acceptedInSession)) return new Set();
+            return new Set(acceptedInSession.map(x => parseInt(x, 10)).filter(Number.isFinite));
+        }
+        function syncBankBadgesFromSession() {
+            const ids = getAcceptedSessionSet();
+            if (!ids.size) return;
+            document.querySelectorAll('.bank-task-card[data-task-id]').forEach((card) => {
+                const taskId = parseInt(card.getAttribute('data-task-id') || '', 10);
+                if (ids.has(taskId)) markBankCardAsAdded(taskId);
+            });
+        }
         function removeBankCard(taskId) {
             const card = document.querySelector('.bank-task-card[data-task-id="' + taskId + '"]');
             if (!card) return;
@@ -1154,6 +1166,14 @@
                         if (!r.ok || !data.success) throw new Error(data.error || 'Ошибка добавления в работу');
                         if (window.toast) window.toast.success('Задание добавлено в работу');
                         markBankCardAsAdded(taskId);
+                        return;
+                    }
+                    const sessionWorkRaw = (panel.dataset.bankAddSessionWork || '').trim();
+                    if (sessionWorkRaw) {
+                        const set = getAcceptedSessionSet();
+                        if (!set.has(taskId)) acceptedInSession.push(taskId);
+                        markBankCardAsAdded(taskId);
+                        if (window.toast) window.toast.success('Задание добавлено в текущую работу');
                         return;
                     }
                     if (!panel.dataset.bankAddAssignmentType) throw new Error('Не задана цель добавления');
@@ -1245,6 +1265,17 @@
                 setTimeout(() => card.classList.remove('is-entering'), 30);
             } catch (_) {}
         }
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const taskIdsParam = (params.get('task_ids') || '').trim();
+            if (taskIdsParam) {
+                taskIdsParam.split(',').forEach((x) => {
+                    const id = parseInt((x || '').trim(), 10);
+                    if (Number.isFinite(id)) acceptedInSession.push(id);
+                });
+            }
+            syncBankBadgesFromSession();
+        } catch (_) {}
     })();
 </script>
 {% endblock %}
