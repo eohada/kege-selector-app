@@ -649,6 +649,7 @@ def api_analytics_summary():
 
     try:
         from app.analytics import AnalyticsEngine
+        from app.analytics.mmr_config import get_mmr_config
         from core.db_models import UserMastery, KnowledgeNode, Subject, Tasks, UserTaskMMR, RematchQueue
 
         user_id = current_user.id
@@ -706,6 +707,11 @@ def api_analytics_summary():
             pass
         masteries = {m.node_id: m for m in UserMastery.query.filter_by(user_id=user_id).all()}
         task_mmr = {m.task_type: m for m in UserTaskMMR.query.filter_by(user_id=user_id).all()}
+        calibration_cfg = (get_mmr_config() or {}).get('calibration', {})
+        first_stage_tasks = int(calibration_cfg.get('first_stage_tasks', 5))
+        second_stage_tasks = int(calibration_cfg.get('second_stage_tasks', 10))
+        first_stage_multiplier = float(calibration_cfg.get('first_stage_multiplier', 3.0))
+        second_stage_multiplier = float(calibration_cfg.get('second_stage_multiplier', 2.0))
         rematch_by_type = {}
         for rq in RematchQueue.query.filter_by(user_id=user_id, status='pending').all():
             rematch_by_type[int(rq.task_type or 0)] = rematch_by_type.get(int(rq.task_type or 0), 0) + 1
@@ -714,6 +720,14 @@ def api_analytics_summary():
             m = masteries.get(n.id)
             task_num = task_numbers_by_node.get(n.id) or code_to_task.get(n.code)
             mmr_for_task = task_mmr.get(int(task_num or 0))
+            solved_count = int(mmr_for_task.solved_count or 0) if mmr_for_task else 0
+            if solved_count < first_stage_tasks:
+                calibration_multiplier = first_stage_multiplier
+            elif solved_count < second_stage_tasks:
+                calibration_multiplier = second_stage_multiplier
+            else:
+                calibration_multiplier = 1.0
+            calibration_remaining = max(0, second_stage_tasks - solved_count)
             by_node.append({
                 'node_code': n.code,
                 'node_name': n.name,
@@ -722,6 +736,9 @@ def api_analytics_summary():
                 'exam_points': n.exam_points,
                 'rating': round(m.rating, 1) if m else AnalyticsEngine.INITIAL_RATING,
                 'task_mmr': round(mmr_for_task.mmr, 1) if mmr_for_task else AnalyticsEngine.INITIAL_RATING,
+                'calibration_multiplier': calibration_multiplier,
+                'calibration_remaining': calibration_remaining,
+                'calibration_solved_count': solved_count,
                 'rematch_pending': int(rematch_by_type.get(int(task_num or 0), 0)),
                 'volatility': round(m.volatility, 1) if m else 350.0,
                 'streak_days': (m.streak_days or 0) if m else 0,
@@ -742,6 +759,14 @@ def api_analytics_summary():
             task_numbers = [int(r[0]) for r in tn_rows if r and r[0] is not None]
             for task_num in task_numbers:
                 mmr_for_task = task_mmr.get(int(task_num))
+                solved_count = int(mmr_for_task.solved_count or 0) if mmr_for_task else 0
+                if solved_count < first_stage_tasks:
+                    calibration_multiplier = first_stage_multiplier
+                elif solved_count < second_stage_tasks:
+                    calibration_multiplier = second_stage_multiplier
+                else:
+                    calibration_multiplier = 1.0
+                calibration_remaining = max(0, second_stage_tasks - solved_count)
                 by_node.append({
                     'node_code': f'TASK-{task_num}',
                     'node_name': f'Задание {task_num}',
@@ -750,6 +775,9 @@ def api_analytics_summary():
                     'exam_points': 1,
                     'rating': round(mmr_for_task.mmr, 1) if mmr_for_task else AnalyticsEngine.INITIAL_RATING,
                     'task_mmr': round(mmr_for_task.mmr, 1) if mmr_for_task else AnalyticsEngine.INITIAL_RATING,
+                    'calibration_multiplier': calibration_multiplier,
+                    'calibration_remaining': calibration_remaining,
+                    'calibration_solved_count': solved_count,
                     'rematch_pending': int(rematch_by_type.get(int(task_num), 0)),
                     'volatility': 350.0,
                     'streak_days': 0,
@@ -782,6 +810,67 @@ def api_analytics_summary():
         })
     except Exception as e:
         logger.error(f'Ошибка api/analytics/summary: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/analytics/calibration/reset', methods=['POST'])
+@login_required
+def api_analytics_calibration_reset():
+    """Reset per-task calibration progress without changing current MMR."""
+    try:
+        from app.analytics import AnalyticsEngine
+        from app.analytics.mmr_config import get_mmr_config
+        from core.db_models import UserTaskMMR
+
+        data = request.get_json(silent=True) or {}
+        student_id = data.get('student_id', None)
+        task_number = data.get('task_number', None)
+        if student_id is None or task_number is None:
+            return jsonify({'success': False, 'error': 'student_id и task_number обязательны'}), 400
+        try:
+            student_id = int(student_id)
+            task_number = int(task_number)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Некорректные student_id/task_number'}), 400
+
+        scope = get_user_scope(current_user)
+        if not scope['can_see_all']:
+            allowed_user_ids = scope.get('student_ids') or []
+            allowed_student_ids = [s.student_id for s in Student.query.filter(Student.user_id.in_(allowed_user_ids)).all()]
+            if student_id not in allowed_student_ids:
+                return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+        student = Student.query.get(student_id)
+        if not student or not student.user_id:
+            return jsonify({'success': False, 'error': 'Ученик не найден'}), 404
+
+        user_id = int(student.user_id)
+        row = UserTaskMMR.query.filter_by(user_id=user_id, task_type=task_number).first()
+        if not row:
+            row = UserTaskMMR(
+                user_id=user_id,
+                task_type=task_number,
+                mmr=float(AnalyticsEngine.INITIAL_RATING),
+                solved_count=0,
+            )
+            db.session.add(row)
+        else:
+            row.solved_count = 0
+
+        db.session.commit()
+
+        calibration_cfg = (get_mmr_config() or {}).get('calibration', {})
+        first_stage_multiplier = float(calibration_cfg.get('first_stage_multiplier', 3.0))
+        second_stage_tasks = int(calibration_cfg.get('second_stage_tasks', 10))
+        return jsonify({
+            'success': True,
+            'task_number': task_number,
+            'calibration_multiplier': first_stage_multiplier,
+            'calibration_remaining': second_stage_tasks,
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка /api/analytics/calibration/reset: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

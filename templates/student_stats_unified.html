@@ -296,11 +296,12 @@
           <div class="overflow-x-auto pb-2">
             <div class="min-w-[800px]">
               <div class="grid grid-cols-12 gap-4 px-6 py-3 border-b border-slate-200 text-xs font-extrabold text-muted uppercase tracking-widest">
-                <div class="col-span-5">Тема (№ ЕГЭ)</div>
+                <div class="col-span-4">Тема (№ ЕГЭ)</div>
                 <div class="col-span-2">Код</div>
                 <div class="col-span-2">Рейтинг</div>
                 <div class="col-span-1 text-center">Балл</div>
-                <div class="col-span-2 text-right">Серия</div>
+                <div class="col-span-2">Калибровка</div>
+                <div class="col-span-1 text-right">Серия</div>
               </div>
 
               <table class="w-full">
@@ -495,8 +496,47 @@
                             var rematchBadge = (n.rematch_pending && n.rematch_pending > 0)
                                 ? (' <span class="inline-flex items-center gap-1 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 text-[10px] font-bold text-purple-700">Реванш: ' + n.rematch_pending + '</span>')
                                 : '';
-                            return '<tr class="border-b border-slate-100 hover:bg-surface-alt transition-colors"><td class="px-6 py-4 font-extrabold text-primary text-sm">' + name + num + rematchBadge + '</td><td class="px-6 py-4"><span class="bg-surface-alt text-muted font-mono text-xs px-2 py-1 rounded-md border border-slate-200">' + code + '</span></td><td class="px-6 py-4 font-black text-boo-primary">' + rating + '</td><td class="px-6 py-4 text-center font-black text-secondary">' + pts + '</td><td class="px-6 py-4 text-right">' + (streak ? ('<span class="inline-flex items-center gap-1.5 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-100 text-xs font-bold text-orange-600"><i class="ph-fill ph-fire"></i> ' + streak + ' подряд</span>') : '<span class="text-muted font-bold text-xs">-</span>') + '</td></tr>';
+                            var cm = (typeof n.calibration_multiplier === 'number') ? n.calibration_multiplier : 1;
+                            var cr = (typeof n.calibration_remaining === 'number') ? n.calibration_remaining : 0;
+                            var calibrationText = 'x' + cm + ' (' + cr + ' до конца)';
+                            var calibrationControl = '';
+                            if (!IS_SELF_STUDENT_ANALYTICS && n.task_number != null) {
+                                calibrationControl = ' <button type="button" class="analytics-reset-calibration-btn inline-flex items-center px-2 py-0.5 rounded border border-purple-200 bg-purple-50 text-purple-700 text-[10px] font-bold" data-task-number="' + n.task_number + '">Чистая</button>';
+                            }
+                            return '<tr class="border-b border-slate-100 hover:bg-surface-alt transition-colors"><td class="px-6 py-4 font-extrabold text-primary text-sm">' + name + num + rematchBadge + '</td><td class="px-6 py-4"><span class="bg-surface-alt text-muted font-mono text-xs px-2 py-1 rounded-md border border-slate-200">' + code + '</span></td><td class="px-6 py-4 font-black text-boo-primary">' + rating + '</td><td class="px-6 py-4 text-center font-black text-secondary">' + pts + '</td><td class="px-6 py-4 text-xs font-bold text-slate-700">' + calibrationText + calibrationControl + '</td><td class="px-6 py-4 text-right">' + (streak ? ('<span class="inline-flex items-center gap-1.5 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-100 text-xs font-bold text-orange-600"><i class="ph-fill ph-fire"></i> ' + streak + ' подряд</span>') : '<span class="text-muted font-bold text-xs">-</span>') + '</td></tr>';
                         }).join('');
+                    }
+                    if (!IS_SELF_STUDENT_ANALYTICS && tbody) {
+                        tbody.querySelectorAll('.analytics-reset-calibration-btn').forEach(function(btn) {
+                            btn.addEventListener('click', function() {
+                                var taskNum = parseInt(btn.getAttribute('data-task-number'), 10);
+                                if (!taskNum) return;
+                                btn.disabled = true;
+                                fetch('/api/analytics/calibration/reset', {
+                                    method: 'POST',
+                                    credentials: 'same-origin',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
+                                    },
+                                    body: JSON.stringify({
+                                        student_id: STUDENT_ID_FOR_ANALYTICS,
+                                        task_number: taskNum
+                                    })
+                                })
+                                .then(function(r) { return r.json(); })
+                                .then(function(res) {
+                                    if (!res.success) throw new Error(res.error || 'Ошибка сброса');
+                                    if (window.toast) window.toast.success('Калибровка для №' + taskNum + ' сброшена');
+                                    loadAnalyticsTab();
+                                })
+                                .catch(function(err) {
+                                    btn.disabled = false;
+                                    if (window.toast) window.toast.error(err.message || 'Ошибка');
+                                });
+                            });
+                        });
                     }
                     var historyUrl = '/api/analytics/history?student_id=' + encodeURIComponent(STUDENT_ID_FOR_ANALYTICS) + courseIdParam;
                     fetch(historyUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })

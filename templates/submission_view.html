@@ -97,6 +97,15 @@
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
             box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
         }
+        .task-card.task-panel-hidden { display: none !important; }
+        .task-card.task-panel-active {
+            display: block !important;
+            animation: taskPanelFadeIn .28s ease;
+        }
+        @keyframes taskPanelFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .task-card.task-correct {
             border-color: rgba(16, 185, 129, 0.5);
             box-shadow: 0 0 12px rgba(16, 185, 129, 0.12), inset 0 0 0 1px rgba(16, 185, 129, 0.08);
@@ -337,6 +346,9 @@
             border-color: rgba(16, 185, 129, 0.5);
             background: rgba(16, 185, 129, 0.1);
             color: rgb(16, 185, 129);
+        }
+        .task-single-shell {
+            min-height: 280px;
         }
         .task-nav-btn.incorrect {
             border-color: rgba(239, 68, 68, 0.5);
@@ -590,7 +602,7 @@
         </div>
 
         {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0 and can_submit) %}
-        <form id="submission-form">
+        <form id="submission-form" class="task-single-shell">
             {% for task_item in tasks_data %}
             <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
@@ -608,6 +620,7 @@
                         {% if task_item.task and task_item.task.is_manual_bank_task %}
                         <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">Создано вручную</span>
                         {% endif %}
+                        <span class="submission-type-chip task-debug-timer" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="background:#ecfeff; color:#0f766e; border:1px solid #99f6e4; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900;">⏱ 0с • PAUSE</span>
                     </div>
                     <div style="color:#94a3b8;"><i class="ph-bold ph-warning-circle"></i></div>
                 </div>
@@ -808,6 +821,7 @@
         </form>
         {% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] or (submission.status == 'GRADED' and (attempts_left is not defined or attempts_left <= 0 or not can_submit)) %}
         
+        <div class="task-single-shell">
         {% for task_item in tasks_data %}
         <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% elif task_item.answer %} task-pending-review{% endif %}" id="task-{{ loop.index }}">
             <div class="task-header">
@@ -933,6 +947,7 @@
             </div>
         </div>
         {% endfor %}
+        </div>
         
         {% if submission.teacher_feedback %}
         <div class="task-card" style="background: var(--accent-1); color: white;">
@@ -1377,11 +1392,89 @@
         document.getElementById('autosave-btn')?.addEventListener('click', autosave);
         
         // Сдача одного задания (при allow_separate_submission)
+        const taskTimers = Object.create(null); // { [taskId]: { elapsedMs, runningSinceMs } }
+        let activeTaskId = null;
+        let windowFocused = !document.hidden;
+        const nowMs = () => Date.now();
+        function ensureTaskTimer(taskId) {
+            if (!Number.isFinite(taskId)) return;
+            if (!taskTimers[taskId]) taskTimers[taskId] = { elapsedMs: 0, runningSinceMs: null };
+        }
+        function isAppActive() {
+            return windowFocused && !document.hidden;
+        }
+        function isTaskRunning(taskId) {
+            ensureTaskTimer(taskId);
+            const st = taskTimers[taskId];
+            return !!(st && st.runningSinceMs !== null);
+        }
+        function syncTaskTimer(taskId) {
+            ensureTaskTimer(taskId);
+            const st = taskTimers[taskId];
+            const shouldRun = Number.isFinite(activeTaskId) && taskId === activeTaskId && isAppActive();
+            if (shouldRun && st.runningSinceMs === null) {
+                st.runningSinceMs = nowMs();
+            } else if (!shouldRun && st.runningSinceMs !== null) {
+                st.elapsedMs += Math.max(0, nowMs() - st.runningSinceMs);
+                st.runningSinceMs = null;
+            }
+        }
+        function getTaskElapsedSec(taskId) {
+            ensureTaskTimer(taskId);
+            syncTaskTimer(taskId);
+            const st = taskTimers[taskId];
+            let totalMs = st.elapsedMs;
+            if (st.runningSinceMs !== null) {
+                totalMs += Math.max(0, nowMs() - st.runningSinceMs);
+            }
+            return Math.max(0, Math.floor(totalMs / 1000));
+        }
+        function resetTaskTimer(taskId) {
+            ensureTaskTimer(taskId);
+            taskTimers[taskId].elapsedMs = 0;
+            taskTimers[taskId].runningSinceMs = null;
+            syncTaskTimer(taskId);
+        }
+        function updateTaskDebugTimer(taskId) {
+            const el = document.querySelector('.task-debug-timer[data-task-id="' + taskId + '"]');
+            if (!el) return;
+            const secs = getTaskElapsedSec(taskId);
+            const running = isTaskRunning(taskId);
+            el.textContent = '⏱ ' + secs + 'с' + (running ? ' • RUN' : ' • PAUSE');
+            el.style.color = running ? '#0f766e' : '#64748b';
+        }
+        function syncAllTaskTimers() {
+            Object.keys(taskTimers).forEach(function(k) {
+                const taskId = parseInt(k, 10);
+                if (!Number.isFinite(taskId)) return;
+                syncTaskTimer(taskId);
+                updateTaskDebugTimer(taskId);
+            });
+        }
+        document.querySelectorAll('.task-card[data-task-id]').forEach(function(card) {
+            const taskId = parseInt(card.dataset.taskId, 10);
+            if (!Number.isFinite(taskId)) return;
+            ensureTaskTimer(taskId);
+            updateTaskDebugTimer(taskId);
+        });
+        function syncActiveTaskFromDom() {
+            const activeCard = document.querySelector('.task-card.task-panel-active[data-task-id]');
+            const nextId = activeCard ? parseInt(activeCard.dataset.taskId, 10) : null;
+            activeTaskId = Number.isFinite(nextId) ? nextId : null;
+            syncAllTaskTimers();
+        }
+        document.addEventListener('visibilitychange', syncAllTaskTimers);
+        window.addEventListener('focus', function() { windowFocused = true; syncAllTaskTimers(); });
+        window.addEventListener('blur', function() { windowFocused = false; syncAllTaskTimers(); });
+        setInterval(syncAllTaskTimers, 1000);
+        window.__syncActiveTaskTimer__ = syncActiveTaskFromDom;
         document.querySelectorAll('.submit-task-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const assignmentTaskId = parseInt(btn.getAttribute('data-assignment-task-id'), 10);
                 const textarea = document.getElementById('answer-' + assignmentTaskId);
                 const value = textarea ? textarea.value : '';
+                syncTaskTimer(assignmentTaskId);
+                const taskElapsedSec = getTaskElapsedSec(assignmentTaskId);
                 const wrap = btn.closest('.submit-task-wrap');
                 if (!wrap) return;
                 btn.disabled = true;
@@ -1393,11 +1486,16 @@
                         'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ assignment_task_id: assignmentTaskId, value: value })
+                    body: JSON.stringify({
+                        assignment_task_id: assignmentTaskId,
+                        value: value,
+                        time_spent_sec: taskElapsedSec
+                    })
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
+                        resetTaskTimer(assignmentTaskId);
                         if (typeof showToast === 'function') {
                             var rm = data.rating_meta || {};
                             var d = (typeof rm.mmr_delta === 'number') ? (rm.mmr_delta >= 0 ? '+' + Math.round(rm.mmr_delta) : String(Math.round(rm.mmr_delta))) : '—';
@@ -1665,18 +1763,46 @@
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
     <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
     <script>
-        document.querySelectorAll('.task-nav-btn').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                var target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    var navH = document.querySelector('.task-nav');
-                    var offset = navH ? navH.offsetHeight + 16 : 80;
-                    var y = target.getBoundingClientRect().top + window.pageYOffset - offset;
-                    window.scrollTo({ top: y, behavior: 'smooth' });
+        (function() {
+            var navButtons = Array.from(document.querySelectorAll('.task-nav-btn'));
+            var taskCards = Array.from(document.querySelectorAll('.task-card[id^="task-"]'));
+            if (!navButtons.length || !taskCards.length) return;
+
+            function extractIndexFromHref(btn) {
+                var href = btn.getAttribute('href') || '';
+                var m = href.match(/#task-(\d+)/);
+                return m ? parseInt(m[1], 10) : null;
+            }
+            function setActiveTask(index) {
+                taskCards.forEach(function(card, i) {
+                    var isActive = (i + 1) === index;
+                    card.classList.toggle('task-panel-active', isActive);
+                    card.classList.toggle('task-panel-hidden', !isActive);
+                });
+                navButtons.forEach(function(btn) {
+                    btn.classList.toggle('active', extractIndexFromHref(btn) === index);
+                });
+                if (typeof window.__syncActiveTaskTimer__ === 'function') {
+                    window.__syncActiveTaskTimer__();
                 }
+            }
+
+            navButtons.forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var index = extractIndexFromHref(btn);
+                    if (!index) return;
+                    setActiveTask(index);
+                });
             });
-        });
+
+            var initial = 1;
+            var explicitActive = navButtons.find(function(btn) { return btn.classList.contains('active'); });
+            if (explicitActive) {
+                initial = extractIndexFromHref(explicitActive) || 1;
+            }
+            setActiveTask(initial);
+        })();
     </script>
 </body>
 </html>

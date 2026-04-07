@@ -83,15 +83,20 @@ def _started_at_to_utc(dt):
     return dt
 
 
-def _resolve_answer_time_spent_sec(submission, answered_at):
+def _resolve_answer_time_spent_sec(submission, answered_at, previous_answered_at=None):
     """
     Пытается оценить время решения ответа в секундах.
     Базовый ориентир: от submission.started_at до момента ответа.
     """
-    if not submission or not answered_at or not getattr(submission, 'started_at', None):
+    if not answered_at:
         return None
     try:
-        started_utc = _started_at_to_utc(submission.started_at)
+        if previous_answered_at is not None:
+            started_utc = _started_at_to_utc(previous_answered_at)
+        else:
+            if not submission or not getattr(submission, 'started_at', None):
+                return None
+            started_utc = _started_at_to_utc(submission.started_at)
         answered_utc = _started_at_to_utc(answered_at)
         if not started_utc or not answered_utc:
             return None
@@ -2482,6 +2487,13 @@ def submission_submit_task(submission_id):
         data = request.get_json() or {}
         assignment_task_id = data.get('assignment_task_id')
         value = data.get('value', '')
+        raw_time_spent_sec = data.get('time_spent_sec')
+        client_time_spent_sec = None
+        if raw_time_spent_sec is not None:
+            try:
+                client_time_spent_sec = max(0, int(float(raw_time_spent_sec)))
+            except (TypeError, ValueError):
+                client_time_spent_sec = None
         if not assignment_task_id:
             return jsonify({'success': False, 'error': 'Укажите assignment_task_id'}), 400
         assignment_task = AssignmentTask.query.filter_by(
@@ -2495,6 +2507,9 @@ def submission_submit_task(submission_id):
             submission_id=submission_id,
             assignment_task_id=assignment_task_id
         ).first()
+        previous_answered_at = None
+        if answer:
+            previous_answered_at = answer.submitted_separately_at or answer.updated_at
         if not answer:
             answer = Answer(
                 submission_id=submission_id,
@@ -2508,7 +2523,15 @@ def submission_submit_task(submission_id):
         answer.attempts_used = (answer.attempts_used or 0) + 1
         answer.submitted_separately_at = moscow_now()
         answer.updated_at = moscow_now()
-        time_spent_sec = _resolve_answer_time_spent_sec(submission, answer.submitted_separately_at)
+        time_spent_sec = (
+            client_time_spent_sec
+            if client_time_spent_sec is not None
+            else _resolve_answer_time_spent_sec(
+                submission,
+                answer.submitted_separately_at,
+                previous_answered_at=previous_answered_at,
+            )
+        )
         is_correct, score = auto_grade_answer(answer, assignment_task)
         if is_correct is not None:
             answer.is_correct = is_correct
@@ -2623,6 +2646,7 @@ def submission_submit(submission_id):
             if attempts_per_task:
                 max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task)
                 if (answer.attempts_used or 0) < max_for_task and answer.value:
+                    previous_answered_at = answer.submitted_separately_at or answer.updated_at
                     answer.attempts_used = (answer.attempts_used or 0) + 1
                     answer.submitted_separately_at = now
             
@@ -2637,6 +2661,7 @@ def submission_submit(submission_id):
                         answer_time_spent_sec = _resolve_answer_time_spent_sec(
                             submission,
                             answer.submitted_separately_at or now,
+                            previous_answered_at=previous_answered_at,
                         )
                         AnalyticsEngine.process_submission(
                             user_id=current_user.id,
