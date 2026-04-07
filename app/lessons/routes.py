@@ -1805,6 +1805,8 @@ def lesson_task_teacher_feedback_save(lesson_id, lesson_task_id):  # comment
                     is_correct=bool(lesson_task.submission_correct) if lesson_task.submission_correct is not None else False,
                     time_spent_sec=lesson_task.time_spent_sec,
                     difficulty_level_override=lesson_task.difficulty_level,
+                    attempt_no=max(1, len(getattr(lesson_task, 'attempts', []) or [])),
+                    mode='homework_manual',
                 )
                 db.session.commit()
         except Exception as anal_err:

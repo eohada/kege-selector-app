@@ -100,6 +100,35 @@
         });
     }
 
+    const telemetryQueue = [];
+    let lastActivityAt = Date.now();
+
+    function enqueueTelemetry(eventType, payload) {
+        telemetryQueue.push({
+            event_type: eventType,
+            payload: payload || {},
+            ts: new Date().toISOString()
+        });
+    }
+
+    function flushTelemetry(useBeacon) {
+        if (!telemetryQueue.length) return;
+        const batch = telemetryQueue.splice(0, telemetryQueue.length);
+        const body = JSON.stringify({ events: batch });
+        if (useBeacon && navigator.sendBeacon) {
+            try {
+                navigator.sendBeacon('/api/telemetry/batch', new Blob([body], { type: 'application/json' }));
+                return;
+            } catch (e) {}
+        }
+        fetch('/api/telemetry/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+            body: body,
+            keepalive: true,
+        }).catch(() => {});
+    }
+
     function getCSRFToken() {
         const meta = document.querySelector('meta[name="csrf-token"]');  
         if (meta) {  
@@ -282,6 +311,37 @@
                 }
             );
         }
+    });
+
+    ['mousemove', 'keydown', 'click'].forEach((eventName) => {
+        document.addEventListener(eventName, function() {
+            lastActivityAt = Date.now();
+        }, { passive: true });
+    });
+
+    document.addEventListener('visibilitychange', function() {
+        enqueueTelemetry('visibility', {
+            state: document.visibilityState,
+            away_from_tab: document.visibilityState === 'hidden'
+        });
+    });
+
+    window.addEventListener('focus', function() {
+        enqueueTelemetry('window_focus', { focused: true });
+    });
+
+    window.addEventListener('blur', function() {
+        enqueueTelemetry('window_focus', { focused: false });
+    });
+
+    setInterval(function() {
+        const idleSec = Math.floor((Date.now() - lastActivityAt) / 1000);
+        enqueueTelemetry('presence', { idle_sec: idleSec, idle: idleSec >= 120 });
+        flushTelemetry(false);
+    }, 60000);
+
+    window.addEventListener('beforeunload', function() {
+        flushTelemetry(true);
     });
 
     if (document.readyState === 'loading') {  

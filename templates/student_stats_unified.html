@@ -459,10 +459,13 @@
                             var name = (n.node_name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                             var num = n.task_number != null ? ' (№ ' + n.task_number + ')' : '';
                             var code = (n.node_code || '').replace(/</g, '&lt;');
-                            var rating = n.rating != null ? Math.round(n.rating) : '—';
+                            var rating = n.task_mmr != null ? Math.round(n.task_mmr) : (n.rating != null ? Math.round(n.rating) : '—');
                             var pts = n.exam_points != null ? n.exam_points : 1;
                             var streak = n.streak_days != null ? n.streak_days : 0;
-                            return '<tr class="border-b border-slate-100 hover:bg-surface-alt transition-colors"><td class="px-6 py-4 font-extrabold text-primary text-sm">' + name + num + '</td><td class="px-6 py-4"><span class="bg-surface-alt text-muted font-mono text-xs px-2 py-1 rounded-md border border-slate-200">' + code + '</span></td><td class="px-6 py-4 font-black text-boo-primary">' + rating + '</td><td class="px-6 py-4 text-center font-black text-secondary">' + pts + '</td><td class="px-6 py-4 text-right">' + (streak ? ('<span class="inline-flex items-center gap-1.5 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-100 text-xs font-bold text-orange-600"><i class="ph-fill ph-fire"></i> ' + streak + ' дн.</span>') : '<span class="text-muted font-bold text-xs">-</span>') + '</td></tr>';
+                            var rematchBadge = (n.rematch_pending && n.rematch_pending > 0)
+                                ? (' <span class="inline-flex items-center gap-1 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 text-[10px] font-bold text-purple-700">Реванш: ' + n.rematch_pending + '</span>')
+                                : '';
+                            return '<tr class="border-b border-slate-100 hover:bg-surface-alt transition-colors"><td class="px-6 py-4 font-extrabold text-primary text-sm">' + name + num + rematchBadge + '</td><td class="px-6 py-4"><span class="bg-surface-alt text-muted font-mono text-xs px-2 py-1 rounded-md border border-slate-200">' + code + '</span></td><td class="px-6 py-4 font-black text-boo-primary">' + rating + '</td><td class="px-6 py-4 text-center font-black text-secondary">' + pts + '</td><td class="px-6 py-4 text-right">' + (streak ? ('<span class="inline-flex items-center gap-1.5 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-100 text-xs font-bold text-orange-600"><i class="ph-fill ph-fire"></i> ' + streak + ' дн.</span>') : '<span class="text-muted font-bold text-xs">-</span>') + '</td></tr>';
                         }).join('');
                     }
                 })

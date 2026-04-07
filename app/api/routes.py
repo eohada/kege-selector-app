@@ -44,6 +44,39 @@ def api_audit_log():
         logger.error(f'Error processing audit log: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+@api_bp.route('/api/telemetry/batch', methods=['POST'])
+@login_required
+def api_telemetry_batch():
+    """Batch telemetry intake for hidden tracking."""
+    try:
+        data = request.get_json(silent=True) or {}
+        events = data.get('events') if isinstance(data, dict) else None
+        if not isinstance(events, list):
+            return jsonify({'success': False, 'error': 'events must be array'}), 400
+        accepted = 0
+        for ev in events[:500]:
+            if not isinstance(ev, dict):
+                continue
+            payload = ev.get('payload') if isinstance(ev.get('payload'), dict) else {}
+            audit_logger.log(
+                action='telemetry_event',
+                entity='Telemetry',
+                entity_id=None,
+                status='success',
+                metadata={
+                    'event_type': ev.get('event_type'),
+                    'payload': payload,
+                    'ts': ev.get('ts'),
+                    'page': request.path,
+                },
+            )
+            accepted += 1
+        return jsonify({'success': True, 'accepted': accepted})
+    except Exception as e:
+        logger.error(f'Error processing telemetry batch: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @api_bp.route('/api/user/<int:user_id>/lessons-remaining', methods=['POST'])
 @login_required
 def api_update_lessons_remaining(user_id):
@@ -616,7 +649,7 @@ def api_analytics_summary():
 
     try:
         from app.analytics import AnalyticsEngine
-        from core.db_models import UserMastery, KnowledgeNode, Subject, Tasks
+        from core.db_models import UserMastery, KnowledgeNode, Subject, Tasks, UserTaskMMR, RematchQueue
 
         user_id = current_user.id
         student_id = request.args.get('student_id', type=int)
@@ -671,10 +704,15 @@ def api_analytics_summary():
         except Exception:
             pass
         masteries = {m.node_id: m for m in UserMastery.query.filter_by(user_id=user_id).all()}
+        task_mmr = {m.task_type: m for m in UserTaskMMR.query.filter_by(user_id=user_id).all()}
+        rematch_by_type = {}
+        for rq in RematchQueue.query.filter_by(user_id=user_id, status='pending').all():
+            rematch_by_type[int(rq.task_type or 0)] = rematch_by_type.get(int(rq.task_type or 0), 0) + 1
         by_node = []
         for n in all_nodes:
             m = masteries.get(n.id)
             task_num = task_numbers_by_node.get(n.id) or code_to_task.get(n.code)
+            mmr_for_task = task_mmr.get(int(task_num or 0))
             by_node.append({
                 'node_code': n.code,
                 'node_name': n.name,
@@ -682,6 +720,8 @@ def api_analytics_summary():
                 'base_rating': n.base_rating,
                 'exam_points': n.exam_points,
                 'rating': round(m.rating, 1) if m else AnalyticsEngine.INITIAL_RATING,
+                'task_mmr': round(mmr_for_task.mmr, 1) if mmr_for_task else AnalyticsEngine.INITIAL_RATING,
+                'rematch_pending': int(rematch_by_type.get(int(task_num or 0), 0)),
                 'volatility': round(m.volatility, 1) if m else 350.0,
                 'streak_days': (m.streak_days or 0) if m else 0,
                 'last_practiced_at': _safe_isoformat(m.last_practiced_at if m else None),

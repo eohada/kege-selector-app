@@ -16,9 +16,10 @@ from app.auth.permissions import ALL_PERMISSIONS
 from app.models import (
     db, User, Tasks, Student, Lesson, LessonTask, TrainerSession,
     StudentTaskSeen, AuditLog, TrainerLlmLog, moscow_now,
-    UserMastery, KnowledgeNode, AnalyticsEvent, Course, CourseTaskTemplate
+    UserMastery, KnowledgeNode, AnalyticsEvent, Course, CourseTaskTemplate, UserTaskMMR, RematchQueue
 )
 from app.analytics.engine import AnalyticsEngine
+from app.analytics.mmr_config import get_mmr_config
 from app.utils.trainer_tokens import issue_trainer_token, verify_trainer_token, TrainerTokenError
 from app.utils.course_tasks import get_task_numbers
 from app.lessons.utils import normalize_answer_value
@@ -631,12 +632,17 @@ def trainer_recommendations():
     # 3. Задачи из популярных тем или просто рандом
     
     recommendations = []
+    cfg = get_mmr_config()
     
-    # Сначала ищем по UserMastery (слабые места)
-    masteries = UserMastery.query.filter_by(user_id=user.id).order_by(UserMastery.rating.asc()).limit(3).all()
-    for m in masteries:
-        # Пытаемся найти подходящую задачу для этого узла
-        t = Tasks.query.filter_by(knowledge_node_id=m.node_id, is_active=True).order_by(db.func.random()).first()
+    rematch_due = (
+        RematchQueue.query
+        .filter(RematchQueue.user_id == user.id, RematchQueue.status == 'pending', RematchQueue.due_at <= moscow_now())
+        .order_by(RematchQueue.due_at.asc())
+        .limit(3)
+        .all()
+    )
+    for rq in rematch_due:
+        t = Tasks.query.filter_by(task_id=rq.task_id, is_active=True).first()
         if t:
             recommendations.append(_task_to_payload(t))
             
@@ -649,7 +655,30 @@ def trainer_recommendations():
         if exclude_ids:
             q = q.filter(~Tasks.task_id.in_(exclude_ids))
         
-        new_tasks = q.order_by(db.func.random()).limit(7 - len(recommendations)).all()
+        target_type = request.args.get('task_type', type=int)
+        if target_type:
+            user_mmr = UserTaskMMR.query.filter_by(user_id=user.id, task_type=target_type).first()
+            current_mmr = float(user_mmr.mmr if user_mmr else cfg.get('initial_mmr', 1000.0))
+            mw = cfg.get('match_window', {})
+            low = current_mmr + float(mw.get('min_delta', -100))
+            high = current_mmr + float(mw.get('max_delta', 200))
+            q = q.filter(Tasks.task_number == target_type)
+            candidates = q.order_by(db.func.random()).limit(100).all()
+            w = cfg.get('difficulty_weight', {})
+            filtered = []
+            for t in candidates:
+                d = getattr(t, 'difficulty_level', None)
+                if d == 1:
+                    weight = float(w.get('base', 800))
+                elif d == 3:
+                    weight = float(w.get('hard', 2200))
+                else:
+                    weight = float(w.get('standard', 1500))
+                if low <= weight <= high:
+                    filtered.append(t)
+            new_tasks = filtered[: max(0, 7 - len(recommendations))]
+        else:
+            new_tasks = q.order_by(db.func.random()).limit(7 - len(recommendations)).all()
         for t in new_tasks:
             recommendations.append(_task_to_payload(t))
             
@@ -700,6 +729,8 @@ def trainer_submit_answer():
     task_id = data.get('task_id')
     user_answer = str(data.get('answer', '')).strip()
     time_spent_sec = data.get('time_spent_sec')
+    attempt_no = data.get('attempt_no')
+    mode = str(data.get('mode') or 'trainer_auto')
     
     task = Tasks.query.get(task_id)
     if not task:
@@ -719,11 +750,18 @@ def trainer_submit_answer():
     is_correct = _check_answer(expected_answer, user_answer)
     
     # Обновляем рейтинг
+    mmr_row = UserTaskMMR.query.filter_by(user_id=user.id, task_type=int(task.task_number or 0)).first()
+    current_mmr = float(mmr_row.mmr if mmr_row else get_mmr_config().get('initial_mmr', 1000.0))
+    manual_low_mmr_mode = (mode == 'trainer_manual') and (current_mmr < 1800.0)
+
     new_rating = AnalyticsEngine.process_submission(
         user_id=user.id,
         task_id=task.task_id,
         is_correct=is_correct,
-        time_spent_sec=time_spent_sec
+        time_spent_sec=time_spent_sec,
+        attempt_no=int(attempt_no or 1),
+        mode=mode,
+        manual_low_mmr_mode=manual_low_mmr_mode,
     )
 
     if request.headers.get('HX-Request'):
@@ -743,7 +781,8 @@ def trainer_submit_answer():
         'success': True,
         'is_correct': is_correct,
         'expected': task.answer,
-        'new_rating': new_rating
+        'new_rating': new_rating,
+        'manual_low_mmr_mode': manual_low_mmr_mode,
     })
 
 
@@ -913,6 +952,7 @@ def trainer_stream_start():
                 continue
 
     task: Tasks | None = None
+    mode = str(data.get('mode') or 'trainer_auto')
     if pinned_task and int(getattr(pinned_task, 'task_number', 0) or 0) == task_type:
         task = pinned_task
     else:
@@ -928,7 +968,45 @@ def trainer_stream_start():
             q = q.filter(~Tasks.task_id.in_(
                 db.session.query(StudentTaskSeen.task_id).filter(StudentTaskSeen.student_id == st.student_id)
             ))
-        task = q.order_by(db.func.random()).first()
+        if mode == 'trainer_auto':
+            rematch_task = (
+                db.session.query(Tasks)
+                .join(RematchQueue, RematchQueue.task_id == Tasks.task_id)
+                .filter(
+                    RematchQueue.user_id == user.id,
+                    RematchQueue.task_type == task_type,
+                    RematchQueue.status == 'pending',
+                    RematchQueue.due_at <= moscow_now(),
+                    Tasks.is_active.is_(True),
+                )
+                .order_by(RematchQueue.due_at.asc())
+                .first()
+            )
+            if rematch_task:
+                task = rematch_task
+            else:
+                cfg = get_mmr_config()
+                mmr_row = UserTaskMMR.query.filter_by(user_id=user.id, task_type=task_type).first()
+                current_mmr = float(mmr_row.mmr if mmr_row else cfg.get('initial_mmr', 1000.0))
+                mw = cfg.get('match_window', {})
+                low = current_mmr + float(mw.get('min_delta', -100))
+                high = current_mmr + float(mw.get('max_delta', 200))
+                pool = q.order_by(db.func.random()).limit(120).all()
+                w = cfg.get('difficulty_weight', {})
+                filtered = []
+                for cand in pool:
+                    d = getattr(cand, 'difficulty_level', None)
+                    if d == 1:
+                        weight = float(w.get('base', 800))
+                    elif d == 3:
+                        weight = float(w.get('hard', 2200))
+                    else:
+                        weight = float(w.get('standard', 1500))
+                    if low <= weight <= high:
+                        filtered.append(cand)
+                task = filtered[0] if filtered else (pool[0] if pool else None)
+        else:
+            task = q.order_by(db.func.random()).first()
 
     if st and task:
         _record_student_task_seen(student_id=st.student_id, task_id=task.task_id, source='trainer')
@@ -970,6 +1048,7 @@ def trainer_stream_act():
             except Exception:
                 continue
 
+    mode = str(data.get('mode') or 'trainer_auto')
     q = Tasks.query.filter(Tasks.task_number == task_type, Tasks.is_active.is_(True))
     if course_id is not None:
         q = q.filter(Tasks.course_id == course_id)
@@ -982,7 +1061,29 @@ def trainer_stream_act():
         q = q.filter(~Tasks.task_id.in_(
             db.session.query(StudentTaskSeen.task_id).filter(StudentTaskSeen.student_id == st.student_id)
         ))
-    task = q.order_by(db.func.random()).first()
+    if mode == 'trainer_auto':
+        cfg = get_mmr_config()
+        mmr_row = UserTaskMMR.query.filter_by(user_id=user.id, task_type=task_type).first()
+        current_mmr = float(mmr_row.mmr if mmr_row else cfg.get('initial_mmr', 1000.0))
+        mw = cfg.get('match_window', {})
+        low = current_mmr + float(mw.get('min_delta', -100))
+        high = current_mmr + float(mw.get('max_delta', 200))
+        pool = q.order_by(db.func.random()).limit(120).all()
+        w = cfg.get('difficulty_weight', {})
+        filtered = []
+        for cand in pool:
+            d = getattr(cand, 'difficulty_level', None)
+            if d == 1:
+                weight = float(w.get('base', 800))
+            elif d == 3:
+                weight = float(w.get('hard', 2200))
+            else:
+                weight = float(w.get('standard', 1500))
+            if low <= weight <= high:
+                filtered.append(cand)
+        task = filtered[0] if filtered else (pool[0] if pool else None)
+    else:
+        task = q.order_by(db.func.random()).first()
     if st and task:
         _record_student_task_seen(student_id=st.student_id, task_id=task.task_id, source='trainer')
     try:

@@ -182,8 +182,22 @@
     editorView: null,
     assistantView: null,
     lastRun: null,
-    llmInfo: null
+    llmInfo: null,
+    timerActiveMs: 0,
+    timerLastStartMs: null,
+    isTaskVisible: true
   };
+
+  function timerStart() {
+    if (State.timerLastStartMs != null) return;
+    State.timerLastStartMs = nowMs();
+  }
+
+  function timerPause() {
+    if (State.timerLastStartMs == null) return;
+    State.timerActiveMs += Math.max(0, nowMs() - State.timerLastStartMs);
+    State.timerLastStartMs = null;
+  }
 
   function logEvent(kind, payload) {
     const entry = { ts: nowMs(), kind: String(kind || 'event'), payload: payload || null };
@@ -387,6 +401,7 @@
   async function streamStart({ taskType, taskId }) {
     const payload = {
       task_type: taskType,
+      mode: (cfg.passthrough && cfg.passthrough.mode) ? String(cfg.passthrough.mode) : 'trainer_auto',
       exclude_task_ids: State.visitedIds.slice(0, 200)
     };
     if (taskId) payload.task_id = taskId;
@@ -398,6 +413,7 @@
     const payload = {
       action: 'next',
       task_type: taskType,
+      mode: (cfg.passthrough && cfg.passthrough.mode) ? String(cfg.passthrough.mode) : 'trainer_auto',
       exclude_task_ids: State.visitedIds.slice(0, 200)
     };
     const res = await apiFetch('/task/stream/act', { method: 'POST', body: JSON.stringify(payload) });
@@ -409,9 +425,11 @@
     return res;
   }
 
-  async function submitAnswer({ taskId, answer, timeSpentSec }) {
+  async function submitAnswer({ taskId, answer, timeSpentSec, attemptNo, mode }) {
     const payload = { task_id: taskId, answer: answer || '' };
     if (timeSpentSec != null) payload.time_spent_sec = timeSpentSec;
+    if (attemptNo != null) payload.attempt_no = attemptNo;
+    if (mode) payload.mode = mode;
     const res = await apiFetch('/task/submit_answer', { method: 'POST', body: JSON.stringify(payload) });
     return res;
   }
@@ -434,7 +452,11 @@
 
   function timeSpentSec() {
     if (!State.taskLoadedAtMs) return null;
-    const sec = Math.round((nowMs() - State.taskLoadedAtMs) / 1000);
+    let activeMs = State.timerActiveMs;
+    if (State.timerLastStartMs != null) {
+      activeMs += Math.max(0, nowMs() - State.timerLastStartMs);
+    }
+    const sec = Math.round(activeMs / 1000);
     return clamp(sec, 0, 60 * 60);
   }
 
@@ -491,6 +513,9 @@
     if (!task) return;
     State.currentTask = task;
     State.taskLoadedAtMs = nowMs();
+    State.timerActiveMs = 0;
+    State.timerLastStartMs = null;
+    if (!document.hidden && State.isTaskVisible) timerStart();
     setTaskMeta(task);
     ensureTaskVisited(task);
     logEvent('task_open', { task_id: task.task_id, task_number: task.task_number });
@@ -507,6 +532,27 @@
       State.md.value(md || '');
     }
     nextBtn && (nextBtn.disabled = false);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) timerPause();
+    else if (State.currentTask && State.isTaskVisible) timerStart();
+  });
+  window.addEventListener('focus', () => {
+    if (State.currentTask && State.isTaskVisible && !document.hidden) timerStart();
+  });
+  window.addEventListener('blur', () => {
+    timerPause();
+  });
+  if ('IntersectionObserver' in window && rootEl) {
+    const io = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      State.isTaskVisible = !!(entry && entry.isIntersecting && entry.intersectionRatio >= 0.6);
+      if (!State.currentTask) return;
+      if (State.isTaskVisible && !document.hidden) timerStart();
+      else timerPause();
+    }, { threshold: [0, 0.6, 1] });
+    io.observe(rootEl);
   }
 
   async function startFlow() {
@@ -1241,7 +1287,13 @@
       sendBtn.textContent = '...';
 
       try {
-        const res = await submitAnswer({ taskId: task.task_id, answer: val, timeSpentSec: timeSpentSec() });
+        const res = await submitAnswer({
+          taskId: task.task_id,
+          answer: val,
+          timeSpentSec: timeSpentSec(),
+          attemptNo: nextUsedBase,
+          mode: 'trainer_auto'
+        });
         const ok = !!res.is_correct;
         if (ok) {
           setAttempts(task.task_id, nextUsedBase);

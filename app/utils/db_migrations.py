@@ -26,7 +26,7 @@ from core.db_models import (
     MaterialAsset, LessonMaterialLink, LessonRoomTemplate, RubricTemplate,
     RecurringLessonSlot,
     TariffPlan, TariffGroup, UserSubscription, TrainerSession, TrainerLlmLog, UserConsent,
-    Subject, KnowledgeNode, UserMastery, AnalyticsEvent,
+    Subject, KnowledgeNode, UserMastery, AnalyticsEvent, UserTaskMMR, RematchQueue,
     ReferralCode, ReferralUsage,
 )
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
@@ -1563,6 +1563,66 @@ def ensure_schema_columns(app):
                     logger.info("Created analytics_events table (analytics)")
                 except Exception as e:
                     logger.warning(f"Could not create analytics_events table: {e}")
+                    db.session.rollback()
+            user_task_mmr_table = _resolve_table_name(table_names, 'user_task_mmr')
+            if not user_task_mmr_table:
+                try:
+                    UserTaskMMR.__table__.create(db.engine)
+                    logger.info("Created user_task_mmr table (mmr)")
+                except Exception as e:
+                    logger.warning(f"Could not create user_task_mmr table: {e}")
+                    db.session.rollback()
+            rematch_queue_table = _resolve_table_name(table_names, 'rematch_queue')
+            if not rematch_queue_table:
+                try:
+                    RematchQueue.__table__.create(db.engine)
+                    logger.info("Created rematch_queue table (mmr)")
+                except Exception as e:
+                    logger.warning(f"Could not create rematch_queue table: {e}")
+                    db.session.rollback()
+
+            inspector = inspect(db.engine)
+            table_names = inspector.get_table_names()
+            user_mastery_table = _resolve_table_name(table_names, 'user_mastery')
+            if user_mastery_table:
+                try:
+                    um_cols = {c['name'] for c in inspector.get_columns(user_mastery_table)}
+                    if 'solved_count' not in um_cols:
+                        db.session.execute(text(f'ALTER TABLE "{user_mastery_table}" ADD COLUMN solved_count INTEGER DEFAULT 0 NOT NULL'))
+                        logger.info("Added solved_count to user_mastery")
+                    if 'calibration_done' not in um_cols:
+                        if is_postgres:
+                            db.session.execute(text(f'ALTER TABLE "{user_mastery_table}" ADD COLUMN calibration_done BOOLEAN DEFAULT FALSE NOT NULL'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE "{user_mastery_table}" ADD COLUMN calibration_done INTEGER DEFAULT 0 NOT NULL'))
+                        logger.info("Added calibration_done to user_mastery")
+                except Exception as e:
+                    logger.warning(f"Could not ensure mmr columns in user_mastery: {e}")
+                    db.session.rollback()
+
+            analytics_events_table = _resolve_table_name(table_names, 'analytics_events')
+            if analytics_events_table:
+                try:
+                    ae_cols = {c['name'] for c in inspector.get_columns(analytics_events_table)}
+                    if 'mmr_delta' not in ae_cols:
+                        col_type = 'DOUBLE PRECISION' if is_postgres else 'FLOAT'
+                        db.session.execute(text(f'ALTER TABLE "{analytics_events_table}" ADD COLUMN mmr_delta {col_type}'))
+                        logger.info("Added mmr_delta to analytics_events")
+                    if 'task_type' not in ae_cols:
+                        db.session.execute(text(f'ALTER TABLE "{analytics_events_table}" ADD COLUMN task_type INTEGER'))
+                        logger.info("Added task_type to analytics_events")
+                    if 'attempt_no' not in ae_cols:
+                        db.session.execute(text(f'ALTER TABLE "{analytics_events_table}" ADD COLUMN attempt_no INTEGER'))
+                        logger.info("Added attempt_no to analytics_events")
+                    if 'mode' not in ae_cols:
+                        db.session.execute(text(f'ALTER TABLE "{analytics_events_table}" ADD COLUMN mode VARCHAR(32)'))
+                        logger.info("Added mode to analytics_events")
+                    try:
+                        db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_analytics_events_task_type ON "{analytics_events_table}"(task_type)'))
+                    except Exception:
+                        pass
+                except Exception as e:
+                    logger.warning(f"Could not ensure mmr columns in analytics_events: {e}")
                     db.session.rollback()
 
             tasks_table = _resolve_table_name(table_names, 'Tasks')

@@ -2563,6 +2563,8 @@ def submission_submit(submission_id):
                             time_spent_sec=None,
                             submission_id=submission_id,
                             answer_id=answer.answer_id,
+                            attempt_no=max(1, int(answer.attempts_used or 1)),
+                            mode='homework_manual',
                         )
                     except Exception as anal_err:
                         logger.warning("Analytics process_submission failed: %s", anal_err)
@@ -3077,6 +3079,8 @@ def submission_grade_save(submission_id):
                         time_spent_sec=None,
                         submission_id=submission_id,
                         answer_id=answer.answer_id,
+                        attempt_no=max(1, int(answer.attempts_used or 1)),
+                        mode='homework_manual',
                     )
                 except Exception as anal_err:
                     logger.warning("Analytics process_submission (grade_save) failed: %s", anal_err)

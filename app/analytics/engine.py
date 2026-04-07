@@ -1,26 +1,22 @@
-"""
-Движок аналитики: обновление рейтинга по узлам знаний и прогноз балла ЕГЭ.
-Основан на модифицированной системе Elo/Glicko.
+"""MMR analytics engine aligned with product concept."""
+from __future__ import annotations
 
-Фаза 0: per-task difficulty_level (1=лёгкий, 2=средний, 3=сложный) для Elo-рейтинга задачи:
-  - Easy (1–3)   → base_rating − 100
-  - Medium (4–7)  → base_rating
-  - Hard (8–10)   → base_rating + 150
-  Если difficulty_level = NULL → Medium (без смещения).
-"""
-import math
 import logging
-from datetime import datetime
+import random
+from datetime import timedelta
 
+from app.analytics.mmr_config import get_mmr_config
 from app.models import db, Course
 from core.db_models import (
-    Tasks,
-    KnowledgeNode,
-    UserMastery,
     AnalyticsEvent,
-    Subject,
-    moscow_now,
+    KnowledgeNode,
     MOSCOW_TZ,
+    RematchQueue,
+    Subject,
+    Tasks,
+    UserMastery,
+    UserTaskMMR,
+    moscow_now,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,61 +24,117 @@ logger = logging.getLogger(__name__)
 
 class AnalyticsEngine:
     INITIAL_RATING = 1000.0
-    VOLATILITY_GROWTH_PER_DAY = 5.0
-    MAX_VOLATILITY = 500.0
-    MIN_VOLATILITY = 50.0
-    BASE_K_FACTOR = 30.0
-
-    # --- Пороги детектора поведения ---
-    FAST_FAIL_SEC = 5          # «быстрый фейл» — ответ за < 5 сек и неверно
-    FAST_SUCCESS_HARD_SEC = 10 # «быстрый успех на сложном» — ответ за < 10 сек, верно, Hard
-
-    @staticmethod
-    def calculate_probability(user_rating: float, task_rating: float) -> float:
-        """Вероятность правильного решения: P = 1 / (1 + 10^((Rb - Ra) / 400))."""
-        return 1.0 / (1.0 + math.pow(10, (task_rating - user_rating) / 400.0))
 
     @classmethod
-    def _get_node_for_task(cls, task: Tasks):
-        """Возвращает KnowledgeNode для задания (после сида у Tasks заполнен knowledge_node_id)."""
-        return getattr(task, 'knowledge_node', None) if getattr(task, 'knowledge_node_id', None) else None
+    def _cfg(cls) -> dict[str, object]:
+        return get_mmr_config()
 
     @classmethod
-    def _detect_behavior(cls, is_correct: bool, time_spent_sec: int | None, task: Tasks) -> dict:
-        """
-        Детектор поведенческих аномалий.
-        Возвращает dict с флагами (может быть пустым).
-
-        Детектируемые паттерны:
-          - fast_fail: ответ за < FAST_FAIL_SEC и неверно → вероятная невнимательность
-          - fast_success_hard: ответ за < FAST_SUCCESS_HARD_SEC, верно, задача Hard → подозрение на списывание/заучивание
-        """
-        flags = {}
-        if time_spent_sec is None:
-            return flags
-
-        # Fast Fail — молниеносный неверный ответ
-        if not is_correct and time_spent_sec < cls.FAST_FAIL_SEC:
-            flags['fast_fail'] = True
-
-        # Fast Success на Hard — слишком быстро решил сложную задачу
-        if is_correct and time_spent_sec < cls.FAST_SUCCESS_HARD_SEC:
-            label = getattr(task, 'difficulty_label', 'medium')
-            if label == 'hard':
-                flags['fast_success_hard'] = True
-
-        return flags
-
-    @classmethod
-    def _task_rating_from_difficulty(cls, base_rating: float, difficulty_level: int | None) -> float:
-        """Рейтинг задачи для Elo: 1 лёгкий, 2 средний, 3 сложный."""
-        if difficulty_level is None or difficulty_level == 2:
-            return base_rating
+    def _difficulty_weight(cls, difficulty_level: int | None) -> float:
+        cfg = cls._cfg()
+        weights = cfg.get("difficulty_weight", {})
         if difficulty_level == 1:
-            return base_rating - 100.0
+            return float(weights.get("base", 800.0))
         if difficulty_level == 3:
-            return base_rating + 150.0
-        return base_rating
+            return float(weights.get("hard", 2200.0))
+        return float(weights.get("standard", 1500.0))
+
+    @classmethod
+    def _time_coeff(cls, is_correct: bool, time_spent_sec: int | None) -> float:
+        if time_spent_sec is None:
+            return 1.0
+        cfg = cls._cfg()
+        thr = cfg.get("thresholds", {})
+        if is_correct:
+            values = cfg.get("time_coeff_correct", {})
+            if time_spent_sec <= int(thr.get("blunder_fast_sec", 10)):
+                return float(values.get("fast", 1.2))
+            if time_spent_sec >= int(thr.get("long_effort_sec", 900)):
+                return float(values.get("slow", 0.7))
+            return float(values.get("normal", 1.0))
+        penalties = cfg.get("penalty_coeff_wrong", {})
+        if time_spent_sec <= int(thr.get("blunder_fast_sec", 10)):
+            return float(penalties.get("blunder_fast", 1.5))
+        if time_spent_sec >= int(thr.get("long_effort_sec", 900)):
+            return float(penalties.get("long_effort", 0.7))
+        return float(penalties.get("default", 1.0))
+
+    @classmethod
+    def _attempt_coeff(cls, is_correct: bool, attempt_no: int | None) -> float:
+        if attempt_no is None or attempt_no <= 1:
+            attempt_no = 1
+        if not is_correct:
+            return 1.0
+        coeffs = cls._cfg().get("attempt_coeff_correct", {})
+        if attempt_no == 1:
+            return float(coeffs.get("first_try", 1.0))
+        if attempt_no == 2:
+            return float(coeffs.get("second_try", 0.5))
+        return float(coeffs.get("other_try", 0.5))
+
+    @classmethod
+    def _calibration_multiplier(cls, solved_count: int) -> float:
+        cal = cls._cfg().get("calibration", {})
+        first_stage_tasks = int(cal.get("first_stage_tasks", 5))
+        second_stage_tasks = int(cal.get("second_stage_tasks", 10))
+        if solved_count < first_stage_tasks:
+            return float(cal.get("first_stage_multiplier", 3.0))
+        if solved_count < second_stage_tasks:
+            return float(cal.get("second_stage_multiplier", 2.0))
+        return 1.0
+
+    @classmethod
+    def _clamp_mmr(cls, value: float) -> float:
+        cfg = cls._cfg()
+        return max(float(cfg.get("min_mmr", 0.0)), min(float(cfg.get("max_mmr", 2500.0)), value))
+
+    @classmethod
+    def _create_or_update_rematch(
+        cls,
+        user_id: int,
+        task: Tasks,
+        *,
+        attempt_no: int,
+        time_spent_sec: int | None,
+        is_correct: bool,
+        etalon_sec: int = 120,
+    ) -> None:
+        rematch_cfg = cls._cfg().get("rematch", {})
+        trigger_attempts = int(rematch_cfg.get("trigger_attempts_gte", 2))
+        trigger_time_ratio = float(rematch_cfg.get("trigger_time_ratio_gte", 1.5))
+        time_trigger = bool(time_spent_sec is not None and time_spent_sec >= int(etalon_sec * trigger_time_ratio))
+        should_queue = (attempt_no >= trigger_attempts) or time_trigger
+        if not should_queue:
+            return
+
+        existing = RematchQueue.query.filter_by(
+            user_id=user_id,
+            task_id=task.task_id,
+            status='pending',
+        ).order_by(RematchQueue.id.desc()).first()
+        now = moscow_now()
+        if is_correct:
+            min_days = int(rematch_cfg.get("first_min_days", 3))
+            max_days = int(rematch_cfg.get("first_max_days", 4))
+            stage = 1
+        else:
+            min_days = int(rematch_cfg.get("repeat_error_min_days", 10))
+            max_days = int(rematch_cfg.get("repeat_error_max_days", 14))
+            stage = 2
+        due_at = now + timedelta(days=random.randint(min_days, max_days))
+        if existing:
+            existing.due_at = due_at
+            existing.attempt_stage = max(existing.attempt_stage or 1, stage)
+            existing.updated_at = now
+        else:
+            db.session.add(RematchQueue(
+                user_id=user_id,
+                task_id=task.task_id,
+                task_type=task.task_number,
+                due_at=due_at,
+                attempt_stage=stage,
+                status='pending',
+            ))
 
     @classmethod
     def process_submission(
@@ -94,17 +146,14 @@ class AnalyticsEngine:
         submission_id: int | None = None,
         answer_id: int | None = None,
         difficulty_level_override: int | None = None,
+        attempt_no: int | None = None,
+        mode: str | None = None,
+        manual_low_mmr_mode: bool = False,
     ) -> float | None:
-        """
-        Вызывается после проверки ответа. Обновляет рейтинг пользователя по узлу знаний.
-        Возвращает новый рейтинг или None, если узел не определён.
-
-        difficulty_level_override: если задан (например из LessonTask), используется вместо task.difficulty_level для Elo.
-        """
         task = Tasks.query.get(task_id)
         if not task:
             return None
-        node = cls._get_node_for_task(task)
+        node = getattr(task, 'knowledge_node', None) if getattr(task, 'knowledge_node_id', None) else None
         if not node:
             logger.debug("Analytics: no knowledge node for task_id=%s", task_id)
             return None
@@ -115,83 +164,79 @@ class AnalyticsEngine:
                 user_id=user_id,
                 node_id=node.id,
                 rating=cls.INITIAL_RATING,
-                volatility=cls.MAX_VOLATILITY,
+                volatility=350.0,
+                solved_count=0,
             )
             db.session.add(mastery)
 
-        # Рост волатильности за дни простоя
-        if mastery.last_practiced_at:
-            last_at = mastery.last_practiced_at
-            if last_at.tzinfo is None:
-                last_at = last_at.replace(tzinfo=MOSCOW_TZ)
-            delta = (moscow_now() - last_at).days
-            if delta > 0:
-                mastery.volatility = min(
-                    cls.MAX_VOLATILITY,
-                    mastery.volatility + delta * cls.VOLATILITY_GROWTH_PER_DAY,
-                )
+        task_type = int(task.task_number or 0)
+        mmr_row = UserTaskMMR.query.filter_by(user_id=user_id, task_type=task_type).first()
+        if not mmr_row:
+            mmr_row = UserTaskMMR(user_id=user_id, task_type=task_type, mmr=cls.INITIAL_RATING, solved_count=0)
+            db.session.add(mmr_row)
 
-        # --- Per-task difficulty Elo rating (с учётом переопределения из ДЗ/КР/проверочной) ---
-        if difficulty_level_override is not None:
-            base = float(getattr(node, 'base_rating', 1000))
-            task_rating = cls._task_rating_from_difficulty(base, difficulty_level_override)
-        else:
-            task_rating = task.get_elo_rating()
-        expected_score = cls.calculate_probability(mastery.rating, task_rating)
-        actual_score = 1.0 if is_correct else 0.0
+        difficulty_level = difficulty_level_override if difficulty_level_override is not None else task.difficulty_level
+        d_value = cls._difficulty_weight(difficulty_level)
+        c_time = cls._time_coeff(is_correct, time_spent_sec)
+        c_attempt = cls._attempt_coeff(is_correct, attempt_no)
+        calibration = cls._calibration_multiplier(int(mmr_row.solved_count or 0))
 
-        k_factor = cls.BASE_K_FACTOR * (mastery.volatility / 100.0)
+        delta = d_value * c_time * c_attempt
+        if not is_correct:
+            delta *= -1.0
+        delta *= calibration
 
-        # --- Детектор поведения (используем override для определения Hard при быстром успехе) ---
-        _effective_difficulty = difficulty_level_override if difficulty_level_override is not None else getattr(task, 'difficulty_level', None)
-        _effective_label = (
-            'hard'
-            if _effective_difficulty == 3
-            else ('easy' if _effective_difficulty == 1 else 'medium')
-        )
-        _task_for_behavior = type('Task', (), {'difficulty_label': _effective_label})()
-        behavior = cls._detect_behavior(is_correct, time_spent_sec, _task_for_behavior)
+        if manual_low_mmr_mode and not is_correct:
+            delta = -40.0
+        elif manual_low_mmr_mode and is_correct:
+            delta = 0.0
 
-        # Подавление K при подозрительных паттернах
-        if behavior.get('fast_success_hard'):
-            k_factor *= 0.1   # Почти не даём рейтинг за «быстрый успех на Hard»
-            logger.info("Behavior: fast_success_hard for user=%s task=%s (%.1fs)", user_id, task_id, time_spent_sec or 0)
-        elif is_correct and time_spent_sec is not None and time_spent_sec < 10:
-            k_factor *= 0.1   # Общая защита от быстрых верных ответов
-
-        if behavior.get('fast_fail'):
-            k_factor *= 0.5   # Смягчаем потерю рейтинга за невнимательный клик
-            logger.info("Behavior: fast_fail for user=%s task=%s (%.1fs)", user_id, task_id, time_spent_sec or 0)
-
-        old_rating = mastery.rating
-        new_rating = old_rating + k_factor * (actual_score - expected_score)
+        old_rating = float(mastery.rating or cls.INITIAL_RATING)
+        new_rating = cls._clamp_mmr(old_rating + delta)
         mastery.rating = new_rating
-        mastery.volatility = max(cls.MIN_VOLATILITY, mastery.volatility * 0.95)
         mastery.last_practiced_at = moscow_now()
-        if is_correct:
-            mastery.streak_days = (mastery.streak_days or 0) + 1
-        else:
-            mastery.streak_days = 0
+        mastery.solved_count = int(mastery.solved_count or 0) + 1
+        mastery.calibration_done = bool((mastery.solved_count or 0) >= int(cls._cfg().get("calibration", {}).get("second_stage_tasks", 10)))
+        mastery.streak_days = (mastery.streak_days or 0) + 1 if is_correct else 0
 
+        old_task_mmr = float(mmr_row.mmr or cls.INITIAL_RATING)
+        mmr_row.mmr = cls._clamp_mmr(old_task_mmr + delta)
+        mmr_row.solved_count = int(mmr_row.solved_count or 0) + 1
+
+        behavior = {
+            "calibration_multiplier": calibration,
+            "time_coeff": c_time,
+            "attempt_coeff": c_attempt,
+        }
         event = AnalyticsEvent(
             user_id=user_id,
             node_id=node.id,
-            task_id=task_id,
+            task_id=task.task_id,
             submission_id=submission_id,
             answer_id=answer_id,
             is_correct=is_correct,
-            task_difficulty=difficulty_level_override if difficulty_level_override is not None else task.difficulty_level,
+            task_difficulty=difficulty_level,
             old_rating=old_rating,
             new_rating=new_rating,
+            mmr_delta=(new_rating - old_rating),
+            task_type=task_type,
+            attempt_no=attempt_no,
+            mode=mode,
             time_spent_sec=time_spent_sec,
-            behavior_flags=behavior if behavior else None,
+            behavior_flags=behavior,
         )
         db.session.add(event)
+        cls._create_or_update_rematch(
+            user_id=user_id,
+            task=task,
+            attempt_no=int(attempt_no or 1),
+            time_spent_sec=time_spent_sec,
+            is_correct=is_correct,
+        )
         return new_rating
 
     @classmethod
     def _subject_from_course(cls, course_id: int) -> Subject | None:
-        """Определяет Subject по course_id. Маппинг: ege_informatics -> kege, oge_informatics -> oge."""
         course = Course.query.get(course_id)
         if not course:
             return None
@@ -201,10 +246,6 @@ class AnalyticsEngine:
 
     @classmethod
     def predict_exam_score(cls, user_id: int, subject_id: int | None = None, course_id: int | None = None) -> float:
-        """
-        Предсказывает первичный балл (математическое ожидание) по предмету.
-        Если subject_id не передан, берётся по course_id или предмет kege.
-        """
         if subject_id is None:
             if course_id is not None:
                 subj = cls._subject_from_course(course_id)
@@ -218,17 +259,13 @@ class AnalyticsEngine:
         nodes = KnowledgeNode.query.filter_by(subject_id=subject_id).all()
         if not nodes:
             return 0.0
-
-        user_masteries = {
-            m.node_id: m
-            for m in UserMastery.query.filter_by(user_id=user_id).all()
-        }
+        user_masteries = {m.node_id: m for m in UserMastery.query.filter_by(user_id=user_id).all()}
         total_expected = 0.0
         for node in nodes:
             mastery = user_masteries.get(node.id)
-            user_rating = mastery.rating if mastery else cls.INITIAL_RATING
-            exam_task_rating = float(getattr(node, 'base_rating', 1000))
-            prob = cls.calculate_probability(user_rating, exam_task_rating)
-            total_expected += prob * (node.exam_points or 1)
+            rating = float(mastery.rating if mastery else cls.INITIAL_RATING)
+            base = float(getattr(node, 'base_rating', 1000))
+            p = max(0.0, min(1.0, rating / max(base, 1.0)))
+            total_expected += p * float(node.exam_points or 1)
         return round(total_expected, 1)
 

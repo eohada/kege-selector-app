@@ -1831,6 +1831,9 @@ class UserMastery(db.Model):
     volatility = db.Column(db.Float, default=350.0, nullable=False)
     streak_days = db.Column(db.Integer, default=0, nullable=False)
     last_practiced_at = db.Column(db.DateTime, default=moscow_now, nullable=True)
+    # MMR concept fields (per task type calibration state)
+    solved_count = db.Column(db.Integer, default=0, nullable=False)
+    calibration_done = db.Column(db.Boolean, default=False, nullable=False)
 
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
@@ -1856,6 +1859,10 @@ class AnalyticsEvent(db.Model):
     task_difficulty = db.Column(db.Integer, nullable=True)   # difficulty_level задачи
     old_rating = db.Column(db.Float, nullable=True)
     new_rating = db.Column(db.Float, nullable=True)
+    mmr_delta = db.Column(db.Float, nullable=True)
+    task_type = db.Column(db.Integer, nullable=True, index=True)
+    attempt_no = db.Column(db.Integer, nullable=True)
+    mode = db.Column(db.String(32), nullable=True)
     time_spent_sec = db.Column(db.Integer, nullable=True)    # сколько секунд потратил ученик
     behavior_flags = db.Column(JSONBCompat, nullable=True)   # в PostgreSQL — JSONB; {"fast_fail": true, "fast_success_hard": true, ...}
     timestamp = db.Column(db.DateTime, default=moscow_now, nullable=False)
@@ -1865,6 +1872,43 @@ class AnalyticsEvent(db.Model):
         Index('ix_analytics_events_node_timestamp', 'node_id', 'timestamp'),
     )
 
+
+class UserTaskMMR(db.Model):
+    """
+    Per-user per-task-type MMR snapshot used by trainer auto-match and dashboards.
+    """
+    __tablename__ = 'user_task_mmr'
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), primary_key=True)
+    task_type = db.Column(db.Integer, primary_key=True)
+    mmr = db.Column(db.Float, nullable=False, default=1000.0)
+    solved_count = db.Column(db.Integer, nullable=False, default=0)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    __table_args__ = (
+        Index('ix_user_task_mmr_user', 'user_id'),
+    )
+
+
+class RematchQueue(db.Model):
+    """
+    Spaced repetition queue ("Реванш") with deferred review windows.
+    """
+    __tablename__ = 'rematch_queue'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id', ondelete='CASCADE'), nullable=False, index=True)
+    task_type = db.Column(db.Integer, nullable=False, index=True)
+    due_at = db.Column(db.DateTime, nullable=False, index=True)
+    attempt_stage = db.Column(db.Integer, nullable=False, default=1)
+    status = db.Column(db.String(20), nullable=False, default='pending', index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    __table_args__ = (
+        Index('ix_rematch_queue_user_due', 'user_id', 'due_at'),
+    )
 
 class QATask(db.Model):
     __tablename__ = 'qa_tasks'
