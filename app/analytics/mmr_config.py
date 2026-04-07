@@ -16,6 +16,12 @@ MMR_DEFAULTS: dict[str, object] = {
         "standard": 1500.0,
         "hard": 2200.0,
     },
+    # Safety scaling so single answers don't jump by thousands.
+    "delta_scale": 0.02,
+    "delta_cap": {
+        "max_gain": 180.0,
+        "max_loss": 180.0,
+    },
     # Matchmaking window for auto trainer mode
     "match_window": {
         "min_delta": -100.0,

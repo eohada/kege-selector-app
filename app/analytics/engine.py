@@ -217,10 +217,19 @@ class AnalyticsEngine:
         c_attempt = cls._attempt_coeff(is_correct, attempt_no)
         calibration = cls._calibration_multiplier(int(mmr_row.solved_count or 0))
 
+        cfg = cls._cfg()
         delta = d_value * c_time * c_attempt
         if not is_correct:
             delta *= -1.0
         delta *= calibration
+        delta *= float(cfg.get("delta_scale", 1.0))
+        cap = cfg.get("delta_cap", {})
+        max_gain = float(cap.get("max_gain", 99999.0))
+        max_loss = float(cap.get("max_loss", 99999.0))
+        if delta > 0:
+            delta = min(delta, max_gain)
+        else:
+            delta = max(delta, -max_loss)
 
         if manual_low_mmr_mode and not is_correct:
             delta = -40.0

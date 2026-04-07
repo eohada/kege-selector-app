@@ -2008,6 +2008,14 @@ def submission_view(submission_id):
             task = assignment_task.task
             template = _get_task_template(task)
             requires_manual_review = bool(template and template.requires_manual_review)
+            diff_level = getattr(assignment_task, 'difficulty_level', None)
+            if diff_level is None and task is not None:
+                diff_level = getattr(task, 'difficulty_level', None)
+            difficulty_label = 'Стандарт'
+            if diff_level == 1:
+                difficulty_label = 'База'
+            elif diff_level == 3:
+                difficulty_label = 'Хард'
             ev = None
             if answer and getattr(answer, 'answer_id', None):
                 ev = event_by_answer.get(int(answer.answer_id))
@@ -2035,6 +2043,7 @@ def submission_view(submission_id):
                 'task_attempts_used': task_attempts_used,
                 'requires_manual_review': requires_manual_review,
                 'rating_meta': rating_meta,
+                'difficulty_label': difficulty_label,
             })
         
         return render_template('submission_view.html',
@@ -2823,6 +2832,14 @@ def submission_grade_view(submission_id):
         except Exception:
             max_for_task = 1
         task_attempts_used = (getattr(answer, 'attempts_used', None) or 0) if answer else 0
+        diff_level = getattr(assignment_task, 'difficulty_level', None)
+        if diff_level is None and assignment_task.task is not None:
+            diff_level = getattr(assignment_task.task, 'difficulty_level', None)
+        difficulty_label = 'Стандарт'
+        if diff_level == 1:
+            difficulty_label = 'База'
+        elif diff_level == 3:
+            difficulty_label = 'Хард'
         ev = None
         if answer and getattr(answer, 'answer_id', None):
             ev = event_by_answer.get(int(answer.answer_id))
@@ -2849,6 +2866,7 @@ def submission_grade_view(submission_id):
             'max_attempts_for_task': max_for_task,
             'task_attempts_used': task_attempts_used,
             'rating_meta': rating_meta,
+            'difficulty_label': difficulty_label,
         })
 
     rubric_template = None

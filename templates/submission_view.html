@@ -597,8 +597,8 @@
                     <div style="display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;">
                         <span class="task-number">Задание {{ loop.index }}</span>
                         <span class="submission-type-chip submission-score-chip" style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.04em;">{{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }}</span>
-                        {% if task_item.rating_meta and task_item.rating_meta.difficulty_label %}
-                        <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">{{ task_item.rating_meta.difficulty_label }}</span>
+                        {% if task_item.difficulty_label %}
+                        <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">{{ task_item.difficulty_label }}</span>
                         {% endif %}
                         {% if task_item.rating_meta and task_item.rating_meta.mmr_delta is not none %}
                         <span class="submission-type-chip" style="background:{% if task_item.rating_meta.mmr_delta >= 0 %}#ecfdf5; color:#047857; border:1px solid #a7f3d0{% else %}#fef2f2; color:#b91c1c; border:1px solid #fecaca{% endif %}; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">
@@ -1402,9 +1402,14 @@
                             var rm = data.rating_meta || {};
                             var d = (typeof rm.mmr_delta === 'number') ? (rm.mmr_delta >= 0 ? '+' + Math.round(rm.mmr_delta) : String(Math.round(rm.mmr_delta))) : '—';
                             var dl = rm.difficulty_label || '—';
-                            showToast('Задание сдано · ' + dl + ' · ΔMMR ' + d + '. Страница обновляется...', 'success');
+                            showToast('Задание сдано · ' + dl + ' · ΔMMR ' + d, 'success');
                         }
-                        setTimeout(function() { location.reload(); }, 800);
+                        if (originalText) originalText.textContent = 'Сдано';
+                        btn.disabled = true;
+                        var hintEl = wrap.querySelector('.task-attempts-hint');
+                        if (hintEl && data.attempts_used != null && data.max_attempts != null) {
+                            hintEl.textContent = '(попытка ' + data.attempts_used + '/' + data.max_attempts + ')';
+                        }
                     } else {
                         btn.disabled = false;
                         if (originalText) originalText.textContent = 'Сдать это задание';
