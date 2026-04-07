@@ -275,6 +275,7 @@ def create_app(config_name=None):
     from app.qa.routes import qa_bp
     from app.chief_tester import chief_tester_bp
     from app.theory import theory_bp
+    from app.reminders import reminders_bp
     from app.telegram.webhook import telegram_bp
     from app.telegram.mini_app import tg_app_bp
 
@@ -301,6 +302,7 @@ def create_app(config_name=None):
     app.register_blueprint(qa_bp)
     app.register_blueprint(chief_tester_bp)
     app.register_blueprint(theory_bp)
+    app.register_blueprint(reminders_bp)
     app.register_blueprint(telegram_bp)
     app.register_blueprint(tg_app_bp)
 

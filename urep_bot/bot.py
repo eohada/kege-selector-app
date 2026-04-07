@@ -9,7 +9,7 @@ import json
 import urllib.request
 import urllib.error
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 WELCOME_MESSAGE = """
-👋 <b>Привет! Я бот платформы URep.</b>
+👋 <b>Привет! Я бот платформы BooStudy.</b>
 
 Я буду присылать тебе уведомления:
 • 📅 Напоминания об уроках
@@ -108,9 +108,20 @@ ERROR_REPORT_RECEIVED = "✅ Сообщение об ошибке отправл
 
 
 
+def _mini_app_url() -> str:
+    base = (APP_URL or '').strip().rstrip('/')
+    return f'{base}/tg-app/' if base else ''
+
+
 def get_main_keyboard(user_role: str = None):
     """Главное меню."""
-    buttons = [
+    buttons = []
+    mini_url = _mini_app_url()
+    if mini_url:
+        buttons.append([
+            InlineKeyboardButton('📱 BooStudy (Mini App)', web_app=WebAppInfo(url=mini_url)),
+        ])
+    buttons.extend([
         [
             InlineKeyboardButton("👤 Профиль", callback_data="profile"),
             InlineKeyboardButton("📅 Уроки", callback_data="lessons"),
@@ -125,11 +136,12 @@ def get_main_keyboard(user_role: str = None):
         [
             InlineKeyboardButton("🌐 Открыть сайт", url=APP_OPEN_URL),
         ],
-    ]
-    
+    ])
+
     if user_role in ('admin', 'creator', 'chief_admin', 'tutor'):
-        buttons.insert(2, [InlineKeyboardButton("👨‍💼 Админ-панель", callback_data="admin_panel")])
-        
+        admin_row_idx = 3 if mini_url else 2
+        buttons.insert(admin_row_idx, [InlineKeyboardButton("👨‍💼 Админ-панель", callback_data="admin_panel")])
+
     return InlineKeyboardMarkup(buttons)
 
 

@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Напоминания · BooStudy{% endblock %}
+{% set active_page = 'reminders' %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-8">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-primary tracking-tight">Напоминания</h1>
+            <p class="text-sm text-muted mt-1">Личные напоминания. Уведомления в Telegram настраиваются отдельно.</p>
+        </div>
+        <div class="flex gap-2 text-sm font-semibold">
+            <a href="{{ url_for('reminders.reminders_list', show_completed='false') }}"
+               class="px-3 py-2 rounded-xl border {% if not show_completed %}border-boo-primary bg-boo-primary/10 text-boo-primary{% else %}border-slate-200 text-muted{% endif %}">
+                Активные
+            </a>
+            <a href="{{ url_for('reminders.reminders_list', show_completed='true') }}"
+               class="px-3 py-2 rounded-xl border {% if show_completed %}border-boo-primary bg-boo-primary/10 text-boo-primary{% else %}border-slate-200 text-muted{% endif %}">
+                Все / выполненные
+            </a>
+        </div>
+    </div>
+
+    <section class="bg-surface rounded-[24px] border border-slate-200 p-6 shadow-tactile space-y-4">
+        <h2 class="text-lg font-bold text-primary">Новое напоминание</h2>
+        <form method="post" action="{{ url_for('reminders.reminder_create') }}" class="space-y-3">
+            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+            <input type="text" name="title" required maxlength="200" placeholder="Заголовок"
+                   class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium">
+            <textarea name="message" rows="2" placeholder="Текст (необязательно)"
+                      class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm"></textarea>
+            <div>
+                <label class="text-xs font-semibold text-muted">Когда (Москва, необязательно)</label>
+                <input type="datetime-local" name="reminder_time"
+                       class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm">
+            </div>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-boo-primary text-white text-sm font-bold">
+                Добавить
+            </button>
+        </form>
+    </section>
+
+    <div class="space-y-3">
+        {% if reminders_data %}
+            {% for item in reminders_data %}
+                {% set r = item.reminder %}
+                <article class="bg-surface rounded-[20px] border border-slate-200 p-5 {% if r.is_completed %}opacity-60{% endif %} {% if r.is_overdue() %}border-l-4 border-l-red-500{% endif %}">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-primary {% if r.is_completed %}line-through{% endif %}">{{ r.title }}</h3>
+                            {% if r.message %}
+                                <p class="text-sm text-muted mt-1 whitespace-pre-wrap">{{ r.message }}</p>
+                            {% endif %}
+                            <p class="text-xs text-muted mt-2">
+                                {% if r.reminder_time %}
+                                    {{ r.reminder_time.strftime('%d.%m.%Y %H:%M') }}
+                                {% else %}
+                                    Без даты
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <form method="post" action="{{ url_for('reminders.reminder_toggle', reminder_id=r.reminder_id) }}">
+                                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 hover:bg-slate-50">
+                                    {% if r.is_completed %}Вернуть{% else %}Выполнено{% endif %}
+                                </button>
+                            </form>
+                            <form method="post" action="{{ url_for('reminders.reminder_delete', reminder_id=r.reminder_id) }}"
+                                  onsubmit="return confirm('Удалить напоминание?');">
+                                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 border border-red-200 hover:bg-red-50">
+                                    Удалить
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        {% else %}
+            <p class="text-center text-muted py-12 text-sm">Пока нет напоминаний.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

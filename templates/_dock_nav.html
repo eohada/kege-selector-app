@@ -86,7 +86,7 @@
 
             {# ── Mega-menu: Инструменты ── #}
             <div class="dock-mega">
-                <button class="dock-nav-item {% if active_page in ['assignments','templates','theory_manage','groups','generator','library','billing'] %}active{% endif %}">
+                <button class="dock-nav-item {% if active_page in ['assignments','templates','theory_manage','reminders','groups','generator','library','billing'] %}active{% endif %}">
                     <i class="ph-bold ph-squares-four text-lg"></i> Ещё
                     <i class="ph ph-caret-down text-xs" style="margin-left:2px;"></i>
                 </button>
@@ -104,6 +104,9 @@
                                 <i class="ph-bold ph-book-open text-base text-muted"></i> Теория
                             </a>
                             {% endif %}
+                            <a href="{{ url_for('reminders.reminders_list') }}" class="dock-mega-link">
+                                <i class="ph-bold ph-bell text-base text-muted"></i> Напоминания
+                            </a>
 
                             <div class="dock-mega-group-title mt-3">Создание</div>
                             <a href="{{ url_for('task_generator.task_generator') }}" class="dock-mega-link">
