@@ -323,7 +323,7 @@
       <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
         <div class="mb-6">
           <h3 class="text-2xl font-black text-primary dark:text-white mb-1">История изменения рейтинга</h3>
-          <p class="text-sm font-medium text-muted">Сложность, время, коэффициенты и дельта MMR по каждому действию.</p>
+          <p class="text-sm font-medium text-muted" id="analyticsHistoryDescription">Сложность, время, коэффициенты и дельта MMR по каждому действию.</p>
         </div>
         <div class="overflow-x-auto pb-2">
           <table class="w-full min-w-[980px]">
@@ -333,8 +333,8 @@
                 <th class="px-4 py-3 text-left">№</th>
                 <th class="px-4 py-3 text-left">Сложность</th>
                 <th class="px-4 py-3 text-left">Результат</th>
-                <th class="px-4 py-3 text-left">Время решения</th>
-                <th class="px-4 py-3 text-left">Коэф.</th>
+                <th class="px-4 py-3 text-left" data-history-col="time">Время решения</th>
+                <th class="px-4 py-3 text-left" data-history-col="coeff">Коэф.</th>
                 <th class="px-4 py-3 text-right">ΔMMR</th>
               </tr>
             </thead>
@@ -352,6 +352,7 @@
 {% block scripts_extra %}
 <script>
         const STUDENT_ID_FOR_ANALYTICS = {{ student.student_id }};
+        const IS_SELF_STUDENT_ANALYTICS = {{ 'true' if (current_user.is_student() and student.user_id == current_user.id) else 'false' }};
         let analyticsRadarChartInstance = null;
         let analyticsDataLoaded = false;
 
@@ -418,6 +419,14 @@
             var loadingEl = document.getElementById('analytics-loading');
             var errorEl = document.getElementById('analytics-error');
             var contentEl = document.getElementById('analytics-content');
+            var isStudentView = !!IS_SELF_STUDENT_ANALYTICS;
+            var historyDescEl = document.getElementById('analyticsHistoryDescription');
+            if (historyDescEl && isStudentView) {
+                historyDescEl.textContent = 'Сложность, результат и дельта MMR по каждому действию.';
+            }
+            document.querySelectorAll('[data-history-col="time"], [data-history-col="coeff"]').forEach(function(el) {
+                el.style.display = isStudentView ? 'none' : '';
+            });
             if (!loadingEl || !errorEl || !contentEl) return;
             loadingEl.style.display = 'block'; errorEl.style.display = 'none'; contentEl.style.display = 'none';
             var courseIdParam = '';
@@ -496,7 +505,7 @@
                         var hb = document.getElementById('analyticsHistoryBody');
                         if (!hb) return;
                         if (!hd.success || !Array.isArray(hd.history) || hd.history.length === 0) {
-                          hb.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-sm font-medium text-muted text-center">Пока нет данных по истории рейтинга.</td></tr>';
+                          hb.innerHTML = '<tr><td colspan="' + (isStudentView ? 5 : 7) + '" class="px-4 py-6 text-sm font-medium text-muted text-center">Пока нет данных по истории рейтинга.</td></tr>';
                           return;
                         }
                         hb.innerHTML = hd.history.slice(0, 80).map(function(row) {
@@ -508,6 +517,9 @@
                           var coeff = 't=' + (row.time_coeff != null ? row.time_coeff : '—') + ', a=' + (row.attempt_coeff != null ? row.attempt_coeff : '—') + ', c=' + (row.calibration_multiplier != null ? row.calibration_multiplier : '—');
                           var delta = (row.mmr_delta != null ? (row.mmr_delta >= 0 ? '+' : '') + row.mmr_delta : '—');
                           var deltaCls = (row.mmr_delta != null && row.mmr_delta >= 0) ? 'text-green-700' : 'text-red-700';
+                          if (isStudentView) {
+                            return '<tr class="border-b border-slate-100 hover:bg-surface-alt"><td class="px-4 py-3 text-sm text-secondary">' + dt + '</td><td class="px-4 py-3 text-sm font-bold text-primary">' + tn + '</td><td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded border border-slate-200 bg-surface-alt font-bold">' + diff + '</span></td><td class="px-4 py-3 text-sm">' + ok + '</td><td class="px-4 py-3 text-sm font-black text-right ' + deltaCls + '">' + delta + '</td></tr>';
+                          }
                           return '<tr class="border-b border-slate-100 hover:bg-surface-alt"><td class="px-4 py-3 text-sm text-secondary">' + dt + '</td><td class="px-4 py-3 text-sm font-bold text-primary">' + tn + '</td><td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded border border-slate-200 bg-surface-alt font-bold">' + diff + '</span></td><td class="px-4 py-3 text-sm">' + ok + '</td><td class="px-4 py-3 text-sm text-secondary">' + tsec + '</td><td class="px-4 py-3 text-xs text-muted">' + coeff + '</td><td class="px-4 py-3 text-sm font-black text-right ' + deltaCls + '">' + delta + '</td></tr>';
                         }).join('');
                       })

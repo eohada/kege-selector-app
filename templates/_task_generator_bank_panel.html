@@ -99,6 +99,11 @@
                 {% endif %}
                 {% if t.kege_tier_label_ru %}
                 <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-200 text-slate-800 border border-slate-300">{{ t.kege_tier_label_ru }}</span>
+                {% elif t.difficulty_label_ru %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-200 text-slate-800 border border-slate-300">{{ t.difficulty_label_ru }}</span>
+                {% endif %}
+                {% if t.student_task_mmr is not none %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">MMR ученика: {{ t.student_task_mmr|round(0)|int }}</span>
                 {% endif %}
                 {% if t.site_task_id %}
                 <span class="text-xs font-bold text-slate-400 ml-1 truncate max-w-[200px]" title="{{ t.site_task_id }}">{{ t.site_task_id }}</span>

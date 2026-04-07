@@ -374,6 +374,8 @@
                     <div class="flex items-center gap-3 min-w-0 flex-wrap">
                         <div class="w-8 h-8 shrink-0 rounded-full bg-white border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center shadow-inner tabular-nums" id="genTaskNumber" aria-hidden="true">—</div>
                         <span id="genManualBadge" class="gen-manual-badge" aria-hidden="true"><i class="ph-fill ph-hand-palm" aria-hidden="true"></i> Создано вручную</span>
+                        <span id="genDifficultyBadge" class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200" style="display:none;">Сложность: —</span>
+                        <span id="genStudentMmrBadge" class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200" style="display:none;">MMR ученика: —</span>
                         <span id="genTaskTitle" class="sr-only">Задание</span>
                         <a id="genSourceLink" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-boo-primary transition-colors shadow-sm no-underline shrink-0" href="#" target="_blank" rel="noopener" style="display:none;">
                             <i class="ph-bold ph-link" aria-hidden="true"></i> источник
@@ -608,6 +610,8 @@
         const taskNumEl = document.getElementById('genTaskNumber');
         const sourceLink = document.getElementById('genSourceLink');
         const manualBadge = document.getElementById('genManualBadge');
+        const difficultyBadge = document.getElementById('genDifficultyBadge');
+        const studentMmrBadge = document.getElementById('genStudentMmrBadge');
         const starterWrap = document.getElementById('genStarterWrap');
         const starterPre = document.getElementById('genStarterCode');
 
@@ -724,6 +728,8 @@
                     taskNumEl.removeAttribute('title');
                 }
                 if (manualBadge) manualBadge.classList.remove('is-visible');
+                if (difficultyBadge) difficultyBadge.style.display = 'none';
+                if (studentMmrBadge) studentMmrBadge.style.display = 'none';
                 if (starterWrap) starterWrap.classList.remove('is-visible');
                 return;
             }
@@ -734,6 +740,19 @@
             if (manualBadge) {
                 if ((task.bank_origin || '') === 'manual') manualBadge.classList.add('is-visible');
                 else manualBadge.classList.remove('is-visible');
+            }
+            if (difficultyBadge) {
+                const difficultyLabel = task.difficulty_label_ru || task.kege_tier_label_ru || 'Не указана';
+                difficultyBadge.textContent = 'Сложность: ' + difficultyLabel;
+                difficultyBadge.style.display = 'inline-flex';
+            }
+            if (studentMmrBadge) {
+                if (task.student_task_mmr != null) {
+                    studentMmrBadge.textContent = 'MMR ученика: ' + Math.round(task.student_task_mmr);
+                    studentMmrBadge.style.display = 'inline-flex';
+                } else {
+                    studentMmrBadge.style.display = 'none';
+                }
             }
             if (starterWrap && starterPre) {
                 const sc = (task.starter_code && String(task.starter_code).trim()) ? String(task.starter_code).trim() : '';

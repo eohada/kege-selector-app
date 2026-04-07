@@ -83,6 +83,24 @@ def _started_at_to_utc(dt):
     return dt
 
 
+def _resolve_answer_time_spent_sec(submission, answered_at):
+    """
+    Пытается оценить время решения ответа в секундах.
+    Базовый ориентир: от submission.started_at до момента ответа.
+    """
+    if not submission or not answered_at or not getattr(submission, 'started_at', None):
+        return None
+    try:
+        started_utc = _started_at_to_utc(submission.started_at)
+        answered_utc = _started_at_to_utc(answered_at)
+        if not started_utc or not answered_utc:
+            return None
+        delta = int((answered_utc - started_utc).total_seconds())
+        return max(0, delta)
+    except Exception:
+        return None
+
+
 def _submission_display_status(submission, assignment, now):
     """
     Возвращает отображаемый статус для списков: "Просрочено по таймеру",
@@ -2490,6 +2508,7 @@ def submission_submit_task(submission_id):
         answer.attempts_used = (answer.attempts_used or 0) + 1
         answer.submitted_separately_at = moscow_now()
         answer.updated_at = moscow_now()
+        time_spent_sec = _resolve_answer_time_spent_sec(submission, answer.submitted_separately_at)
         is_correct, score = auto_grade_answer(answer, assignment_task)
         if is_correct is not None:
             answer.is_correct = is_correct
@@ -2500,7 +2519,7 @@ def submission_submit_task(submission_id):
                     user_id=current_user.id,
                     task_id=assignment_task.task.task_id,
                     is_correct=is_correct,
-                    time_spent_sec=None,
+                    time_spent_sec=time_spent_sec,
                     submission_id=submission_id,
                     answer_id=answer.answer_id,
                     attempt_no=max(1, int(answer.attempts_used or 1)),
@@ -2615,11 +2634,15 @@ def submission_submit(submission_id):
                     total_score += score
                     try:
                         from app.analytics import AnalyticsEngine
+                        answer_time_spent_sec = _resolve_answer_time_spent_sec(
+                            submission,
+                            answer.submitted_separately_at or now,
+                        )
                         AnalyticsEngine.process_submission(
                             user_id=current_user.id,
                             task_id=assignment_task.task.task_id,
                             is_correct=is_correct,
-                            time_spent_sec=None,
+                            time_spent_sec=answer_time_spent_sec,
                             submission_id=submission_id,
                             answer_id=answer.answer_id,
                             attempt_no=max(1, int(answer.attempts_used or 1)),
@@ -3174,11 +3197,15 @@ def submission_grade_save(submission_id):
                 is_correct = (answer.score or 0) >= (at.max_score or 1)
                 try:
                     from app.analytics import AnalyticsEngine
+                    answer_time_spent_sec = _resolve_answer_time_spent_sec(
+                        submission,
+                        answer.submitted_separately_at or submission.graded_at or moscow_now(),
+                    )
                     AnalyticsEngine.process_submission(
                         user_id=user_id,
                         task_id=at.task.task_id,
                         is_correct=is_correct,
-                        time_spent_sec=None,
+                        time_spent_sec=answer_time_spent_sec,
                         submission_id=submission_id,
                         answer_id=answer.answer_id,
                         attempt_no=max(1, int(answer.attempts_used or 1)),

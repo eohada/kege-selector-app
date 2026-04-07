@@ -15,6 +15,7 @@ from app.task_generator import task_generator_bp
 from app.task_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
 from app.models import (
     Lesson,
+    Student,
     Tasks,
     LessonTask,
     StudentTaskSeen,
@@ -32,6 +33,7 @@ from app.models import (
     TrainerSession,
     TrainerLlmLog,
     AnalyticsEvent,
+    UserTaskMMR,
     task_topics,
 )
 from app.auth.rbac_utils import has_permission
@@ -47,6 +49,41 @@ logger = logging.getLogger(__name__)
 
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
+
+
+def _difficulty_label_ru(task: Tasks | None) -> str:
+    if not task:
+        return 'Не указана'
+    if getattr(task, 'kege_tier_label_ru', None):
+        return str(task.kege_tier_label_ru)
+    level = getattr(task, 'difficulty_level', None)
+    if level == 1:
+        return 'База'
+    if level == 2:
+        return 'Стандарт'
+    if level == 3:
+        return 'Хард'
+    return 'Не указана'
+
+
+def _resolve_target_user_id(*, lesson_id=None, recipient_ids=None) -> int | None:
+    if lesson_id:
+        lesson = Lesson.query.options(db.joinedload(Lesson.student)).get(lesson_id)
+        if lesson and lesson.student and lesson.student.user_id:
+            return int(lesson.student.user_id)
+    ids = [int(x) for x in (recipient_ids or []) if x is not None]
+    if len(ids) == 1:
+        student = Student.query.filter_by(student_id=ids[0]).first()
+        if student and student.user_id:
+            return int(student.user_id)
+    return None
+
+
+def _get_user_task_mmr(user_id: int | None, task_number: int | None) -> float | None:
+    if not user_id or not task_number:
+        return None
+    row = UserTaskMMR.query.filter_by(user_id=user_id, task_type=int(task_number)).first()
+    return float(row.mmr) if row and row.mmr is not None else None
 
 
 def _task_generator_page_url(
@@ -373,6 +410,7 @@ def task_generator(lesson_id=None):
             recipient_ids = [int(x.strip()) for x in str(raw_sids).split(',') if x.strip() and x.strip().isdigit()]
         except (TypeError, ValueError):
             recipient_ids = []
+    target_user_id = _resolve_target_user_id(lesson_id=lesson_id, recipient_ids=recipient_ids)
 
     all_courses = Course.query.filter_by(is_active=True).order_by(Course.title).all()
     active_course = Course.query.get(exam_course_id) if exam_course_id else None
@@ -433,6 +471,8 @@ def task_generator(lesson_id=None):
         bank_tasks = bq.offset((bank_page - 1) * bank_per_page).limit(bank_per_page).all()
         for t in bank_tasks:
             t.bank_target_already_added = None
+            t.difficulty_label_ru = _difficulty_label_ru(t)
+            t.student_task_mmr = _get_user_task_mmr(target_user_id, t.task_number)
         if lesson_id or template_id:
             try:
                 _le_ids, _tpl_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
@@ -484,7 +524,7 @@ def task_generator(lesson_id=None):
                            assignment_type=assignment_type,
                            template_id=template_id,
                            seed_task=seed_task,
-                           seed_task_payload=_task_to_payload(seed_task) if seed_task else None,
+                           seed_task_payload=_task_to_payload(seed_task, target_user_id=target_user_id) if seed_task else None,
                            generator_recipient_ids=recipient_ids,
                            exam_course_id=exam_course_id,
                            all_courses=all_courses,
@@ -552,7 +592,7 @@ def _purge_task_dependencies(task_id: int) -> None:
     )
 
 
-def _task_to_payload(task: Tasks):
+def _task_to_payload(task: Tasks, target_user_id: int | None = None):
     if not task:
         return None
     payload = {
@@ -568,6 +608,8 @@ def _task_to_payload(task: Tasks):
         'kege_source_tag': task.kege_source_tag,
         'kege_difficulty_tier': task.kege_difficulty_tier,
         'kege_tier_label_ru': task.kege_tier_label_ru,
+        'difficulty_label_ru': _difficulty_label_ru(task),
+        'student_task_mmr': _get_user_task_mmr(target_user_id, task.task_number),
     }
     triplet_ids = _get_triplet_task_ids(task)
     if triplet_ids:
@@ -769,6 +811,8 @@ def task_generator_bank_picker_list():
 
     page = max(1, int(data.get('page', 1) or 1))
     per_page = min(30, max(5, int(data.get('per_page', 12) or 12)))
+    recipient_ids = data.get('recipient_ids') if isinstance(data.get('recipient_ids'), list) else []
+    target_user_id = _resolve_target_user_id(lesson_id=lesson_id, recipient_ids=recipient_ids)
 
     if not lesson_id and not template_id:
         return jsonify({'success': False, 'error': 'Укажите урок или шаблон'}), 400
@@ -797,6 +841,8 @@ def task_generator_bank_picker_list():
             'kege_source_tag': t.kege_source_tag,
             'kege_difficulty_tier': t.kege_difficulty_tier,
             'kege_tier_label_ru': t.kege_tier_label_ru,
+            'difficulty_label_ru': _difficulty_label_ru(t),
+            'student_task_mmr': _get_user_task_mmr(target_user_id, t.task_number),
             'content_html': (t.content_html or '')[:12000],
             'already_added': fully,
         })
@@ -956,7 +1002,8 @@ def generator_stream_start():
     if not task:
         return jsonify({'success': True, 'done': True, 'task': None}), 200
 
-    return jsonify({'success': True, 'done': False, 'task': _task_to_payload(task)}), 200
+    target_user_id = _resolve_target_user_id(lesson_id=lesson_id, recipient_ids=recipient_ids)
+    return jsonify({'success': True, 'done': False, 'task': _task_to_payload(task, target_user_id=target_user_id)}), 200
 
 
 @task_generator_bp.route('/task-generator/stream/act', methods=['POST'])
@@ -1133,12 +1180,13 @@ def generator_stream_act():
 
     tag = _lesson_tag(lesson_id, assignment_type) if lesson_id else None
     next_task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag, recipient_ids=recipient_ids, course_id=stream_exam_course_id)
+    target_user_id = _resolve_target_user_id(lesson_id=lesson_id, recipient_ids=recipient_ids)
 
     return jsonify({
         'success': True,
         'message': message,
         'done': not bool(next_task),
-        'task': _task_to_payload(next_task),
+        'task': _task_to_payload(next_task, target_user_id=target_user_id),
     }), 200
 
 
