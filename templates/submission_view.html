@@ -402,7 +402,8 @@
         <main class="app-content w-full mx-auto mt-5 pb-32">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
         <div class="submission-header relative overflow-hidden">
-            {% set should_hide_tasks = assignment.hide_before_start and submission.status == 'ASSIGNED' and not submission.started_at %}
+            {% set awaiting_work_start = submission.status == 'ASSIGNED' and not submission.started_at %}
+            {% set should_hide_tasks = assignment.hide_before_start and awaiting_work_start %}
             <div class="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 mb-4">
@@ -411,7 +412,7 @@
                     </div>
                     <h1 class="submission-title text-3xl sm:text-4xl lg:text-5xl font-black text-primary dark:text-white tracking-tight leading-tight">{{ assignment.title }}</h1>
                 </div>
-                {% if should_hide_tasks %}
+                {% if awaiting_work_start %}
                 <div class="shrink-0 w-full lg:w-auto">
                     <button type="button" id="start-btn" class="w-full lg:w-auto px-8 py-4 bg-boo-primary text-white rounded-2xl font-black text-base hover:bg-boo-primaryHover transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(123,92,255,0.3)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0" data-prevent-double-submit="true">
                         <i class="ph-fill ph-play-circle text-xl"></i> Начать выполнение
@@ -598,7 +599,7 @@
                         class="answer-input{% if loop.first and current_user.is_demo_user %} demo-first-answer{% endif %}"
                         name="answer"
                         data-task-id="{{ task_item.assignment_task.assignment_task_id }}"
-                        {% if should_hide_tasks or submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
+                        {% if awaiting_work_start or submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
                         {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
                     <div class="autosave-indicator" id="autosave-{{ task_item.assignment_task.assignment_task_id }}"></div>
@@ -669,7 +670,7 @@
                         Таймер будет запущен после начала выполнения.
                     </div>
                     {% endif %}
-                    <button type="button" id="autosave-btn" class="px-5 py-3 bg-surface-alt text-muted border border-slate-200 rounded-xl font-bold text-sm hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-2" {% if should_hide_tasks %}disabled{% endif %}>
+                    <button type="button" id="autosave-btn" class="px-5 py-3 bg-surface-alt text-muted border border-slate-200 rounded-xl font-bold text-sm hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-2" {% if awaiting_work_start %}disabled{% endif %}>
                         <i class="ph-bold ph-floppy-disk text-lg"></i> <span class="hidden sm:inline">Сохранить черновик</span>
                     </button>
                     <span id="last-save" class="autosave-indicator" style="font-size: 0.85em; color: var(--text-muted); font-weight: 500;"></span>
@@ -678,7 +679,7 @@
                     <div id="timer-blocked-msg" style="{% if timer_expired and time_limit_strict %}display: block;{% else %}display: none;{% endif %} padding: 0.75rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: var(--radius-md); color: #ef4444; font-weight: 700; font-size: 0.95em;">
                         {{ ui_icon('action.warning', 'sm') }} Сдача заблокирована. Время на выполнение истекло.
                     </div>
-                    <button type="button" id="submit-btn" class="px-8 py-3.5 bg-boo-primary text-white rounded-xl font-black hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-base {% if timer_expired and time_limit_strict %}submit-btn-overdue{% endif %}" data-prevent-double-submit="true" {% if timer_expired and time_limit_strict or should_hide_tasks %}disabled{% endif %}>
+                    <button type="button" id="submit-btn" class="px-8 py-3.5 bg-boo-primary text-white rounded-xl font-black hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-base {% if timer_expired and time_limit_strict %}submit-btn-overdue{% endif %}" data-prevent-double-submit="true" {% if timer_expired and time_limit_strict or awaiting_work_start %}disabled{% endif %}>
                         <i class="ph-bold ph-check-circle text-xl"></i> <span id="submit-btn-label">{% if submission.status in ['RETURNED', 'GRADED'] %}Сдать повторно{% else %}Сдать работу{% endif %}</span>
                     </button>
                 </div>
@@ -1188,7 +1189,7 @@
         }
         
         // Обработчики событий
-        {% if should_hide_tasks %}
+        {% if awaiting_work_start %}
         document.getElementById('start-btn').addEventListener('click', function() {
             // Показываем подтверждение перед стартом выполнения
             const doStart = () => {
@@ -1234,7 +1235,11 @@
                 doStart();
             } else if (typeof showConfirmDialog === 'function') {
                 showConfirmDialog(
-                    'Вы уверены, что хотите начать выполнение? Таймер начнёт отсчёт и условия задания станут доступны.',
+                    {% if assignment.hide_before_start %}
+                    'Вы уверены, что хотите начать выполнение? Таймер начнёт отсчёт (если он задан), полностью откроются условия заданий.',
+                    {% else %}
+                    'Вы уверены, что хотите начать выполнение? Таймер начнёт отсчёт (если он задан), работа перейдёт в статус «в процессе» — после этого станут доступны сохранение черновика и сдача.',
+                    {% endif %}
                     doStart,
                     () => {  },
                     { title: 'Начать выполнение?', isDanger: false, confirmText: 'Начать', cancelText: 'Отмена' }
@@ -1245,8 +1250,8 @@
         });
         {% endif %}
         
-        {% if submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0) %}
-        // Автосохранение и сдача (в процессе, на доработку или повторная попытка)
+        {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0) %}
+        // Автосохранение и сдача (назначено с уже начатым временем, в процессе, на доработку или повторная попытка)
         document.querySelectorAll('.answer-input').forEach(input => {
             input.addEventListener('input', function() {
                 clearTimeout(autosaveTimer);
