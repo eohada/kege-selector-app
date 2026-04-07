@@ -99,6 +99,8 @@ def _task_generator_page_url(
     bank_task_number=None,
     bank_task_id=None,
     bank_only_manual=False,
+    bank_origin_filter=None,
+    bank_difficulty=None,
     bank_open=False,
     bank_show_inactive=False,
 ):
@@ -121,6 +123,10 @@ def _task_generator_page_url(
         kwargs['bank_task_number'] = int(bank_task_number)
     if bank_task_id is not None:
         kwargs['bank_task_id'] = int(bank_task_id)
+    if bank_origin_filter in ('author', 'manual', 'other'):
+        kwargs['bank_origin_filter'] = bank_origin_filter
+    if bank_difficulty is not None:
+        kwargs['bank_difficulty'] = int(bank_difficulty)
     if bank_only_manual:
         kwargs['bank_only_manual'] = 1
     if bank_open:
@@ -433,12 +439,19 @@ def task_generator(lesson_id=None):
     bank_filter_course_id = request.args.get('bank_course_id', type=int)
     bank_filter_task_number = request.args.get('bank_task_number', type=int)
     bank_filter_task_id = request.args.get('bank_task_id', type=int)
+    bank_origin_filter = (request.args.get('bank_origin_filter') or '').strip()
+    if bank_origin_filter not in ('author', 'manual', 'other'):
+        bank_origin_filter = ''
+    bank_filter_difficulty = request.args.get('bank_difficulty', type=int)
+    if bank_filter_difficulty not in (None, 1, 2, 3):
+        bank_filter_difficulty = None
     bank_only_manual = request.args.get('bank_only_manual', type=int) == 1
     bank_show_inactive = request.args.get('bank_show_inactive', type=int) == 1
     bank_open = request.args.get('bank_open', type=int) == 1
     bank_panel_open = bank_open or bool(
         bank_filter_course_id or bank_filter_task_number or bank_filter_task_id
         or bank_only_manual or bank_show_inactive or bank_page > 1
+        or bank_origin_filter or bank_filter_difficulty
     )
     gen_tab_arg = (request.args.get('gen_tab') or '').strip().lower()
     if gen_tab_arg in ('stream', 'manual', 'bank'):
@@ -462,6 +475,17 @@ def task_generator(lesson_id=None):
                 bq = bq.filter(Tasks.course_id == bank_filter_course_id)
             if bank_filter_task_number:
                 bq = bq.filter(Tasks.task_number == bank_filter_task_number)
+            if bank_filter_difficulty is not None:
+                bq = bq.filter(Tasks.difficulty_level == int(bank_filter_difficulty))
+            if bank_origin_filter == 'author':
+                bq = bq.filter(Tasks.kege_source_tag == 'Авторские')
+            elif bank_origin_filter == 'manual':
+                bq = bq.filter(Tasks.bank_origin == 'manual')
+            elif bank_origin_filter == 'other':
+                bq = bq.filter(
+                    or_(Tasks.bank_origin.is_(None), Tasks.bank_origin != 'manual'),
+                    or_(Tasks.kege_source_tag.is_(None), Tasks.kege_source_tag != 'Авторские'),
+                )
         if bank_only_manual and not bank_filter_task_id:
             bq = bq.filter(Tasks.bank_origin == 'manual')
         if not bank_filter_task_id and not bank_show_inactive:
@@ -502,6 +526,8 @@ def task_generator(lesson_id=None):
                     bank_course_id=bank_filter_course_id,
                     bank_task_number=bank_filter_task_number,
                     bank_task_id=bank_filter_task_id,
+                    bank_origin_filter=bank_origin_filter or None,
+                    bank_difficulty=bank_filter_difficulty,
                     bank_only_manual=bank_only_manual,
                     bank_open=True,
                     bank_show_inactive=bank_show_inactive,
@@ -537,6 +563,8 @@ def task_generator(lesson_id=None):
                            bank_filter_course_id=bank_filter_course_id,
                            bank_filter_task_number=bank_filter_task_number,
                            bank_filter_task_id=bank_filter_task_id,
+                           bank_origin_filter=bank_origin_filter,
+                           bank_filter_difficulty=bank_filter_difficulty,
                            bank_only_manual=bank_only_manual,
                            bank_show_inactive=bank_show_inactive,
                            bank_panel_open=bank_panel_open,

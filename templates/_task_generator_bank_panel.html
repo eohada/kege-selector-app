@@ -48,11 +48,33 @@
                            class="w-full min-w-0 box-border bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 font-bold text-slate-800 text-sm text-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
                            title="Tasks.task_id из уведомления после сохранения. Если заполнен — программа и № не учитываются.">
                 </div>
-                <div class="md:col-span-12 lg:col-span-3 flex flex-col sm:flex-row items-stretch sm:items-end gap-3 min-w-0">
-                    <label class="flex items-center gap-2 cursor-pointer group shrink-0 py-1 sm:py-0 sm:pb-3 px-1">
-                        <input type="checkbox" name="bank_only_manual" value="1" class="w-5 h-5 shrink-0 rounded border border-slate-300 accent-boo-primary cursor-pointer m-0" {% if bank_only_manual %}checked{% endif %}>
-                        <span class="text-sm font-bold text-slate-600 whitespace-nowrap">Ручные</span>
-                    </label>
+                <div class="md:col-span-12 lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_origin_filter">Источник</label>
+                        <div class="relative min-w-0 isolate">
+                            <select class="w-full min-w-0 block box-border bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm appearance-none cursor-pointer shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" id="bank_origin_filter" name="bank_origin_filter">
+                                <option value="" {% if not bank_origin_filter %}selected{% endif %}>Все</option>
+                                <option value="author" {% if bank_origin_filter == 'author' %}selected{% endif %}>Авторские</option>
+                                <option value="manual" {% if bank_origin_filter == 'manual' %}selected{% endif %}>Созданные вручную</option>
+                                <option value="other" {% if bank_origin_filter == 'other' %}selected{% endif %}>Остальные (апробация, ЕГКР и др.)</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_difficulty">Сложность</label>
+                        <div class="relative min-w-0 isolate">
+                            <select class="w-full min-w-0 block box-border bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm appearance-none cursor-pointer shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" id="bank_difficulty" name="bank_difficulty">
+                                <option value="" {% if bank_filter_difficulty is none %}selected{% endif %}>Все</option>
+                                <option value="1" {% if bank_filter_difficulty == 1 %}selected{% endif %}>База</option>
+                                <option value="2" {% if bank_filter_difficulty == 2 %}selected{% endif %}>Стандарт</option>
+                                <option value="3" {% if bank_filter_difficulty == 3 %}selected{% endif %}>Хард</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="md:col-span-12 lg:col-span-2 flex flex-col sm:flex-row items-stretch sm:items-end gap-3 min-w-0">
                     <label class="flex items-center gap-2 cursor-pointer group shrink-0 py-1 sm:py-0 sm:pb-3 px-1">
                         <input type="checkbox" name="bank_show_inactive" value="1" class="w-5 h-5 shrink-0 rounded border border-slate-300 accent-boo-primary cursor-pointer m-0" {% if bank_show_inactive %}checked{% endif %}>
                         <span class="text-sm font-bold text-slate-600 whitespace-nowrap">Неактивные</span>
