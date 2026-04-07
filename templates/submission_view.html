@@ -13,7 +13,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=2.9">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
@@ -420,42 +420,44 @@
                 {% endif %}
             </div>
 
-            <div class="submission-hero-metrics flex flex-wrap lg:flex-nowrap gap-y-6 pt-6 mt-6 border-t border-slate-100 dark:border-white/10 relative z-10">
-                <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 first:pl-0">
-                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Статус</div>
-                    <span class="status-pill status-{{ submission.status.lower() }}{% if timer_expired and time_limit_strict %} status-overdue-timer{% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %} status-overdue-deadline{% endif %} inline-flex items-center gap-1.5">
-                        <i class="ph-bold {% if submission.status == 'ASSIGNED' %}ph-lock{% elif submission.status == 'IN_PROGRESS' %}ph-circle{% elif submission.status == 'SUBMITTED' %}ph-check-circle{% else %}ph-clock{% endif %} text-base"></i>
-                        {% if timer_expired and time_limit_strict %}Просрочено по таймеру
-                        {% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}Просрочено по дедлайну
-                        {% elif submission.status == 'ASSIGNED' %}Назначено
-                        {% elif submission.status == 'IN_PROGRESS' %}В процессе
-                        {% elif submission.status == 'SUBMITTED' %}Сдано
-                        {% elif submission.status == 'NEEDS_MANUAL_REVIEW' %}Требует проверки
-                        {% elif submission.status == 'GRADED' %}Проверено
-                        {% elif submission.status == 'RETURNED' %}На доработку
-                        {% else %}{{ submission.status }}{% endif %}
-                    </span>
+            <div class="submission-hero-metrics flex flex-wrap lg:flex-nowrap items-start gap-y-6 pt-6 mt-6 border-t border-slate-100 dark:border-white/10 relative z-10">
+                <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 first:pl-0 flex flex-col">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Статус</div>
+                    <div class="min-h-11 flex items-center">
+                        <span class="status-pill status-{{ submission.status.lower() }}{% if timer_expired and time_limit_strict %} status-overdue-timer{% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %} status-overdue-deadline{% endif %} inline-flex items-center gap-1.5 leading-none">
+                            <i class="ph-bold {% if submission.status == 'ASSIGNED' %}ph-lock{% elif submission.status == 'IN_PROGRESS' %}ph-circle{% elif submission.status == 'SUBMITTED' %}ph-check-circle{% else %}ph-clock{% endif %} text-base shrink-0"></i>
+                            {% if timer_expired and time_limit_strict %}Просрочено по таймеру
+                            {% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}Просрочено по дедлайну
+                            {% elif submission.status == 'ASSIGNED' %}Назначено
+                            {% elif submission.status == 'IN_PROGRESS' %}В процессе
+                            {% elif submission.status == 'SUBMITTED' %}Сдано
+                            {% elif submission.status == 'NEEDS_MANUAL_REVIEW' %}Требует проверки
+                            {% elif submission.status == 'GRADED' %}Проверено
+                            {% elif submission.status == 'RETURNED' %}На доработку
+                            {% else %}{{ submission.status }}{% endif %}
+                        </span>
+                    </div>
                 </div>
-                <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4">
-                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Дедлайн</div>
-                    <div class="text-primary dark:text-white font-bold text-sm flex items-center gap-1.5 mt-2"><i class="ph-bold ph-calendar-blank text-boo-coral"></i>{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
+                <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 flex flex-col">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Дедлайн</div>
+                    <div class="min-h-11 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none"><i class="ph-bold ph-calendar-blank text-boo-coral shrink-0"></i>{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
-                <div class="w-1/2 lg:flex-1 {% if submission.started_at %}lg:border-r border-slate-100 dark:border-white/10{% endif %} px-2 lg:px-4">
-                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Попытки</div>
-                    <div class="text-primary dark:text-white font-bold text-sm flex items-center gap-1.5 mt-2"><i class="ph-bold ph-arrows-clockwise text-boo-primary"></i>{{ attempts_used }} / {{ effective_max_attempts }}</div>
+                <div class="w-1/2 lg:flex-1 {% if submission.started_at %}lg:border-r border-slate-100 dark:border-white/10{% endif %} px-2 lg:px-4 flex flex-col">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Попытки</div>
+                    <div class="min-h-11 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none"><i class="ph-bold ph-arrows-clockwise text-boo-primary shrink-0"></i>{{ attempts_used }} / {{ effective_max_attempts }}</div>
                 </div>
                 {% if submission.started_at %}
-                <div class="w-1/2 lg:flex-1 px-2 lg:px-4">
-                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Начато</div>
-                    <div class="text-primary dark:text-white font-bold text-sm flex items-center gap-1.5 mt-2"><i class="ph-bold ph-clock text-boo-cyan"></i>{{ submission.started_at.strftime('%d.%m.%Y %H:%M') }}</div>
+                <div class="w-1/2 lg:flex-1 px-2 lg:px-4 flex flex-col">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Начато</div>
+                    <div class="min-h-11 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none"><i class="ph-bold ph-clock text-boo-cyan shrink-0"></i>{{ submission.started_at.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
                 {% endif %}
             </div>
         </div>
         
-        <div class="task-nav sticky top-20 z-40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2.5 rounded-[20px] mt-2 mb-2 bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-nav dark:shadow-nav-dark" id="taskNav">
+        <div class="task-nav sticky top-20 z-40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-2.5 py-3 rounded-[20px] mt-2 mb-2 bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-nav dark:shadow-nav-dark" id="taskNav">
             <span class="task-nav-label text-[11px] font-extrabold text-slate-500 dark:text-dark-muted uppercase tracking-widest pl-2 shrink-0 hidden sm:block">Задания:</span>
-            <div class="task-strip flex gap-1.5 overflow-x-auto hide-scroll w-full sm:w-auto sm:flex-1 sm:justify-end">
+            <div class="task-strip flex gap-1.5 overflow-x-auto hide-scroll w-full sm:w-auto sm:flex-1 sm:justify-end py-1.5 -my-1.5">
             {% for task_item in tasks_data %}
             {% set ti_answer = task_item.answer %}
             <a href="#task-{{ loop.index }}" class="task-nav-btn {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} w-11 h-11 shrink-0 rounded-[14px] flex items-center justify-center font-black text-base no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="Задание {{ loop.index }}">
@@ -821,7 +823,7 @@
         {% endif %}
         {% endif %}
 
-        <section class="submission-comments bg-surface rounded-[32px] border border-slate-200 shadow-tactile p-6 lg:p-8 mt-2 mb-10">
+        <section class="submission-comments bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/5 shadow-tactile dark:shadow-glass-dark p-6 lg:p-8 mt-2 mb-10">
             <h3 class="text-lg font-black text-primary mb-6">Комментарии</h3>
             
             <div id="comments-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 400px; overflow-y: auto; margin-bottom: 1.5rem;">
@@ -845,14 +847,14 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div id="no-comments" class="flex flex-col items-center justify-center py-8 text-center bg-surface-alt rounded-[20px] border border-slate-100">
-                        <p class="text-sm font-medium text-muted">Нет комментариев. Задайте вопрос преподавателю!</p>
+                    <div id="no-comments" class="flex flex-col items-center justify-center py-8 text-center bg-surface-alt dark:bg-dark-inner rounded-[20px] border border-slate-100 dark:border-white/10">
+                        <p class="text-sm font-medium text-muted dark:text-dark-muted">Нет комментариев. Задайте вопрос преподавателю!</p>
                     </div>
                 {% endif %}
             </div>
             
             <form id="comment-form" class="flex gap-3">
-                <input type="text" id="comment-input" placeholder="Написать сообщение..." required class="flex-1 bg-surface-alt border border-slate-200 rounded-xl px-4 py-3 font-medium text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all">
+                <input type="text" id="comment-input" placeholder="Написать сообщение..." required class="flex-1 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 font-medium text-secondary dark:text-white/90 text-sm focus:outline-none focus:border-boo-primary dark:focus:border-purple-400/50 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/20 transition-all placeholder:text-muted dark:placeholder:text-dark-muted">
                 <button type="submit" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-md text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 shrink-0">Отправить</button>
             </form>
         </section>

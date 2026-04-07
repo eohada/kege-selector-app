@@ -318,16 +318,56 @@ html[data-theme="dark"][data-student-submission="1"] .task-nav-btn {
   border-color: rgba(255, 255, 255, 0.1) !important;
   color: var(--color-text-muted) !important;
 }
+html[data-theme="dark"][data-student-submission="1"] .task-nav-btn.correct {
+  border-color: rgba(34, 211, 238, 0.55) !important;
+  background: rgba(34, 211, 238, 0.12) !important;
+  color: #5eead4 !important;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.22) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-nav-btn.incorrect {
+  border-color: rgba(251, 113, 133, 0.55) !important;
+  background: rgba(251, 113, 133, 0.14) !important;
+  color: #fda4af !important;
+  box-shadow: 0 0 0 1px rgba(251, 113, 133, 0.22) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-nav-btn.pending-review {
+  border-color: rgba(251, 191, 36, 0.5) !important;
+  background: rgba(251, 191, 36, 0.12) !important;
+  color: #fbbf24 !important;
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.18) !important;
+}
 html[data-theme="dark"][data-student-submission="1"] .task-nav-btn:hover {
   border-color: rgba(139, 92, 246, 0.45) !important;
   background: rgba(139, 92, 246, 0.12) !important;
   color: #c4b5fd !important;
 }
+html[data-theme="dark"][data-student-submission="1"] .task-nav-btn.correct:hover {
+  border-color: rgba(34, 211, 238, 0.75) !important;
+  background: rgba(34, 211, 238, 0.18) !important;
+  color: #99f6e4 !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-nav-btn.incorrect:hover {
+  border-color: rgba(251, 113, 133, 0.75) !important;
+  background: rgba(251, 113, 133, 0.2) !important;
+  color: #fecaca !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-nav-btn.pending-review:hover {
+  border-color: rgba(251, 191, 36, 0.65) !important;
+  background: rgba(251, 191, 36, 0.16) !important;
+  color: #fde68a !important;
+}
 html[data-theme="dark"][data-student-submission="1"] .task-nav-btn.active {
   background: #7b5cff !important;
   color: #fff !important;
   border-color: #7b5cff !important;
-  box-shadow: inset 0 -3px 0 rgba(74, 29, 150, 0.45) !important;
+  box-shadow:
+    inset 0 -3px 0 rgba(74, 29, 150, 0.45),
+    0 0 0 1px rgba(139, 92, 246, 0.35) !important;
+}
+html[data-theme="dark"][data-student-submission="1"] .task-nav-btn.active:hover {
+  background: #8b5fff !important;
+  color: #fff !important;
+  border-color: #a78bfa !important;
 }
 html[data-theme="dark"][data-student-submission="1"] .task-card {
   background: var(--color-bg-surface) !important;
@@ -774,9 +814,9 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     .layout-student .dock { max-width: 1400px; }
   }
 
-  /* Список заданий и экран работы: как в tasks_example_* — dock 1000px, колонка контента 860px */
+  /* Список заданий и экран работы: dock и колонка одной ширины (узкая колонка фокуса) */
   .layout-student.student-tasks-shell .dock {
-    max-width: 1000px !important;
+    max-width: 860px !important;
   }
   .layout-student.student-tasks-shell .app-content {
     max-width: 860px !important;
