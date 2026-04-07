@@ -190,20 +190,19 @@ class AnalyticsEngine:
         if not task:
             return None
         node = getattr(task, 'knowledge_node', None) if getattr(task, 'knowledge_node_id', None) else None
-        if not node:
-            logger.debug("Analytics: no knowledge node for task_id=%s", task_id)
-            return None
 
-        mastery = UserMastery.query.filter_by(user_id=user_id, node_id=node.id).first()
-        if not mastery:
-            mastery = UserMastery(
-                user_id=user_id,
-                node_id=node.id,
-                rating=cls.INITIAL_RATING,
-                volatility=350.0,
-                solved_count=0,
-            )
-            db.session.add(mastery)
+        mastery = None
+        if node:
+            mastery = UserMastery.query.filter_by(user_id=user_id, node_id=node.id).first()
+            if not mastery:
+                mastery = UserMastery(
+                    user_id=user_id,
+                    node_id=node.id,
+                    rating=cls.INITIAL_RATING,
+                    volatility=350.0,
+                    solved_count=0,
+                )
+                db.session.add(mastery)
 
         task_type = int(task.task_number or 0)
         mmr_row = UserTaskMMR.query.filter_by(user_id=user_id, task_type=task_type).first()
@@ -236,13 +235,14 @@ class AnalyticsEngine:
         elif manual_low_mmr_mode and is_correct:
             delta = 0.0
 
-        old_rating = float(mastery.rating or cls.INITIAL_RATING)
+        old_rating = float((mastery.rating if mastery else mmr_row.mmr) or cls.INITIAL_RATING)
         new_rating = cls._clamp_mmr(old_rating + delta)
-        mastery.rating = new_rating
-        mastery.last_practiced_at = moscow_now()
-        mastery.solved_count = int(mastery.solved_count or 0) + 1
-        mastery.calibration_done = bool((mastery.solved_count or 0) >= int(cls._cfg().get("calibration", {}).get("second_stage_tasks", 10)))
-        mastery.streak_days = (mastery.streak_days or 0) + 1 if is_correct else 0
+        if mastery:
+            mastery.rating = new_rating
+            mastery.last_practiced_at = moscow_now()
+            mastery.solved_count = int(mastery.solved_count or 0) + 1
+            mastery.calibration_done = bool((mastery.solved_count or 0) >= int(cls._cfg().get("calibration", {}).get("second_stage_tasks", 10)))
+            mastery.streak_days = (mastery.streak_days or 0) + 1 if is_correct else 0
 
         old_task_mmr = float(mmr_row.mmr or cls.INITIAL_RATING)
         mmr_row.mmr = cls._clamp_mmr(old_task_mmr + delta)
@@ -257,7 +257,7 @@ class AnalyticsEngine:
         }
         event = AnalyticsEvent(
             user_id=user_id,
-            node_id=node.id,
+            node_id=(node.id if node else None),
             task_id=task.task_id,
             submission_id=submission_id,
             answer_id=answer_id,
@@ -316,10 +316,16 @@ class AnalyticsEngine:
                 user_id=user_id,
                 task_id=task_id,
                 answer_id=answer_id,
-            )
-            .order_by(AnalyticsEvent.id.desc())
-            .first()
+            ).order_by(AnalyticsEvent.id.desc()).first()
         )
+        if not ev and answer_id is None:
+            ev = (
+                AnalyticsEvent.query.filter_by(
+                    user_id=user_id,
+                    task_id=task_id,
+                    submission_id=submission_id,
+                ).order_by(AnalyticsEvent.id.desc()).first()
+            )
         if not ev:
             return {"new_rating": new_rating}
         flags = ev.behavior_flags or {}

@@ -2523,6 +2523,7 @@ def submission_submit_task(submission_id):
         answer.attempts_used = (answer.attempts_used or 0) + 1
         answer.submitted_separately_at = moscow_now()
         answer.updated_at = moscow_now()
+        db.session.flush()
         time_spent_sec = (
             client_time_spent_sec
             if client_time_spent_sec is not None
