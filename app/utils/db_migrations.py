@@ -1302,6 +1302,42 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add telegram_link_code_expires to {profiles_table}: {e}")
                             db.session.rollback()
+                    if 'telegram_link_token' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_link_token VARCHAR(64)'))
+                            logger.info(f"Added telegram_link_token to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add telegram_link_token to {profiles_table}: {e}")
+                            db.session.rollback()
+                    if 'telegram_link_token_expires' not in cols:
+                        try:
+                            col_type = 'TIMESTAMP' if _is_postgres(app) else 'DATETIME'
+                            db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_link_token_expires {col_type}'))
+                            logger.info(f"Added telegram_link_token_expires to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add telegram_link_token_expires to {profiles_table}: {e}")
+                            db.session.rollback()
+                    if 'telegram_last_interaction_at' not in cols:
+                        try:
+                            col_type = 'TIMESTAMP' if _is_postgres(app) else 'DATETIME'
+                            db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_last_interaction_at {col_type}'))
+                            logger.info(f"Added telegram_last_interaction_at to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add telegram_last_interaction_at to {profiles_table}: {e}")
+                            db.session.rollback()
+                    try:
+                        db.session.execute(text(
+                            f'CREATE UNIQUE INDEX IF NOT EXISTS ix_UserProfiles_telegram_link_token '
+                            f'ON "{profiles_table}" (telegram_link_token)'
+                        ))
+                        db.session.execute(text(
+                            f'CREATE INDEX IF NOT EXISTS ix_UserProfiles_telegram_last_interaction_at '
+                            f'ON "{profiles_table}" (telegram_last_interaction_at)'
+                        ))
+                        logger.info(f"Ensured telegram link / interaction indexes on {profiles_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not ensure UserProfiles telegram indexes (may already exist): {e}")
+                        db.session.rollback()
                     if 'telegram_notifications_enabled' not in cols:
                         try:
                             db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_notifications_enabled BOOLEAN DEFAULT TRUE'))
