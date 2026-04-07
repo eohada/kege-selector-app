@@ -258,6 +258,9 @@
                 <button type="button" id="genCreateWorkBtnTop" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm shadow-md border-b-[3px] border-b-purple-800 border border-transparent hover:bg-boo-primaryHover active:translate-y-[1px] active:border-b-0 transition-all">{{ ui_icon('action.check', 'sm', decorative=true) }}<span id="genCreateWorkBtnTopText">Завершить и создать</span></button>
                 {% endif %}
             </div>
+            {% if generator_recipient_ids %}
+            <div id="genSelectedSummary" class="text-xs font-bold text-slate-600 mt-2"></div>
+            {% endif %}
 
             <form id="genStartForm" class="space-y-5 mb-8 flex-1" onsubmit="return false;">
                 {{ selection_form.hidden_tag() }}
@@ -552,6 +555,8 @@
     window.__GEN_SEED_TASK__ = {{ seed_task_payload | tojson if seed_task_payload else 'null' }};
     window.__GEN_COURSE_TASK_NUMBERS__ = {{ course_task_numbers | tojson if course_task_numbers is defined else '{}' }};
     window.__GEN_INITIAL_TAB__ = {{ initial_gen_tab | default('stream') | tojson }};
+    window.__GEN_SELECTED_TASK_IDS__ = {{ bank_selected_task_ids | tojson if bank_selected_task_ids is defined else '[]' }};
+    window.__GEN_SELECTED_TASK_META__ = {{ bank_selected_task_meta | tojson if bank_selected_task_meta is defined else '[]' }};
 </script>
 <script>
     (function() {
@@ -661,6 +666,7 @@
         let currentTask = null;
         let isBusy = false;
         let acceptedInSession = [];
+        const acceptedMetaByTaskId = Object.create(null); // { [taskId]: { task_number, difficulty_level } }
 
         function getCtx() {
             let recipientIds = [];
@@ -1120,6 +1126,52 @@
             if (!Array.isArray(acceptedInSession)) return new Set();
             return new Set(acceptedInSession.map(x => parseInt(x, 10)).filter(Number.isFinite));
         }
+        function collectMetaFromCard(taskId) {
+            const card = document.querySelector('.bank-task-card[data-task-id="' + taskId + '"]');
+            if (!card) return null;
+            const tn = parseInt(card.getAttribute('data-task-number') || '', 10);
+            let dl = parseInt(card.getAttribute('data-difficulty-level') || '', 10);
+            if (![1, 2, 3].includes(dl)) dl = 2;
+            if (!Number.isFinite(tn)) return null;
+            return { task_number: tn, difficulty_level: dl };
+        }
+        function renderSelectedSummary() {
+            const el = document.getElementById('genSelectedSummary');
+            if (!el) return;
+            const ids = Array.from(getAcceptedSessionSet());
+            if (!ids.length) {
+                el.textContent = 'Пока ничего не добавлено в текущую работу.';
+                return;
+            }
+            const counts = Object.create(null); // key: "num|diff" => cnt
+            ids.forEach((id) => {
+                const meta = acceptedMetaByTaskId[id] || collectMetaFromCard(id);
+                if (!meta || !Number.isFinite(meta.task_number)) return;
+                const diff = [1,2,3].includes(meta.difficulty_level) ? meta.difficulty_level : 2;
+                const key = String(meta.task_number) + '|' + String(diff);
+                counts[key] = (counts[key] || 0) + 1;
+            });
+            const items = Object.keys(counts)
+                .map((k) => {
+                    const parts = k.split('|');
+                    return { task_number: parseInt(parts[0], 10), difficulty_level: parseInt(parts[1], 10), count: counts[k] };
+                })
+                .sort((a, b) => (a.task_number - b.task_number) || (a.difficulty_level - b.difficulty_level))
+                .map((x) => `${x.task_number}:${x.count}(${x.difficulty_level})`);
+            el.textContent = items.length ? items.join(', ') : 'Пока ничего не добавлено в текущую работу.';
+        }
+        function syncSessionTaskIdsState() {
+            const ids = Array.from(getAcceptedSessionSet());
+            const csv = ids.join(',');
+            document.querySelectorAll('input[name="task_ids"]').forEach((el) => { el.value = csv; });
+            try {
+                const u = new URL(window.location.href);
+                if (csv) u.searchParams.set('task_ids', csv);
+                else u.searchParams.delete('task_ids');
+                window.history.replaceState({}, '', u.toString());
+            } catch (_) {}
+            renderSelectedSummary();
+        }
         function syncBankBadgesFromSession() {
             const ids = getAcceptedSessionSet();
             if (!ids.size) return;
@@ -1172,6 +1224,9 @@
                     if (sessionWorkRaw) {
                         const set = getAcceptedSessionSet();
                         if (!set.has(taskId)) acceptedInSession.push(taskId);
+                        const meta = collectMetaFromCard(taskId);
+                        if (meta) acceptedMetaByTaskId[taskId] = meta;
+                        syncSessionTaskIdsState();
                         markBankCardAsAdded(taskId);
                         if (window.toast) window.toast.success('Задание добавлено в текущую работу');
                         return;
@@ -1267,6 +1322,19 @@
         }
         try {
             const params = new URLSearchParams(window.location.search);
+            (window.__GEN_SELECTED_TASK_IDS__ || []).forEach((id) => {
+                const n = parseInt(id, 10);
+                if (Number.isFinite(n)) acceptedInSession.push(n);
+            });
+            (window.__GEN_SELECTED_TASK_META__ || []).forEach((row) => {
+                if (!row || row.task_id == null) return;
+                const id = parseInt(row.task_id, 10);
+                const tn = parseInt(row.task_number, 10);
+                let dl = parseInt(row.difficulty_level, 10);
+                if (![1, 2, 3].includes(dl)) dl = 2;
+                if (!Number.isFinite(id) || !Number.isFinite(tn)) return;
+                acceptedMetaByTaskId[id] = { task_number: tn, difficulty_level: dl };
+            });
             const taskIdsParam = (params.get('task_ids') || '').trim();
             if (taskIdsParam) {
                 taskIdsParam.split(',').forEach((x) => {
@@ -1274,6 +1342,7 @@
                     if (Number.isFinite(id)) acceptedInSession.push(id);
                 });
             }
+            syncSessionTaskIdsState();
             syncBankBadgesFromSession();
         } catch (_) {}
     })();

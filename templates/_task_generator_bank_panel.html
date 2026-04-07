@@ -18,6 +18,7 @@
             {% if generator_recipient_ids and generator_recipient_ids|length > 0 %}
             <input type="hidden" name="recipient_ids" value="{{ generator_recipient_ids|join(',') }}">
             {% endif %}
+            <input type="hidden" name="task_ids" value="{{ (bank_selected_task_ids or [])|join(',') }}">
             <input type="hidden" name="bank_page" value="1">
             <input type="hidden" name="bank_open" value="1">
             <input type="hidden" name="bank_per_page" value="{{ bank_per_page }}">
@@ -106,7 +107,9 @@
     {% if bank_tasks %}
     {% for t in bank_tasks %}
     <article class="bank-task-card bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] p-8 flex flex-col gap-6 group"
-             data-task-id="{{ t.task_id }}">
+             data-task-id="{{ t.task_id }}"
+             data-task-number="{{ t.task_number }}"
+             data-difficulty-level="{{ t.difficulty_level if t.difficulty_level in [1,2,3] else 2 }}">
         <div class="flex flex-wrap items-center justify-between pb-4 border-b border-slate-100 gap-3">
             <div class="flex flex-wrap items-center gap-3 min-w-0">
                 <span class="text-lg font-black text-boo-primary">#{{ t.task_id }}</span>

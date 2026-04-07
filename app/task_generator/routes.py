@@ -94,6 +94,7 @@ def _task_generator_page_url(
     template_id=None,
     exam_course_id=None,
     recipient_ids=None,
+    task_ids=None,
     bank_page=1,
     bank_per_page=25,
     bank_course_id=None,
@@ -115,6 +116,8 @@ def _task_generator_page_url(
         kwargs['exam_course_id'] = exam_course_id
     if recipient_ids:
         kwargs['recipient_ids'] = ','.join(str(x) for x in recipient_ids)
+    if task_ids:
+        kwargs['task_ids'] = ','.join(str(int(x)) for x in task_ids if str(x).strip())
     kwargs['bank_page'] = max(1, int(bank_page or 1))
     if bank_per_page and int(bank_per_page) != 25:
         kwargs['bank_per_page'] = int(bank_per_page)
@@ -418,6 +421,33 @@ def task_generator(lesson_id=None):
             recipient_ids = [int(x.strip()) for x in str(raw_sids).split(',') if x.strip() and x.strip().isdigit()]
         except (TypeError, ValueError):
             recipient_ids = []
+    current_task_ids = []
+    raw_task_ids = request.args.get('task_ids')
+    if raw_task_ids:
+        try:
+            current_task_ids = [
+                int(x.strip()) for x in str(raw_task_ids).split(',')
+                if x.strip() and x.strip().isdigit()
+            ]
+        except (TypeError, ValueError):
+            current_task_ids = []
+    bank_selected_task_meta = []
+    if current_task_ids:
+        try:
+            selected_tasks = Tasks.query.filter(Tasks.task_id.in_(current_task_ids)).all()
+            by_id = {int(t.task_id): t for t in selected_tasks}
+            for task_id in current_task_ids:
+                t = by_id.get(int(task_id))
+                if not t:
+                    continue
+                bank_selected_task_meta.append({
+                    'task_id': int(t.task_id),
+                    'task_number': int(t.task_number) if t.task_number is not None else None,
+                    'difficulty_level': int(t.difficulty_level) if t.difficulty_level in (1, 2, 3) else 2,
+                })
+        except Exception as ex:
+            logger.warning(f'failed to load selected task meta: {ex}')
+            bank_selected_task_meta = []
     target_user_id = _resolve_target_user_id(lesson_id=lesson_id, recipient_ids=recipient_ids)
 
     all_courses = Course.query.filter_by(is_active=True).order_by(Course.title).all()
@@ -537,6 +567,7 @@ def task_generator(lesson_id=None):
                     template_id=template_id,
                     exam_course_id=exam_course_id,
                     recipient_ids=recipient_ids,
+                    task_ids=current_task_ids,
                     bank_page=p,
                     bank_per_page=bank_per_page,
                     bank_course_id=bank_filter_course_id,
@@ -568,6 +599,8 @@ def task_generator(lesson_id=None):
                            seed_task=seed_task,
                            seed_task_payload=_task_to_payload(seed_task, target_user_id=target_user_id) if seed_task else None,
                            generator_recipient_ids=recipient_ids,
+                           bank_selected_task_ids=current_task_ids,
+                           bank_selected_task_meta=bank_selected_task_meta,
                            exam_course_id=exam_course_id,
                            all_courses=all_courses,
                            active_course=active_course,
