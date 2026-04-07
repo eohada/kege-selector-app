@@ -331,8 +331,64 @@
   height: min(78vh, 860px);
 }
 
+.trainer-v2-dock.tv2-dock-aux {
+  height: auto;
+  min-height: 220px;
+  max-height: min(42vh, 480px);
+}
+
 .trainer-v2-shell.is-zen .trainer-v2-dock {
   height: 100vh;
+}
+
+.trainer-v2-shell.is-zen .trainer-v2-dock.tv2-dock-aux {
+  max-height: min(50vh, 520px);
+}
+
+.tv2-dock-aux-inner {
+  border-radius: var(--tv2-radius-lg);
+  border: 1px solid var(--tv2-stroke-1);
+  background: var(--tv2-surface-1);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 200px;
+}
+
+.tv2-condition-subbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.tv2-editor-wrap--embedded {
+  height: 100%;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tv2-editor-wrap--embedded > .tv2-editor-box {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tv2-editor-wrap--embedded .CodeMirror-scroll {
+  min-height: 180px;
+}
+
+.tv2-terminal-embed {
+  min-height: 0;
+  overflow: auto;
+  height: 100%;
+}
+
+.tv2-scratch--embedded.tv2-panel {
+  padding: 0.45rem 0.6rem;
 }
 
 /* dock-lite layout */

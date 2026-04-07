@@ -809,41 +809,18 @@
     });
   }
 
-  function makeConditionComponent() {
-    const wrap = document.createElement('div');
-    wrap.className = 'tv2-panel tv2-panel-scroll';
+  function makeConditionComponent(embedInto) {
+    const embedded = embedInto instanceof HTMLElement;
+    const wrap = embedded ? embedInto : document.createElement('div');
+    if (!embedded) wrap.className = 'tv2-panel tv2-panel-scroll';
 
-    const head = document.createElement('div');
-    head.style.display = 'flex';
-    head.style.justifyContent = 'space-between';
-    head.style.alignItems = 'center';
-    head.style.gap = '0.75rem';
-    head.style.flexWrap = 'wrap';
-
-    const title = document.createElement('h2');
-    title.className = 'tv2-h1';
-    title.textContent = 'условие';
-
-    const actions = document.createElement('div');
-    actions.style.display = 'flex';
-    actions.style.gap = '0.5rem';
-    actions.style.flexWrap = 'wrap';
-
+    let head = null;
     const clearHlBtn = document.createElement('button');
     clearHlBtn.type = 'button';
-    clearHlBtn.className = 'tv2-btn';
+    clearHlBtn.className = embedded ? 'tv2-btn tv2-btn-compact' : 'tv2-btn';
     clearHlBtn.textContent = 'очистить подсветки';
-    clearHlBtn.addEventListener('click', () => {
-      const task = State.currentTask;
-      if (!task) return;
-      lsDel(LS.highlights(task.task_id));
-      const content = $('.tv2-task-content', wrap);
-      if (content) clearHighlights(content);
-      logEvent('highlights_clear', { task_id: task.task_id });
-    });
-
     const sourceLink = document.createElement('a');
-    sourceLink.className = 'tv2-btn tv2-source-link';
+    sourceLink.className = 'tv2-btn tv2-source-link' + (embedded ? ' tv2-btn-compact' : '');
     sourceLink.textContent = 'открыть источник';
     sourceLink.target = '_blank';
     sourceLink.rel = 'noopener';
@@ -852,26 +829,61 @@
       if (!sourceLink.href || sourceLink.getAttribute('aria-disabled') === 'true') e.preventDefault();
     });
 
-    actions.appendChild(clearHlBtn);
-    actions.appendChild(sourceLink);
-    head.appendChild(title);
-    head.appendChild(actions);
+    if (embedded) {
+      wrap.innerHTML = '';
+      const subBar = document.createElement('div');
+      subBar.className = 'tv2-condition-subbar';
+      subBar.appendChild(clearHlBtn);
+      subBar.appendChild(sourceLink);
+      wrap.appendChild(subBar);
+    } else {
+      head = document.createElement('div');
+      head.style.display = 'flex';
+      head.style.justifyContent = 'space-between';
+      head.style.alignItems = 'center';
+      head.style.gap = '0.75rem';
+      head.style.flexWrap = 'wrap';
 
-    const card = document.createElement('div');
-    card.className = 'tv2-card';
+      const title = document.createElement('h2');
+      title.className = 'tv2-h1';
+      title.textContent = 'условие';
+
+      const actions = document.createElement('div');
+      actions.style.display = 'flex';
+      actions.style.gap = '0.5rem';
+      actions.style.flexWrap = 'wrap';
+      actions.appendChild(clearHlBtn);
+      actions.appendChild(sourceLink);
+      head.appendChild(title);
+      head.appendChild(actions);
+    }
 
     const content = document.createElement('div');
     content.className = 'tv2-task-content';
     content.setAttribute('id', 'tv2TaskContent');
-    card.appendChild(content);
+
+    clearHlBtn.addEventListener('click', () => {
+      const task = State.currentTask;
+      if (!task) return;
+      lsDel(LS.highlights(task.task_id));
+      clearHighlights(content);
+      logEvent('highlights_clear', { task_id: task.task_id });
+    });
 
     const attachWrap = document.createElement('div');
     attachWrap.style.marginTop = '0.85rem';
     attachWrap.style.display = 'grid';
     attachWrap.style.gap = '0.35rem';
 
-    wrap.appendChild(head);
-    wrap.appendChild(card);
+    if (!embedded) {
+      const card = document.createElement('div');
+      card.className = 'tv2-card';
+      card.appendChild(content);
+      wrap.appendChild(head);
+      wrap.appendChild(card);
+    } else {
+      wrap.appendChild(content);
+    }
     wrap.appendChild(attachWrap);
 
     function render() {
@@ -1058,89 +1070,115 @@
     };
   }
 
-  function makeEditorComponent() {
-    const wrap = document.createElement('div');
-    wrap.className = 'tv2-panel';
+  function makeEditorComponent(opts) {
+    opts = opts || {};
+    const solutionMount = opts.solutionMount;
+    const templateChrome = solutionMount instanceof HTMLElement;
 
-    const head = document.createElement('div');
-    head.style.display = 'flex';
-    head.style.justifyContent = 'space-between';
-    head.style.alignItems = 'center';
-    head.style.gap = '0.75rem';
-    head.style.flexWrap = 'wrap';
+    const wrap = templateChrome ? solutionMount : document.createElement('div');
+    if (!templateChrome) wrap.className = 'tv2-panel';
 
-    const title = document.createElement('h2');
-    title.className = 'tv2-h1';
-    title.textContent = 'редактор/ответ';
+    if (!templateChrome) {
+      const head = document.createElement('div');
+      head.style.display = 'flex';
+      head.style.justifyContent = 'space-between';
+      head.style.alignItems = 'center';
+      head.style.gap = '0.75rem';
+      head.style.flexWrap = 'wrap';
 
-    const headActions = document.createElement('div');
-    headActions.style.display = 'flex';
-    headActions.style.gap = '0.5rem';
-    headActions.style.flexWrap = 'wrap';
+      const title = document.createElement('h2');
+      title.className = 'tv2-h1';
+      title.textContent = 'редактор/ответ';
 
-    const snapBtn = document.createElement('button');
-    snapBtn.type = 'button';
-    snapBtn.className = 'tv2-btn';
-    snapBtn.textContent = 'снапшот';
-    snapBtn.addEventListener('click', () => {
-      const task = State.currentTask;
-      if (!task) return;
-      pushVersion(task.task_id, 'snapshot', 'ручной снимок');
-      pushInlineToast({ kind: 'success', title: 'снапшот', message: 'версия сохранена в истории' });
-      logEvent('snapshot', { task_id: task.task_id });
-    });
+      const headActions = document.createElement('div');
+      headActions.style.display = 'flex';
+      headActions.style.gap = '0.5rem';
+      headActions.style.flexWrap = 'wrap';
 
-    headActions.appendChild(snapBtn);
-    head.appendChild(title);
-    head.appendChild(headActions);
+      const snapBtn = document.createElement('button');
+      snapBtn.type = 'button';
+      snapBtn.className = 'tv2-btn';
+      snapBtn.textContent = 'снапшот';
+      snapBtn.addEventListener('click', () => {
+        const task = State.currentTask;
+        if (!task) return;
+        pushVersion(task.task_id, 'snapshot', 'ручной снимок');
+        pushInlineToast({ kind: 'success', title: 'снапшот', message: 'версия сохранена в истории' });
+        logEvent('snapshot', { task_id: task.task_id });
+      });
+
+      headActions.appendChild(snapBtn);
+      head.appendChild(title);
+      head.appendChild(headActions);
+      wrap.appendChild(head);
+    }
 
     const grid = document.createElement('div');
-    grid.className = 'tv2-editor-wrap';
+    grid.className = templateChrome ? 'tv2-editor-wrap tv2-editor-wrap--embedded' : 'tv2-editor-wrap';
 
     const editorBox = document.createElement('div');
     editorBox.className = 'tv2-editor-box';
+    if (templateChrome) {
+      editorBox.style.minHeight = '0';
+      editorBox.style.flex = '1';
+    }
     const editorTa = document.createElement('textarea');
     editorTa.setAttribute('aria-label', 'код');
     editorTa.value = '';
     editorBox.appendChild(editorTa);
 
-    const bottom = document.createElement('div');
-    bottom.style.display = 'grid';
-    bottom.style.gap = '0.75rem';
+    const ans = (opts.answerInput && opts.answerInput instanceof HTMLInputElement) ? opts.answerInput : (() => {
+      const el = document.createElement('input');
+      el.className = 'tv2-input';
+      el.placeholder = 'ответ (для проверки)';
+      el.setAttribute('id', 'tv2AnswerInput');
+      return el;
+    })();
 
-    const ans = document.createElement('input');
-    ans.className = 'tv2-input';
-    ans.placeholder = 'ответ (для проверки)';
-    ans.setAttribute('id', 'tv2AnswerInput');
+    const runBtn = (opts.runBtn && opts.runBtn instanceof HTMLButtonElement) ? opts.runBtn : (() => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tv2-fab-outline';
+      b.textContent = 'запустить';
+      return b;
+    })();
 
-    const bottomRow = document.createElement('div');
-    bottomRow.className = 'tv2-editor-bottomrow';
+    const sendBtn = (opts.submitBtn && opts.submitBtn instanceof HTMLButtonElement) ? opts.submitBtn : (() => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tv2-fab-primary';
+      b.textContent = 'проверить';
+      return b;
+    })();
 
-    const runBtn = document.createElement('button');
-    runBtn.type = 'button';
-    runBtn.className = 'tv2-fab-outline';
-    runBtn.textContent = 'запустить';
-
-    const sendBtn = document.createElement('button');
-    sendBtn.type = 'button';
-    sendBtn.className = 'tv2-fab-primary';
-    sendBtn.textContent = 'проверить';
-
-    const fab = document.createElement('div');
-    fab.className = 'tv2-fab';
-    fab.style.display = 'none';
-    fab.appendChild(runBtn);
-    fab.appendChild(sendBtn);
-
-    bottomRow.appendChild(ans);
-    bottomRow.appendChild(fab);
-    bottom.appendChild(bottomRow);
+    let fab = null;
+    let bottom = null;
+    let bottomRow = null;
+    if (!templateChrome) {
+      bottom = document.createElement('div');
+      bottom.style.display = 'grid';
+      bottom.style.gap = '0.75rem';
+      bottomRow = document.createElement('div');
+      bottomRow.className = 'tv2-editor-bottomrow';
+      fab = document.createElement('div');
+      fab.className = 'tv2-fab';
+      fab.style.display = 'none';
+      fab.appendChild(runBtn);
+      fab.appendChild(sendBtn);
+      bottomRow.appendChild(ans);
+      bottomRow.appendChild(fab);
+      bottom.appendChild(bottomRow);
+    }
 
     grid.appendChild(editorBox);
-    grid.appendChild(bottom);
+    if (bottom) grid.appendChild(bottom);
 
-    wrap.appendChild(head);
-    wrap.appendChild(grid);
+    if (templateChrome) {
+      solutionMount.innerHTML = '';
+      solutionMount.appendChild(grid);
+    } else {
+      wrap.appendChild(grid);
+    }
 
     // CodeMirror init (после mount)
     let cm = null;
@@ -1211,7 +1249,7 @@
     function setAnswer(v) { ans.value = String(v || ''); }
 
     function showFab(visible) {
-      fab.style.display = visible ? 'flex' : 'none';
+      if (fab) fab.style.display = visible ? 'flex' : 'none';
     }
 
     function getAttempts(taskId) {
@@ -1242,8 +1280,9 @@
         return;
       }
       runBtn.disabled = true;
-      const original = runBtn.textContent;
-      runBtn.textContent = '...';
+      const prevRunText = templateChrome ? null : runBtn.textContent;
+      if (!templateChrome) runBtn.textContent = '...';
+      else try { runBtn.style.opacity = '0.65'; } catch (_) {}
       pushVersion(task.task_id, 'run', 'запуск кода');
       try {
         const res = await runCode({ code: code, stdin: '', timeoutSeconds: 2.0 });
@@ -1263,7 +1302,8 @@
         logEvent('run_fail', { task_id: task.task_id, error: e.message });
       } finally {
         runBtn.disabled = false;
-        runBtn.textContent = original;
+        if (!templateChrome) runBtn.textContent = prevRunText || '';
+        else try { runBtn.style.opacity = ''; } catch (_) {}
       }
     });
 
@@ -1283,8 +1323,10 @@
       const nextUsedBase = attempts.used + 1;
 
       sendBtn.disabled = true;
+      const submitLabelBackup = templateChrome ? sendBtn.innerHTML : null;
       const originalText = sendBtn.textContent;
-      sendBtn.textContent = '...';
+      if (!templateChrome) sendBtn.textContent = '...';
+      else try { sendBtn.style.opacity = '0.65'; } catch (_) {}
 
       try {
         const res = await submitAnswer({
@@ -1323,7 +1365,11 @@
         logEvent('submit_fail', { task_id: task.task_id, error: e.message });
       } finally {
         sendBtn.disabled = false;
-        sendBtn.textContent = originalText;
+        if (!templateChrome) sendBtn.textContent = originalText;
+        else {
+          try { sendBtn.style.opacity = ''; } catch (_) {}
+          if (submitLabelBackup != null) sendBtn.innerHTML = submitLabelBackup;
+        }
       }
     });
 
@@ -1556,16 +1602,18 @@
     return { el: wrap, render };
   }
 
-  function makeTerminalComponent() {
+  function makeTerminalComponent(termOpts) {
+    termOpts = termOpts || {};
+    const noTitle = termOpts.noTitle === true;
     const wrap = document.createElement('div');
-    wrap.className = 'tv2-panel tv2-panel-scroll';
+    wrap.className = noTitle ? 'tv2-terminal-embed' : 'tv2-panel tv2-panel-scroll';
     const title = document.createElement('h2');
     title.className = 'tv2-h1';
     title.textContent = 'терминал';
     const list = document.createElement('div');
     list.style.display = 'grid';
     list.style.gap = '0.65rem';
-    wrap.appendChild(title);
+    if (!noTitle) wrap.appendChild(title);
     wrap.appendChild(list);
 
     function render() {
@@ -2047,9 +2095,11 @@
     };
   }
 
-  function makeScratchpadComponent() {
+  function makeScratchpadComponent(scratchOpts) {
+    scratchOpts = scratchOpts || {};
+    const embedded = scratchOpts.embedded === true;
     const wrap = document.createElement('div');
-    wrap.className = 'tv2-panel tv2-panel-scroll';
+    wrap.className = 'tv2-panel tv2-panel-scroll' + (embedded ? ' tv2-scratch--embedded' : '');
 
     const title = document.createElement('h2');
     title.className = 'tv2-h1';
@@ -2147,7 +2197,7 @@
     canvasCard.appendChild(toolbar);
     canvasCard.appendChild(cWrap);
 
-    wrap.appendChild(title);
+    if (!embedded) wrap.appendChild(title);
     wrap.appendChild(tabs);
     wrap.appendChild(mdWrap);
     wrap.appendChild(canvasCard);
@@ -2269,8 +2319,165 @@
     }
   }
 
+  function wireTrainerAssistantButtons(setTabFn) {
+    $all('[data-tv2-open-assistant]').forEach((btn) => {
+      if (btn.dataset.tv2AssistantBound) return;
+      btn.dataset.tv2AssistantBound = '1';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof setTabFn === 'function') setTabFn('помощник');
+      });
+    });
+  }
+
+  function initEditorTabVisibilityFix(solutionEl, draftEl) {
+    if (!solutionEl) return;
+    const refresh = () => {
+      requestAnimationFrame(() => {
+        let solHidden = false;
+        try {
+          solHidden =
+            solutionEl.hasAttribute('hidden') ||
+            String(solutionEl.style && solutionEl.style.display) === 'none' ||
+            (typeof getComputedStyle !== 'undefined' && getComputedStyle(solutionEl).display === 'none');
+        } catch (_) {}
+        if (!solHidden) {
+          try {
+            if (State.cm) State.cm.refresh();
+          } catch (_) {}
+        } else {
+          try {
+            if (State.scratchCanvasApi && typeof State.scratchCanvasApi.resize === 'function') State.scratchCanvasApi.resize();
+          } catch (_) {}
+        }
+      });
+    };
+    try {
+      const obs = new MutationObserver(refresh);
+      obs.observe(solutionEl, { attributes: true, attributeFilter: ['style', 'class'] });
+      if (draftEl) obs.observe(draftEl, { attributes: true, attributeFilter: ['style', 'class'] });
+    } catch (_) {}
+  }
+
+  function initIntegratedLayout() {
+    const condMount = document.getElementById('tv2TaskCondition');
+    const solMount = document.getElementById('tv2EditorSolution');
+    const draftMount = document.getElementById('tv2EditorDraft');
+    const termMount = document.getElementById('tv2Terminal');
+    const answerInput = document.getElementById('tv2AnswerInput');
+    const runBtn = document.getElementById('tv2RunCodeBtn');
+    const submitBtn = document.getElementById('tv2CheckAnswerFab');
+    if (!dockEl || !condMount || !solMount || !termMount || !answerInput || !runBtn || !submitBtn) return false;
+
+    dockEl.innerHTML = '';
+    dockEl.classList.add('tv2-dock-aux');
+
+    const condition = makeConditionComponent(condMount);
+    State.conditionView = condition;
+
+    const editor = makeEditorComponent({
+      solutionMount: solMount,
+      answerInput,
+      runBtn,
+      submitBtn
+    });
+    State.editorView = editor;
+
+    const scratch = makeScratchpadComponent({ embedded: true });
+    if (draftMount) {
+      draftMount.innerHTML = '';
+      draftMount.appendChild(scratch.el);
+    }
+
+    const terminal = makeTerminalComponent({ noTitle: true });
+    State.terminalView = terminal;
+    termMount.innerHTML = '';
+    termMount.appendChild(terminal.el);
+
+    const bottom = document.createElement('div');
+    bottom.className = 'tv2-lite-bottom tv2-dock-aux-inner';
+
+    const tabs = document.createElement('div');
+    tabs.className = 'tv2-lite-tabs';
+
+    const panel = document.createElement('div');
+    panel.className = 'tv2-lite-panel';
+
+    const btns = [
+      { id: 'история', label: 'история' },
+      { id: 'проверка', label: 'проверка' },
+      { id: 'помощник', label: 'помощник' }
+    ];
+    const btnMap = {};
+    btns.forEach((b) => {
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'tv2-lite-tabbtn';
+      x.textContent = b.label;
+      x.setAttribute('data-tab', b.id);
+      tabs.appendChild(x);
+      btnMap[b.id] = x;
+    });
+
+    const history = makeHistoryComponent();
+    State.historyView = history;
+    const tests = makeTestsComponent();
+    State.testsView = tests;
+    const assistant = makeAssistantComponent();
+    State.assistantView = assistant;
+
+    const panes = {
+      'история': history.el,
+      'проверка': tests.el,
+      'помощник': assistant.el
+    };
+
+    function setTab(id) {
+      Object.keys(btnMap).forEach((k) => btnMap[k].classList.toggle('is-active', k === id));
+      panel.innerHTML = '';
+      if (panes[id]) panel.appendChild(panes[id]);
+      try {
+        if (id === 'история') history.render();
+        if (id === 'проверка') tests.render();
+        if (id === 'помощник') assistant.render();
+      } catch (_) {}
+      lsSet(LS.layout('dock_lite_active_tab'), id);
+    }
+
+    wireTrainerAssistantButtons(setTab);
+
+    Object.keys(btnMap).forEach((k) => btnMap[k].addEventListener('click', () => setTab(k)));
+
+    let initialTab = lsGet(LS.layout('dock_lite_active_tab'), '') || 'история';
+    if (initialTab === 'terminal' || initialTab === 'черновик') initialTab = 'история';
+    setTab(panes[initialTab] ? initialTab : 'история');
+
+    bottom.appendChild(tabs);
+    bottom.appendChild(panel);
+    dockEl.appendChild(bottom);
+
+    initEditorTabVisibilityFix(solMount, draftMount);
+
+    setTimeout(() => {
+      try { editor.mountEditor(); } catch (_) {}
+      try { scratch.mountMd(); } catch (_) {}
+      try { condition.render(); } catch (_) {}
+      try { terminal.render(); } catch (_) {}
+      if (State.currentTask) loadDraftsForTask(State.currentTask.task_id);
+      try {
+        if (State.editorView && State.editorView.updateAttemptsUI && State.currentTask) {
+          State.editorView.updateAttemptsUI(State.currentTask.task_id);
+        }
+      } catch (_) {}
+    }, 0);
+
+    return true;
+  }
+
   function initDockLite() {
+    if (initIntegratedLayout()) return;
     if (!dockEl) return;
+    dockEl.classList.remove('tv2-dock-aux');
     dockEl.innerHTML = '';
 
     const root = document.createElement('div');
@@ -2363,6 +2570,8 @@
     Object.keys(btnMap).forEach((k) => btnMap[k].addEventListener('click', () => setTab(k)));
     const initialTab = lsGet(LS.layout('dock_lite_active_tab'), 'terminal') || 'terminal';
     setTab(panes[initialTab] ? initialTab : 'terminal');
+
+    wireTrainerAssistantButtons(setTab);
 
     bottom.appendChild(tabs);
     bottom.appendChild(panel);
@@ -2506,6 +2715,29 @@
           title: 'хранение данных',
           message: 'черновики, снапшоты, подсветки и заметки сохраняются локально в браузере (localStorage) и привязаны к пользователю и задаче. если открыть тренажёр в другом браузере/устройстве — данных там не будет.'
         });
+      });
+    }
+
+    const resetPageBtn = document.getElementById('tv2ResetBtn');
+    if (resetPageBtn && !resetPageBtn.dataset.tv2Bound) {
+      resetPageBtn.dataset.tv2Bound = '1';
+      resetPageBtn.addEventListener('click', () => {
+        const task = State.currentTask;
+        if (task) {
+          try { lsDel(LS.highlights(task.task_id)); } catch (_) {}
+          const hlRoot = document.getElementById('tv2TaskContent');
+          if (hlRoot) clearHighlights(hlRoot);
+          try {
+            lsDel(LS.code(task.task_id));
+            lsDel(LS.answer(task.task_id));
+          } catch (_) {}
+        }
+        try {
+          setCurrentCode('');
+          setCurrentAnswer('');
+        } catch (_) {}
+        pushInlineToast({ kind: 'success', title: 'сброс', message: 'код, ответ и подсветки очищены' });
+        logEvent('trainer_reset_click', task ? { task_id: task.task_id } : {});
       });
     }
   }

@@ -20,7 +20,7 @@
         <div class="app-content">
 {% endif %}
 
-<div class="w-full max-w-[1600px] mx-auto flex flex-col h-full gap-4">
+<div class="w-full max-w-[1600px] mx-auto flex flex-col min-h-0 h-full gap-4">
     {% if not trainer_token %}
     <section class="bg-surface rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
         <div class="text-lg font-black text-primary">Тренажёр V2 недоступен</div>
@@ -29,7 +29,7 @@
         </div>
     </section>
     {% else %}
-    <section class="trainer-v2-root" id="trainerV2Root" data-tv2-theme="auto"
+    <section class="trainer-v2-root flex flex-col min-h-0 flex-1 gap-4" id="trainerV2Root" data-tv2-theme="auto"
              x-data="{ activeTab: 'solution' }">
         {% if zen_mode %}
         <div class="trainer-v2-zen-overlay" aria-label="zen controls">
@@ -83,7 +83,7 @@
 
         <!-- SPLIT: condition + editor -->
         <div class="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 mt-4">
-            <div class="w-full lg:w-[40%] bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden">
+            <div class="w-full lg:w-[40%] min-h-0 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full lg:max-h-[calc(100vh-12rem)] overflow-hidden">
                 <div class="p-5 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-10 h-10 rounded-xl bg-boo-cyanLight text-boo-cyan flex items-center justify-center border border-cyan-100 shrink-0">
@@ -105,8 +105,8 @@
                 </div>
             </div>
 
-            <div class="w-full lg:w-[60%] bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden p-2">
-                <div class="flex-1 bg-surface rounded-[24px] flex flex-col overflow-hidden shadow-sm dark:shadow-none dark:shadow-none relative border border-slate-200">
+            <div class="w-full lg:w-[60%] min-h-0 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col flex-1 overflow-hidden p-2">
+                <div class="flex-1 min-h-0 bg-surface rounded-[24px] flex flex-col overflow-hidden shadow-sm dark:shadow-none dark:shadow-none relative border border-slate-200">
                     <div class="flex items-center justify-between bg-surface-alt border-b border-slate-200 px-2 py-2">
                         <div class="flex gap-1">
                             <button type="button"
@@ -126,40 +126,47 @@
                             <i class="ph-fill ph-magic-wand"></i> Подсказка ИИ
                         </button>
                     </div>
-                    <div class="flex-1 min-h-0" id="tv2EditorArea">
-                        <div x-show="activeTab === 'solution'" id="tv2EditorSolution" class="h-full"></div>
-                        <div x-show="activeTab === 'draft'" id="tv2EditorDraft" class="h-full"></div>
+                    <div class="flex-1 min-h-0 flex flex-col" id="tv2EditorArea">
+                        <div x-show="activeTab === 'solution'" id="tv2EditorSolution" class="h-full min-h-0 flex flex-col overflow-hidden"></div>
+                        <div x-show="activeTab === 'draft'" id="tv2EditorDraft" class="h-full min-h-0 overflow-y-auto overflow-x-hidden" x-cloak></div>
                     </div>
                 </div>
 
-                <div class="mt-2 h-48 bg-slate-50/50 rounded-[24px] border border-slate-200 flex flex-col overflow-hidden">
-                    <div class="flex items-center gap-6 px-6 pt-3 border-b border-slate-200 bg-surface">
+                <div class="mt-2 flex-1 min-h-[12rem] max-h-[40vh] bg-slate-50/50 dark:bg-surface-alt/40 rounded-[24px] border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden shrink-0">
+                    <div class="flex items-center gap-6 px-6 pt-3 border-b border-slate-200 dark:border-slate-700 bg-surface shrink-0">
                         <div class="pb-2 text-sm font-bold text-boo-primary border-b-[3px] border-boo-primary">
                             <i class="ph-bold ph-terminal-window mr-1"></i> Терминал
                         </div>
                     </div>
-                    <div class="flex-1 flex p-3 gap-3 bg-surface">
-                        <div class="flex-1 bg-surface-alt rounded-xl p-3 font-mono text-sm text-secondary overflow-y-auto shadow-inner border border-slate-200">
-                            <div id="tv2Terminal"></div>
+                    <div class="flex-1 min-h-0 flex p-3 gap-3 bg-surface">
+                        <div class="flex-1 min-h-0 min-w-0 bg-surface-alt rounded-xl p-3 font-mono text-sm text-secondary overflow-y-auto shadow-inner border border-slate-200 dark:border-slate-600">
+                            <div id="tv2Terminal" class="h-full min-h-[120px]"></div>
                         </div>
-                        <div class="w-64 bg-surface-alt border border-slate-200 rounded-xl p-3 flex flex-col justify-between shadow-sm dark:shadow-none dark:shadow-none">
-                            <div>
-                                <label class="text-[10px] font-bold text-muted uppercase tracking-widest ml-1 mb-1 block">Ответ</label>
-                                <div class="text-xs text-muted font-medium ml-1">
-                                    Поле ответа — в нижней панели.
-                                </div>
+                        <div class="w-64 shrink-0 bg-surface-alt border border-slate-200 dark:border-slate-600 rounded-xl p-3 flex flex-col gap-2 shadow-sm dark:shadow-none justify-end">
+                            <div class="flex-1 min-h-0 flex flex-col">
+                                <label for="tv2AnswerInput" class="text-[10px] font-bold text-muted uppercase tracking-widest ml-1 mb-1 block">Ваш ответ</label>
+                                <input type="text" id="tv2AnswerInput" autocomplete="off"
+                                       class="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-surface px-3 py-2 text-sm font-mono text-primary placeholder:text-muted"
+                                       placeholder="Например: 128" />
                             </div>
-                            <button type="button"
-                                    class="mt-3 w-full py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none"
-                                    id="tv2CheckAnswerFab">
-                                Проверить <i class="ph-bold ph-arrow-right"></i>
-                            </button>
+                            <div class="flex gap-2 items-stretch">
+                                <button type="button" id="tv2RunCodeBtn"
+                                        class="shrink-0 w-11 flex items-center justify-center rounded-xl bg-surface border border-slate-200 dark:border-slate-600 text-boo-primary hover:bg-purple-50 dark:hover:bg-surface-alt transition-colors"
+                                        title="Запустить код" aria-label="Запустить код">
+                                    <i class="ph-fill ph-play text-lg"></i>
+                                </button>
+                                <button type="button"
+                                        class="flex-1 min-w-0 py-2.5 px-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none"
+                                        id="tv2CheckAnswerFab">
+                                    Проверить <i class="ph-bold ph-arrow-right"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Dock rendered by trainer_v2.js -->
-                <div id="trainerV2Dock" class="trainer-v2-dock mt-2"></div>
+                <!-- Dock: история / проверка / помощник (рендерит trainer_v2.js) -->
+                <div id="trainerV2Dock" class="trainer-v2-dock tv2-dock-aux mt-2 shrink-0"></div>
                 <div class="trainer-v2-toast-area" id="tv2InlineToastArea" aria-live="polite"></div>
             </div>
         </div>
