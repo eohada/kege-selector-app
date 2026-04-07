@@ -52,25 +52,11 @@
       "usedIn": ["templates/_primary_nav.html", "templates/_mobile_menu.html", "templates/kege_generator.html"]
     },
     {
-      "key": "nav.plans",
-      "type": "icon",
-      "context": "nav",
-      "recommendedSize": "24x24",
-      "usedIn": ["templates/_primary_nav.html", "templates/_mobile_menu.html", "templates/update_plans.html"]
-    },
-    {
       "key": "nav.templates",
       "type": "icon",
       "context": "nav",
       "recommendedSize": "24x24",
       "usedIn": ["templates/_primary_nav.html", "templates/_mobile_menu.html", "templates/templates_list.html"]
-    },
-    {
-      "key": "nav.reminders",
-      "type": "icon",
-      "context": "nav",
-      "recommendedSize": "24x24",
-      "usedIn": ["templates/_primary_nav.html", "templates/_mobile_menu.html", "templates/reminders.html"]
     },
     {
       "key": "nav.groups",
@@ -92,13 +78,6 @@
       "context": "nav",
       "recommendedSize": "24x24",
       "usedIn": ["templates/_primary_nav.html", "templates/billing_plans.html", "templates/billing_subscriptions.html"]
-    },
-    {
-      "key": "nav.assets",
-      "type": "icon",
-      "context": "nav",
-      "recommendedSize": "24x24",
-      "usedIn": ["templates/_primary_nav.html", "templates/designer_assets.html"]
     },
 
     {
@@ -164,14 +143,6 @@
       "recommendedSize": "20x20",
       "usedIn": ["templates/dashboard.html"]
     },
-    {
-      "key": "action.image",
-      "type": "icon",
-      "context": "action",
-      "recommendedSize": "20x20",
-      "usedIn": ["templates/designer_assets.html"]
-    },
-
     {
       "key": "theme.auto",
       "type": "icon",

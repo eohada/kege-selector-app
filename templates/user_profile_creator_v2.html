@@ -128,10 +128,9 @@
                     <a href="{{ url_for('students.students_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-users text-xl"></i> Ученики</a>
                     <a href="{{ url_for('assignments.assignments_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-files text-xl"></i> Работы</a>
                     <a href="{{ url_for('lessons.review_queue') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-check-square-offset text-xl"></i> Проверка</a>
-                    <a id="devModeReminderBtn" href="{{ url_for('reminders.reminders_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline transition-all"><i class="ph-bold ph-bell-ringing text-xl"></i> Напоминания</a>
                     <a href="{{ url_for('library.materials_library') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-books text-xl"></i> Библиотека</a>
                     <a id="devModeTrainerBtn" href="{{ url_for('trainer.trainer_embed') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline transition-all"><i class="ph-bold ph-game-controller text-xl"></i> Тренажёр</a>
-                    <a id="devModeRubricsBtn" href="{{ url_for('rubrics.rubrics_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline transition-all"><i class="ph-bold ph-tree-structure text-xl"></i> Рубрикатор</a>
+                    <a href="{{ url_for('task_generator.task_generator') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-magic-wand text-xl"></i> Генератор</a>
                     <button type="button" onclick="toggleMoreTools()" class="col-span-2 py-4 px-4 bg-surface-alt hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm transition-all"><i class="ph-bold ph-dots-three text-2xl"></i> Больше инструментов</button>
                 </div>
                 <div id="moreToolsPanel" class="hidden -mt-4 mb-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -213,9 +212,7 @@ function applyDevModeState(enabled) {
     const track = document.getElementById('devModeTrack');
     const knob = document.getElementById('devModeKnob');
     const label = document.getElementById('devModeLabel');
-    const reminderBtn = document.getElementById('devModeReminderBtn');
     const trainerBtn = document.getElementById('devModeTrainerBtn');
-    const rubricsBtn = document.getElementById('devModeRubricsBtn');
     const moreToolsPanel = document.getElementById('moreToolsPanel');
     if (!toggle || !track || !knob) return;
     toggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
@@ -225,7 +222,7 @@ function applyDevModeState(enabled) {
         label.textContent = enabled ? 'Dev Mode On' : 'Dev Mode Off';
         label.style.color = enabled ? '#7B5CFF' : '#64748B';
     }
-    [reminderBtn, trainerBtn, rubricsBtn].forEach((el) => {
+    [trainerBtn].forEach((el) => {
         if (!el) return;
         if (enabled) {
             el.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');

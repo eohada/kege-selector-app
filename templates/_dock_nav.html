@@ -86,7 +86,7 @@
 
             {# ── Mega-menu: Инструменты ── #}
             <div class="dock-mega">
-                <button class="dock-nav-item {% if active_page in ['assignments','templates','theory_manage','reminders','groups','onboarding','rubrics','generator','plans','library','assets','billing'] %}active{% endif %}">
+                <button class="dock-nav-item {% if active_page in ['assignments','templates','theory_manage','groups','generator','library','billing'] %}active{% endif %}">
                     <i class="ph-bold ph-squares-four text-lg"></i> Ещё
                     <i class="ph ph-caret-down text-xs" style="margin-left:2px;"></i>
                 </button>
@@ -99,14 +99,6 @@
                                 <i class="ph-bold ph-file-text text-base text-muted"></i> Работы
                             </a>
                             {% endif %}
-                            {% if has_permission(current_user, 'assignment.grade') %}
-                            <a href="{{ url_for('lessons.tutor_manual_reviews') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-check-circle text-base text-muted"></i> Ручная проверка
-                            </a>
-                            {% endif %}
-                            <a href="{{ url_for('reminders.reminders_list') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-bell text-base text-muted"></i> Напоминания
-                            </a>
                             {% if has_permission(current_user, 'theory.manage') %}
                             <a href="{{ url_for('theory.manage_list') }}" class="dock-mega-link">
                                 <i class="ph-bold ph-book-open text-base text-muted"></i> Теория
@@ -127,11 +119,6 @@
                                 <i class="ph-bold ph-books text-base text-muted"></i> Библиотека
                             </a>
                             {% endif %}
-                            {% if has_permission(current_user, 'rubrics.manage') %}
-                            <a href="{{ url_for('rubrics.rubrics_list') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-list-checks text-base text-muted"></i> Рубрики
-                            </a>
-                            {% endif %}
                         </div>
                         <div>
                             <div class="dock-mega-group-title">Управление</div>
@@ -140,25 +127,11 @@
                                 <i class="ph-bold ph-users text-base text-muted"></i> Группы
                             </a>
                             {% endif %}
-                            {% if has_permission(current_user, 'onboarding.view') %}
-                            <a href="{{ url_for('onboarding.invites_list') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-envelope-simple text-base text-muted"></i> Приглашения
-                            </a>
-                            {% endif %}
-                            {% if has_permission(current_user, 'assets.manage') %}
-                            <a href="{{ url_for('designer.assets_manager') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-paint-brush text-base text-muted"></i> Ассеты
-                            </a>
-                            {% endif %}
                             {% if has_permission(current_user, 'billing.manage') %}
                             <a href="{{ url_for('billing.billing_plans') }}" class="dock-mega-link">
                                 <i class="ph-bold ph-credit-card text-base text-muted"></i> Тарифы
                             </a>
                             {% endif %}
-                            <a href="{{ url_for('main.update_plans') }}" class="dock-mega-link">
-                                <i class="ph-bold ph-rocket text-base text-muted"></i> Планы
-                            </a>
-
                             {% if current_user.is_admin() or current_user.is_creator() %}
                             <div class="dock-mega-group-title mt-3">Админ</div>
                             {% if config.ADMIN_URL %}

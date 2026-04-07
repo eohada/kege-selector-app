@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Ручная проверка · Тьютор{% endblock %}
+{% block title %}Проверка · Тьютор{% endblock %}
 
 {% block head_css %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -43,9 +43,9 @@
 
 {% block content %}
 <section class="queue-hero">
-    <div class="hero-eyebrow">Ручная проверка</div>
+    <div class="hero-eyebrow">Проверка</div>
     <h1 class="queue-title">Требуют проверки</h1>
-    <div class="queue-sub">Сдачи со статусом «Требует проверки» (NEEDS_MANUAL_REVIEW). Отфильтруй по курсу и переходи к проверке.</div>
+    <div class="queue-sub">Сдачи со статусом «Требует проверки». Отфильтруй по курсу и переходи к проверке.</div>
 
     <form method="GET" class="filters">
         <div>
@@ -99,7 +99,7 @@
 <div class="glass-panel" style="padding: 2rem; text-align: center;">
     <div style="font-size: 3rem; margin-bottom: 0.75rem;">✅</div>
     <div style="font-size: 1.25rem; font-weight: 900;">Очередь пуста</div>
-    <div style="color: var(--text-muted); margin-top: 0.5rem;">Нет сдач, требующих ручной проверки{% if course_id %} по выбранному курсу{% endif %}.</div>
+    <div style="color: var(--text-muted); margin-top: 0.5rem;">Нет сдач, требующих проверки{% if course_id %} по выбранному курсу{% endif %}.</div>
 </div>
 {% endif %}
 {% endblock %}

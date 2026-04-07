@@ -3472,14 +3472,14 @@
                 const data = await res.json();
                 
                 if (!data.success) {
-                    throw new Error(data.error || 'Ошибка приглашения');
+                    throw new Error(data.error || 'Ошибка отправки доступа');
                 }
                 
-                toast.success(data.message || 'Приглашение отправлено!');
+                toast.success(data.message || 'Доступ отправлен!');
                 
             } catch (e) {
                 console.error('Invite error:', e);
-                toast.error(e.message || 'Ошибка отправки приглашения');
+                toast.error(e.message || 'Ошибка отправки доступа');
             }
         }
         

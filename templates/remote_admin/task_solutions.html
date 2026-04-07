@@ -71,7 +71,7 @@
                     <span class="ts-stat" style="border-left:3px solid rgba(0,200,100,.6);">Совпадений: <strong>{{ stats.matches|default(0) }}</strong></span>
                     <span class="ts-stat" style="border-left:3px solid rgba(255,108,145,.4);">Без решения: <strong>{{ stats.without_solution }}</strong></span>
                 </div>
-                <div style="color:var(--text-muted);font-size:.9rem;margin-top:.5rem;">Решение содержит: источник, условие задачи (с картинками), пошаговое решение. Ответ сверяется с источником — при расхождении помечается «Ручная проверка».
+                <div style="color:var(--text-muted);font-size:.9rem;margin-top:.5rem;">Решение содержит: источник, условие задачи (с картинками), пошаговое решение. Ответ сверяется с источником — при расхождении помечается как требующий проверки.
                     {% if not api_version %}
                     <br><strong style="color:#c60">Важно:</strong> обновите и перезапустите сервер, на который указывает окружение «{{ environment_name }}» (PRODUCTION_URL) — там должен быть новый код.
                     {% endif %}
@@ -107,7 +107,7 @@
                                     data-task-id="{{ it.task_id }}" data-needs-review="{{ '1' if it.needs_manual_review else '0' }}" onclick="selectTask(this)">
                                 <span class="ts-num">#{{ it.task_number }}</span>
                                 <span class="ts-preview" title="{{ it.content_preview }}">{{ it.content_preview or '—' }}</span>
-                                {% if it.needs_manual_review %}<span class="ts-review-badge" style="flex-shrink:0">Ручная проверка</span>{% endif %}
+                                {% if it.needs_manual_review %}<span class="ts-review-badge" style="flex-shrink:0">Требует проверки</span>{% endif %}
                             </button>
                             {% endfor %}
                         </div>
@@ -153,7 +153,7 @@
                     if (data._api_version) console.log('API version:', data._api_version);
                     let title = 'Задание #' + (data.task_number || '?') + ' · ID ' + taskId;
                     if (data.solution && data.solution.needs_manual_review) {
-                        title += ' <span class="ts-review-badge">Ручная проверка</span>';
+                        title += ' <span class="ts-review-badge">Требует проверки</span>';
                     }
                     document.getElementById('tsDetailTitle').innerHTML = title;
                     let html = '';
@@ -166,7 +166,7 @@
                             html += '<strong style="color:#0a0">✓ Автопроверка:</strong> ответ LLM совпадает с источником';
                             if (exp) html += ' <span style="color:var(--text-muted)">(ожидалось: ' + escapeHtml(exp) + ')</span>';
                         } else {
-                            html += '<strong style="color:#c60">✗ Автопроверка:</strong> ответ не совпадает — требуется ручная проверка';
+                            html += '<strong style="color:#c60">✗ Автопроверка:</strong> ответ не совпадает — требуется проверка';
                             if (exp || llm) html += ' <span style="color:var(--text-muted)">(источник: ' + escapeHtml(exp || '—') + ', LLM: ' + escapeHtml(llm || '—') + ')</span>';
                         }
                         html += '</div>';

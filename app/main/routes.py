@@ -695,64 +695,6 @@ def student_dashboard():
         avg_score=avg_score,
     )
 
-@main_bp.route('/update-plans')
-@login_required
-def update_plans():
-    """Страница планов обновления"""
-    try:
-        current_file_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(os.path.dirname(current_file_dir))
-        cwd = os.getcwd()
-        
-        possible_paths = [
-            os.path.join(project_root, 'UPDATE_PLANS.md'),
-            os.path.join(cwd, 'UPDATE_PLANS.md'),
-            '/app/UPDATE_PLANS.md',
-            os.path.join(project_root, 'docs', 'UPDATE_PLANS.md'),
-            os.path.join(cwd, 'docs', 'UPDATE_PLANS.md'),
-            '/app/docs/UPDATE_PLANS.md',
-            os.path.join(base_dir, 'UPDATE_PLANS.md'),
-            os.path.join(base_dir, 'docs', 'UPDATE_PLANS.md'),
-        ]
-        
-        plans_content = None
-        found_path = None
-        
-        for plans_file_path in possible_paths:
-            try:
-                if os.path.exists(plans_file_path) and os.path.isfile(plans_file_path):
-                    with open(plans_file_path, 'r', encoding='utf-8') as f:
-                        plans_content = f.read()
-                    found_path = plans_file_path
-                    logger.info(f"✓ Файл UPDATE_PLANS.md найден: {found_path}")
-                    break
-            except (OSError, IOError, UnicodeDecodeError) as path_error:
-                logger.debug(f"Не удалось прочитать путь {plans_file_path}: {path_error}")
-                continue
-        
-        if plans_content is None:
-            logger.warning(f"✗ Файл UPDATE_PLANS.md не найден")
-            logger.warning(f"Текущая рабочая директория: {cwd}")
-            logger.warning(f"project_root: {project_root}, base_dir: {base_dir}")
-            logger.warning(f"Проверенные пути: {possible_paths}")
-            
-            debug_info = f"\n\n**Отладочная информация:**\n"
-            debug_info += f"- Рабочая директория: `{cwd}`\n"
-            debug_info += f"- Корень проекта: `{project_root}`\n"
-            debug_info += f"- base_dir: `{base_dir}`\n"
-            debug_info += f"\n**Проверенные пути:**\n"
-            for p in possible_paths:
-                exists = "✓" if os.path.exists(p) else "✗"
-                debug_info += f"- {exists} `{p}`\n"
-            
-            plans_content = f"# Планы обновления\n\n⚠️ Файл с планами обновления не найден.{debug_info}"
-        
-        return render_template('update_plans.html', plans_content=plans_content)
-    except Exception as e:
-        logger.error(f"Ошибка при чтении файла планов обновления: {e}", exc_info=True)
-        flash('Не удалось загрузить планы обновления', 'error')
-        return redirect(url_for('main.dashboard'))
-
 @main_bp.route('/font/<path:filename>')
 def font_files(filename):
     """Сервим шрифты из папки static/font"""
