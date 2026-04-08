@@ -1013,7 +1013,7 @@ def api_bug_report():
         if not description:
             return jsonify({'success': False, 'error': 'Описание ошибки обязательно'}), 400
 
-        from app.models import PlatformBugReport
+        from app.models import PlatformBugReport, UserProfile
         report = PlatformBugReport(
             user_id=current_user.id,
             url_context=url_context[:500] if url_context else None,
@@ -1022,6 +1022,28 @@ def api_bug_report():
         )
         db.session.add(report)
         db.session.commit()
+
+        # Уведомить TG всех создателей/главных администраторов
+        try:
+            creator_users = User.query.filter(User.role.in_(['creator', 'chief_admin'])).all()
+            tg_text = (
+                f"🐛 Новый баг-репорт #{report.id}\n"
+                f"От: {current_user.username}\n"
+            )
+            if url_context:
+                tg_text += f"Страница: {url_context[:200]}\n"
+            tg_text += f"\n{description[:500]}"
+            if len(description) > 500:
+                tg_text += "..."
+
+            from app.telegram.user_notify import notify_user_by_id
+            for cu in creator_users:
+                try:
+                    notify_user_by_id(cu.id, tg_text, kind='system_errors')
+                except Exception:
+                    pass
+        except Exception as tg_err:
+            logger.warning('Bug report TG notify failed: %s', tg_err)
 
         return jsonify({'success': True, 'message': 'Спасибо! Отчет об ошибке успешно отправлен.'})
     except Exception as e:

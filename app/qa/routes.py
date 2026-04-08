@@ -113,7 +113,7 @@ def impersonate_as_role():
     Вход под пользователем из QA-пула по username.
     Нужен для виджета/быстрых переключений ролей в тестировании.
     """
-    if not require_qa('chief_tester', 'creator', 'chief_admin', 'admin'):
+    if not require_qa('tester', 'chief_tester', 'creator', 'chief_admin', 'admin'):
         return jsonify({'error': 'Forbidden'}), 403
 
     username = (request.form.get('username') or request.values.get('username') or '').strip()

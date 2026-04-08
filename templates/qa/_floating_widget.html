@@ -1,4 +1,4 @@
-{% set _qa_is_elevated = (current_user.is_creator() or current_user.is_chief_tester() or current_user.is_admin() or current_user.is_chief_admin()) if current_user.is_authenticated else false %}
+{% set _qa_is_elevated = (current_user.is_creator() or current_user.is_chief_tester() or current_user.is_tester() or current_user.is_admin() or current_user.is_chief_admin()) if current_user.is_authenticated else false %}
 {% set _qa_is_pool = (current_user.is_qa_pool if current_user.is_qa_pool is defined else false) %}
 {% set _qa_has_impersonator = (session.get('impersonator_id') is not none) %}
 
