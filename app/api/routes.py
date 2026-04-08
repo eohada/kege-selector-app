@@ -999,3 +999,87 @@ def api_internal_telegram_dispatch():
     except Exception as e:
         logger.error('api_internal_telegram_dispatch: %s', e, exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/bug_report', methods=['POST'])
+@login_required
+def api_bug_report():
+    """Сохранение баг-репорта от пользователя платформы"""
+    try:
+        data = request.get_json() if request.is_json else request.form.to_dict()
+        description = (data.get('description') or '').strip()
+        url_context = (data.get('url_context') or '').strip()
+
+        if not description:
+            return jsonify({'success': False, 'error': 'Описание ошибки обязательно'}), 400
+
+        from app.models import PlatformBugReport
+        report = PlatformBugReport(
+            user_id=current_user.id,
+            url_context=url_context[:500] if url_context else None,
+            description=description,
+            status='new'
+        )
+        db.session.add(report)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Спасибо! Отчет об ошибке успешно отправлен.'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при сохранении баг-репорта: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/bug_reports', methods=['GET'])
+@login_required
+def api_bug_reports_list():
+    """Список всех баг-репортов для создателя/администратора"""
+    if not (current_user.is_creator() or current_user.is_admin() or current_user.is_chief_admin()):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+    try:
+        from app.models import PlatformBugReport
+        status_filter = request.args.get('status')
+        q = PlatformBugReport.query.order_by(PlatformBugReport.created_at.desc())
+        if status_filter and status_filter != 'all':
+            q = q.filter(PlatformBugReport.status == status_filter)
+        reports = q.limit(200).all()
+        result = []
+        for r in reports:
+            user_info = None
+            if r.user:
+                user_info = {'id': r.user.id, 'username': r.user.username}
+            result.append({
+                'id': r.id,
+                'user': user_info,
+                'url_context': r.url_context,
+                'description': r.description,
+                'status': r.status,
+                'created_at': r.created_at.isoformat() if r.created_at else None,
+                'updated_at': r.updated_at.isoformat() if r.updated_at else None,
+            })
+        return jsonify({'success': True, 'reports': result})
+    except Exception as e:
+        logger.error(f'Ошибка при выборке баг-репортов: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/bug_reports/<int:report_id>/status', methods=['POST'])
+@login_required
+def api_bug_report_set_status(report_id):
+    """Смена статуса баг-репорта. Только creator/admin."""
+    if not (current_user.is_creator() or current_user.is_admin() or current_user.is_chief_admin()):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+    try:
+        from app.models import PlatformBugReport
+        report = PlatformBugReport.query.get_or_404(report_id)
+        data = request.get_json(silent=True) or {}
+        new_status = (data.get('status') or '').strip()
+        if new_status not in ('new', 'in_progress', 'resolved'):
+            return jsonify({'success': False, 'error': 'Invalid status'}), 400
+        report.status = new_status
+        db.session.commit()
+        return jsonify({'success': True, 'status': new_status})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка смены статуса баг-репорта: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500

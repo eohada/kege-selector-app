@@ -87,6 +87,7 @@ from core.db_models import (
     TheoryFeedbackHistory,
     StudentCourseEnrollment,
     GradingScale,
+    PlatformBugReport,
 )
 
 __all__ = [
@@ -174,4 +175,5 @@ __all__ = [
     'TheoryFeedbackHistory',
     'StudentCourseEnrollment',
     'GradingScale',
+    'PlatformBugReport',
 ]

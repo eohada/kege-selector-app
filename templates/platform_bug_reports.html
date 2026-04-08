@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Баг-репорты платформы · BooStudy{% endblock %}
+
+{% block head_css %}
+<style>
+.br-page { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+.br-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.75rem; }
+.br-title { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+
+.br-filter-bar { display: flex; gap: .5rem; flex-wrap: wrap; }
+.br-filter-btn {
+    padding: .4rem 1rem; border-radius: 20px; font-size: .8rem; font-weight: 600; border: none; cursor: pointer;
+    background: var(--surface-2, #f4f4f8); color: var(--text-secondary, #6b7280);
+    transition: background .15s, color .15s;
+}
+.br-filter-btn.active { background: var(--accent-1, #6c63ff); color: #fff; }
+.br-filter-btn:hover:not(.active) { background: var(--surface-3, #e8e8f0); }
+
+.br-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.br-stat { padding: .75rem 1.25rem; border-radius: 12px; background: var(--surface-2, #f4f4f8); flex: 1; min-width: 120px; text-align: center; }
+.br-stat-num { font-size: 1.6rem; font-weight: 800; color: var(--accent-1, #6c63ff); }
+.br-stat-label { font-size: .75rem; color: var(--text-secondary, #6b7280); margin-top: .1rem; }
+
+.br-table-wrap { border-radius: 14px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,.07); }
+.br-table { width: 100%; border-collapse: collapse; background: var(--surface-1, #fff); }
+.br-table th {
+    padding: .75rem 1rem; text-align: left; font-size: .78rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary);
+    background: var(--surface-2, #f4f4f8); border-bottom: 1px solid var(--stroke-1, #e5e7eb);
+}
+.br-table td { padding: .75rem 1rem; font-size: .875rem; border-bottom: 1px solid var(--stroke-1, #e5e7eb); vertical-align: top; }
+.br-table tr:last-child td { border-bottom: none; }
+.br-table tr:hover td { background: var(--surface-2, #f9fafb); }
+
+.br-desc { max-width: 380px; white-space: pre-wrap; word-break: break-word; line-height: 1.45; }
+.br-url { font-size: .78rem; color: var(--text-secondary); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; margin-top: .25rem; }
+.br-date { font-size: .78rem; color: var(--text-secondary); white-space: nowrap; }
+
+.br-status-badge {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px;
+    border-radius: 20px; font-size: .75rem; font-weight: 600; white-space: nowrap;
+}
+.br-status-new      { background: #fee2e2; color: #991b1b; }
+.br-status-in_progress { background: #fef3c7; color: #92400e; }
+.br-status-resolved { background: #d1fae5; color: #065f46; }
+
+[data-theme="dark"] .br-status-new         { background: rgba(220,38,38,.2);  color: #fca5a5; }
+[data-theme="dark"] .br-status-in_progress { background: rgba(245,158,11,.2); color: #fcd34d; }
+[data-theme="dark"] .br-status-resolved    { background: rgba(16,185,129,.2); color: #6ee7b7; }
+
+.br-status-select {
+    padding: 4px 8px; border-radius: 8px; font-size: .8rem; border: 1px solid var(--stroke-1, #e5e7eb);
+    background: var(--surface-1, #fff); color: var(--text-primary); cursor: pointer;
+}
+
+[data-theme="dark"] .br-table { background: var(--surface-1, #1e1e2e); }
+[data-theme="dark"] .br-table th { background: var(--surface-2, #282840); }
+[data-theme="dark"] .br-table tr:hover td { background: var(--surface-2, #282840); }
+
+.br-empty { text-align: center; padding: 4rem 1rem; color: var(--text-secondary); }
+.br-empty-icon { font-size: 3rem; margin-bottom: .75rem; }
+
+.br-loading { display: flex; align-items: center; justify-content: center; gap: .75rem; padding: 3rem; color: var(--text-secondary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="br-page">
+    <div class="br-header">
+        <h1 class="br-title">🐛 Баг-репорты платформы</h1>
+        <div class="br-filter-bar" id="filter-bar">
+            <button class="br-filter-btn active" data-status="all" onclick="setStatusFilter('all')">Все</button>
+            <button class="br-filter-btn" data-status="new" onclick="setStatusFilter('new')">🔴 Новые</button>
+            <button class="br-filter-btn" data-status="in_progress" onclick="setStatusFilter('in_progress')">🟡 В работе</button>
+            <button class="br-filter-btn" data-status="resolved" onclick="setStatusFilter('resolved')">🟢 Решённые</button>
+        </div>
+    </div>
+
+    <div class="br-stats" id="stats-row">
+        <div class="br-stat">
+            <div class="br-stat-num" id="stat-total">—</div>
+            <div class="br-stat-label">Всего</div>
+        </div>
+        <div class="br-stat">
+            <div class="br-stat-num" id="stat-new" style="color:#ef4444">—</div>
+            <div class="br-stat-label">Новые</div>
+        </div>
+        <div class="br-stat">
+            <div class="br-stat-num" id="stat-in-progress" style="color:#f59e0b">—</div>
+            <div class="br-stat-label">В работе</div>
+        </div>
+        <div class="br-stat">
+            <div class="br-stat-num" id="stat-resolved" style="color:#10b981">—</div>
+            <div class="br-stat-label">Решено</div>
+        </div>
+    </div>
+
+    <div class="br-table-wrap">
+        <div class="br-loading" id="br-loading">
+            <svg class="animate-spin" style="width:24px;height:24px;border:3px solid var(--accent-1);border-top-color:transparent;border-radius:50%" viewBox="0 0 24 24"></svg>
+            Загрузка отчётов…
+        </div>
+        <table class="br-table" id="br-table" style="display:none">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Пользователь</th>
+                    <th>Описание / URL</th>
+                    <th>Дата</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+            <tbody id="br-tbody"></tbody>
+        </table>
+        <div class="br-empty" id="br-empty" style="display:none">
+            <div class="br-empty-icon">✅</div>
+            <p>Баг-репортов не найдено</p>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var currentFilter = 'all';
+    var allReports = [];
+
+    var statusLabels = { new: 'Новый', in_progress: 'В работе', resolved: 'Решено' };
+    var statusClass  = { new: 'br-status-new', in_progress: 'br-status-in_progress', resolved: 'br-status-resolved' };
+
+    function esc(s) {
+        if (!s) return '';
+        var el = document.createElement('span');
+        el.textContent = String(s);
+        return el.innerHTML;
+    }
+
+    function loadReports() {
+        document.getElementById('br-loading').style.display = 'flex';
+        document.getElementById('br-table').style.display = 'none';
+        document.getElementById('br-empty').style.display = 'none';
+
+        fetch('/api/bug_reports')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                document.getElementById('br-loading').style.display = 'none';
+                if (!data.success) {
+                    if (window.toast) toast.error('Ошибка загрузки: ' + (data.error || ''));
+                    return;
+                }
+                allReports = data.reports || [];
+                updateStats(allReports);
+                renderTable(filterReports(allReports, currentFilter));
+            })
+            .catch(function () {
+                document.getElementById('br-loading').style.display = 'none';
+                if (window.toast) toast.error('Сетевая ошибка');
+            });
+    }
+
+    function updateStats(reports) {
+        document.getElementById('stat-total').textContent = reports.length;
+        document.getElementById('stat-new').textContent        = reports.filter(function(r){ return r.status === 'new'; }).length;
+        document.getElementById('stat-in-progress').textContent = reports.filter(function(r){ return r.status === 'in_progress'; }).length;
+        document.getElementById('stat-resolved').textContent   = reports.filter(function(r){ return r.status === 'resolved'; }).length;
+    }
+
+    function filterReports(reports, status) {
+        if (status === 'all') return reports;
+        return reports.filter(function (r) { return r.status === status; });
+    }
+
+    function renderTable(reports) {
+        var tbody = document.getElementById('br-tbody');
+        tbody.innerHTML = '';
+        if (!reports.length) {
+            document.getElementById('br-table').style.display = 'none';
+            document.getElementById('br-empty').style.display = 'block';
+            return;
+        }
+        document.getElementById('br-table').style.display = 'table';
+        document.getElementById('br-empty').style.display = 'none';
+
+        reports.forEach(function (r) {
+            var tr = document.createElement('tr');
+            var dateStr = r.created_at ? new Date(r.created_at).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+            var userStr = r.user ? ('<strong>' + esc(r.user.username) + '</strong>&nbsp;<span style="color:var(--text-secondary);font-size:.78rem">id ' + r.user.id + '</span>') : '<span style="color:var(--text-secondary)">—</span>';
+            var urlHtml = r.url_context ? '<a href="' + esc(r.url_context) + '" target="_blank" class="br-url" title="' + esc(r.url_context) + '">' + esc(r.url_context) + '</a>' : '';
+
+            tr.innerHTML =
+                '<td>' + r.id + '</td>' +
+                '<td>' + userStr + '</td>' +
+                '<td><div class="br-desc">' + esc(r.description) + '</div>' + urlHtml + '</td>' +
+                '<td class="br-date">' + dateStr + '</td>' +
+                '<td></td>';
+
+            // Status selector cell
+            var statusCell = tr.querySelector('td:last-child');
+            var badge = document.createElement('span');
+            badge.className = 'br-status-badge ' + (statusClass[r.status] || '');
+            badge.textContent = statusLabels[r.status] || r.status;
+            statusCell.appendChild(badge);
+            statusCell.appendChild(document.createTextNode(' '));
+
+            var sel = document.createElement('select');
+            sel.className = 'br-status-select';
+            sel.innerHTML =
+                '<option value="new"' + (r.status === 'new' ? ' selected' : '') + '>Новый</option>' +
+                '<option value="in_progress"' + (r.status === 'in_progress' ? ' selected' : '') + '>В работе</option>' +
+                '<option value="resolved"' + (r.status === 'resolved' ? ' selected' : '') + '>Решено</option>';
+            sel.addEventListener('change', function () {
+                setReportStatus(r.id, sel.value, badge, sel);
+            });
+            statusCell.appendChild(sel);
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    function setReportStatus(reportId, newStatus, badge, sel) {
+        fetch('/api/bug_reports/' + reportId + '/status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            body: JSON.stringify({ status: newStatus })
+        }).then(function (r) { return r.json(); }).then(function (data) {
+            if (data.success) {
+                badge.className = 'br-status-badge ' + (statusClass[data.status] || '');
+                badge.textContent = statusLabels[data.status] || data.status;
+                // Update local data
+                var rep = allReports.find(function (x) { return x.id === reportId; });
+                if (rep) rep.status = data.status;
+                updateStats(allReports);
+                if (window.toast) toast.success('Статус обновлён');
+            } else {
+                if (window.toast) toast.error(data.error || 'Ошибка');
+            }
+        }).catch(function () {
+            if (window.toast) toast.error('Сетевая ошибка');
+        });
+    }
+
+    window.setStatusFilter = function (status) {
+        currentFilter = status;
+        document.querySelectorAll('.br-filter-btn').forEach(function (btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-status') === status);
+        });
+        renderTable(filterReports(allReports, status));
+    };
+
+    loadReports();
+})();
+</script>
+{% endblock %}

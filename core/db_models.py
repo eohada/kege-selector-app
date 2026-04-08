@@ -2152,3 +2152,17 @@ class GradingScale(db.Model):
     def __repr__(self):
         return f'<GradingScale course={self.course_id} {self.min_primary}-{self.max_primary}={self.final_grade}>'
 
+
+class PlatformBugReport(db.Model):
+    """Bug reports from users via the platform."""
+    __tablename__ = 'PlatformBugReports'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    url_context = db.Column(db.String(500), nullable=True)
+    description = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='new', nullable=False, index=True) # new, in_progress, resolved
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+

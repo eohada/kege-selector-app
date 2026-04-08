@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy для Преподавателей — Автоматизируй рутину</title>
+    <!-- Подключаем Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Шрифты Golos Text и JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Иконки Phosphor -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Golos Text"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        boo: {
+                            bg: '#F8FAFC', 
+                            surface: '#FFFFFF',
+                            primary: '#7B5CFF',
+                            primaryHover: '#6A4CE5',
+                            cyan: '#06B6D4',
+                            coral: '#FF6B6B',
+                            accent: '#FF9F1C',
+                            textMain: '#1E293B',
+                            textMuted: '#64748B'
+                        }
+                    },
+                    boxShadow: {
+                        'tactile': '0 8px 24px -4px rgba(15, 23, 42, 0.06)',
+                        'tactile-hover': '0 16px 32px -8px rgba(15, 23, 42, 0.12)',
+                        'nav': '0 4px 20px rgba(15, 23, 42, 0.05)',
+                        'glow-primary': '0 0 30px rgba(123, 92, 255, 0.3)',
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'float-delayed': 'float 6s ease-in-out 3s infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--tw-colors-boo-bg); color: var(--tw-colors-boo-textMain); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+        
+        .gradient-text-teacher {
+            background: linear-gradient(135deg, #7B5CFF, #FF9F1C);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen relative overflow-x-hidden selection:bg-purple-200 selection:text-purple-900">
+
+    <!-- ФОНОВЫЕ БЛИКИ (Атмосфера препода) -->
+    <div class="fixed top-[-10%] left-[-10%] w-[600px] h-[600px] bg-purple-200/40 rounded-full filter blur-[120px] pointer-events-none z-0"></div>
+    <div class="fixed bottom-[20%] right-[-10%] w-[500px] h-[500px] bg-orange-200/30 rounded-full filter blur-[150px] pointer-events-none z-0"></div>
+
+    <!-- НАВИГАЦИЯ -->
+    <div class="fixed top-0 w-full z-50 pt-6 px-4 lg:px-8 pointer-events-none">
+        <header class="w-full max-w-[1200px] mx-auto bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-nav rounded-2xl px-3 sm:px-5 py-3 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+            
+            <!-- Логотип -->
+            <div class="flex items-center gap-3 cursor-pointer group">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm group-hover:scale-105 transition-transform">
+                    <i class="ph-fill ph-ghost text-2xl"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-black text-xl tracking-tight text-slate-900 hidden sm:block leading-none">BooStudy</span>
+                    <span class="text-[9px] font-extrabold text-boo-primary uppercase tracking-widest hidden sm:block mt-0.5">Для преподавателей</span>
+                </div>
+            </div>
+
+            <!-- Ссылки -->
+            <nav class="hidden md:flex items-center gap-6">
+                <a href="#features" class="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">Возможности</a>
+                <a href="#generator" class="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">Генератор</a>
+                <a href="#pricing" class="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">Тарифы</a>
+            </nav>
+
+            <!-- Кнопки входа -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="index.html" class="hidden lg:flex px-4 py-2.5 text-slate-500 hover:text-slate-800 bg-white border border-slate-200 font-bold text-sm rounded-xl transition-colors items-center gap-1.5 shadow-sm">
+                    <i class="ph-bold ph-student text-lg"></i> Я — ученик
+                </a>
+                
+                <a href="#" class="px-4 sm:px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-md border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0 flex items-center gap-2 whitespace-nowrap">
+                    Создать класс
+                </a>
+            </div>
+        </header>
+    </div>
+
+    <!-- MAIN HERO SECTION -->
+    <section class="relative z-10 pt-40 pb-16 lg:pt-56 lg:pb-32 px-6 lg:px-8 max-w-[1200px] mx-auto flex flex-col lg:flex-row items-center gap-16">
+        
+        <!-- Левая часть: Текст -->
+        <div class="w-full lg:w-1/2 text-center lg:text-left">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm mb-6">
+                <i class="ph-fill ph-chalkboard-teacher text-boo-primary"></i>
+                <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Инструмент для профи</span>
+            </div>
+            
+            <h1 class="text-5xl lg:text-7xl font-black text-slate-900 tracking-tight leading-[1.1] mb-6">
+                Платформа, которая делает <br><span class="gradient-text-teacher">всю рутину</span> за вас.
+            </h1>
+            
+            <p class="text-lg text-slate-600 font-medium mb-10 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                Умный генератор заданий с защитой от списывания, автопроверка кода, CRM для отслеживания оплат и красивая аналитика прогресса каждого ученика.
+            </p>
+            
+            <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                <a href="#" class="w-full sm:w-auto px-8 py-4 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_10px_30px_rgba(123,92,255,0.3)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-base">
+                    Создать аккаунт бесплатно <i class="ph-bold ph-arrow-right"></i>
+                </a>
+                <a href="#features" class="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-base">
+                    Возможности
+                </a>
+            </div>
+            
+            <div class="mt-8 flex items-center justify-center lg:justify-start gap-4 text-sm font-medium text-slate-500">
+                <div class="flex -space-x-2">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator1" class="w-8 h-8 rounded-full border-2 border-boo-bg bg-slate-100">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator2" class="w-8 h-8 rounded-full border-2 border-boo-bg bg-slate-200">
+                    <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Creator3" class="w-8 h-8 rounded-full border-2 border-boo-bg bg-slate-300">
+                </div>
+                <span>Уже используют <strong>1,200+</strong> преподавателей</span>
+            </div>
+        </div>
+
+        <!-- Правая часть: Парящие интерфейсы -->
+        <div class="w-full lg:w-1/2 relative h-[500px] hidden md:block">
+            
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-gradient-to-tr from-purple-100 to-orange-50 rounded-full border border-white shadow-inner"></div>
+
+            <!-- Элемент 1: Журнал (Автопроверка) -->
+            <div class="absolute top-10 right-10 bg-white rounded-[24px] p-5 shadow-tactile border border-slate-200 border-b-[4px] border-b-slate-300 animate-float z-20 w-72">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Автопроверка ДЗ</div>
+                    <span class="bg-green-50 text-green-600 px-2 py-0.5 rounded text-[10px] font-bold">100%</span>
+                </div>
+                <div class="flex items-center gap-3 mb-3">
+                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Alex" class="w-8 h-8 rounded-full bg-slate-100">
+                    <div class="flex-1">
+                        <div class="text-sm font-bold text-slate-900">Алексей С.</div>
+                        <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1"><div class="h-full bg-green-500 w-full"></div></div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=Masha" class="w-8 h-8 rounded-full bg-slate-100">
+                    <div class="flex-1">
+                        <div class="text-sm font-bold text-slate-900">Мария К.</div>
+                        <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1"><div class="h-full bg-boo-accent w-4/5"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Элемент 2: Генератор -->
+            <div class="absolute bottom-12 left-0 w-64 bg-slate-900 rounded-[20px] p-5 shadow-glow-primary border border-slate-800 animate-float-delayed z-30">
+                <div class="flex items-center gap-2 mb-3 text-white">
+                    <i class="ph-fill ph-magic-wand text-boo-primary text-xl"></i>
+                    <h4 class="font-bold text-sm">Генератор вариантов</h4>
+                </div>
+                <div class="bg-slate-800 rounded-xl p-3 text-xs text-slate-400 font-mono mb-3">
+                    > Подбор уникальных задач<br>
+                    > Защита от гугления<br>
+                    > <span class="text-green-400">Сформировано (24 вар.)</span>
+                </div>
+                <button class="w-full py-2 bg-boo-primary text-white text-xs font-bold rounded-lg shadow-sm border-b-2 border-purple-800 active:translate-y-[1px] active:border-b-0">Раздать классу</button>
+            </div>
+
+            <!-- Элемент 3: Доход -->
+            <div class="absolute top-40 right-4 bg-white rounded-2xl p-4 shadow-tactile border border-slate-200 flex flex-col gap-1 animate-float z-30" style="animation-delay: 1.5s;">
+                <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <i class="ph-fill ph-wallet"></i> Баланс ученика
+                </div>
+                <div class="font-black text-slate-900 text-lg text-center mt-1">
+                    <span class="text-boo-coral">-1 урок</span>
+                </div>
+                <div class="text-[10px] font-bold text-boo-coral text-center mt-1 bg-red-50 rounded py-0.5">Нужно напомнить</div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- BENTO GRID: FEATURES FOR TEACHERS -->
+    <section id="features" class="py-24 relative z-10 bg-white border-t border-slate-200">
+        <div class="max-w-[1200px] mx-auto px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl lg:text-5xl font-black text-slate-900 tracking-tight mb-4">Масштабируй своё преподавание</h2>
+                <p class="text-lg text-slate-500 font-medium max-w-2xl mx-auto">Освободи время для творчества и жизни. Рутину по проверке ДЗ, сбору статистики и пингам об оплате платформа берет на себя.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                
+                <!-- Большая карточка: Генератор и Защита -->
+                <div id="generator" class="md:col-span-2 lg:col-span-2 bg-slate-50 rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-sm p-8 lg:p-10 flex flex-col group relative overflow-hidden transition-all hover:shadow-tactile hover:-translate-y-1">
+                    <div class="absolute right-0 top-0 w-64 h-64 bg-cyan-100 rounded-full blur-3xl opacity-50 group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
+                    <div class="relative z-10">
+                        <div class="w-14 h-14 bg-white text-boo-cyan rounded-2xl flex items-center justify-center text-3xl mb-6 border border-slate-200 shadow-sm group-hover:rotate-12 transition-transform">
+                            <i class="ph-fill ph-shield-check"></i>
+                        </div>
+                        <h3 class="text-2xl font-black text-slate-900 mb-3">Защита от списывания</h3>
+                        <p class="text-slate-600 font-medium mb-8 max-w-sm">
+                            Генератор создает уникальный вариант для каждого ученика. В базе тысячи заданий. Найти готовый ответ в интернете не получится.
+                        </p>
+                    </div>
+                    <div class="mt-auto relative z-10 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <i class="ph-fill ph-users-three text-slate-400 text-2xl"></i>
+                            <div>
+                                <div class="font-bold text-slate-900 text-sm">Группа "ОГЭ Интенсив"</div>
+                                <div class="text-[10px] font-extrabold text-slate-400 uppercase">24 ученика</div>
+                            </div>
+                        </div>
+                        <span class="bg-green-50 text-green-600 px-3 py-1 rounded-lg text-xs font-bold border border-green-100">24 уник. варианта</span>
+                    </div>
+                </div>
+
+                <!-- Высокая карточка: CRM и Оплаты -->
+                <div class="md:col-span-1 lg:col-span-2 bg-[#0F172A] rounded-[32px] border border-slate-800 border-b-[4px] border-b-black shadow-tactile p-8 lg:p-10 flex flex-col group relative overflow-hidden">
+                    <div class="absolute left-0 bottom-0 w-64 h-64 bg-orange-500/20 rounded-full blur-3xl opacity-50 group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
+                    <div class="relative z-10">
+                        <div class="w-14 h-14 bg-slate-800 text-boo-accent rounded-2xl flex items-center justify-center text-3xl mb-6 border border-slate-700 shadow-sm group-hover:-translate-y-1 transition-transform">
+                            <i class="ph-fill ph-wallet"></i>
+                        </div>
+                        <h3 class="text-2xl font-black text-white mb-3">Умная CRM для репетитора</h3>
+                        <p class="text-slate-400 font-medium mb-8">
+                            Забудьте про таблички в Excel. Платформа сама считает баланс занятий, отмечает посещаемость и подсвечивает должников.
+                        </p>
+                    </div>
+                    <div class="mt-auto relative z-10 space-y-3">
+                        <div class="bg-black/50 rounded-2xl border border-slate-700 p-4 shadow-inner flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-slate-700"></div>
+                                <span class="text-white font-bold text-sm">Анна В.</span>
+                            </div>
+                            <span class="text-green-400 font-bold text-sm">+2 урока</span>
+                        </div>
+                        <div class="bg-red-500/10 rounded-2xl border border-red-500/30 p-4 shadow-inner flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-slate-700"></div>
+                                <span class="text-white font-bold text-sm">Петр С.</span>
+                            </div>
+                            <span class="text-red-400 font-bold text-sm">-1 урок (Долг)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Мелкая карточка 1: Интерактивная доска -->
+                <div class="md:col-span-1 lg:col-span-1 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col group">
+                    <div class="w-14 h-14 bg-purple-50 text-boo-primary rounded-2xl flex items-center justify-center text-3xl mb-6 border border-purple-100 shadow-sm group-hover:rotate-12 transition-transform">
+                        <i class="ph-fill ph-presentation-chart"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-900 mb-2">Онлайн доска</h3>
+                    <p class="text-slate-500 font-medium text-sm">Объясняйте материал наглядно. Совместное рисование с учениками в реальном времени.</p>
+                </div>
+
+                <!-- Мелкая карточка 2: Автопроверка кода -->
+                <div class="md:col-span-1 lg:col-span-2 bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-[32px] border border-purple-400/50 border-b-[4px] border-b-purple-800 shadow-tactile p-8 flex flex-col sm:flex-row items-center gap-6 group overflow-hidden relative text-white">
+                    <div class="absolute right-0 top-0 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                    <div class="relative z-10 flex-1">
+                        <h3 class="text-2xl font-black mb-2">Автопроверка кода</h3>
+                        <p class="text-purple-100 font-medium text-sm mb-4">Ученики пишут код на платформе. Платформа сама прогоняет его через тесты и ставит баллы. Больше никаких скриншотов с ошибками в личку.</p>
+                        <span class="bg-white/20 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 w-fit backdrop-blur-sm"><i class="ph-fill ph-check-circle"></i> Экономит часы времени</span>
+                    </div>
+                    <i class="ph-fill ph-file-code text-[100px] text-white/20 relative z-10 group-hover:scale-110 transition-transform duration-500"></i>
+                </div>
+
+                <!-- Мелкая карточка 3: База теории -->
+                <div class="md:col-span-1 lg:col-span-1 bg-slate-50 rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-sm p-8 flex flex-col group hover:-translate-y-1 hover:shadow-tactile transition-all">
+                    <div class="w-14 h-14 bg-white text-boo-primary rounded-2xl flex items-center justify-center text-3xl mb-6 shadow-sm border border-slate-200 group-hover:-translate-y-1 transition-transform">
+                        <i class="ph-fill ph-book-open-text"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-900 mb-2">Конструктор теории</h3>
+                    <p class="text-slate-500 font-medium text-sm">Создавайте красивые конспекты в Notion-подобном редакторе и делитесь ими с классами.</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section id="pricing" class="py-24 relative z-10 border-t border-slate-200 bg-slate-50/50">
+        <div class="max-w-[1000px] mx-auto px-6 lg:px-8 text-center">
+            <h2 class="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight mb-6">Создайте свой первый класс прямо сейчас</h2>
+            <p class="text-lg text-slate-500 font-medium mb-10 max-w-2xl mx-auto">
+                Регистрация преподавателя и ведение до 3-х учеников абсолютно бесплатны. Попробуйте все фишки платформы без риска.
+            </p>
+            <button class="px-10 py-5 bg-boo-primary text-white rounded-2xl font-black text-lg hover:bg-boo-primaryHover transition-all shadow-[0_10px_30px_rgba(123,92,255,0.3)] border-b-[4px] border-b-purple-800 active:translate-y-[3px] active:border-b-0 inline-flex items-center gap-3">
+                Зарегистрироваться как преподаватель <i class="ph-bold ph-chalkboard-teacher text-xl text-purple-200"></i>
+            </button>
+            <div class="mt-8 flex justify-center items-center gap-6">
+                <span class="text-xs font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2"><i class="ph-fill ph-check-circle text-green-500 text-lg"></i> Без привязки карты</span>
+                <span class="text-xs font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2"><i class="ph-fill ph-check-circle text-green-500 text-lg"></i> Готовая база ЕГЭ/ОГЭ</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 pt-16 pb-8 relative z-10">
+        <div class="max-w-[1200px] mx-auto px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100">
+                    <i class="ph-fill ph-ghost text-xl"></i>
+                </div>
+                <span class="font-black text-lg tracking-tight text-slate-900">BooStudy</span>
+            </div>
+            
+            <div class="text-sm font-medium text-slate-500">
+                &copy; 2026 BooStudy Platform. Сделано преподавателями.
+            </div>
+
+            <div class="flex items-center gap-4">
+                <a href="#" class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-boo-primary hover:bg-purple-50 transition-colors border border-slate-200 shadow-sm"><i class="ph-fill ph-telegram-logo text-xl"></i></a>
+                <a href="#" class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors border border-slate-200 shadow-sm"><i class="ph-fill ph-vk-logo text-xl"></i></a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

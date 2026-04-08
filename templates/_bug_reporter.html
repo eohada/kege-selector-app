@@ -1,0 +1,190 @@
+{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}
+<style>
+.bug-reporter-floating {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    background-color: var(--color-danger, #ef4444);
+    color: white;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s, background-color 0.2s;
+}
+.bug-reporter-floating:hover {
+    transform: scale(1.1);
+    background-color: var(--color-danger-hover, #dc2626);
+}
+.bug-reporter-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+.bug-reporter-modal.active {
+    display: flex;
+}
+.bug-reporter-content {
+    background: var(--bg-card, #ffffff);
+    color: var(--text-primary, #111827);
+    padding: 24px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+.bug-reporter-content h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+.bug-reporter-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-family: inherit;
+    resize: vertical;
+    background: var(--input-bg, #ffffff);
+    color: var(--input-text, #111827);
+}
+.bug-reporter-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+.bug-reporter-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+.bug-reporter-btn-cancel {
+    background: var(--btn-secondary-bg, #f3f4f6);
+    color: var(--btn-secondary-text, #4b5563);
+}
+.bug-reporter-btn-cancel:hover {
+    background: #e5e7eb;
+}
+.bug-reporter-btn-submit {
+    background: var(--btn-primary-bg, #3b82f6);
+    color: #ffffff;
+}
+.bug-reporter-btn-submit:hover {
+    background: #2563eb;
+}
+[data-theme='dark'] .bug-reporter-content {
+    background: #1f2937;
+    color: #f9fafb;
+}
+[data-theme='dark'] .bug-reporter-textarea {
+    background: #374151;
+    color: #f9fafb;
+    border-color: #4b5563;
+}
+[data-theme='dark'] .bug-reporter-btn-cancel {
+    background: #374151;
+    color: #d1d5db;
+}
+</style>
+
+<div class="bug-reporter-floating" id="bugReporterFab" title="Сообщить об ошибке">
+    <i class="ph ph-bug" style="font-size: 24px;"></i>
+</div>
+
+<div class="bug-reporter-modal" id="bugReporterModal">
+    <div class="bug-reporter-content">
+        <h3>Сообщить об ошибке</h3>
+        <p style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-secondary, #6b7280);">
+            Пожалуйста, опишите проблему. Что вы делали и что пошло не так?
+        </p>
+        <textarea id="bugReporterText" class="bug-reporter-textarea" placeholder="Кнопка не нажимается, ошибка при сохранении и т.д."></textarea>
+        <div class="bug-reporter-footer">
+            <button class="bug-reporter-btn bug-reporter-btn-cancel" id="bugReporterCancel">Отмена</button>
+            <button class="bug-reporter-btn bug-reporter-btn-submit" id="bugReporterSubmit">Отправить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fab = document.getElementById('bugReporterFab');
+    const modal = document.getElementById('bugReporterModal');
+    const cancelBtn = document.getElementById('bugReporterCancel');
+    const submitBtn = document.getElementById('bugReporterSubmit');
+    const textArea = document.getElementById('bugReporterText');
+
+    if (!fab || !modal) return;
+
+    function openModal() {
+        modal.classList.add('active');
+        textArea.focus();
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+        textArea.value = '';
+    }
+
+    fab.addEventListener('click', openModal);
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+
+    submitBtn.addEventListener('click', function() {
+        const description = textArea.value.trim();
+        if (!description) {
+            if (window.toast) toast.error('Пожалуйста, опишите проблему');
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+
+        fetch('/api/bug_report', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            body: JSON.stringify({
+                description: description,
+                url_context: window.location.href
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (window.toast) toast.success(data.message || 'Отчет отправлен');
+                closeModal();
+            } else {
+                if (window.toast) toast.error(data.error || 'Ошибка при отправке');
+            }
+        })
+        .catch(err => {
+            if (window.toast) toast.error('Сетевая ошибка при отправке');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+        });
+    });
+});
+</script>
+{% endif %}

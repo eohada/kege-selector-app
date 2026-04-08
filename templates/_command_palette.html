@@ -28,6 +28,11 @@
                     <a href="{{ url_for('task_generator.task_generator') }}" class="cmd-palette-item">
                         <i class="ph-bold ph-magic-wand text-base text-muted"></i> Генератор задач
                     </a>
+                    {% if current_user.is_creator() or current_user.is_admin() or current_user.is_chief_admin() %}
+                    <a href="{{ url_for('main.platform_bug_reports') }}" class="cmd-palette-item">
+                        <i class="ph-bold ph-bug text-base text-muted"></i> Баг-репорты
+                    </a>
+                    {% endif %}
                     {% endif %}
                     <a href="{{ url_for('auth.user_profile') }}" class="cmd-palette-item">
                         <i class="ph-bold ph-user text-base text-muted"></i> Мой профиль
@@ -146,6 +151,9 @@ function cmdPalette() {
             {% endif %}
             {% if current_user.is_chief_tester() or current_user.is_creator() %}
             a.push({ title: 'Кабинет главного тестировщика', url: "{{ url_for('chief_tester.dashboard') }}" });
+            {% endif %}
+            {% if current_user.is_creator() or current_user.is_admin() or current_user.is_chief_admin() %}
+            a.push({ title: '🐛 Баг-репорты платформы', url: "{{ url_for('main.platform_bug_reports') }}" });
             {% endif %}
             a.push({ title: 'Тренажёр', url: "{{ url_for('trainer.trainer_v2') }}" });
             a.push({ title: 'Генератор задач', url: "{{ url_for('task_generator.task_generator') }}" });

@@ -171,6 +171,24 @@ def _build_dashboard_payload(session, user_id: int, user_row: tuple) -> dict:
     recent_grades = []
     creator_mode = _is_creator_role(user_id)
 
+    creator_stats = None
+    if creator_mode:
+        active_students = session.execute(text("""SELECT COUNT(*) FROM "Students" WHERE is_active = TRUE""")).scalar() or 0
+        pending_checks = session.execute(text("""SELECT COUNT(*) FROM "Lessons" WHERE homework_status = 'submitted'""")).scalar() or 0
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start_naive = today_start.replace(tzinfo=None) if today_start.tzinfo else today_start
+        today_end_naive = today_start_naive + timedelta(days=1)
+        today_lessons = session.execute(text("""
+            SELECT COUNT(*) FROM "Lessons"
+            WHERE lesson_date >= :tstart AND lesson_date < :tend
+              AND status IN ('planned', 'in_progress')
+        """), {'tstart': today_start_naive, 'tend': today_end_naive}).scalar() or 0
+        creator_stats = {
+            'active_students': active_students,
+            'pending_checks': pending_checks,
+            'today_lessons': today_lessons,
+        }
+
     student_row = _student_row_for_user(session, user_id)
 
     if student_row:
@@ -191,33 +209,23 @@ def _build_dashboard_payload(session, user_id: int, user_row: tuple) -> dict:
 
         pending_hw = session.execute(text("""
             SELECT COUNT(*)
-            FROM "Submissions" s
-            JOIN "Assignments" a ON a.assignment_id = s.assignment_id
-            WHERE s.student_id = :sid
-              AND s.status IN ('ASSIGNED', 'IN_PROGRESS', 'RETURNED')
+            FROM "Lessons"
+            WHERE student_id = :sid AND homework_status IN ('assigned', 'returned')
         """), {'sid': sid}).scalar() or 0
 
         grade_rows = session.execute(text("""
-            SELECT a.title, s.status, s.graded_at,
-                   COALESCE(
-                       (SELECT sa.percentage FROM "SubmissionAttempts" sa
-                        WHERE sa.submission_id = s.submission_id
-                        ORDER BY sa.attempt_no DESC LIMIT 1),
-                       NULL
-                   ) AS pct
-            FROM "Submissions" s
-            JOIN "Assignments" a ON a.assignment_id = s.assignment_id
-            WHERE s.student_id = :sid
-              AND s.status IN ('GRADED', 'AUTO_GRADED')
-            ORDER BY CASE WHEN s.graded_at IS NULL THEN 1 ELSE 0 END, s.graded_at DESC
+            SELECT topic, homework_status, updated_at, homework_result_percent
+            FROM "Lessons"
+            WHERE student_id = :sid AND homework_status IN ('graded', 'submitted')
+            ORDER BY updated_at DESC
             LIMIT 5
         """), {'sid': sid}).fetchall()
 
-        for title, status, graded_at, pct in grade_rows:
+        for title, status, updated_at, pct in grade_rows:
             recent_grades.append({
                 'title': title or '—',
                 'status': status,
-                'graded_at': graded_at.isoformat() if graded_at else None,
+                'graded_at': updated_at.isoformat() if updated_at else None,
                 'percentage': round(float(pct), 1) if pct is not None else None,
             })
 
@@ -228,6 +236,7 @@ def _build_dashboard_payload(session, user_id: int, user_row: tuple) -> dict:
             'role': role,
         },
         'creator_mode': creator_mode,
+        'creator_stats': creator_stats,
         'schedule': schedule,
         'pending_homework': pending_hw,
         'recent_grades': recent_grades,
@@ -315,48 +324,46 @@ def mini_app_api_progress():
     sid = int(student_row[0])
     pending_hw = db.session.execute(text("""
         SELECT COUNT(*)
-        FROM "Submissions" s
-        WHERE s.student_id = :sid
-          AND s.status IN ('ASSIGNED', 'IN_PROGRESS', 'RETURNED')
+        FROM "Lessons"
+        WHERE student_id = :sid
+          AND homework_status IN ('assigned', 'returned')
     """), {'sid': sid}).scalar() or 0
 
     sub_rows = db.session.execute(text("""
-        SELECT a.title, s.status,
-               COALESCE(s.submitted_at, s.updated_at) AS activity_at,
-               s.percentage
-        FROM "Submissions" s
-        JOIN "Assignments" a ON a.assignment_id = s.assignment_id
-        WHERE s.student_id = :sid
-        ORDER BY CASE WHEN COALESCE(s.submitted_at, s.updated_at) IS NULL THEN 1 ELSE 0 END,
-                 COALESCE(s.submitted_at, s.updated_at) DESC
+        SELECT lesson_id, topic, homework_status, updated_at, homework_result_percent
+        FROM "Lessons"
+        WHERE student_id = :sid
+          AND homework_status != 'not_assigned'
+        ORDER BY updated_at DESC
         LIMIT 25
     """), {'sid': sid}).fetchall()
 
     submissions = []
-    for title, status, activity_at, pct in sub_rows:
+    for lid, title, status, activity_at, pct in sub_rows:
         submissions.append({
             'title': title or '—',
             'status': status,
+            'lesson_url': _lesson_room_url(int(lid)),
             'activity_at': activity_at.isoformat() if activity_at else None,
             'percentage': round(float(pct), 1) if pct is not None else None,
         })
 
     gb_rows = db.session.execute(text("""
-        SELECT title, score, max_score, grade_text, created_at
-        FROM "GradebookEntries"
-        WHERE student_id = :sid
-        ORDER BY created_at DESC
+        SELECT topic, homework_result_percent, updated_at
+        FROM "Lessons"
+        WHERE student_id = :sid AND homework_status = 'graded'
+        ORDER BY updated_at DESC
         LIMIT 8
     """), {'sid': sid}).fetchall()
 
     gradebook = []
-    for title, score, max_score, grade_text, created_at in gb_rows:
+    for title, pct, updated_at in gb_rows:
         gradebook.append({
             'title': title or '—',
-            'score': score,
-            'max_score': max_score,
-            'grade_text': grade_text,
-            'created_at': created_at.isoformat() if created_at else None,
+            'score': round(float(pct), 1) if pct is not None else None,
+            'max_score': 100,
+            'grade_text': '',
+            'created_at': updated_at.isoformat() if updated_at else None,
         })
 
     return jsonify({

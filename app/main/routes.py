@@ -943,3 +943,13 @@ def backup_db():
 def faq():
     """База знаний / FAQ для учеников и родителей."""
     return render_template('faq.html', active_page='faq')
+
+
+@main_bp.route('/platform-bug-reports')
+@login_required
+def platform_bug_reports():
+    """Страница просмотра и управления баг-репортами пользователей (создатель/администратор)."""
+    if not (current_user.is_creator() or current_user.is_admin() or current_user.is_chief_admin()):
+        flash('Доступ запрещен', 'error')
+        return redirect(url_for('main.dashboard'))
+    return render_template('platform_bug_reports.html', active_page='bug_reports')

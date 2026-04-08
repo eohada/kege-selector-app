@@ -69,7 +69,7 @@
 
         <div class="tab-bar" id="tabs"></div>
 
-        <div id="pane-overview" class="tab-panel active space-y-4">
+        <div id="pane-overview-student" class="tab-panel active space-y-4">
             <div class="card p-4 flex items-center gap-4" style="background:var(--tg-theme-secondary-bg-color)">
                 <span class="text-3xl">📝</span>
                 <div>
@@ -86,6 +86,28 @@
                 <h2 class="font-bold text-sm uppercase tracking-wide text-[var(--tg-theme-hint-color)] mb-2">📊 Последние оценки</h2>
                 <div id="grades-list" class="space-y-2"></div>
                 <p id="grades-empty" class="hidden text-sm text-[var(--tg-theme-hint-color)]">Оценок пока нет</p>
+            </div>
+        </div>
+
+        <div id="pane-overview-creator" class="tab-panel space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="card p-4 flex flex-col items-center justify-center text-center" style="background:var(--tg-theme-secondary-bg-color)">
+                    <span class="text-2xl mb-1">👨‍🎓</span>
+                    <p class="text-xl font-extrabold" id="creator-active-students">0</p>
+                    <p class="text-[10px] text-[var(--tg-theme-hint-color)] uppercase tracking-wide">Активных учеников</p>
+                </div>
+                <div class="card p-4 flex flex-col items-center justify-center text-center" style="background:var(--tg-theme-secondary-bg-color)">
+                    <span class="text-2xl mb-1">📋</span>
+                    <p class="text-xl font-extrabold" id="creator-pending-checks">0</p>
+                    <p class="text-[10px] text-[var(--tg-theme-hint-color)] uppercase tracking-wide">Работ на проверку</p>
+                </div>
+            </div>
+            <div class="card p-4 flex items-center gap-4" style="background:var(--tg-theme-secondary-bg-color)">
+                <span class="text-3xl">📅</span>
+                <div>
+                    <p class="text-2xl font-extrabold leading-none" id="creator-today-lessons">0</p>
+                    <p class="text-xs text-[var(--tg-theme-hint-color)] mt-0.5">уроков сегодня</p>
+                </div>
             </div>
         </div>
 
@@ -123,6 +145,7 @@
 
         <div id="pane-students_creator" class="tab-panel">
             <p class="text-xs text-[var(--tg-theme-hint-color)] mb-2">Ученики и привязка к боту</p>
+            <input type="text" id="students-search" placeholder="Поиск учеников..." class="w-full rounded-xl p-2 text-sm border border-slate-200 mb-2" oninput="filterCreatorStudents()">
             <div id="creator-students" class="space-y-2 max-h-[65vh] overflow-y-auto text-sm"></div>
         </div>
     </div>
@@ -186,6 +209,10 @@
                 return;
             }
             state.creatorMode = !!data.creator_mode;
+            // Set default tab based on role if not already set by user
+            if (state.activeTab === 'overview') {
+                state.activeTab = state.creatorMode ? 'overview_creator' : 'overview_student';
+            }
             renderTabs();
             renderOverview(data);
             hideErrorShowMain();
@@ -207,20 +234,23 @@
             b.onclick = function() { setTab(id); };
             tabs.appendChild(b);
         }
-        addTab('overview', 'Обзор');
-        addTab('theory', 'Теория');
-        addTab('progress', 'Прогресс');
-        addTab('profile', 'Профиль');
         if (state.creatorMode) {
+            addTab('overview_creator', 'Статистика');
             addTab('broadcast', 'Рассылка');
             addTab('students', 'Ученики');
+            addTab('profile', 'Профиль');
+        } else {
+            addTab('overview_student', 'Обзор');
+            addTab('theory', 'Теория');
+            addTab('progress', 'Прогресс');
+            addTab('profile', 'Профиль');
         }
         document.querySelectorAll('.tab-panel').forEach(function(p) {
             p.classList.remove('active');
         });
-        var pane = document.getElementById('pane-' + (state.activeTab === 'students' ? 'students_creator' : state.activeTab));
+        var paneId = 'pane-' + (state.activeTab === 'students' ? 'students_creator' : state.activeTab);
+        var pane = document.getElementById(paneId);
         if (pane) pane.classList.add('active');
-        else document.getElementById('pane-overview').classList.add('active');
     }
 
     function setTab(id) {
@@ -237,58 +267,66 @@
         var name = u.name || 'Ученик';
         document.getElementById('user-name').textContent = name;
         document.getElementById('avatar').textContent = name.charAt(0).toUpperCase();
-        document.getElementById('hw-count').textContent = data.pending_homework || 0;
 
-        var scheduleEl = document.getElementById('schedule-list');
-        var emptySchedule = document.getElementById('schedule-empty');
-        scheduleEl.innerHTML = '';
-        if (data.schedule && data.schedule.length) {
-            emptySchedule.classList.add('hidden');
-            data.schedule.forEach(function(l) {
-                var d = l.date ? new Date(l.date) : null;
-                var dateStr = d ? d.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'})
-                               + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})
-                               : '—';
-                var card = document.createElement('div');
-                card.className = 'card p-3 flex items-center gap-3';
-                card.style.background = 'var(--tg-theme-secondary-bg-color)';
-                var linkBtn = l.lesson_url
-                    ? '<a href="' + escAttr(l.lesson_url) + '" target="_blank" rel="noopener" class="text-xs font-bold px-2 py-1 rounded-lg no-underline" style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">В класс</a>'
-                    : '';
-                card.innerHTML =
-                    '<div class="text-center min-w-[52px]">' +
-                        '<p class="text-xs text-[var(--tg-theme-hint-color)]">' + dateStr + '</p>' +
-                    '</div>' +
-                    '<div class="flex-1 min-w-0">' +
-                        '<p class="font-semibold text-sm truncate">' + esc(l.topic) + '</p>' +
-                        '<p class="text-xs text-[var(--tg-theme-hint-color)]">' + (l.duration || 60) + ' мин</p>' +
-                    '</div>' +
-                    '<div class="shrink-0">' + linkBtn + '</div>';
-                scheduleEl.appendChild(card);
-            });
+        if (state.creatorMode) {
+            var stats = data.creator_stats || {};
+            document.getElementById('creator-active-students').textContent = stats.active_students || 0;
+            document.getElementById('creator-pending-checks').textContent = stats.pending_checks || 0;
+            document.getElementById('creator-today-lessons').textContent = stats.today_lessons || 0;
         } else {
-            emptySchedule.classList.remove('hidden');
-        }
+            document.getElementById('hw-count').textContent = data.pending_homework || 0;
 
-        var gradesEl = document.getElementById('grades-list');
-        var emptyGrades = document.getElementById('grades-empty');
-        gradesEl.innerHTML = '';
-        if (data.recent_grades && data.recent_grades.length) {
-            emptyGrades.classList.add('hidden');
-            data.recent_grades.forEach(function(g) {
-                var pct = g.percentage;
-                var cls = pct == null ? 'grade-mid' : (pct >= 70 ? 'grade-good' : (pct >= 40 ? 'grade-mid' : 'grade-low'));
-                var pctText = pct != null ? (Math.round(pct) + '%') : '—';
-                var card = document.createElement('div');
-                card.className = 'card p-3 flex items-center justify-between';
-                card.style.background = 'var(--tg-theme-secondary-bg-color)';
-                card.innerHTML =
-                    '<p class="font-semibold text-sm truncate flex-1 min-w-0">' + esc(g.title) + '</p>' +
-                    '<span class="grade-pill ' + cls + ' ml-2 shrink-0">' + pctText + '</span>';
-                gradesEl.appendChild(card);
-            });
-        } else {
-            emptyGrades.classList.remove('hidden');
+            var scheduleEl = document.getElementById('schedule-list');
+            var emptySchedule = document.getElementById('schedule-empty');
+            scheduleEl.innerHTML = '';
+            if (data.schedule && data.schedule.length) {
+                emptySchedule.classList.add('hidden');
+                data.schedule.forEach(function(l) {
+                    var d = l.date ? new Date(l.date) : null;
+                    var dateStr = d ? d.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'})
+                                   + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})
+                                   : '—';
+                    var card = document.createElement('div');
+                    card.className = 'card p-3 flex items-center gap-3';
+                    card.style.background = 'var(--tg-theme-secondary-bg-color)';
+                    var linkBtn = l.lesson_url
+                        ? '<a href="' + escAttr(l.lesson_url) + '" target="_blank" rel="noopener" class="text-xs font-bold px-3 py-1.5 rounded-lg no-underline flex items-center gap-1" style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">В класс <i class="ph ph-arrow-right"></i></a>'
+                        : '';
+                    card.innerHTML =
+                        '<div class="text-center min-w-[52px]">' +
+                            '<p class="text-xs text-[var(--tg-theme-hint-color)]">' + dateStr + '</p>' +
+                        '</div>' +
+                        '<div class="flex-1 min-w-0">' +
+                            '<p class="font-semibold text-sm truncate">' + esc(l.topic) + '</p>' +
+                            '<p class="text-xs text-[var(--tg-theme-hint-color)]">' + (l.duration || 60) + ' мин</p>' +
+                        '</div>' +
+                        '<div class="shrink-0">' + linkBtn + '</div>';
+                    scheduleEl.appendChild(card);
+                });
+            } else {
+                emptySchedule.classList.remove('hidden');
+            }
+
+            var gradesEl = document.getElementById('grades-list');
+            var emptyGrades = document.getElementById('grades-empty');
+            gradesEl.innerHTML = '';
+            if (data.recent_grades && data.recent_grades.length) {
+                emptyGrades.classList.add('hidden');
+                data.recent_grades.forEach(function(g) {
+                    var pct = g.percentage;
+                    var cls = pct == null ? 'grade-mid' : (pct >= 70 ? 'grade-good' : (pct >= 40 ? 'grade-mid' : 'grade-low'));
+                    var pctText = pct != null ? (Math.round(pct) + '%') : '—';
+                    var card = document.createElement('div');
+                    card.className = 'card p-3 flex items-center justify-between';
+                    card.style.background = 'var(--tg-theme-secondary-bg-color)';
+                    card.innerHTML =
+                        '<p class="font-semibold text-sm truncate flex-1 min-w-0">' + esc(g.title) + '</p>' +
+                        '<span class="grade-pill ' + cls + ' ml-2 shrink-0">' + pctText + '</span>';
+                    gradesEl.appendChild(card);
+                });
+            } else {
+                emptyGrades.classList.remove('hidden');
+            }
         }
     }
 
@@ -298,11 +336,17 @@
             document.getElementById('progress-submissions').innerHTML = '';
             (data.submissions || []).forEach(function(s) {
                 var row = document.createElement('div');
-                row.className = 'card p-2';
+                row.className = 'card p-3 flex justify-between items-center gap-2';
                 row.style.background = 'var(--tg-theme-secondary-bg-color)';
-                row.innerHTML = '<div class="font-semibold text-xs">' + esc(s.title) + '</div>' +
-                    '<div class="text-[11px] text-[var(--tg-theme-hint-color)]">' + esc(s.status) +
-                    (s.percentage != null ? ' · ' + Math.round(s.percentage) + '%' : '') + '</div>';
+                
+                var linkBtn = s.lesson_url
+                    ? '<a href="' + escAttr(s.lesson_url) + '" target="_blank" class="text-xs font-bold px-3 py-1.5 rounded-lg no-underline whitespace-nowrap" style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">Открыть</a>'
+                    : '';
+
+                row.innerHTML = '<div class="flex-1 min-w-0"><div class="font-semibold text-sm truncate">' + esc(s.title) + '</div>' +
+                    '<div class="text-[11px] text-[var(--tg-theme-hint-color)] mt-0.5">' + esc(s.status) +
+                    (s.percentage != null ? ' · ' + Math.round(s.percentage) + '%' : '') + '</div></div>' + 
+                    '<div class="shrink-0">' + linkBtn + '</div>';
                 document.getElementById('progress-submissions').appendChild(row);
             });
             document.getElementById('progress-gradebook').innerHTML = '';
@@ -404,21 +448,40 @@
         }).catch(function() { st.textContent = 'Сеть'; });
     };
 
+    window.allCreatorStudents = [];
+
     function loadCreatorStudents() {
         apiPost('/tg-app/api/creator/students', {}).then(function(data) {
-            var el = document.getElementById('creator-students');
-            el.innerHTML = '';
             if (!data.ok) return;
-            (data.students || []).forEach(function(s) {
-                var row = document.createElement('div');
-                row.className = 'card p-3 flex justify-between gap-2';
-                row.style.background = 'var(--tg-theme-secondary-bg-color)';
-                var badge = s.telegram_linked ? '<span class="text-green-700 font-bold text-xs">TG</span>' : '<span class="text-slate-400 text-xs">—</span>';
-                row.innerHTML = '<div><div class="font-semibold">' + esc(s.name) + '</div>' +
-                    '<div class="text-[11px] text-[var(--tg-theme-hint-color)]">id ' + s.student_id + '</div></div>' +
-                    '<div class="text-right text-[11px]">' + badge + '<div class="text-[var(--tg-theme-hint-color)]">' + esc(s.last_activity_at || '—') + '</div></div>';
-                el.appendChild(row);
-            });
+            window.allCreatorStudents = data.students || [];
+            renderCreatorStudentsList(window.allCreatorStudents);
+        });
+    }
+
+    window.filterCreatorStudents = function() {
+        var q = (document.getElementById('students-search').value || '').toLowerCase();
+        if (!q) {
+            renderCreatorStudentsList(window.allCreatorStudents);
+            return;
+        }
+        var filtered = window.allCreatorStudents.filter(function(s) {
+            return (s.name || '').toLowerCase().indexOf(q) !== -1 || ('id ' + s.student_id).indexOf(q) !== -1;
+        });
+        renderCreatorStudentsList(filtered);
+    };
+
+    function renderCreatorStudentsList(list) {
+        var el = document.getElementById('creator-students');
+        el.innerHTML = '';
+        list.forEach(function(s) {
+            var row = document.createElement('div');
+            row.className = 'card p-3 flex justify-between gap-2';
+            row.style.background = 'var(--tg-theme-secondary-bg-color)';
+            var badge = s.telegram_linked ? '<span class="text-green-700 font-bold text-xs">TG</span>' : '<span class="text-slate-400 text-xs">—</span>';
+            row.innerHTML = '<div><div class="font-semibold">' + esc(s.name) + '</div>' +
+                '<div class="text-[11px] text-[var(--tg-theme-hint-color)]">id ' + s.student_id + '</div></div>' +
+                '<div class="text-right text-[11px]">' + badge + '<div class="text-[var(--tg-theme-hint-color)]">' + esc(s.last_activity_at ? new Date(s.last_activity_at).toLocaleDateString('ru-RU') : '—') + '</div></div>';
+            el.appendChild(row);
         });
     }
 
