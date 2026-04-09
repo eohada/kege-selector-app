@@ -133,9 +133,13 @@ def _render_theory_content_html(content_value):
         ctype = (match.group(1) or 'tip').strip().lower()
         body = (match.group(2) or '').strip()
         body = re.sub(r'^(ВНИМАНИЕ|ЛАЙФХАК|ОСТОРОЖНО)\s*:\s*', '', body, flags=re.IGNORECASE)
-        # Inline markdown parity with teacher preview (e.g. **Важно:**)
-        body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', body)
-        body = re.sub(r'\*(.+?)\*', r'<em>\1</em>', body)
+        # Inline markdown parity with teacher preview (bold/italic/code),
+        # but keep it safe for direct HTML rendering.
+        safe_body = html.escape(body)
+        safe_body = re.sub(r'`([^`]+)`', r'<code>\1</code>', safe_body)
+        safe_body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', safe_body)
+        safe_body = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<em>\1</em>', safe_body)
+        safe_body = safe_body.replace('\n', '<br>')
         theme = {
             'attention': {'title': 'Внимание', 'bg': '#FFF7ED', 'border': '#FED7AA', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FFFFFF', 'icon_color': '#EA580C'},
             'tip': {'title': 'Лайфхак', 'bg': '#ECFEFF', 'border': '#A5F3FC', 'icon': 'ph-fill ph-lightbulb', 'icon_bg': '#FFFFFF', 'icon_color': '#06B6D4'},
@@ -146,7 +150,7 @@ def _render_theory_content_html(content_value):
             f'<div class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center shadow-sm" style="background:{theme["icon_bg"]};color:{theme["icon_color"]};border:1px solid {theme["border"]};">'
             f'<i class="{theme["icon"]} text-xl"></i></div>'
             f'<div><h4 class="font-black text-2xl leading-snug text-slate-900 mb-1">{theme["title"]}</h4>'
-            f'<p class="text-sm leading-relaxed font-extrabold text-slate-800 uppercase tracking-wide">{body}</p></div>'
+            f'<p class="text-sm leading-relaxed font-extrabold text-slate-800">{safe_body}</p></div>'
             '</div>'
         )
 
@@ -185,6 +189,9 @@ def _render_theory_content_html(content_value):
         return ''.join(parts)
 
     text = _preserve_blank_lines_outside_code_blocks(text)
+    # Convert star-list markers to dash-list markers before markdown parse
+    # to reduce cases where raw "*" leaks into rendered text.
+    text = re.sub(r'(?m)^\s*\*\s+', '- ', text)
     text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
@@ -200,7 +207,7 @@ def _render_theory_content_html(content_value):
     )
     try:
         from markdown import markdown as _md
-        text = _md(text, extensions=['extra', 'tables', 'fenced_code', 'nl2br'])
+        text = _md(text, extensions=['extra', 'tables', 'fenced_code'])
     except Exception:
         pass
     text = text.replace('<p>__THEORY_SPACER__</p>', '<div class="theory-spacer"></div>')
@@ -732,10 +739,20 @@ def manage_list():
                 'comment': fb.comment if fb else None,
                 'updated_at': (fb.updated_at if fb else (st_row.updated_at if st_row else None)),
             })
-        comments_history = TheoryFeedbackHistory.query.filter_by(
+        # Show only the latest feedback snapshot per student in teacher panel.
+        history_rows = TheoryFeedbackHistory.query.filter_by(
             course_id=course_id,
             task_number=selected_block.task_number,
-        ).order_by(TheoryFeedbackHistory.created_at.desc()).limit(100).all()
+        ).order_by(TheoryFeedbackHistory.created_at.desc()).all()
+        latest_by_student = {}
+        for row in history_rows:
+            if row.student_id not in latest_by_student:
+                latest_by_student[row.student_id] = row
+        comments_history = sorted(
+            latest_by_student.values(),
+            key=lambda x: x.created_at or moscow_now(),
+            reverse=True,
+        )[:100]
 
     from app.models import Course as ExamCourse
     course = ExamCourse.query.get(course_id) if course_id else None
@@ -1211,15 +1228,24 @@ def theory_api_feedback():
     except Exception:
         row.rating = None
     row.comment = comment or None
-    history_row = TheoryFeedbackHistory(
+    # Upsert latest feedback snapshot per student/topic instead of creating duplicates.
+    history_row = TheoryFeedbackHistory.query.filter_by(
         student_id=student.student_id,
-        user_id=current_user.id,
         course_id=course_id,
         task_number=task_number,
-        rating=row.rating,
-        comment=row.comment,
-    )
-    db.session.add(history_row)
+    ).order_by(TheoryFeedbackHistory.id.desc()).first()
+    if not history_row:
+        history_row = TheoryFeedbackHistory(
+            student_id=student.student_id,
+            user_id=current_user.id,
+            course_id=course_id,
+            task_number=task_number,
+        )
+        db.session.add(history_row)
+    history_row.user_id = current_user.id
+    history_row.rating = row.rating
+    history_row.comment = row.comment
+    history_row.created_at = moscow_now()
     db.session.commit()
     return jsonify({'success': True})
 
