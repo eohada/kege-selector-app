@@ -82,6 +82,7 @@ def create_app(config_name=None):
     
     app.config['AVATAR_UPLOAD_ROOT'] = (os.environ.get('AVATAR_UPLOAD_ROOT') or '').strip() or None
     app.config['COVER_UPLOAD_ROOT'] = (os.environ.get('COVER_UPLOAD_ROOT') or '').strip() or None
+    app.config['THEORY_UPLOAD_ROOT'] = (os.environ.get('THEORY_UPLOAD_ROOT') or '').strip() or None
     # Корень папки вложений заданий (uploads/task_attachments). На Timeweb можно задать путь к volume.
     app.config['TASK_ATTACHMENTS_ROOT'] = (os.environ.get('TASK_ATTACHMENTS_ROOT') or '').strip().rstrip(os.sep) or None
     # Корень папки вложений ответов учеников (uploads/answer_attachments).

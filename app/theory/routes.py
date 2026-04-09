@@ -7,8 +7,9 @@ import os
 import re
 import subprocess
 import html
+import mimetypes
 from collections import defaultdict
-from flask import render_template, request, redirect, url_for, flash, abort, jsonify, current_app
+from flask import render_template, request, redirect, url_for, flash, abort, jsonify, current_app, send_file
 from markupsafe import Markup
 from flask_login import login_required, current_user
 from sqlalchemy import func
@@ -518,6 +519,41 @@ def _can_manage_theory():
     return bool(has_permission(current_user, 'theory.manage'))
 
 
+def _resolve_theory_storage(subfolder: str):
+    """
+    Resolve storage folder for theory uploads.
+    If THEORY_UPLOAD_ROOT is set, use persistent folder outside static.
+    Otherwise fallback to static/uploads/theory_* (legacy behavior).
+    """
+    persistent_root = current_app.config.get('THEORY_UPLOAD_ROOT')
+    if persistent_root:
+        base_root = os.path.abspath(persistent_root)
+        base_folder = os.path.join(base_root, subfolder)
+        os.makedirs(base_folder, exist_ok=True)
+        return {
+            'persistent': True,
+            'base_root': base_root,
+            'base_folder': base_folder,
+        }
+
+    static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+    base_folder = os.path.join(static_root, 'uploads', subfolder)
+    os.makedirs(base_folder, exist_ok=True)
+    return {
+        'persistent': False,
+        'base_root': static_root,
+        'base_folder': base_folder,
+    }
+
+
+def _build_theory_public_url(abs_path: str, base_root: str, persistent: bool):
+    rel = os.path.relpath(abs_path, base_root).replace('\\', '/')
+    if persistent:
+        # Served via auth-protected route from persistent volume.
+        return url_for('theory.theory_uploaded_file', rel_path=rel)
+    return url_for('static', filename=rel)
+
+
 @theory_bp.route('/theory/manage', methods=['GET', 'POST'])
 @login_required
 def manage_list():
@@ -795,16 +831,15 @@ def upload_image():
 
     try:
         from app.uploads.service import save_uploaded_file
-        static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
-        upload_folder = os.path.join(static_root, 'uploads', 'theory', str(current_user.id))
+        storage = _resolve_theory_storage('theory')
+        upload_folder = os.path.join(storage['base_folder'], str(current_user.id))
         orig, abs_path, _size = save_uploaded_file(
             file=file,
             base_folder=upload_folder,
             allowed_exts={'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'},
             max_bytes=15 * 1024 * 1024,
         )
-        rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
-        url = url_for('static', filename=rel)
+        url = _build_theory_public_url(abs_path, storage['base_root'], storage['persistent'])
         return jsonify({'success': True, 'url': url})
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -826,16 +861,15 @@ def upload_pdf():
 
     try:
         from app.uploads.service import save_uploaded_file
-        static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
-        upload_folder = os.path.join(static_root, 'uploads', 'theory_pdfs', str(current_user.id))
+        storage = _resolve_theory_storage('theory_pdfs')
+        upload_folder = os.path.join(storage['base_folder'], str(current_user.id))
         orig, abs_path, _size = save_uploaded_file(
             file=file,
             base_folder=upload_folder,
             allowed_exts={'pdf'},
             max_bytes=30 * 1024 * 1024,
         )
-        rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
-        url = url_for('static', filename=rel)
+        url = _build_theory_public_url(abs_path, storage['base_root'], storage['persistent'])
         return jsonify({'success': True, 'url': url, 'name': orig})
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -857,8 +891,8 @@ def upload_file():
 
     try:
         from app.uploads.service import save_uploaded_file
-        static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
-        upload_folder = os.path.join(static_root, 'uploads', 'theory_files', str(current_user.id))
+        storage = _resolve_theory_storage('theory_files')
+        upload_folder = os.path.join(storage['base_folder'], str(current_user.id))
         orig, abs_path, _size = save_uploaded_file(
             file=file,
             base_folder=upload_folder,
@@ -868,14 +902,39 @@ def upload_file():
             },
             max_bytes=40 * 1024 * 1024,
         )
-        rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
-        url = url_for('static', filename=rel)
+        url = _build_theory_public_url(abs_path, storage['base_root'], storage['persistent'])
         return jsonify({'success': True, 'url': url, 'name': orig})
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception:
         logger.exception('Theory file upload failed')
         return jsonify({'success': False, 'error': 'Ошибка загрузки файла'}), 500
+
+
+@theory_bp.route('/theory/uploads/<path:rel_path>', methods=['GET'])
+@login_required
+def theory_uploaded_file(rel_path):
+    """
+    Serve theory uploads from persistent storage root.
+    Access is allowed for users who can view or manage theory.
+    """
+    if not (has_permission(current_user, 'theory.view') or _can_manage_theory()):
+        abort(403)
+
+    persistent_root = current_app.config.get('THEORY_UPLOAD_ROOT')
+    if not persistent_root:
+        abort(404)
+
+    safe_rel = (rel_path or '').replace('\\', '/').lstrip('/')
+    abs_root = os.path.abspath(persistent_root)
+    abs_path = os.path.abspath(os.path.join(abs_root, safe_rel))
+    if not abs_path.startswith(abs_root):
+        abort(404)
+    if not os.path.isfile(abs_path):
+        abort(404)
+
+    guessed_mime, _ = mimetypes.guess_type(abs_path)
+    return send_file(abs_path, mimetype=(guessed_mime or 'application/octet-stream'), as_attachment=False)
 
 
 @theory_bp.route('/theory/manage/new', methods=['GET', 'POST'])
