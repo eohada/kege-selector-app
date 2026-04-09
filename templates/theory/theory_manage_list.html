@@ -104,6 +104,13 @@
       margin-bottom: 14px;
       overflow: auto;
   }
+  .theory-feedback-card {
+      background: var(--color-bg-surface, #FFFFFF);
+      border: 1px solid #E2E8F0;
+      border-bottom: 4px solid #CBD5E1;
+      border-radius: 28px;
+      box-shadow: var(--shadow-tactile, 0 10px 28px -14px rgba(15, 23, 42, 0.45));
+  }
 </style>
 {% endblock %}
 
@@ -350,7 +357,15 @@
                   <button type="button" class="theory-toolbar-btn btn-practice hover-purple" data-format="practice">
                       <i class="ph-bold ph-game-controller text-[17px] text-primary"></i> <span class="text-muted">Задача</span>
                   </button>
+                  <button type="button" id="insertImageBtn" class="theory-toolbar-btn" title="Вставить фотографию">
+                      <i class="ph-bold ph-image text-[17px] text-primary"></i> <span class="text-muted">Фото</span>
+                  </button>
+                  <button type="button" id="insertFileBtn" class="theory-toolbar-btn" title="Прикрепить файл">
+                      <i class="ph-bold ph-paperclip text-[17px] text-primary"></i> <span class="text-muted">Файл</span>
+                  </button>
                 </div>
+                <input id="theoryImageInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" class="hidden">
+                <input id="theoryFileInput" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.csv,.zip,.rar,.7z,.odt,.ods,.odp" class="hidden">
 
               </div>
             </div>
@@ -388,6 +403,100 @@
 
   </div>
 </main>
+
+<section class="mt-6 px-6 lg:px-8">
+  <div class="w-full max-w-[1600px] mx-auto theory-feedback-card p-6 lg:p-8">
+    <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
+      <div>
+        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-1">Аналитика</div>
+        <h3 class="text-2xl font-black text-primary">Отзывы учеников по теме</h3>
+      </div>
+      {% set rated = namespace(total=0, sum=0) %}
+      {% for row in student_stats %}
+        {% if row.rating is not none %}
+          {% set rated.total = rated.total + 1 %}
+          {% set rated.sum = rated.sum + row.rating %}
+        {% endif %}
+      {% endfor %}
+      <div class="text-sm font-bold text-secondary">
+        {% if selected_block %}
+          Тема: {{ selected_block.title or ('Тема ' ~ (selected_display_number or selected_task_number or '—')) }}
+        {% else %}
+          Выберите тему в редакторе
+        {% endif %}
+        <span class="ml-3 px-3 py-1 rounded-lg bg-surface-alt border border-slate-200 text-xs">
+          Средняя оценка:
+          {% if rated.total > 0 %}
+            {{ '%.2f'|format(rated.sum / rated.total) }} / 5 ({{ rated.total }})
+          {% else %}
+            нет оценок
+          {% endif %}
+        </span>
+      </div>
+    </div>
+
+    {% if selected_block %}
+      {% if student_stats and student_stats|length > 0 %}
+      <div class="overflow-x-auto mb-6">
+        <table class="min-w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
+          <thead class="bg-surface-alt">
+            <tr>
+              <th class="text-left px-3 py-2 font-black text-primary">Ученик</th>
+              <th class="text-left px-3 py-2 font-black text-primary">Изучено</th>
+              <th class="text-left px-3 py-2 font-black text-primary">Оценка</th>
+              <th class="text-left px-3 py-2 font-black text-primary">Комментарий</th>
+              <th class="text-left px-3 py-2 font-black text-primary">Обновлено</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in student_stats %}
+            <tr class="border-t border-slate-100">
+              <td class="px-3 py-2 font-semibold text-secondary">{{ row.student.name if row.student and row.student.name else ('ID ' ~ (row.student.student_id if row.student else '—')) }}</td>
+              <td class="px-3 py-2">{% if row.is_read %}<span class="text-green-600 font-bold">Да</span>{% else %}<span class="text-muted">Нет</span>{% endif %}</td>
+              <td class="px-3 py-2">
+                {% if row.rating is not none %}
+                  <span class="font-black text-amber-500">{{ row.rating }}★</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="px-3 py-2 text-secondary">{{ row.comment if row.comment else '—' }}</td>
+              <td class="px-3 py-2 text-muted">{{ row.updated_at.strftime('%d.%m.%Y %H:%M') if row.updated_at else '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-sm font-semibold text-muted mb-6">Пока нет данных от учеников по этой теме.</div>
+      {% endif %}
+
+      <div>
+        <h4 class="text-lg font-black text-primary mb-2">История комментариев</h4>
+        {% if comments_history and comments_history|length > 0 %}
+        <div class="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+          {% for item in comments_history %}
+          <div class="p-3 rounded-xl border border-slate-200 bg-surface-alt">
+            <div class="flex items-center justify-between gap-2 text-xs mb-1">
+              <span class="font-extrabold text-secondary">
+                {{ item.student.name if item.student and item.student.name else ('ID ' ~ item.student_id) }}
+              </span>
+              <span class="text-muted">{{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else '' }}</span>
+            </div>
+            <div class="text-xs font-bold text-amber-500 mb-1">{% if item.rating is not none %}Оценка: {{ item.rating }}★{% else %}Без оценки{% endif %}</div>
+            <div class="text-sm text-secondary">{{ item.comment if item.comment else 'Комментарий не оставлен' }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-sm font-semibold text-muted">История комментариев пока пустая.</div>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="text-sm font-semibold text-muted">Выберите тему слева, чтобы увидеть оценки и комментарии учеников в отдельном блоке.</div>
+    {% endif %}
+  </div>
+</section>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -402,6 +511,8 @@
   const modePublishedBtn = document.getElementById('modePublishedBtn');
   const form = document.getElementById('theoryEditorForm');
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  const uploadImageUrl = '{{ url_for("theory.upload_image") }}';
+  const uploadFileUrl = '{{ url_for("theory.upload_file") }}';
   const content = document.getElementById('theoryContentInput');
   const tabMarkupBtn = document.getElementById('tabMarkupBtn');
   const tabVisualBtn = document.getElementById('tabVisualBtn');
@@ -409,6 +520,10 @@
   const visualPane = document.getElementById('visualPane');
   const livePreviewShell = document.getElementById('livePreviewShell');
   const formatBtns = Array.from(document.querySelectorAll('[data-format]'));
+  const insertImageBtn = document.getElementById('insertImageBtn');
+  const insertFileBtn = document.getElementById('insertFileBtn');
+  const theoryImageInput = document.getElementById('theoryImageInput');
+  const theoryFileInput = document.getElementById('theoryFileInput');
 
   function setDraftState() {
     if (!statusInput || !statusBadge) return;
@@ -453,12 +568,25 @@
     if (statusInput.value !== 'published') statusInput.value = 'draft';
   });
 
-  function appendToContent(text) {
+  function insertAtCursor(text, addPadding = true) {
     if (!content) return;
-    const cur = content.value || '';
-    const sep = cur.endsWith('\n') ? '' : '\n\n';
-    content.value = cur + sep + text + '\n';
+    const full = content.value || '';
+    const start = content.selectionStart || 0;
+    const end = content.selectionEnd || 0;
+    const before = full.slice(0, start);
+    const after = full.slice(end);
+    const prefix = addPadding && before && !before.endsWith('\n') ? '\n\n' : '';
+    const suffix = addPadding && after && !after.startsWith('\n') ? '\n\n' : '';
+    const next = `${before}${prefix}${text}${suffix}${after}`;
+    content.value = next;
+    const cursorPos = (before + prefix + text).length;
+    content.setSelectionRange(cursorPos, cursorPos);
+    content.focus();
     content.dispatchEvent(new Event('input'));
+  }
+
+  function appendToContent(text) {
+    insertAtCursor(text, true);
   }
 
   function escapeHtml(value) {
@@ -593,6 +721,56 @@
     }
   }));
 
+  async function uploadBinary(inputEl, endpoint, file) {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (csrf) fd.append('csrf_token', csrf);
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'X-CSRFToken': csrf },
+      body: fd,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.success || !data.url) {
+      throw new Error(data.error || 'Ошибка загрузки');
+    }
+    inputEl.value = '';
+    return data;
+  }
+
+  insertImageBtn && insertImageBtn.addEventListener('click', () => {
+    theoryImageInput && theoryImageInput.click();
+  });
+  theoryImageInput && theoryImageInput.addEventListener('change', async () => {
+    const file = theoryImageInput.files && theoryImageInput.files[0];
+    if (!file) return;
+    try {
+      const data = await uploadBinary(theoryImageInput, uploadImageUrl, file);
+      insertAtCursor(`![${file.name || 'image'}](${data.url})`, true);
+      if (window.toast) window.toast.success('Фото добавлено');
+    } catch (err) {
+      if (window.toast) window.toast.error(err.message || 'Не удалось загрузить фото');
+    }
+  });
+
+  insertFileBtn && insertFileBtn.addEventListener('click', () => {
+    theoryFileInput && theoryFileInput.click();
+  });
+  theoryFileInput && theoryFileInput.addEventListener('change', async () => {
+    const file = theoryFileInput.files && theoryFileInput.files[0];
+    if (!file) return;
+    try {
+      const data = await uploadBinary(theoryFileInput, uploadFileUrl, file);
+      const safeName = (data.name || file.name || 'Файл').replace(/"/g, '&quot;');
+      const html = `<div class="theory-file-attachment"><a href="${data.url}" target="_blank" rel="noopener">${safeName}</a> · <a href="${data.url}" download>Скачать</a></div>`;
+      insertAtCursor(html, true);
+      if (window.toast) window.toast.success('Файл прикреплен');
+    } catch (err) {
+      if (window.toast) window.toast.error(err.message || 'Не удалось прикрепить файл');
+    }
+  });
+
   const deleteTheoryBtn = document.getElementById('deleteTheoryBtn');
   deleteTheoryBtn && deleteTheoryBtn.addEventListener('click', (e) => {
     e.preventDefault();
@@ -638,9 +816,7 @@
       const origin = window.location.origin;
       w.document.write(`<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Предпросмотр</title><link rel="stylesheet" href="${origin}/static/dist/boostudy.css?v=2.4"></head><body style="background:#E5E9F0;margin:0"><main style="max-width:1100px;margin:24px auto;padding:0 16px"><section style="background:#fff;border:1px solid #e2e8f0;border-bottom:4px solid #cbd5e1;border-radius:32px;box-shadow:0 8px 24px -4px rgba(15,23,42,.08);padding:40px">${data.html}</section></main></body></html>`);
       w.document.close();
-    } catch (e) {
-        console.error("Preview error:", e);
-    }
+    } catch (e) {}
   });
   renderLivePreview(content ? content.value : '');
 })();

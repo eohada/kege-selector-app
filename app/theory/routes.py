@@ -827,6 +827,40 @@ def upload_pdf():
         return jsonify({'success': False, 'error': 'Ошибка загрузки PDF'}), 500
 
 
+@theory_bp.route('/theory/upload-file', methods=['POST'])
+@login_required
+def upload_file():
+    """Загрузка вложений для теории (документы/архивы/таблицы и т.п.)."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Нет прав'}), 403
+
+    file = request.files.get('file')
+    if not file or not file.filename:
+        return jsonify({'success': False, 'error': 'Файл не выбран'}), 400
+
+    try:
+        from app.uploads.service import save_uploaded_file
+        static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+        upload_folder = os.path.join(static_root, 'uploads', 'theory_files', str(current_user.id))
+        orig, abs_path, _size = save_uploaded_file(
+            file=file,
+            base_folder=upload_folder,
+            allowed_exts={
+                'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+                'txt', 'rtf', 'csv', 'zip', 'rar', '7z', 'odt', 'ods', 'odp',
+            },
+            max_bytes=40 * 1024 * 1024,
+        )
+        rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
+        url = url_for('static', filename=rel)
+        return jsonify({'success': True, 'url': url, 'name': orig})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception:
+        logger.exception('Theory file upload failed')
+        return jsonify({'success': False, 'error': 'Ошибка загрузки файла'}), 500
+
+
 @theory_bp.route('/theory/manage/new', methods=['GET', 'POST'])
 @login_required
 def manage_new():

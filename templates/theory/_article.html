@@ -78,7 +78,7 @@
             <div class="flex gap-3 w-full sm:w-auto items-center flex-wrap justify-center sm:justify-end">
               {% set current_rating = (feedback.rating if feedback and feedback.rating is not none else 0) %}
               {% for i in range(1,6) %}
-              <button type="button" data-action="rate" data-rating="{{ i }}" class="w-10 h-10 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-surface dark:bg-white/5 shadow-sm dark:shadow-none flex items-center justify-center transition-colors cursor-pointer {% if i <= current_rating %}text-boo-accent bg-orange-50 border-orange-200 dark:bg-orange-500/15 dark:border-orange-500/30{% else %}text-slate-300 dark:text-dark-muted{% endif %} hover:text-boo-accent dark:hover:text-amber-300">
+              <button type="button" data-action="rate" data-rating="{{ i }}" class="w-10 h-10 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-surface dark:bg-white/5 shadow-sm dark:shadow-none flex items-center justify-center transition-colors cursor-pointer {% if i <= current_rating %}text-boo-accent dark:text-amber-300 bg-orange-50 border-orange-200 dark:bg-orange-500/15 dark:border-orange-500/30{% else %}text-slate-300 dark:text-dark-muted{% endif %} hover:text-boo-accent dark:hover:text-amber-300">
                 <i class="ph-fill ph-star text-xl"></i>
               </button>
               {% endfor %}

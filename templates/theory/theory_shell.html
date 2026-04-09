@@ -33,6 +33,28 @@
     font-feature-settings: "liga" 0, "calt" 0;
   }
   .prose-article .theory-code-output { white-space: pre-wrap; word-break: break-word; }
+  .prose-article img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 18px;
+    margin: 1rem auto;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    box-shadow: 0 8px 20px -12px rgba(15, 23, 42, 0.35);
+  }
+  .prose-article .theory-file-attachment {
+    margin: 1rem 0;
+    border: 1px solid var(--color-stroke);
+    border-radius: 14px;
+    padding: .8rem 1rem;
+    background: var(--color-bg-inset);
+  }
+  .prose-article .theory-file-attachment a {
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--color-text-primary);
+  }
+  .prose-article .theory-file-attachment a:hover { color: var(--color-primary); }
 </style>
 {% endblock %}
 
@@ -619,9 +641,11 @@
         const rVal = parseInt(star.dataset.rating || '0');
         const active = rVal <= rating;
         star.classList.toggle('text-boo-accent', active);
+        star.classList.toggle('dark:text-amber-300', active);
         star.classList.toggle('bg-orange-50', active);
         star.classList.toggle('border-orange-200', active);
         star.classList.toggle('text-slate-300', !active);
+        star.classList.toggle('dark:text-dark-muted', !active);
         star.classList.toggle('bg-surface', !active);
         star.classList.toggle('border-slate-200', !active);
       });
