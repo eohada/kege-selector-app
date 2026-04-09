@@ -1,0 +1,182 @@
+{# Требуется переменная tg_bind_suffix: уникальный идентификатор без пробелов, напр. studentRoom, upStudent #}
+<section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8" aria-labelledby="tg-widget-title-{{ tg_bind_suffix }}">
+    <h3 id="tg-widget-title-{{ tg_bind_suffix }}" class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+        <i class="ph-fill ph-telegram-logo text-lg text-cyan-500"></i> Telegram бот
+    </h3>
+    <p class="text-sm text-muted dark:text-dark-muted font-medium mb-4 leading-relaxed">
+        Привяжите Telegram, чтобы получать уведомления о уроках, проверке работ и сообщениях — так же, как в основном профиле на платформе.
+    </p>
+    <div id="tg-status--{{ tg_bind_suffix }}">
+        <div class="text-sm text-muted dark:text-dark-muted">Загрузка...</div>
+    </div>
+</section>
+<script>
+(function () {
+    var SUF = {{ tg_bind_suffix|tojson }};
+    var NS = 'tgBind_' + SUF;
+    var ids = {
+        status: 'tg-status--' + SUF
+    };
+    var telegramLinkCode = null;
+
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').content
+            ? document.querySelector('meta[name="csrf-token"]').content
+            : '';
+    }
+
+    function statusEl() {
+        return document.getElementById(ids.status);
+    }
+
+    function renderTelegramStatus(data) {
+        var container = statusEl();
+        if (!container) return;
+        var nsRef = "window['" + NS.replace(/'/g, "\\'") + "']";
+        if (data.linked) {
+            container.innerHTML =
+                '<div class="flex flex-col gap-3">' +
+                '<div class="text-sm font-bold text-emerald-600 dark:text-emerald-400">Telegram привязан</div>' +
+                '<div class="flex flex-wrap items-center gap-3">' +
+                '<label class="inline-flex items-center gap-2 cursor-pointer text-sm text-muted dark:text-dark-muted">' +
+                '<input type="checkbox" id="tg-notifications-toggle--' + SUF + '" ' + (data.notifications_enabled ? 'checked' : '') +
+                ' onchange="' + nsRef + '.toggleNotifications(this.checked)">' +
+                '<span>Получать уведомления</span></label>' +
+                '<button type="button" class="px-4 py-2 rounded-xl text-sm font-bold border border-slate-200 dark:border-white/[0.12] text-secondary dark:text-white hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors" onclick="' + nsRef + '.unlink()">Отвязать</button>' +
+                '</div></div>';
+        } else {
+            container.innerHTML =
+                '<div class="text-sm text-muted dark:text-dark-muted mb-3">Нажмите кнопку ниже — появится ссылка на бота и команда <code class="text-xs font-mono bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded">/link</code> с кодом.</div>' +
+                '<div id="tg-link-area--' + SUF + '">' +
+                '<button type="button" class="px-5 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-bold text-sm transition-colors shadow-sm inline-flex items-center gap-2" onclick="' + nsRef + '.generateCode()">Привязать Telegram</button>' +
+                '</div>';
+        }
+    }
+
+    function loadTelegramStatus() {
+        var container = statusEl();
+        if (!container) return;
+        fetch('/api/telegram/status')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) renderTelegramStatus(data);
+                else container.innerHTML = '<div class="text-sm text-red-600 dark:text-red-400">Ошибка загрузки</div>';
+            })
+            .catch(function () {
+                container.innerHTML = '<div class="text-sm text-red-600 dark:text-red-400">Ошибка соединения</div>';
+            });
+    }
+
+    function generateCode() {
+        var area = document.getElementById('tg-link-area--' + SUF);
+        if (!area) return;
+        area.innerHTML = '<div class="text-sm text-muted dark:text-dark-muted">Генерация кода...</div>';
+        fetch('/api/telegram/link-code', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) {
+                    area.innerHTML = '<div class="text-sm text-red-600 dark:text-red-400">Ошибка: ' + (data.error || '') + '</div>';
+                    return;
+                }
+                telegramLinkCode = data.code;
+                var botHref = data.deep_link || (data.bot_username ? 'https://t.me/' + data.bot_username : 'https://t.me/urep_notify_bot');
+                var botLabel = data.bot_username ? ('@' + data.bot_username) : '@urep_notify_bot';
+                var deepBtn = data.deep_link
+                    ? '<a class="inline-flex items-center justify-center px-5 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-bold text-sm transition-colors shadow-sm no-underline mb-3" href="' + data.deep_link + '" target="_blank" rel="noopener">Открыть бота и привязать</a>'
+                    : '';
+                var nsRef = "window['" + NS.replace(/'/g, "\\'") + "']";
+                area.innerHTML =
+                    '<div class="rounded-2xl border border-slate-200 dark:border-white/[0.1] bg-slate-50/80 dark:bg-white/[0.04] p-4 text-sm">' +
+                    '<div class="text-muted dark:text-dark-muted mb-2"><span class="font-bold text-primary dark:text-white">Способ 1.</span> Нажмите кнопку — откроется ' + botLabel + ' с автоматической привязкой:</div>' +
+                    deepBtn +
+                    '<div class="text-muted dark:text-dark-muted mt-3 mb-2"><span class="font-bold text-primary dark:text-white">Способ 2.</span> Или откройте <a href="' + botHref + '" target="_blank" rel="noopener" class="text-cyan-600 dark:text-cyan-400 font-bold hover:underline">' + botLabel + '</a> и отправьте:</div>' +
+                    '<div class="flex flex-wrap items-center gap-2 mb-2">' +
+                    '<code class="flex-1 min-w-[12rem] bg-white dark:bg-dark-inner px-3 py-2 rounded-xl text-base font-bold tracking-wide border border-slate-200 dark:border-white/[0.1]">/link ' + data.code + '</code>' +
+                    '<button type="button" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-white/[0.12] font-bold text-sm hover:bg-slate-100 dark:hover:bg-white/10" onclick="' + nsRef + '.copyCode()" title="Скопировать">Копировать</button></div>' +
+                    '<div class="text-xs text-amber-700 dark:text-amber-400/90 font-medium">Ссылка и код действительны 15 минут.</div></div>' +
+                    '<button type="button" class="mt-3 px-4 py-2 rounded-xl text-sm font-bold text-muted dark:text-dark-muted border border-slate-200 dark:border-white/[0.12] hover:bg-slate-50 dark:hover:bg-white/[0.06]" onclick="' + nsRef + '.loadStatus()">← Назад</button>';
+            })
+            .catch(function () {
+                area.innerHTML = '<div class="text-sm text-red-600 dark:text-red-400">Ошибка соединения</div>';
+            });
+    }
+
+    function copyCode() {
+        if (!telegramLinkCode) return;
+        var text = '/link ' + telegramLinkCode;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+                if (window.toast) window.toast.success('Команда скопирована!');
+            }).catch(function () { fallbackCopy(text); });
+        } else {
+            fallbackCopy(text);
+        }
+    }
+
+    function fallbackCopy(text) {
+        try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (window.toast) window.toast.success('Команда скопирована!');
+        } catch (e) {
+            if (window.toast) window.toast.error('Не удалось скопировать');
+        }
+    }
+
+    function unlink() {
+        if (!confirm('Отвязать Telegram? Вы перестанете получать уведомления.')) return;
+        fetch('/api/telegram/unlink', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    if (window.toast) window.toast.success('Telegram отвязан');
+                    loadTelegramStatus();
+                } else if (window.toast) window.toast.error(data.error || 'Ошибка');
+            })
+            .catch(function () {
+                if (window.toast) window.toast.error('Ошибка соединения');
+            });
+    }
+
+    function toggleNotifications(enabled) {
+        fetch('/api/telegram/toggle-notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ enabled: enabled })
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    if (window.toast) window.toast.success(enabled ? 'Уведомления включены' : 'Уведомления выключены');
+                } else {
+                    if (window.toast) window.toast.error(data.error || 'Ошибка');
+                    loadTelegramStatus();
+                }
+            })
+            .catch(function () {
+                if (window.toast) window.toast.error('Ошибка соединения');
+                loadTelegramStatus();
+            });
+    }
+
+    window[NS] = {
+        loadStatus: loadTelegramStatus,
+        generateCode: generateCode,
+        copyCode: copyCode,
+        unlink: unlink,
+        toggleNotifications: toggleNotifications
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadTelegramStatus);
+    } else {
+        loadTelegramStatus();
+    }
+})();
+</script>

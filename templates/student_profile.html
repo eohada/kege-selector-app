@@ -265,6 +265,13 @@
         </div>
     </div>
 
+    {% if student.user_id is not none and student.user_id == current_user.id %}
+    <div class="w-full">
+        {% set tg_bind_suffix = 'studentRoom' %}
+        {% include 'partials/student_telegram_bot_bind.html' %}
+    </div>
+    {% endif %}
+
     <!-- ЛЕНТА УРОКОВ -->
     <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 shadow-tactile dark:shadow-glass-dark p-8">
         <div class="mb-8">

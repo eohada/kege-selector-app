@@ -171,6 +171,9 @@
                 </div>
             </section>
 
+            {% set tg_bind_suffix = 'upStudent' %}
+            {% include 'partials/student_telegram_bot_bind.html' %}
+
             <!-- Карточка Наставника (Динамическая) -->
             <section class="student-mentor-gradient bg-gradient-to-b from-[#F9F7FF] to-white dark:from-dark-card dark:to-dark-inner rounded-[32px] border border-purple-200 dark:border-white/[0.08] border-b-[4px] border-b-purple-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
                 <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-6 flex items-center gap-2">
