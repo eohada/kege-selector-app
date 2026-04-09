@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime, String, Boolean, Enum as SQLEnum, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID, JSONB as PG_JSONB
@@ -754,6 +754,10 @@ class User(db.Model):
     custom_status = db.Column(db.String(100), nullable=True)
     telegram_link = db.Column(db.String(200), nullable=True)
     github_link = db.Column(db.String(200), nullable=True)
+    presence_activity_key = db.Column(db.String(80), nullable=True, index=True)
+    presence_activity_text = db.Column(db.String(180), nullable=True)
+    presence_last_seen_at = db.Column(db.DateTime, nullable=True, index=True)
+    presence_updated_at = db.Column(db.DateTime, nullable=True)
     
     def get_id(self):
         return str(self.id)
@@ -867,6 +871,32 @@ class User(db.Model):
     
     def __repr__(self):
         return f'<User {self.username} ({self.role})>'
+
+    def is_online_now(self, online_window_seconds: int = 120) -> bool:
+        """True, если пользователь был активен недавно."""
+        if not self.presence_last_seen_at:
+            return False
+        try:
+            now = moscow_now()
+            seen_at = self.presence_last_seen_at
+            if getattr(now, 'tzinfo', None) and getattr(seen_at, 'tzinfo', None):
+                delta = now - seen_at
+            else:
+                now_naive = now.replace(tzinfo=None) if getattr(now, 'tzinfo', None) else now
+                seen_naive = seen_at.replace(tzinfo=None) if getattr(seen_at, 'tzinfo', None) else seen_at
+                delta = now_naive - seen_naive
+            return delta <= timedelta(seconds=max(30, int(online_window_seconds or 120)))
+        except Exception:
+            return False
+
+    def presence_state_label(self) -> str:
+        """Человекочитаемое состояние присутствия."""
+        return 'В сети' if self.is_online_now() else 'Не в сети'
+
+    def get_live_activity_text(self):
+        """Текущая авто-активность пользователя."""
+        text = (self.presence_activity_text or '').strip()
+        return text or None
 
     custom_permissions = db.Column(db.JSON, nullable=True)
 

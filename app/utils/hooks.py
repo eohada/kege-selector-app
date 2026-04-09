@@ -28,6 +28,100 @@ _maintenance_fetch_interval = timedelta(seconds=60)
 _cached_maintenance_enabled = False
 _cached_maintenance_message = "Ведутся технические работы. Скоро вернемся!"
 
+def _seconds_since(earlier, later) -> float:
+    if not earlier or not later:
+        return 10**9
+    try:
+        if getattr(earlier, 'tzinfo', None) and getattr(later, 'tzinfo', None):
+            return max(0.0, (later - earlier).total_seconds())
+        earlier_naive = earlier.replace(tzinfo=None) if getattr(earlier, 'tzinfo', None) else earlier
+        later_naive = later.replace(tzinfo=None) if getattr(later, 'tzinfo', None) else later
+        return max(0.0, (later_naive - earlier_naive).total_seconds())
+    except Exception:
+        return 10**9
+
+
+def _resolve_presence_activity(user, endpoint: str, path: str):
+    ep = endpoint or ''
+    p = path or ''
+
+    # Редактор и чтение теории
+    if ep.startswith('theory.'):
+        if 'edit' in ep or 'create' in ep or 'manage' in ep or p.endswith('/theory/new'):
+            if user.is_creator() or user.is_tutor() or user.is_content_maker():
+                return 'theory_editor', 'Создает теоретический блок...'
+            return 'theory_open', 'Открывает теоретический блок...'
+        if user.is_student():
+            return 'theory_study', 'Изучает теорию...'
+        return 'theory_browse', 'Просматривает библиотеку теории...'
+
+    # Уроки и классная работа
+    if ep.startswith('lessons.'):
+        if 'classwork' in ep or 'homework' in ep:
+            if user.is_student():
+                return 'lesson_work', 'Решает задания на уроке...'
+            return 'lesson_lead', 'Ведет занятие и проверяет работу...'
+        if user.is_tutor() or user.is_creator():
+            return 'lesson_manage', 'Управляет уроками и материалами...'
+        return 'lesson_open', 'Открыл страницу урока...'
+
+    # Домашние задания и проверки
+    if ep.startswith('assignments.'):
+        if user.is_student():
+            return 'assignment_solve', 'Выполняет домашнее задание...'
+        return 'assignment_review', 'Проверяет и оценивает работы...'
+
+    # Тренажер
+    if ep.startswith('trainer.'):
+        if user.is_student():
+            return 'trainer_practice', 'Тренируется в решении задач...'
+        return 'trainer_config', 'Настраивает тренажер для учеников...'
+
+    if ep.startswith('task_generator.'):
+        return 'task_generate', 'Генерирует новые задания...'
+
+    if ep.startswith('schedule.'):
+        if user.is_student():
+            return 'schedule_student', 'Планирует учебную неделю...'
+        return 'schedule_teacher', 'Формирует расписание занятий...'
+
+    if ep.startswith('students.'):
+        if 'analytics' in ep or 'statistics' in ep:
+            if user.is_student():
+                return 'progress_self', 'Смотрит свой прогресс...'
+            return 'progress_review', 'Анализирует прогресс ученика...'
+        if user.is_student():
+            return 'student_workspace', 'Работает в личном кабинете...'
+        return 'student_manage', 'Работает с профилями учеников...'
+
+    if ep.startswith('notifications.'):
+        return 'notifications', 'Просматривает уведомления...'
+
+    if ep.startswith('courses.') or ep.startswith('groups.'):
+        if user.is_student():
+            return 'courses_view', 'Изучает структуру курса...'
+        return 'courses_manage', 'Настраивает курсы и группы...'
+
+    if ep.startswith('billing.'):
+        return 'billing', 'Работает с тарифами и оплатами...'
+
+    if ep.startswith('auth.user_profile'):
+        return 'profile', 'Обновляет профиль...'
+
+    if ep.startswith('main.student_dashboard'):
+        return 'dashboard_student', 'Планирует учебные задачи...'
+    if ep.startswith('main.dashboard'):
+        if user.is_student():
+            return 'dashboard_student', 'Планирует учебные задачи...'
+        return 'dashboard_teacher', 'Контролирует учебный процесс...'
+
+    if user.is_student():
+        return 'active_student', 'Изучает платформу и решает задания...'
+    if user.is_creator() or user.is_tutor() or user.is_content_maker():
+        return 'active_teacher', 'Развивает платформу и помогает ученикам...'
+    return 'active_default', 'Сейчас активен на платформе...'
+
+
 def register_hooks(app):
     """
     Регистрирует все before_request хуки для приложения
@@ -340,6 +434,51 @@ def register_hooks(app):
         
         return None
     
+    @app.before_request
+    def track_user_presence():
+        """Трекинг online-статуса и текущей активности пользователя."""
+        try:
+            if not getattr(current_user, 'is_authenticated', False):
+                return None
+            if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
+                return None
+            if request.path.startswith('/font/') or request.path.startswith('/avatars/') or request.path.startswith('/covers/'):
+                return None
+            if request.path.startswith('/api/internal/') or request.path.startswith('/internal/'):
+                return None
+            if request.path.startswith('/api/telegram/') or request.path.startswith('/telegram/'):
+                return None
+
+            now = moscow_now()
+            new_key, new_text = _resolve_presence_activity(current_user, request.endpoint or '', request.path or '')
+            last_seen_at = getattr(current_user, 'presence_last_seen_at', None)
+            last_updated_at = getattr(current_user, 'presence_updated_at', None)
+
+            should_update_seen = _seconds_since(last_seen_at, now) >= 20
+            should_update_activity = (
+                (getattr(current_user, 'presence_activity_key', None) or '') != new_key
+                or (getattr(current_user, 'presence_activity_text', None) or '') != new_text
+                or _seconds_since(last_updated_at, now) >= 45
+            )
+
+            if not should_update_seen and not should_update_activity:
+                return None
+
+            if should_update_seen:
+                current_user.presence_last_seen_at = now
+            if should_update_activity:
+                current_user.presence_activity_key = new_key
+                current_user.presence_activity_text = new_text
+                current_user.presence_updated_at = now
+
+            db.session.commit()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+        return None
+
     @app.before_request
     def require_login():
         """Проверка авторизации для всех маршрутов кроме login, logout и static"""

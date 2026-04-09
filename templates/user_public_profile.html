@@ -128,14 +128,14 @@
                 <div class="creator-avatar {% if _avatar_url %}profile-avatar-clickable{% endif %}" {% if _avatar_url %}data-avatar-url="{{ _avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
                     {% if _avatar_url %}<img src="{{ _avatar_url }}" alt="Avatar">{% else %}<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:3rem;font-weight:900;">{{ public_display_name[0]|upper }}</div>{% endif %}
                 </div>
-                <div class="creator-online" title="В сети"><span></span></div>
+                <div class="creator-online" title="{{ public_user.presence_state_label() }}" style="background:{% if public_user.is_online_now() %}#22c55e{% else %}#94a3b8{% endif %};"><span></span></div>
                 <div class="creator-head-content">
                     <div>
                         <div class="creator-name-row">
                             <h1 class="creator-name">{{ public_display_name }}</h1>
                             <i class="ph-fill ph-check-circle" style="color:#7B5CFF;font-size:1.7rem;" title="Верифицированный создатель"></i>
                         </div>
-                        {% if _custom_status %}<p class="creator-quote">"{{ _custom_status }}"</p>{% endif %}
+                        {% if public_user.get_live_activity_text() %}<p class="creator-quote">{{ public_user.get_live_activity_text() }}</p>{% elif _custom_status %}<p class="creator-quote">"{{ _custom_status }}"</p>{% endif %}
                         <div class="creator-badges">
                             <span class="creator-badge" style="background:linear-gradient(90deg,#0f172a,#1e293b);color:#fff;border-color:#1e293b;"><i class="ph-fill ph-crown" style="color:#FF9F1C;font-size:1rem;"></i> Создатель</span>
                             {% for role_name in public_user.get_roles_display() %}
@@ -190,8 +190,14 @@
                     {% endif %}
                     <div class="creator-row">
                         <span class="creator-row-key"><i class="ph-bold ph-activity"></i> Статус</span>
-                        <span class="creator-row-value"><span class="creator-chip" style="background:#ecfdf5;border-color:#bbf7d0;color:#166534;"><i class="ph-fill ph-check-circle"></i> В системе</span></span>
+                        <span class="creator-row-value"><span class="creator-chip" style="background:{% if public_user.is_online_now() %}#ecfdf5{% else %}#f1f5f9{% endif %};border-color:{% if public_user.is_online_now() %}#bbf7d0{% else %}#cbd5e1{% endif %};color:{% if public_user.is_online_now() %}#166534{% else %}#334155{% endif %};"><i class="ph-fill {% if public_user.is_online_now() %}ph-check-circle{% else %}ph-moon{% endif %}"></i> {{ public_user.presence_state_label() }}</span></span>
                     </div>
+                    {% if public_user.get_live_activity_text() %}
+                    <div class="creator-row">
+                        <span class="creator-row-key"><i class="ph-bold ph-lightning"></i> Активность</span>
+                        <span class="creator-row-value">{{ public_user.get_live_activity_text() }}</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </section>
@@ -219,7 +225,10 @@
                             <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
                             {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
                             {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
-                            {% if public_user.custom_status %}
+                            <span class="status-badge {% if public_user.is_online_now() %}status-success{% else %}status-info{% endif %}" style="opacity:.9;">{{ public_user.presence_state_label() }}</span>
+                            {% if public_user.get_live_activity_text() %}
+                            <span class="status-badge" style="opacity:.9;">{{ public_user.get_live_activity_text() }}</span>
+                            {% elif public_user.custom_status %}
                             <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
                             {% endif %}
                         </div>
@@ -261,7 +270,12 @@
                             <span class="data-value">{{ public_user.telegram_link }}</span>
                         </div>
                         {% endif %}
-                        {% if public_user.custom_status %}
+                        {% if public_user.get_live_activity_text() %}
+                        <div class="data-row">
+                            <span class="data-label">Активность</span>
+                            <span class="data-value">{{ public_user.get_live_activity_text() }}</span>
+                        </div>
+                        {% elif public_user.custom_status %}
                         <div class="data-row">
                             <span class="data-label">Статус</span>
                             <span class="data-value">{{ public_user.custom_status }}</span>
@@ -296,7 +310,10 @@
                             <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
                             {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
                             {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
-                            {% if public_user.custom_status %}
+                            <span class="status-badge {% if public_user.is_online_now() %}status-success{% else %}status-info{% endif %}" style="opacity:.9;">{{ public_user.presence_state_label() }}</span>
+                            {% if public_user.get_live_activity_text() %}
+                            <span class="status-badge" style="opacity:.9;">{{ public_user.get_live_activity_text() }}</span>
+                            {% elif public_user.custom_status %}
                             <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
                             {% endif %}
                         </div>
@@ -339,7 +356,12 @@
                     <span class="data-value">{{ public_user.telegram_link }}</span>
                 </div>
                 {% endif %}
-                {% if public_user.custom_status %}
+                {% if public_user.get_live_activity_text() %}
+                <div class="data-row">
+                    <span class="data-label">Активность</span>
+                    <span class="data-value">{{ public_user.get_live_activity_text() }}</span>
+                </div>
+                {% elif public_user.custom_status %}
                 <div class="data-row">
                     <span class="data-label">Статус</span>
                     <span class="data-value">{{ public_user.custom_status }}</span>

@@ -1165,6 +1165,52 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add cover_url column: {e}")
                             db.session.rollback()
+
+                    if 'presence_activity_key' not in users_columns:
+                        try:
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN presence_activity_key VARCHAR(80)'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN presence_activity_key VARCHAR(80)'))
+                            logger.info(f"Added column presence_activity_key to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add presence_activity_key column: {e}")
+                            db.session.rollback()
+
+                    if 'presence_activity_text' not in users_columns:
+                        try:
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN presence_activity_text VARCHAR(180)'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN presence_activity_text VARCHAR(180)'))
+                            logger.info(f"Added column presence_activity_text to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add presence_activity_text column: {e}")
+                            db.session.rollback()
+
+                    if 'presence_last_seen_at' not in users_columns:
+                        try:
+                            col_type = 'TIMESTAMP' if is_postgres else 'DATETIME'
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN presence_last_seen_at {col_type}'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN presence_last_seen_at {col_type}'))
+                            logger.info(f"Added column presence_last_seen_at to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add presence_last_seen_at column: {e}")
+                            db.session.rollback()
+
+                    if 'presence_updated_at' not in users_columns:
+                        try:
+                            col_type = 'TIMESTAMP' if is_postgres else 'DATETIME'
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN presence_updated_at {col_type}'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN presence_updated_at {col_type}'))
+                            logger.info(f"Added column presence_updated_at to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add presence_updated_at column: {e}")
+                            db.session.rollback()
                 except Exception as e:
                     logger.warning(f"Error checking/updating Users table columns: {e}")
 
