@@ -140,11 +140,6 @@ def _render_theory_content_html(content_value):
         safe_body = re.sub(r'`([^`]+)`', r'<code>\1</code>', safe_body)
         safe_body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', safe_body)
         safe_body = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<em>\1</em>', safe_body)
-        safe_body = re.sub(
-            r'(?<!\$)\$([^\$\n]+?)\$(?!\$)',
-            lambda m: f'<span class="theory-inline-math">{m.group(1).strip()}</span>',
-            safe_body,
-        )
         safe_body = safe_body.replace('\n', '<br>')
         theme = {
             'attention': {'title': 'Внимание', 'bg': '#FFF7ED', 'border': '#FED7AA', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FFFFFF', 'icon_color': '#EA580C'},
@@ -221,21 +216,6 @@ def _render_theory_content_html(content_value):
     text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
-    text = re.sub(
-        r"\$\$(.+?)\$\$",
-        lambda m: (
-            '<div class="theory-display-math my-8 bg-slate-50 p-6 rounded-2xl border border-slate-200/70 shadow-inner">'
-            f'<div class="font-mono text-lg text-slate-800 font-bold tracking-wide whitespace-pre-wrap">{m.group(1).strip()}</div>'
-            '</div>'
-        ),
-        text,
-        flags=re.DOTALL
-    )
-    text = re.sub(
-        r'(?<!\$)\$([^\$\n]+?)\$(?!\$)',
-        lambda m: f'<span class="theory-inline-math">{html.escape(m.group(1).strip())}</span>',
-        text,
-    )
     try:
         from markdown import markdown as _md
         text = _md(text, extensions=['extra', 'tables', 'fenced_code'])
