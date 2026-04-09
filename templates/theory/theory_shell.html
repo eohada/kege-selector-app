@@ -5,7 +5,7 @@
 {% block body_attrs %}data-cinema-scene="theory"{% endblock %}
 
 {% block head_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}">
 <style>
   .view-section { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
   .view-section.active { display: flex; opacity: 1; animation: fadeIn 0.4s ease-out forwards; }
@@ -288,8 +288,8 @@
 {% endblock %}
 
 {% block scripts_extra %}
-<script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
-<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.js') }}"></script>
 <script>
 (function() {
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -470,6 +470,17 @@
     } catch (_) {}
   }
 
+  function renderTheoryMathWhenReady(root, attempts) {
+    const left = typeof attempts === 'number' ? attempts : 20;
+    if (!root) return;
+    if (typeof renderMathInElement !== 'undefined') {
+      renderTheoryMath(root);
+      return;
+    }
+    if (left <= 0) return;
+    setTimeout(() => renderTheoryMathWhenReady(root, left - 1), 120);
+  }
+
   function openGroups(push=true) {
     viewTopics?.classList.remove('active');
     viewArticle?.classList.remove('active');
@@ -561,7 +572,11 @@
   if (!filterBtns.some(b => b.classList.contains('bg-surface'))) setActiveFilter('all');
   applyFilters();
   setupCodeBlocks(document).catch(() => {});
-  renderTheoryMath(document.getElementById('articleContainer') || document.body);
+  const initialMathRoot = document.getElementById('articleContainer') || document.body;
+  renderTheoryMathWhenReady(initialMathRoot, 30);
+  window.addEventListener('load', () => {
+    renderTheoryMathWhenReady(initialMathRoot, 30);
+  });
 
   // Back button should return to catalog
   window.addEventListener('popstate', () => {
@@ -573,7 +588,7 @@
     if (evt.target && evt.target.id === 'articleContainer') {
       openArticle(false);
       setupCodeBlocks(evt.target).catch(() => {});
-      renderTheoryMath(evt.target);
+      renderTheoryMathWhenReady(evt.target, 30);
     }
   });
 
