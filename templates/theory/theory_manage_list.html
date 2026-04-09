@@ -24,6 +24,17 @@
   .theory-toolbar-btn:hover { background: #F1F5F9; color: #1E293B; }
   .theory-toolbar-btn.icon-only { padding: 0; width: 38px; }
   .theory-toolbar-btn .toolbar-text { display: inline; }
+  .theory-format-toolbar {
+      gap: 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      flex-wrap: nowrap !important;
+      justify-content: flex-start !important;
+      scrollbar-width: thin;
+  }
+  .theory-format-toolbar > * {
+      flex: 0 0 auto;
+  }
 
   /* Спец. цвета для инфо-блоков */
   .btn-code:hover { color: #1E293B; background: #F1F5F9; }
@@ -107,11 +118,8 @@
   }
   @media (max-width: 1480px) {
       .theory-format-toolbar {
-          gap: 6px;
           padding: 6px;
-          overflow-x: auto;
-          flex-wrap: nowrap;
-          scrollbar-width: thin;
+          gap: 6px;
       }
       .theory-toolbar-btn {
           height: 34px;

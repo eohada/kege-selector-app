@@ -178,6 +178,25 @@ def _render_theory_content_html(content_value):
             src,
         )
 
+    def _normalize_markdown_lists(src):
+        """
+        Help Python-Markdown recognize list blocks even when author
+        writes list right after plain text line without an empty line.
+        """
+        lines = (src or '').split('\n')
+        out = []
+        prev_was_list = False
+        list_item_re = re.compile(r'^\s*(?:[-*+]\s+|\d+\.\s+)')
+        for line in lines:
+            is_list = bool(list_item_re.match(line or ''))
+            if is_list and out:
+                prev = out[-1]
+                if prev.strip() and not prev_was_list:
+                    out.append('')
+            out.append(line)
+            prev_was_list = is_list
+        return '\n'.join(out)
+
     _CODE_BLOCK_RE = re.compile(
         r'\[CODE\s+lang="([^"]+)"\](.*?)\[/CODE\]',
         re.DOTALL | re.IGNORECASE,
@@ -194,6 +213,7 @@ def _render_theory_content_html(content_value):
         parts.append(_preserve_blank_lines(src[pos:]))
         return ''.join(parts)
 
+    text = _normalize_markdown_lists(text)
     text = _preserve_blank_lines_outside_code_blocks(text)
     # Convert star-list markers to dash-list markers before markdown parse
     # to reduce cases where raw "*" leaks into rendered text.
