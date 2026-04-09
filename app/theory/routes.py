@@ -140,6 +140,11 @@ def _render_theory_content_html(content_value):
         safe_body = re.sub(r'`([^`]+)`', r'<code>\1</code>', safe_body)
         safe_body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', safe_body)
         safe_body = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<em>\1</em>', safe_body)
+        safe_body = re.sub(
+            r'(?<!\$)\$([^\$\n]+?)\$(?!\$)',
+            lambda m: f'<span class="theory-inline-math">{m.group(1).strip()}</span>',
+            safe_body,
+        )
         safe_body = safe_body.replace('\n', '<br>')
         theme = {
             'attention': {'title': 'Внимание', 'bg': '#FFF7ED', 'border': '#FED7AA', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FFFFFF', 'icon_color': '#EA580C'},
@@ -205,6 +210,11 @@ def _render_theory_content_html(content_value):
         ),
         text,
         flags=re.DOTALL
+    )
+    text = re.sub(
+        r'(?<!\$)\$([^\$\n]+?)\$(?!\$)',
+        lambda m: f'<span class="theory-inline-math">{html.escape(m.group(1).strip())}</span>',
+        text,
     )
     try:
         from markdown import markdown as _md

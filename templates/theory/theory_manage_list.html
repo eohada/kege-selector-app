@@ -23,6 +23,7 @@
   }
   .theory-toolbar-btn:hover { background: #F1F5F9; color: #1E293B; }
   .theory-toolbar-btn.icon-only { padding: 0; width: 38px; }
+  .theory-toolbar-btn .toolbar-text { display: inline; }
 
   /* Спец. цвета для инфо-блоков */
   .btn-code:hover { color: #1E293B; background: #F1F5F9; }
@@ -103,6 +104,32 @@
       white-space: pre-wrap;
       margin-bottom: 14px;
       overflow: auto;
+  }
+  @media (max-width: 1480px) {
+      .theory-format-toolbar {
+          gap: 6px;
+          padding: 6px;
+          overflow-x: auto;
+          flex-wrap: nowrap;
+          scrollbar-width: thin;
+      }
+      .theory-toolbar-btn {
+          height: 34px;
+          padding: 0 10px;
+          font-size: 13px;
+          gap: 6px;
+          flex: 0 0 auto;
+      }
+      .theory-toolbar-btn.icon-only {
+          width: 34px;
+          padding: 0;
+      }
+      .theory-toolbar-btn .toolbar-text {
+          display: none;
+      }
+      .sticky-toolbar-wrapper {
+          padding-bottom: 14px;
+      }
   }
   .theory-feedback-card {
       background: var(--color-bg-surface, #FFFFFF);
@@ -340,28 +367,28 @@
 
                 <div class="flex items-center gap-2 shrink-0">
                   <button type="button" class="theory-toolbar-btn btn-code" data-format="code">
-                      <i class="ph-bold ph-file-code text-[17px] text-muted"></i> <span class="text-muted">Код</span>
+                      <i class="ph-bold ph-file-code text-[17px] text-muted"></i> <span class="text-muted toolbar-text">Код</span>
                   </button>
                   <button type="button" class="theory-toolbar-btn btn-math" data-format="math">
-                      <span class="font-serif italic font-bold text-muted text-[17px]">f</span> <span class="text-muted">Формула</span>
+                      <span class="font-serif italic font-bold text-muted text-[17px]">f</span> <span class="text-muted toolbar-text">Формула</span>
                   </button>
                   <button type="button" class="theory-toolbar-btn btn-attention hover-orange" data-format="attention">
-                      <i class="ph-fill ph-warning-circle text-[17px] text-primary"></i> <span class="text-muted">Внимание</span>
+                      <i class="ph-fill ph-warning-circle text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Внимание</span>
                   </button>
                   <button type="button" class="theory-toolbar-btn btn-tip" data-format="tip" title="Лайфхак / запомнить">
-                      <i class="ph-fill ph-lightbulb text-[17px] text-primary"></i> <span class="text-muted">Лайфхак</span>
+                      <i class="ph-fill ph-lightbulb text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Лайфхак</span>
                   </button>
                   <button type="button" class="theory-toolbar-btn btn-danger-callout" data-format="danger" title="Предупреждение">
-                      <i class="ph-fill ph-shield-warning text-[17px] text-primary"></i> <span class="text-muted">Осторожно</span>
+                      <i class="ph-fill ph-shield-warning text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Осторожно</span>
                   </button>
                   <button type="button" class="theory-toolbar-btn btn-practice hover-purple" data-format="practice">
-                      <i class="ph-bold ph-game-controller text-[17px] text-primary"></i> <span class="text-muted">Задача</span>
+                      <i class="ph-bold ph-game-controller text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Задача</span>
                   </button>
                   <button type="button" id="insertImageBtn" class="theory-toolbar-btn" title="Вставить фотографию">
-                      <i class="ph-bold ph-image text-[17px] text-primary"></i> <span class="text-muted">Фото</span>
+                      <i class="ph-bold ph-image text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Фото</span>
                   </button>
                   <button type="button" id="insertFileBtn" class="theory-toolbar-btn" title="Прикрепить файл">
-                      <i class="ph-bold ph-paperclip text-[17px] text-primary"></i> <span class="text-muted">Файл</span>
+                      <i class="ph-bold ph-paperclip text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Файл</span>
                   </button>
                 </div>
                 <input id="theoryImageInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" class="hidden">
