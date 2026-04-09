@@ -11,10 +11,13 @@
     {% include '_boo_select_head.html' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.4">
     <link rel="stylesheet" href="{{ url_for('static', filename='mobile-overrides.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     {% block head_css %}{% endblock %}
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    <script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.js') }}"></script>
     {% block head_js %}{% endblock %}
     
     <!-- Tom Select (скрипты; стили выше — до boostudy, чтобы наши темы перекрывали дефолт TS) -->
@@ -129,6 +132,58 @@
             else window.toast.success(d.message);
         }
     });
+    </script>
+    <script>
+    (function() {
+        if (window.__boostudyMathRenderInit) return;
+        window.__boostudyMathRenderInit = true;
+
+        function renderMath(root) {
+            if (!root || typeof window.renderMathInElement !== 'function') return false;
+            try {
+                window.renderMathInElement(root, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false },
+                        { left: '\\(', right: '\\)', display: false },
+                        { left: '\\[', right: '\\]', display: true }
+                    ],
+                    throwOnError: false,
+                    trust: true,
+                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                    ignoreClass: 'katex'
+                });
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function renderWhenReady(root, attempts) {
+            var left = typeof attempts === 'number' ? attempts : 30;
+            if (renderMath(root)) return;
+            if (left <= 0) return;
+            setTimeout(function() { renderWhenReady(root, left - 1); }, 120);
+        }
+
+        function renderPageMath() {
+            renderWhenReady(document.body, 40);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderPageMath);
+        } else {
+            renderPageMath();
+        }
+        window.addEventListener('load', renderPageMath);
+
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            renderWhenReady((evt && evt.target) ? evt.target : document.body, 30);
+        });
+        document.body.addEventListener('htmx:afterSettle', function(evt) {
+            renderWhenReady((evt && evt.target) ? evt.target : document.body, 20);
+        });
+    })();
     </script>
 
     {% block scripts_extra %}{% endblock %}
