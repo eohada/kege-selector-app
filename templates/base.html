@@ -26,6 +26,9 @@
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
+    {% if request.endpoint is defined and request.endpoint %}
+    <meta name="page-endpoint" content="{{ request.endpoint }}">
+    {% endif %}
     <script>
         (function(){
             try {
@@ -144,8 +147,11 @@
             if (document.visibilityState === 'hidden') return;
             try {
                 var p = window.location.pathname || '/';
-                var url = pingUrl + '?path=' + encodeURIComponent(p);
-                fetch(url, { method: 'GET', credentials: 'same-origin' }).catch(function() {});
+                var epMeta = document.querySelector('meta[name="page-endpoint"]');
+                var ep = (epMeta && epMeta.getAttribute('content')) ? epMeta.getAttribute('content') : '';
+                var qs = '?path=' + encodeURIComponent(p);
+                if (ep) qs += '&endpoint=' + encodeURIComponent(ep);
+                fetch(pingUrl + qs, { method: 'GET', credentials: 'same-origin' }).catch(function() {});
             } catch (e) {}
         }
 

@@ -73,6 +73,30 @@
         </div>
     </section>
 
+    <section class="w-full rounded-[28px] border-2 border-purple-200/90 bg-gradient-to-br from-violet-50 via-white to-cyan-50/60 shadow-[0_8px_40px_-12px_rgba(123,92,255,0.35)] p-6 sm:p-8">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div class="min-w-0">
+                <h3 class="text-lg sm:text-xl font-black text-primary tracking-tight flex items-center gap-2.5">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-boo-primary text-white shadow-md border-b-2 border-purple-800">
+                        <i class="ph-fill ph-sparkle text-xl"></i>
+                    </span>
+                    Техно-магия в статусе активности
+                </h3>
+                <p class="text-sm text-muted font-medium mt-3 leading-relaxed max-w-2xl">
+                    Включи — и на карточке профиля у всех будет фиксированная фраза <span class="font-bold text-boo-primary">«Творит техно-магию для вас»</span>, без привязки к странице.
+                    Выключи — снова показываются живые статусы (расписание, работы, теория…).
+                </p>
+            </div>
+            <button type="button" id="technoMagicToggle" class="shrink-0 flex items-center gap-3 px-5 py-3 rounded-2xl border-2 border-purple-200/80 bg-white/90 hover:bg-white shadow-sm transition-all"
+                    onclick="toggleTechnoMagic()" aria-pressed="false" aria-label="Переключить техно-магию">
+                <span id="technoMagicLabel" class="text-xs font-extrabold uppercase tracking-wider text-slate-500 min-w-[7rem] text-right">Выкл</span>
+                <span class="w-14 h-7 rounded-full relative shadow-inner transition-colors duration-200" id="technoMagicTrack" style="background:#CBD5E1;">
+                    <span class="absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-200 border border-slate-200/80" id="technoMagicKnob" style="left:4px;transform:translateX(0);"></span>
+                </span>
+            </button>
+        </div>
+    </section>
+
     <div class="flex flex-col lg:flex-row gap-6">
         <div class="w-full lg:w-1/2">
             <section class="bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
@@ -180,15 +204,6 @@
                     <input type="text" id="custom_status" name="custom_status" class="neo-input" value="{{ current_user.custom_status or '' }}">
                 </div>
                 <div class="neo-field">
-                    <label class="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" id="presence_techno_magic_enabled" name="presence_techno_magic_enabled" value="1" class="mt-1 rounded border-slate-300"
-                               {% if current_user.profile and current_user.profile.presence_techno_magic_enabled %}checked{% endif %}>
-                        <span class="text-sm font-medium text-secondary leading-snug">
-                            Показывать всем фиксированную активность «Творит техно-магию для вас» вместо авто-статуса по странице (только для создателя).
-                        </span>
-                    </label>
-                </div>
-                <div class="neo-field">
                     <label class="neo-label" for="about_me">О себе</label>
                     <textarea id="about_me" name="about_me" class="neo-textarea">{{ current_user.about_me or '' }}</textarea>
                 </div>
@@ -274,10 +289,6 @@ async function submitProfileEdit(event) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]');
     if (!csrfToken) return;
     formData.append('csrf_token', csrfToken.content || csrfToken.getAttribute('content'));
-    const technoMagic = document.getElementById('presence_techno_magic_enabled');
-    if (technoMagic) {
-        formData.set('presence_techno_magic_enabled', technoMagic.checked ? '1' : '0');
-    }
     try {
         const response = await fetch("{{ url_for('auth.profile_update') }}", { method: 'POST', body: formData });
         const result = await response.json();
@@ -291,6 +302,42 @@ async function submitProfileEdit(event) {
         if (window.toast) window.toast.error('Ошибка сети: ' + e.message);
     }
 }
+function applyTechnoMagicVisual(on) {
+    const btn = document.getElementById('technoMagicToggle');
+    const track = document.getElementById('technoMagicTrack');
+    const knob = document.getElementById('technoMagicKnob');
+    const label = document.getElementById('technoMagicLabel');
+    if (!btn || !track || !knob) return;
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    track.style.background = on ? '#7B5CFF' : '#CBD5E1';
+    knob.style.transform = on ? 'translateX(28px)' : 'translateX(0)';
+    if (label) {
+        label.textContent = on ? 'Вкл' : 'Выкл';
+        label.style.color = on ? '#7B5CFF' : '#64748B';
+    }
+}
+async function toggleTechnoMagic() {
+    const btn = document.getElementById('technoMagicToggle');
+    if (!btn) return;
+    const next = btn.getAttribute('aria-pressed') !== 'true';
+    const csrf = document.querySelector('meta[name="csrf-token"]');
+    if (!csrf) return;
+    const fd = new FormData();
+    fd.append('csrf_token', csrf.content || csrf.getAttribute('content'));
+    fd.append('presence_techno_magic_enabled', next ? '1' : '0');
+    try {
+        const response = await fetch("{{ url_for('auth.profile_update') }}", { method: 'POST', body: fd });
+        const result = await response.json();
+        if (response.ok && result.success) {
+            applyTechnoMagicVisual(next);
+            if (window.toast) window.toast.success(next ? 'Техно-магия включена' : 'Техно-магия выключена');
+        } else if (window.toast) {
+            window.toast.error(result.error || 'Не удалось сохранить');
+        }
+    } catch (e) {
+        if (window.toast) window.toast.error('Ошибка сети');
+    }
+}
 document.addEventListener('DOMContentLoaded', () => {
     let enabled = true;
     try {
@@ -299,6 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         enabled = true;
     }
     applyDevModeState(enabled);
+    applyTechnoMagicVisual({{ 'true' if (current_user.profile and current_user.profile.presence_techno_magic_enabled) else 'false' }});
 });
 </script>
 {% endblock %}

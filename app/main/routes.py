@@ -38,6 +38,8 @@ def presence_ping():
             page_path = (request.args.get('path') or request.headers.get('X-Page-Path') or '').strip()
         if not page_path.startswith('/'):
             page_path = request.path or '/'
+        if not page_endpoint:
+            page_endpoint = (request.args.get('endpoint') or request.headers.get('X-Page-Endpoint') or '').strip()
 
         from app.utils.hooks import resolve_presence_activity
 
