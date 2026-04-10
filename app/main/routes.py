@@ -71,37 +71,48 @@ def presence_ping():
 @login_required
 def presence_user(user_id):
     """Получить текущий статус присутствия и активность указанного пользователя."""
+    import datetime as _dt
     try:
-        user = User.query.get(user_id)
+        # filter_by избегает identity-map кэша, гарантирует свежие данные из БД
+        user = User.query.filter_by(id=user_id).first()
         if not user:
             return jsonify({'error': 'not_found'}), 404
-        online = user.is_online_now()
-        activity = user.get_live_activity_text() or ''
+
+        online = False
+        last_seen_seconds_ago = None
         last_seen_label = ''
-        if user.presence_last_seen_at:
+
+        seen = user.presence_last_seen_at
+        if seen is not None:
             try:
-                now = moscow_now()
-                seen = user.presence_last_seen_at
-                if getattr(now, 'tzinfo', None) and getattr(seen, 'tzinfo', None):
-                    delta_sec = int((now - seen).total_seconds())
+                # psycopg2 сохраняет tz-aware в TIMESTAMP WITHOUT TIME ZONE как UTC naive.
+                # Поэтому сравниваем: datetime.utcnow() vs seen (naive UTC).
+                if getattr(seen, 'tzinfo', None) is not None:
+                    now_utc = _dt.datetime.now(_dt.timezone.utc)
+                    delta_sec = (now_utc - seen.astimezone(_dt.timezone.utc)).total_seconds()
                 else:
-                    now_n = now.replace(tzinfo=None) if getattr(now, 'tzinfo', None) else now
-                    seen_n = seen.replace(tzinfo=None) if getattr(seen, 'tzinfo', None) else seen
-                    delta_sec = int((now_n - seen_n).total_seconds())
+                    now_utc_naive = _dt.datetime.utcnow()
+                    delta_sec = (now_utc_naive - seen).total_seconds()
+                delta_sec = max(0.0, delta_sec)
+                online = delta_sec <= 120
+                last_seen_seconds_ago = int(delta_sec)
                 if delta_sec < 60:
                     last_seen_label = 'только что'
                 elif delta_sec < 3600:
-                    last_seen_label = f'{delta_sec // 60} мин. назад'
+                    last_seen_label = f'{int(delta_sec) // 60} мин. назад'
                 elif delta_sec < 86400:
-                    last_seen_label = f'{delta_sec // 3600} ч. назад'
+                    last_seen_label = f'{int(delta_sec) // 3600} ч. назад'
                 else:
-                    last_seen_label = f'{delta_sec // 86400} д. назад'
+                    last_seen_label = f'{int(delta_sec) // 86400} д. назад'
             except Exception:
-                last_seen_label = ''
+                pass
+
+        activity = user.get_live_activity_text() or ''
         return jsonify({
             'user_id': user_id,
             'online': online,
             'activity': activity,
+            'last_seen_seconds_ago': last_seen_seconds_ago,
             'last_seen_label': last_seen_label,
         })
     except Exception:

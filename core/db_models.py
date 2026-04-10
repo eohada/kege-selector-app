@@ -874,19 +874,26 @@ class User(db.Model):
         return f'<User {self.username} ({self.role})>'
 
     def is_online_now(self, online_window_seconds: int = 120) -> bool:
-        """True, если пользователь был активен недавно."""
+        """True, если пользователь был активен недавно.
+
+        psycopg2 сохраняет tz-aware datetime в TIMESTAMP WITHOUT TIME ZONE,
+        конвертируя в UTC (PostgreSQL приводит значение с timezone к UTC перед
+        сохранением в колонку без timezone). Поэтому сравниваем через UTC.
+        """
         if not self.presence_last_seen_at:
             return False
         try:
-            now = moscow_now()
-            seen_at = self.presence_last_seen_at
-            if getattr(now, 'tzinfo', None) and getattr(seen_at, 'tzinfo', None):
-                delta = now - seen_at
+            from datetime import datetime as _dt, timezone as _tz
+            seen = self.presence_last_seen_at
+            if getattr(seen, 'tzinfo', None) is not None:
+                # Если вдруг хранится tz-aware — приводим к UTC
+                now_utc = _dt.now(_tz.utc)
+                delta_sec = (now_utc - seen.astimezone(_tz.utc)).total_seconds()
             else:
-                now_naive = now.replace(tzinfo=None) if getattr(now, 'tzinfo', None) else now
-                seen_naive = seen_at.replace(tzinfo=None) if getattr(seen_at, 'tzinfo', None) else seen_at
-                delta = now_naive - seen_naive
-            return delta <= timedelta(seconds=max(30, int(online_window_seconds or 120)))
+                # Naive UTC (psycopg2 конвертировал Moscow → UTC при сохранении)
+                now_utc_naive = _dt.utcnow()
+                delta_sec = (now_utc_naive - seen).total_seconds()
+            return 0.0 <= delta_sec <= max(30, int(online_window_seconds or 120))
         except Exception:
             return False
 

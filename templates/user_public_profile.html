@@ -422,11 +422,17 @@
         });
     } catch (e) {}
 
-    /* Fallback REST polling every 30s */
+    /* REST polling every 15s */
     function pollPresence() {
         fetch('/api/presence/user/' + profileUserId, { credentials: 'same-origin' })
             .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (d) { if (d) applyPresence(!!d.online, d.activity || ''); })
+            .then(function (d) {
+                if (!d) return;
+                var isOnline = (d.last_seen_seconds_ago != null)
+                    ? d.last_seen_seconds_ago <= 120
+                    : !!d.online;
+                applyPresence(isOnline, d.activity || '');
+            })
             .catch(function () {});
     }
     pollPresence();
