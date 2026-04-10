@@ -143,15 +143,9 @@
         function pingPresence() {
             if (document.visibilityState === 'hidden') return;
             try {
-                fetch(pingUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({
-                        path: window.location.pathname || '/',
-                        endpoint: ''
-                    })
-                }).catch(function() {});
+                var p = window.location.pathname || '/';
+                var url = pingUrl + '?path=' + encodeURIComponent(p);
+                fetch(url, { method: 'GET', credentials: 'same-origin' }).catch(function() {});
             } catch (e) {}
         }
 

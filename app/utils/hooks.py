@@ -5,7 +5,7 @@ import logging
 import base64
 import urllib.parse
 from datetime import timedelta
-from flask import request, redirect, url_for, current_app
+from flask import request, redirect, url_for, current_app, g
 from flask_login import current_user
 from sqlalchemy import text
 from datetime import datetime
@@ -143,7 +143,20 @@ def register_hooks(app):
     """
     Регистрирует все before_request хуки для приложения
     """
-    
+
+    @app.after_request
+    def commit_presence_after_request(response):
+        """Коммитим обновление присутствия после ответа, чтобы не делать commit() внутри before_request (expire/сессия ломают ORM в том же запросе)."""
+        if getattr(g, 'presence_needs_commit', False):
+            try:
+                db.session.commit()
+            except Exception:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+        return response
+
     @app.before_request
     def ensure_audit_logger_worker():
         """Запускаем worker thread для audit logger при первом запросе"""
@@ -465,6 +478,8 @@ def register_hooks(app):
                 return None
             if request.path.startswith('/api/telegram/') or request.path.startswith('/telegram/'):
                 return None
+            if request.path.startswith('/api/presence/'):
+                return None
 
             now = moscow_now()
             new_key, new_text = _resolve_presence_activity(current_user, request.endpoint or '', request.path or '')
@@ -488,7 +503,7 @@ def register_hooks(app):
                 current_user.presence_activity_text = new_text
                 current_user.presence_updated_at = now
 
-            db.session.commit()
+            g.presence_needs_commit = True
         except Exception:
             try:
                 db.session.rollback()

@@ -23,17 +23,21 @@ from app import csrf
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 
-@main_bp.route('/api/presence/ping', methods=['POST'])
+@main_bp.route('/api/presence/ping', methods=['GET', 'POST'])
 @login_required
-@csrf.exempt
 def presence_ping():
-    """Heartbeat endpoint for live online/activity presence."""
+    """Heartbeat для онлайн-статуса. GET — без CSRF (удобно для fetch из base.html)."""
     try:
-        payload = request.get_json(silent=True) or {}
-        page_path = (payload.get('path') or request.headers.get('X-Page-Path') or request.referrer or '').strip()
-        page_endpoint = (payload.get('endpoint') or '').strip()
+        page_path = ''
+        page_endpoint = ''
+        if request.method == 'POST':
+            payload = request.get_json(silent=True) or {}
+            page_path = (payload.get('path') or '').strip()
+            page_endpoint = (payload.get('endpoint') or '').strip()
+        if not page_path:
+            page_path = (request.args.get('path') or request.headers.get('X-Page-Path') or '').strip()
         if not page_path.startswith('/'):
-            page_path = request.path
+            page_path = request.path or '/'
 
         from app.utils.hooks import resolve_presence_activity
 
