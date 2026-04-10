@@ -151,7 +151,10 @@
                 var ep = (epMeta && epMeta.getAttribute('content')) ? epMeta.getAttribute('content') : '';
                 var qs = '?path=' + encodeURIComponent(p);
                 if (ep) qs += '&endpoint=' + encodeURIComponent(ep);
-                fetch(pingUrl + qs, { method: 'GET', credentials: 'same-origin' }).catch(function() {});
+                var headers = { 'Accept': 'application/json' };
+                if (p) headers['X-Page-Path'] = p;
+                if (ep) headers['X-Page-Endpoint'] = ep;
+                fetch(pingUrl + qs, { method: 'GET', credentials: 'same-origin', headers: headers }).catch(function() {});
             } catch (e) {}
         }
 

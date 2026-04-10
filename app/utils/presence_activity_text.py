@@ -121,6 +121,19 @@ def _resolve_from_path(user, raw_path: str) -> Optional[Tuple[str, str]]:
             "Читает ответы учеников и хмурится вдумчиво",
         )
 
+    # Журнал проверок / ручные ревью — путь НЕ содержит /lesson/, поэтому нельзя прятать это внутри блока lesson ниже.
+    if p.startswith("/reviews/") or p.startswith("/tutor/reviews"):
+        if user.is_student():
+            return "assignment_solve", _pick(
+                "Смотрит статус своих работ",
+                "Проверяет, что там с проверкой",
+            )
+        return "assignment_review", _pick(
+            "Работает в очереди проверок",
+            "Разгребает гору работ на проверку",
+            "Выставляет оценки и пишет комментарии",
+        )
+
     if "/lesson/" in p or p.startswith("/lesson/"):
         if (
             "classwork" in p
@@ -139,12 +152,6 @@ def _resolve_from_path(user, raw_path: str) -> Optional[Tuple[str, str]]:
                 "Ведёт занятие и не даёт скуке победить",
                 "Проверяет работы и мысленно ставит лайки",
             )
-        if p.startswith("/reviews/") or "/reviews/" in p:
-            if user.is_tutor() or user.is_creator():
-                return "lesson_manage", _pick(
-                    "Управляет уроками и материалами",
-                    "Раскладывает уроки по полочкам",
-                )
         if user.is_tutor() or user.is_creator():
             return "lesson_manage", _pick(
                 "Управляет уроками и материалами",
@@ -250,6 +257,15 @@ def _resolve_from_path(user, raw_path: str) -> Optional[Tuple[str, str]]:
         return "task_generate", _pick(
             "Генерирует новые задания",
             "Заставляет генератор пыхтеть",
+        )
+
+    if p.startswith("/templates"):
+        if user.is_student():
+            return "lesson_open", _pick("Смотрит шаблоны", "Заглянул в шаблоны заданий")
+        return "templates_manage", _pick(
+            "Собирает и правит шаблоны заданий",
+            "Крутит библиотеку шаблонов",
+            "Настраивает заготовки для уроков",
         )
 
     if p.startswith("/notifications"):
@@ -389,6 +405,15 @@ def resolve_presence_activity(user, endpoint: str, path: str) -> Tuple[str, str]
         return "task_generate", _pick(
             "Генерирует новые задания",
             "Заставляет генератор пыхтеть",
+        )
+
+    if ep.startswith("templates."):
+        if user.is_student():
+            return "lesson_open", _pick("Смотрит шаблоны", "Заглянул в шаблоны заданий")
+        return "templates_manage", _pick(
+            "Собирает и правит шаблоны заданий",
+            "Крутит библиотеку шаблонов",
+            "Настраивает заготовки для уроков",
         )
 
     # Расписание
