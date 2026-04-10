@@ -17,4 +17,4 @@ The bot runs in webhook mode as part of the main Flask application:
 - Notifications: `app/telegram/notifications.py`
 - Mini App API: `app/telegram/mini_app.py`
 
-The standalone polling runner (`run_bot.py`) has been removed — use the Flask webhook instead.
+`run_bot.py` is a **no-op shim** for old Docker commands: it only sleeps and logs a warning. The real bot runs in Flask (`POST /webhook/telegram`). On the server, **remove** the `bot_prod` / `bot` service from docker-compose — see `DEPLOY_TELEGRAM_WEBHOOK.md` in the repo root.

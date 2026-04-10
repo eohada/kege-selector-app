@@ -1,24 +1,16 @@
 # Пример конфигурации для деплоя на сервере.
 # Скопируй в docker-compose.yml и адаптируй под свои сервисы.
 #
-# ВАЖНО для бота: должен работать только ОДИН экземпляр.
-# Иначе будет Conflict: terminated by other getUpdates request.
+# Telegram-бот BooStudy работает через WEBHOOK внутри сервиса web
+# (POST /webhook/telegram). Отдельный контейнер bot/bot_prod НЕ нужен.
+# См. DEPLOY_TELEGRAM_WEBHOOK.md
 
 services:
   web:
     build: .
     command: gunicorn ...
+    # env_file: .env — те же BOT_TOKEN, APP_URL, BOT_INTERNAL_TOKEN, что и раньше
     # ...
-
-  bot:
-    build: .
-    command: python urep_bot/run_bot.py
-    env_file: .env
-    depends_on:
-      - db
-    # Критично: одна реплика!
-    deploy:
-      replicas: 1
 
   db:
     image: postgres:15
