@@ -398,6 +398,12 @@ def create_app(config_name=None):
         mini_app_api_profile,
         mini_app_api_broadcast_create,
         mini_app_api_creator_students,
+        mini_app_api_assignments,
+        mini_app_api_profile_notifications,
+        mini_app_api_creator_bug_reports,
+        mini_app_api_creator_bug_reports_reply,
+        mini_app_api_creator_stats,
+        mini_app_api_creator_broadcasts,
     )
     for _fn in (
         mini_app_api_dashboard,
@@ -408,6 +414,12 @@ def create_app(config_name=None):
         mini_app_api_profile,
         mini_app_api_broadcast_create,
         mini_app_api_creator_students,
+        mini_app_api_assignments,
+        mini_app_api_profile_notifications,
+        mini_app_api_creator_bug_reports,
+        mini_app_api_creator_bug_reports_reply,
+        mini_app_api_creator_stats,
+        mini_app_api_creator_broadcasts,
     ):
         csrf.exempt(_fn)
 

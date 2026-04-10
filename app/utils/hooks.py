@@ -531,6 +531,14 @@ def register_hooks(app):
 
         if request.path.startswith('/api/internal/'):
             return
+
+        # Telegram Bot API webhook: POST от серверов Telegram без сессии пользователя
+        if request.path.startswith('/webhook/'):
+            return
+
+        # Telegram Mini App: HTML + JSON API; доступ по initData (HMAC), не по Flask-login
+        if request.path.startswith('/tg-app/'):
+            return
         
         if not current_user.is_authenticated:
             if request.endpoint and request.endpoint != 'auth.login':
