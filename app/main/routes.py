@@ -48,10 +48,64 @@ def presence_ping():
         current_user.presence_activity_text = new_text
         current_user.presence_updated_at = now
         db.session.commit()
+
+        try:
+            sio = current_app.socketio
+            if sio is not None:
+                sio.emit(
+                    'presence_update',
+                    {'user_id': current_user.id, 'online': True, 'activity': new_text},
+                    room=f'presence:{current_user.id}',
+                    namespace='/presence',
+                )
+        except Exception:
+            pass
+
         return jsonify({'success': True, 'online': True, 'activity': new_text})
     except Exception:
         db.session.rollback()
         return jsonify({'success': False}), 500
+
+
+@main_bp.route('/api/presence/user/<int:user_id>', methods=['GET'])
+@login_required
+def presence_user(user_id):
+    """Получить текущий статус присутствия и активность указанного пользователя."""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'not_found'}), 404
+        online = user.is_online_now()
+        activity = user.get_live_activity_text() or ''
+        last_seen_label = ''
+        if user.presence_last_seen_at:
+            try:
+                now = moscow_now()
+                seen = user.presence_last_seen_at
+                if getattr(now, 'tzinfo', None) and getattr(seen, 'tzinfo', None):
+                    delta_sec = int((now - seen).total_seconds())
+                else:
+                    now_n = now.replace(tzinfo=None) if getattr(now, 'tzinfo', None) else now
+                    seen_n = seen.replace(tzinfo=None) if getattr(seen, 'tzinfo', None) else seen
+                    delta_sec = int((now_n - seen_n).total_seconds())
+                if delta_sec < 60:
+                    last_seen_label = 'только что'
+                elif delta_sec < 3600:
+                    last_seen_label = f'{delta_sec // 60} мин. назад'
+                elif delta_sec < 86400:
+                    last_seen_label = f'{delta_sec // 3600} ч. назад'
+                else:
+                    last_seen_label = f'{delta_sec // 86400} д. назад'
+            except Exception:
+                last_seen_label = ''
+        return jsonify({
+            'user_id': user_id,
+            'online': online,
+            'activity': activity,
+            'last_seen_label': last_seen_label,
+        })
+    except Exception:
+        return jsonify({'error': 'server_error'}), 500
 
 
 @main_bp.route('/legal/offer')

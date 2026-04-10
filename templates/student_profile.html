@@ -106,6 +106,7 @@
         <!-- КАРТОЧКА НАСТАВНИКА -->
         {% if mentor %}
         <a href="{{ url_for('auth.user_public_profile', user_id=mentor.id) }}"
+           data-mentor-id="{{ mentor.id }}"
            class="student-mentor-gradient bg-gradient-to-b from-[#F9F7FF] to-white rounded-[32px] border border-purple-200 dark:border-white/[0.06] border-b-[4px] border-b-purple-300 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col justify-between hover:shadow-tactile-hover transition-shadow relative overflow-hidden no-underline group">
         {% else %}
         <div class="student-mentor-gradient bg-gradient-to-b from-[#F9F7FF] to-white rounded-[32px] border border-purple-200 dark:border-white/[0.06] border-b-[4px] border-b-purple-300 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col justify-between transition-shadow relative overflow-hidden">
@@ -113,6 +114,14 @@
             <div class="relative z-10">
                 <div class="flex justify-between items-start mb-6">
                     <h3 class="font-extrabold text-fuchsia-600 dark:text-boo-primary text-[10px] uppercase tracking-widest">Твой наставник</h3>
+                    {% if mentor %}
+                    <span id="mentor-online-badge"
+                          class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors duration-500
+                                 {{ 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' if mentor.is_online_now() else 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400' }}">
+                        <span id="mentor-online-dot" class="w-1.5 h-1.5 rounded-full {{ 'bg-green-500' if mentor.is_online_now() else 'bg-slate-400' }}"></span>
+                        <span id="mentor-online-label">{{ 'В сети' if mentor.is_online_now() else 'Не в сети' }}</span>
+                    </span>
+                    {% endif %}
                 </div>
 
                 <div class="flex items-center gap-4 mb-6">
@@ -124,7 +133,10 @@
                             <i class="ph-fill ph-ghost text-2xl"></i>
                         </div>
                         {% endif %}
-                        <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white dark:border-dark-card" title="Онлайн"></div>
+                        <div id="mentor-status-dot"
+                             class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-dark-card transition-colors duration-500
+                                    {{ 'bg-green-500' if mentor.is_online_now() else 'bg-slate-400' }}"
+                             title="{{ 'В сети' if mentor.is_online_now() else 'Не в сети' }}"></div>
                     </div>
                     <div class="min-w-0">
                         <h4 class="text-xl font-black text-primary dark:text-white truncate">
@@ -145,9 +157,14 @@
                 </div>
 
                 <div class="bg-white/70 dark:bg-dark-inner/50 border border-purple-100 dark:border-white/[0.06] rounded-2xl p-4 shadow-sm dark:shadow-none dark:shadow-none">
-                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Статус преподавателя</div>
-                    <div class="text-sm font-black text-primary dark:text-boo-primary mt-0.5">
-                        {% if mentor and mentor.custom_status %}{{ mentor.custom_status }}{% else %}—{% endif %}
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">
+                        {% if mentor and mentor.is_online_now() %}Активность{% else %}Статус преподавателя{% endif %}
+                    </div>
+                    <div id="mentor-activity-text" class="text-sm font-black text-primary dark:text-boo-primary mt-0.5">
+                        {% if mentor %}
+                            {% set live_act = mentor.get_live_activity_text() %}
+                            {% if live_act %}{{ live_act }}{% elif mentor.custom_status %}{{ mentor.custom_status }}{% else %}—{% endif %}
+                        {% else %}—{% endif %}
                     </div>
                     <div class="text-xs font-bold text-muted mt-1">
                         {% if mentor and mentor.created_at %}В системе с {{ mentor.created_at.strftime('%d.%m.%Y') }}{% else %}В системе с —{% endif %}
@@ -166,6 +183,70 @@
         </a>
         {% else %}
         </div>
+        {% endif %}
+
+        {% if mentor %}
+        <script>
+        (function () {
+            var mentorId = {{ mentor.id | tojson }};
+            var dotEl = document.getElementById('mentor-status-dot');
+            var badgeEl = document.getElementById('mentor-online-badge');
+            var dotSmEl = document.getElementById('mentor-online-dot');
+            var labelEl = document.getElementById('mentor-online-label');
+            var actEl = document.getElementById('mentor-activity-text');
+
+            function applyPresence(online, activity) {
+                var onlineCls = ['bg-green-500'];
+                var offlineCls = ['bg-slate-400'];
+                if (dotEl) {
+                    dotEl.classList.toggle('bg-green-500', online);
+                    dotEl.classList.toggle('bg-slate-400', !online);
+                    dotEl.title = online ? 'В сети' : 'Не в сети';
+                }
+                if (dotSmEl) {
+                    dotSmEl.classList.toggle('bg-green-500', online);
+                    dotSmEl.classList.toggle('bg-slate-400', !online);
+                }
+                if (labelEl) labelEl.textContent = online ? 'В сети' : 'Не в сети';
+                if (badgeEl) {
+                    badgeEl.className = badgeEl.className
+                        .replace(/bg-green-100|text-green-700|dark:bg-green-500\/15|dark:text-green-400|bg-slate-100|text-slate-500|dark:bg-white\/5|dark:text-slate-400/g, '').trim();
+                    if (online) {
+                        badgeEl.classList.add('bg-green-100', 'text-green-700', 'dark:bg-green-500/15', 'dark:text-green-400');
+                    } else {
+                        badgeEl.classList.add('bg-slate-100', 'text-slate-500', 'dark:bg-white/5', 'dark:text-slate-400');
+                    }
+                }
+                if (actEl && activity) actEl.textContent = activity;
+            }
+
+            /* Socket.IO live updates */
+            var sioConnected = false;
+            try {
+                var socket = io('/presence', { transports: ['websocket', 'polling'] });
+                socket.on('connect', function () {
+                    sioConnected = true;
+                    socket.emit('watch', { user_id: mentorId });
+                });
+                socket.on('presence_update', function (data) {
+                    if (data && data.user_id == mentorId) {
+                        applyPresence(!!data.online, data.activity || '');
+                    }
+                });
+                socket.on('disconnect', function () { sioConnected = false; });
+            } catch (e) {}
+
+            /* Fallback: REST polling every 30s */
+            function pollPresence() {
+                fetch('/api/presence/user/' + mentorId, { credentials: 'same-origin' })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (d) { if (d) applyPresence(!!d.online, d.activity || ''); })
+                    .catch(function () {});
+            }
+            pollPresence();
+            setInterval(pollPresence, 30000);
+        })();
+        </script>
         {% endif %}
     </div>
 
