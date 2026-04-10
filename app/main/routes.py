@@ -4,6 +4,7 @@
 import logging
 import json
 import shutil
+from urllib.parse import urlparse
 from flask import render_template, request, send_from_directory, flash, redirect, url_for, make_response, current_app, jsonify
 from flask_login import login_required
 import os
@@ -36,8 +37,20 @@ def presence_ping():
             page_endpoint = (payload.get('endpoint') or '').strip()
         if not page_path:
             page_path = (request.args.get('path') or request.headers.get('X-Page-Path') or '').strip()
-        if not page_path.startswith('/'):
-            page_path = request.path or '/'
+        # Пустой path или подстановка request.path давали /api/presence/ping → всегда fallback active_teacher.
+        if (not page_path) or (not page_path.startswith('/')) or page_path.startswith('/api/'):
+            ref = (request.headers.get('Referer') or '').strip()
+            if ref:
+                try:
+                    cand = (urlparse(ref).path or '').strip()
+                    if cand.startswith('/') and not cand.startswith('/api/'):
+                        page_path = cand
+                except Exception:
+                    pass
+        if not page_path or not page_path.startswith('/'):
+            page_path = '/'
+        elif page_path.startswith('/api/'):
+            page_path = '/'
         if not page_endpoint:
             page_endpoint = (request.args.get('endpoint') or request.headers.get('X-Page-Endpoint') or '').strip()
 

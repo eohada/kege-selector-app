@@ -43,7 +43,7 @@ def _resolve_from_path(user, raw_path: str) -> Optional[Tuple[str, str]]:
     if not p or p == "/":
         return None
 
-    if p.startswith("/theory/"):
+    if p == "/theory" or p.startswith("/theory/"):
         if user.is_student():
             return "theory_study", _pick(
                 "Впитывает теорию словно губка",
@@ -269,6 +269,26 @@ def _resolve_from_path(user, raw_path: str) -> Optional[Tuple[str, str]]:
             "Крутит настройки курсов",
         )
 
+    if p.startswith("/chief-tester"):
+        return "staff_tools", _pick(
+            "Ковыряет кабинет главного тестировщика",
+            "Гоняет сценарии и проверки",
+            "Ловит баги до того, как они доберутся до учеников",
+        )
+
+    if p.startswith("/remote-admin"):
+        return "remote_admin", _pick(
+            "Управляет платформой из удалённой админки",
+            "Крутит ручки в remote-admin",
+            "Держит прод под прицелом",
+        )
+
+    if p.startswith("/qa/") or p == "/qa":
+        return "qa_tools", _pick(
+            "Прощупывает платформу в QA-режиме",
+            "Гоняет чек-листы качества",
+        )
+
     return None
 
 
@@ -451,6 +471,24 @@ def resolve_presence_activity(user, endpoint: str, path: str) -> Tuple[str, str]
             "Патрулирует дашборд как диспетчер",
             "Контролирует учебный процесс",
             "Держит метрики на радаре",
+        )
+
+    if ep.startswith("chief_tester."):
+        return "staff_tools", _pick(
+            "Ковыряет кабинет главного тестировщика",
+            "Гоняет сценарии и проверки",
+            "Ловит баги до того, как они доберутся до учеников",
+        )
+    if ep.startswith("remote_admin."):
+        return "remote_admin", _pick(
+            "Управляет платформой из удалённой админки",
+            "Крутит ручки в remote-admin",
+            "Держит прод под прицелом",
+        )
+    if ep.startswith("qa."):
+        return "qa_tools", _pick(
+            "Прощупывает платформу в QA-режиме",
+            "Гоняет чек-листы качества",
         )
 
     if user.is_student():

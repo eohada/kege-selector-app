@@ -73,30 +73,6 @@
         </div>
     </section>
 
-    <section class="w-full rounded-[28px] border-2 border-purple-200/90 bg-gradient-to-br from-violet-50 via-white to-cyan-50/60 shadow-[0_8px_40px_-12px_rgba(123,92,255,0.35)] p-6 sm:p-8">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div class="min-w-0">
-                <h3 class="text-lg sm:text-xl font-black text-primary tracking-tight flex items-center gap-2.5">
-                    <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-boo-primary text-white shadow-md border-b-2 border-purple-800">
-                        <i class="ph-fill ph-sparkle text-xl"></i>
-                    </span>
-                    Техно-магия в статусе активности
-                </h3>
-                <p class="text-sm text-muted font-medium mt-3 leading-relaxed max-w-2xl">
-                    Включи — и на карточке профиля у всех будет фиксированная фраза <span class="font-bold text-boo-primary">«Творит техно-магию для вас»</span>, без привязки к странице.
-                    Выключи — снова показываются живые статусы (расписание, работы, теория…).
-                </p>
-            </div>
-            <button type="button" id="technoMagicToggle" class="shrink-0 flex items-center gap-3 px-5 py-3 rounded-2xl border-2 border-purple-200/80 bg-white/90 hover:bg-white shadow-sm transition-all"
-                    onclick="toggleTechnoMagic()" aria-pressed="false" aria-label="Переключить техно-магию">
-                <span id="technoMagicLabel" class="text-xs font-extrabold uppercase tracking-wider text-slate-500 min-w-[7rem] text-right">Выкл</span>
-                <span class="w-14 h-7 rounded-full relative shadow-inner transition-colors duration-200" id="technoMagicTrack" style="background:#CBD5E1;">
-                    <span class="absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-200 border border-slate-200/80" id="technoMagicKnob" style="left:4px;transform:translateX(0);"></span>
-                </span>
-            </button>
-        </div>
-    </section>
-
     <div class="flex flex-col lg:flex-row gap-6">
         <div class="w-full lg:w-1/2">
             <section class="bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
@@ -130,7 +106,17 @@
                     <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">ID аккаунта</span><span class="text-sm font-black text-white bg-slate-900 px-3 py-1 rounded-lg shadow-sm dark:shadow-none dark:shadow-none border border-slate-700">{% if current_user.numeric_id %}#{{ current_user.numeric_id }}{% else %}—{% endif %}</span></div>
                     <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Логин</span><span class="text-sm font-bold text-primary">@{{ current_user.username }}</span></div>
                     <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Регистрация</span><span class="text-sm font-bold text-primary">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span></div>
-                    <div class="flex justify-between items-center py-3.5"><span class="text-sm font-bold text-muted">Статус</span><span class="text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Статус</span><span class="text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
+                    <div class="flex justify-between items-center py-3.5">
+                        <span class="text-sm font-bold text-muted inline-flex items-center gap-2"><i class="ph-fill ph-sparkle text-boo-primary"></i> Техно-магия</span>
+                        <button type="button" id="technoMagicToggle" class="inline-flex items-center gap-2.5 rounded-xl py-1 pl-1 pr-1 border border-slate-200/90 bg-surface-alt/80 hover:bg-surface-alt transition-colors"
+                                onclick="toggleTechnoMagic()" aria-pressed="false" aria-label="Фиксированная активность «Творит техно-магию для вас»">
+                            <span id="technoMagicLabel" class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 w-7 text-right leading-none">Выкл</span>
+                            <span id="technoMagicTrack" class="relative h-7 w-[2.75rem] shrink-0 rounded-full bg-slate-300 shadow-inner ring-1 ring-slate-900/5">
+                                <span id="technoMagicKnob" class="pointer-events-none absolute top-1/2 left-[3px] h-[18px] w-[18px] -translate-y-1/2 rounded-full bg-white shadow-md ring-1 ring-slate-900/10 transition-[left] duration-200 ease-out"></span>
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </section>
         </div>
@@ -309,11 +295,13 @@ function applyTechnoMagicVisual(on) {
     const label = document.getElementById('technoMagicLabel');
     if (!btn || !track || !knob) return;
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    track.style.background = on ? '#7B5CFF' : '#CBD5E1';
-    knob.style.transform = on ? 'translateX(28px)' : 'translateX(0)';
+    track.style.background = on ? '#7B5CFF' : '#cbd5e1';
+    knob.style.top = '50%';
+    knob.style.transform = 'translateY(-50%)';
+    knob.style.left = on ? 'calc(100% - 3px - 18px)' : '3px';
     if (label) {
         label.textContent = on ? 'Вкл' : 'Выкл';
-        label.style.color = on ? '#7B5CFF' : '#64748B';
+        label.style.color = on ? '#5b21b6' : '#64748b';
     }
 }
 async function toggleTechnoMagic() {
