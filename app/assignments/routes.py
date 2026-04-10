@@ -2634,6 +2634,8 @@ def submission_submit(submission_id):
             max_score += assignment_task.max_score
             
             answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
+            previous_answered_at = None
+            was_submitted_separately = bool(getattr(answer, 'submitted_separately_at', None)) if answer else False
             
             if not answer:
                 if not assignment_task.requires_manual_grading:
@@ -2652,7 +2654,7 @@ def submission_submit(submission_id):
             
             if attempts_per_task:
                 max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task)
-                if (answer.attempts_used or 0) < max_for_task and answer.value:
+                if (not was_submitted_separately) and (answer.attempts_used or 0) < max_for_task and answer.value:
                     previous_answered_at = answer.submitted_separately_at or answer.updated_at
                     answer.attempts_used = (answer.attempts_used or 0) + 1
                     answer.submitted_separately_at = now
@@ -2664,22 +2666,25 @@ def submission_submit(submission_id):
                     answer.score = score
                     total_score += score
                     try:
-                        from app.analytics import AnalyticsEngine
-                        answer_time_spent_sec = _resolve_answer_time_spent_sec(
-                            submission,
-                            answer.submitted_separately_at or now,
-                            previous_answered_at=previous_answered_at,
-                        )
-                        AnalyticsEngine.process_submission(
-                            user_id=current_user.id,
-                            task_id=assignment_task.task.task_id,
-                            is_correct=is_correct,
-                            time_spent_sec=answer_time_spent_sec,
-                            submission_id=submission_id,
-                            answer_id=answer.answer_id,
-                            attempt_no=max(1, int(answer.attempts_used or 1)),
-                            mode='homework_manual',
-                        )
+                        # Если задание уже было сдано отдельно, MMR уже начислен в submit_task.
+                        # На финальной сдаче не дублируем начисление.
+                        if not was_submitted_separately:
+                            from app.analytics import AnalyticsEngine
+                            answer_time_spent_sec = _resolve_answer_time_spent_sec(
+                                submission,
+                                answer.submitted_separately_at or now,
+                                previous_answered_at=previous_answered_at,
+                            )
+                            AnalyticsEngine.process_submission(
+                                user_id=current_user.id,
+                                task_id=assignment_task.task.task_id,
+                                is_correct=is_correct,
+                                time_spent_sec=answer_time_spent_sec,
+                                submission_id=submission_id,
+                                answer_id=answer.answer_id,
+                                attempt_no=max(1, int(answer.attempts_used or 1)),
+                                mode='homework_manual',
+                            )
                     except Exception as anal_err:
                         logger.warning("Analytics process_submission failed: %s", anal_err)
                 else:
