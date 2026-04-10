@@ -1447,6 +1447,20 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add tg_quiet_hours_end to {profiles_table}: {e}")
                             db.session.rollback()
+                    if 'presence_techno_magic_enabled' not in cols:
+                        try:
+                            if _is_postgres(app):
+                                db.session.execute(text(
+                                    f'ALTER TABLE "{profiles_table}" ADD COLUMN presence_techno_magic_enabled BOOLEAN DEFAULT FALSE NOT NULL'
+                                ))
+                            else:
+                                db.session.execute(text(
+                                    f'ALTER TABLE "{profiles_table}" ADD COLUMN presence_techno_magic_enabled INTEGER DEFAULT 0 NOT NULL'
+                                ))
+                            logger.info(f"Added presence_techno_magic_enabled to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add presence_techno_magic_enabled to {profiles_table}: {e}")
+                            db.session.rollback()
                     try:
                         db.session.execute(text(f'UPDATE "{profiles_table}" SET tg_notify_news = TRUE WHERE tg_notify_news IS NULL OR tg_notify_news = FALSE'))
                         logger.info("Updated tg_notify_news to TRUE for existing profiles")

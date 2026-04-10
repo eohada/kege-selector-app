@@ -180,6 +180,15 @@
                     <input type="text" id="custom_status" name="custom_status" class="neo-input" value="{{ current_user.custom_status or '' }}">
                 </div>
                 <div class="neo-field">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" id="presence_techno_magic_enabled" name="presence_techno_magic_enabled" value="1" class="mt-1 rounded border-slate-300"
+                               {% if current_user.profile and current_user.profile.presence_techno_magic_enabled %}checked{% endif %}>
+                        <span class="text-sm font-medium text-secondary leading-snug">
+                            Показывать всем фиксированную активность «Творит техно-магию для вас» вместо авто-статуса по странице (только для создателя).
+                        </span>
+                    </label>
+                </div>
+                <div class="neo-field">
                     <label class="neo-label" for="about_me">О себе</label>
                     <textarea id="about_me" name="about_me" class="neo-textarea">{{ current_user.about_me or '' }}</textarea>
                 </div>
@@ -265,6 +274,10 @@ async function submitProfileEdit(event) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]');
     if (!csrfToken) return;
     formData.append('csrf_token', csrfToken.content || csrfToken.getAttribute('content'));
+    const technoMagic = document.getElementById('presence_techno_magic_enabled');
+    if (technoMagic) {
+        formData.set('presence_techno_magic_enabled', technoMagic.checked ? '1' : '0');
+    }
     try {
         const response = await fetch("{{ url_for('auth.profile_update') }}", { method: 'POST', body: formData });
         const result = await response.json();

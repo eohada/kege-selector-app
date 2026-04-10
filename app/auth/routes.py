@@ -1009,6 +1009,27 @@ def profile_update():
             
         if 'telegram_link' in data:
             current_user.telegram_link = data['telegram_link'].strip()[:200]
+
+        if getattr(current_user, 'is_creator', lambda: False)():
+            magic_in_payload = False
+            magic_on = False
+            if request.is_json and isinstance(data, dict):
+                if 'presence_techno_magic_enabled' in data:
+                    magic_in_payload = True
+                    v = data.get('presence_techno_magic_enabled')
+                    if isinstance(v, bool):
+                        magic_on = v
+                    else:
+                        magic_on = str(v).strip().lower() in ('1', 'true', 'yes', 'on')
+            elif not request.is_json and 'presence_techno_magic_enabled' in request.form:
+                magic_in_payload = True
+                magic_on = request.form.get('presence_techno_magic_enabled') == '1'
+            if magic_in_payload:
+                prof = UserProfile.query.filter_by(user_id=current_user.id).first()
+                if not prof:
+                    prof = UserProfile(user_id=current_user.id)
+                    db.session.add(prof)
+                prof.presence_techno_magic_enabled = bool(magic_on)
             
         db.session.commit()
         
