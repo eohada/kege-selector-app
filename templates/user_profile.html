@@ -832,8 +832,8 @@
             if (data.success) {
                 telegramLinkCode = data.code;
                 telegramCodeExpires = Date.now() + (data.expires_in * 1000);
-                const botHref = data.deep_link || (data.bot_username ? 'https://t.me/' + data.bot_username : 'https://t.me/urep_notify_bot');
-                const botLabel = data.bot_username ? ('@' + data.bot_username) : '@urep_notify_bot';
+                const botHref = data.deep_link || (data.bot_username ? 'https://t.me/' + data.bot_username : 'https://t.me/boostudy_bot');
+                const botLabel = data.bot_username ? ('@' + data.bot_username) : '@boostudy_bot';
                 const deepBtn = data.deep_link
                     ? `<a class="neo-button accent sm" href="${data.deep_link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;margin-bottom:0.75rem;">Открыть бота и привязать</a>`
                     : '';
