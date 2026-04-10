@@ -1407,7 +1407,9 @@ def ensure_schema_columns(app):
                         'tg_notify_news',
                         'tg_notify_referral_used',
                         'tg_notify_homework_submitted',
-                        'tg_notify_system_errors'
+                        'tg_notify_system_errors',
+                        'tg_notify_subscription_expiring',
+                        'tg_notify_bug_report_reply',
                     ]
                     for field in tg_notify_fields:
                         if field not in cols:
@@ -1418,6 +1420,33 @@ def ensure_schema_columns(app):
                             except Exception as e:
                                 logger.warning(f"Could not add {field} to {profiles_table}: {e}")
                                 db.session.rollback()
+                    if 'tg_notify_daily_digest' not in cols:
+                        try:
+                            db.session.execute(text(
+                                f'ALTER TABLE "{profiles_table}" ADD COLUMN tg_notify_daily_digest BOOLEAN DEFAULT FALSE'
+                            ))
+                            logger.info(f"Added tg_notify_daily_digest to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add tg_notify_daily_digest to {profiles_table}: {e}")
+                            db.session.rollback()
+                    if 'tg_quiet_hours_start' not in cols:
+                        try:
+                            db.session.execute(text(
+                                f'ALTER TABLE "{profiles_table}" ADD COLUMN tg_quiet_hours_start INTEGER'
+                            ))
+                            logger.info(f"Added tg_quiet_hours_start to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add tg_quiet_hours_start to {profiles_table}: {e}")
+                            db.session.rollback()
+                    if 'tg_quiet_hours_end' not in cols:
+                        try:
+                            db.session.execute(text(
+                                f'ALTER TABLE "{profiles_table}" ADD COLUMN tg_quiet_hours_end INTEGER'
+                            ))
+                            logger.info(f"Added tg_quiet_hours_end to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add tg_quiet_hours_end to {profiles_table}: {e}")
+                            db.session.rollback()
                     try:
                         db.session.execute(text(f'UPDATE "{profiles_table}" SET tg_notify_news = TRUE WHERE tg_notify_news IS NULL OR tg_notify_news = FALSE'))
                         logger.info("Updated tg_notify_news to TRUE for existing profiles")
