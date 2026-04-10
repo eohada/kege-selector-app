@@ -662,7 +662,14 @@ def register_hooks(app):
         """Добавляет current_student и moscow_now в контекст шаблонов"""
         current_student = None
         if current_user.is_authenticated and current_user.is_student():
-            current_student = Student.query.filter_by(user_id=current_user.id).first()
+            try:
+                current_student = Student.query.filter_by(user_id=current_user.id).first()
+            except Exception:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+                current_student = None
         return dict(current_student=current_student, moscow_now=moscow_now)
 
     @app.context_processor
@@ -678,6 +685,10 @@ def register_hooks(app):
             eff = get_effective_access_for_user(current_user.id)
             return dict(subscription_access=eff)
         except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
             return dict(subscription_access=None)
 
     @app.before_request

@@ -282,6 +282,8 @@ def create_app(config_name=None):
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    from app.main.routes import presence_ping as _presence_ping_view
+    csrf.exempt(_presence_ping_view)
     app.register_blueprint(students_bp)
     app.register_blueprint(lessons_bp)
     app.register_blueprint(admin_bp)
@@ -440,6 +442,10 @@ def create_app(config_name=None):
                 if student:
                     student_data = {'student_id': student.student_id}
             except Exception:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
                 student_data = None
         cinema_demo_ids = None
         if current_user.is_authenticated and getattr(current_user, 'is_demo_user', False):

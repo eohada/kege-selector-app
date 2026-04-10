@@ -757,6 +757,11 @@ def ensure_schema_columns(app):
             safe_add_column('allow_task_submit_homework', 'BOOLEAN DEFAULT FALSE')
             safe_add_column('allow_task_submit_classwork', 'BOOLEAN DEFAULT FALSE')
             safe_add_column('allow_task_submit_exam', 'BOOLEAN DEFAULT FALSE')
+            # Telegram: напоминание за 30 мин до урока (Alembic: b2c3d4e5f6a7_tg_bot_rewrite_fields)
+            safe_add_column(
+                'tg_reminder_30min_sent',
+                'BOOLEAN NOT NULL DEFAULT FALSE' if is_postgres else 'BOOLEAN DEFAULT 0',
+            )
 
             _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, limit=2000)
 
