@@ -72,7 +72,7 @@ def resolve_presence_activity(user, endpoint: str, path: str) -> Tuple[str, str]
             if user.is_creator() or user.is_tutor() or user.is_content_maker():
                 return "theory_editor", _pick(
                     "Лепит теорию из цифрового пластилина",
-                    "Создаёт теоретический блок — с задором и смыслом",
+                    "Создаёт теоретический блок - с задором и смыслом",
                 )
             return "theory_open", _pick(
                 "Открывает теоретический блок",
@@ -90,7 +90,7 @@ def resolve_presence_activity(user, endpoint: str, path: str) -> Tuple[str, str]
         if "classwork" in ep or "homework" in ep:
             if user.is_student():
                 return "lesson_work", _pick(
-                    "В бою с задачей — пока задача побеждает...",
+                    "В бою с задачей - пока задача побеждает...",
                     "Решает задачу методом упорства",
                     "Думает так сильно, что слышен шум процессора",
                 )
@@ -111,7 +111,7 @@ def resolve_presence_activity(user, endpoint: str, path: str) -> Tuple[str, str]
         if user.is_student():
             return "assignment_solve", _pick(
                 "Выполняет домашнее задание",
-                "Бьётся с ДЗ — пока оно не сдаётся",
+                "Бьётся с ДЗ - пока оно не сдаётся",
                 "Пишет решение и надеется на лучшее",
             )
         if ep in (
@@ -178,7 +178,7 @@ def resolve_presence_activity(user, endpoint: str, path: str) -> Tuple[str, str]
             )
         if ep in ("students.student_profile", "students.student_info"):
             return "student_watch", _pick(
-                "Заглянул в комнату ученика — всё под контролем (наверное)",
+                "Заглянул в комнату ученика - всё под контролем (наверное)",
                 "Смотрит профиль ученика с прищуром наставника",
                 "Проверяет, как там дела у подопечного",
             )
