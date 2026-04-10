@@ -176,7 +176,15 @@
                             {% endif %}
                         </div>
                         {% if not show_archive %}
-                        <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white" style="background:#06B6D4;"></div>
+                            {% if student.user %}
+                            <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 shrink-0 transition-colors duration-300
+                                        {{ 'bg-green-500' if student.user.is_online_now() else 'bg-slate-400' }}"
+                                 data-presence-user-id="{{ student.user.id }}"
+                                 title="{{ 'В сети' if student.user.is_online_now() else 'Не в сети' }}"></div>
+                            {% else %}
+                            <div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 bg-cyan-500 shrink-0"
+                                 title="Нет привязанного аккаунта"></div>
+                            {% endif %}
                         {% endif %}
                     </div>
                     <div>
@@ -318,4 +326,36 @@
     <script src="{{ url_for('static', filename='dashboard-ajax.js') }}"></script>
     <script src="{{ url_for('static', filename='filter-storage.js') }}"></script>
     <script src="{{ url_for('static', filename='filter-state-manager.js') }}"></script>
+    <script>
+    (function () {
+        var nodes = document.querySelectorAll('[data-presence-user-id]');
+        if (!nodes.length) return;
+        function refresh() {
+            var ids = [];
+            nodes.forEach(function (el) {
+                var id = el.getAttribute('data-presence-user-id');
+                if (id && ids.indexOf(id) === -1) ids.push(id);
+            });
+            ids.forEach(function (userId) {
+                fetch('/api/presence/user/' + userId, { credentials: 'same-origin' })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (d) {
+                        if (!d) return;
+                        var online = (d.last_seen_seconds_ago != null)
+                            ? d.last_seen_seconds_ago <= 120
+                            : !!d.online;
+                        document.querySelectorAll('[data-presence-user-id="' + userId + '"]').forEach(function (el) {
+                            el.classList.toggle('bg-green-500', online);
+                            el.classList.toggle('bg-slate-400', !online);
+                            el.classList.toggle('bg-cyan-500', false);
+                            el.title = online ? 'В сети' : 'Не в сети';
+                        });
+                    })
+                    .catch(function () {});
+            });
+        }
+        refresh();
+        setInterval(refresh, 20000);
+    })();
+    </script>
 {% endblock %}

@@ -1,0 +1,113 @@
+{# Ожидает в контексте: mentor (опц.), student_user (опц.). Хотя бы один id нужен. #}
+{% set _mentor = mentor|default(none) %}
+{% set _student = student_user|default(none) %}
+{% set mid = _mentor.id if _mentor else none %}
+{% set sid = _student.id if _student else none %}
+{% if mid or sid %}
+<script>
+(function () {
+    var mentorId = {{ mid | tojson }};
+    var studentUserId = {{ sid | tojson }};
+
+    var dotEl = document.getElementById('mentor-status-dot');
+    var badgeEl = document.getElementById('mentor-online-badge');
+    var dotSmEl = document.getElementById('mentor-online-dot');
+    var labelEl = document.getElementById('mentor-online-label');
+    var actEl = document.getElementById('mentor-activity-text');
+
+    var sDot = document.getElementById('student-presence-dot');
+    var sBadge = document.getElementById('student-presence-badge');
+    var sLabel = document.getElementById('student-presence-label');
+    var sAct = document.getElementById('student-presence-activity');
+
+    function applyMentorPresence(online, activity) {
+        if (mentorId == null) return;
+        if (dotEl) {
+            dotEl.classList.toggle('bg-green-500', online);
+            dotEl.classList.toggle('bg-slate-400', !online);
+            dotEl.title = online ? 'В сети' : 'Не в сети';
+        }
+        if (dotSmEl) {
+            dotSmEl.classList.toggle('bg-green-500', online);
+            dotSmEl.classList.toggle('bg-slate-400', !online);
+        }
+        if (labelEl) labelEl.textContent = online ? 'В сети' : 'Не в сети';
+        if (badgeEl) {
+            badgeEl.className = badgeEl.className
+                .replace(/bg-green-100|text-green-700|dark:bg-green-500\/15|dark:text-green-400|bg-slate-100|text-slate-500|dark:bg-white\/5|dark:text-slate-400/g, '').trim();
+            if (online) {
+                badgeEl.classList.add('bg-green-100', 'text-green-700', 'dark:bg-green-500/15', 'dark:text-green-400');
+            } else {
+                badgeEl.classList.add('bg-slate-100', 'text-slate-500', 'dark:bg-white/5', 'dark:text-slate-400');
+            }
+        }
+        if (actEl && activity) actEl.textContent = activity;
+    }
+
+    function applyStudentPresence(online, activity, raw) {
+        if (studentUserId == null) return;
+        if (sDot) {
+            sDot.classList.toggle('bg-green-500', online);
+            sDot.classList.toggle('bg-slate-400', !online);
+            sDot.title = online ? 'В сети' : 'Не в сети';
+        }
+        if (sLabel) sLabel.textContent = online ? 'В сети' : 'Не в сети';
+        if (sBadge) {
+            sBadge.className = sBadge.className
+                .replace(/bg-green-100|text-green-700|dark:bg-green-500\/15|dark:text-green-400|bg-slate-100|text-slate-500|dark:bg-white\/5|dark:text-slate-400/g, '').trim();
+            if (online) {
+                sBadge.classList.add('bg-green-100', 'text-green-700', 'dark:bg-green-500/15', 'dark:text-green-400');
+            } else {
+                sBadge.classList.add('bg-slate-100', 'text-slate-500', 'dark:bg-white/5', 'dark:text-slate-400');
+            }
+        }
+        if (sAct) {
+            if (online) {
+                sAct.textContent = activity || 'На платформе';
+            } else {
+                sAct.textContent = (raw && raw.last_seen_label) ? ('Был(а): ' + raw.last_seen_label) : 'Не в сети';
+            }
+        }
+    }
+
+    function pollUser(uid, applyFn) {
+        if (uid == null) return;
+        fetch('/api/presence/user/' + uid, { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) {
+                if (!d) return;
+                var isOnline = (d.last_seen_seconds_ago != null)
+                    ? d.last_seen_seconds_ago <= 120
+                    : !!d.online;
+                applyFn(isOnline, d.activity || '', d);
+            })
+            .catch(function () {});
+    }
+
+    function pollAll() {
+        if (mentorId != null) pollUser(mentorId, function (on, act) { applyMentorPresence(on, act); });
+        if (studentUserId != null) pollUser(studentUserId, applyStudentPresence);
+    }
+
+    try {
+        var socket = io('/presence', { transports: ['websocket', 'polling'] });
+        socket.on('connect', function () {
+            if (mentorId != null) socket.emit('watch', { user_id: mentorId });
+            if (studentUserId != null) socket.emit('watch', { user_id: studentUserId });
+        });
+        socket.on('presence_update', function (data) {
+            if (!data) return;
+            if (mentorId != null && data.user_id === mentorId) {
+                applyMentorPresence(!!data.online, data.activity || '');
+            }
+            if (studentUserId != null && data.user_id === studentUserId) {
+                applyStudentPresence(!!data.online, data.activity || '', data);
+            }
+        });
+    } catch (e) {}
+
+    pollAll();
+    setInterval(pollAll, 15000);
+})();
+</script>
+{% endif %}

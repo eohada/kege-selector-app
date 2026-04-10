@@ -47,6 +47,28 @@
                     <p class="text-muted dark:text-dark-muted font-medium text-lg">
                         {% if student.deadline %}До экзамена: <span class="text-secondary dark:text-white font-semibold">{{ student.deadline }}</span>{% else %}Продолжаем двигаться к твоей цели.{% endif %}
                     </p>
+                    {% if student_user %}
+                    <div class="mt-4 flex flex-col gap-1.5 max-w-xl">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">
+                                {% if current_user.id == student_user.id %}Твой статус{% else %}Ученик{% endif %}
+                            </span>
+                            <span id="student-presence-badge"
+                                  class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors duration-500
+                                         {{ 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' if student_user.is_online_now() else 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400' }}">
+                                <span id="student-presence-dot" class="w-1.5 h-1.5 rounded-full {{ 'bg-green-500' if student_user.is_online_now() else 'bg-slate-400' }}" title="{{ 'В сети' if student_user.is_online_now() else 'Не в сети' }}"></span>
+                                <span id="student-presence-label">{{ 'В сети' if student_user.is_online_now() else 'Не в сети' }}</span>
+                            </span>
+                        </div>
+                        <p id="student-presence-activity" class="text-sm font-semibold text-secondary dark:text-white/90 leading-snug">
+                            {% if student_user.is_online_now() %}
+                                {{ student_user.get_live_activity_text() or 'На платформе' }}
+                            {% else %}
+                                Не в сети
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <div class="shrink-0 hidden sm:flex items-center gap-2">
@@ -185,76 +207,7 @@
         </div>
         {% endif %}
 
-        {% if mentor %}
-        <script>
-        (function () {
-            var mentorId = {{ mentor.id | tojson }};
-            var dotEl = document.getElementById('mentor-status-dot');
-            var badgeEl = document.getElementById('mentor-online-badge');
-            var dotSmEl = document.getElementById('mentor-online-dot');
-            var labelEl = document.getElementById('mentor-online-label');
-            var actEl = document.getElementById('mentor-activity-text');
-
-            function applyPresence(online, activity) {
-                var onlineCls = ['bg-green-500'];
-                var offlineCls = ['bg-slate-400'];
-                if (dotEl) {
-                    dotEl.classList.toggle('bg-green-500', online);
-                    dotEl.classList.toggle('bg-slate-400', !online);
-                    dotEl.title = online ? 'В сети' : 'Не в сети';
-                }
-                if (dotSmEl) {
-                    dotSmEl.classList.toggle('bg-green-500', online);
-                    dotSmEl.classList.toggle('bg-slate-400', !online);
-                }
-                if (labelEl) labelEl.textContent = online ? 'В сети' : 'Не в сети';
-                if (badgeEl) {
-                    badgeEl.className = badgeEl.className
-                        .replace(/bg-green-100|text-green-700|dark:bg-green-500\/15|dark:text-green-400|bg-slate-100|text-slate-500|dark:bg-white\/5|dark:text-slate-400/g, '').trim();
-                    if (online) {
-                        badgeEl.classList.add('bg-green-100', 'text-green-700', 'dark:bg-green-500/15', 'dark:text-green-400');
-                    } else {
-                        badgeEl.classList.add('bg-slate-100', 'text-slate-500', 'dark:bg-white/5', 'dark:text-slate-400');
-                    }
-                }
-                if (actEl && activity) actEl.textContent = activity;
-            }
-
-            /* Socket.IO live updates */
-            var sioConnected = false;
-            try {
-                var socket = io('/presence', { transports: ['websocket', 'polling'] });
-                socket.on('connect', function () {
-                    sioConnected = true;
-                    socket.emit('watch', { user_id: mentorId });
-                });
-                socket.on('presence_update', function (data) {
-                    if (data && data.user_id == mentorId) {
-                        applyPresence(!!data.online, data.activity || '');
-                    }
-                });
-                socket.on('disconnect', function () { sioConnected = false; });
-            } catch (e) {}
-
-            /* REST polling every 15s */
-            function pollPresence() {
-                fetch('/api/presence/user/' + mentorId, { credentials: 'same-origin' })
-                    .then(function (r) { return r.ok ? r.json() : null; })
-                    .then(function (d) {
-                        if (!d) return;
-                        /* last_seen_seconds_ago is the authoritative source */
-                        var isOnline = (d.last_seen_seconds_ago != null)
-                            ? d.last_seen_seconds_ago <= 120
-                            : !!d.online;
-                        applyPresence(isOnline, d.activity || '');
-                    })
-                    .catch(function () {});
-            }
-            pollPresence();
-            setInterval(pollPresence, 15000);
-        })();
-        </script>
-        {% endif %}
+        {% include 'partials/presence_watch_script.html' %}
     </div>
 
     <!-- НИЖНИЙ РЯД (Action Items) -->

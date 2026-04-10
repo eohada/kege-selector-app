@@ -35,6 +35,26 @@
                         <span class="px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-700 border border-cyan-100 text-[10px] font-extrabold uppercase tracking-wider">{{ student.category }}</span>
                     {% endif %}
                 </div>
+                {% if student_user %}
+                <div class="mt-4 flex flex-col gap-1.5 max-w-xl">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Статус ученика</span>
+                        <span id="student-presence-badge"
+                              class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors duration-500
+                                     {{ 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' if student_user.is_online_now() else 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400' }}">
+                            <span id="student-presence-dot" class="w-1.5 h-1.5 rounded-full {{ 'bg-green-500' if student_user.is_online_now() else 'bg-slate-400' }}" title="{{ 'В сети' if student_user.is_online_now() else 'Не в сети' }}"></span>
+                            <span id="student-presence-label">{{ 'В сети' if student_user.is_online_now() else 'Не в сети' }}</span>
+                        </span>
+                    </div>
+                    <p id="student-presence-activity" class="text-sm font-semibold text-primary dark:text-white/90 leading-snug">
+                        {% if student_user.is_online_now() %}
+                            {{ student_user.get_live_activity_text() or 'На платформе' }}
+                        {% else %}
+                            Не в сети
+                        {% endif %}
+                    </p>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -169,5 +189,6 @@
         </section>
     </div>
 </div>
+{% include 'partials/presence_watch_script.html' %}
 {% endblock %}
 
