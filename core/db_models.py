@@ -560,6 +560,7 @@ class Lesson(db.Model):
     published_at = db.Column(db.DateTime, nullable=True) # Дата отправки урока/ДЗ ученику
     student_late = db.Column(db.Boolean, default=False, nullable=False)  # Ученик опоздал на урок
     started_at = db.Column(db.DateTime, nullable=True)  # Фактическое время начала (для авто-завершения через 1 ч)
+    tg_reminder_30min_sent = db.Column(db.Boolean, default=False, nullable=False)  # Отправлено ли напоминание за 30 мин
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
@@ -1302,7 +1303,12 @@ class UserProfile(db.Model):
     tg_notify_referral_used = db.Column(db.Boolean, default=True, nullable=False)  # Новый реферал (для админов)
     tg_notify_homework_submitted = db.Column(db.Boolean, default=True, nullable=False)  # ДЗ сдано (для учителей)
     tg_notify_system_errors = db.Column(db.Boolean, default=True, nullable=False)  # Системные ошибки (для админов)
-    
+    tg_notify_subscription_expiring = db.Column(db.Boolean, default=True, nullable=False)  # Подписка истекает
+    tg_notify_bug_report_reply = db.Column(db.Boolean, default=True, nullable=False)  # Ответ на баг-репорт
+    tg_notify_daily_digest = db.Column(db.Boolean, default=False, nullable=False)  # Утренний дайджест (opt-in)
+    tg_quiet_hours_start = db.Column(db.Integer, nullable=True)  # Тихие часы: начало (0-23, МСК)
+    tg_quiet_hours_end = db.Column(db.Integer, nullable=True)    # Тихие часы: конец (0-23, МСК)
+
     internal_notes = db.Column(db.Text, nullable=True)
     
     created_at = db.Column(db.DateTime, default=moscow_now)
@@ -1382,6 +1388,8 @@ class BotErrorReport(db.Model):
     admin_reply = db.Column(db.Text, nullable=True)
     admin_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
     reply_sent_at = db.Column(db.DateTime, nullable=True)
+    screenshot_file_id = db.Column(db.String(200), nullable=True)  # Telegram file_id скриншота
+    creator_tg_message_id = db.Column(db.BigInteger, nullable=True)  # ID сообщения боту создателю (для reply)
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     replied_at = db.Column(db.DateTime, nullable=True)

@@ -4,7 +4,7 @@
 import logging
 import json
 import shutil
-from flask import render_template, request, send_from_directory, flash, redirect, url_for, make_response, current_app
+from flask import render_template, request, send_from_directory, flash, redirect, url_for, make_response, current_app, jsonify
 from flask_login import login_required
 import os
 from datetime import datetime
@@ -21,6 +21,33 @@ from flask_login import current_user
 from app import csrf
 
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+
+@main_bp.route('/api/presence/ping', methods=['POST'])
+@login_required
+@csrf.exempt
+def presence_ping():
+    """Heartbeat endpoint for live online/activity presence."""
+    try:
+        payload = request.get_json(silent=True) or {}
+        page_path = (payload.get('path') or request.headers.get('X-Page-Path') or request.referrer or '').strip()
+        page_endpoint = (payload.get('endpoint') or '').strip()
+        if not page_path.startswith('/'):
+            page_path = request.path
+
+        from app.utils.hooks import resolve_presence_activity
+
+        now = moscow_now()
+        new_key, new_text = resolve_presence_activity(current_user, page_endpoint, page_path)
+        current_user.presence_last_seen_at = now
+        current_user.presence_activity_key = new_key
+        current_user.presence_activity_text = new_text
+        current_user.presence_updated_at = now
+        db.session.commit()
+        return jsonify({'success': True, 'online': True, 'activity': new_text})
+    except Exception:
+        db.session.rollback()
+        return jsonify({'success': False}), 500
 
 
 @main_bp.route('/legal/offer')

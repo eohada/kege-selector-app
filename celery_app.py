@@ -34,6 +34,8 @@ def make_celery(app=None):
     )
 
     beat = dict(app.config.get('CELERY_BEAT_SCHEDULE') or {})
+
+    # Deadline reminders (каждые 15 мин)
     if os.environ.get('TELEGRAM_DEADLINE_REMINDERS_DISABLED', '').strip().lower() not in ('1', 'true', 'yes'):
         beat.setdefault(
             'telegram-deadline-reminders',
@@ -42,6 +44,39 @@ def make_celery(app=None):
                 'schedule': float(os.environ.get('TELEGRAM_DEADLINE_BEAT_SECONDS', '900')),
             },
         )
+
+    # Lesson reminders (каждые 5 мин)
+    if os.environ.get('TELEGRAM_LESSON_REMINDERS_DISABLED', '').strip().lower() not in ('1', 'true', 'yes'):
+        beat.setdefault(
+            'telegram-lesson-reminders-30min',
+            {
+                'task': 'app.tasks.telegram_lesson_reminders.telegram_lesson_reminders_task',
+                'schedule': float(os.environ.get('TELEGRAM_LESSON_BEAT_SECONDS', '300')),
+            },
+        )
+
+    # Daily digest (8:00 МСК пн–сб)
+    if os.environ.get('TELEGRAM_DAILY_DIGEST_DISABLED', '').strip().lower() not in ('1', 'true', 'yes'):
+        from celery.schedules import crontab
+        beat.setdefault(
+            'telegram-daily-digest',
+            {
+                'task': 'app.tasks.telegram_daily_digest.telegram_daily_digest_task',
+                'schedule': crontab(hour=8, minute=0, day_of_week='1-6'),
+            },
+        )
+
+    # Subscription expiry check (раз в сутки в 9:00 МСК)
+    if os.environ.get('TELEGRAM_SUBSCRIPTION_EXPIRY_DISABLED', '').strip().lower() not in ('1', 'true', 'yes'):
+        from celery.schedules import crontab as _crontab
+        beat.setdefault(
+            'telegram-subscription-expiry',
+            {
+                'task': 'app.tasks.telegram_subscription_expiry.telegram_subscription_expiry_task',
+                'schedule': _crontab(hour=9, minute=0),
+            },
+        )
+
     celery.conf.beat_schedule = beat
 
     class ContextTask(celery.Task):

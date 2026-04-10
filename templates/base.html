@@ -133,6 +133,50 @@
         }
     });
     </script>
+    {% if current_user is defined and current_user.is_authenticated %}
+    <script>
+    (function() {
+        var pingUrl = '/api/presence/ping';
+        var intervalMs = 25000;
+        var timer = null;
+
+        function pingPresence() {
+            if (document.visibilityState === 'hidden') return;
+            try {
+                fetch(pingUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        path: window.location.pathname || '/',
+                        endpoint: ''
+                    })
+                }).catch(function() {});
+            } catch (e) {}
+        }
+
+        function start() {
+            if (timer) return;
+            pingPresence();
+            timer = setInterval(pingPresence, intervalMs);
+        }
+
+        function stop() {
+            if (!timer) return;
+            clearInterval(timer);
+            timer = null;
+        }
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') start();
+            else stop();
+        });
+        window.addEventListener('focus', pingPresence);
+        window.addEventListener('pageshow', pingPresence);
+        start();
+    })();
+    </script>
+    {% endif %}
     <script>
     (function() {
         if (window.__boostudyMathRenderInit) return;

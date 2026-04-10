@@ -1,13 +1,11 @@
 """
-Telegram Bot 2.0 — webhook integration with Flask.
-Replaces polling with webhook for better reliability and scalability.
+Telegram Bot — webhook integration with Flask.
 
 Architecture:
   - A dedicated asyncio event loop runs in a background daemon thread.
-  - The python-telegram-bot Application (with all handlers) lives on that loop.
+  - The python-telegram-bot Application lives on that loop.
   - Flask routes push updates to the loop via ``run_coroutine_threadsafe``.
-  - DB access inside handlers uses ``urep_bot.db`` (plain SQLAlchemy sessions),
-    so no Flask app-context is required in the bot thread.
+  - ConversationHandlers manage multi-step FSMs (bug report, creator reply).
 """
 import asyncio
 import logging
@@ -21,6 +19,7 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler,
     MessageHandler,
+    ConversationHandler,
     filters,
 )
 
@@ -42,7 +41,6 @@ def _get_token() -> str:
 
 
 def _ensure_event_loop() -> asyncio.AbstractEventLoop:
-    """Start a background thread running an asyncio event loop (singleton)."""
     global _loop, _thread
     if _loop is not None and _thread is not None and _thread.is_alive():
         return _loop
@@ -58,21 +56,73 @@ def _ensure_event_loop() -> asyncio.AbstractEventLoop:
 
 
 def _register_handlers(app: Application) -> None:
-    """Attach all command / callback / message handlers."""
     from app.telegram.handlers import (
-        cmd_start,
-        cmd_link,
-        cmd_menu,
-        cmd_help,
-        callback_handler,
-        handle_private_text,
+        # Commands
+        cmd_start, cmd_link, cmd_menu, cmd_help, cmd_status, cmd_random, cmd_settings,
+        # FSM
+        bug_report_start, bug_report_receive, bug_report_cancel,
+        creator_reply_start, creator_reply_receive, creator_reply_cancel,
+        BUG_REPORT_TEXT, CREATOR_REPLY_TEXT,
+        # Callbacks / text
+        callback_handler, handle_private_text,
     )
 
+    # --- Bug Report ConversationHandler ---
+    # Entry via /report command OR callback 'bug_report_start'
+    bug_report_conv = ConversationHandler(
+        entry_points=[
+            CommandHandler('report', bug_report_start),
+            CallbackQueryHandler(bug_report_start, pattern='^bug_report_start$'),
+        ],
+        states={
+            BUG_REPORT_TEXT: [
+                MessageHandler(
+                    (filters.TEXT | filters.PHOTO | filters.Document.IMAGE) & filters.ChatType.PRIVATE & ~filters.COMMAND,
+                    bug_report_receive,
+                ),
+            ],
+        },
+        fallbacks=[CommandHandler('cancel', bug_report_cancel)],
+        allow_reentry=True,
+        conversation_timeout=300,
+    )
+
+    # --- Creator Reply ConversationHandler ---
+    # Entry via callback 'bug_reply_<report_id>_<student_chat_id>'
+    creator_reply_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(creator_reply_start, pattern=r'^bug_reply_\d+_\d+$'),
+        ],
+        states={
+            CREATOR_REPLY_TEXT: [
+                MessageHandler(
+                    filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND,
+                    creator_reply_receive,
+                ),
+            ],
+        },
+        fallbacks=[CommandHandler('cancel', creator_reply_cancel)],
+        allow_reentry=True,
+        conversation_timeout=300,
+    )
+
+    # Register ConversationHandlers FIRST (highest priority)
+    app.add_handler(bug_report_conv)
+    app.add_handler(creator_reply_conv)
+
+    # Regular commands
     app.add_handler(CommandHandler('start', cmd_start))
     app.add_handler(CommandHandler('link', cmd_link))
     app.add_handler(CommandHandler('menu', cmd_menu))
     app.add_handler(CommandHandler('help', cmd_help))
+    app.add_handler(CommandHandler('status', cmd_status))
+    app.add_handler(CommandHandler('random', cmd_random))
+    app.add_handler(CommandHandler('settings', cmd_settings))
+
+    # Inline callbacks (after ConversationHandlers so FSM gets priority)
     app.add_handler(CallbackQueryHandler(callback_handler))
+
+    # Catch-all private text
     app.add_handler(MessageHandler(
         filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND,
         handle_private_text,
@@ -80,7 +130,6 @@ def _register_handlers(app: Application) -> None:
 
 
 def get_application() -> Application:
-    """Get (or lazily create) the Telegram Application singleton."""
     global _application
     if _application is not None:
         return _application
@@ -104,7 +153,6 @@ def get_application() -> Application:
 
 
 def _run_async(coro):
-    """Submit *coro* to the bot's event loop and block until done."""
     loop = _ensure_event_loop()
     future = asyncio.run_coroutine_threadsafe(coro, loop)
     return future.result(timeout=60)
@@ -130,7 +178,7 @@ def telegram_webhook():
 
 @telegram_bp.route('/telegram/set', methods=['POST'])
 def set_webhook():
-    """Set the Telegram webhook URL.  Requires ``X-Bot-Token`` header."""
+    """Set the Telegram webhook URL. Requires ``X-Bot-Token`` header."""
     internal_token = os.environ.get('BOT_INTERNAL_TOKEN', '').strip()
     if not internal_token or request.headers.get('X-Bot-Token', '') != internal_token:
         return jsonify({'ok': False, 'error': 'unauthorized'}), 403

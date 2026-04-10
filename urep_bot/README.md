@@ -1,116 +1,20 @@
-# URep Telegram Bot
+# urep_bot — Shared Utilities
 
-Telegram бот для уведомлений учеников платформы URep.
+This package provides shared utilities for the BooStudy Telegram integration (webhook mode via Flask).
 
-## Функционал
+## Files
 
-### Команды
-- `/start` — Приветствие и инструкция по привязке
-- `/link КОД` — Привязать аккаунт по коду из личного кабинета
-- `/unlink` — Отвязать Telegram
-- `/me` — Мой профиль (тариф, уроки)
-- `/lessons` — Ближайшие уроки
-- `/stats` — Статистика
-- `/settings` — Настройки уведомлений
-- `/help` — Справка
+- `**bot.py**` — DB query helpers used by `app/telegram/handlers.py`: `get_user_by_chat_id`, `get_student_by_email`, `get_lessons`, `build_lessons_text`, `build_stats_text`, etc.
+- `**config.py**` — Bot configuration: `APP_URL`, `APP_OPEN_URL`, `BOT_TOKEN`, etc.
+- `**db.py**` — SQLAlchemy session factory (`get_session`, `close_session`) for the bot's background asyncio thread.
 
-### Автоматические уведомления
-- Напоминания об уроках (за 1 час и за 15 минут)
-- Результаты проверки ДЗ
-- Сообщения от преподавателя
-- Предупреждение о заканчивающихся уроках
+## Architecture
 
-## Установка
+The bot runs in webhook mode as part of the main Flask application:
 
-### Локальный запуск
+- Webhook endpoint: `POST /webhook/telegram`
+- Handlers: `app/telegram/handlers.py`
+- Notifications: `app/telegram/notifications.py`
+- Mini App API: `app/telegram/mini_app.py`
 
-1. Установите зависимости:
-```bash
-pip install -r urep_bot/requirements.txt
-```
-
-2. Создайте файл `.env` в корне проекта:
-```env
-BOT_TOKEN=your_telegram_bot_token
-DATABASE_URL=postgresql://user:password@host:port/database
-APP_URL=https://boostudy.ru/
-APP_OPEN_URL=https://boostudy.ru/login
-BOT_INTERNAL_TOKEN=your_internal_token
-```
-
-3. Запустите бота:
-```bash
-python urep_bot/run_bot.py
-```
-
-### Деплой на Railway
-
-1. Создайте новый сервис в Railway
-2. Подключите репозиторий
-3. Установите переменные окружения:
-   - `BOT_TOKEN` — токен от @BotFather
-   - `DATABASE_URL` — URL базы данных (та же что у Flask)
-   - `APP_URL` — URL веб-приложения
-   - `APP_OPEN_URL` — ссылка для кнопки "Открыть сайт" в боте
-   - `BOT_INTERNAL_TOKEN` — токен для привязки аккаунтов через API
-
-4. Установите Start Command:
-```
-python urep_bot/run_bot.py
-```
-
-## Привязка аккаунта
-
-1. Пользователь заходит в личный кабинет на сайте
-2. Открывает профиль → "Привязать Telegram"
-3. Получает 6-значный код (действителен 10 минут)
-4. Отправляет боту команду `/link КОД`
-5. Бот подтверждает привязку
-
-## Архитектура
-
-```
-urep_bot/
-├── __init__.py         # Инициализация модуля
-├── bot.py              # Обработчики команд и callback
-├── config.py           # Конфигурация
-├── db.py               # Подключение к PostgreSQL
-├── keyboards.py        # Inline-клавиатуры
-├── messages.py         # Тексты сообщений
-├── notifications.py    # Фоновые задачи
-├── run_bot.py          # Точка входа
-├── requirements.txt    # Зависимости
-├── Procfile            # Для Railway
-└── README.md           # Документация
-```
-
-## Конфигурация
-
-| Переменная | Описание | По умолчанию |
-|------------|----------|--------------|
-| `BOT_TOKEN` | Токен Telegram бота | — |
-| `DATABASE_URL` | URL PostgreSQL | — |
-| `APP_URL` | URL веб-приложения | https://boostudy.ru/ |
-| `APP_OPEN_URL` | Ссылка для кнопки "Открыть сайт" | https://boostudy.ru/login |
-| `BOT_INTERNAL_TOKEN` | Токен для привязки аккаунтов | — |
-| `BOT_LOG_LEVEL` | Уровень логирования | INFO |
-
-**Важно:** `DATABASE_URL` у бота должен указывать на **ту же базу**, что и у основного приложения (сайта). Если бот запущен с другой БД (другое окружение, другой хост), привязки, сделанные на сайте, в боте не будут видны, и наоборот.
-
-## Если в боте «привязка сбросилась», а на сайте показывается, что Telegram привязан
-
-1. **Проверьте, одну ли БД используют сайт и бот.** У процесса, который запускает бота (systemd, Railway, другой сервер), в переменных окружения должен быть тот же `DATABASE_URL`, что и у веб-приложения. Если бот крутится на том же сервере — используйте тот же `.env` или те же env-переменные.
-2. **Привязку заново:** в профиле на сайте нажмите «Привязать Telegram», получите новый код и в боте отправьте `/link КОД`.
-3. Привязка автоматически сбрасывается только если Telegram при отправке сообщения вернул «user blocked the bot» или «user is deactivated»; в остальных случаях привязка не трогается.
-
-## Получение токена бота
-
-1. Откройте @BotFather в Telegram
-2. Отправьте `/newbot`
-3. Введите имя бота (например: URep Notifications)
-4. Введите username (например: urep_notify_bot)
-5. Скопируйте токен
-
-## Лицензия
-
-Проприетарное ПО. Все права защищены.
+The standalone polling runner (`run_bot.py`) has been removed — use the Flask webhook instead.

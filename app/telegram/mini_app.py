@@ -537,6 +537,299 @@ def mini_app_api_broadcast_create():
     return jsonify({'ok': True, 'broadcast_id': br.broadcast_id, 'status': br.status})
 
 
+@tg_app_bp.route('/api/assignments', methods=['POST'])
+def mini_app_api_assignments():
+    """Список заданий (Submissions) ученика с фильтром по статусу."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    from app.models import db
+
+    uid = int(user_row[0])
+    student_row = _student_row_for_user(db.session, uid)
+    if not student_row:
+        return jsonify({'ok': True, 'submissions': []})
+
+    sid = int(student_row[0])
+    status_filter = body.get('status_filter')  # 'pending' | 'graded' | None (all)
+
+    if status_filter == 'pending':
+        status_clause = "AND s.status IN ('ASSIGNED','IN_PROGRESS','RETURNED')"
+    elif status_filter == 'graded':
+        status_clause = "AND s.status IN ('GRADED','AUTO_GRADED')"
+    else:
+        status_clause = ''
+
+    rows = db.session.execute(text(f"""
+        SELECT s.submission_id, a.title, s.status, a.deadline,
+               s.submitted_at, s.updated_at
+        FROM "Submissions" s
+        JOIN "Assignments" a ON a.assignment_id = s.assignment_id
+        WHERE s.student_id = :sid {status_clause}
+        ORDER BY a.deadline ASC NULLS LAST, s.updated_at DESC
+        LIMIT 50
+    """), {'sid': sid}).fetchall()
+
+    base = _external_base_url()
+    items = []
+    for sub_id, title, status, deadline, submitted_at, updated_at in rows:
+        items.append({
+            'submission_id': int(sub_id),
+            'title': title or '—',
+            'status': status,
+            'deadline': deadline.isoformat() if deadline else None,
+            'submitted_at': submitted_at.isoformat() if submitted_at else None,
+            'updated_at': updated_at.isoformat() if updated_at else None,
+            'url': f'{base}/submissions/{sub_id}' if base else None,
+        })
+    return jsonify({'ok': True, 'submissions': items})
+
+
+@tg_app_bp.route('/api/profile/notifications', methods=['POST'])
+def mini_app_api_profile_notifications():
+    """Получить и обновить настройки уведомлений из Mini App."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    from app.models import db, UserProfile
+
+    uid = int(user_row[0])
+    profile = UserProfile.query.filter_by(user_id=uid).first()
+    if not profile:
+        return jsonify({'ok': False, 'error': 'no_profile'}), 404
+
+    _FIELDS = [
+        'telegram_notifications_enabled',
+        'tg_notify_homework_checked',
+        'tg_notify_homework_returned',
+        'tg_notify_lesson_scheduled',
+        'tg_notify_lesson_reminder',
+        'tg_notify_news',
+        'tg_notify_daily_digest',
+        'tg_notify_subscription_expiring',
+        'tg_notify_bug_report_reply',
+        'tg_quiet_hours_start',
+        'tg_quiet_hours_end',
+    ]
+
+    # If 'updates' key present — apply changes
+    updates = body.get('updates') or {}
+    if updates:
+        for key, val in updates.items():
+            if key in _FIELDS:
+                setattr(profile, key, val)
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error('profile_notifications update: %s', e)
+            return jsonify({'ok': False, 'error': 'db_error'}), 500
+
+    result = {f: getattr(profile, f, None) for f in _FIELDS}
+    return jsonify({'ok': True, 'notifications': result})
+
+
+@tg_app_bp.route('/api/creator/bug-reports', methods=['POST'])
+def mini_app_api_creator_bug_reports():
+    """Список баг-репортов для создателя."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    uid = int(user_row[0])
+    if not _is_creator_role(uid):
+        return jsonify({'ok': False, 'error': 'forbidden'}), 403
+
+    from app.models import db
+
+    status_filter = body.get('status') or 'new'  # new|answered|closed|all
+    if status_filter == 'all':
+        status_clause = ''
+        params: dict = {}
+    else:
+        status_clause = "WHERE ber.status = :status"
+        params = {'status': status_filter}
+
+    rows = db.session.execute(text(f"""
+        SELECT ber.report_id, ber.message, ber.status, ber.created_at,
+               ber.admin_reply, ber.replied_at, ber.screenshot_file_id,
+               u.username, up.first_name, up.last_name, ber.telegram_chat_id
+        FROM "BotErrorReports" ber
+        LEFT JOIN "Users" u ON u.id = ber.user_id
+        LEFT JOIN "UserProfiles" up ON up.user_id = ber.user_id
+        {status_clause}
+        ORDER BY ber.created_at DESC
+        LIMIT 50
+    """), params).fetchall()
+
+    items = []
+    for rid, msg, status, created_at, reply, replied_at, screenshot, uname, fname, lname, tg_cid in rows:
+        name = f'{fname or ""} {lname or ""}'.strip() or uname or 'Аноним'
+        items.append({
+            'report_id': int(rid),
+            'message': msg or '',
+            'status': status,
+            'created_at': created_at.isoformat() if created_at else None,
+            'admin_reply': reply,
+            'replied_at': replied_at.isoformat() if replied_at else None,
+            'has_screenshot': screenshot is not None,
+            'student_name': name,
+            'telegram_chat_id': tg_cid,
+        })
+    return jsonify({'ok': True, 'reports': items, 'total': len(items)})
+
+
+@tg_app_bp.route('/api/creator/bug-reports/reply', methods=['POST'])
+def mini_app_api_creator_bug_reports_reply():
+    """Ответить на баг-репорт из Mini App."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    uid = int(user_row[0])
+    if not _is_creator_role(uid):
+        return jsonify({'ok': False, 'error': 'forbidden'}), 403
+
+    report_id = body.get('report_id')
+    reply_text = (body.get('reply') or '').strip()
+    if not report_id or not reply_text:
+        return jsonify({'ok': False, 'error': 'missing_fields'}), 400
+
+    from app.models import db
+    from core.db_models import BotErrorReport, moscow_now
+
+    report = BotErrorReport.query.get(int(report_id))
+    if not report:
+        return jsonify({'ok': False, 'error': 'not_found'}), 404
+
+    try:
+        report.admin_reply = reply_text
+        report.status = 'answered'
+        report.replied_at = moscow_now()
+        report.reply_sent_at = moscow_now()
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': 'db_error'}), 500
+
+    # Отправить студенту в TG
+    if report.telegram_chat_id:
+        from app.telegram.notifications import notify_bug_report_reply
+        notify_bug_report_reply(
+            student_chat_id=int(report.telegram_chat_id),
+            report_id=int(report_id),
+            reply_text=reply_text,
+        )
+
+    return jsonify({'ok': True, 'report_id': int(report_id), 'status': 'answered'})
+
+
+@tg_app_bp.route('/api/creator/stats', methods=['POST'])
+def mini_app_api_creator_stats():
+    """Расширенная статистика платформы для создателя."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    uid = int(user_row[0])
+    if not _is_creator_role(uid):
+        return jsonify({'ok': False, 'error': 'forbidden'}), 403
+
+    from app.models import db
+
+    s = db.session
+    total_users = s.execute(text('SELECT COUNT(*) FROM "Users"')).scalar() or 0
+    active_students = s.execute(text('SELECT COUNT(*) FROM "Students" WHERE is_active = TRUE')).scalar() or 0
+    tg_linked = s.execute(text(
+        'SELECT COUNT(*) FROM "UserProfiles" WHERE telegram_chat_id IS NOT NULL'
+    )).scalar() or 0
+    lessons_today = s.execute(text(
+        "SELECT COUNT(*) FROM \"Lessons\" WHERE lesson_date::date = CURRENT_DATE"
+    )).scalar() or 0
+    pending_sub = s.execute(text(
+        "SELECT COUNT(*) FROM \"Submissions\" WHERE status IN ('SUBMITTED','NEEDS_MANUAL_REVIEW')"
+    )).scalar() or 0
+    active_subs = s.execute(text(
+        "SELECT COUNT(*) FROM \"UserSubscriptions\" WHERE status = 'active'"
+    )).scalar() or 0
+    new_bug_reports = s.execute(text(
+        "SELECT COUNT(*) FROM \"BotErrorReports\" WHERE status = 'new'"
+    )).scalar() or 0
+    broadcasts_total = s.execute(text('SELECT COUNT(*) FROM "TelegramBroadcasts"')).scalar() or 0
+
+    return jsonify({
+        'ok': True,
+        'stats': {
+            'total_users': total_users,
+            'active_students': active_students,
+            'tg_linked': tg_linked,
+            'lessons_today': lessons_today,
+            'pending_submissions': pending_sub,
+            'active_subscriptions': active_subs,
+            'new_bug_reports': new_bug_reports,
+            'broadcasts_total': broadcasts_total,
+        },
+    })
+
+
+@tg_app_bp.route('/api/creator/broadcasts', methods=['POST'])
+def mini_app_api_creator_broadcasts():
+    """История рассылок для создателя."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    uid = int(user_row[0])
+    if not _is_creator_role(uid):
+        return jsonify({'ok': False, 'error': 'forbidden'}), 403
+
+    from app.models import db
+
+    rows = db.session.execute(text("""
+        SELECT tb.broadcast_id, tb.message_text, tb.status,
+               tb.total_planned, tb.sent_ok, tb.created_at, tb.completed_at,
+               up.first_name
+        FROM "TelegramBroadcasts" tb
+        LEFT JOIN "UserProfiles" up ON up.user_id = tb.created_by_user_id
+        ORDER BY tb.created_at DESC
+        LIMIT 20
+    """)).fetchall()
+
+    items = []
+    for bid, msg, status, total, ok_cnt, created_at, completed_at, fname in rows:
+        items.append({
+            'broadcast_id': int(bid),
+            'message_preview': (msg or '')[:100],
+            'status': status,
+            'total_planned': total or 0,
+            'sent_ok': ok_cnt or 0,
+            'created_at': created_at.isoformat() if created_at else None,
+            'completed_at': completed_at.isoformat() if completed_at else None,
+            'creator_name': fname or 'Создатель',
+        })
+    return jsonify({'ok': True, 'broadcasts': items})
+
+
 @tg_app_bp.route('/api/creator/students', methods=['POST'])
 def mini_app_api_creator_students():
     body = request.get_json(force=True) if request.is_json else {}

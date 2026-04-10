@@ -45,6 +45,18 @@ def _resolve_presence_activity(user, endpoint: str, path: str):
     ep = endpoint or ''
     p = path or ''
 
+    # Path-first fallback for pages where endpoint name is too generic.
+    if p.startswith('/theory/'):
+        if user.is_student():
+            return 'theory_study', 'Изучает теорию...'
+        if user.is_creator() or user.is_tutor() or user.is_content_maker():
+            return 'theory_editor', 'Работает в блоке теории...'
+        return 'theory_browse', 'Просматривает библиотеку теории...'
+    if p.startswith('/library/'):
+        if user.is_student():
+            return 'theory_study', 'Изучает теорию...'
+        return 'theory_browse', 'Просматривает библиотеку теории...'
+
     # Редактор и чтение теории
     if ep.startswith('theory.'):
         if 'edit' in ep or 'create' in ep or 'manage' in ep or p.endswith('/theory/new'):
@@ -120,6 +132,11 @@ def _resolve_presence_activity(user, endpoint: str, path: str):
     if user.is_creator() or user.is_tutor() or user.is_content_maker():
         return 'active_teacher', 'Развивает платформу и помогает ученикам...'
     return 'active_default', 'Сейчас активен на платформе...'
+
+
+def resolve_presence_activity(user, endpoint: str, path: str):
+    """Public wrapper for presence activity resolver."""
+    return _resolve_presence_activity(user, endpoint, path)
 
 
 def register_hooks(app):

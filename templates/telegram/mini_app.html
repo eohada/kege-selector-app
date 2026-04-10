@@ -1,500 +1,791 @@
 {% extends "base_minimal.html" %}
 
-{% block title %}BooStudy — Mini App{% endblock %}
+{% block title %}BooStudy{% endblock %}
 
 {% block head_extra %}
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-    :root {
-        --tg-theme-bg-color: #ffffff;
-        --tg-theme-text-color: #1a1a2e;
-        --tg-theme-hint-color: #8e8ea0;
-        --tg-theme-link-color: #6c63ff;
-        --tg-theme-button-color: #6c63ff;
-        --tg-theme-button-text-color: #ffffff;
-        --tg-theme-secondary-bg-color: #f4f4f8;
-    }
-    body { font-family: 'Golos Text', -apple-system, BlinkMacSystemFont, sans-serif; }
-    .card { border-radius: 14px; }
-    .fade-in { animation: fadeIn .35s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-    .grade-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
-    .grade-good { background: #d1fae5; color: #065f46; }
-    .grade-mid  { background: #fef3c7; color: #92400e; }
-    .grade-low  { background: #fee2e2; color: #991b1b; }
-    .tab-bar { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px; -webkit-overflow-scrolling: touch; }
-    .tab-btn {
-        flex: 0 0 auto; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 600;
-        border: none; background: var(--tg-theme-secondary-bg-color); color: var(--tg-theme-text-color);
-    }
-    .tab-btn.active { background: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-    .article-html { font-size: 14px; line-height: 1.45; max-height: 62vh; overflow-y: auto; }
-    .article-html img { max-width: 100%; height: auto; }
+  :root {
+    --c-bg:       var(--tg-theme-bg-color, #f4f5f9);
+    --c-surface:  var(--tg-theme-secondary-bg-color, #ffffff);
+    --c-text:     var(--tg-theme-text-color, #1a1a2e);
+    --c-hint:     var(--tg-theme-hint-color, #6b7280);
+    --c-accent:   var(--tg-theme-button-color, #7b5cff);
+    --c-accent-t: var(--tg-theme-button-text-color, #ffffff);
+    --c-link:     var(--tg-theme-link-color, #7b5cff);
+    --r-card:     16px;
+    --r-btn:      12px;
+    --shadow:     0 4px 20px rgba(0,0,0,.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--c-bg); color: var(--c-text); font-family: -apple-system, 'Golos Text', BlinkMacSystemFont, sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+  /* Layout */
+  #app { max-width: 480px; margin: 0 auto; padding: 12px 14px 90px; min-height: 100vh; }
+
+  /* Header */
+  .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .app-header .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; }
+  .app-header .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-accent); }
+  .user-chip { background: var(--c-surface); border-radius: 999px; padding: 4px 12px 4px 8px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow); }
+  .role-badge { font-size: 10px; background: var(--c-accent); color: var(--c-accent-t); border-radius: 999px; padding: 1px 7px; }
+
+  /* Tab bar */
+  .tab-bar { display: flex; background: var(--c-surface); border-radius: var(--r-card); padding: 4px; gap: 2px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .tab-btn { flex: 1; text-align: center; padding: 8px 4px; border-radius: 11px; border: none; background: none; cursor: pointer; font-size: 11px; font-weight: 600; color: var(--c-hint); transition: background .15s, color .15s; line-height: 1.3; }
+  .tab-btn span.icon { display: block; font-size: 18px; line-height: 1; margin-bottom: 2px; }
+  .tab-btn.active { background: var(--c-accent); color: var(--c-accent-t); }
+  .tab-panel { display: none; animation: fadeUp .25s ease-out; }
+  .tab-panel.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* Cards */
+  .card { background: var(--c-surface); border-radius: var(--r-card); padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 10px; }
+  .card-title { font-size: 12px; font-weight: 700; color: var(--c-hint); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; }
+  .card-empty { text-align: center; padding: 24px 0; color: var(--c-hint); font-size: 13px; }
+
+  /* Lesson row */
+  .lesson-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .lesson-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .lesson-time { font-size: 11px; font-weight: 700; color: var(--c-hint); min-width: 36px; padding-top: 2px; }
+  .lesson-info { flex: 1; }
+  .lesson-topic { font-weight: 600; font-size: 13px; line-height: 1.3; }
+  .lesson-meta { font-size: 11px; color: var(--c-hint); margin-top: 2px; }
+  .lesson-btn { flex-shrink: 0; background: var(--c-accent); color: var(--c-accent-t); border-radius: var(--r-btn); padding: 5px 10px; font-size: 11px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; }
+
+  /* Status pill */
+  .pill { display: inline-flex; align-items: center; gap: 3px; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 600; }
+  .pill-pending  { background: #fef3c7; color: #92400e; }
+  .pill-progress { background: #dbeafe; color: #1e40af; }
+  .pill-returned { background: #fde8e8; color: #991b1b; }
+  .pill-graded   { background: #d1fae5; color: #065f46; }
+  .pill-auto     { background: #ede9fe; color: #5b21b6; }
+
+  /* Assignment row */
+  .assign-row { padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .assign-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .assign-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .assign-meta  { font-size: 11px; color: var(--c-hint); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* Progress bars */
+  .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .stat-label { font-size: 12px; color: var(--c-hint); }
+  .stat-val { font-size: 15px; font-weight: 700; }
+  .pbar-wrap { height: 6px; background: rgba(0,0,0,.06); border-radius: 999px; overflow: hidden; margin-bottom: 12px; }
+  .pbar-fill  { height: 100%; border-radius: 999px; background: var(--c-accent); transition: width .5s; }
+
+  /* Gradebook */
+  .gb-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .gb-row:last-child { border-bottom: none; }
+  .gb-title { font-size: 12px; color: var(--c-text); flex: 1; margin-right: 8px; }
+  .gb-score { font-weight: 700; font-size: 14px; }
+
+  /* Toggle switch */
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 13px; }
+  .toggle-switch { position: relative; width: 42px; height: 24px; cursor: pointer; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-track { position: absolute; inset: 0; background: #d1d5db; border-radius: 999px; transition: background .2s; }
+  .toggle-switch input:checked + .toggle-track { background: var(--c-accent); }
+  .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .toggle-switch input:checked ~ .toggle-thumb { left: 21px; }
+
+  /* Student table (creator) */
+  .student-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .student-row:last-child { border-bottom: none; }
+  .student-name { font-weight: 600; font-size: 13px; }
+  .student-meta  { font-size: 11px; color: var(--c-hint); margin-top: 1px; }
+  .tg-badge { font-size: 11px; color: #059669; font-weight: 600; }
+  .tg-badge-no { font-size: 11px; color: var(--c-hint); }
+
+  /* Bug report */
+  .report-row { padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .report-row:last-child { border-bottom: none; }
+  .report-meta { font-size: 11px; color: var(--c-hint); margin-bottom: 4px; display: flex; gap: 8px; }
+  .report-msg  { font-size: 12px; line-height: 1.4; color: var(--c-text); margin-bottom: 6px; }
+  .btn-reply { background: var(--c-accent); color: var(--c-accent-t); border: none; border-radius: var(--r-btn); padding: 5px 14px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .btn-sm { background: var(--c-surface); border: 1.5px solid var(--c-accent); color: var(--c-accent); border-radius: var(--r-btn); padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-primary { background: var(--c-accent); color: var(--c-accent-t); border: none; border-radius: var(--r-btn); padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; text-align: center; }
+
+  /* Broadcast compose */
+  textarea { width: 100%; background: var(--c-bg); border: 1.5px solid rgba(0,0,0,.1); border-radius: var(--r-btn); padding: 10px 12px; font-size: 13px; resize: vertical; min-height: 90px; color: var(--c-text); }
+  textarea:focus { outline: none; border-color: var(--c-accent); }
+
+  /* Stats grid */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { background: var(--c-surface); border-radius: var(--r-card); padding: 12px 14px; box-shadow: var(--shadow); }
+  .stat-card .val { font-size: 24px; font-weight: 800; color: var(--c-accent); }
+  .stat-card .lbl { font-size: 11px; color: var(--c-hint); margin-top: 2px; }
+
+  /* Search */
+  .search-wrap { position: relative; margin-bottom: 10px; }
+  .search-wrap input { width: 100%; background: var(--c-surface); border: none; border-radius: var(--r-btn); padding: 9px 12px 9px 36px; font-size: 13px; color: var(--c-text); box-shadow: var(--shadow); }
+  .search-wrap input:focus { outline: none; }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--c-hint); font-size: 15px; }
+
+  /* Loading */
+  #loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 10px; }
+  .spinner { width: 32px; height: 32px; border: 3px solid rgba(0,0,0,.1); border-top-color: var(--c-accent); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error screen */
+  #error-screen { display: none; text-align: center; padding: 40px 16px; }
+  #error-screen h2 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  #error-screen p { font-size: 13px; color: var(--c-hint); }
+
+  /* Reply modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; align-items: flex-end; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet { background: var(--c-surface); border-radius: 20px 20px 0 0; padding: 20px 16px 28px; width: 100%; max-width: 480px; }
+  .modal-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .btn-cancel { flex: 1; background: var(--c-bg); color: var(--c-hint); border: none; border-radius: var(--r-btn); padding: 11px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-send { flex: 2; background: var(--c-accent); color: var(--c-accent-t); border: none; border-radius: var(--r-btn); padding: 11px; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+  /* Filter tabs (mini) */
+  .filter-row { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; }
+  .filter-btn { flex-shrink: 0; border: 1.5px solid rgba(0,0,0,.1); background: none; border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--c-hint); cursor: pointer; }
+  .filter-btn.active { border-color: var(--c-accent); color: var(--c-accent); background: rgba(123,92,255,.07); }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1a1a2e; color: #fff; padding: 9px 20px; border-radius: 999px; font-size: 13px; font-weight: 600; transition: transform .3s; z-index: 200; pointer-events: none; }
+  #toast.show { transform: translateX(-50%) translateY(0); }
 </style>
 {% endblock %}
 
-{% block body_class %}bg-[var(--tg-theme-bg-color)] text-[var(--tg-theme-text-color)]{% endblock %}
+{% block body_class %}{% endblock %}
 
 {% block body %}
-<div id="app" class="min-h-screen px-4 pt-3 pb-8 max-w-lg mx-auto">
+<div id="app" style="display:none">
 
-    <div id="loading" class="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <svg class="animate-spin h-8 w-8 text-[var(--tg-theme-button-color)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-        </svg>
-        <p class="text-sm text-[var(--tg-theme-hint-color)]">Загрузка…</p>
+  <!-- HEADER -->
+  <div class="app-header">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      BooStudy
+    </div>
+    <div class="user-chip">
+      <span id="user-name-chip" style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+      <span id="role-badge" class="role-badge" style="display:none"></span>
+    </div>
+  </div>
+
+  <!-- STUDENT TABS -->
+  <div id="student-tabs" style="display:none">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="schedule" onclick="switchTab('schedule','student-tabs')">
+        <span class="icon">📅</span>Расписание
+      </button>
+      <button class="tab-btn" data-tab="tasks" onclick="switchTab('tasks','student-tabs')">
+        <span class="icon">📚</span>Задания
+      </button>
+      <button class="tab-btn" data-tab="progress" onclick="switchTab('progress','student-tabs')">
+        <span class="icon">📊</span>Прогресс
+      </button>
+      <button class="tab-btn" data-tab="profile" onclick="switchTab('profile','student-tabs')">
+        <span class="icon">👤</span>Профиль
+      </button>
     </div>
 
-    <div id="error" class="hidden flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
-        <span class="text-4xl">😿</span>
-        <p id="error-text" class="text-sm text-[var(--tg-theme-hint-color)]">Не удалось загрузить данные</p>
-        <button onclick="boot()" class="mt-2 px-5 py-2 rounded-xl text-sm font-semibold"
-                style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">
-            Повторить
-        </button>
+    <!-- Расписание -->
+    <div id="tab-schedule" class="tab-panel active"></div>
+
+    <!-- Задания -->
+    <div id="tab-tasks" class="tab-panel">
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="loadAssignments('pending',this)">Активные</button>
+        <button class="filter-btn" onclick="loadAssignments('graded',this)">Проверенные</button>
+        <button class="filter-btn" onclick="loadAssignments(null,this)">Все</button>
+      </div>
+      <div id="tasks-content"></div>
     </div>
 
-    <div id="main-shell" class="hidden space-y-3 fade-in">
-        <div class="flex items-center gap-3 mb-1">
-            <div id="avatar" class="w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold"
-                 style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)"></div>
-            <div>
-                <p class="font-bold text-lg leading-tight" id="user-name"></p>
-                <p class="text-xs text-[var(--tg-theme-hint-color)]">BooStudy</p>
-            </div>
-        </div>
+    <!-- Прогресс -->
+    <div id="tab-progress" class="tab-panel"></div>
 
-        <div class="tab-bar" id="tabs"></div>
+    <!-- Профиль -->
+    <div id="tab-profile" class="tab-panel"></div>
+  </div>
 
-        <div id="pane-overview-student" class="tab-panel active space-y-4">
-            <div class="card p-4 flex items-center gap-4" style="background:var(--tg-theme-secondary-bg-color)">
-                <span class="text-3xl">📝</span>
-                <div>
-                    <p class="text-2xl font-extrabold leading-none" id="hw-count">0</p>
-                    <p class="text-xs text-[var(--tg-theme-hint-color)] mt-0.5">невыполненных заданий</p>
-                </div>
-            </div>
-            <div>
-                <h2 class="font-bold text-sm uppercase tracking-wide text-[var(--tg-theme-hint-color)] mb-2">📅 Расписание</h2>
-                <div id="schedule-list" class="space-y-2"></div>
-                <p id="schedule-empty" class="hidden text-sm text-[var(--tg-theme-hint-color)]">Ближайших уроков нет</p>
-            </div>
-            <div>
-                <h2 class="font-bold text-sm uppercase tracking-wide text-[var(--tg-theme-hint-color)] mb-2">📊 Последние оценки</h2>
-                <div id="grades-list" class="space-y-2"></div>
-                <p id="grades-empty" class="hidden text-sm text-[var(--tg-theme-hint-color)]">Оценок пока нет</p>
-            </div>
-        </div>
-
-        <div id="pane-overview-creator" class="tab-panel space-y-4">
-            <div class="grid grid-cols-2 gap-3">
-                <div class="card p-4 flex flex-col items-center justify-center text-center" style="background:var(--tg-theme-secondary-bg-color)">
-                    <span class="text-2xl mb-1">👨‍🎓</span>
-                    <p class="text-xl font-extrabold" id="creator-active-students">0</p>
-                    <p class="text-[10px] text-[var(--tg-theme-hint-color)] uppercase tracking-wide">Активных учеников</p>
-                </div>
-                <div class="card p-4 flex flex-col items-center justify-center text-center" style="background:var(--tg-theme-secondary-bg-color)">
-                    <span class="text-2xl mb-1">📋</span>
-                    <p class="text-xl font-extrabold" id="creator-pending-checks">0</p>
-                    <p class="text-[10px] text-[var(--tg-theme-hint-color)] uppercase tracking-wide">Работ на проверку</p>
-                </div>
-            </div>
-            <div class="card p-4 flex items-center gap-4" style="background:var(--tg-theme-secondary-bg-color)">
-                <span class="text-3xl">📅</span>
-                <div>
-                    <p class="text-2xl font-extrabold leading-none" id="creator-today-lessons">0</p>
-                    <p class="text-xs text-[var(--tg-theme-hint-color)] mt-0.5">уроков сегодня</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="pane-theory" class="tab-panel space-y-2">
-            <p class="text-xs text-[var(--tg-theme-hint-color)]">Теория по заданиям (список блоков)</p>
-            <div id="theory-list" class="space-y-2 max-h-[52vh] overflow-y-auto"></div>
-            <div id="theory-article-wrap" class="hidden card p-3" style="background:var(--tg-theme-secondary-bg-color)">
-                <button type="button" class="text-xs font-bold mb-2" style="color:var(--tg-theme-link-color)" onclick="theoryBack()">← К списку</button>
-                <h3 id="theory-title" class="font-bold text-sm mb-2"></h3>
-                <div id="theory-body" class="article-html theory-mini"></div>
-            </div>
-        </div>
-
-        <div id="pane-progress" class="tab-panel space-y-3">
-            <p class="text-xs text-[var(--tg-theme-hint-color)]">Сдачи и журнал</p>
-            <div id="progress-submissions" class="space-y-2 max-h-[40vh] overflow-y-auto"></div>
-            <h3 class="font-bold text-xs uppercase text-[var(--tg-theme-hint-color)]">Журнал</h3>
-            <div id="progress-gradebook" class="space-y-2 max-h-[28vh] overflow-y-auto"></div>
-        </div>
-
-        <div id="pane-profile" class="tab-panel space-y-3 text-sm">
-            <div id="profile-fields" class="space-y-2"></div>
-        </div>
-
-        <div id="pane-broadcast" class="tab-panel space-y-3">
-            <p class="text-xs text-[var(--tg-theme-hint-color)]">Сообщение уйдёт ученикам с привязанным Telegram</p>
-            <textarea id="bc-text" rows="4" class="w-full rounded-xl p-3 text-sm border border-slate-200" placeholder="Текст рассылки"></textarea>
-            <input id="bc-photo" class="w-full rounded-xl p-2 text-sm border border-slate-200" placeholder="URL картинки (необязательно)">
-            <button type="button" onclick="sendBroadcast()" class="w-full py-3 rounded-xl font-bold text-sm"
-                    style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">
-                Запустить рассылку
-            </button>
-            <p id="bc-status" class="text-xs text-[var(--tg-theme-hint-color)]"></p>
-        </div>
-
-        <div id="pane-students_creator" class="tab-panel">
-            <p class="text-xs text-[var(--tg-theme-hint-color)] mb-2">Ученики и привязка к боту</p>
-            <input type="text" id="students-search" placeholder="Поиск учеников..." class="w-full rounded-xl p-2 text-sm border border-slate-200 mb-2" oninput="filterCreatorStudents()">
-            <div id="creator-students" class="space-y-2 max-h-[65vh] overflow-y-auto text-sm"></div>
-        </div>
+  <!-- CREATOR TABS -->
+  <div id="creator-tabs" style="display:none">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="c-students" onclick="switchTab('c-students','creator-tabs')">
+        <span class="icon">👥</span>Ученики
+      </button>
+      <button class="tab-btn" data-tab="c-broadcast" onclick="switchTab('c-broadcast','creator-tabs')">
+        <span class="icon">📢</span>Рассылка
+      </button>
+      <button class="tab-btn" data-tab="c-bugs" onclick="switchTab('c-bugs','creator-tabs')">
+        <span class="icon">🐛</span>Репорты
+      </button>
+      <button class="tab-btn" data-tab="c-stats" onclick="switchTab('c-stats','creator-tabs')">
+        <span class="icon">📊</span>Статистика
+      </button>
     </div>
+
+    <div id="tab-c-students" class="tab-panel active"></div>
+    <div id="tab-c-broadcast" class="tab-panel"></div>
+    <div id="tab-c-bugs" class="tab-panel"></div>
+    <div id="tab-c-stats" class="tab-panel"></div>
+  </div>
+
 </div>
-{% endblock %}
 
-{% block scripts_extra %}
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p style="font-size:13px;color:var(--c-hint)">Загрузка…</p>
+</div>
+
+<!-- ERROR -->
+<div id="error-screen">
+  <h2>⚠️ Ошибка</h2>
+  <p id="error-msg">Не удалось загрузить данные.</p>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- REPLY MODAL -->
+<div id="reply-modal" class="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-title">💬 Ответ на репорт</div>
+    <textarea id="reply-text" placeholder="Введи ответ ученику…" rows="4"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-send" onclick="sendReply()">Отправить</button>
+    </div>
+  </div>
+</div>
+
 <script>
-(function() {
-    var tg = window.Telegram && window.Telegram.WebApp;
-    if (tg) {
-        tg.ready();
-        tg.expand();
-        document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
-        document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#1a1a2e');
-        document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color || '#8e8ea0');
-        document.documentElement.style.setProperty('--tg-theme-link-color', tg.themeParams.link_color || '#6c63ff');
-        document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#6c63ff');
-        document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
-        document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#f4f4f8');
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const initData = tg?.initData || '';
+let _currentUser = null;
+let _isCreator = false;
+let _replyReportId = null;
+
+// ──────────────────────────────────────────────
+// Bootstrap
+// ──────────────────────────────────────────────
+async function boot() {
+  try {
+    const dash = await api('/tg-app/api/dashboard', {});
+    _currentUser = dash.user;
+    _isCreator = dash.creator_mode || false;
+
+    document.getElementById('user-name-chip').textContent =
+      (dash.user?.name || 'Пользователь').split(' ')[0];
+
+    const badge = document.getElementById('role-badge');
+    if (_isCreator) { badge.textContent = 'Создатель'; badge.style.display = ''; }
+    else if (['tutor','content_maker'].includes(dash.user?.role)) {
+      badge.textContent = 'Учитель'; badge.style.display = '';
     }
 
-    var state = { creatorMode: false, activeTab: 'overview' };
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = '';
 
-    window.boot = boot;
-    boot();
+    if (_isCreator) {
+      document.getElementById('creator-tabs').style.display = '';
+      document.getElementById('student-tabs').style.display = 'none';
+      loadCreatorStudents();
+    } else {
+      document.getElementById('student-tabs').style.display = '';
+      document.getElementById('creator-tabs').style.display = 'none';
+      renderSchedule(dash.schedule || []);
+      loadProgress();
+    }
+  } catch(e) {
+    showError('Не удалось подключиться к BooStudy. Попробуй позже.');
+  }
+}
 
-    function initData() { return (tg && tg.initData) || ''; }
+// ──────────────────────────────────────────────
+// API helper
+// ──────────────────────────────────────────────
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ init_data: initData, ...body }),
+  });
+  if (!res.ok) throw new Error(res.status);
+  return res.json();
+}
 
-    function apiPost(path, extra) {
-        return fetch(path, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(Object.assign({ init_data: initData() }, extra || {})),
-        }).then(function(r) { return r.json(); });
+// ──────────────────────────────────────────────
+// Tabs
+// ──────────────────────────────────────────────
+function switchTab(tabId, groupId) {
+  const group = document.getElementById(groupId);
+  group.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+  group.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('tab-' + tabId);
+  if (panel) {
+    panel.classList.add('active');
+    if (!panel.dataset.loaded) {
+      panel.dataset.loaded = '1';
+      if (tabId === 'tasks')      { /* handled by filter buttons */ }
+      if (tabId === 'progress')   loadProgress();
+      if (tabId === 'profile')    loadProfile();
+      if (tabId === 'c-broadcast') loadBroadcasts();
+      if (tabId === 'c-bugs')     loadBugReports('new');
+      if (tabId === 'c-stats')    loadCreatorStats();
+    }
+  }
+}
+
+// ──────────────────────────────────────────────
+// STUDENT — Расписание
+// ──────────────────────────────────────────────
+function renderSchedule(lessons) {
+  const el = document.getElementById('tab-schedule');
+  if (!lessons?.length) {
+    el.innerHTML = `<div class="card"><div class="card-empty">📅 Ближайших уроков пока нет</div></div>`;
+    return;
+  }
+  const rows = lessons.map(l => {
+    const dt = l.starts_at || l.date;
+    const dateObj = dt ? new Date(dt) : null;
+    const timeStr = dateObj ? dateObj.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'}) : '—';
+    const dateStr = dateObj ? dateObj.toLocaleDateString('ru-RU', {day:'numeric',month:'short'}) : '—';
+    const btnHtml = l.lesson_url
+      ? `<a href="${l.lesson_url}" class="lesson-btn">Войти</a>` : '';
+    const statusHtml = l.status === 'in_progress' ? '<span class="pill pill-progress">Идёт</span> ' : '';
+    return `<div class="lesson-row">
+      <div class="lesson-time">${timeStr}</div>
+      <div class="lesson-info">
+        <div class="lesson-topic">${statusHtml}${esc(l.topic || 'Урок')}</div>
+        <div class="lesson-meta">${dateStr} · ${l.duration || 60} мин</div>
+      </div>
+      ${btnHtml}
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="card"><div class="card-title">Ближайшие уроки</div>${rows}</div>`;
+}
+
+// ──────────────────────────────────────────────
+// STUDENT — Задания
+// ──────────────────────────────────────────────
+async function loadAssignments(filter, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  const el = document.getElementById('tasks-content');
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
+  try {
+    const data = await api('/tg-app/api/assignments', { status_filter: filter });
+    const subs = data.submissions || [];
+    if (!subs.length) {
+      el.innerHTML = '<div class="card"><div class="card-empty">✅ Заданий в этом разделе нет</div></div>';
+      return;
+    }
+    const rows = subs.map(s => {
+      const pill = pillHtml(s.status);
+      const dl = s.deadline ? `<span>до ${fmtDate(s.deadline)}</span>` : '';
+      const link = s.url ? `<a href="${s.url}" style="color:var(--c-link);font-size:11px">Открыть →</a>` : '';
+      return `<div class="assign-row">
+        <div class="assign-title">${esc(s.title)}</div>
+        <div class="assign-meta">${pill} ${dl} ${link}</div>
+      </div>`;
+    }).join('');
+    el.innerHTML = `<div class="card">${rows}</div>`;
+  } catch(e) {
+    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки</div></div>';
+  }
+}
+
+// ──────────────────────────────────────────────
+// STUDENT — Прогресс
+// ──────────────────────────────────────────────
+async function loadProgress() {
+  const el = document.getElementById('tab-progress');
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
+  try {
+    const data = await api('/tg-app/api/progress', {});
+    const subs = data.submissions || [];
+    const gb = data.gradebook || [];
+    const pending = data.pending_homework || 0;
+
+    const graded = subs.filter(s => ['graded','submitted'].includes(s.status));
+    const pct = graded.length ? Math.round(graded.filter(s => (s.percentage||0) >= 80).length / graded.length * 100) : null;
+
+    let html = '';
+
+    // Сводка
+    html += `<div class="card">
+      <div class="card-title">Сводка</div>
+      <div class="stat-row"><span class="stat-label">📋 Активных заданий</span><span class="stat-val">${pending}</span></div>
+      <div class="stat-row"><span class="stat-label">✅ Выполнено работ</span><span class="stat-val">${graded.length}</span></div>
+      ${pct !== null ? `<div class="stat-row"><span class="stat-label">💪 Отлично (≥80%)</span><span class="stat-val">${pct}%</span></div>` : ''}
+    </div>`;
+
+    // Последние оценки
+    if (gb.length) {
+      const rows = gb.map(g => {
+        const scoreColor = g.score >= 80 ? '#059669' : g.score >= 60 ? '#d97706' : '#dc2626';
+        const barW = Math.min(100, Math.max(0, g.score || 0));
+        return `<div class="gb-row">
+          <div class="gb-title">${esc(g.title)}</div>
+          <div class="gb-score" style="color:${scoreColor}">${g.score !== null ? g.score + '%' : '—'}</div>
+        </div>
+        <div class="pbar-wrap"><div class="pbar-fill" style="width:${barW}%;background:${scoreColor}"></div></div>`;
+      }).join('');
+      html += `<div class="card"><div class="card-title">Последние работы</div>${rows}</div>`;
     }
 
-    function showError(msg) {
-        document.getElementById('loading').classList.add('hidden');
-        document.getElementById('main-shell').classList.add('hidden');
-        document.getElementById('error-text').textContent = msg || 'Ошибка';
-        document.getElementById('error').classList.remove('hidden');
+    el.innerHTML = html || '<div class="card"><div class="card-empty">📊 Пока нет данных для прогресса</div></div>';
+  } catch(e) {
+    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки</div></div>';
+  }
+}
+
+// ──────────────────────────────────────────────
+// STUDENT — Профиль
+// ──────────────────────────────────────────────
+async function loadProfile() {
+  const el = document.getElementById('tab-profile');
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
+  try {
+    const [profData, notifData] = await Promise.all([
+      api('/tg-app/api/profile', {}),
+      api('/tg-app/api/profile/notifications', {}),
+    ]);
+    const p = profData.profile || {};
+    const n = notifData.notifications || {};
+
+    const sub = p.subscription;
+    const subHtml = sub
+      ? `<div style="font-size:12px;color:${sub.status === 'active' ? '#059669' : '#dc2626'}">
+          ${sub.status === 'active' ? '✅ Подписка активна' : '⚠️ ' + sub.status}
+          ${sub.ends_at ? ' · до ' + fmtDate(sub.ends_at) : ''}
+        </div>`
+      : `<div style="font-size:12px;color:var(--c-hint)">Подписка не найдена</div>`;
+
+    const notifRows = [
+      { key: 'tg_notify_homework_checked',      label: 'Проверка ДЗ' },
+      { key: 'tg_notify_homework_returned',     label: 'ДЗ на доработку' },
+      { key: 'tg_notify_lesson_scheduled',      label: 'Расписание уроков' },
+      { key: 'tg_notify_lesson_reminder',       label: 'Напоминания (30 мин)' },
+      { key: 'tg_notify_news',                  label: 'Новости и рассылки' },
+      { key: 'tg_notify_daily_digest',          label: 'Утренний дайджест' },
+      { key: 'tg_notify_subscription_expiring', label: 'Напоминание о подписке' },
+    ].map(({ key, label }) => {
+      const checked = n[key] !== false ? 'checked' : '';
+      return `<div class="toggle-row">
+        <span class="toggle-label">${label}</span>
+        <label class="toggle-switch" onchange="toggleNotif('${key}',this)">
+          <input type="checkbox" ${checked}>
+          <span class="toggle-track"></span>
+          <span class="toggle-thumb"></span>
+        </label>
+      </div>`;
+    }).join('');
+
+    const unlinkUrl = p.unlink?.profile_url || '#';
+
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">Профиль</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:4px">${esc(p.name || p.username || '—')}</div>
+        ${p.email ? `<div style="font-size:12px;color:var(--c-hint)">${esc(p.email)}</div>` : ''}
+        <div style="margin-top:8px">${subHtml}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Уведомления</div>
+        <div class="toggle-row">
+          <span class="toggle-label" style="font-weight:700">Все уведомления</span>
+          <label class="toggle-switch" onchange="toggleNotif('telegram_notifications_enabled',this)">
+            <input type="checkbox" ${n.telegram_notifications_enabled !== false ? 'checked' : ''}>
+            <span class="toggle-track"></span>
+            <span class="toggle-thumb"></span>
+          </label>
+        </div>
+        ${notifRows}
+      </div>
+      <div class="card" style="text-align:center">
+        <a href="${unlinkUrl}" style="color:var(--c-hint);font-size:13px;text-decoration:none">Отвязать Telegram-аккаунт →</a>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки профиля</div></div>';
+  }
+}
+
+async function toggleNotif(key, label) {
+  const val = label.querySelector('input').checked;
+  try {
+    await api('/tg-app/api/profile/notifications', { updates: { [key]: val } });
+    showToast(val ? '✅ Включено' : '🔕 Выключено');
+  } catch(e) {
+    showToast('⚠️ Ошибка сохранения');
+  }
+}
+
+// ──────────────────────────────────────────────
+// CREATOR — Ученики
+// ──────────────────────────────────────────────
+async function loadCreatorStudents() {
+  const el = document.getElementById('tab-c-students');
+  el.innerHTML = `
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input id="student-search" type="search" placeholder="Поиск по имени…" oninput="filterStudents(this.value)">
+    </div>
+    <div id="students-list"><div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div></div>`;
+
+  try {
+    const data = await api('/tg-app/api/creator/students', {});
+    window._studentsData = data.students || [];
+    renderStudents(window._studentsData);
+  } catch(e) {
+    document.getElementById('students-list').innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки</div></div>';
+  }
+}
+
+function filterStudents(q) {
+  const filtered = (window._studentsData || []).filter(s =>
+    (s.name || '').toLowerCase().includes(q.toLowerCase())
+  );
+  renderStudents(filtered);
+}
+
+function renderStudents(list) {
+  const el = document.getElementById('students-list');
+  if (!list.length) { el.innerHTML = '<div class="card"><div class="card-empty">Нет учеников</div></div>'; return; }
+  const rows = list.map(s => {
+    const tgHtml = s.telegram_linked
+      ? `<span class="tg-badge">📱 В боте</span>`
+      : `<span class="tg-badge-no">Не привязан</span>`;
+    const lastStr = s.last_activity_at ? fmtDate(s.last_activity_at) : 'никогда';
+    return `<div class="student-row">
+      <div>
+        <div class="student-name">${esc(s.name || '—')}</div>
+        <div class="student-meta">Активность: ${lastStr}</div>
+      </div>
+      ${tgHtml}
+    </div>`;
+  }).join('');
+  const total = (window._studentsData || []).length;
+  el.innerHTML = `<div class="card"><div class="card-title">Учеников: ${total}</div>${rows}</div>`;
+}
+
+// ──────────────────────────────────────────────
+// CREATOR — Рассылка
+// ──────────────────────────────────────────────
+async function loadBroadcasts() {
+  const el = document.getElementById('tab-c-broadcast');
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">Новая рассылка</div>
+      <textarea id="broadcast-text" placeholder="Текст рассылки…"></textarea>
+      <div style="margin-top:10px">
+        <input id="broadcast-photo" type="url" placeholder="URL картинки (опционально)" style="width:100%;background:var(--c-bg);border:1.5px solid rgba(0,0,0,.1);border-radius:var(--r-btn);padding:8px 12px;font-size:13px;color:var(--c-text)">
+      </div>
+      <button class="btn-primary" style="margin-top:10px" onclick="sendBroadcast()">📢 Отправить всем ученикам</button>
+    </div>
+    <div id="broadcasts-history"><div style="text-align:center;padding:16px;color:var(--c-hint)">Загрузка истории…</div></div>`;
+
+  try {
+    const data = await api('/tg-app/api/creator/broadcasts', {});
+    const items = data.broadcasts || [];
+    if (!items.length) {
+      document.getElementById('broadcasts-history').innerHTML = '<div class="card"><div class="card-empty">Рассылок пока не было</div></div>';
+      return;
     }
+    const rows = items.map(b => {
+      const statusColor = { completed:'#059669', running:'#d97706', failed:'#dc2626', pending:'#6b7280' }[b.status] || '#6b7280';
+      return `<div class="assign-row">
+        <div class="assign-title">${esc(b.message_preview)}${b.message_preview.length >= 100 ? '…' : ''}</div>
+        <div class="assign-meta">
+          <span style="color:${statusColor}">${b.status}</span>
+          <span>${b.sent_ok} из ${b.total_planned}</span>
+          <span>${fmtDate(b.created_at)}</span>
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('broadcasts-history').innerHTML = `<div class="card"><div class="card-title">История рассылок</div>${rows}</div>`;
+  } catch(e) {}
+}
 
-    function hideErrorShowMain() {
-        document.getElementById('error').classList.add('hidden');
-        document.getElementById('loading').classList.add('hidden');
-        document.getElementById('main-shell').classList.remove('hidden');
+async function sendBroadcast() {
+  const text = (document.getElementById('broadcast-text')?.value || '').trim();
+  const photoUrl = (document.getElementById('broadcast-photo')?.value || '').trim();
+  if (!text) { showToast('⚠️ Введи текст рассылки'); return; }
+  try {
+    const data = await api('/tg-app/api/broadcast/create', { message: text, photo_url: photoUrl || null });
+    if (data.ok) {
+      showToast('✅ Рассылка запущена!');
+      document.getElementById('broadcast-text').value = '';
+      document.getElementById('broadcast-photo').value = '';
+      document.getElementById('tab-c-broadcast').dataset.loaded = '';
+      loadBroadcasts();
     }
+  } catch(e) { showToast('⚠️ Ошибка при создании рассылки'); }
+}
 
-    function boot() {
-        document.getElementById('error').classList.add('hidden');
-        document.getElementById('main-shell').classList.add('hidden');
-        document.getElementById('loading').classList.remove('hidden');
+// ──────────────────────────────────────────────
+// CREATOR — Баг-репорты
+// ──────────────────────────────────────────────
+async function loadBugReports(statusFilter) {
+  const el = document.getElementById('tab-c-bugs');
+  const html = `
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="reloadBugReports('new',this)">Новые</button>
+      <button class="filter-btn" onclick="reloadBugReports('answered',this)">Отвечены</button>
+      <button class="filter-btn" onclick="reloadBugReports('all',this)">Все</button>
+    </div>
+    <div id="bugs-list"></div>`;
+  el.innerHTML = html;
+  await fetchAndRenderBugs(statusFilter || 'new');
+}
 
-        apiPost('/tg-app/api/dashboard', {}).then(function(data) {
-            if (!data.ok) {
-                showError(data.error === 'not_linked'
-                    ? 'Аккаунт не привязан. Используйте /link в боте.'
-                    : 'Ошибка авторизации');
-                return;
-            }
-            state.creatorMode = !!data.creator_mode;
-            // Set default tab based on role if not already set by user
-            if (state.activeTab === 'overview') {
-                state.activeTab = state.creatorMode ? 'overview_creator' : 'overview_student';
-            }
-            renderTabs();
-            renderOverview(data);
-            hideErrorShowMain();
-            if (state.activeTab === 'progress') loadProgress();
-            if (state.activeTab === 'theory') loadTheoryIndex();
-            if (state.activeTab === 'profile') loadProfile();
-            if (state.creatorMode && state.activeTab === 'students') loadCreatorStudents();
-        }).catch(function() { showError('Нет связи с сервером'); });
+async function reloadBugReports(filter, btn) {
+  document.querySelectorAll('#tab-c-bugs .filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  await fetchAndRenderBugs(filter);
+}
+
+async function fetchAndRenderBugs(filter) {
+  const el = document.getElementById('bugs-list');
+  el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--c-hint)">Загрузка…</div>';
+  try {
+    const data = await api('/tg-app/api/creator/bug-reports', { status: filter });
+    const reports = data.reports || [];
+    if (!reports.length) {
+      el.innerHTML = '<div class="card"><div class="card-empty">✅ Репортов в этом разделе нет</div></div>';
+      return;
     }
+    const rows = reports.map(r => {
+      const statusLabel = { new:'🆕 Новый', in_progress:'🔄 В работе', answered:'✅ Отвечен', closed:'🔒 Закрыт' }[r.status] || r.status;
+      const replyBtn = ['new','in_progress'].includes(r.status)
+        ? `<button class="btn-reply" onclick="openReply(${r.report_id})">💬 Ответить</button>` : '';
+      return `<div class="report-row">
+        <div class="report-meta">
+          <span><b>${esc(r.student_name)}</b></span>
+          <span>${fmtDate(r.created_at)}</span>
+          <span>${statusLabel}</span>
+          ${r.has_screenshot ? '<span>📎 Скрин</span>' : ''}
+        </div>
+        <div class="report-msg">${esc(r.message)}</div>
+        ${r.admin_reply ? `<div style="font-size:11px;color:#059669;margin-bottom:4px">💬 ${esc(r.admin_reply)}</div>` : ''}
+        ${replyBtn}
+      </div>`;
+    }).join('');
+    el.innerHTML = `<div class="card">${rows}</div>`;
+  } catch(e) {
+    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки</div></div>';
+  }
+}
 
-    function renderTabs() {
-        var tabs = document.getElementById('tabs');
-        tabs.innerHTML = '';
-        function addTab(id, label) {
-            var b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'tab-btn' + (state.activeTab === id ? ' active' : '');
-            b.textContent = label;
-            b.onclick = function() { setTab(id); };
-            tabs.appendChild(b);
-        }
-        if (state.creatorMode) {
-            addTab('overview_creator', 'Статистика');
-            addTab('broadcast', 'Рассылка');
-            addTab('students', 'Ученики');
-            addTab('profile', 'Профиль');
-        } else {
-            addTab('overview_student', 'Обзор');
-            addTab('theory', 'Теория');
-            addTab('progress', 'Прогресс');
-            addTab('profile', 'Профиль');
-        }
-        document.querySelectorAll('.tab-panel').forEach(function(p) {
-            p.classList.remove('active');
-        });
-        var paneId = 'pane-' + (state.activeTab === 'students' ? 'students_creator' : state.activeTab);
-        var pane = document.getElementById(paneId);
-        if (pane) pane.classList.add('active');
+function openReply(reportId) {
+  _replyReportId = reportId;
+  document.getElementById('reply-text').value = '';
+  document.getElementById('reply-modal').classList.add('open');
+}
+
+function closeModal(e) {
+  // Called either directly (no event) or on backdrop click
+  if (!e || e.target === document.getElementById('reply-modal')) {
+    document.getElementById('reply-modal').classList.remove('open');
+  }
+}
+
+async function sendReply() {
+  const text = (document.getElementById('reply-text').value || '').trim();
+  if (!text) { showToast('⚠️ Введи текст ответа'); return; }
+  try {
+    const data = await api('/tg-app/api/creator/bug-reports/reply', {
+      report_id: _replyReportId,
+      reply: text,
+    });
+    if (data.ok) {
+      closeModal();
+      showToast('✅ Ответ отправлен ученику!');
+      fetchAndRenderBugs('new');
     }
+  } catch(e) { showToast('⚠️ Ошибка при отправке'); }
+}
 
-    function setTab(id) {
-        state.activeTab = id;
-        renderTabs();
-        if (id === 'progress') loadProgress();
-        if (id === 'theory') loadTheoryIndex();
-        if (id === 'profile') loadProfile();
-        if (id === 'students' && state.creatorMode) loadCreatorStudents();
-    }
+// ──────────────────────────────────────────────
+// CREATOR — Статистика
+// ──────────────────────────────────────────────
+async function loadCreatorStats() {
+  const el = document.getElementById('tab-c-stats');
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
+  try {
+    const data = await api('/tg-app/api/creator/stats', {});
+    const s = data.stats || {};
+    el.innerHTML = `
+      <div class="stats-grid">
+        ${statCard(s.total_users, 'Всего пользователей')}
+        ${statCard(s.active_students, 'Активных учеников')}
+        ${statCard(s.tg_linked, 'В боте')}
+        ${statCard(s.lessons_today, 'Уроков сегодня')}
+        ${statCard(s.pending_submissions, 'Ожидают проверки')}
+        ${statCard(s.active_subscriptions, 'Подписок')}
+        ${statCard(s.new_bug_reports, 'Новых репортов')}
+        ${statCard(s.broadcasts_total, 'Рассылок')}
+      </div>`;
+  } catch(e) {
+    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Ошибка загрузки</div></div>';
+  }
+}
 
-    function renderOverview(data) {
-        var u = data.user || {};
-        var name = u.name || 'Ученик';
-        document.getElementById('user-name').textContent = name;
-        document.getElementById('avatar').textContent = name.charAt(0).toUpperCase();
+function statCard(val, label) {
+  return `<div class="stat-card"><div class="val">${val ?? '—'}</div><div class="lbl">${label}</div></div>`;
+}
 
-        if (state.creatorMode) {
-            var stats = data.creator_stats || {};
-            document.getElementById('creator-active-students').textContent = stats.active_students || 0;
-            document.getElementById('creator-pending-checks').textContent = stats.pending_checks || 0;
-            document.getElementById('creator-today-lessons').textContent = stats.today_lessons || 0;
-        } else {
-            document.getElementById('hw-count').textContent = data.pending_homework || 0;
+// ──────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────
+function pillHtml(status) {
+  const map = {
+    'ASSIGNED':     ['pill-pending',  '📝 Назначено'],
+    'IN_PROGRESS':  ['pill-progress', '🔄 В процессе'],
+    'RETURNED':     ['pill-returned', '↩️ Доработка'],
+    'GRADED':       ['pill-graded',   '✅ Проверено'],
+    'AUTO_GRADED':  ['pill-auto',     '🤖 Авто'],
+    'SUBMITTED':    ['pill-progress', '📤 Сдано'],
+    'LATE':         ['pill-returned', '⏰ Просрочено'],
+  };
+  const [cls, txt] = map[status] || ['pill-pending', status];
+  return `<span class="pill ${cls}">${txt}</span>`;
+}
 
-            var scheduleEl = document.getElementById('schedule-list');
-            var emptySchedule = document.getElementById('schedule-empty');
-            scheduleEl.innerHTML = '';
-            if (data.schedule && data.schedule.length) {
-                emptySchedule.classList.add('hidden');
-                data.schedule.forEach(function(l) {
-                    var d = l.date ? new Date(l.date) : null;
-                    var dateStr = d ? d.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'})
-                                   + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})
-                                   : '—';
-                    var card = document.createElement('div');
-                    card.className = 'card p-3 flex items-center gap-3';
-                    card.style.background = 'var(--tg-theme-secondary-bg-color)';
-                    var linkBtn = l.lesson_url
-                        ? '<a href="' + escAttr(l.lesson_url) + '" target="_blank" rel="noopener" class="text-xs font-bold px-3 py-1.5 rounded-lg no-underline flex items-center gap-1" style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">В класс <i class="ph ph-arrow-right"></i></a>'
-                        : '';
-                    card.innerHTML =
-                        '<div class="text-center min-w-[52px]">' +
-                            '<p class="text-xs text-[var(--tg-theme-hint-color)]">' + dateStr + '</p>' +
-                        '</div>' +
-                        '<div class="flex-1 min-w-0">' +
-                            '<p class="font-semibold text-sm truncate">' + esc(l.topic) + '</p>' +
-                            '<p class="text-xs text-[var(--tg-theme-hint-color)]">' + (l.duration || 60) + ' мин</p>' +
-                        '</div>' +
-                        '<div class="shrink-0">' + linkBtn + '</div>';
-                    scheduleEl.appendChild(card);
-                });
-            } else {
-                emptySchedule.classList.remove('hidden');
-            }
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined });
+}
 
-            var gradesEl = document.getElementById('grades-list');
-            var emptyGrades = document.getElementById('grades-empty');
-            gradesEl.innerHTML = '';
-            if (data.recent_grades && data.recent_grades.length) {
-                emptyGrades.classList.add('hidden');
-                data.recent_grades.forEach(function(g) {
-                    var pct = g.percentage;
-                    var cls = pct == null ? 'grade-mid' : (pct >= 70 ? 'grade-good' : (pct >= 40 ? 'grade-mid' : 'grade-low'));
-                    var pctText = pct != null ? (Math.round(pct) + '%') : '—';
-                    var card = document.createElement('div');
-                    card.className = 'card p-3 flex items-center justify-between';
-                    card.style.background = 'var(--tg-theme-secondary-bg-color)';
-                    card.innerHTML =
-                        '<p class="font-semibold text-sm truncate flex-1 min-w-0">' + esc(g.title) + '</p>' +
-                        '<span class="grade-pill ' + cls + ' ml-2 shrink-0">' + pctText + '</span>';
-                    gradesEl.appendChild(card);
-                });
-            } else {
-                emptyGrades.classList.remove('hidden');
-            }
-        }
-    }
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
 
-    function loadProgress() {
-        apiPost('/tg-app/api/progress', {}).then(function(data) {
-            if (!data.ok) return;
-            document.getElementById('progress-submissions').innerHTML = '';
-            (data.submissions || []).forEach(function(s) {
-                var row = document.createElement('div');
-                row.className = 'card p-3 flex justify-between items-center gap-2';
-                row.style.background = 'var(--tg-theme-secondary-bg-color)';
-                
-                var linkBtn = s.lesson_url
-                    ? '<a href="' + escAttr(s.lesson_url) + '" target="_blank" class="text-xs font-bold px-3 py-1.5 rounded-lg no-underline whitespace-nowrap" style="background:var(--tg-theme-button-color);color:var(--tg-theme-button-text-color)">Открыть</a>'
-                    : '';
+function showError(msg) {
+  document.getElementById('loading').style.display = 'none';
+  const err = document.getElementById('error-screen');
+  err.style.display = '';
+  document.getElementById('error-msg').textContent = msg;
+}
 
-                row.innerHTML = '<div class="flex-1 min-w-0"><div class="font-semibold text-sm truncate">' + esc(s.title) + '</div>' +
-                    '<div class="text-[11px] text-[var(--tg-theme-hint-color)] mt-0.5">' + esc(s.status) +
-                    (s.percentage != null ? ' · ' + Math.round(s.percentage) + '%' : '') + '</div></div>' + 
-                    '<div class="shrink-0">' + linkBtn + '</div>';
-                document.getElementById('progress-submissions').appendChild(row);
-            });
-            document.getElementById('progress-gradebook').innerHTML = '';
-            (data.gradebook || []).forEach(function(g) {
-                var row = document.createElement('div');
-                row.className = 'card p-2';
-                row.style.background = 'var(--tg-theme-secondary-bg-color)';
-                var sc = (g.score != null ? g.score : '—') + (g.max_score != null ? '/' + g.max_score : '');
-                row.innerHTML = '<div class="font-semibold text-xs">' + esc(g.title) + '</div>' +
-                    '<div class="text-[11px]">' + esc(sc) + ' ' + esc(g.grade_text || '') + '</div>';
-                document.getElementById('progress-gradebook').appendChild(row);
-            });
-        });
-    }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
 
-    function loadTheoryIndex() {
-        document.getElementById('theory-article-wrap').classList.add('hidden');
-        document.getElementById('theory-list').classList.remove('hidden');
-        apiPost('/tg-app/api/theory/index', {}).then(function(data) {
-            var el = document.getElementById('theory-list');
-            el.innerHTML = '';
-            if (!data.ok) {
-                el.innerHTML = '<p class="text-xs text-[var(--tg-theme-hint-color)]">Нет доступа к теории или ошибка загрузки</p>';
-                return;
-            }
-            (data.blocks || []).forEach(function(b) {
-                var row = document.createElement('button');
-                row.type = 'button';
-                row.className = 'card p-3 w-full text-left';
-                row.style.background = 'var(--tg-theme-secondary-bg-color)';
-                row.innerHTML = '<div class="font-semibold text-sm">' + esc(b.title) + '</div>' +
-                    '<div class="text-xs text-[var(--tg-theme-hint-color)]">#' + b.task_number + '</div>';
-                row.onclick = function() { loadTheoryArticle(b.id); };
-                el.appendChild(row);
-            });
-        });
-    }
-
-    window.theoryBack = function() {
-        document.getElementById('theory-article-wrap').classList.add('hidden');
-        document.getElementById('theory-list').classList.remove('hidden');
-    };
-
-    function loadTheoryArticle(blockId) {
-        apiPost('/tg-app/api/theory/article', { block_id: blockId }).then(function(data) {
-            if (!data.ok) return;
-            document.getElementById('theory-list').classList.add('hidden');
-            document.getElementById('theory-article-wrap').classList.remove('hidden');
-            document.getElementById('theory-title').textContent = data.title || '';
-            document.getElementById('theory-body').innerHTML = data.html || '';
-        });
-    }
-
-    function loadProfile() {
-        apiPost('/tg-app/api/profile', {}).then(function(data) {
-            var el = document.getElementById('profile-fields');
-            el.innerHTML = '';
-            if (!data.ok) return;
-            var p = data.profile || {};
-            function line(label, val) {
-                if (!val) return;
-                var d = document.createElement('div');
-                d.className = 'card p-3';
-                d.style.background = 'var(--tg-theme-secondary-bg-color)';
-                d.innerHTML = '<div class="text-xs text-[var(--tg-theme-hint-color)]">' + esc(label) + '</div>' +
-                    '<div class="font-medium">' + esc(val) + '</div>';
-                el.appendChild(d);
-            }
-            line('Имя', p.name);
-            line('Логин', p.username);
-            line('Телефон', p.phone);
-            line('Email', p.email);
-            if (p.subscription) {
-                line('Подписка', (p.subscription.status || '') + (p.subscription.ends_at ? ' до ' + p.subscription.ends_at : ''));
-            }
-            var u = p.unlink || {};
-            var unlink = document.createElement('div');
-            unlink.className = 'card p-3 space-y-2';
-            unlink.style.background = 'var(--tg-theme-secondary-bg-color)';
-            unlink.innerHTML = '<div class="text-xs text-[var(--tg-theme-hint-color)]">Отвязать Telegram</div>' +
-                '<p class="text-xs">Откройте профиль на сайте или отправьте боту команду <b>' + esc(u.bot_unlink_command || '/unlink') + '</b></p>' +
-                (u.profile_url ? '<a href="' + escAttr(u.profile_url) + '" target="_blank" class="text-xs font-bold" style="color:var(--tg-theme-link-color)">Профиль на сайте</a>' : '') +
-                (u.bot_open ? '<a href="' + escAttr(u.bot_open) + '" target="_blank" class="text-xs font-bold" style="color:var(--tg-theme-link-color)">Открыть бота</a>' : '');
-            el.appendChild(unlink);
-        });
-    }
-
-    window.sendBroadcast = function() {
-        var txt = (document.getElementById('bc-text').value || '').trim();
-        var photo = (document.getElementById('bc-photo').value || '').trim();
-        var st = document.getElementById('bc-status');
-        if (!txt) { st.textContent = 'Введите текст'; return; }
-        st.textContent = 'Отправка…';
-        apiPost('/tg-app/api/broadcast/create', { message: txt, photo_url: photo || null }).then(function(data) {
-            if (!data.ok) { st.textContent = data.error || 'Ошибка'; return; }
-            st.textContent = 'Рассылка #' + data.broadcast_id + ' запущена';
-            document.getElementById('bc-text').value = '';
-            document.getElementById('bc-photo').value = '';
-        }).catch(function() { st.textContent = 'Сеть'; });
-    };
-
-    window.allCreatorStudents = [];
-
-    function loadCreatorStudents() {
-        apiPost('/tg-app/api/creator/students', {}).then(function(data) {
-            if (!data.ok) return;
-            window.allCreatorStudents = data.students || [];
-            renderCreatorStudentsList(window.allCreatorStudents);
-        });
-    }
-
-    window.filterCreatorStudents = function() {
-        var q = (document.getElementById('students-search').value || '').toLowerCase();
-        if (!q) {
-            renderCreatorStudentsList(window.allCreatorStudents);
-            return;
-        }
-        var filtered = window.allCreatorStudents.filter(function(s) {
-            return (s.name || '').toLowerCase().indexOf(q) !== -1 || ('id ' + s.student_id).indexOf(q) !== -1;
-        });
-        renderCreatorStudentsList(filtered);
-    };
-
-    function renderCreatorStudentsList(list) {
-        var el = document.getElementById('creator-students');
-        el.innerHTML = '';
-        list.forEach(function(s) {
-            var row = document.createElement('div');
-            row.className = 'card p-3 flex justify-between gap-2';
-            row.style.background = 'var(--tg-theme-secondary-bg-color)';
-            var badge = s.telegram_linked ? '<span class="text-green-700 font-bold text-xs">TG</span>' : '<span class="text-slate-400 text-xs">—</span>';
-            row.innerHTML = '<div><div class="font-semibold">' + esc(s.name) + '</div>' +
-                '<div class="text-[11px] text-[var(--tg-theme-hint-color)]">id ' + s.student_id + '</div></div>' +
-                '<div class="text-right text-[11px]">' + badge + '<div class="text-[var(--tg-theme-hint-color)]">' + esc(s.last_activity_at ? new Date(s.last_activity_at).toLocaleDateString('ru-RU') : '—') + '</div></div>';
-            el.appendChild(row);
-        });
-    }
-
-    function esc(s) {
-        if (!s) return '';
-        var el = document.createElement('span');
-        el.textContent = s;
-        return el.innerHTML;
-    }
-    function escAttr(s) {
-        if (!s) return '';
-        return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-    }
-})();
+// ──────────────────────────────────────────────
+// Start
+// ──────────────────────────────────────────────
+boot();
 </script>
 {% endblock %}
