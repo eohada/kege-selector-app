@@ -204,6 +204,8 @@ def normalize_task_content_urls(html, site_base: Optional[str] = None):
     """
     if not html or not isinstance(html, str):
         return html
+    # Полноширинный обратный слэш U+FF3C — KaTeX не распознаёт как начало \\(, \\).
+    html = html.replace("\uFF3C", "\\")
     sb = _resolve_site_base(site_base)
     try:
         soup = BeautifulSoup(html, "html.parser")

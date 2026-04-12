@@ -1013,11 +1013,13 @@
                 renderMathInElement(document.body, {
                     delimiters: [
                         {left: '$$', right: '$$', display: true},
-                        {left: '$', right: '$', display: false},
                         {left: '\\[', right: '\\]', display: true},
                         {left: '\\(', right: '\\)', display: false}
                     ],
-                    ignoreClass: 'katex'
+                    throwOnError: false,
+                    trust: true,
+                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                    ignoredClasses: ['katex']
                 });
             }
 

@@ -7,16 +7,16 @@
 
   function getOpts() {
     return {
+      // Без одиночного '$': непарный $ в тексте (валюта и т.д.) ломает auto-render и оставляет \\(...\\) сырым.
       delimiters: [
         { left: '$$', right: '$$', display: true },
-        { left: '$', right: '$', display: false },
         { left: '\\(', right: '\\)', display: false },
         { left: '\\[', right: '\\]', display: true },
       ],
       throwOnError: false,
       trust: true,
       ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-      ignoreClass: 'katex',
+      ignoredClasses: ['katex'],
     };
   }
 
