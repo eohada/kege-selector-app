@@ -120,8 +120,7 @@
 {% endblock %}
 
 {% block head_js %}
-<script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
-<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+{# KaTeX + auto-render уже в base.html; здесь только общий helper после них #}
 <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
 {% endblock %}
 
@@ -585,6 +584,29 @@
         const TAB_BTN_OFF = 'gen-layout-tab-btn px-6 py-3 text-slate-500 hover:text-slate-900 rounded-xl font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2';
         const BADGE_ON = 'gen-tab-badge w-6 h-6 rounded-full bg-purple-100 text-boo-primary flex items-center justify-center text-xs font-black shrink-0';
         const BADGE_OFF = 'gen-tab-badge w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-black shrink-0';
+
+        /**
+         * Банк заданий часто в display:none до переключения вкладки; первый renderMathInElement(document.body)
+         * может отработать до появления KaTeX или до смены layout. Повторяем рендер после rAF и с задержками.
+         */
+        function scheduleGenBankMathRefresh() {
+            function run() {
+                const bp = document.getElementById('gen-bank-panel');
+                if (bp && typeof window.boostudyRenderTaskMath === 'function') {
+                    window.boostudyRenderTaskMath(bp, 50);
+                }
+            }
+            run();
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(run);
+                });
+            }
+            setTimeout(run, 0);
+            setTimeout(run, 200);
+            setTimeout(run, 700);
+        }
+
         function setGenTab(name) {
             if (!validTabs.has(name)) name = 'stream';
             tabButtons.forEach((btn) => {
@@ -600,16 +622,20 @@
             });
             if (name === 'manual') refreshManualTaskNumbers();
             if (name === 'manual' && typeof bankManualPreviewUpdate === 'function') bankManualPreviewUpdate();
-            if (name === 'bank' && typeof window.boostudyRenderTaskMath === 'function') {
-                var bp = document.getElementById('gen-bank-panel');
-                if (bp) window.boostudyRenderTaskMath(bp, 40);
-            }
+            if (name === 'bank') scheduleGenBankMathRefresh();
         }
         window.switchGenTab = setGenTab;
         tabButtons.forEach((btn) => {
             btn.addEventListener('click', () => setGenTab(btn.getAttribute('data-gen-tab')));
         });
         setGenTab(window.__GEN_INITIAL_TAB__ || 'stream');
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', scheduleGenBankMathRefresh);
+        } else {
+            scheduleGenBankMathRefresh();
+        }
+        window.addEventListener('load', scheduleGenBankMathRefresh);
 
         const deck = document.getElementById('genDeck');
         const empty = document.getElementById('genEmpty');
