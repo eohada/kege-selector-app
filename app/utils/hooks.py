@@ -11,7 +11,7 @@ from sqlalchemy import text
 from datetime import datetime
 from app.models import db, Lesson, Student, moscow_now, MOSCOW_TZ, UserSubscription, TariffPlan
 from app.utils.subscription_access import get_effective_access_for_user, mark_subscription_expired_if_needed
-from app.utils.db_migrations import ensure_schema_columns
+from app.utils.db_migrations import ensure_schema_columns, is_auto_db_schema_sync_enabled
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
@@ -77,18 +77,18 @@ def register_hooks(app):
     
     @app.before_request
     def initialize_on_first_request():
-        """Инициализация схемы БД при первом запросе"""
+        """Опциональная инициализация схемы БД при первом запросе (только если AUTO_DB_SCHEMA_SYNC)."""
         global _schema_initialized
-        
+
         if not _schema_initialized:
+            _schema_initialized = True
+            if not is_auto_db_schema_sync_enabled():
+                return
             try:
                 ensure_schema_columns(app)
-                _schema_initialized = True
-                logger.info("Database schema initialized successfully")
+                logger.info("Database schema initialized successfully (AUTO_DB_SCHEMA_SYNC)")
             except Exception as e:
-                logger.error(f"Failed to initialize database schema: {e}", exc_info=True)
-                _schema_initialized = True  # Помечаем как инициализированную, чтобы не повторять
-                logger.info("Database schema initialized")
+                logger.error("Failed to initialize database schema: %s", e, exc_info=True)
         
         if not audit_logger.is_running:
             audit_logger.start_worker()

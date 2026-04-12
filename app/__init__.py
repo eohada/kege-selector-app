@@ -197,20 +197,34 @@ def create_app(config_name=None):
         
         try:
             with app.app_context():
-                from app.models import Assignment, AssignmentTask, Submission, Answer  # Импортируем новые модели
-                from app.models import LessonWhiteboard  # Интерактивная доска Miro
-                from app.models import Subject, KnowledgeNode, UserMastery, AnalyticsEvent  # Аналитика (граф знаний)
-                from app.models import TheoryBlock, StudentTheoryAccess  # Теория по заданиям ЕГЭ
-                db.create_all()
                 db.session.execute(text("SELECT 1"))
                 logger.info("✓ Database connection: OK")
-                from app.utils.db_migrations import ensure_schema_columns
-                try:
-                    ensure_schema_columns(app)
-                    logger.info("✓ Database schema migrations: OK")
-                except Exception as mig_error:
-                    logger.warning(f"⚠ Schema migration failed: {str(mig_error)}")
-                    logger.warning("Application will continue, migrations will retry on first request")
+                from app.utils.db_migrations import (
+                    ensure_schema_columns,
+                    is_auto_db_schema_sync_enabled,
+                )
+                if is_auto_db_schema_sync_enabled():
+                    # Только для одиночного процесса / локали. В multi-worker используйте ``flask db upgrade``.
+                    from app.models import Assignment, AssignmentTask, Submission, Answer  # noqa: F401
+                    from app.models import LessonWhiteboard  # noqa: F401
+                    from app.models import Subject, KnowledgeNode, UserMastery, AnalyticsEvent  # noqa: F401
+                    from app.models import TheoryBlock, StudentTheoryAccess  # noqa: F401
+                    db.create_all()
+                    try:
+                        ensure_schema_columns(app)
+                        logger.info("✓ Database schema migrations (AUTO_DB_SCHEMA_SYNC): OK")
+                    except Exception as mig_error:
+                        logger.warning("⚠ Schema migration failed: %s", mig_error)
+                        logger.warning(
+                            "Application will continue; fix DB with ``flask db upgrade`` "
+                            "or retry with AUTO_DB_SCHEMA_SYNC=1 in a single process."
+                        )
+                else:
+                    logger.info(
+                        "Database schema auto-sync is disabled (default). "
+                        "Apply migrations with ``flask db upgrade``. "
+                        "For legacy auto-sync set AUTO_DB_SCHEMA_SYNC=1 (single-worker only)."
+                    )
         except Exception as e:
             logger.warning(f"⚠ Database connection check failed: {str(e)}")
             logger.warning("Application will continue, but database operations may fail")

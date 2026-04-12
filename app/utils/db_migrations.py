@@ -33,6 +33,22 @@ from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
 logger = logging.getLogger(__name__)
 
+
+def is_auto_db_schema_sync_enabled() -> bool:
+    """
+    Устаревшая «автомиграция» при старте приложения / первом HTTP-запросе
+    (db.create_all + ensure_schema_columns). При нескольких gunicorn-воркерах
+    это вызывает гонки и блокировки в PostgreSQL.
+
+    В production схему обновляйте отдельным процессом: ``flask db upgrade``.
+
+    Для локальной отладки без Alembic можно временно задать в окружении:
+    ``AUTO_DB_SCHEMA_SYNC=1`` (также ``true`` / ``yes`` / ``on``).
+    """
+    raw = (os.environ.get('AUTO_DB_SCHEMA_SYNC') or '').strip().lower()
+    return raw in ('1', 'true', 'yes', 'on')
+
+
 def _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, limit: int = 1000):
     """
     Best-effort backfill:
