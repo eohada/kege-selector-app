@@ -20,6 +20,7 @@ from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT
 from core.audit_logger import audit_logger
 from core.db_models import moscow_now
 from app.utils.course_tasks import get_short_answer_task_numbers
+from app.utils.jinja_filters import normalize_task_content_urls
 
 logger = logging.getLogger(__name__)
 
@@ -1018,7 +1019,7 @@ def remote_admin_api_task_formator_task(task_id: int):
             'source_url': effective_source,
             'source_url_kind': 'db' if (task.source_url or '').strip() else ('html' if derived else None),
             'last_scraped': task.last_scraped.isoformat() if task.last_scraped else None,
-            'content_html': task.content_html,
+            'content_html': normalize_task_content_urls(task.content_html or ''),
             'answer': task.answer or '',
         },
         'review': {
@@ -2257,11 +2258,7 @@ def remote_admin_api_task_solution_get(task_id: int):
         source_url = (task.source_url or '').strip()
         if not source_url and (task.site_task_id or '').strip():
             source_url = f"https://kompege.ru/task?id={task.site_task_id}"
-        # Приводим относительные URL картинок к абсолютным (kompege.ru)
-        content_html = task.content_html or ''
-        if content_html and ('src="/' in content_html or "src='/" in content_html):
-            content_html = re.sub(r'src="/(?!\/)', 'src="https://kompege.ru/', content_html)
-            content_html = re.sub(r"src='/(?!\/)", "src='https://kompege.ru/", content_html)
+        content_html = normalize_task_content_urls(task.content_html or '')
         return jsonify({
             'success': True,
             'task_id': task_id,

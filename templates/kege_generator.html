@@ -69,6 +69,7 @@
 {% block head_js %}
 <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
 <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -377,12 +378,21 @@
 
         function renderMath(container) {
             try {
-                if (window.renderMathInElement) {
+                if (!container) return;
+                if (typeof window.boostudyRenderTaskMath === 'function') {
+                    window.boostudyRenderTaskMath(container, 35);
+                } else if (window.renderMathInElement) {
                     window.renderMathInElement(container, {
                         delimiters: [
-                            {left: "$$", right: "$$", display: true},
-                            {left: "$", right: "$", display: false}
-                        ]
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true},
+                        ],
+                        throwOnError: false,
+                        trust: true,
+                        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                        ignoreClass: 'katex',
                     });
                 }
             } catch (_) {}

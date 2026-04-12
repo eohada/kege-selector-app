@@ -20,6 +20,7 @@ from trainer_app.knowledge import load_task_knowledge
 from trainer_app.llm.providers import get_llm_client, get_llm_info, build_messages_for_help
 from trainer_app.runner.sandbox import is_runner_enabled, run_python_solve_tests, run_python_program
 from app.lessons.utils import normalize_answer_value
+from app.utils.jinja_filters import normalize_task_content_urls
 
 
 st.set_page_config(page_title="Тренажёр КЕГЭ", layout="wide")
@@ -164,6 +165,43 @@ def _check_answer(expected: str, given: str) -> bool:
     norm_exp = [v for v in norm_exp if v]
     norm_given = normalize_answer_value(given)
     return norm_given in norm_exp and norm_given != ''
+
+
+def _trainer_task_html_component(content_html: str, height: int = 560) -> None:
+    """
+    Рендер HTML условия с KaTeX и нормализацией URL (как на сайте), в изолированном iframe через components.html.
+    """
+    base = (get_platform_base_url() or '').rstrip('/')
+    normalized = normalize_task_content_urls((content_html or '').strip(), site_base=base or None)
+    payload = json.dumps(normalized)
+    doc = (
+        '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">'
+        '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">'
+        '<style>body{margin:0;padding:12px 14px;font-family:system-ui,-apple-system,sans-serif;'
+        'font-size:15px;line-height:1.55;color:#e2e8f0;background:transparent;}'
+        '.task-body img{max-width:100%;height:auto;border-radius:8px;}</style></head><body>'
+        '<div class="task-body" id="tb-root"></div>'
+        '<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>'
+        '<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>'
+        '<script>'
+        'function __tbGo(){var r=document.getElementById("tb-root");if(!r||typeof renderMathInElement==="undefined")return;'
+        'try{renderMathInElement(r,{delimiters:['
+        '{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false},'
+        '{left:"\\\\(",right:"\\\\)",display:false},{left:"\\\\[",right:"\\\\]",display:true}],'
+        'throwOnError:false,trust:true,'
+        'ignoredTags:["script","noscript","style","textarea","pre","code"],ignoreClass:"katex"});}catch(e){}}'
+        'function __tbBoot(){var r=document.getElementById("tb-root");if(!r)return;r.innerHTML=__PAYLOAD__;'
+        'if(typeof renderMathInElement!=="undefined"){__tbGo();}'
+        'else{var n=0,t=setInterval(function(){n++;'
+        'if(typeof renderMathInElement!=="undefined"){clearInterval(t);__tbGo();}if(n>55)clearInterval(t);},70);}}'
+        'document.addEventListener("DOMContentLoaded",__tbBoot);'
+        '</script></body></html>'
+    ).replace('__PAYLOAD__', payload)
+    try:
+        import streamlit.components.v1 as components
+        components.html(doc, height=height, scrolling=True)
+    except Exception:
+        st.markdown('<div class="task-body">' + (normalized or '') + '</div>', unsafe_allow_html=True)
 
 
 def _render_tests(payload: Any):
@@ -596,11 +634,9 @@ def main():
         with w_left:
             st.markdown('<div class="workbench-left">', unsafe_allow_html=True)
             content = (task.get('content_html') or '').strip()
-            st.markdown(f"""
-            <div class="task-card" style="padding:1.5rem; margin:0 0 1rem 0;">
-                <div class="task-body">{content}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown('<div class="task-card" style="padding:1.5rem; margin:0 0 1rem 0;">', unsafe_allow_html=True)
+            _trainer_task_html_component(content, height=580)
+            st.markdown('</div>', unsafe_allow_html=True)
             
             # Вложения
             af_raw = task.get('attached_files')

@@ -157,7 +157,7 @@
                 <section class="card">
                     <h2 class="card-title">Условие</h2>
                     <div class="task-content" style="margin-top: 0.75rem;">
-                        {{ (lesson_task.task.content_html|sanitize_html) if lesson_task and lesson_task.task else '' }}
+                        {{ (lesson_task.task.content_html|normalize_task_content_urls|sanitize_html) if lesson_task and lesson_task.task else '' }}
                         {% if lesson_task and lesson_task.task and lesson_task.task.attached_files %}
                         {% set files = lesson_task.task.attached_files | from_json %}
                         {% if files %}

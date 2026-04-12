@@ -236,7 +236,7 @@
                 </div>
               </div>
               <div class="task-mini-body px-4 py-3 border-t border-slate-200 text-sm text-secondary bg-surface">
-                {{ (t.content_html or 'Текст отсутствует') | sanitize_html }}
+                {{ (t.content_html or 'Текст отсутствует') | normalize_task_content_urls | sanitize_html }}
               </div>
             </div>
             {% endfor %}

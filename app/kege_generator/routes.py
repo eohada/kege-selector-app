@@ -11,6 +11,7 @@ from app.kege_generator import kege_generator_bp
 from app.kege_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
 from app.models import Lesson, Tasks, LessonTask, StudentTaskSeen, UsageHistory, db
 from app.models import TaskTemplate, TemplateTask
+from app.utils.jinja_filters import normalize_task_content_urls
 from app.auth.rbac_utils import has_permission
 from core.selector_logic import (
     get_unique_tasks, record_usage, record_skipped, record_blacklist,
@@ -330,7 +331,7 @@ def _task_to_payload(task: Tasks):
         'task_number': task.task_number,
         'site_task_id': task.site_task_id,
         'source_url': task.source_url,
-        'content_html': task.content_html,
+        'content_html': normalize_task_content_urls(task.content_html or ''),
         'answer': task.answer,
         'attached_files': task.attached_files,
     }

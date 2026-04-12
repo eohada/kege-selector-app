@@ -21,6 +21,7 @@ from app.models import (
 from app.analytics.engine import AnalyticsEngine
 from app.analytics.mmr_config import get_mmr_config
 from app.utils.trainer_tokens import issue_trainer_token, verify_trainer_token, TrainerTokenError
+from app.utils.jinja_filters import normalize_task_content_urls
 from app.utils.course_tasks import get_task_numbers
 from app.lessons.utils import normalize_answer_value
 import re
@@ -79,7 +80,7 @@ def _task_to_payload(task: Tasks) -> dict[str, Any] | None:
         'task_number': task.task_number,
         'site_task_id': task.site_task_id,
         'source_url': task.source_url,
-        'content_html': task.content_html,
+        'content_html': normalize_task_content_urls(task.content_html or ''),
         'answer': task.answer,
         'attached_files': task.attached_files,
         'has_hints_in_db': has_hints,

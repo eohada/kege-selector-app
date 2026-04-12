@@ -504,7 +504,7 @@
                 {% if not should_hide_tasks %}
                 <div class="exec-unlocked">
                 <div class="task-content text-[15px] leading-relaxed text-primary space-y-4">
-                    {{ task_item.task.content_html|task_content_absolute_urls|strip_attachment_links|sanitize_html }}
+                    {{ task_item.task.content_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
                 </div>
                 {% if (not should_hide_tasks) and task_item.task.starter_code %}
                 <div class="mt-4 p-4 rounded-[16px] border border-slate-200 bg-slate-50 text-[15px]">
@@ -702,7 +702,7 @@
             </div>
             
             <div class="task-content">
-                {{ task_item.task.content_html|task_content_absolute_urls|strip_attachment_links|sanitize_html }}
+                {{ task_item.task.content_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
             </div>
             {% if task_item.task.starter_code %}
             <div class="mt-4 p-4 rounded-[16px] border border-slate-200 bg-slate-50 text-[15px]">

@@ -65,7 +65,7 @@
         </div>
 
         <div class="task-content mb-6">
-            {{ task.content_html | sanitize_html }}
+            {{ task.content_html | normalize_task_content_urls | sanitize_html }}
         </div>
 
         {% if task.attached_files %}

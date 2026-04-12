@@ -11,6 +11,8 @@ from flask_login import login_required, current_user
 from sqlalchemy import or_, func, text, delete
 from sqlalchemy.orm import joinedload
 
+from app.utils.jinja_filters import normalize_task_content_urls
+
 from app.task_generator import task_generator_bp
 from app.task_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
 from app.models import (
@@ -678,7 +680,7 @@ def _task_to_payload(task: Tasks, target_user_id: int | None = None):
         'task_number': task.task_number,
         'site_task_id': task.site_task_id,
         'source_url': task.source_url,
-        'content_html': task.content_html,
+        'content_html': normalize_task_content_urls(task.content_html or ''),
         'answer': task.answer,
         'attached_files': task.attached_files,
         'bank_origin': task.bank_origin,
@@ -921,7 +923,7 @@ def task_generator_bank_picker_list():
             'kege_tier_label_ru': t.kege_tier_label_ru,
             'difficulty_label_ru': _difficulty_label_ru(t),
             'student_task_mmr': _get_user_task_mmr(target_user_id, t.task_number),
-            'content_html': (t.content_html or '')[:12000],
+            'content_html': (normalize_task_content_urls(t.content_html or ''))[:12000],
             'already_added': fully,
         })
 

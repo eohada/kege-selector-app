@@ -122,6 +122,7 @@
 {% block head_js %}
 <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
 <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
 {% endblock %}
 
 {% set gen_select_class = 'w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3.5 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] appearance-none cursor-pointer' %}
@@ -703,15 +704,20 @@
         function renderMath(container) {
             try {
                 if (!container) return;
-                const rawText = container.textContent || '';
-                // Skip expensive KaTeX pass for plain-text tasks.
-                if (!rawText.includes('$')) return;
-                if (window.renderMathInElement) {
+                if (typeof window.boostudyRenderTaskMath === 'function') {
+                    window.boostudyRenderTaskMath(container, 35);
+                } else if (window.renderMathInElement) {
                     window.renderMathInElement(container, {
                         delimiters: [
-                            {left: "$$", right: "$$", display: true},
-                            {left: "$", right: "$", display: false}
-                        ]
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true},
+                        ],
+                        throwOnError: false,
+                        trust: true,
+                        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                        ignoreClass: 'katex',
                     });
                 }
             } catch (_) {}

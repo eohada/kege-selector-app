@@ -390,7 +390,7 @@
                                     </div>
                                 </summary>
                                 <div class="task-body">
-                                    {{ task.task.content_html|sanitize_html }}
+                                    {{ task.task.content_html|normalize_task_content_urls|sanitize_html }}
                                 </div>
                             </details>
                         </div>

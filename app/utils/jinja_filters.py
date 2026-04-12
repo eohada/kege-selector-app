@@ -2,6 +2,8 @@
 Jinja2 фильтры для шаблонов
 """
 import re
+from typing import Optional
+
 from bs4 import BeautifulSoup
 
 from app.auth.rbac_utils import mask_contact_info
@@ -157,22 +159,68 @@ def deduplicate_formulas(html):
         return html
 
 
-def task_content_absolute_urls(html):
+_KOMPEGE_ORIGIN = "https://kompege.ru"
+# Корневые пути, которые относятся к этой платформе (остальные корневые src в заданиях — с kompege.ru).
+_PLATFORM_MEDIA_PREFIXES = (
+    "/static/",
+    "/uploads/",
+    "/attachments/",
+    "/media/",
+    "/internal/",
+)
+
+
+def _resolve_site_base(site_base: Optional[str]) -> str:
+    if site_base is not None:
+        return str(site_base).rstrip("/")
+    try:
+        return (request.url_root or "").rstrip("/")
+    except RuntimeError:
+        return ""
+
+
+def _normalize_root_media_url(raw: str, site_base: str) -> str:
+    """Абсолютный URL для src медиа: платформа vs kompege для корневых путей."""
+    v = (raw or "").strip()
+    if not v:
+        return v
+    if v.startswith("//"):
+        return "https:" + v
+    if not v.startswith("/") or v.startswith("//"):
+        return v
+    low = v.lower()
+    for p in _PLATFORM_MEDIA_PREFIXES:
+        if low.startswith(p.lower()):
+            return (site_base + v) if site_base else v
+    return _KOMPEGE_ORIGIN + v
+
+
+def normalize_task_content_urls(html, site_base: Optional[str] = None):
     """
-    Делает относительные src изображений в контенте задания абсолютными,
-    чтобы картинки не пропадали при открытии с разных путей (например /submissions/123).
+    Нормализует src у img/source/iframe/video в HTML задания:
+    - //host/... → https://host/...
+    - /static/, /uploads/, ... → корень текущего сайта (если известен)
+    - прочие /... (типично /images/ с kompege) → https://kompege.ru/...
     """
     if not html or not isinstance(html, str):
         return html
+    sb = _resolve_site_base(site_base)
     try:
-        base = (request.url_root or '').rstrip('/')
-        if not base:
-            return html
-        # src="/path" -> src="https://site/path"
-        html = re.sub(r'\bsrc=["\']/(?!\/)', f'src="{base}/', html)
-        return html
+        soup = BeautifulSoup(html, "html.parser")
+        for tag in soup.find_all(["img", "source", "iframe", "video"]):
+            if tag.get("src"):
+                tag["src"] = _normalize_root_media_url(tag["src"], sb)
+        return str(soup)
     except Exception:
         return html
+
+
+def task_content_absolute_urls(html):
+    """
+    Обратная совместимость: раньше все src="/ подставлялись под сайт и ломали /images/ с kompege.
+    Теперь делегирует normalize_task_content_urls.
+    """
+    return normalize_task_content_urls(html)
 
 
 def mask_contact_if_tutor(value):
@@ -280,6 +328,7 @@ def init_jinja_filters(app):
     app.jinja_env.filters['mask_contact'] = mask_contact_if_tutor
     app.jinja_env.filters['deduplicate_formulas'] = deduplicate_formulas
     app.jinja_env.filters['task_content_absolute_urls'] = task_content_absolute_urls
+    app.jinja_env.filters['normalize_task_content_urls'] = normalize_task_content_urls
     app.jinja_env.filters['strip_attachment_links'] = strip_attachment_links
     app.jinja_env.filters['sanitize_html'] = sanitize_html
     app.jinja_env.globals["ui_icon"] = ui_icon

@@ -575,6 +575,7 @@
     </style>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
     <script>
         (function(){
             try {
@@ -1018,7 +1019,7 @@
                         </div>
                     </div>
                     <div class="task-content">
-                        {{ lt19.task.content_html|sanitize_html }}
+                        {{ lt19.task.content_html|normalize_task_content_urls|sanitize_html }}
                         {% if lt19.task.starter_code %}
                         <div class="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50/80 dark:bg-slate-900/30">
                             <div class="text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
@@ -1168,7 +1169,7 @@
                     </div>
                     
                     <div class="task-content">
-                        {{ hw_task.task.content_html|sanitize_html }}
+                        {{ hw_task.task.content_html|normalize_task_content_urls|sanitize_html }}
                         {% if hw_task.task.starter_code %}
                         <div class="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50/80 dark:bg-slate-900/30">
                             <div class="text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
@@ -1605,7 +1606,19 @@
                     if (at !== ASSIGNMENT_TYPE) return;
                     var container = document.querySelector('#tab-tasks .tasks-container');
                     if (!container) return;
-                    var url = at === 'homework' ? ('/lesson/' + LESSON_ID + '/homework-tasks') : (at === 'classwork' ? ('/lesson/' + LESSON_ID + '/classwork-tasks') : ('/lesson/' + LESSON_ID + '/exam-tasks'));
+                    var path = (window.location && window.location.pathname) ? window.location.pathname.replace(/\/$/, '') : '';
+                    var pathMatch = path.match(/^\/lesson\/(\d+)\/(homework|classwork|exam)-tasks$/);
+                    var url;
+                    if (pathMatch && parseInt(pathMatch[1], 10) === LESSON_ID) {
+                        url = path;
+                    } else if (at === 'classwork') {
+                        url = '/lesson/' + LESSON_ID + '/classwork-tasks';
+                    } else if (at === 'exam') {
+                        url = '/lesson/' + LESSON_ID + '/exam-tasks';
+                    } else {
+                        try { window.location.reload(); } catch (e1) {}
+                        return;
+                    }
                     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
                         .then(function(r) { return r.text(); })
                         .then(function(html) {
@@ -1616,6 +1629,24 @@
                                 var inner = tasks.querySelector('.tasks-container');
                                 if (inner) {
                                     container.innerHTML = inner.innerHTML;
+                                    if (typeof window.boostudyRenderTaskMath === 'function') {
+                                        window.boostudyRenderTaskMath(container, 40);
+                                    } else if (typeof renderMathInElement !== 'undefined') {
+                                        try {
+                                            renderMathInElement(container, {
+                                                delimiters: [
+                                                    {left: '$$', right: '$$', display: true},
+                                                    {left: '$', right: '$', display: false},
+                                                    {left: '\\(', right: '\\)', display: false},
+                                                    {left: '\\[', right: '\\]', display: true}
+                                                ],
+                                                throwOnError: false,
+                                                trust: true,
+                                                ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                                                ignoreClass: 'katex'
+                                            });
+                                        } catch (e2) {}
+                                    }
                                     if (typeof toast !== 'undefined') toast.success('Задания обновлены');
                                 }
                             }
@@ -3536,7 +3567,9 @@
 
         // Initialize KaTeX
         document.addEventListener('DOMContentLoaded', function() {
-            if (typeof renderMathInElement !== 'undefined') {
+            if (typeof window.boostudyRenderTaskMath === 'function') {
+                window.boostudyRenderTaskMath(document.body, 45);
+            } else if (typeof renderMathInElement !== 'undefined') {
                 renderMathInElement(document.body, {
                     delimiters: [
                         {left: '$$', right: '$$', display: true},
@@ -3546,6 +3579,7 @@
                     ],
                     throwOnError: false,
                     trust: true,
+                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
                     ignoreClass: 'katex'
                 });
             }
