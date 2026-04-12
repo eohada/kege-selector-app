@@ -189,7 +189,7 @@ def _trainer_task_html_component(content_html: str, height: int = 560) -> None:
         '{left:"$$",right:"$$",display:true},'
         '{left:"\\\\(",right:"\\\\)",display:false},{left:"\\\\[",right:"\\\\]",display:true}],'
         'throwOnError:false,trust:true,'
-        'ignoredTags:["script","noscript","style","textarea","pre","code"],ignoredClasses:["katex"]});}catch(e){}}'
+        'ignoredTags:["script","noscript","style","textarea","pre"],ignoredClasses:["katex"]});}catch(e){}}'
         'function __tbBoot(){var r=document.getElementById("tb-root");if(!r)return;r.innerHTML=__PAYLOAD__;'
         'if(typeof renderMathInElement!=="undefined"){__tbGo();}'
         'else{var n=0,t=setInterval(function(){n++;'

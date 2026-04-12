@@ -15,7 +15,8 @@
       ],
       throwOnError: false,
       trust: true,
-      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+      // Без 'code': на kompege формулы часто в <code>\( … \)</code> — иначе auto-render их полностью пропускает.
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
       ignoredClasses: ['katex'],
     };
   }
