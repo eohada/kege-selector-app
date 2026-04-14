@@ -333,6 +333,16 @@
                 <div class="task-content">
                     {% if task_item.task and task_item.task.content_html %}{{ task_item.task.content_html|normalize_task_content_urls|sanitize_html }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
                 </div>
+                {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
+                {% for sub_item in task_item.triplet_items %}
+                {% if sub_item.task and sub_item.task.content_html and sub_item.task.content_html|striptags|trim %}
+                <div class="task-content" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                    <div class="subtask-title" style="margin-bottom: 0.5rem;">Условие задания {{ sub_item.task.task_number }}</div>
+                    {{ sub_item.task.content_html|normalize_task_content_urls|sanitize_html }}
+                </div>
+                {% endif %}
+                {% endfor %}
+                {% endif %}
                 {% for g in grading_rows %}
                 <div class="answer-section {% if task_item.is_triplet_19_21 %}subtask-box{% endif %}">
                     {% if task_item.is_triplet_19_21 %}

@@ -529,6 +529,34 @@
                 </div>
                 {% endif %}
                 {% endif %}
+                {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
+                {% for sub_item in task_item.triplet_items %}
+                {% if sub_item.task and sub_item.task.content_html and sub_item.task.content_html|striptags|trim %}
+                <div class="task-content text-[15px] leading-relaxed text-primary space-y-4 border-t border-slate-200 dark:border-white/10 pt-4 mt-4">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Задание {{ sub_item.task.task_number }}</div>
+                    {{ sub_item.task.content_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+                </div>
+                {% endif %}
+                {% if (not should_hide_tasks) and sub_item.task and sub_item.task.starter_code %}
+                <div class="mt-4 p-4 rounded-[16px] border border-slate-200 bg-slate-50 text-[15px]">
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию {{ sub_item.task.task_number }}</div>
+                    <pre class="m-0 text-sm font-mono whitespace-pre-wrap text-primary">{{ sub_item.task.starter_code }}</pre>
+                </div>
+                {% endif %}
+                {% if (not should_hide_tasks) and sub_item.task and sub_item.task.attached_files %}
+                {% set files = sub_item.task.attached_files | from_json %}
+                {% if files %}
+                <div style="margin-top: 1rem;">
+                  {% set fm_task_id = sub_item.task.task_id %}
+                  {% set fm_context_type = 'submission' %}
+                  {% set fm_context_id = submission.submission_id %}
+                  {% set fm_task_files = files %}
+                  {% include '_partials/file_manager_panel.html' %}
+                </div>
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+                {% endif %}
                 
                 <div class="task-input bg-surface border border-slate-200 rounded-[20px] p-2 transition-all shadow-sm dark:shadow-none dark:shadow-none">
                     {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task and task_item.answer %}
@@ -726,6 +754,34 @@
               {% include '_partials/file_manager_panel.html' %}
             </div>
             {% endif %}
+            {% endif %}
+            {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
+            {% for sub_item in task_item.triplet_items %}
+            {% if sub_item.task and sub_item.task.content_html and sub_item.task.content_html|striptags|trim %}
+            <div class="task-content border-t border-slate-200 dark:border-white/10 pt-4 mt-4">
+                <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Задание {{ sub_item.task.task_number }}</div>
+                {{ sub_item.task.content_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+            </div>
+            {% endif %}
+            {% if sub_item.task and sub_item.task.starter_code %}
+            <div class="mt-4 p-4 rounded-[16px] border border-slate-200 bg-slate-50 text-[15px]">
+                <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию {{ sub_item.task.task_number }}</div>
+                <pre class="m-0 text-sm font-mono whitespace-pre-wrap text-primary">{{ sub_item.task.starter_code }}</pre>
+            </div>
+            {% endif %}
+            {% if sub_item.task and sub_item.task.attached_files %}
+            {% set files = sub_item.task.attached_files | from_json %}
+            {% if files %}
+            <div style="margin-top: 1rem;">
+              {% set fm_task_id = sub_item.task.task_id %}
+              {% set fm_context_type = 'submission' %}
+              {% set fm_context_id = submission.submission_id %}
+              {% set fm_task_files = files %}
+              {% include '_partials/file_manager_panel.html' %}
+            </div>
+            {% endif %}
+            {% endif %}
+            {% endfor %}
             {% endif %}
 
             <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
