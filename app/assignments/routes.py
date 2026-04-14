@@ -7,6 +7,7 @@ from flask import render_template, request, jsonify, flash, redirect, url_for, c
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_, func, case
 from sqlalchemy.orm import joinedload
+from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 
 from app.assignments import assignments_bp
 from app.limiter import limiter
@@ -34,6 +35,23 @@ import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Локальный флаг: таблица курсоров прочтения чата создана в этой БД (create checkfirst).
+_THREAD_READ_SCHEMA_ENSURED = False
+
+
+def _ensure_submission_comment_thread_reads_schema() -> bool:
+    """Создать таблицу SubmissionCommentThreadReads при отсутствии (без отдельного Alembic)."""
+    global _THREAD_READ_SCHEMA_ENSURED
+    if _THREAD_READ_SCHEMA_ENSURED:
+        return True
+    try:
+        SubmissionCommentThreadRead.__table__.create(db.engine, checkfirst=True)
+        _THREAD_READ_SCHEMA_ENSURED = True
+        return True
+    except Exception as e:
+        logger.warning('Could not ensure SubmissionCommentThreadReads table: %s', e)
+        return False
 
 # Редактор кода: песочница для запуска Python
 _PYTHON_RUNNER = r"""
@@ -160,14 +178,15 @@ def _submission_comment_task_id(comment, legacy_bucket_task_id: int | None) -> i
     return int(legacy_bucket_task_id or 0)
 
 
-def _bump_submission_comment_thread_read(submission_id: int, assignment_task_id: int, user_id: int, up_to_comment_id: int) -> None:
-    """Поднять курсор «просмотрено до comment_id» для ветки чата (идемпотентно)."""
-    if assignment_task_id is None or int(up_to_comment_id or 0) <= 0:
+def _bump_submission_comment_thread_read(submission_id: int, assignment_task_id: int, user_id: int, up_to_comment_id: int | None) -> None:
+    """Поднять курсор «просмотрено до comment_id» для ветки чата (идемпотентно). up_to=0 — открыли пустой тред."""
+    if assignment_task_id is None:
         return
+    _ensure_submission_comment_thread_reads_schema()
     sid = int(submission_id)
     tid = int(assignment_task_id)
     uid = int(user_id)
-    upto = int(up_to_comment_id)
+    upto = max(0, int(up_to_comment_id or 0))
     row = SubmissionCommentThreadRead.query.filter_by(
         submission_id=sid, assignment_task_id=tid, user_id=uid
     ).first()
@@ -206,13 +225,19 @@ def _compute_submission_chat_unread_task_ids(submission, viewer_user_id: int, le
     Курсор обновляется при GET /comments?assignment_task_id=… (и при открытии страницы учеником — см. submission_view).
     """
     uid = int(viewer_user_id)
-    reads = {
-        int(r.assignment_task_id): int(r.last_read_comment_id or 0)
-        for r in SubmissionCommentThreadRead.query.filter_by(
-            submission_id=submission.submission_id,
-            user_id=uid,
-        ).all()
-    }
+    _ensure_submission_comment_thread_reads_schema()
+    reads: dict[int, int] = {}
+    try:
+        reads = {
+            int(r.assignment_task_id): int(r.last_read_comment_id or 0)
+            for r in SubmissionCommentThreadRead.query.filter_by(
+                submission_id=submission.submission_id,
+                user_id=uid,
+            ).all()
+        }
+    except (OperationalError, ProgrammingError) as e:
+        logger.warning('SubmissionCommentThreadRead query failed (schema?): %s', e)
+        return _compute_submission_chat_unread_fallback_heuristic(submission, viewer_user_id, legacy_bucket_task_id)
     unread: set[int] = set()
     ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
     for c in ordered:
@@ -224,6 +249,25 @@ def _compute_submission_chat_unread_task_ids(submission, viewer_user_id: int, le
         cid = int(c.comment_id or 0)
         lr = reads.get(tid, 0)
         if cid > lr:
+            unread.add(tid)
+    return unread
+
+
+def _compute_submission_chat_unread_fallback_heuristic(submission, viewer_user_id: int, legacy_bucket_task_id: int | None) -> set[int]:
+    """Если таблицы курсоров нет: непрочитано = чужое сообщение после последнего своего в этой ветке."""
+    uid = int(viewer_user_id)
+    unread: set[int] = set()
+    last_own_at: dict[int, datetime] = {}
+    ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
+    for c in ordered:
+        tid = _submission_comment_task_id(c, legacy_bucket_task_id)
+        if tid <= 0:
+            continue
+        if int(c.author_id) == uid:
+            last_own_at[tid] = c.created_at or moscow_now()
+            continue
+        last_t = last_own_at.get(tid)
+        if last_t is None or (c.created_at and c.created_at > last_t):
             unread.add(tid)
     return unread
 
@@ -3445,6 +3489,7 @@ def submission_grade_view(submission_id):
     can_submit_grade = submission.status in ('SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW')
     legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
     initial_task_id = (tasks_view[0]['assignment_task'].assignment_task_id if tasks_view else legacy_bucket_task_id)
+    _ensure_submission_comment_thread_reads_schema()
     unread_task_ids = _compute_submission_chat_unread_task_ids(submission, current_user.id, legacy_bucket_task_id)
     return render_template('submission_grade.html',
                          submission=submission,
@@ -3914,6 +3959,17 @@ def submission_comments_list(submission_id):
         try:
             _bump_submission_comment_thread_read(submission.submission_id, assignment_task_id, current_user.id, max_in_thread)
             db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            try:
+                _bump_submission_comment_thread_read(submission.submission_id, assignment_task_id, current_user.id, max_in_thread)
+                db.session.commit()
+            except Exception as ex:
+                logger.warning('submission_comments_list thread read bump retry failed: %s', ex)
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
         except Exception as ex:
             logger.warning('submission_comments_list thread read bump failed: %s', ex)
             try:
