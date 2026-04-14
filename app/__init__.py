@@ -293,6 +293,7 @@ def create_app(config_name=None):
     from app.reminders import reminders_bp
     from app.telegram.webhook import telegram_bp
     from app.telegram.mini_app import tg_app_bp
+    from app.workspace import workspace_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -322,6 +323,7 @@ def create_app(config_name=None):
     app.register_blueprint(reminders_bp)
     app.register_blueprint(telegram_bp)
     app.register_blueprint(tg_app_bp)
+    app.register_blueprint(workspace_bp)
 
     # Real-time комната урока (WebSocket)
     try:

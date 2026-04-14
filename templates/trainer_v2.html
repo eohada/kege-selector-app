@@ -200,5 +200,9 @@
 <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/diff/5.1.0/diff.min.js"></script>
 <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
+<script src="{{ url_for('static', filename='workspace/file-manager.js') }}"></script>
+<script src="{{ url_for('static', filename='workspace/file-viewer.js') }}"></script>
 <script src="{{ url_for('static', filename='trainer_v2/trainer_v2.js') }}"></script>
+
+{% include '_partials/file_viewer_modal.html' %}
 {% endblock %}

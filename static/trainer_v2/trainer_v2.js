@@ -542,6 +542,9 @@
     if (State.historyView && typeof State.historyView.render === 'function') State.historyView.render();
     try { if (State.assistantView && typeof State.assistantView.loadForTask === 'function') State.assistantView.loadForTask(task.task_id); } catch (_) {}
     if (State.scratchCanvasApi && typeof State.scratchCanvasApi.loadForTask === 'function') State.scratchCanvasApi.loadForTask(task.task_id);
+    if (window.BooCanvasOverlay) {
+      try { window.BooCanvasOverlay.setContext(task.task_id, 'trainer', null); } catch (_) {}
+    }
     if (State.md && typeof State.md.value === 'function') {
       const md = lsGet(LS.scratchMd(task.task_id), '');
       State.md.value(md || '');
@@ -957,7 +960,7 @@
         const ul = document.createElement('div');
         ul.style.display = 'grid';
         ul.style.gap = '0.35rem';
-        files.forEach((f) => {
+        files.forEach((f, fileIdx) => {
           let path = '';
           let name = 'файл';
           if (typeof f === 'string') {
@@ -968,9 +971,12 @@
             name = String(f.name || f.filename || (path.split('/').pop() || 'файл'));
           }
           if (!path) return;
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex; align-items:center; gap:0.35rem;';
           const a = document.createElement('a');
           a.className = 'tv2-btn';
           a.style.textDecoration = 'none';
+          a.style.flex = '1';
           a.textContent = name;
           if (path.startsWith('http')) {
             a.href = path;
@@ -980,7 +986,20 @@
             const u = `${cfg.baseApi}/task/${encodeURIComponent(task.task_id)}/attachment?path=${encodeURIComponent(path)}&token=${encodeURIComponent(token)}`;
             a.href = u;
           }
-          ul.appendChild(a);
+          row.appendChild(a);
+          if (window.BooFileViewer) {
+            const viewBtn = document.createElement('button');
+            viewBtn.type = 'button';
+            viewBtn.className = 'tv2-btn';
+            viewBtn.style.cssText = 'padding:0.2rem 0.5rem; font-size:0.78rem;';
+            viewBtn.innerHTML = '<i class="ph-bold ph-eye"></i>';
+            viewBtn.title = 'Просмотреть';
+            viewBtn.addEventListener('click', () => {
+              window.BooFileViewer.openTaskFile(task.task_id, fileIdx);
+            });
+            row.appendChild(viewBtn);
+          }
+          ul.appendChild(row);
         });
         attachWrap.appendChild(ul);
       }

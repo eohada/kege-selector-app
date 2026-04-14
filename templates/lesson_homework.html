@@ -12,6 +12,8 @@
     {% if is_student_view or is_parent_view %}
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
     {% endif %}
+    <script src="{{ url_for('static', filename='workspace/file-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}"></script>
     {% include '_ux_enhancements.html' %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -1029,29 +1031,12 @@
                         {% if lt19.task.attached_files %}
                         {% set files = lt19.task.attached_files | from_json %}
                         {% if files %}
-                        <div class="task-attachments" style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: var(--radius-sm);">
-                            <strong><i class="fas fa-paperclip"></i> Вложения:</strong>
-                            <div class="attached-links" style="margin-top: .5rem; display: grid; gap: 0.35rem;">
-                                {% for file in files %}
-                                {% if file %}
-                                {% set file_path = file.path if file.path is defined else None %}
-                                {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
-                                {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else ((file_path or file_url or '').split('/')[-1].split('?')[0] if (file_path or file_url) else 'file')) %}
-                                {% if file_path %}
-                                {% set download_url = file_path ~ (('?download_name=' ~ (file_name|urlencode)) if file_name else '') %}
-                                {% elif file_url %}
-                                {% if file_url.startswith('//') %}{% set file_url = 'https:' ~ file_url %}
-                                {% elif file_url.startswith('/') %}{% set file_url = 'https://kompege.ru' ~ file_url %}{% endif %}
-                                {% if file_url.startswith('https://kompege.ru/') or file_url.startswith('http://kompege.ru/') %}
-                                {% set download_url = url_for('assignments.attached_proxy') ~ '?url=' ~ (file_url|urlencode) %}
-                                {% else %}{% set download_url = file_url %}{% endif %}
-                                {% endif %}
-                                {% if download_url is defined %}
-                                <a class="neo-link" href="{{ download_url }}" target="_blank" rel="noopener noreferrer" download="{{ file_name }}">{{ file_name }}</a>
-                                {% endif %}
-                                {% endif %}
-                                {% endfor %}
-                            </div>
+                        <div style="margin-top: 1rem;">
+                          {% set fm_task_id = lt19.task.task_id %}
+                          {% set fm_context_type = 'lesson' %}
+                          {% set fm_context_id = lt19.lesson_task_id %}
+                          {% set fm_task_files = files | tojson %}
+                          {% include '_partials/file_manager_panel.html' %}
                         </div>
                         {% endif %}
                         {% endif %}
@@ -1179,34 +1164,12 @@
                         {% if hw_task.task.attached_files %}
                         {% set files = hw_task.task.attached_files | from_json %}
                         {% if files %}
-                        <div class="task-attachments" style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: var(--radius-sm);">
-                            <strong><i class="fas fa-paperclip"></i> Вложения:</strong>
-                            <div class="attached-links" style="margin-top: .5rem; display: grid; gap: 0.35rem;">
-                                {% for file in files %}
-                                    {% if file %}
-                                        {% set file_path = file.path if file.path is defined else None %}
-                                        {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
-                                        {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else ((file_path or file_url or '').split('/')[-1].split('?')[0] if (file_path or file_url) else 'file')) %}
-                                        {% if file_path %}
-                                            {% set download_url = file_path ~ (('?download_name=' ~ (file_name|urlencode)) if file_name else '') %}
-                                        {% elif file_url %}
-                                            {% if file_url.startswith('//') %}
-                                                {% set file_url = 'https:' ~ file_url %}
-                                            {% elif file_url.startswith('/') %}
-                                                {% set file_url = 'https://kompege.ru' ~ file_url %}
-                                            {% endif %}
-                                            {% if file_url.startswith('https://kompege.ru/') or file_url.startswith('http://kompege.ru/') %}
-                                                {% set download_url = url_for('assignments.attached_proxy') ~ '?url=' ~ (file_url|urlencode) %}
-                                            {% else %}
-                                                {% set download_url = file_url %}
-                                            {% endif %}
-                                        {% endif %}
-                                        {% if download_url is defined %}
-                                        <a class="neo-link" href="{{ download_url }}" target="_blank" rel="noopener noreferrer" download="{{ file_name }}">{{ file_name }}</a>
-                                        {% endif %}
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
+                        <div style="margin-top: 1rem;">
+                          {% set fm_task_id = hw_task.task.task_id %}
+                          {% set fm_context_type = 'lesson' %}
+                          {% set fm_context_id = hw_task.lesson_task_id %}
+                          {% set fm_task_files = files | tojson %}
+                          {% include '_partials/file_manager_panel.html' %}
                         </div>
                         {% endif %}
                         {% endif %}
@@ -3588,5 +3551,7 @@
     {% include '_command_palette.html' %}
     {% endif %}
     <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
+    {% include '_partials/file_viewer_modal.html' %}
+    {% include '_partials/canvas_overlay.html' %}
 </body>
 </html>

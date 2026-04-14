@@ -1,0 +1,60 @@
+{# File Viewer Modal — просмотр текстовых и Excel-файлов #}
+<div id="boo-file-viewer-modal" class="hidden" style="display:none; position:fixed; inset:0; z-index:10000;">
+  <div style="position:absolute; inset:0; background:rgba(0,0,0,0.5);" onclick="BooFileViewer.close()"></div>
+  <div style="position:relative; margin:2vh auto; width:92vw; max-width:960px; height:92vh;
+              background:var(--color-bg-surface, #fff); border-radius:20px;
+              display:flex; flex-direction:column; overflow:hidden;
+              box-shadow:0 24px 64px rgba(0,0,0,0.18); z-index:1;">
+    <div style="display:flex; align-items:center; gap:0.75rem; padding:1rem 1.25rem; border-bottom:1px solid var(--stroke-1, #e2e8f0);">
+      <i class="ph-bold ph-file-text" style="font-size:1.25rem; color:var(--accent-1, #6366f1);"></i>
+      <span class="fv-title" style="font-weight:700; font-size:1rem; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Файл</span>
+      <button onclick="BooFileViewer.close()" style="background:none; border:none; cursor:pointer; padding:0.25rem; color:var(--text-muted, #94a3b8);">
+        <i class="ph-bold ph-x" style="font-size:1.25rem;"></i>
+      </button>
+    </div>
+    <div class="fv-loader" style="display:none; flex:1; display:flex; align-items:center; justify-content:center;">
+      <span style="color:var(--text-muted); font-size:0.95rem;">Загрузка...</span>
+    </div>
+    <div class="fv-content" style="flex:1; overflow:auto; position:relative;"></div>
+  </div>
+</div>
+
+<style>
+  .fv-error {
+    padding: 2rem; text-align: center; color: var(--error, #ef4444); font-weight: 600;
+  }
+  .fv-cm-textarea {
+    width: 100%; min-height: 200px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+  }
+  #boo-file-viewer-modal .CodeMirror {
+    height: 100% !important; font-size: 0.9rem;
+  }
+  .fv-sheet-tabs {
+    display: flex; gap: 0; border-bottom: 2px solid var(--stroke-1, #e2e8f0);
+    padding: 0 1rem; background: var(--surface-2, #f8fafc);
+  }
+  .fv-sheet-tab {
+    padding: 0.5rem 1rem; border: none; background: none; cursor: pointer;
+    font-size: 0.85rem; font-weight: 600; color: var(--text-muted, #94a3b8);
+    border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s;
+  }
+  .fv-sheet-tab.active {
+    color: var(--accent-1, #6366f1); border-bottom-color: var(--accent-1, #6366f1);
+  }
+  .fv-table-wrap {
+    overflow: auto; max-height: calc(92vh - 120px); padding: 0.5rem;
+  }
+  .fv-excel-table {
+    border-collapse: collapse; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; width: max-content; min-width: 100%;
+  }
+  .fv-excel-table th, .fv-excel-table td {
+    border: 1px solid var(--stroke-1, #e2e8f0); padding: 0.35rem 0.6rem;
+    white-space: nowrap; max-width: 300px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .fv-excel-table th {
+    background: var(--surface-2, #f1f5f9); font-weight: 700; position: sticky; top: 0; z-index: 1;
+  }
+  .fv-excel-table tr:nth-child(even) td {
+    background: var(--surface-2, rgba(0,0,0,0.02));
+  }
+</style>

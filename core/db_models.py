@@ -2201,6 +2201,78 @@ class GradingScale(db.Model):
         return f'<GradingScale course={self.course_id} {self.min_primary}-{self.max_primary}={self.final_grade}>'
 
 
+class StudentWorkspaceFile(db.Model):
+    """Файл в мини-хранилище ученика, привязанный к конкретному заданию."""
+    __tablename__ = 'StudentWorkspaceFiles'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id', ondelete='CASCADE'), nullable=False, index=True)
+    context_type = db.Column(db.String(32), nullable=False, default='submission')
+    context_id = db.Column(db.Integer, nullable=True, index=True)
+    original_filename = db.Column(db.String(255), nullable=False)
+    current_filename = db.Column(db.String(255), nullable=False)
+    storage_path = db.Column(db.String(512), nullable=False)
+    file_size = db.Column(db.Integer, default=0)
+    mime_type = db.Column(db.String(128), nullable=True)
+    is_from_task = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'task_id': self.task_id,
+            'context_type': self.context_type,
+            'context_id': self.context_id,
+            'original_filename': self.original_filename,
+            'current_filename': self.current_filename,
+            'file_size': self.file_size,
+            'mime_type': self.mime_type,
+            'is_from_task': self.is_from_task,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class TaskCanvasDrawing(db.Model):
+    """Холст рисования поверх интерфейса — привязан к заданию, пользователю и контексту."""
+    __tablename__ = 'TaskCanvasDrawings'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id', ondelete='CASCADE'), nullable=False, index=True)
+    context_type = db.Column(db.String(32), nullable=False, default='submission')
+    context_id = db.Column(db.Integer, nullable=True, index=True)
+    strokes_json = db.Column(db.Text, nullable=False, default='[]')
+    thumbnail_url = db.Column(db.String(512), nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    __table_args__ = (
+        db.Index('ix_canvas_user_task_ctx', 'user_id', 'task_id', 'context_type', 'context_id'),
+    )
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+
+    def to_dict(self, include_strokes=False):
+        d = {
+            'id': self.id,
+            'user_id': self.user_id,
+            'task_id': self.task_id,
+            'context_type': self.context_type,
+            'context_id': self.context_id,
+            'thumbnail_url': self.thumbnail_url,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_strokes:
+            d['strokes'] = self.strokes_json
+        return d
+
+
 class PlatformBugReport(db.Model):
     """Bug reports from users via the platform."""
     __tablename__ = 'PlatformBugReports'

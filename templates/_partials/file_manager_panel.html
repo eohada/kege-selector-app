@@ -1,0 +1,137 @@
+{#
+  File Manager Panel — мини-хранилище файлов ученика.
+  Переменные (задать перед include или передать через x-data):
+    fm_task_id, fm_context_type, fm_context_id, fm_task_files (JSON array)
+#}
+<div x-data="fileManager({
+  taskId: {{ fm_task_id | default(0) }},
+  contextType: '{{ fm_context_type | default('submission') }}',
+  contextId: {{ fm_context_id | default('null') }},
+  taskFiles: {{ fm_task_files | default('[]') | safe }}
+})">
+
+  {# Toggle button #}
+  <button @click="open = !open"
+    class="neo-button outline sm"
+    style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.9rem; padding:0.5rem 1rem;">
+    <i class="ph-bold ph-folder-open"></i>
+    <span>Файлы</span>
+    <span x-show="workspaceFiles.length"
+      x-text="workspaceFiles.length"
+      style="background:var(--accent-1); color:#fff; border-radius:99px; padding:0 0.4rem; font-size:0.75rem; font-weight:700; margin-left:0.2rem;">
+    </span>
+  </button>
+
+  {# Panel #}
+  <div x-show="open" x-transition x-cloak
+    style="margin-top:0.75rem; border:1px solid var(--stroke-1); border-radius:var(--radius-md);
+           background:var(--color-bg-surface); overflow:hidden;">
+
+    {# Error #}
+    <div x-show="error" x-text="error"
+      style="padding:0.5rem 1rem; background:var(--error-bg, #fef2f2); color:var(--error, #ef4444); font-size:0.85rem; font-weight:600;">
+    </div>
+
+    {# Task files section #}
+    <template x-if="taskFiles.length > 0">
+      <div style="padding:0.75rem 1rem; border-bottom:1px solid var(--stroke-1);">
+        <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.5rem; color:var(--text-primary);">
+          <i class="ph-bold ph-paperclip"></i> Файлы задания
+        </div>
+        <div style="display:flex; flex-direction:column; gap:0.35rem;">
+          <template x-for="(tf, idx) in taskFiles" :key="idx">
+            <div style="display:flex; align-items:center; gap:0.5rem; padding:0.35rem 0.5rem; border-radius:8px; background:var(--surface-2);">
+              <i class="ph-bold" :class="fileIcon(tf.name || tf.filename || 'file')" style="font-size:1rem; color:var(--accent-1);"></i>
+              <span x-text="tf.name || tf.filename || ('Файл ' + (idx+1))"
+                style="flex:1; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              </span>
+              <button @click="viewTaskFile(idx)" class="neo-button outline sm"
+                style="padding:0.2rem 0.5rem; font-size:0.78rem;">
+                <i class="ph-bold ph-eye"></i> Смотреть
+              </button>
+              <button @click="copyFromTask(idx)" class="neo-button outline sm"
+                style="padding:0.2rem 0.5rem; font-size:0.78rem;">
+                <i class="ph-bold ph-copy"></i> Копировать
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    {# Workspace files section #}
+    <div style="padding:0.75rem 1rem;">
+      <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.5rem; color:var(--text-primary);">
+        <i class="ph-bold ph-hard-drives"></i> Мини-хранилище
+      </div>
+
+      <template x-if="loading">
+        <div style="text-align:center; padding:1rem; color:var(--text-muted); font-size:0.85rem;">Загрузка...</div>
+      </template>
+
+      <template x-if="!loading && workspaceFiles.length === 0">
+        <div style="text-align:center; padding:0.75rem; color:var(--text-muted); font-size:0.85rem;">
+          Нет файлов. Скопируйте из задания или загрузите свой.
+        </div>
+      </template>
+
+      <div style="display:flex; flex-direction:column; gap:0.35rem;">
+        <template x-for="wf in workspaceFiles" :key="wf.id">
+          <div style="display:flex; align-items:center; gap:0.5rem; padding:0.35rem 0.5rem; border-radius:8px; background:var(--surface-2);">
+            <i class="ph-bold" :class="fileIcon(wf.current_filename)" style="font-size:1rem; color:var(--accent-1);"></i>
+
+            {# Filename or rename input #}
+            <template x-if="renamingId !== wf.id">
+              <span x-text="wf.current_filename"
+                @dblclick="startRename(wf)"
+                style="flex:1; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;"
+                title="Двойной клик для переименования">
+              </span>
+            </template>
+            <template x-if="renamingId === wf.id">
+              <input x-model="renameValue" @keydown.enter="submitRename(wf.id)" @keydown.escape="renamingId = null"
+                @blur="submitRename(wf.id)" x-ref="renameInput"
+                style="flex:1; font-size:0.85rem; padding:0.15rem 0.4rem; border:1px solid var(--accent-1);
+                       border-radius:6px; outline:none; background:var(--color-bg-surface); color:var(--text-primary);">
+            </template>
+
+            <button @click="viewWorkspaceFile(wf)" title="Просмотреть"
+              style="background:none; border:none; cursor:pointer; padding:0.2rem; color:var(--accent-1);">
+              <i class="ph-bold ph-eye" style="font-size:0.9rem;"></i>
+            </button>
+            <template x-if="isTextFile(wf.current_filename)">
+              <button @click="openInEditor(wf)" title="Открыть в редакторе кода"
+                style="background:none; border:none; cursor:pointer; padding:0.2rem; color:var(--accent-1);">
+                <i class="ph-bold ph-code" style="font-size:0.9rem;"></i>
+              </button>
+            </template>
+            <button @click="startRename(wf)" title="Переименовать"
+              style="background:none; border:none; cursor:pointer; padding:0.2rem; color:var(--text-muted);">
+              <i class="ph-bold ph-pencil-simple" style="font-size:0.9rem;"></i>
+            </button>
+            <a :href="'/workspace/' + wf.id + '/download'" target="_blank" title="Скачать"
+              style="color:var(--text-muted); padding:0.2rem;">
+              <i class="ph-bold ph-download-simple" style="font-size:0.9rem;"></i>
+            </a>
+            <button @click="deleteFile(wf.id)" title="Удалить"
+              style="background:none; border:none; cursor:pointer; padding:0.2rem; color:var(--error, #ef4444);">
+              <i class="ph-bold ph-trash" style="font-size:0.9rem;"></i>
+            </button>
+          </div>
+        </template>
+      </div>
+
+      {# Upload area #}
+      <div @dragover.prevent="dragOver = true" @dragleave.prevent="dragOver = false"
+        @drop.prevent="uploadFile($event)"
+        :style="'margin-top:0.75rem; border:2px dashed ' + (dragOver ? 'var(--accent-1)' : 'var(--stroke-1)') + '; border-radius:12px; padding:1rem; text-align:center; transition:border-color 0.15s;'">
+        <i class="ph-bold ph-cloud-arrow-up" style="font-size:1.5rem; color:var(--text-muted);"></i>
+        <p style="margin:0.25rem 0 0; color:var(--text-muted); font-size:0.85rem;">Перетащите файл или</p>
+        <label class="neo-button outline sm" style="cursor:pointer; display:inline-block; margin-top:0.35rem; padding:0.35rem 0.75rem; font-size:0.8rem;">
+          Выберите файл
+          <input type="file" style="display:none;" @change="uploadFile($event)" multiple>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,133 @@
+{# Canvas Viewer Modal — преподаватель просматривает заметки ученика #}
+<div id="boo-canvas-viewer-modal" class="hidden" style="display:none; position:fixed; inset:0; z-index:10000;">
+  <div style="position:absolute; inset:0; background:rgba(0,0,0,0.5);" onclick="BooCanvasViewer.close()"></div>
+  <div style="position:relative; margin:2vh auto; width:94vw; max-width:1100px; height:94vh;
+              background:var(--color-bg-surface, #fff); border-radius:20px;
+              display:flex; flex-direction:column; overflow:hidden;
+              box-shadow:0 24px 64px rgba(0,0,0,0.18); z-index:1;">
+    <div style="display:flex; align-items:center; gap:0.75rem; padding:1rem 1.25rem; border-bottom:1px solid var(--stroke-1, #e2e8f0);">
+      <i class="ph-bold ph-pencil-line" style="font-size:1.25rem; color:var(--accent-1, #6366f1);"></i>
+      <span id="cv-title" style="font-weight:700; font-size:1rem; flex:1;">Заметки ученика</span>
+      <span id="cv-updated" style="font-size:0.8rem; color:var(--text-muted);"></span>
+      <button onclick="BooCanvasViewer.close()" style="background:none; border:none; cursor:pointer; padding:0.25rem; color:var(--text-muted, #94a3b8);">
+        <i class="ph-bold ph-x" style="font-size:1.25rem;"></i>
+      </button>
+    </div>
+    <div id="cv-loader" style="flex:1; display:flex; align-items:center; justify-content:center;">
+      <span style="color:var(--text-muted); font-size:0.95rem;">Загрузка...</span>
+    </div>
+    <div id="cv-canvas-wrap" style="flex:1; overflow:auto; position:relative; display:none;">
+      <canvas id="cv-canvas" style="width:100%; height:100%;"></canvas>
+    </div>
+    <div id="cv-empty" style="flex:1; display:none; align-items:center; justify-content:center;">
+      <span style="color:var(--text-muted); font-size:0.95rem;">Ученик не оставил заметок для этого задания.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var modal = document.getElementById('boo-canvas-viewer-modal');
+  var loader = document.getElementById('cv-loader');
+  var canvasWrap = document.getElementById('cv-canvas-wrap');
+  var canvas = document.getElementById('cv-canvas');
+  var emptyEl = document.getElementById('cv-empty');
+  var titleEl = document.getElementById('cv-title');
+  var updatedEl = document.getElementById('cv-updated');
+
+  function show() {
+    modal.classList.remove('hidden');
+    modal.style.display = '';
+    document.body.style.overflow = 'hidden';
+  }
+  function hide() {
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  function renderStrokes(strokes) {
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var rect = canvasWrap.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    var bg = document.documentElement.getAttribute('data-theme') === 'dark' ? '#1e1e2e' : '#f8fafc';
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    strokes.forEach(function(s) {
+      if (!s.points || !s.points.length) return;
+      ctx.save();
+      if (s.eraser) {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = s.color || '#000';
+      }
+      ctx.lineWidth = s.width || 3;
+      ctx.beginPath();
+      s.points.forEach(function(p, i) {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  window.BooCanvasViewer = {
+    async open(studentUserId, taskId, contextType, contextId) {
+      show();
+      loader.style.display = 'flex';
+      canvasWrap.style.display = 'none';
+      emptyEl.style.display = 'none';
+
+      try {
+        var params = new URLSearchParams({ task_id: taskId, context_type: contextType || 'submission' });
+        if (contextId) params.set('context_id', contextId);
+        var res = await fetch('/api/canvas/view/' + studentUserId + '?' + params.toString(), {
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        var data = await res.json();
+        loader.style.display = 'none';
+
+        if (data.success && data.exists) {
+          var strokes = typeof data.strokes === 'string' ? JSON.parse(data.strokes) : data.strokes;
+          if (Array.isArray(strokes) && strokes.length > 0) {
+            canvasWrap.style.display = '';
+            if (data.updated_at) {
+              updatedEl.textContent = 'Обновлено: ' + new Date(data.updated_at).toLocaleString('ru-RU');
+            }
+            requestAnimationFrame(function() { renderStrokes(strokes); });
+            return;
+          }
+        }
+        emptyEl.style.display = 'flex';
+      } catch (e) {
+        loader.style.display = 'none';
+        emptyEl.style.display = 'flex';
+        emptyEl.querySelector('span').textContent = 'Ошибка загрузки заметок.';
+      }
+    },
+    close: hide,
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') hide();
+  });
+})();
+</script>
