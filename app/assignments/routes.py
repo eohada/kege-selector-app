@@ -720,9 +720,12 @@ def _expand_tasks_data_for_triplets(tasks_data: list) -> list:
     """
     Для distribute / assignment_update: дублирует строки задач по полной тройке 19–21,
     выставляет order и max_score по шаблону курса для каждой позиции.
+
+    Если клиент уже передал все три task_id тройки (редактирование работы, отдельные
+    answer_override на 19/20/21), строки не сливаются — иначе копировался бы один
+    answer_override с первой строки на все три.
     """
-    flat: list[dict] = []
-    seen_groups: set[str] = set()
+    prepared: list[tuple[int, Tasks, dict]] = []
     for row in tasks_data or []:
         if not isinstance(row, dict):
             continue
@@ -736,36 +739,72 @@ def _expand_tasks_data_for_triplets(tasks_data: list) -> list:
         task = Tasks.query.get(tid_int)
         if not task:
             continue
+        prepared.append((tid_int, task, dict(row)))
+
+    gid_to_trip_ids: dict[str, list[int]] = {}
+    gid_present: dict[str, set[int]] = {}
+    for tid_int, task, _row in prepared:
+        trip = _get_triplet_task_ids(task)
+        if not trip:
+            continue
+        gid = (str(task.task_group_id or '')).strip()
+        if not gid:
+            continue
+        if gid not in gid_to_trip_ids:
+            gid_to_trip_ids[gid] = trip
+        gid_present.setdefault(gid, set()).add(tid_int)
+
+    fully_covered = {
+        gid for gid, trip in gid_to_trip_ids.items()
+        if gid_present.get(gid) == set(trip)
+    }
+
+    flat: list[dict] = []
+    emitted_full_triplet: set[str] = set()
+    partial_expanded_group: set[str] = set()
+
+    for tid_int, task, row in prepared:
         trip_ids = _get_triplet_task_ids(task)
-        if trip_ids:
-            gid = (str(task.task_group_id or '')).strip()
-            if not gid:
-                flat.append(dict(row))
-                continue
-            if gid in seen_groups:
-                continue
-            seen_groups.add(gid)
-            for sub_tid in trip_ids:
-                sub_task = Tasks.query.get(sub_tid)
-                if not sub_task:
-                    continue
-                sub = dict(row)
-                sub['task_id'] = sub_tid
-                tpl = _get_task_template(sub_task)
-                if tpl and tpl.max_primary_score is not None:
-                    sub['max_score'] = int(tpl.max_primary_score)
-                else:
-                    try:
-                        sub['max_score'] = int(row.get('max_score', 1) or 1)
-                    except (TypeError, ValueError):
-                        sub['max_score'] = 1
-                has_ans = bool((sub_task.answer or '').strip())
-                sub['requires_manual_grading'] = _requires_manual_from_template(
-                    sub_task, has_ans, explicit_override=row.get('requires_manual_grading', False)
-                )
-                flat.append(sub)
-        else:
+        if not trip_ids:
             flat.append(dict(row))
+            continue
+        gid = (str(task.task_group_id or '')).strip()
+        if not gid:
+            flat.append(dict(row))
+            continue
+
+        if gid in fully_covered:
+            if gid not in emitted_full_triplet:
+                emitted_full_triplet.add(gid)
+                trip_set = set(trip_ids)
+                for tid2, t2, r2 in prepared:
+                    g2 = (str(t2.task_group_id or '')).strip()
+                    if g2 == gid and tid2 in trip_set:
+                        flat.append(dict(r2))
+            continue
+
+        if gid in partial_expanded_group:
+            continue
+        partial_expanded_group.add(gid)
+        for sub_tid in trip_ids:
+            sub_task = Tasks.query.get(sub_tid)
+            if not sub_task:
+                continue
+            sub = dict(row)
+            sub['task_id'] = sub_tid
+            tpl = _get_task_template(sub_task)
+            if tpl and tpl.max_primary_score is not None:
+                sub['max_score'] = int(tpl.max_primary_score)
+            else:
+                try:
+                    sub['max_score'] = int(row.get('max_score', 1) or 1)
+                except (TypeError, ValueError):
+                    sub['max_score'] = 1
+            has_ans = bool((sub_task.answer or '').strip())
+            sub['requires_manual_grading'] = _requires_manual_from_template(
+                sub_task, has_ans, explicit_override=row.get('requires_manual_grading', False)
+            )
+            flat.append(sub)
     for i, row in enumerate(flat):
         row['order'] = i
     return flat
