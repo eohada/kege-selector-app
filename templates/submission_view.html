@@ -398,7 +398,7 @@
     </script>
 </head>
 <body data-cinema-scene="submission-work"
-      {% if tasks_data %}data-canvas-task-id="{{ tasks_data[0].task.task_id }}" data-canvas-context-type="submission" data-canvas-context-id="{{ submission.submission_id }}"{% endif %}
+      {% if tasks_view %}data-canvas-task-id="{{ tasks_view[0].task.task_id }}" data-canvas-context-type="submission" data-canvas-context-id="{{ submission.submission_id }}"{% endif %}
       class="{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student {% endif %}min-h-screen">
     <div class="app-layout">
         {% set active_page = 'assignments' %}
@@ -464,7 +464,7 @@
         <div class="task-nav sticky top-20 z-40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-2.5 py-3 rounded-[20px] mt-2 mb-2 bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-nav dark:shadow-nav-dark" id="taskNav">
             <span class="task-nav-label text-[11px] font-extrabold text-slate-500 dark:text-dark-muted uppercase tracking-widest pl-2 shrink-0 hidden sm:block">Задания:</span>
             <div class="task-strip flex gap-1.5 overflow-x-auto hide-scroll w-full sm:w-auto sm:flex-1 sm:justify-end py-1.5 -my-1.5">
-            {% for task_item in tasks_data %}
+            {% for task_item in tasks_view %}
             {% set ti_answer = task_item.answer %}
             <a href="#task-{{ loop.index }}" class="task-nav-btn {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} w-11 h-11 shrink-0 rounded-[14px] flex items-center justify-center font-black text-base no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="Задание {{ loop.index }}">
                 {{ loop.index }}
@@ -475,11 +475,11 @@
 
         {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0 and can_submit) %}
         <form id="submission-form" class="task-single-shell">
-            {% for task_item in tasks_data %}
+            {% for task_item in tasks_view %}
             <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
                     <div style="display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;">
-                        <span class="task-number">Задание {{ loop.index }}</span>
+                        <span class="task-number">{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ loop.index }}{% endif %}</span>
                         <span class="submission-type-chip submission-score-chip" style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.04em;">{{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }}</span>
                         {% if task_item.difficulty_label %}
                         <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">{{ task_item.difficulty_label }}</span>
@@ -591,6 +591,22 @@
                         {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
                     <div class="autosave-indicator" id="autosave-{{ task_item.assignment_task.assignment_task_id }}"></div>
+                    {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
+                    {% for sub_item in task_item.triplet_items %}
+                    <div style="margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px dashed var(--stroke-1);">
+                        <label for="answer-{{ sub_item.assignment_task.assignment_task_id }}" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-2 mb-2 block">Ответ {{ sub_item.task.task_number }}:</label>
+                        <textarea
+                            id="answer-{{ sub_item.assignment_task.assignment_task_id }}"
+                            class="answer-input"
+                            name="answer"
+                            data-task-id="{{ sub_item.assignment_task.assignment_task_id }}"
+                            {% if awaiting_work_start or submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
+                            {% if attempts_per_task and sub_item.task_attempts_used >= sub_item.max_attempts_for_task %}disabled{% endif %}
+                        >{{ sub_item.answer.value if sub_item.answer else '' }}</textarea>
+                        <div class="autosave-indicator" id="autosave-{{ sub_item.assignment_task.assignment_task_id }}"></div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
                     {% if task_item.answer and task_item.answer.teacher_comment %}
                     <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
                         <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--accent-1);">Комментарий преподавателя:</div>
@@ -677,11 +693,11 @@
         {% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] or (submission.status == 'GRADED' and (attempts_left is not defined or attempts_left <= 0 or not can_submit)) %}
         
         <div class="task-single-shell">
-        {% for task_item in tasks_data %}
+        {% for task_item in tasks_view %}
         <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% elif task_item.answer %} task-pending-review{% endif %}" id="task-{{ loop.index }}">
             <div class="task-header">
                 <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-                    <span class="task-number">Задание {{ loop.index }}</span>
+                    <span class="task-number">{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ loop.index }}{% endif %}</span>
                     <span class="task-score">({{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }})</span>
                     {% if task_item.task and task_item.task.is_manual_bank_task %}
                     <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">Создано вручную</span>
@@ -737,6 +753,14 @@
                 {% endif %}
                 <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш ответ:</div>
                 <div style="white-space: pre-wrap;">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
+                {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
+                {% for sub_item in task_item.triplet_items %}
+                <div style="margin-top: 0.65rem;">
+                    <div style="font-weight: 600; margin-bottom: 0.35rem;">Ответ {{ sub_item.task.task_number }}:</div>
+                    <div style="white-space: pre-wrap;">{{ sub_item.answer.value if sub_item.answer and sub_item.answer.value else '(нет ответа)' }}</div>
+                </div>
+                {% endfor %}
+                {% endif %}
 
                 {% if task_item.task.answer and (submission.status == 'GRADED' or (task_item.answer and task_item.answer.is_correct is not none)) %}
                 <div class="correct-answer-block">
@@ -1618,7 +1642,7 @@
                 return m ? parseInt(m[1], 10) : null;
             }
             var taskIdMap = {
-                {% for task_item in tasks_data %}{{ loop.index }}: {{ task_item.task.task_id }}{% if not loop.last %}, {% endif %}{% endfor %}
+                {% for task_item in tasks_view %}{{ loop.index }}: {{ task_item.task.task_id }}{% if not loop.last %}, {% endif %}{% endfor %}
             };
             function setActiveTask(index) {
                 taskCards.forEach(function(card, i) {

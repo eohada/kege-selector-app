@@ -2112,11 +2112,48 @@ def submission_view(submission_id):
                 'rating_meta': rating_meta,
                 'difficulty_label': difficulty_label,
             })
+
+        tasks_view = []
+        i = 0
+        while i < len(tasks_data):
+            item = tasks_data[i]
+            item_task = item.get('task')
+            item_num = getattr(item_task, 'task_number', None) if item_task else None
+            item_group = getattr(item_task, 'task_group_id', None) if item_task else None
+
+            can_bundle = i + 2 < len(tasks_data)
+            if item_num == 19 and can_bundle:
+                next_20 = tasks_data[i + 1]
+                next_21 = tasks_data[i + 2]
+                task_20 = next_20.get('task')
+                task_21 = next_21.get('task')
+                num_20 = getattr(task_20, 'task_number', None) if task_20 else None
+                num_21 = getattr(task_21, 'task_number', None) if task_21 else None
+                group_20 = getattr(task_20, 'task_group_id', None) if task_20 else None
+                group_21 = getattr(task_21, 'task_group_id', None) if task_21 else None
+
+                same_group = bool(item_group and group_20 and group_21 and item_group == group_20 == group_21)
+                legacy_consecutive = (num_20 == 20 and num_21 == 21)
+
+                if (num_20 == 20 and num_21 == 21) and (same_group or legacy_consecutive):
+                    root_item = dict(item)
+                    root_item['is_triplet_19_21'] = True
+                    root_item['triplet_items'] = [next_20, next_21]
+                    tasks_view.append(root_item)
+                    i += 3
+                    continue
+
+            single_item = dict(item)
+            single_item['is_triplet_19_21'] = False
+            single_item['triplet_items'] = []
+            tasks_view.append(single_item)
+            i += 1
         
         return render_template('submission_view.html',
                              submission=submission,
                              assignment=assignment,
                              tasks_data=tasks_data,
+                             tasks_view=tasks_view,
                              is_deadline_passed=is_deadline_passed,
                              can_submit=can_submit,
                              attempts_used=attempts_used,
