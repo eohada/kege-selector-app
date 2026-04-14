@@ -44,7 +44,7 @@ workspace_bp = Blueprint('workspace', __name__)
 ALLOWED_EXTENSIONS = {
     'txt', 'csv', 'tsv', 'py', 'cpp', 'c', 'h', 'java', 'js',
     'json', 'xml', 'html', 'css', 'md', 'log', 'ini', 'cfg',
-    'xls', 'xlsx', 'xlsm',
+    'xls', 'xlsx', 'xlsm', 'ods',
     'pdf', 'doc', 'docx', 'odt', 'rtf',
     'dat', 'in', 'out', 'ans',
 }
@@ -55,7 +55,7 @@ TEXT_EXTENSIONS = {
     'dat', 'in', 'out', 'ans',
 }
 
-EXCEL_EXTENSIONS = {'xls', 'xlsx', 'xlsm'}
+SPREADSHEET_EXTENSIONS = {'xls', 'xlsx', 'xlsm', 'ods'}
 
 MAX_WORKSPACE_FILE_SIZE = 10 * 1024 * 1024
 MAX_FILES_PER_TASK = 20
@@ -98,7 +98,7 @@ def _is_text(filename: str) -> bool:
 
 
 def _is_excel(filename: str) -> bool:
-    return _ext(filename) in EXCEL_EXTENSIONS
+    return _ext(filename) in SPREADSHEET_EXTENSIONS
 
 
 def _resolve_local_path(storage_path: str) -> str | None:
@@ -125,14 +125,13 @@ def _read_file_bytes(ws_file: StudentWorkspaceFile) -> bytes | None:
     return None
 
 
-def _parse_excel(data: bytes, filename: str | None = None) -> list[dict]:
-    """Parse .xlsx/.xlsm via openpyxl and legacy .xls via xlrd."""
+def _parse_spreadsheet(data: bytes, filename: str | None = None) -> list[dict]:
+    """Parse spreadsheet files: .xlsx/.xlsm via openpyxl, .xls via xlrd, .ods via odfpy."""
     ext = _ext(filename or '')
-    sheets = []
+    sheets: list[dict] = []
 
     if ext == 'xls':
         import xlrd
-
         wb = xlrd.open_workbook(file_contents=data)
         for sheet in wb.sheets():
             rows = []
@@ -145,8 +144,34 @@ def _parse_excel(data: bytes, filename: str | None = None) -> list[dict]:
             sheets.append({'name': sheet.name, 'rows': rows})
         return sheets
 
-    from openpyxl import load_workbook
+    if ext == 'ods':
+        from odf.opendocument import load as odf_load
+        from odf.table import Table, TableRow, TableCell
+        from odf.text import P
+        doc = odf_load(io.BytesIO(data))
+        for table in doc.getElementsByType(Table):
+            tbl_name = table.getAttribute('name') or 'Sheet'
+            rows = []
+            for tr in table.getElementsByType(TableRow):
+                row: list[str] = []
+                for tc in tr.getElementsByType(TableCell):
+                    repeat = int(tc.getAttribute('numbercolumnsrepeated') or 1)
+                    parts = []
+                    for p in tc.getElementsByType(P):
+                        text_parts = []
+                        for node in p.childNodes:
+                            val = str(node) if hasattr(node, '__str__') else ''
+                            text_parts.append(val)
+                        parts.append(''.join(text_parts))
+                    cell_val = '\n'.join(parts)
+                    for _ in range(min(repeat, 500)):
+                        row.append(cell_val)
+                if any(c != '' for c in row):
+                    rows.append(row)
+            sheets.append({'name': tbl_name, 'rows': rows})
+        return sheets
 
+    from openpyxl import load_workbook
     wb = load_workbook(filename=io.BytesIO(data), read_only=True, data_only=True)
     for ws in wb.worksheets:
         rows = []
@@ -508,9 +533,9 @@ def file_content(file_id):
     fname = ws_file.current_filename
     ext = _ext(fname)
 
-    if ext in EXCEL_EXTENSIONS:
+    if ext in SPREADSHEET_EXTENSIONS:
         try:
-            sheets = _parse_excel(data, fname)
+            sheets = _parse_spreadsheet(data, fname)
             return jsonify({
                 'success': True,
                 'type': 'excel',
@@ -571,6 +596,107 @@ def download_file(file_id):
     abort(404)
 
 
+@workspace_bp.route('/workspace/create', methods=['POST'])
+@login_required
+@limiter.limit('30/minute')
+def create_file():
+    """Create a new empty file in the student's workspace."""
+    _ensure_workspace_tables()
+    data = request.get_json(silent=True) or {}
+    task_id = data.get('task_id')
+    filename = (data.get('filename') or '').strip()
+    context_type = data.get('context_type', 'submission')
+    context_id = data.get('context_id')
+
+    if not task_id or not filename:
+        return jsonify({'success': False, 'error': 'task_id и filename обязательны'}), 400
+    if len(filename) > 255 or re.search(r'[/\\<>:"|?*\x00-\x1f]', filename):
+        return jsonify({'success': False, 'error': 'Некорректное имя файла'}), 400
+
+    ext = _ext(filename)
+    if ext and ext not in ALLOWED_EXTENSIONS:
+        return jsonify({'success': False, 'error': f'Недопустимый формат: .{ext}'}), 400
+
+    existing_count = StudentWorkspaceFile.query.filter_by(
+        user_id=current_user.id, task_id=task_id, context_type=context_type,
+    ).count()
+    if existing_count >= MAX_FILES_PER_TASK:
+        return jsonify({'success': False, 'error': f'Максимум {MAX_FILES_PER_TASK} файлов'}), 400
+
+    initial_content = (data.get('content') or '').encode('utf-8')
+    safe_name = secure_filename(filename) or 'file.txt'
+
+    file_obj = io.BytesIO(initial_content)
+    file_obj.filename = safe_name
+    try:
+        storage_key = storage.upload_file(
+            file_obj, folder=f'workspace/{current_user.id}/{task_id}', filename=safe_name,
+        )
+    except Exception as e:
+        logger.error("Workspace create failed: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Ошибка создания файла'}), 500
+
+    mime = mimetypes.guess_type(safe_name)[0] or 'text/plain'
+    ws_file = StudentWorkspaceFile(
+        user_id=current_user.id,
+        task_id=task_id,
+        context_type=context_type,
+        context_id=context_id,
+        original_filename=safe_name,
+        current_filename=safe_name,
+        storage_path=storage_key,
+        file_size=len(initial_content),
+        mime_type=mime,
+        is_from_task=False,
+    )
+    db.session.add(ws_file)
+    db.session.commit()
+    return jsonify({'success': True, 'file': ws_file.to_dict()})
+
+
+@workspace_bp.route('/workspace/<int:file_id>/save-content', methods=['POST'])
+@login_required
+@limiter.limit('60/minute')
+def save_content(file_id):
+    """Save updated text content for a workspace file."""
+    _ensure_workspace_tables()
+    ws_file = StudentWorkspaceFile.query.get_or_404(file_id)
+    if ws_file.user_id != current_user.id:
+        abort(403)
+
+    data = request.get_json(silent=True) or {}
+    content = data.get('content')
+    if content is None:
+        return jsonify({'success': False, 'error': 'content обязателен'}), 400
+
+    content_bytes = content.encode('utf-8')
+    if len(content_bytes) > MAX_WORKSPACE_FILE_SIZE:
+        return jsonify({'success': False, 'error': 'Файл слишком большой (макс. 10 МБ)'}), 400
+
+    file_obj = io.BytesIO(content_bytes)
+    file_obj.filename = ws_file.current_filename
+    try:
+        new_key = storage.upload_file(
+            file_obj,
+            folder=f'workspace/{current_user.id}/{ws_file.task_id}',
+            filename=secure_filename(ws_file.current_filename) or 'file',
+        )
+    except Exception as e:
+        logger.error("save-content upload failed: %s", e, exc_info=True)
+        return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500
+
+    try:
+        if ws_file.storage_path != new_key:
+            storage.delete_file(ws_file.storage_path)
+    except Exception:
+        pass
+
+    ws_file.storage_path = new_key
+    ws_file.file_size = len(content_bytes)
+    db.session.commit()
+    return jsonify({'success': True, 'file': ws_file.to_dict()})
+
+
 # ---------------------------------------------------------------------------
 #  Task attachment direct preview (without copying to workspace first)
 # ---------------------------------------------------------------------------
@@ -624,7 +750,7 @@ def task_file_content():
         file_url=file_url,
         file_name=file_name,
     )
-    if ext not in EXCEL_EXTENSIONS and not _is_text_previewable(file_name):
+    if ext not in SPREADSHEET_EXTENSIONS and not _is_text_previewable(file_name):
         return jsonify({
             'success': True,
             'type': 'unsupported',
@@ -647,9 +773,9 @@ def task_file_content():
 
     logger.info("[task-file-content] got %d bytes, processing as %s", len(file_bytes), ext)
 
-    if ext in EXCEL_EXTENSIONS:
+    if ext in SPREADSHEET_EXTENSIONS:
         try:
-            sheets = _parse_excel(file_bytes, file_name)
+            sheets = _parse_spreadsheet(file_bytes, file_name)
             return jsonify({
                 'success': True, 'type': 'excel',
                 'filename': file_name, 'sheets': sheets,

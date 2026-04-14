@@ -12,8 +12,8 @@
     {% if is_student_view or is_parent_view %}
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
     {% endif %}
-    <script src="{{ url_for('static', filename='workspace/file-manager.js') }}?v=3"></script>
-    <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='workspace/file-manager.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}?v=4"></script>
     {% include '_ux_enhancements.html' %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">

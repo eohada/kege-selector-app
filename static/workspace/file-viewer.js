@@ -5,26 +5,28 @@
  *   window.BooFileViewer.openTaskFile(taskId, fileIndex, fileMeta)
  *   window.BooFileViewer.openWorkspaceFile(fileId, filename)
  *   window.BooFileViewer.openInEditor(fileId)
+ *   window.BooFileViewer.editWorkspaceFile(fileId, filename)
  *   window.BooFileViewer.close()
  */
 (function () {
   'use strict';
 
   function csrfToken() {
-    const m = document.querySelector('meta[name="csrf-token"]');
+    var m = document.querySelector('meta[name="csrf-token"]');
     return m ? m.getAttribute('content') : '';
   }
 
-  let modal = null;
-  let cmInstance = null;
+  var modal = null;
+  var cmInstance = null;
+  var _currentFileId = null;
 
-  const TEXT_EXTENSIONS = new Set([
+  var TEXT_EXTENSIONS = new Set([
     'txt', 'csv', 'tsv', 'py', 'cpp', 'c', 'h', 'java', 'js',
     'json', 'xml', 'html', 'css', 'md', 'log', 'ini', 'cfg',
     'dat', 'in', 'out', 'ans',
   ]);
 
-  const CODEMIRROR_MODES = {
+  var CODEMIRROR_MODES = {
     py: 'python', cpp: 'text/x-c++src', c: 'text/x-csrc', h: 'text/x-csrc',
     java: 'text/x-java', js: 'javascript', json: 'application/json',
     xml: 'xml', html: 'htmlmixed', css: 'css', md: 'markdown',
@@ -39,7 +41,7 @@
   }
 
   function show() {
-    const m = getModal();
+    var m = getModal();
     if (m) {
       m.classList.remove('hidden');
       m.style.display = '';
@@ -48,7 +50,7 @@
   }
 
   function hide() {
-    const m = getModal();
+    var m = getModal();
     if (m) {
       m.classList.add('hidden');
       m.style.display = 'none';
@@ -58,35 +60,47 @@
       cmInstance.toTextArea();
       cmInstance = null;
     }
+    _currentFileId = null;
+    _updateHeaderButtons(null);
   }
 
   function setLoading(on) {
-    const m = getModal();
+    var m = getModal();
     if (!m) return;
-    const loader = m.querySelector('.fv-loader');
-    const content = m.querySelector('.fv-content');
+    var loader = m.querySelector('.fv-loader');
+    var content = m.querySelector('.fv-content');
     if (loader) loader.style.display = on ? '' : 'none';
     if (content) content.style.display = on ? 'none' : '';
   }
 
   function setTitle(title) {
-    const m = getModal();
+    var m = getModal();
     if (!m) return;
-    const el = m.querySelector('.fv-title');
+    var el = m.querySelector('.fv-title');
     if (el) el.textContent = title;
   }
 
   function setError(msg) {
-    const m = getModal();
+    var m = getModal();
     if (!m) return;
-    const content = m.querySelector('.fv-content');
+    var content = m.querySelector('.fv-content');
     if (content) content.innerHTML = '<div class="fv-error">' + escHtml(msg) + '</div>';
   }
 
   function escHtml(s) {
-    const d = document.createElement('div');
+    var d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
+  }
+
+  function _updateHeaderButtons(mode) {
+    var m = getModal();
+    if (!m) return;
+    var editBtn = m.querySelector('.fv-btn-edit');
+    var saveBtn = m.querySelector('.fv-btn-save');
+    if (editBtn) editBtn.style.display = (mode === 'view') ? '' : 'none';
+    if (saveBtn) saveBtn.style.display = (mode === 'edit') ? '' : 'none';
+    if (_currentFileId) m.dataset.fileId = _currentFileId;
   }
 
   /* ---- File metadata helpers ---- */
@@ -108,10 +122,6 @@
     return idx >= 0 ? String(name).slice(idx + 1).toLowerCase() : '';
   }
 
-  /**
-   * Build a URL that the browser can fetch to get raw bytes of a task file.
-   * Uses the existing /attachments/task/ route which handles local + proxy fallback.
-   */
   function taskAttachmentUrl(taskId, fileMeta) {
     var filename = fileNameFromMeta(fileMeta);
     if (!filename || filename === 'file') {
@@ -122,9 +132,19 @@
     return '/attachments/task/' + encodeURIComponent(taskId) + '/' + encodeURIComponent(filename);
   }
 
+  function colLetter(index) {
+    var s = '';
+    var n = index;
+    while (n >= 0) {
+      s = String.fromCharCode(65 + (n % 26)) + s;
+      n = Math.floor(n / 26) - 1;
+    }
+    return s;
+  }
+
   /* ---- Renderers ---- */
 
-  function renderText(data) {
+  function renderText(data, editable) {
     var m = getModal();
     if (!m) return;
     var content = m.querySelector('.fv-content');
@@ -138,7 +158,7 @@
         mode: data.mode || 'text/plain',
         theme: isDark ? 'dracula' : 'default',
         lineNumbers: true,
-        readOnly: true,
+        readOnly: editable ? false : true,
         lineWrapping: true,
       });
       cmInstance.setSize(null, '100%');
@@ -165,17 +185,28 @@
     }
 
     sheets.forEach(function (s, i) {
+      var rows = s.rows || [];
+      var maxCols = 0;
+      rows.forEach(function (r) { if (r.length > maxCols) maxCols = r.length; });
+
       html += '<div class="fv-sheet-content" data-sheet="' + i + '" style="' + (i > 0 ? 'display:none' : '') + '">';
       html += '<div class="fv-table-wrap"><table class="fv-excel-table">';
-      (s.rows || []).forEach(function (row, ri) {
-        var tag = ri === 0 ? 'th' : 'td';
-        html += '<tr>';
-        row.forEach(function (cell) {
-          html += '<' + tag + '>' + escHtml(cell) + '</' + tag + '>';
-        });
+
+      html += '<thead><tr><th class="fv-row-num fv-col-header"></th>';
+      for (var ci = 0; ci < maxCols; ci++) {
+        html += '<th class="fv-col-header">' + colLetter(ci) + '</th>';
+      }
+      html += '</tr></thead><tbody>';
+
+      rows.forEach(function (row, ri) {
+        html += '<tr><td class="fv-row-num">' + (ri + 1) + '</td>';
+        for (var c = 0; c < maxCols; c++) {
+          html += '<td>' + escHtml(c < row.length ? row[c] : '') + '</td>';
+        }
         html += '</tr>';
       });
-      html += '</table></div></div>';
+
+      html += '</tbody></table></div></div>';
     });
 
     content.innerHTML = html;
@@ -209,16 +240,18 @@
           ? '<a href="' + downloadUrl + '" target="_blank" rel="noopener noreferrer"' +
             ' style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.75rem 1rem; border-radius:12px;' +
             ' text-decoration:none; background:var(--accent-1, #6366f1); color:#fff; font-weight:600;">' +
-            '<i class="ph-bold ph-download-simple"></i><span>Открыть или скачать файл</span></a>'
+            '<i class="ph-bold ph-download-simple"></i><span>Скачать файл</span></a>'
           : '') +
       '</div>';
   }
 
   /* ---- Core fetch-and-render via backend JSON endpoint ---- */
 
-  async function fetchAndRender(url) {
+  async function fetchAndRender(url, opts) {
+    opts = opts || {};
     show();
     setLoading(true);
+    _updateHeaderButtons(null);
     try {
       var res = await fetch(url, {
         credentials: 'same-origin',
@@ -239,12 +272,18 @@
         return null;
       }
       setTitle(data.filename || 'Файл');
+
       if (data.type === 'excel') {
         renderExcel(data);
       } else if (data.type === 'unsupported') {
         renderUnsupported(data);
       } else {
-        renderText(data);
+        var editable = opts.editable || false;
+        renderText(data, editable);
+        if (opts.fileId) {
+          _currentFileId = opts.fileId;
+          _updateHeaderButtons(editable ? 'edit' : 'view');
+        }
       }
       return data;
     } catch (e) {
@@ -274,17 +313,36 @@
     };
   }
 
+  /* ---- Save content ---- */
+
+  async function saveCurrentFile() {
+    if (!_currentFileId || !cmInstance) return;
+    var content = cmInstance.getValue();
+    try {
+      var res = await fetch('/workspace/' + encodeURIComponent(_currentFileId) + '/save-content', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ content: content }),
+      });
+      var data = await res.json();
+      if (data.success) {
+        if (typeof showToast === 'function') showToast('Файл сохранён', 'success');
+      } else {
+        if (typeof showToast === 'function') showToast(data.error || 'Ошибка сохранения', 'error');
+      }
+    } catch (_) {
+      if (typeof showToast === 'function') showToast('Ошибка сети при сохранении', 'error');
+    }
+  }
+
   /* ---- Public API ---- */
 
   window.BooFileViewer = {
-    /**
-     * Preview a task's attached file.
-     *
-     * Strategy:
-     *   1) Text files -> fetch raw from /attachments/task/ (fast, existing route)
-     *      on failure -> fallback to backend /workspace/task-file-content
-     *   2) Everything else -> backend /workspace/task-file-content (parses Excel, etc.)
-     */
     openTaskFile: function (taskId, fileIndex, fileMeta) {
       var filename = fileNameFromMeta(fileMeta);
       var ext = extOf(filename);
@@ -294,11 +352,12 @@
         show();
         setTitle(filename || 'Файл');
         setLoading(true);
+        _updateHeaderButtons(null);
 
         fetchTextDirect(taskId, fileMeta)
           .then(function (data) {
             setLoading(false);
-            renderText(data);
+            renderText(data, false);
           })
           .catch(function () {
             fetchAndRender(backendUrl);
@@ -310,7 +369,11 @@
     },
 
     openWorkspaceFile: function (fileId, filename) {
-      fetchAndRender('/workspace/' + encodeURIComponent(fileId) + '/content');
+      fetchAndRender('/workspace/' + encodeURIComponent(fileId) + '/content', { fileId: fileId });
+    },
+
+    editWorkspaceFile: function (fileId, filename) {
+      fetchAndRender('/workspace/' + encodeURIComponent(fileId) + '/content', { fileId: fileId, editable: true });
     },
 
     openInEditor: async function (fileId) {
@@ -321,11 +384,12 @@
         });
         var data = await res.json();
         if (data.success && data.type === 'text' && data.content != null) {
-          var ev = new CustomEvent('boo:load-code', { detail: { content: data.content, filename: data.filename } });
-          document.dispatchEvent(ev);
+          document.dispatchEvent(new CustomEvent('boo:load-code', { detail: { content: data.content, filename: data.filename } }));
         }
       } catch (_) { /* silent */ }
     },
+
+    save: saveCurrentFile,
 
     close: function () {
       hide();
@@ -334,5 +398,9 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') hide();
+    if ((e.ctrlKey || e.metaKey) && e.key === 's' && _currentFileId && cmInstance) {
+      e.preventDefault();
+      saveCurrentFile();
+    }
   });
 })();

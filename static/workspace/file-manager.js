@@ -161,6 +161,31 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    showCreateDialog: false,
+    newFileName: '',
+
+    async createFile() {
+      const name = (this.newFileName || '').trim();
+      if (!name) return;
+      this.error = '';
+      this.showCreateDialog = false;
+      const data = await api('/workspace/create', {
+        method: 'POST',
+        json: {
+          task_id: this.taskId,
+          filename: name,
+          context_type: this.contextType,
+          context_id: this.contextId,
+        },
+      });
+      if (data.success) {
+        this.newFileName = '';
+        await this.loadFiles();
+      } else {
+        this.error = data.error || 'Ошибка создания файла';
+      }
+    },
+
     viewTaskFile(fileIndex) {
       if (window.BooFileViewer) {
         window.BooFileViewer.openTaskFile(this.taskId, fileIndex, this.taskFiles[fileIndex]);
@@ -170,6 +195,12 @@ document.addEventListener('alpine:init', () => {
     viewWorkspaceFile(file) {
       if (window.BooFileViewer) {
         window.BooFileViewer.openWorkspaceFile(file.id, file.current_filename);
+      }
+    },
+
+    editWorkspaceFile(file) {
+      if (window.BooFileViewer) {
+        window.BooFileViewer.editWorkspaceFile(file.id, file.current_filename);
       }
     },
 
@@ -184,7 +215,7 @@ document.addEventListener('alpine:init', () => {
       const map = {
         py: 'ph-file-py', cpp: 'ph-file-cpp', c: 'ph-file-c', java: 'ph-file-code',
         js: 'ph-file-js', json: 'ph-file-code', html: 'ph-file-html', css: 'ph-file-css',
-        xlsx: 'ph-file-xls', xls: 'ph-file-xls', xlsm: 'ph-file-xls',
+        xlsx: 'ph-file-xls', xls: 'ph-file-xls', xlsm: 'ph-file-xls', ods: 'ph-file-xls',
         csv: 'ph-file-csv', txt: 'ph-file-text', md: 'ph-file-text',
       };
       return map[ext] || 'ph-file';

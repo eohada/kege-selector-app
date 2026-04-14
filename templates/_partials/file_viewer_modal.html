@@ -8,6 +8,12 @@
     <div style="display:flex; align-items:center; gap:0.75rem; padding:1rem 1.25rem; border-bottom:1px solid var(--stroke-1, #e2e8f0);">
       <i class="ph-bold ph-file-text" style="font-size:1.25rem; color:var(--accent-1, #6366f1);"></i>
       <span class="fv-title" style="font-weight:700; font-size:1rem; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Файл</span>
+      <button class="fv-btn-edit neo-button outline sm" onclick="BooFileViewer.editWorkspaceFile(document.getElementById('boo-file-viewer-modal').dataset.fileId)" style="display:none; padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:10px; font-weight:700;">
+        <i class="ph-bold ph-pencil-simple"></i> Редактировать
+      </button>
+      <button class="fv-btn-save neo-button accent sm" onclick="BooFileViewer.save()" style="display:none; padding:0.4rem 0.8rem; font-size:0.8rem; border-radius:10px; font-weight:700;">
+        <i class="ph-bold ph-floppy-disk"></i> Сохранить
+      </button>
       <button onclick="BooFileViewer.close()" style="background:none; border:none; cursor:pointer; padding:0.25rem; color:var(--text-muted, #94a3b8);">
         <i class="ph-bold ph-x" style="font-size:1.25rem;"></i>
       </button>
@@ -42,19 +48,28 @@
     color: var(--accent-1, #6366f1); border-bottom-color: var(--accent-1, #6366f1);
   }
   .fv-table-wrap {
-    overflow: auto; max-height: calc(92vh - 120px); padding: 0.5rem;
+    overflow: auto; max-height: calc(92vh - 120px); padding: 0;
   }
   .fv-excel-table {
     border-collapse: collapse; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; width: max-content; min-width: 100%;
   }
   .fv-excel-table th, .fv-excel-table td {
-    border: 1px solid var(--stroke-1, #e2e8f0); padding: 0.35rem 0.6rem;
+    border: 1px solid var(--stroke-1, #e2e8f0); padding: 0.3rem 0.55rem;
     white-space: nowrap; max-width: 300px; overflow: hidden; text-overflow: ellipsis;
   }
-  .fv-excel-table th {
-    background: var(--surface-2, #f1f5f9); font-weight: 700; position: sticky; top: 0; z-index: 1;
+  .fv-excel-table thead th.fv-col-header {
+    background: var(--surface-2, #f1f5f9); font-weight: 700; text-align: center;
+    position: sticky; top: 0; z-index: 2; color: var(--text-muted, #94a3b8); font-size: 0.78rem;
   }
-  .fv-excel-table tr:nth-child(even) td {
+  .fv-excel-table td.fv-row-num, .fv-excel-table th.fv-row-num {
+    background: var(--surface-2, #f1f5f9); font-weight: 600; text-align: center;
+    color: var(--text-muted, #94a3b8); font-size: 0.78rem; min-width: 2.5rem;
+    position: sticky; left: 0; z-index: 1;
+  }
+  .fv-excel-table thead th.fv-row-num {
+    z-index: 3;
+  }
+  .fv-excel-table tr:nth-child(even) td:not(.fv-row-num) {
     background: var(--surface-2, rgba(0,0,0,0.02));
   }
 </style>

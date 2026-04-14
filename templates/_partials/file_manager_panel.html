@@ -63,17 +63,37 @@
 
     {# Workspace files section #}
     <div class="boo-file-manager__workspace-section">
-      <div class="boo-file-manager__title">
-        <i class="ph-bold ph-hard-drives"></i> Мини-хранилище
+      <div class="boo-file-manager__title" style="justify-content:space-between;">
+        <span style="display:flex; align-items:center; gap:.42rem;">
+          <i class="ph-bold ph-hard-drives"></i> Мини-хранилище
+        </span>
+        <button type="button" x-on:click.prevent="showCreateDialog = !showCreateDialog"
+          class="boo-file-manager__icon-btn" title="Создать файл"
+          style="font-size:0.85rem; color:var(--accent-1); font-weight:800;">
+          <i class="ph-bold ph-plus" style="font-size:0.85rem;"></i>
+        </button>
+      </div>
+
+      {# Create file dialog #}
+      <div x-show="showCreateDialog" x-transition x-cloak
+        style="display:flex; gap:.45rem; align-items:center; padding:0 0 .65rem; flex-wrap:wrap;">
+        <input x-model="newFileName" @keydown.enter="createFile()" @keydown.escape="showCreateDialog = false"
+          placeholder="имя_файла.txt"
+          style="flex:1; min-width:120px; font-size:0.85rem; padding:0.35rem 0.6rem; border:1px solid var(--stroke-1);
+                 border-radius:10px; outline:none; background:var(--color-bg-surface); color:var(--text-primary);">
+        <button type="button" x-on:click.prevent="createFile()"
+          class="neo-button sm boo-file-manager__btn boo-file-manager__btn--primary">
+          <i class="ph-bold ph-plus"></i> Создать
+        </button>
       </div>
 
       <template x-if="loading">
         <div style="text-align:center; padding:1rem; color:var(--text-muted); font-size:0.85rem;">Загрузка...</div>
       </template>
 
-      <template x-if="!loading && workspaceFiles.length === 0">
+      <template x-if="!loading && workspaceFiles.length === 0 && !showCreateDialog">
         <div style="text-align:center; padding:0.75rem; color:var(--text-muted); font-size:0.85rem;">
-          Нет файлов. Скопируйте из задания или загрузите свой.
+          Нет файлов. Скопируйте из задания, загрузите свой или создайте новый.
         </div>
       </template>
 
@@ -98,16 +118,21 @@
             </template>
 
             <div class="boo-file-manager__actions boo-file-manager__actions--compact">
-              <button type="button" x-on:click.prevent="viewWorkspaceFile(wf)" title="Открыть" class="boo-file-manager__icon-btn">
+              <button type="button" x-on:click.prevent="viewWorkspaceFile(wf)" title="Просмотр" class="boo-file-manager__icon-btn">
                 <i class="ph-bold ph-eye" style="font-size:0.9rem;"></i>
               </button>
+              <template x-if="isTextFile(wf.current_filename)">
+                <button type="button" x-on:click.prevent="editWorkspaceFile(wf)" title="Редактировать" class="boo-file-manager__icon-btn">
+                  <i class="ph-bold ph-pencil-simple-line" style="font-size:0.9rem;"></i>
+                </button>
+              </template>
               <template x-if="isTextFile(wf.current_filename)">
                 <button type="button" x-on:click.prevent="openInEditor(wf)" title="Открыть в редакторе кода" class="boo-file-manager__icon-btn">
                   <i class="ph-bold ph-code" style="font-size:0.9rem;"></i>
                 </button>
               </template>
               <button type="button" x-on:click.prevent="startRename(wf)" title="Переименовать" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--muted">
-                <i class="ph-bold ph-pencil-simple" style="font-size:0.9rem;"></i>
+                <i class="ph-bold ph-text-aa" style="font-size:0.9rem;"></i>
               </button>
               <a :href="'/workspace/' + wf.id + '/download'" target="_blank" title="Скачать" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--muted">
                 <i class="ph-bold ph-download-simple" style="font-size:0.9rem;"></i>
