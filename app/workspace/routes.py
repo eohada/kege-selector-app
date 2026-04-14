@@ -263,15 +263,13 @@ def _build_task_download_url(task_id: int, file_path: str | None, file_url: str 
         normalized = _normalize_task_file_url(file_url)
         if not normalized:
             return None
-        if normalized.startswith('https://kompege.ru/') or normalized.startswith('http://kompege.ru/'):
-            return f"{url_for('assignments.attached_proxy')}?url={normalized}"
         return normalized
     return None
 
 
 def _is_text_previewable(filename: str, mime_type: str | None = None) -> bool:
     ext = _ext(filename)
-    if ext in TEXT_EXTENSIONS or ext == '':
+    if ext in TEXT_EXTENSIONS:
         return True
     return bool(mime_type and mime_type.startswith('text/'))
 
