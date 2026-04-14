@@ -177,40 +177,50 @@ def _read_task_attachment_from_local_path(task_id: int, file_path: str, file_nam
       - direct relative paths under TASK_ATTACHMENTS_ROOT
       - fallback '<TASK_ATTACHMENTS_ROOT>/<task_id>/<filename>'
     """
-    att_root = current_app.config.get('TASK_ATTACHMENTS_ROOT')
-    if not att_root:
-        return None
-
     normalized_path = (file_path or '').strip()
     if not normalized_path:
         return None
 
-    candidates: list[str] = []
+    root_candidates: list[str] = []
+    custom_root = current_app.config.get('TASK_ATTACHMENTS_ROOT')
+    if custom_root:
+        root_candidates.append(custom_root)
+    root_candidates.append(os.path.join(current_app.root_path, 'uploads', 'task_attachments'))
+    root_candidates.append(os.path.join(current_app.root_path, '..', 'uploads', 'task_attachments'))
+    if storage.local_upload_dir:
+        root_candidates.append(os.path.join(storage.local_upload_dir, 'task_attachments'))
+
+    attachment_roots = []
+    for root in root_candidates:
+        if root and root not in attachment_roots and os.path.isdir(root):
+            attachment_roots.append(root)
+    if not attachment_roots:
+        return None
 
     path_only = normalized_path.split('?', 1)[0].strip()
-    if path_only.startswith('/attachments/task/'):
-        # /attachments/task/<task_id>/<filename> -> <att_root>/<task_id>/<filename>
-        parts = [p for p in path_only.split('/') if p]
-        if len(parts) >= 4:
-            rel_parts = parts[2:]  # drop 'attachments/task'
-            candidates.append(os.path.join(att_root, *rel_parts))
-    elif path_only.startswith('/'):
-        # Generic absolute URL-path: treat it as relative inside attachments root.
-        candidates.append(os.path.join(att_root, path_only.lstrip('/')))
-    else:
-        # Relative path in metadata.
-        candidates.append(os.path.join(att_root, path_only.replace('/', os.sep)))
+    for att_root in attachment_roots:
+        candidates: list[str] = []
+        if path_only.startswith('/attachments/task/'):
+            # /attachments/task/<task_id>/<filename> -> <root>/<task_id>/<filename>
+            parts = [p for p in path_only.split('/') if p]
+            if len(parts) >= 4:
+                rel_parts = parts[2:]  # drop 'attachments/task'
+                candidates.append(os.path.join(att_root, *rel_parts))
+        elif path_only.startswith('/'):
+            candidates.append(os.path.join(att_root, path_only.lstrip('/')))
+        else:
+            candidates.append(os.path.join(att_root, path_only.replace('/', os.sep)))
 
-    if file_name:
-        candidates.append(os.path.join(att_root, str(task_id), file_name))
+        if file_name:
+            candidates.append(os.path.join(att_root, str(task_id), file_name))
 
-    for local_path in candidates:
-        try:
-            if os.path.isfile(local_path):
-                with open(local_path, 'rb') as f:
-                    return f.read()
-        except Exception:
-            continue
+        for local_path in candidates:
+            try:
+                if os.path.isfile(local_path):
+                    with open(local_path, 'rb') as f:
+                        return f.read()
+            except Exception:
+                continue
     return None
 
 
@@ -220,18 +230,6 @@ def _read_task_attachment_bytes(task_id: int, file_path: str | None, file_url: s
         local_bytes = _read_task_attachment_from_local_path(task_id, file_path, file_name)
         if local_bytes is not None:
             return local_bytes
-
-        # If local path exists as HTTP endpoint on this platform, try host-local URL.
-        p = (file_path or '').strip()
-        if p.startswith('/attachments/'):
-            base = request.host_url.rstrip('/')
-            local_url = f"{base}{p}"
-            try:
-                resp = http_requests.get(local_url, timeout=15, stream=False)
-                resp.raise_for_status()
-                return resp.content
-            except Exception as e:
-                logger.warning("Failed to download platform attachment %s: %s", local_url, e)
 
     if file_url:
         url = _normalize_task_file_url(file_url)

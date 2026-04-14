@@ -16,7 +16,7 @@
   <script type="application/json" class="boo-file-manager__config">{{ (fm_task_files if fm_task_files is defined else []) | tojson }}</script>
 
   {# Toggle button #}
-  <button @click="open = !open"
+  <button type="button" x-on:click="open = !open"
     class="neo-button outline sm boo-file-manager__toggle">
     <i class="ph-bold ph-folder-open"></i>
     <span>Файлы</span>
@@ -48,10 +48,10 @@
                 class="boo-file-manager__filename">
               </span>
               <div class="boo-file-manager__actions">
-                <button @click="viewTaskFile(idx)" class="neo-button outline sm boo-file-manager__btn boo-file-manager__btn--ghost">
+                <button type="button" x-on:click.prevent="viewTaskFile(idx)" class="neo-button outline sm boo-file-manager__btn boo-file-manager__btn--ghost">
                   <i class="ph-bold ph-eye"></i> Открыть
                 </button>
-                <button @click="copyFromTask(idx)" class="neo-button sm boo-file-manager__btn boo-file-manager__btn--primary">
+                <button type="button" x-on:click.prevent="copyFromTask(idx)" class="neo-button sm boo-file-manager__btn boo-file-manager__btn--primary">
                   <i class="ph-bold ph-copy"></i> В хранилище
                 </button>
               </div>
@@ -98,21 +98,21 @@
             </template>
 
             <div class="boo-file-manager__actions boo-file-manager__actions--compact">
-              <button @click="viewWorkspaceFile(wf)" title="Открыть" class="boo-file-manager__icon-btn">
+              <button type="button" x-on:click.prevent="viewWorkspaceFile(wf)" title="Открыть" class="boo-file-manager__icon-btn">
                 <i class="ph-bold ph-eye" style="font-size:0.9rem;"></i>
               </button>
               <template x-if="isTextFile(wf.current_filename)">
-                <button @click="openInEditor(wf)" title="Открыть в редакторе кода" class="boo-file-manager__icon-btn">
+                <button type="button" x-on:click.prevent="openInEditor(wf)" title="Открыть в редакторе кода" class="boo-file-manager__icon-btn">
                   <i class="ph-bold ph-code" style="font-size:0.9rem;"></i>
                 </button>
               </template>
-              <button @click="startRename(wf)" title="Переименовать" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--muted">
+              <button type="button" x-on:click.prevent="startRename(wf)" title="Переименовать" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--muted">
                 <i class="ph-bold ph-pencil-simple" style="font-size:0.9rem;"></i>
               </button>
               <a :href="'/workspace/' + wf.id + '/download'" target="_blank" title="Скачать" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--muted">
                 <i class="ph-bold ph-download-simple" style="font-size:0.9rem;"></i>
               </a>
-              <button @click="deleteFile(wf.id)" title="Удалить" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--danger">
+              <button type="button" x-on:click.prevent="deleteFile(wf.id)" title="Удалить" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--danger">
                 <i class="ph-bold ph-trash" style="font-size:0.9rem;"></i>
               </button>
             </div>
