@@ -1083,16 +1083,29 @@
                     output.textContent = 'Запуск...';
                     fetch(runCodeUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': csrfToken || ''
+                        },
                         body: JSON.stringify({ code: code, assignment_task_id: parseInt(taskId, 10) })
                     })
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) {
+                        var ct = r.headers.get('content-type') || '';
+                        if (ct.indexOf('application/json') === -1) {
+                            return r.text().then(function(t) {
+                                throw new Error('Ответ не JSON (HTTP ' + r.status + '). Обновите страницу или войдите снова.');
+                            });
+                        }
+                        return r.json();
+                    })
                     .then(function(data) {
                         if (data.success) {
                             var text = (data.stdout || '') + (data.stderr ? '\n--- stderr ---\n' + data.stderr : '');
                             output.textContent = text || '(пусто)';
                         } else {
-                            output.textContent = 'Ошибка: ' + (data.error || 'Не удалось запустить');
+                            output.textContent = 'Ошибка: ' + (data.error || data.message || 'Не удалось запустить');
                         }
                     })
                     .catch(function(e) {
@@ -1112,10 +1125,23 @@
                     btn.disabled = true;
                     fetch(saveCodeUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': csrfToken || ''
+                        },
                         body: JSON.stringify({ code: code, assignment_task_id: parseInt(taskId, 10) })
                     })
-                    .then(function(r) { return r.json(); })
+                    .then(function(r) {
+                        var ct = r.headers.get('content-type') || '';
+                        if (ct.indexOf('application/json') === -1) {
+                            return r.text().then(function() {
+                                throw new Error('Ответ не JSON (HTTP ' + r.status + '). Обновите страницу.');
+                            });
+                        }
+                        return r.json();
+                    })
                     .then(function(data) {
                         if (data.success) {
                             if (typeof showToast === 'function') showToast('Код сохранён. Преподаватель сможет его просмотреть.', 'success');

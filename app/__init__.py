@@ -545,13 +545,19 @@ def create_app(config_name=None):
     init_jinja_filters(app)
 
     def _wants_json_response() -> bool:
+        """True для AJAX/JSON: чтобы fetch не получал HTML-страницы ошибок."""
         try:
             from flask import request
             if request.path.startswith('/api'):
                 return True
-            if request.is_json:
+            if getattr(request, 'is_json', False):
                 return True
-            best = request.accept_mimetypes.best
+            if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+                if request.path.endswith('/run-code') or request.path.endswith('/save-code'):
+                    return True
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return True
+            best = request.accept_mimetypes.best_match(['application/json', 'text/html'])
             return best == 'application/json'
         except Exception:
             return False
@@ -574,6 +580,19 @@ def create_app(config_name=None):
             headline=headline,
             subtitle=subtitle,
         ), code
+
+    @login_manager.unauthorized_handler
+    def handle_login_required():
+        """Сессия истекла: fetch с JSON не должен следовать за редиректом на HTML-страницу входа."""
+        from flask import request, redirect, url_for
+
+        if _wants_json_response():
+            return _render_error(
+                401,
+                'НУЖНО ВОЙТИ',
+                'Эта страница доступна только после входа в аккаунт.',
+            )
+        return redirect(url_for(login_manager.login_view, next=request.url))
 
     @app.errorhandler(400)
     def bad_request(error):
