@@ -69,6 +69,30 @@
     if (content) content.innerHTML = `<div class="fv-error">${msg}</div>`;
   }
 
+  function renderUnsupported(data) {
+    const m = getModal();
+    if (!m) return;
+    const content = m.querySelector('.fv-content');
+    const downloadUrl = data.download_url ? escHtml(data.download_url) : '';
+    const message = escHtml(data.error || 'Предпросмотр для этого файла не поддерживается.');
+    content.innerHTML = `
+      <div style="padding:2rem; max-width:560px; margin:0 auto; text-align:center;">
+        <div style="font-size:3rem; line-height:1; color:var(--text-muted, #94a3b8); margin-bottom:1rem;">
+          <i class="ph-bold ph-file-arrow-down"></i>
+        </div>
+        <div style="font-size:1rem; font-weight:700; margin-bottom:0.5rem;">Предпросмотр недоступен</div>
+        <div style="color:var(--text-muted, #64748b); margin-bottom:1.25rem;">${message}</div>
+        ${downloadUrl ? `
+          <a href="${downloadUrl}" target="_blank" rel="noopener noreferrer"
+             style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.75rem 1rem; border-radius:12px; text-decoration:none; background:var(--accent-1, #6366f1); color:#fff; font-weight:600;">
+            <i class="ph-bold ph-download-simple"></i>
+            <span>Открыть или скачать файл</span>
+          </a>
+        ` : ''}
+      </div>
+    `;
+  }
+
   function renderText(data) {
     const m = getModal();
     if (!m) return;
@@ -151,22 +175,34 @@
         credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
       });
-      const data = await res.json();
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        throw new Error('Invalid JSON response');
+      }
+
       setLoading(false);
-      if (!data.success) {
+      if (!res.ok || !data.success) {
         setError(data.error || 'Ошибка загрузки');
         return null;
       }
       setTitle(data.filename || 'Файл');
       if (data.type === 'excel') {
         renderExcel(data);
+      } else if (data.type === 'unsupported') {
+        renderUnsupported(data);
       } else {
         renderText(data);
       }
       return data;
     } catch (e) {
       setLoading(false);
-      setError('Ошибка сети');
+      setError('Не удалось загрузить файл. Попробуйте открыть его ещё раз или скачать напрямую.');
       return null;
     }
   }

@@ -27,7 +27,7 @@ from urllib.parse import urlparse
 
 import requests as http_requests
 from flask import (
-    Blueprint, request, jsonify, current_app, send_file, abort,
+    Blueprint, request, jsonify, current_app, send_file, abort, url_for,
 )
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -44,6 +44,7 @@ ALLOWED_EXTENSIONS = {
     'txt', 'csv', 'tsv', 'py', 'cpp', 'c', 'h', 'java', 'js',
     'json', 'xml', 'html', 'css', 'md', 'log', 'ini', 'cfg',
     'xls', 'xlsx', 'xlsm',
+    'pdf', 'doc', 'docx', 'odt', 'rtf',
     'dat', 'in', 'out', 'ans',
 }
 
@@ -244,6 +245,37 @@ def _read_task_attachment_bytes(task_id: int, file_path: str | None, file_url: s
             logger.warning("Failed to download task file %s: %s", url, e)
             return None
     return None
+
+
+def _append_download_name(url: str, file_name: str | None) -> str:
+    if not url or not file_name:
+        return url
+    sep = '&' if '?' in url else '?'
+    return f"{url}{sep}download_name={file_name}"
+
+
+def _build_task_download_url(task_id: int, file_path: str | None, file_url: str | None, file_name: str | None) -> str | None:
+    if file_path:
+        path = (file_path or '').strip()
+        if path.startswith('/'):
+            return _append_download_name(path, file_name)
+        safe_name = (file_name or path.split('/')[-1].split('?')[0] or 'file').strip()
+        return _append_download_name(f"/attachments/task/{task_id}/{safe_name}", safe_name)
+    if file_url:
+        normalized = _normalize_task_file_url(file_url)
+        if not normalized:
+            return None
+        if normalized.startswith('https://kompege.ru/') or normalized.startswith('http://kompege.ru/'):
+            return f"{url_for('assignments.attached_proxy')}?url={normalized}"
+        return normalized
+    return None
+
+
+def _is_text_previewable(filename: str, mime_type: str | None = None) -> bool:
+    ext = _ext(filename)
+    if ext in TEXT_EXTENSIONS or ext == '':
+        return True
+    return bool(mime_type and mime_type.startswith('text/'))
 
 
 # ---------------------------------------------------------------------------
@@ -481,6 +513,15 @@ def file_content(file_id):
             logger.error(f"Excel parse error for {fname}: {e}", exc_info=True)
             return jsonify({'success': False, 'error': 'Не удалось прочитать Excel-файл'}), 500
 
+    if not _is_text_previewable(fname, ws_file.mime_type):
+        return jsonify({
+            'success': True,
+            'type': 'unsupported',
+            'filename': fname,
+            'error': 'Предпросмотр для этого формата пока не поддерживается',
+            'download_url': url_for('workspace.download_file', file_id=file_id),
+        })
+
     mode = CODEMIRROR_MODES.get(ext, 'text/plain')
     try:
         text = data.decode('utf-8')
@@ -563,11 +604,26 @@ def task_file_content():
         raw = file_path or file_url or 'file'
         file_name = raw.split('/')[-1].split('?')[0] or 'file'
 
+    ext = _ext(file_name)
+    download_url = _build_task_download_url(
+        task_id=task_id,
+        file_path=file_path,
+        file_url=file_url,
+        file_name=file_name,
+    )
+    if ext not in EXCEL_EXTENSIONS and not _is_text_previewable(file_name):
+        return jsonify({
+            'success': True,
+            'type': 'unsupported',
+            'filename': file_name,
+            'error': 'Предпросмотр для этого формата пока не поддерживается',
+            'download_url': download_url,
+        })
+
     file_bytes = _read_task_attachment_bytes(task_id=task_id, file_path=file_path, file_url=file_url, file_name=file_name)
     if file_bytes is None:
         return jsonify({'success': False, 'error': 'Не удалось скачать файл'}), 502
 
-    ext = _ext(file_name)
     if ext in EXCEL_EXTENSIONS:
         try:
             sheets = _parse_excel(file_bytes, file_name)
@@ -578,6 +634,15 @@ def task_file_content():
         except Exception as e:
             logger.error(f"Excel parse error: {e}", exc_info=True)
             return jsonify({'success': False, 'error': 'Не удалось прочитать Excel'}), 500
+
+    if not _is_text_previewable(file_name):
+        return jsonify({
+            'success': True,
+            'type': 'unsupported',
+            'filename': file_name,
+            'error': 'Предпросмотр для этого формата пока не поддерживается',
+            'download_url': download_url,
+        })
 
     mode = CODEMIRROR_MODES.get(ext, 'text/plain')
     try:
