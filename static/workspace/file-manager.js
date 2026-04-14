@@ -40,6 +40,7 @@ document.addEventListener('alpine:init', () => {
 
     async init() {
       this.taskFiles = this.normalizeTaskFiles(this.taskFiles);
+      this.open = this.taskFiles.length > 0;
       if (this.taskId) await this.loadFiles();
     },
 

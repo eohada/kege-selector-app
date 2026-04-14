@@ -12,8 +12,8 @@
     {% if is_student_view or is_parent_view %}
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
     {% endif %}
-    <script src="{{ url_for('static', filename='workspace/file-manager.js') }}"></script>
-    <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}"></script>
+    <script src="{{ url_for('static', filename='workspace/file-manager.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}?v=2"></script>
     {% include '_ux_enhancements.html' %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -1035,7 +1035,7 @@
                           {% set fm_task_id = lt19.task.task_id %}
                           {% set fm_context_type = 'lesson' %}
                           {% set fm_context_id = lt19.lesson_task_id %}
-                          {% set fm_task_files = files | tojson %}
+                          {% set fm_task_files = files %}
                           {% include '_partials/file_manager_panel.html' %}
                         </div>
                         {% endif %}
@@ -1168,7 +1168,7 @@
                           {% set fm_task_id = hw_task.task.task_id %}
                           {% set fm_context_type = 'lesson' %}
                           {% set fm_context_id = hw_task.lesson_task_id %}
-                          {% set fm_task_files = files | tojson %}
+                          {% set fm_task_files = files %}
                           {% include '_partials/file_manager_panel.html' %}
                         </div>
                         {% endif %}

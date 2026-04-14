@@ -3,12 +3,17 @@
   Переменные (задать перед include или передать через x-data):
     fm_task_id, fm_context_type, fm_context_id, fm_task_files (JSON array)
 #}
-<div class="boo-file-manager" x-data="fileManager({
-  taskId: {{ (fm_task_id if fm_task_id is defined else 0) | tojson }},
-  contextType: '{{ fm_context_type | default('submission') }}',
-  contextId: {{ (fm_context_id if fm_context_id is defined else none) | tojson }},
-  taskFiles: {{ (fm_task_files if fm_task_files is defined else []) | tojson | safe }}
-})">
+<div class="boo-file-manager"
+     x-data="fileManager({
+       taskId: $el.dataset.taskId,
+       contextType: $el.dataset.contextType,
+       contextId: $el.dataset.contextId || null,
+       taskFiles: JSON.parse(($el.querySelector('.boo-file-manager__config') || {}).textContent || '[]')
+     })"
+     data-task-id="{{ fm_task_id if fm_task_id is defined else 0 }}"
+     data-context-type="{{ fm_context_type | default('submission') }}"
+     data-context-id="{{ fm_context_id if fm_context_id is defined and fm_context_id is not none else '' }}">
+  <script type="application/json" class="boo-file-manager__config">{{ (fm_task_files if fm_task_files is defined else []) | tojson }}</script>
 
   {# Toggle button #}
   <button @click="open = !open"

@@ -42,6 +42,32 @@
   let saveTimer = null;
   let pendingSavePromise = null;
 
+  function storageKey() {
+    if (!taskId) return null;
+    return `boo.canvas.${contextType || 'submission'}.${contextId || 'none'}.${taskId}`;
+  }
+
+  function saveLocal() {
+    const key = storageKey();
+    if (!key) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(strokes));
+    } catch (_) {}
+  }
+
+  function loadLocal() {
+    const key = storageKey();
+    if (!key) return null;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Toolbar drag state
   let tbDragging = false;
   let tbDragStart = { x: 0, y: 0, left: 0, top: 0 };
@@ -285,6 +311,7 @@
     drawing = false;
     currentStroke = null;
     dirty = true;
+    saveLocal();
     scheduleSave();
     e.preventDefault();
   }
@@ -294,6 +321,7 @@
     redoStack.push(strokes.pop());
     dirty = true;
     redraw();
+    saveLocal();
     scheduleSave();
   }
 
@@ -302,6 +330,7 @@
     strokes.push(redoStack.pop());
     dirty = true;
     redraw();
+    saveLocal();
     scheduleSave();
   }
 
@@ -312,6 +341,7 @@
     redoStack = [];
     dirty = true;
     redraw();
+    saveLocal();
     scheduleSave();
   }
 
@@ -347,6 +377,7 @@
           body: JSON.stringify(body),
         });
         dirty = false;
+        saveLocal();
         updateBadge();
       } catch (e) {
         console.warn('Canvas save failed:', e);
@@ -367,6 +398,12 @@
 
   async function loadFromServer() {
     if (!taskId) { strokes = []; redraw(); return; }
+    const localStrokes = loadLocal();
+    if (Array.isArray(localStrokes)) {
+      strokes = localStrokes;
+      redraw();
+      updateBadge();
+    }
     await waitPendingSave();
     try {
       const params = new URLSearchParams({ task_id: taskId, context_type: contextType });
@@ -378,15 +415,22 @@
       const data = await res.json();
       if (data.success && data.strokes) {
         const parsed = typeof data.strokes === 'string' ? JSON.parse(data.strokes) : data.strokes;
-        strokes = Array.isArray(parsed) ? parsed : [];
-      } else {
+        if (Array.isArray(parsed) && (parsed.length > 0 || !Array.isArray(localStrokes))) {
+          strokes = parsed;
+        } else if (!Array.isArray(localStrokes)) {
+          strokes = [];
+        }
+      } else if (!Array.isArray(localStrokes)) {
         strokes = [];
       }
     } catch (e) {
-      strokes = [];
+      if (!Array.isArray(localStrokes)) {
+        strokes = [];
+      }
     }
     redoStack = [];
     dirty = false;
+    saveLocal();
     redraw();
     updateBadge();
   }
@@ -452,8 +496,10 @@
         const parsed = typeof data.strokes === 'string' ? JSON.parse(data.strokes) : data.strokes;
         strokes = Array.isArray(parsed) ? parsed : [];
       } else {
-        strokes = [];
+        const localStrokes = loadLocal();
+        strokes = Array.isArray(localStrokes) ? localStrokes : [];
       }
+      saveLocal();
       updateBadge();
     } catch (_) {}
   }

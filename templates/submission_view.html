@@ -20,8 +20,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
-    <script src="{{ url_for('static', filename='workspace/file-manager.js') }}"></script>
-    <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}"></script>
+    <script src="{{ url_for('static', filename='workspace/file-manager.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}?v=2"></script>
     <style>
         /* Редактор кода: в тёмной теме фон и текст по переменным темы */
         [data-theme="dark"] .code-editor-panel .CodeMirror { background: var(--surface-1); color: var(--text-primary); }
@@ -524,7 +524,7 @@
                   {% set fm_task_id = task_item.task.task_id %}
                   {% set fm_context_type = 'submission' %}
                   {% set fm_context_id = submission.submission_id %}
-                  {% set fm_task_files = files | tojson %}
+                  {% set fm_task_files = files %}
                   {% include '_partials/file_manager_panel.html' %}
                 </div>
                 {% endif %}
@@ -706,7 +706,7 @@
               {% set fm_task_id = task_item.task.task_id %}
               {% set fm_context_type = 'submission' %}
               {% set fm_context_id = submission.submission_id %}
-              {% set fm_task_files = files | tojson %}
+              {% set fm_task_files = files %}
               {% include '_partials/file_manager_panel.html' %}
             </div>
             {% endif %}
