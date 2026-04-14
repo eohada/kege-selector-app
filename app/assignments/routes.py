@@ -3779,10 +3779,11 @@ def submission_comments_list(submission_id):
     if not (is_author or is_teacher):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
+    ordered_tasks = sorted((submission.assignment.tasks or []), key=lambda t: (getattr(t, 'order_index', 0), t.assignment_task_id))
+    fallback_task_id = (ordered_tasks[0].assignment_task_id if ordered_tasks else None)
     assignment_task_id = request.args.get('assignment_task_id', type=int)
     if assignment_task_id is None:
-        first_at = sorted((submission.assignment.tasks or []), key=lambda t: (getattr(t, 'order_index', 0), t.assignment_task_id))
-        assignment_task_id = first_at[0].assignment_task_id if first_at else None
+        assignment_task_id = fallback_task_id
     if assignment_task_id is not None and not any(t.assignment_task_id == assignment_task_id for t in (submission.assignment.tasks or [])):
         return jsonify({'success': False, 'error': 'Задание не принадлежит этой работе'}), 400
 
@@ -3791,7 +3792,9 @@ def submission_comments_list(submission_id):
     unread_task_ids: set[int] = set()
     ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
     for comment in ordered:
-        comment_task_id = int(comment.assignment_task_id or (assignment_task_id or 0))
+        # Legacy comments without assignment_task_id закрепляем за первым заданием,
+        # а не за текущим фильтром, чтобы не дублировать их во все вкладки.
+        comment_task_id = int(comment.assignment_task_id or (fallback_task_id or 0))
         if comment_task_id <= 0:
             continue
         if comment.author_id == current_user.id:

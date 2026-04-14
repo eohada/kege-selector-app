@@ -863,6 +863,19 @@
                 var currentTaskAtId = {{ initial_task_id if initial_task_id else 'null' }};
 
                 if (!buttons.length || !cards.length) return;
+                function ensureButtonVisible(btn) {
+                    if (!taskStrip || !btn) return;
+                    var left = btn.offsetLeft;
+                    var right = left + btn.offsetWidth;
+                    var viewLeft = taskStrip.scrollLeft;
+                    var viewRight = viewLeft + taskStrip.clientWidth;
+                    var pad = 36;
+                    if (left - pad < viewLeft) {
+                        taskStrip.scrollTo({ left: Math.max(0, left - pad), behavior: 'smooth' });
+                    } else if (right + pad > viewRight) {
+                        taskStrip.scrollTo({ left: Math.max(0, right - taskStrip.clientWidth + pad), behavior: 'smooth' });
+                    }
+                }
                 function setActiveByIndex(idx) {
                     cards.forEach(function(card, i) {
                         var isActive = (i + 1) === idx;
@@ -875,9 +888,7 @@
                         var m = href.match(/#task-(\d+)/);
                         var isActive = !!(m && parseInt(m[1], 10) === idx);
                         btn.classList.toggle('active', isActive);
-                        if (isActive && typeof btn.scrollIntoView === 'function') {
-                            btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                        }
+                        if (isActive) ensureButtonVisible(btn);
                     });
                     var activePos = buttons.findIndex(function(btn) { return btn.classList.contains('active'); });
                     if (prevBtn) prevBtn.disabled = activePos <= 0;
