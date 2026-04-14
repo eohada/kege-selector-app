@@ -403,14 +403,10 @@ def copy_from_task():
         return jsonify({'success': False, 'error': 'Не удалось скачать файл'}), 502
 
     safe_name = secure_filename(file_name) or 'file'
-    file_obj = io.BytesIO(file_bytes)
-    file_obj.filename = safe_name
 
     try:
-        storage_key = storage.upload_file(
-            file_obj,
-            folder=f'workspace/{current_user.id}/{task_id}',
-            filename=safe_name,
+        storage_key = _write_workspace_bytes(
+            file_bytes, current_user.id, task_id, safe_name,
         )
     except Exception as e:
         logger.error(f"Storage upload failed: {e}", exc_info=True)
