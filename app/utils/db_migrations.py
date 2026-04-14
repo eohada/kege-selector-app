@@ -1907,6 +1907,17 @@ def ensure_schema_columns(app):
                         col_type = 'JSONB' if is_postgres else 'JSON'
                         db.session.execute(text(f'ALTER TABLE "{analytics_events_table}" ADD COLUMN behavior_flags {col_type}'))
                         logger.info("Added behavior_flags (JSON) to analytics_events")
+                    # События без привязки задания к knowledge_nodes (NULL node_id)
+                    if is_postgres:
+                        node_col = next(
+                            (c for c in inspector.get_columns(analytics_events_table) if c.get("name") == "node_id"),
+                            None,
+                        )
+                        if node_col and node_col.get("nullable") is False:
+                            db.session.execute(
+                                text(f'ALTER TABLE "{analytics_events_table}" ALTER COLUMN node_id DROP NOT NULL')
+                            )
+                            logger.info("analytics_events.node_id is nullable (unmapped tasks / analytics)")
                 except Exception as e:
                     logger.warning(f"Could not add new columns to analytics_events: {e}")
                     db.session.rollback()

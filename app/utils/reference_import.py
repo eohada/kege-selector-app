@@ -8,6 +8,7 @@ import re
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 PROTOTYPES_DIR = os.path.join(REPO_ROOT, 'data', 'reference_prototypes')
 KEGE_JSON = os.path.join(REPO_ROOT, 'data', 'analytics_kege_difficulty.json')
+OGE_JSON = os.path.join(REPO_ROOT, 'data', 'analytics_oge_difficulty.json')
 
 
 def parse_combined_answer(answer_str: str, task_numbers: list) -> dict:
@@ -31,10 +32,16 @@ def parse_combined_answer(answer_str: str, task_numbers: list) -> dict:
     return out
 
 
-def get_node_code_by_task_number(task_number: int) -> str | None:
-    if not os.path.isfile(KEGE_JSON):
+def get_node_code_by_task_number(task_number: int, subject_slug: str | None = None) -> str | None:
+    """
+    Код узла знаний по номеру задания из матрицы сложности (КЕГЭ / ОГЭ).
+    subject_slug: 'kege' (по умолчанию) или 'oge'.
+    """
+    slug = (subject_slug or 'kege').strip().lower()
+    json_path = OGE_JSON if slug == 'oge' else KEGE_JSON
+    if not os.path.isfile(json_path):
         return None
-    with open(KEGE_JSON, 'r', encoding='utf-8') as f:
+    with open(json_path, 'r', encoding='utf-8') as f:
         rows = json.load(f)
     for row in rows:
         if row.get('task_number') == task_number:

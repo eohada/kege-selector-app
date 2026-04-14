@@ -125,6 +125,34 @@ class AnalyticsEngine:
         return max(float(cfg.get("min_mmr", 0.0)), min(float(cfg.get("max_mmr", 2500.0)), value))
 
     @classmethod
+    def _resolve_task_knowledge_node(cls, task: Tasks) -> KnowledgeNode | None:
+        """
+        Узел знаний: сначала Tasks.knowledge_node_id, иначе номер задания + матрица
+        analytics_*_difficulty.json для предмета курса (КЕГЭ/ОГЭ).
+        """
+        if getattr(task, "knowledge_node_id", None):
+            node = getattr(task, "knowledge_node", None)
+            if node is not None:
+                return node
+        from app.utils.reference_import import get_node_code_by_task_number
+
+        tn = int(task.task_number or 0)
+        if tn < 1:
+            return None
+        subject = None
+        if getattr(task, "course_id", None):
+            subject = cls._subject_from_course(int(task.course_id))
+        if subject is None:
+            subject = Subject.query.filter_by(slug="kege").first()
+        if subject is None:
+            return None
+        slug = (subject.slug or "kege").strip().lower()
+        node_code = get_node_code_by_task_number(tn, subject_slug=slug)
+        if not node_code:
+            return None
+        return KnowledgeNode.query.filter_by(subject_id=subject.id, code=node_code).first()
+
+    @classmethod
     def _create_or_update_rematch(
         cls,
         user_id: int,
@@ -189,7 +217,7 @@ class AnalyticsEngine:
         task = Tasks.query.get(task_id)
         if not task:
             return None
-        node = getattr(task, 'knowledge_node', None) if getattr(task, 'knowledge_node_id', None) else None
+        node = cls._resolve_task_knowledge_node(task)
 
         mastery = None
         if node:

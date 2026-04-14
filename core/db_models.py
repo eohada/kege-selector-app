@@ -1965,7 +1965,8 @@ class AnalyticsEvent(db.Model):
     __tablename__ = 'analytics_events'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
-    node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='CASCADE'), nullable=False, index=True)
+    # NULL — задание без привязки к графу знаний (старый банк, кастомные темы); см. AnalyticsEngine._resolve_task_knowledge_node
+    node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='CASCADE'), nullable=True, index=True)
     task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id', ondelete='SET NULL'), nullable=True, index=True)
     submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id', ondelete='SET NULL'), nullable=True, index=True)
     answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id', ondelete='SET NULL'), nullable=True, index=True)
