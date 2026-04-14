@@ -26,6 +26,7 @@ from app.utils.course_tasks import get_task_numbers
 import requests
 from flask import Response, stream_with_context, abort, send_from_directory
 from werkzeug.utils import secure_filename
+import json
 import subprocess
 import sys
 import os
@@ -33,10 +34,25 @@ import time
 
 logger = logging.getLogger(__name__)
 
-# Редактор кода: песочница для запуска Python (только itertools, math)
+# Редактор кода: песочница для запуска Python (только itertools, math, open для чтения)
 _PYTHON_RUNNER = r"""
-import sys
-import io
+import sys, io, os
+
+_cwd = os.getcwd()
+_real_open = open
+
+def _safe_open(path, mode='r', encoding=None, **kw):
+    if any(c in mode for c in 'wax+'):
+        raise PermissionError('Запись файлов запрещена в песочнице')
+    abs_path = os.path.abspath(path)
+    if not abs_path.startswith(_cwd + os.sep) and abs_path != _cwd:
+        raise PermissionError('Доступ к файлам за пределами рабочей директории запрещён')
+    if not os.path.isfile(abs_path):
+        raise FileNotFoundError(f"Файл не найден: {path}")
+    if 'b' in mode:
+        return _real_open(abs_path, mode, **kw)
+    return _real_open(abs_path, mode, encoding=encoding or 'utf-8', **kw)
+
 code = sys.stdin.read()
 out = io.StringIO()
 err = io.StringIO()
@@ -48,8 +64,14 @@ try:
     safe_builtins = {'print': print, 'len': len, 'range': range, 'list': list, 'dict': dict, 'str': str, 'int': int, 'float': float,
                      'sum': sum, 'min': min, 'max': max, 'abs': abs, 'sorted': sorted, 'map': map, 'filter': filter, 'zip': zip,
                      'enumerate': enumerate, 'tuple': tuple, 'set': set, 'bool': bool, 'True': True, 'False': False, 'None': None,
-                     'round': round, 'repr': repr, 'any': any, 'all': all}
-    safe = {'__builtins__': safe_builtins, 'itertools': itertools, 'math': math}
+                     'round': round, 'repr': repr, 'any': any, 'all': all,
+                     'open': _safe_open, 'input': input,
+                     'type': type, 'isinstance': isinstance, 'chr': chr, 'ord': ord,
+                     'hex': hex, 'bin': bin, 'pow': pow, 'reversed': reversed,
+                     'bytes': bytes, 'format': format, 'hash': hash,
+                     'Exception': Exception, 'ValueError': ValueError, 'TypeError': TypeError,
+                     'FileNotFoundError': FileNotFoundError}
+    safe = {'__builtins__': safe_builtins, 'itertools': itertools, 'math': math, 'os': None}
     exec(code, safe)
 except Exception as e:
     err.write(str(e))
@@ -2755,17 +2777,84 @@ def submission_submit(submission_id):
         return jsonify({'success': False, 'error': f'Ошибка при сдаче работы: {str(e)}'}), 500
 
 
-def _run_python_sandbox(code: str, timeout_sec: int = 5):
-    """Запуск кода Python в песочнице (только itertools, math). Возвращает (stdout, stderr)."""
+def _collect_sandbox_files(task_id: int | None, user_id: int) -> list[tuple[str, bytes]]:
+    """Collect task attachment files + student workspace files for sandbox execution.
+
+    Returns list of (filename, bytes) tuples.  Reads at most 20 files,
+    each capped at 10 MB to prevent abuse.
+    """
+    MAX_SANDBOX_FILES = 20
+    MAX_FILE_SIZE = 10 * 1024 * 1024
+    result: list[tuple[str, bytes]] = []
+    seen_names: set[str] = set()
+
+    if task_id:
+        try:
+            task = Tasks.query.filter_by(task_id=task_id).first()
+            if task and task.attached_files:
+                files_list = json.loads(task.attached_files) if isinstance(task.attached_files, str) else task.attached_files
+                if isinstance(files_list, list):
+                    from app.workspace.routes import _read_task_attachment_bytes
+                    for fmeta in files_list[:MAX_SANDBOX_FILES]:
+                        fname = (fmeta.get('file_name') or fmeta.get('name') or '').strip()
+                        if not fname or fname in seen_names:
+                            continue
+                        fpath = fmeta.get('file_path') or ''
+                        furl = fmeta.get('file_url') or fmeta.get('url') or ''
+                        try:
+                            fbytes = _read_task_attachment_bytes(task_id, fpath, furl, fname)
+                            if fbytes and len(fbytes) <= MAX_FILE_SIZE:
+                                result.append((fname, fbytes))
+                                seen_names.add(fname)
+                        except Exception:
+                            pass
+        except Exception:
+            logger.debug("_collect_sandbox_files: could not load task attachments for task_id=%s", task_id, exc_info=True)
+
+    if task_id and len(result) < MAX_SANDBOX_FILES:
+        try:
+            from core.db_models import StudentWorkspaceFile
+            from app.workspace.routes import _read_file_bytes
+            ws_files = StudentWorkspaceFile.query.filter_by(
+                user_id=user_id, task_id=task_id,
+            ).limit(MAX_SANDBOX_FILES - len(result)).all()
+            for wf in ws_files:
+                fname = wf.current_filename
+                if not fname or fname in seen_names:
+                    continue
+                try:
+                    fbytes = _read_file_bytes(wf)
+                    if fbytes and len(fbytes) <= MAX_FILE_SIZE:
+                        result.append((fname, fbytes))
+                        seen_names.add(fname)
+                except Exception:
+                    pass
+        except Exception:
+            logger.debug("_collect_sandbox_files: could not load workspace files", exc_info=True)
+
+    return result
+
+
+def _run_python_sandbox(code: str, timeout_sec: int = 5,
+                        task_files: list[tuple[str, bytes]] | None = None):
+    """Запуск кода Python в песочнице. task_files — [(filename, bytes), ...]."""
+    import tempfile
     try:
-        proc = subprocess.run(
-            [sys.executable, '-c', _PYTHON_RUNNER],
-            input=code,
-            capture_output=True,
-            text=True,
-            timeout=timeout_sec,
-        )
-        return proc.stdout or '', proc.stderr or ''
+        with tempfile.TemporaryDirectory(prefix='boostudy_sandbox_') as tmpdir:
+            if task_files:
+                for fname, fbytes in task_files:
+                    fpath = os.path.join(tmpdir, fname)
+                    with open(fpath, 'wb') as f:
+                        f.write(fbytes)
+            proc = subprocess.run(
+                [sys.executable, '-c', _PYTHON_RUNNER],
+                input=code,
+                capture_output=True,
+                text=True,
+                timeout=timeout_sec,
+                cwd=tmpdir,
+            )
+            return proc.stdout or '', proc.stderr or ''
     except subprocess.TimeoutExpired:
         return '', 'Превышено время выполнения (макс. {} с).'.format(timeout_sec)
     except Exception as e:
@@ -2776,7 +2865,7 @@ def _run_python_sandbox(code: str, timeout_sec: int = 5):
 @login_required
 @limiter.limit('30/minute')
 def submission_run_code(submission_id):
-    """Запуск кода ученика в песочнице (только itertools, math)."""
+    """Запуск кода ученика в песочнице с файлами задания доступными через open()."""
     submission = Submission.query.filter_by(submission_id=submission_id).first_or_404()
     student = get_student_by_user_id(current_user.id)
     is_owner = student and student.student_id == submission.student_id
@@ -2790,11 +2879,17 @@ def submission_run_code(submission_id):
     if not code:
         return jsonify({'success': False, 'error': 'Код не передан'}), 400
     assignment = submission.assignment
+    at = None
     if assignment_task_id is not None:
         at = next((t for t in (assignment.tasks or []) if t.assignment_task_id == assignment_task_id), None)
         if not at:
             return jsonify({'success': False, 'error': 'Задание не найдено'}), 400
-    stdout, stderr = _run_python_sandbox(code)
+
+    task_files = _collect_sandbox_files(
+        task_id=at.task_id if at else None,
+        user_id=current_user.id,
+    )
+    stdout, stderr = _run_python_sandbox(code, task_files=task_files)
     return jsonify({'success': True, 'stdout': stdout, 'stderr': stderr})
 
 

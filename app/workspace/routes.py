@@ -101,6 +101,20 @@ def _is_excel(filename: str) -> bool:
     return _ext(filename) in SPREADSHEET_EXTENSIONS
 
 
+def _write_workspace_bytes(data: bytes, user_id: int, task_id: int, filename: str) -> str:
+    """Write raw bytes to workspace storage, bypassing FileStorage.save()."""
+    from datetime import datetime
+    key = f'workspace/{user_id}/{task_id}/{datetime.utcnow().strftime("%Y/%m")}/{filename}'
+    if storage.use_s3:
+        storage.client.upload_fileobj(io.BytesIO(data), storage.bucket, key)
+        return f's3://{storage.bucket}/{key}'
+    path = os.path.join(storage.local_upload_dir, key.replace('/', os.sep))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'wb') as f:
+        f.write(data)
+    return key
+
+
 def _resolve_local_path(storage_path: str) -> str | None:
     """Resolve a StorageService key to an absolute local path, if local storage is used."""
     if storage_path.startswith('s3://'):
@@ -626,11 +640,9 @@ def create_file():
     initial_content = (data.get('content') or '').encode('utf-8')
     safe_name = secure_filename(filename) or 'file.txt'
 
-    file_obj = io.BytesIO(initial_content)
-    file_obj.filename = safe_name
     try:
-        storage_key = storage.upload_file(
-            file_obj, folder=f'workspace/{current_user.id}/{task_id}', filename=safe_name,
+        storage_key = _write_workspace_bytes(
+            initial_content, current_user.id, task_id, safe_name,
         )
     except Exception as e:
         logger.error("Workspace create failed: %s", e, exc_info=True)
@@ -673,13 +685,10 @@ def save_content(file_id):
     if len(content_bytes) > MAX_WORKSPACE_FILE_SIZE:
         return jsonify({'success': False, 'error': 'Файл слишком большой (макс. 10 МБ)'}), 400
 
-    file_obj = io.BytesIO(content_bytes)
-    file_obj.filename = ws_file.current_filename
     try:
-        new_key = storage.upload_file(
-            file_obj,
-            folder=f'workspace/{current_user.id}/{ws_file.task_id}',
-            filename=secure_filename(ws_file.current_filename) or 'file',
+        new_key = _write_workspace_bytes(
+            content_bytes, current_user.id, ws_file.task_id,
+            secure_filename(ws_file.current_filename) or 'file',
         )
     except Exception as e:
         logger.error("save-content upload failed: %s", e, exc_info=True)
