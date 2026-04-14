@@ -26,6 +26,7 @@ import tempfile
 from urllib.parse import urlparse
 
 import requests as http_requests
+import sqlalchemy as sa
 from flask import (
     Blueprint, request, jsonify, current_app, send_file, abort, url_for,
 )
@@ -66,24 +67,26 @@ CODEMIRROR_MODES = {
     'xml': 'xml', 'html': 'htmlmixed', 'css': 'css', 'md': 'markdown',
 }
 
-_workspace_tables_ready = False
+_workspace_tables_ok: bool | None = None
 
 
 def _ensure_workspace_tables() -> None:
-    """
-    Make the feature resilient on environments where the app code is updated
-    before Alembic migrations are applied.
-    """
-    global _workspace_tables_ready
-    if _workspace_tables_ready:
+    """Fast non-blocking check that workspace tables exist. No DDL at request time."""
+    global _workspace_tables_ok
+    if _workspace_tables_ok:
         return
+    if _workspace_tables_ok is False:
+        abort(503, description='Workspace tables not available. Run: flask db upgrade')
     try:
-        StudentWorkspaceFile.__table__.create(bind=db.engine, checkfirst=True)
-        TaskCanvasDrawing.__table__.create(bind=db.engine, checkfirst=True)
-        _workspace_tables_ready = True
-    except Exception as exc:
-        logger.exception("Failed to ensure workspace tables: %s", exc)
-        raise
+        db.session.execute(sa.text('SELECT 1 FROM "StudentWorkspaceFiles" LIMIT 0'))
+        db.session.execute(sa.text('SELECT 1 FROM "TaskCanvasDrawings" LIMIT 0'))
+        db.session.rollback()
+        _workspace_tables_ok = True
+    except Exception:
+        db.session.rollback()
+        _workspace_tables_ok = False
+        logger.error("Workspace tables missing. Run: docker compose exec web_prod flask db upgrade")
+        abort(503, description='Workspace tables not available. Run: flask db upgrade')
 
 
 def _ext(filename: str) -> str:
