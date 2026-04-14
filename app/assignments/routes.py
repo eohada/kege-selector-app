@@ -145,6 +145,42 @@ def _resolve_answer_time_spent_sec(submission, answered_at, previous_answered_at
         return None
 
 
+def _legacy_submission_comment_bucket_task_id(assignment) -> int | None:
+    """
+    Старые записи SubmissionComment без assignment_task_id.
+    Чтобы не дублировать их во всех заданиях, закрепляем за первым заданием работы по order_index.
+    """
+    tasks = sorted((assignment.tasks or []), key=lambda t: (getattr(t, 'order_index', 0), t.assignment_task_id))
+    return int(tasks[0].assignment_task_id) if tasks else None
+
+
+def _submission_comment_task_id(comment, legacy_bucket_task_id: int | None) -> int:
+    if comment.assignment_task_id:
+        return int(comment.assignment_task_id)
+    return int(legacy_bucket_task_id or 0)
+
+
+def _compute_grade_chat_unread_task_ids(submission, viewer_user_id: int, legacy_bucket_task_id: int | None) -> set[int]:
+    """
+    Непрочитанное для преподавателя: есть сообщение ученика после последнего ответа преподавателя в этом же треде.
+    Для legacy-треда (без assignment_task_id) используем legacy_bucket_task_id.
+    """
+    unread: set[int] = set()
+    last_teacher_at: dict[int, datetime] = {}
+    ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
+    for c in ordered:
+        tid = _submission_comment_task_id(c, legacy_bucket_task_id)
+        if tid <= 0:
+            continue
+        if int(c.author_id) == int(viewer_user_id):
+            last_teacher_at[tid] = c.created_at or moscow_now()
+            continue
+        last_t = last_teacher_at.get(tid)
+        if last_t is None or (c.created_at and c.created_at > last_t):
+            unread.add(tid)
+    return unread
+
+
 def _submission_display_status(submission, assignment, now):
     """
     Возвращает отображаемый статус для списков: "Просрочено по таймеру",
@@ -3343,19 +3379,9 @@ def submission_grade_view(submission_id):
         rubric_templates = []
 
     can_submit_grade = submission.status in ('SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW')
-    initial_task_id = (tasks_view[0]['assignment_task'].assignment_task_id if tasks_view else None)
-    unread_task_ids: set[int] = set()
-    latest_teacher_comment_by_task: dict[int, datetime] = {}
-    for c in sorted((submission.comments or []), key=lambda x: (x.created_at or moscow_now(), x.comment_id or 0)):
-        task_id = int(c.assignment_task_id or (initial_task_id or 0))
-        if task_id <= 0:
-            continue
-        if c.author_id == current_user.id:
-            latest_teacher_comment_by_task[task_id] = c.created_at
-            continue
-        latest_teacher = latest_teacher_comment_by_task.get(task_id)
-        if latest_teacher is None or (c.created_at and c.created_at > latest_teacher):
-            unread_task_ids.add(task_id)
+    legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
+    initial_task_id = (tasks_view[0]['assignment_task'].assignment_task_id if tasks_view else legacy_bucket_task_id)
+    unread_task_ids = _compute_grade_chat_unread_task_ids(submission, current_user.id, legacy_bucket_task_id)
     return render_template('submission_grade.html',
                          submission=submission,
                          assignment=assignment,
@@ -3779,30 +3805,20 @@ def submission_comments_list(submission_id):
     if not (is_author or is_teacher):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
-    ordered_tasks = sorted((submission.assignment.tasks or []), key=lambda t: (getattr(t, 'order_index', 0), t.assignment_task_id))
-    fallback_task_id = (ordered_tasks[0].assignment_task_id if ordered_tasks else None)
+    legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(submission.assignment)
     assignment_task_id = request.args.get('assignment_task_id', type=int)
     if assignment_task_id is None:
-        assignment_task_id = fallback_task_id
+        assignment_task_id = legacy_bucket_task_id
     if assignment_task_id is not None and not any(t.assignment_task_id == assignment_task_id for t in (submission.assignment.tasks or [])):
         return jsonify({'success': False, 'error': 'Задание не принадлежит этой работе'}), 400
 
     comments = []
-    latest_teacher_by_task: dict[int, datetime] = {}
-    unread_task_ids: set[int] = set()
+    unread_task_ids = _compute_grade_chat_unread_task_ids(submission, current_user.id, legacy_bucket_task_id)
     ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
     for comment in ordered:
-        # Legacy comments without assignment_task_id закрепляем за первым заданием,
-        # а не за текущим фильтром, чтобы не дублировать их во все вкладки.
-        comment_task_id = int(comment.assignment_task_id or (fallback_task_id or 0))
+        comment_task_id = _submission_comment_task_id(comment, legacy_bucket_task_id)
         if comment_task_id <= 0:
             continue
-        if comment.author_id == current_user.id:
-            latest_teacher_by_task[comment_task_id] = comment.created_at
-        else:
-            last_teacher = latest_teacher_by_task.get(comment_task_id)
-            if last_teacher is None or (comment.created_at and comment.created_at > last_teacher):
-                unread_task_ids.add(comment_task_id)
 
         if assignment_task_id is not None and comment_task_id != assignment_task_id:
             continue

@@ -264,7 +264,7 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 1rem;
-            z-index: 70;
+            z-index: 60;
             box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.1);
         }
         [data-theme="dark"] .submit-section {
@@ -354,12 +354,14 @@
         }
         .grade-comments {
             margin-top: 1rem;
-            margin-bottom: 1rem;
+            margin-bottom: 10rem;
             padding: 1.5rem 1.25rem;
             border-radius: 24px;
             border: 1px solid var(--color-stroke, #e2e8f0);
             background: var(--color-bg-surface, #fff);
             box-shadow: 0 4px 20px -8px rgba(15, 23, 42, 0.08);
+            position: relative;
+            z-index: 70;
         }
         .grade-comments-list {
             display: flex;
@@ -865,16 +867,18 @@
                 if (!buttons.length || !cards.length) return;
                 function ensureButtonVisible(btn) {
                     if (!taskStrip || !btn) return;
-                    var left = btn.offsetLeft;
-                    var right = left + btn.offsetWidth;
-                    var viewLeft = taskStrip.scrollLeft;
-                    var viewRight = viewLeft + taskStrip.clientWidth;
-                    var pad = 36;
-                    if (left - pad < viewLeft) {
-                        taskStrip.scrollTo({ left: Math.max(0, left - pad), behavior: 'smooth' });
-                    } else if (right + pad > viewRight) {
-                        taskStrip.scrollTo({ left: Math.max(0, right - taskStrip.clientWidth + pad), behavior: 'smooth' });
-                    }
+                    requestAnimationFrame(function() {
+                        var stripRect = taskStrip.getBoundingClientRect();
+                        var btnRect = btn.getBoundingClientRect();
+                        var pad = 48;
+                        if (btnRect.left < stripRect.left + pad) {
+                            var deltaL = (stripRect.left + pad) - btnRect.left;
+                            taskStrip.scrollLeft = Math.max(0, taskStrip.scrollLeft - deltaL);
+                        } else if (btnRect.right > stripRect.right - pad) {
+                            var deltaR = btnRect.right - (stripRect.right - pad);
+                            taskStrip.scrollLeft = Math.max(0, taskStrip.scrollLeft + deltaR);
+                        }
+                    });
                 }
                 function setActiveByIndex(idx) {
                     cards.forEach(function(card, i) {
@@ -893,7 +897,7 @@
                     var activePos = buttons.findIndex(function(btn) { return btn.classList.contains('active'); });
                     if (prevBtn) prevBtn.disabled = activePos <= 0;
                     if (nextBtn) nextBtn.disabled = activePos < 0 || activePos >= buttons.length - 1;
-                    window.dispatchEvent(new CustomEvent('grade:active-task-changed', { detail: { assignmentTaskId: currentTaskAtId } }));
+                    window.dispatchEvent(new CustomEvent('grade:active-task-changed', { detail: { assignmentTaskId: currentTaskAtId, unreadTaskIds: window.__gradeLastUnreadTaskIds || [] } }));
                 }
 
                 var initial = 1;
@@ -945,6 +949,7 @@
 
                 function setUnreadMap(unreadTaskIds, emphasize) {
                     var unreadSet = new Set((unreadTaskIds || []).map(function(v) { return parseInt(v, 10); }));
+                    window.__gradeLastUnreadTaskIds = Array.from(unreadSet);
                     buttons.forEach(function(btn) {
                         var atId = parseInt(btn.getAttribute('data-assignment-task-id'), 10) || 0;
                         var dot = btn.querySelector('[data-unread-for]');
@@ -955,9 +960,10 @@
                     if (unreadBadge) unreadBadge.classList.toggle('hidden', !currentUnread);
                     cards.forEach(function(card) {
                         var atId = parseInt(card.getAttribute('data-task-id'), 10) || 0;
+                        var isActive = card.classList.contains('task-panel-active');
                         var has = unreadSet.has(atId);
-                        card.classList.toggle('has-chat-unread', has);
-                        if (has && emphasize) {
+                        card.classList.toggle('has-chat-unread', !!(has && isActive));
+                        if (has && isActive && emphasize) {
                             card.classList.remove('chat-pop');
                             void card.offsetWidth;
                             card.classList.add('chat-pop');
@@ -1037,6 +1043,9 @@
                 }
                 window.addEventListener('grade:active-task-changed', function(e) {
                     if (e && e.detail && e.detail.assignmentTaskId) currentTaskAtId = parseInt(e.detail.assignmentTaskId, 10) || currentTaskAtId;
+                    if (e && e.detail && e.detail.unreadTaskIds) {
+                        setUnreadMap(e.detail.unreadTaskIds, false);
+                    }
                     refreshComments({ forceScroll: true, silent: true });
                 });
 
