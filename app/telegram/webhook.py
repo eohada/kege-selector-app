@@ -13,7 +13,6 @@ import os
 import threading
 
 from flask import Blueprint, request, jsonify
-from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -167,10 +166,11 @@ def telegram_webhook():
     """Receive Telegram updates via webhook."""
     try:
         data = request.get_json(force=True)
-        bot_app = get_application()
-        update = Update.de_json(data, bot_app.bot)
-        _run_async(bot_app.process_update(update))
-        return jsonify({'ok': True})
+        # IMPORTANT: return 200 immediately, process update asynchronously in Celery.
+        from app.tasks.telegram_webhook import process_telegram_update_task
+
+        process_telegram_update_task.delay(data)
+        return jsonify({'ok': True, 'queued': True}), 200
     except Exception as e:
         logger.error('Webhook processing error: %s', e, exc_info=True)
         return jsonify({'ok': False, 'error': str(e)}), 500
