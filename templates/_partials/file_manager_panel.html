@@ -16,43 +16,42 @@
   <script type="application/json" class="boo-file-manager__config">{{ (fm_task_files if fm_task_files is defined else []) | tojson }}</script>
 
   {# Toggle button #}
-  <button type="button" x-on:click="open = !open"
-    class="neo-button outline sm boo-file-manager__toggle">
+  <button type="button" x-on:click="open = !open" class="neo-button outline sm boo-fm-toggle">
     <i class="ph-bold ph-folder-open"></i>
     <span>Файлы</span>
-    <span x-show="workspaceFiles.length"
-      x-text="workspaceFiles.length"
-      style="background:var(--accent-1); color:#fff; border-radius:99px; padding:0 0.4rem; font-size:0.75rem; font-weight:700; margin-left:0.2rem;">
-    </span>
+    <span x-show="workspaceFiles.length" x-text="workspaceFiles.length" class="boo-fm-badge"></span>
   </button>
 
   {# Panel #}
-  <div x-show="open" x-transition x-cloak class="boo-file-manager__panel">
+  <div x-show="open" x-transition x-cloak class="boo-fm-panel">
 
     {# Error #}
-    <div x-show="error" x-text="error"
-      style="padding:0.5rem 1rem; background:var(--error-bg, #fef2f2); color:var(--error, #ef4444); font-size:0.85rem; font-weight:600;">
-    </div>
+    <div x-show="error" x-text="error" class="boo-fm-error"></div>
 
-    {# Task files section #}
+    {# ── Task files section ── #}
     <template x-if="taskFiles.length > 0">
-      <div class="boo-file-manager__task-section">
-        <div class="boo-file-manager__title">
-          <i class="ph-bold ph-paperclip"></i> Файлы задания
-        </div>
-        <div class="boo-file-manager__list">
+      <div class="boo-fm-section">
+        <h4 class="boo-fm-section-title">
+          <i class="ph-fill ph-paperclip"></i> Файлы задания
+        </h4>
+        <div class="boo-fm-list">
           <template x-for="(tf, idx) in taskFiles" :key="idx">
-            <div class="boo-file-manager__item boo-file-manager__item--task">
-              <i class="ph-bold boo-file-manager__icon" :class="fileIcon(tf.name || tf.filename || 'file')"></i>
-              <span x-text="tf.name || tf.filename || ('Файл ' + (idx+1))"
-                class="boo-file-manager__filename">
-              </span>
-              <div class="boo-file-manager__actions">
-                <button type="button" x-on:click.prevent="viewTaskFile(idx)" class="neo-button outline sm boo-file-manager__btn boo-file-manager__btn--ghost">
-                  <i class="ph-bold ph-eye"></i> Открыть
+            <div class="boo-fm-card">
+              <div class="boo-fm-card-info">
+                <div class="boo-fm-icon" :class="fileIconColor(tf.name || tf.filename || 'file')">
+                  <i :class="fileIconFill(tf.name || tf.filename || 'file')"></i>
+                </div>
+                <div style="min-width:0;">
+                  <div class="boo-fm-name" x-text="tf.name || tf.filename || ('Файл ' + (idx+1))"></div>
+                  <div class="boo-fm-meta" x-text="fileTypeLabel(tf.name || tf.filename || 'file', tf.size)"></div>
+                </div>
+              </div>
+              <div class="boo-fm-card-btns">
+                <button type="button" x-on:click.prevent="viewTaskFile(idx)" class="boo-fm-btn boo-fm-btn--outline">
+                  <i class="ph-bold ph-eye"></i> <span>Открыть</span>
                 </button>
-                <button type="button" x-on:click.prevent="copyFromTask(idx)" class="neo-button sm boo-file-manager__btn boo-file-manager__btn--primary">
-                  <i class="ph-bold ph-copy"></i> В хранилище
+                <button type="button" x-on:click.prevent="copyFromTask(idx)" class="boo-fm-btn boo-fm-btn--accent">
+                  <i class="ph-bold ph-download-simple"></i> <span>В хранилище</span>
                 </button>
               </div>
             </div>
@@ -61,132 +60,188 @@
       </div>
     </template>
 
-    {# Workspace files section #}
-    <div class="boo-file-manager__workspace-section">
-      <div class="boo-file-manager__title" style="justify-content:space-between;">
-        <span style="display:flex; align-items:center; gap:.42rem;">
-          <i class="ph-bold ph-hard-drives"></i> Мини-хранилище
-        </span>
+    {# ── Workspace section ── #}
+    <div class="boo-fm-section">
+      <div class="boo-fm-section-head">
+        <h4 class="boo-fm-section-title" style="margin-bottom:0;">
+          <i class="ph-fill ph-hard-drives"></i> Мини-хранилище
+        </h4>
         <button type="button" x-on:click.prevent="showCreateDialog = !showCreateDialog"
-          class="boo-file-manager__icon-btn" title="Создать файл"
-          style="font-size:0.85rem; color:var(--accent-1); font-weight:800;">
-          <i class="ph-bold ph-plus" style="font-size:0.85rem;"></i>
+          class="boo-fm-add-btn" title="Создать файл">
+          <i class="ph-bold ph-plus"></i>
         </button>
       </div>
 
       {# Create file dialog #}
-      <div x-show="showCreateDialog" x-transition x-cloak
-        style="display:flex; gap:.45rem; align-items:center; padding:0 0 .65rem; flex-wrap:wrap;">
-        <input x-model="newFileName" @keydown.enter="createFile()" @keydown.escape="showCreateDialog = false"
-          placeholder="имя_файла.txt"
-          style="flex:1; min-width:120px; font-size:0.85rem; padding:0.35rem 0.6rem; border:1px solid var(--stroke-1);
-                 border-radius:10px; outline:none; background:var(--color-bg-surface); color:var(--text-primary);">
-        <button type="button" x-on:click.prevent="createFile()"
-          class="neo-button sm boo-file-manager__btn boo-file-manager__btn--primary">
-          <i class="ph-bold ph-plus"></i> Создать
+      <div x-show="showCreateDialog" x-transition x-cloak class="boo-fm-create">
+        <input x-model="newFileName"
+          @keydown.enter="createFile()" @keydown.escape="showCreateDialog = false"
+          placeholder="имя_файла.txt" class="boo-fm-create-input">
+        <button type="button" x-on:click.prevent="createFile()" class="boo-fm-btn boo-fm-btn--accent">
+          <i class="ph-bold ph-plus"></i> <span>Создать</span>
         </button>
       </div>
 
       <template x-if="loading">
-        <div style="text-align:center; padding:1rem; color:var(--text-muted); font-size:0.85rem;">Загрузка...</div>
+        <div class="boo-fm-empty">Загрузка...</div>
       </template>
 
       <template x-if="!loading && workspaceFiles.length === 0 && !showCreateDialog">
-        <div style="text-align:center; padding:0.75rem; color:var(--text-muted); font-size:0.85rem;">
-          Нет файлов. Скопируйте из задания, загрузите свой или создайте новый.
+        <div class="boo-fm-empty">
+          Нет файлов. Скопируйте из задания, загрузите или создайте новый.
         </div>
       </template>
 
-      <div class="boo-file-manager__list">
+      <div class="boo-fm-list">
         <template x-for="wf in workspaceFiles" :key="wf.id">
-          <div class="boo-file-manager__item boo-file-manager__item--workspace">
-            <i class="ph-bold boo-file-manager__icon" :class="fileIcon(wf.current_filename)"></i>
-
-            {# Filename or rename input #}
-            <template x-if="renamingId !== wf.id">
-              <span x-text="wf.current_filename"
-                @dblclick="startRename(wf)"
-                class="boo-file-manager__filename"
-                title="Двойной клик для переименования">
-              </span>
-            </template>
-            <template x-if="renamingId === wf.id">
-              <input x-model="renameValue" @keydown.enter="submitRename(wf.id)" @keydown.escape="renamingId = null"
-                @blur="submitRename(wf.id)" x-ref="renameInput"
-                style="flex:1; font-size:0.85rem; padding:0.15rem 0.4rem; border:1px solid var(--accent-1);
-                       border-radius:6px; outline:none; background:var(--color-bg-surface); color:var(--text-primary);">
-            </template>
-
-            <div class="boo-file-manager__actions boo-file-manager__actions--compact">
-              <button type="button" x-on:click.prevent="viewWorkspaceFile(wf)" title="Просмотр" class="boo-file-manager__icon-btn">
-                <i class="ph-bold ph-eye" style="font-size:0.9rem;"></i>
+          <div class="boo-fm-card">
+            <div class="boo-fm-card-info">
+              <div class="boo-fm-icon" :class="fileIconColor(wf.current_filename)">
+                <i :class="fileIconFill(wf.current_filename)"></i>
+              </div>
+              <div style="min-width:0; flex:1;">
+                <template x-if="renamingId !== wf.id">
+                  <div>
+                    <div class="boo-fm-name" x-text="wf.current_filename"
+                      @dblclick="startRename(wf)" title="Двойной клик для переименования"></div>
+                    <div class="boo-fm-meta" x-text="fileTypeLabel(wf.current_filename, wf.file_size)"></div>
+                  </div>
+                </template>
+                <template x-if="renamingId === wf.id">
+                  <input x-model="renameValue"
+                    @keydown.enter="submitRename(wf.id)" @keydown.escape="renamingId = null"
+                    @blur="submitRename(wf.id)" x-ref="renameInput" class="boo-fm-rename-input">
+                </template>
+              </div>
+            </div>
+            <div class="boo-fm-card-icons">
+              <button type="button" x-on:click.prevent="viewWorkspaceFile(wf)" title="Просмотр" class="boo-fm-ibtn">
+                <i class="ph-bold ph-eye"></i>
               </button>
               <template x-if="isTextFile(wf.current_filename)">
-                <button type="button" x-on:click.prevent="editWorkspaceFile(wf)" title="Редактировать" class="boo-file-manager__icon-btn">
-                  <i class="ph-bold ph-pencil-simple-line" style="font-size:0.9rem;"></i>
+                <button type="button" x-on:click.prevent="editWorkspaceFile(wf)" title="Редактировать" class="boo-fm-ibtn">
+                  <i class="ph-bold ph-pencil-simple-line"></i>
                 </button>
               </template>
               <template x-if="isTextFile(wf.current_filename)">
-                <button type="button" x-on:click.prevent="openInEditor(wf)" title="Открыть в редакторе кода" class="boo-file-manager__icon-btn">
-                  <i class="ph-bold ph-code" style="font-size:0.9rem;"></i>
+                <button type="button" x-on:click.prevent="openInEditor(wf)" title="В редактор кода" class="boo-fm-ibtn">
+                  <i class="ph-bold ph-code"></i>
                 </button>
               </template>
-              <button type="button" x-on:click.prevent="startRename(wf)" title="Переименовать" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--muted">
-                <i class="ph-bold ph-text-aa" style="font-size:0.9rem;"></i>
+              <button type="button" x-on:click.prevent="startRename(wf)" title="Переименовать" class="boo-fm-ibtn">
+                <i class="ph-bold ph-text-aa"></i>
               </button>
-              <a :href="'/workspace/' + wf.id + '/download'" target="_blank" title="Скачать" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--muted">
-                <i class="ph-bold ph-download-simple" style="font-size:0.9rem;"></i>
+              <a :href="'/workspace/' + wf.id + '/download'" target="_blank" title="Скачать" class="boo-fm-ibtn">
+                <i class="ph-bold ph-download-simple"></i>
               </a>
-              <button type="button" x-on:click.prevent="deleteFile(wf.id)" title="Удалить" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--danger">
-                <i class="ph-bold ph-trash" style="font-size:0.9rem;"></i>
+              <button type="button" x-on:click.prevent="deleteFile(wf.id)" title="Удалить" class="boo-fm-ibtn boo-fm-ibtn--danger">
+                <i class="ph-bold ph-trash"></i>
               </button>
             </div>
           </div>
         </template>
       </div>
 
-      {# Upload area #}
+      {# Upload drop zone #}
       <div @dragover.prevent="dragOver = true" @dragleave.prevent="dragOver = false"
         @drop.prevent="uploadFile($event)"
-        :class="dragOver ? 'boo-file-manager__upload boo-file-manager__upload--drag' : 'boo-file-manager__upload'">
-        <i class="ph-bold ph-cloud-arrow-up boo-file-manager__upload-icon"></i>
-        <p class="boo-file-manager__upload-text">Перетащите файл или</p>
-        <label class="neo-button sm boo-file-manager__btn boo-file-manager__btn--primary boo-file-manager__upload-choose">
+        class="boo-fm-drop"
+        :class="dragOver && 'boo-fm-drop--active'">
+        <i class="ph-fill ph-cloud-arrow-up boo-fm-drop-ico"
+          :class="dragOver && 'boo-fm-drop-ico--active'"></i>
+        <p class="boo-fm-drop-txt">Перетащите файл или</p>
+        <label class="boo-fm-btn boo-fm-btn--outline" style="cursor:pointer;">
           Выберите файл
           <input type="file" style="display:none;" @change="uploadFile($event)" multiple>
         </label>
       </div>
     </div>
+
   </div>
 </div>
+
 <style>
-  .boo-file-manager__toggle { display:inline-flex; align-items:center; gap:.45rem; font-size:.85rem; padding:.58rem 1rem; border-radius:14px; font-weight:800; }
-  .boo-file-manager__panel { margin-top:.8rem; border:1px solid var(--stroke-1); border-radius:18px; background:var(--color-bg-surface); overflow:hidden; box-shadow:0 10px 28px rgba(15,23,42,.04); }
-  .boo-file-manager__task-section { padding:1rem 1rem .9rem; border-bottom:1px solid var(--stroke-1); background:linear-gradient(180deg, rgba(123,92,255,.04), transparent); }
-  .boo-file-manager__workspace-section { padding:1rem; }
-  .boo-file-manager__title { font-weight:900; font-size:.83rem; margin-bottom:.7rem; color:var(--text-primary); display:flex; align-items:center; gap:.42rem; letter-spacing:.01em; }
-  .boo-file-manager__list { display:flex; flex-direction:column; gap:.55rem; }
-  .boo-file-manager__item { display:flex; align-items:center; gap:.65rem; padding:.65rem .8rem; border-radius:14px; background:var(--surface-2); border:1px solid var(--stroke-1); }
-  .boo-file-manager__icon { font-size:1rem; color:var(--accent-1); }
-  .boo-file-manager__filename { flex:1; min-width:0; font-size:.88rem; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .boo-file-manager__actions { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; }
-  .boo-file-manager__actions--compact { gap:.15rem; margin-left:auto; }
-  .boo-file-manager__btn { padding:.45rem .82rem; font-size:.76rem; border-radius:12px; font-weight:800; display:inline-flex; align-items:center; gap:.35rem; }
-  .boo-file-manager__btn--primary { background:var(--accent-1); color:#fff; border:1px solid var(--accent-1); }
-  .boo-file-manager__btn--primary:hover { filter:brightness(.97); }
-  .boo-file-manager__btn--ghost { background:transparent; }
-  .boo-file-manager__icon-btn { background:none; border:none; cursor:pointer; padding:.35rem; color:var(--accent-1); border-radius:10px; display:inline-flex; align-items:center; justify-content:center; }
-  .boo-file-manager__icon-btn:hover { background:var(--surface-1); }
-  .boo-file-manager__icon-btn--muted { color:var(--text-muted); }
-  .boo-file-manager__icon-btn--danger { color:var(--danger, #ef4444); }
-  .boo-file-manager__upload { margin-top:1rem; border:2px dashed var(--stroke-1); border-radius:16px; padding:1.15rem; text-align:center; transition:border-color .15s, background .15s, transform .15s; background:linear-gradient(180deg, rgba(123,92,255,.03), transparent); }
-  .boo-file-manager__upload--drag { border-color:var(--accent-1); background:rgba(99,102,241,.08); transform:translateY(-1px); }
-  .boo-file-manager__upload-icon { font-size:1.25rem; color:var(--text-muted); }
-  .boo-file-manager__upload-text { margin:.38rem 0 .5rem; color:var(--text-muted); font-size:.84rem; }
-  .boo-file-manager__upload-choose { margin-top:.1rem; }
-  @media (max-width: 720px) {
-    .boo-file-manager__item--task { align-items:flex-start; flex-wrap:wrap; }
-    .boo-file-manager__actions { width:100%; }
-    .boo-file-manager__btn { flex:1; justify-content:center; }
-  }
+/* ─── Toggle ─── */
+.boo-fm-toggle{display:inline-flex;align-items:center;gap:.45rem;font-size:.85rem;padding:.58rem 1rem;border-radius:14px;font-weight:800;}
+.boo-fm-badge{background:var(--accent-1,#7B5CFF);color:#fff;border-radius:99px;padding:0 .4rem;font-size:.75rem;font-weight:700;margin-left:.15rem;line-height:1.5;}
+
+/* ─── Panel ─── */
+.boo-fm-panel{margin-top:.65rem;display:flex;flex-direction:column;gap:1rem;}
+.boo-fm-error{padding:.65rem 1rem;background:#fef2f2;color:#ef4444;font-size:.85rem;font-weight:600;border-radius:12px;border:1px solid #fecaca;}
+
+/* ─── Section ─── */
+.boo-fm-section{background:var(--surface-2,#f8fafc);border:1px solid var(--stroke-1,#e2e8f0);border-radius:16px;padding:1.25rem;box-shadow:inset 0 2px 10px rgba(0,0,0,.015);}
+.boo-fm-section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;}
+.boo-fm-section-title{font-size:.7rem;font-weight:800;color:var(--text-muted,#94a3b8);text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:.5rem;margin:0 0 1rem;line-height:1;}
+
+/* ─── List ─── */
+.boo-fm-list{display:flex;flex-direction:column;gap:.75rem;}
+
+/* ─── Card ─── */
+.boo-fm-card{background:var(--color-bg-surface,#fff);border:1px solid var(--stroke-1,#e2e8f0);border-radius:16px;padding:.75rem;display:flex;flex-direction:column;gap:1rem;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:border-color .15s;}
+.boo-fm-card:hover{border-color:#c4b5fd;}
+@media(min-width:640px){.boo-fm-card{flex-direction:row;align-items:center;}}
+
+/* ─── Card info (icon + name) ─── */
+.boo-fm-card-info{display:flex;align-items:center;gap:.75rem;min-width:0;flex:1;}
+
+/* ─── Icon ─── */
+.boo-fm-icon{width:2.5rem;height:2.5rem;border-radius:.75rem;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,.04);font-size:1.25rem;flex-shrink:0;}
+.boo-fm-icon.fmi-blue{background:#eff6ff;color:#3b82f6;border:1px solid #dbeafe;}
+.boo-fm-icon.fmi-green{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;}
+.boo-fm-icon.fmi-amber{background:#fffbeb;color:#d97706;border:1px solid #fde68a;}
+.boo-fm-icon.fmi-purple{background:#faf5ff;color:#7B5CFF;border:1px solid #e9d5ff;}
+.boo-fm-icon.fmi-red{background:#fef2f2;color:#ef4444;border:1px solid #fecaca;}
+.boo-fm-icon.fmi-cyan{background:#ecfeff;color:#06b6d4;border:1px solid #a5f3fc;}
+.boo-fm-icon.fmi-orange{background:#fff7ed;color:#ea580c;border:1px solid #fed7aa;}
+.boo-fm-icon.fmi-gray{background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0;}
+
+/* ─── Name & meta ─── */
+.boo-fm-name{font-weight:700;font-size:.875rem;color:var(--text-primary,#1e293b);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;}
+.boo-fm-card:hover .boo-fm-name{color:var(--accent-1,#7B5CFF);}
+.boo-fm-meta{font-size:10px;font-weight:500;color:var(--text-muted,#94a3b8);text-transform:uppercase;letter-spacing:.05em;margin-top:1px;}
+
+/* ─── Button row (task file actions) ─── */
+.boo-fm-card-btns{display:flex;align-items:center;gap:.5rem;flex-shrink:0;}
+.boo-fm-card-btns .boo-fm-btn{flex:1;}
+@media(min-width:640px){.boo-fm-card-btns{width:auto;}.boo-fm-card-btns .boo-fm-btn{flex:none;}}
+
+/* ─── Buttons ─── */
+.boo-fm-btn{padding:.5rem 1rem;border-radius:.75rem;font-weight:700;font-size:.75rem;display:inline-flex;align-items:center;justify-content:center;gap:.375rem;cursor:pointer;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.04);white-space:nowrap;line-height:1.2;}
+.boo-fm-btn--outline{background:var(--color-bg-surface,#fff);color:#475569;border:1px solid var(--stroke-1,#e2e8f0);}
+.boo-fm-btn--outline:hover{color:var(--accent-1,#7B5CFF);border-color:#c4b5fd;background:#faf5ff;}
+.boo-fm-btn--accent{background:#f5f3ff;color:var(--accent-1,#7B5CFF);border:1px solid #ddd6fe;}
+.boo-fm-btn--accent:hover{background:#ede9fe;}
+
+/* ─── Icon buttons (workspace actions) ─── */
+.boo-fm-card-icons{display:flex;align-items:center;justify-content:flex-end;gap:.125rem;flex-shrink:0;}
+.boo-fm-ibtn{width:2rem;height:2rem;display:inline-flex;align-items:center;justify-content:center;border-radius:.5rem;color:var(--text-muted,#94a3b8);background:none;border:none;cursor:pointer;transition:all .15s;padding:0;text-decoration:none;font-size:.9rem;}
+.boo-fm-ibtn:hover{color:var(--accent-1,#7B5CFF);background:#f1f5f9;}
+.boo-fm-ibtn--danger:hover{color:#ef4444;background:#fef2f2;}
+
+/* ─── Add button ─── */
+.boo-fm-add-btn{color:var(--accent-1,#7B5CFF);background:none;border:none;cursor:pointer;font-size:.875rem;font-weight:700;transition:color .15s;padding:.25rem;display:flex;align-items:center;}
+.boo-fm-add-btn:hover{color:#6A4CE5;}
+
+/* ─── Create dialog ─── */
+.boo-fm-create{display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;}
+.boo-fm-create-input{flex:1;min-width:120px;font-size:.85rem;padding:.4rem .75rem;border:1px solid var(--stroke-1,#e2e8f0);border-radius:.75rem;outline:none;background:var(--color-bg-surface,#fff);color:var(--text-primary,#1e293b);font-weight:500;}
+.boo-fm-create-input:focus{border-color:var(--accent-1,#7B5CFF);box-shadow:0 0 0 3px rgba(123,92,255,.1);}
+
+/* ─── Rename ─── */
+.boo-fm-rename-input{flex:1;font-size:.85rem;padding:.2rem .5rem;border:1px solid var(--accent-1,#7B5CFF);border-radius:8px;outline:none;background:var(--color-bg-surface,#fff);color:var(--text-primary,#1e293b);font-weight:500;width:100%;}
+
+/* ─── Empty ─── */
+.boo-fm-empty{text-align:center;padding:1rem;color:var(--text-muted,#94a3b8);font-size:.85rem;font-weight:500;}
+
+/* ─── Drop zone ─── */
+.boo-fm-drop{border:2px dashed #cbd5e1;border-radius:16px;background:rgba(248,250,252,.5);padding:1.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;margin-top:1rem;transition:all .15s;}
+.boo-fm-drop:hover{background:rgba(241,245,249,.5);}
+.boo-fm-drop--active{border-color:var(--accent-1,#7B5CFF) !important;background:rgba(123,92,255,.04) !important;}
+.boo-fm-drop-ico{font-size:1.75rem;color:#cbd5e1;margin-bottom:.5rem;transition:color .15s;}
+.boo-fm-drop-ico--active{color:var(--accent-1,#7B5CFF) !important;}
+.boo-fm-drop-txt{font-size:.875rem;font-weight:500;color:#64748b;margin-bottom:.75rem;}
+
+/* ─── Responsive ─── */
+@media(max-width:639px){.boo-fm-card-btns{width:100%;}.boo-fm-card-icons{width:100%;}}
 </style>

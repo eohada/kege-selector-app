@@ -37,6 +37,8 @@ document.addEventListener('alpine:init', () => {
     renamingId: null,
     renameValue: '',
     error: '',
+    showCreateDialog: false,
+    newFileName: '',
 
     async init() {
       this.taskFiles = this.normalizeTaskFiles(this.taskFiles);
@@ -60,6 +62,8 @@ document.addEventListener('alpine:init', () => {
       return [];
     },
 
+    /* ── Data loading ── */
+
     async loadFiles() {
       this.loading = true;
       this.error = '';
@@ -74,6 +78,8 @@ document.addEventListener('alpine:init', () => {
       }
       this.loading = false;
     },
+
+    /* ── File operations ── */
 
     async copyFromTask(fileIndex) {
       this.error = '';
@@ -129,41 +135,6 @@ document.addEventListener('alpine:init', () => {
       if (e.target && e.target.value) e.target.value = '';
     },
 
-    startRename(file) {
-      this.renamingId = file.id;
-      this.renameValue = file.current_filename;
-    },
-
-    async submitRename(fileId) {
-      if (!this.renameValue.trim()) return;
-      this.error = '';
-      const data = await api(`/workspace/${fileId}/rename`, {
-        method: 'POST',
-        json: { new_name: this.renameValue.trim() },
-      });
-      if (data.success) {
-        const f = this.workspaceFiles.find(x => x.id === fileId);
-        if (f) f.current_filename = data.file.current_filename;
-      } else {
-        this.error = data.error || 'Ошибка переименования';
-      }
-      this.renamingId = null;
-    },
-
-    async deleteFile(fileId) {
-      if (!confirm('Удалить файл из хранилища?')) return;
-      this.error = '';
-      const data = await api(`/workspace/${fileId}`, { method: 'DELETE' });
-      if (data.success) {
-        this.workspaceFiles = this.workspaceFiles.filter(x => x.id !== fileId);
-      } else {
-        this.error = data.error || 'Ошибка удаления';
-      }
-    },
-
-    showCreateDialog: false,
-    newFileName: '',
-
     async createFile() {
       const name = (this.newFileName || '').trim();
       if (!name) return;
@@ -185,6 +156,44 @@ document.addEventListener('alpine:init', () => {
         this.error = data.error || 'Ошибка создания файла';
       }
     },
+
+    /* ── Rename ── */
+
+    startRename(file) {
+      this.renamingId = file.id;
+      this.renameValue = file.current_filename;
+    },
+
+    async submitRename(fileId) {
+      if (!this.renameValue.trim()) return;
+      this.error = '';
+      const data = await api(`/workspace/${fileId}/rename`, {
+        method: 'POST',
+        json: { new_name: this.renameValue.trim() },
+      });
+      if (data.success) {
+        const f = this.workspaceFiles.find(x => x.id === fileId);
+        if (f) f.current_filename = data.file.current_filename;
+      } else {
+        this.error = data.error || 'Ошибка переименования';
+      }
+      this.renamingId = null;
+    },
+
+    /* ── Delete ── */
+
+    async deleteFile(fileId) {
+      if (!confirm('Удалить файл из хранилища?')) return;
+      this.error = '';
+      const data = await api(`/workspace/${fileId}`, { method: 'DELETE' });
+      if (data.success) {
+        this.workspaceFiles = this.workspaceFiles.filter(x => x.id !== fileId);
+      } else {
+        this.error = data.error || 'Ошибка удаления';
+      }
+    },
+
+    /* ── Viewer integration ── */
 
     viewTaskFile(fileIndex) {
       if (window.BooFileViewer) {
@@ -210,15 +219,61 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    fileIcon(filename) {
+    /* ── Visual helpers ── */
+
+    fileIconColor(filename) {
+      const ext = (filename || '').split('.').pop().toLowerCase();
+      const map = {
+        txt: 'fmi-blue', log: 'fmi-blue', ini: 'fmi-blue', cfg: 'fmi-blue',
+        dat: 'fmi-blue', in: 'fmi-blue', out: 'fmi-blue', ans: 'fmi-blue',
+        md: 'fmi-blue', doc: 'fmi-blue', docx: 'fmi-blue',
+        py: 'fmi-amber', js: 'fmi-amber', json: 'fmi-amber',
+        cpp: 'fmi-cyan', c: 'fmi-cyan', h: 'fmi-cyan',
+        java: 'fmi-orange', xml: 'fmi-orange', html: 'fmi-orange', css: 'fmi-cyan',
+        xlsx: 'fmi-green', xls: 'fmi-green', xlsm: 'fmi-green', ods: 'fmi-green', csv: 'fmi-green',
+        pdf: 'fmi-red',
+      };
+      return map[ext] || 'fmi-gray';
+    },
+
+    fileIconFill(filename) {
       const ext = (filename || '').split('.').pop().toLowerCase();
       const map = {
         py: 'ph-file-py', cpp: 'ph-file-cpp', c: 'ph-file-c', java: 'ph-file-code',
         js: 'ph-file-js', json: 'ph-file-code', html: 'ph-file-html', css: 'ph-file-css',
         xlsx: 'ph-file-xls', xls: 'ph-file-xls', xlsm: 'ph-file-xls', ods: 'ph-file-xls',
         csv: 'ph-file-csv', txt: 'ph-file-text', md: 'ph-file-text',
+        pdf: 'ph-file-pdf', doc: 'ph-file-doc', docx: 'ph-file-doc',
+        log: 'ph-file-text', ini: 'ph-file-text', cfg: 'ph-file-text',
+        dat: 'ph-file', in: 'ph-file', out: 'ph-file', ans: 'ph-file',
       };
-      return map[ext] || 'ph-file';
+      return 'ph-fill ' + (map[ext] || 'ph-file');
+    },
+
+    fileTypeLabel(filename, sizeBytes) {
+      const ext = (filename || '').split('.').pop().toLowerCase();
+      const types = {
+        txt: 'Документ TXT', csv: 'CSV', tsv: 'TSV',
+        py: 'Python', cpp: 'C++', c: 'C', h: 'Header',
+        java: 'Java', js: 'JavaScript', json: 'JSON',
+        xml: 'XML', html: 'HTML', css: 'CSS', md: 'Markdown',
+        xlsx: 'Таблица', xls: 'Таблица', xlsm: 'Таблица', ods: 'Таблица',
+        pdf: 'PDF', doc: 'Word', docx: 'Word',
+        log: 'Лог', ini: 'INI', cfg: 'Config',
+        dat: 'DAT', in: 'IN', out: 'OUT', ans: 'ANS',
+      };
+      let label = types[ext] || ext.toUpperCase();
+      if (sizeBytes && sizeBytes > 0) {
+        label += ' \u2022 ' + this.formatSize(sizeBytes);
+      }
+      return label;
+    },
+
+    formatSize(bytes) {
+      if (!bytes || bytes <= 0) return '';
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     },
 
     isTextFile(filename) {
