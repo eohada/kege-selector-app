@@ -343,6 +343,88 @@
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
+        .grade-comments {
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            padding: 1.5rem 1.25rem;
+            border-radius: 24px;
+            border: 1px solid var(--color-stroke, #e2e8f0);
+            background: var(--color-bg-surface, #fff);
+            box-shadow: 0 4px 20px -8px rgba(15, 23, 42, 0.08);
+        }
+        .grade-comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            max-height: 340px;
+            overflow-y: auto;
+            padding-right: 0.35rem;
+            margin-bottom: 1rem;
+        }
+        .grade-comment-item {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+        .grade-comment-item.mine {
+            justify-content: flex-end;
+        }
+        .grade-comment-bubble {
+            max-width: min(78%, 780px);
+            background: var(--color-bg-surface-alt, #f8fafc);
+            border: 1px solid var(--color-stroke, #e2e8f0);
+            border-radius: 14px;
+            padding: 0.65rem 0.8rem;
+        }
+        .grade-comment-item.mine .grade-comment-bubble {
+            background: rgba(123, 92, 255, 0.08);
+            border-color: rgba(123, 92, 255, 0.24);
+        }
+        .grade-comment-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.35rem;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+        .grade-comment-text {
+            white-space: pre-wrap;
+            line-height: 1.45;
+            color: var(--color-text-primary, #0f172a);
+            font-size: 0.92rem;
+        }
+        .scroll-to-top-btn {
+            position: fixed;
+            right: clamp(12px, 2.5vw, 28px);
+            bottom: 100px;
+            width: 46px;
+            height: 46px;
+            border: 1px solid var(--color-stroke, #e2e8f0);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.92);
+            color: #7b5cff;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: opacity .2s ease, transform .2s ease;
+            z-index: 72;
+        }
+        .scroll-to-top-btn.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        [data-theme="dark"] .scroll-to-top-btn {
+            background: rgba(30, 41, 59, 0.94);
+            border-color: rgba(148, 163, 184, 0.25);
+            color: #c4b5fd;
+        }
     </style>
     <script>
         (function(){
@@ -658,6 +740,38 @@
                 </div>
             </div>
         </form>
+
+        <section class="grade-comments">
+            <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
+                <h3 class="text-lg font-black text-primary dark:text-white m-0">Чат по работе</h3>
+                <span class="text-xs font-bold text-muted">Ученик и преподаватель видят эти сообщения</span>
+            </div>
+            <div id="grade-comments-list" class="grade-comments-list">
+                {% if submission.comments %}
+                    {% for comment in submission.comments %}
+                    <div class="grade-comment-item{% if comment.author and current_user and comment.author.id == current_user.id %} mine{% endif %}">
+                        <div class="grade-comment-bubble">
+                            <div class="grade-comment-meta">
+                                <strong>{{ comment.author.username if comment.author else 'Пользователь' }}</strong>
+                                <span>{{ comment.created_at.strftime('%d.%m.%Y %H:%M') if comment.created_at else '' }}</span>
+                            </div>
+                            <div class="grade-comment-text">{{ comment.text }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div id="grade-no-comments" class="text-sm text-muted">Пока нет сообщений. Напишите ученику первым.</div>
+                {% endif %}
+            </div>
+            <form id="grade-comment-form" class="flex gap-3">
+                <input type="text" id="grade-comment-input" placeholder="Написать сообщение ученику..." required class="flex-1 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 font-medium text-secondary dark:text-white/90 text-sm focus:outline-none focus:border-boo-primary dark:focus:border-purple-400/50 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/20 transition-all placeholder:text-muted dark:placeholder:text-dark-muted">
+                <button type="submit" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-md text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 shrink-0">Отправить</button>
+            </form>
+        </section>
+
+        <button type="button" id="scroll-to-top-btn" class="scroll-to-top-btn" aria-label="Наверх">
+            <i class="ph-bold ph-arrow-up"></i>
+        </button>
         </div>
     </main>
     </div>
@@ -728,6 +842,8 @@
                 var buttons = document.querySelectorAll('#taskNavGrade .task-nav-btn');
                 var cards = document.querySelectorAll('.task-card-grade[id^="task-"]');
                 if (!buttons.length || !cards.length) return;
+                var topBar = document.querySelector('.app-topbar');
+                var topOffset = (topBar ? topBar.offsetHeight : 0) + 92;
                 function setActiveByIndex(idx) {
                     buttons.forEach(function(btn) {
                         var href = btn.getAttribute('href') || '';
@@ -745,6 +861,59 @@
                     setActiveByIndex(parseInt(mm[1], 10));
                 }, { root: null, rootMargin: '-20% 0px -45% 0px', threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] });
                 cards.forEach(function(c) { io.observe(c); });
+                buttons.forEach(function(btn) {
+                    btn.addEventListener('click', function(e) {
+                        var href = btn.getAttribute('href') || '';
+                        var m = href.match(/#task-(\d+)/);
+                        if (!m) return;
+                        var target = document.getElementById('task-' + m[1]);
+                        if (!target) return;
+                        e.preventDefault();
+                        var targetY = window.pageYOffset + target.getBoundingClientRect().top - topOffset;
+                        window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+                    });
+                });
+            })();
+
+            (function initScrollToTop() {
+                var btn = document.getElementById('scroll-to-top-btn');
+                if (!btn) return;
+                function syncBtn() {
+                    btn.classList.toggle('is-visible', window.scrollY > 560);
+                }
+                window.addEventListener('scroll', syncBtn, { passive: true });
+                syncBtn();
+                btn.addEventListener('click', function() {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            })();
+
+            (function initGradeCommentsChat() {
+                var form = document.getElementById('grade-comment-form');
+                if (!form) return;
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    var input = document.getElementById('grade-comment-input');
+                    var text = (input && input.value ? input.value : '').trim();
+                    if (!text) return;
+                    fetch('{{ url_for("assignments.submission_comment_create", submission_id=submission.submission_id) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({ text: text })
+                    })
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (!data.success) throw new Error(data.error || 'Не удалось отправить сообщение');
+                        if (typeof showToast === 'function') showToast('Сообщение отправлено', 'success');
+                        window.location.reload();
+                    })
+                    .catch(function(err) {
+                        if (typeof showToast === 'function') showToast('Ошибка: ' + (err && err.message ? err.message : 'сеть'), 'error');
+                    });
+                });
             })();
         });
         
