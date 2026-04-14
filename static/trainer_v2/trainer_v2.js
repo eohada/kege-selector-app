@@ -995,7 +995,7 @@
             viewBtn.innerHTML = '<i class="ph-bold ph-eye"></i>';
             viewBtn.title = 'Просмотреть';
             viewBtn.addEventListener('click', () => {
-              window.BooFileViewer.openTaskFile(task.task_id, fileIdx);
+              window.BooFileViewer.openTaskFile(task.task_id, fileIdx, f);
             });
             row.appendChild(viewBtn);
           }

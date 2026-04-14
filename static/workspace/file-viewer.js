@@ -17,6 +17,11 @@
 
   let modal = null;
   let cmInstance = null;
+  const inlinePreviewExtensions = new Set([
+    'txt', 'csv', 'tsv', 'py', 'cpp', 'c', 'h', 'java', 'js',
+    'json', 'xml', 'html', 'css', 'md', 'log', 'ini', 'cfg',
+    'dat', 'in', 'out', 'ans', 'xls', 'xlsx', 'xlsm',
+  ]);
 
   function getModal() {
     if (modal) return modal;
@@ -167,6 +172,52 @@
     return d.innerHTML;
   }
 
+  function fileNameFromTaskMeta(fileMeta) {
+    if (typeof fileMeta === 'string') {
+      const raw = fileMeta.split('?')[0];
+      return raw.split('/').pop() || 'file';
+    }
+    if (fileMeta && typeof fileMeta === 'object') {
+      const named = fileMeta.name || fileMeta.filename;
+      if (named) return String(named);
+      const raw = String(fileMeta.path || fileMeta.url || 'file').split('?')[0];
+      return raw.split('/').pop() || 'file';
+    }
+    return 'file';
+  }
+
+  function extOf(name) {
+    const idx = String(name || '').lastIndexOf('.');
+    return idx >= 0 ? String(name).slice(idx + 1).toLowerCase() : '';
+  }
+
+  function isInlinePreviewable(fileMeta) {
+    const filename = fileNameFromTaskMeta(fileMeta);
+    return inlinePreviewExtensions.has(extOf(filename));
+  }
+
+  function buildTaskDownloadUrl(taskId, fileMeta) {
+    if (!fileMeta) return '';
+    if (typeof fileMeta === 'string') {
+      const raw = fileMeta.trim();
+      const filename = fileNameFromTaskMeta(raw);
+      if (/^https?:\/\//i.test(raw)) return raw;
+      if (raw.startsWith('/attachments/task/')) return raw;
+      if (raw.startsWith('/')) return raw;
+      return `/attachments/task/${encodeURIComponent(taskId)}/${encodeURIComponent(filename)}`;
+    }
+
+    const path = String(fileMeta.path || '').trim();
+    const url = String(fileMeta.url || '').trim();
+    const filename = fileNameFromTaskMeta(fileMeta);
+
+    if (url) return url;
+    if (path.startsWith('/attachments/task/')) return path;
+    if (path.startsWith('/')) return path;
+    if (path) return `/attachments/task/${encodeURIComponent(taskId)}/${encodeURIComponent(filename)}`;
+    return '';
+  }
+
   async function fetchAndRender(url) {
     show();
     setLoading(true);
@@ -208,7 +259,14 @@
   }
 
   window.BooFileViewer = {
-    openTaskFile(taskId, fileIndex) {
+    openTaskFile(taskId, fileIndex, fileMeta) {
+      if (fileMeta && !isInlinePreviewable(fileMeta)) {
+        const directUrl = buildTaskDownloadUrl(taskId, fileMeta);
+        if (directUrl) {
+          window.open(directUrl, '_blank', 'noopener');
+          return;
+        }
+      }
       fetchAndRender(`/workspace/task-file-content?task_id=${taskId}&file_index=${fileIndex}`);
     },
 
