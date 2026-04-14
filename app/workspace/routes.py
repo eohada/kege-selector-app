@@ -169,18 +169,8 @@ def _normalize_task_file_url(raw_url: str) -> str:
     return url
 
 
-def _read_task_attachment_from_local_path(task_id: int, file_path: str, file_name: str | None) -> bytes | None:
-    """
-    Read task attachment bytes from local storage.
-    Supports:
-      - '/attachments/task/<task_id>/<filename>' paths
-      - direct relative paths under TASK_ATTACHMENTS_ROOT
-      - fallback '<TASK_ATTACHMENTS_ROOT>/<task_id>/<filename>'
-    """
-    normalized_path = (file_path or '').strip()
-    if not normalized_path:
-        return None
-
+def _attachment_root_dirs() -> list[str]:
+    """Collect existing task-attachment root directories."""
     root_candidates: list[str] = []
     custom_root = current_app.config.get('TASK_ATTACHMENTS_ROOT')
     if custom_root:
@@ -190,26 +180,44 @@ def _read_task_attachment_from_local_path(task_id: int, file_path: str, file_nam
     if storage.local_upload_dir:
         root_candidates.append(os.path.join(storage.local_upload_dir, 'task_attachments'))
 
-    attachment_roots = []
+    seen: set[str] = set()
+    result: list[str] = []
     for root in root_candidates:
-        if root and root not in attachment_roots and os.path.isdir(root):
-            attachment_roots.append(root)
+        if root and root not in seen and os.path.isdir(root):
+            seen.add(root)
+            result.append(root)
+    return result
+
+
+def _read_task_attachment_from_local_path(task_id: int, file_path: str, file_name: str | None) -> bytes | None:
+    """
+    Read task attachment bytes from local storage.
+    Supports:
+      - '/attachments/task/<task_id>/<filename>' paths
+      - direct relative paths under TASK_ATTACHMENTS_ROOT
+      - fallback '<TASK_ATTACHMENTS_ROOT>/<task_id>/<filename>'
+      - file_name-only lookup when file_path is empty
+    """
+    attachment_roots = _attachment_root_dirs()
     if not attachment_roots:
         return None
 
-    path_only = normalized_path.split('?', 1)[0].strip()
+    normalized_path = (file_path or '').strip()
+
     for att_root in attachment_roots:
         candidates: list[str] = []
-        if path_only.startswith('/attachments/task/'):
-            # /attachments/task/<task_id>/<filename> -> <root>/<task_id>/<filename>
-            parts = [p for p in path_only.split('/') if p]
-            if len(parts) >= 4:
-                rel_parts = parts[2:]  # drop 'attachments/task'
-                candidates.append(os.path.join(att_root, *rel_parts))
-        elif path_only.startswith('/'):
-            candidates.append(os.path.join(att_root, path_only.lstrip('/')))
-        else:
-            candidates.append(os.path.join(att_root, path_only.replace('/', os.sep)))
+
+        if normalized_path:
+            path_only = normalized_path.split('?', 1)[0].strip()
+            if path_only.startswith('/attachments/task/'):
+                parts = [p for p in path_only.split('/') if p]
+                if len(parts) >= 4:
+                    rel_parts = parts[2:]
+                    candidates.append(os.path.join(att_root, *rel_parts))
+            elif path_only.startswith('/'):
+                candidates.append(os.path.join(att_root, path_only.lstrip('/')))
+            else:
+                candidates.append(os.path.join(att_root, path_only.replace('/', os.sep)))
 
         if file_name:
             candidates.append(os.path.join(att_root, str(task_id), file_name))
@@ -225,18 +233,19 @@ def _read_task_attachment_from_local_path(task_id: int, file_path: str, file_nam
 
 
 def _read_task_attachment_bytes(task_id: int, file_path: str | None, file_url: str | None, file_name: str | None) -> bytes | None:
-    """Read attachment bytes from local storage first, then from HTTP URL."""
-    if file_path:
-        local_bytes = _read_task_attachment_from_local_path(task_id, file_path, file_name)
-        if local_bytes is not None:
-            return local_bytes
+    """Read attachment bytes: local disk first (even without file_path), then HTTP URL."""
+    local_bytes = _read_task_attachment_from_local_path(task_id, file_path or '', file_name)
+    if local_bytes is not None:
+        logger.info("task attachment read from local disk: task_id=%s name=%s", task_id, file_name)
+        return local_bytes
 
     if file_url:
         url = _normalize_task_file_url(file_url)
         if not url:
             return None
+        logger.info("task attachment fetching from URL: task_id=%s url=%s", task_id, url)
         try:
-            resp = http_requests.get(url, timeout=15, stream=False)
+            resp = http_requests.get(url, timeout=(5, 20))
             resp.raise_for_status()
             return resp.content
         except Exception as e:
@@ -569,11 +578,14 @@ def task_file_content():
     """Preview a task's attached file directly without copying it to workspace."""
     task_id = request.args.get('task_id', type=int)
     file_index = request.args.get('file_index', type=int)
+    logger.info("[task-file-content] START task_id=%s file_index=%s user=%s", task_id, file_index, current_user.id)
+
     if task_id is None or file_index is None:
         return jsonify({'success': False, 'error': 'task_id and file_index required'}), 400
 
     task = Tasks.query.filter_by(task_id=task_id).first()
     if not task or not task.attached_files:
+        logger.warning("[task-file-content] task not found or no attachments: task_id=%s", task_id)
         return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
 
     try:
@@ -601,6 +613,8 @@ def task_file_content():
         file_name = raw.split('/')[-1].split('?')[0] or 'file'
 
     ext = _ext(file_name)
+    logger.info("[task-file-content] resolved file_name=%s ext=%s path=%s url=%s", file_name, ext, file_path, file_url)
+
     download_url = _build_task_download_url(
         task_id=task_id,
         file_path=file_path,
@@ -616,9 +630,19 @@ def task_file_content():
             'download_url': download_url,
         })
 
+    logger.info("[task-file-content] reading attachment bytes ...")
     file_bytes = _read_task_attachment_bytes(task_id=task_id, file_path=file_path, file_url=file_url, file_name=file_name)
     if file_bytes is None:
-        return jsonify({'success': False, 'error': 'Не удалось скачать файл'}), 502
+        logger.warning("[task-file-content] could not read file bytes for task_id=%s name=%s", task_id, file_name)
+        return jsonify({
+            'success': True,
+            'type': 'unsupported',
+            'filename': file_name,
+            'error': 'Файл не найден ни локально, ни по URL. Попробуйте скачать.',
+            'download_url': download_url,
+        })
+
+    logger.info("[task-file-content] got %d bytes, processing as %s", len(file_bytes), ext)
 
     if ext in EXCEL_EXTENSIONS:
         try:
@@ -628,7 +652,7 @@ def task_file_content():
                 'filename': file_name, 'sheets': sheets,
             })
         except Exception as e:
-            logger.error(f"Excel parse error: {e}", exc_info=True)
+            logger.error("Excel parse error: %s", e, exc_info=True)
             return jsonify({'success': False, 'error': 'Не удалось прочитать Excel'}), 500
 
     if not _is_text_previewable(file_name):

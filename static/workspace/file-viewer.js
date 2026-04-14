@@ -2,7 +2,7 @@
  * BooFileViewer — модальный просмотрщик файлов (текстовые через CodeMirror, Excel через таблицу).
  *
  * Глобальный API:
- *   window.BooFileViewer.openTaskFile(taskId, fileIndex)
+ *   window.BooFileViewer.openTaskFile(taskId, fileIndex, fileMeta)
  *   window.BooFileViewer.openWorkspaceFile(fileId, filename)
  *   window.BooFileViewer.openInEditor(fileId)
  *   window.BooFileViewer.close()
@@ -17,15 +17,20 @@
 
   let modal = null;
   let cmInstance = null;
-  const textPreviewExtensions = new Set([
+
+  const TEXT_EXTENSIONS = new Set([
     'txt', 'csv', 'tsv', 'py', 'cpp', 'c', 'h', 'java', 'js',
     'json', 'xml', 'html', 'css', 'md', 'log', 'ini', 'cfg',
     'dat', 'in', 'out', 'ans',
   ]);
-  const inlinePreviewExtensions = new Set([
-    ...textPreviewExtensions,
-    'xls', 'xlsx', 'xlsm',
-  ]);
+
+  const CODEMIRROR_MODES = {
+    py: 'python', cpp: 'text/x-c++src', c: 'text/x-csrc', h: 'text/x-csrc',
+    java: 'text/x-java', js: 'javascript', json: 'application/json',
+    xml: 'xml', html: 'htmlmixed', css: 'css', md: 'markdown',
+  };
+
+  /* ---- DOM helpers ---- */
 
   function getModal() {
     if (modal) return modal;
@@ -75,43 +80,60 @@
     const m = getModal();
     if (!m) return;
     const content = m.querySelector('.fv-content');
-    if (content) content.innerHTML = `<div class="fv-error">${msg}</div>`;
+    if (content) content.innerHTML = '<div class="fv-error">' + escHtml(msg) + '</div>';
   }
 
-  function renderUnsupported(data) {
-    const m = getModal();
-    if (!m) return;
-    const content = m.querySelector('.fv-content');
-    const downloadUrl = data.download_url ? escHtml(data.download_url) : '';
-    const message = escHtml(data.error || 'Предпросмотр для этого файла не поддерживается.');
-    content.innerHTML = `
-      <div style="padding:2rem; max-width:560px; margin:0 auto; text-align:center;">
-        <div style="font-size:3rem; line-height:1; color:var(--text-muted, #94a3b8); margin-bottom:1rem;">
-          <i class="ph-bold ph-file-arrow-down"></i>
-        </div>
-        <div style="font-size:1rem; font-weight:700; margin-bottom:0.5rem;">Предпросмотр недоступен</div>
-        <div style="color:var(--text-muted, #64748b); margin-bottom:1.25rem;">${message}</div>
-        ${downloadUrl ? `
-          <a href="${downloadUrl}" target="_blank" rel="noopener noreferrer"
-             style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.75rem 1rem; border-radius:12px; text-decoration:none; background:var(--accent-1, #6366f1); color:#fff; font-weight:600;">
-            <i class="ph-bold ph-download-simple"></i>
-            <span>Открыть или скачать файл</span>
-          </a>
-        ` : ''}
-      </div>
-    `;
+  function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
   }
+
+  /* ---- File metadata helpers ---- */
+
+  function fileNameFromMeta(fileMeta) {
+    if (typeof fileMeta === 'string') {
+      return fileMeta.split('?')[0].split('/').pop() || 'file';
+    }
+    if (fileMeta && typeof fileMeta === 'object') {
+      var named = fileMeta.name || fileMeta.filename;
+      if (named) return String(named);
+      return String(fileMeta.path || fileMeta.url || 'file').split('?')[0].split('/').pop() || 'file';
+    }
+    return 'file';
+  }
+
+  function extOf(name) {
+    var idx = String(name || '').lastIndexOf('.');
+    return idx >= 0 ? String(name).slice(idx + 1).toLowerCase() : '';
+  }
+
+  /**
+   * Build a URL that the browser can fetch to get raw bytes of a task file.
+   * Uses the existing /attachments/task/ route which handles local + proxy fallback.
+   */
+  function taskAttachmentUrl(taskId, fileMeta) {
+    var filename = fileNameFromMeta(fileMeta);
+    if (!filename || filename === 'file') {
+      if (typeof fileMeta === 'string') {
+        filename = fileMeta.split('?')[0].split('/').pop() || 'file';
+      }
+    }
+    return '/attachments/task/' + encodeURIComponent(taskId) + '/' + encodeURIComponent(filename);
+  }
+
+  /* ---- Renderers ---- */
 
   function renderText(data) {
-    const m = getModal();
+    var m = getModal();
     if (!m) return;
-    const content = m.querySelector('.fv-content');
+    var content = m.querySelector('.fv-content');
     content.innerHTML = '<textarea class="fv-cm-textarea"></textarea>';
-    const ta = content.querySelector('.fv-cm-textarea');
+    var ta = content.querySelector('.fv-cm-textarea');
     ta.value = data.content || '';
 
     if (typeof CodeMirror !== 'undefined') {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       cmInstance = CodeMirror.fromTextArea(ta, {
         mode: data.mode || 'text/plain',
         theme: isDark ? 'dracula' : 'default',
@@ -124,32 +146,32 @@
   }
 
   function renderExcel(data) {
-    const m = getModal();
+    var m = getModal();
     if (!m) return;
-    const content = m.querySelector('.fv-content');
-    const sheets = data.sheets || [];
+    var content = m.querySelector('.fv-content');
+    var sheets = data.sheets || [];
     if (!sheets.length) {
       content.innerHTML = '<div class="fv-error">Файл пуст</div>';
       return;
     }
 
-    let html = '';
+    var html = '';
     if (sheets.length > 1) {
       html += '<div class="fv-sheet-tabs">';
-      sheets.forEach((s, i) => {
-        html += `<button class="fv-sheet-tab ${i === 0 ? 'active' : ''}" data-sheet="${i}">${escHtml(s.name)}</button>`;
+      sheets.forEach(function (s, i) {
+        html += '<button class="fv-sheet-tab ' + (i === 0 ? 'active' : '') + '" data-sheet="' + i + '">' + escHtml(s.name) + '</button>';
       });
       html += '</div>';
     }
 
-    sheets.forEach((s, i) => {
-      html += `<div class="fv-sheet-content" data-sheet="${i}" style="${i > 0 ? 'display:none' : ''}">`;
+    sheets.forEach(function (s, i) {
+      html += '<div class="fv-sheet-content" data-sheet="' + i + '" style="' + (i > 0 ? 'display:none' : '') + '">';
       html += '<div class="fv-table-wrap"><table class="fv-excel-table">';
-      (s.rows || []).forEach((row, ri) => {
-        const tag = ri === 0 ? 'th' : 'td';
+      (s.rows || []).forEach(function (row, ri) {
+        var tag = ri === 0 ? 'th' : 'td';
         html += '<tr>';
-        row.forEach(cell => {
-          html += `<${tag}>${escHtml(cell)}</${tag}>`;
+        row.forEach(function (cell) {
+          html += '<' + tag + '>' + escHtml(cell) + '</' + tag + '>';
         });
         html += '</tr>';
       });
@@ -158,140 +180,56 @@
 
     content.innerHTML = html;
 
-    content.querySelectorAll('.fv-sheet-tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = btn.dataset.sheet;
-        content.querySelectorAll('.fv-sheet-tab').forEach(b => b.classList.remove('active'));
+    content.querySelectorAll('.fv-sheet-tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var idx = btn.dataset.sheet;
+        content.querySelectorAll('.fv-sheet-tab').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
-        content.querySelectorAll('.fv-sheet-content').forEach(c => {
+        content.querySelectorAll('.fv-sheet-content').forEach(function (c) {
           c.style.display = c.dataset.sheet === idx ? '' : 'none';
         });
       });
     });
   }
 
-  function escHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
+  function renderUnsupported(data) {
+    var m = getModal();
+    if (!m) return;
+    var content = m.querySelector('.fv-content');
+    var downloadUrl = data.download_url ? escHtml(data.download_url) : '';
+    var message = escHtml(data.error || 'Предпросмотр для этого файла не поддерживается.');
+    content.innerHTML =
+      '<div style="padding:2rem; max-width:560px; margin:0 auto; text-align:center;">' +
+        '<div style="font-size:3rem; line-height:1; color:var(--text-muted, #94a3b8); margin-bottom:1rem;">' +
+          '<i class="ph-bold ph-file-arrow-down"></i>' +
+        '</div>' +
+        '<div style="font-size:1rem; font-weight:700; margin-bottom:0.5rem;">Предпросмотр недоступен</div>' +
+        '<div style="color:var(--text-muted, #64748b); margin-bottom:1.25rem;">' + message + '</div>' +
+        (downloadUrl
+          ? '<a href="' + downloadUrl + '" target="_blank" rel="noopener noreferrer"' +
+            ' style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.75rem 1rem; border-radius:12px;' +
+            ' text-decoration:none; background:var(--accent-1, #6366f1); color:#fff; font-weight:600;">' +
+            '<i class="ph-bold ph-download-simple"></i><span>Открыть или скачать файл</span></a>'
+          : '') +
+      '</div>';
   }
 
-  function fileNameFromTaskMeta(fileMeta) {
-    if (typeof fileMeta === 'string') {
-      const raw = fileMeta.split('?')[0];
-      return raw.split('/').pop() || 'file';
-    }
-    if (fileMeta && typeof fileMeta === 'object') {
-      const named = fileMeta.name || fileMeta.filename;
-      if (named) return String(named);
-      const raw = String(fileMeta.path || fileMeta.url || 'file').split('?')[0];
-      return raw.split('/').pop() || 'file';
-    }
-    return 'file';
-  }
-
-  function extOf(name) {
-    const idx = String(name || '').lastIndexOf('.');
-    return idx >= 0 ? String(name).slice(idx + 1).toLowerCase() : '';
-  }
-
-  function isInlinePreviewable(fileMeta) {
-    const filename = fileNameFromTaskMeta(fileMeta);
-    return inlinePreviewExtensions.has(extOf(filename));
-  }
-
-  function buildTaskDownloadUrl(taskId, fileMeta) {
-    if (!fileMeta) return '';
-    if (typeof fileMeta === 'string') {
-      const raw = fileMeta.trim();
-      const filename = fileNameFromTaskMeta(raw);
-      if (/^https?:\/\//i.test(raw)) return raw;
-      if (raw.startsWith('/attachments/task/')) return raw;
-      if (raw.startsWith('/')) return raw;
-      return `/attachments/task/${encodeURIComponent(taskId)}/${encodeURIComponent(filename)}`;
-    }
-
-    const path = String(fileMeta.path || '').trim();
-    const url = String(fileMeta.url || '').trim();
-    const filename = fileNameFromTaskMeta(fileMeta);
-
-    if (url) return url;
-    if (path.startsWith('/attachments/task/')) return path;
-    if (path.startsWith('/')) return path;
-    if (path) return `/attachments/task/${encodeURIComponent(taskId)}/${encodeURIComponent(filename)}`;
-    return '';
-  }
-
-  function buildTaskFetchUrl(taskId, fileMeta) {
-    if (!fileMeta) return '';
-    if (typeof fileMeta === 'string') {
-      const raw = fileMeta.trim();
-      if (/^https?:\/\/kompege\.ru\//i.test(raw)) {
-        return `/attachments/proxy?url=${encodeURIComponent(raw)}`;
-      }
-      return buildTaskDownloadUrl(taskId, raw);
-    }
-
-    const path = String(fileMeta.path || '').trim();
-    const url = String(fileMeta.url || '').trim();
-    if (/^https?:\/\/kompege\.ru\//i.test(url)) {
-      return `/attachments/proxy?url=${encodeURIComponent(url)}`;
-    }
-    if (path) return buildTaskDownloadUrl(taskId, fileMeta);
-    return url || '';
-  }
-
-  async function fetchTaskTextDirect(taskId, fileMeta) {
-    const url = buildTaskFetchUrl(taskId, fileMeta);
-    if (!url) throw new Error('No direct task file url');
-
-    const res = await fetch(url, {
-      credentials: 'same-origin',
-    });
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const filename = fileNameFromTaskMeta(fileMeta);
-    const ext = extOf(filename);
-    const text = await res.text();
-    return {
-      success: true,
-      type: 'text',
-      filename,
-      content: text,
-      mode: ({
-        py: 'python',
-        cpp: 'text/x-c++src',
-        c: 'text/x-csrc',
-        h: 'text/x-csrc',
-        java: 'text/x-java',
-        js: 'javascript',
-        json: 'application/json',
-        xml: 'xml',
-        html: 'htmlmixed',
-        css: 'css',
-        md: 'markdown',
-      })[ext] || 'text/plain',
-    };
-  }
+  /* ---- Core fetch-and-render via backend JSON endpoint ---- */
 
   async function fetchAndRender(url) {
     show();
     setLoading(true);
     try {
-      const res = await fetch(url, {
+      var res = await fetch(url, {
         credentials: 'same-origin',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
       });
 
-      let data = null;
+      var data = null;
       try {
         data = await res.json();
       } catch (_) {
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         throw new Error('Invalid JSON response');
       }
 
@@ -311,72 +249,90 @@
       return data;
     } catch (e) {
       setLoading(false);
-      setError('Не удалось загрузить файл. Попробуйте открыть его ещё раз или скачать напрямую.');
+      setError('Не удалось загрузить файл. Попробуйте позже или скачайте напрямую.');
       return null;
     }
   }
 
-  window.BooFileViewer = {
-    openTaskFile(taskId, fileIndex, fileMeta) {
-      const filename = fileNameFromTaskMeta(fileMeta);
-      const ext = extOf(filename);
+  /* ---- Text fast-path: fetch raw bytes from /attachments/task/ ---- */
 
-      if (fileMeta && textPreviewExtensions.has(ext)) {
+  async function fetchTextDirect(taskId, fileMeta) {
+    var filename = fileNameFromMeta(fileMeta);
+    var ext = extOf(filename);
+    var url = taskAttachmentUrl(taskId, fileMeta);
+
+    var res = await fetch(url, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    var text = await res.text();
+    return {
+      success: true,
+      type: 'text',
+      filename: filename,
+      content: text,
+      mode: CODEMIRROR_MODES[ext] || 'text/plain',
+    };
+  }
+
+  /* ---- Public API ---- */
+
+  window.BooFileViewer = {
+    /**
+     * Preview a task's attached file.
+     *
+     * Strategy:
+     *   1) Text files -> fetch raw from /attachments/task/ (fast, existing route)
+     *      on failure -> fallback to backend /workspace/task-file-content
+     *   2) Everything else -> backend /workspace/task-file-content (parses Excel, etc.)
+     */
+    openTaskFile: function (taskId, fileIndex, fileMeta) {
+      var filename = fileNameFromMeta(fileMeta);
+      var ext = extOf(filename);
+      var backendUrl = '/workspace/task-file-content?task_id=' + encodeURIComponent(taskId) + '&file_index=' + encodeURIComponent(fileIndex);
+
+      if (TEXT_EXTENSIONS.has(ext)) {
         show();
         setTitle(filename || 'Файл');
         setLoading(true);
-        fetchTaskTextDirect(taskId, fileMeta)
-          .then((data) => {
+
+        fetchTextDirect(taskId, fileMeta)
+          .then(function (data) {
             setLoading(false);
             renderText(data);
           })
-          .catch(() => {
-            setLoading(false);
-            const directUrl = buildTaskFetchUrl(taskId, fileMeta) || buildTaskDownloadUrl(taskId, fileMeta);
-            if (directUrl) {
-              window.open(directUrl, '_blank', 'noopener');
-              hide();
-              return;
-            }
-            fetchAndRender(`/workspace/task-file-content?task_id=${taskId}&file_index=${fileIndex}`);
+          .catch(function () {
+            fetchAndRender(backendUrl);
           });
         return;
       }
 
-      if (fileMeta && !isInlinePreviewable(fileMeta)) {
-        const directUrl = buildTaskDownloadUrl(taskId, fileMeta);
-        if (directUrl) {
-          window.open(directUrl, '_blank', 'noopener');
-          return;
-        }
-      }
-      fetchAndRender(`/workspace/task-file-content?task_id=${taskId}&file_index=${fileIndex}`);
+      fetchAndRender(backendUrl);
     },
 
-    openWorkspaceFile(fileId, filename) {
-      fetchAndRender(`/workspace/${fileId}/content`);
+    openWorkspaceFile: function (fileId, filename) {
+      fetchAndRender('/workspace/' + encodeURIComponent(fileId) + '/content');
     },
 
-    async openInEditor(fileId) {
+    openInEditor: async function (fileId) {
       try {
-        const res = await fetch(`/workspace/${fileId}/content`, {
+        var res = await fetch('/workspace/' + encodeURIComponent(fileId) + '/content', {
           credentials: 'same-origin',
           headers: { 'X-Requested-With': 'XMLHttpRequest' },
         });
-        const data = await res.json();
+        var data = await res.json();
         if (data.success && data.type === 'text' && data.content != null) {
-          const ev = new CustomEvent('boo:load-code', { detail: { content: data.content, filename: data.filename } });
+          var ev = new CustomEvent('boo:load-code', { detail: { content: data.content, filename: data.filename } });
           document.dispatchEvent(ev);
         }
-      } catch (_) {}
+      } catch (_) { /* silent */ }
     },
 
-    close() {
+    close: function () {
       hide();
     },
   };
 
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') hide();
   });
 })();
