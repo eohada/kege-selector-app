@@ -6,6 +6,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - name: Check secrets
         run: |
@@ -22,7 +23,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           timeout: 30s
-          command_timeout: 5m
+          command_timeout: 25m
           script: |
             cd /opt/boostudy
             git pull origin main
