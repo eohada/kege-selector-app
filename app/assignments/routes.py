@@ -3336,14 +3336,19 @@ def submission_grade_view(submission_id):
         rubric_templates = []
 
     can_submit_grade = submission.status in ('SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW')
-    latest_teacher_comment_at = None
-    has_unread_student_comment = False
+    initial_task_id = (tasks_view[0]['assignment_task'].assignment_task_id if tasks_view else None)
+    unread_task_ids: set[int] = set()
+    latest_teacher_comment_by_task: dict[int, datetime] = {}
     for c in sorted((submission.comments or []), key=lambda x: (x.created_at or moscow_now(), x.comment_id or 0)):
-        if c.author_id == current_user.id:
-            latest_teacher_comment_at = c.created_at
+        task_id = int(c.assignment_task_id or (initial_task_id or 0))
+        if task_id <= 0:
             continue
-        if latest_teacher_comment_at is None or (c.created_at and c.created_at > latest_teacher_comment_at):
-            has_unread_student_comment = True
+        if c.author_id == current_user.id:
+            latest_teacher_comment_by_task[task_id] = c.created_at
+            continue
+        latest_teacher = latest_teacher_comment_by_task.get(task_id)
+        if latest_teacher is None or (c.created_at and c.created_at > latest_teacher):
+            unread_task_ids.add(task_id)
     return render_template('submission_grade.html',
                          submission=submission,
                          assignment=assignment,
@@ -3358,7 +3363,8 @@ def submission_grade_view(submission_id):
                          attempts_left=attempts_left,
                          attempts_per_task=attempts_per_task,
                          can_submit_grade=can_submit_grade,
-                         has_unread_student_comment=has_unread_student_comment)
+                         initial_task_id=initial_task_id,
+                         unread_task_ids=sorted(unread_task_ids))
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/save-comments', methods=['POST'])
@@ -3698,15 +3704,25 @@ def submission_comment_create(submission_id):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
         
     try:
-        data = request.get_json()
-        text = data.get('text', '').strip()
+        data = request.get_json() or {}
+        text = (data.get('text') or '').strip()
+        assignment_task_id = data.get('assignment_task_id')
         
         if not text:
             return jsonify({'success': False, 'error': 'Текст комментария обязателен'}), 400
+        if assignment_task_id is None:
+            return jsonify({'success': False, 'error': 'Укажите assignment_task_id'}), 400
+        try:
+            assignment_task_id = int(assignment_task_id)
+        except Exception:
+            return jsonify({'success': False, 'error': 'Некорректный assignment_task_id'}), 400
+        if not any(t.assignment_task_id == assignment_task_id for t in (submission.assignment.tasks or [])):
+            return jsonify({'success': False, 'error': 'Задание не принадлежит этой работе'}), 400
             
         comment = SubmissionComment(
             submission_id=submission.submission_id,
             author_id=current_user.id,
+            assignment_task_id=assignment_task_id,
             text=text,
             created_at=moscow_now()
         )
@@ -3723,6 +3739,7 @@ def submission_comment_create(submission_id):
                 'id': comment.comment_id,
                 'text': comment.text,
                 'created_at': comment.created_at.isoformat(),
+                'assignment_task_id': comment.assignment_task_id,
                 'author': {
                     'id': current_user.id,
                     'name': author_name,
@@ -3755,11 +3772,30 @@ def submission_comments_list(submission_id):
     if not (is_author or is_teacher):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
+    assignment_task_id = request.args.get('assignment_task_id', type=int)
+    if assignment_task_id is None:
+        first_at = sorted((submission.assignment.tasks or []), key=lambda t: (getattr(t, 'order_index', 0), t.assignment_task_id))
+        assignment_task_id = first_at[0].assignment_task_id if first_at else None
+    if assignment_task_id is not None and not any(t.assignment_task_id == assignment_task_id for t in (submission.assignment.tasks or [])):
+        return jsonify({'success': False, 'error': 'Задание не принадлежит этой работе'}), 400
+
     comments = []
-    latest_teacher_comment_at = None
-    for comment in sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0)):
+    latest_teacher_by_task: dict[int, datetime] = {}
+    unread_task_ids: set[int] = set()
+    ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
+    for comment in ordered:
+        comment_task_id = int(comment.assignment_task_id or (assignment_task_id or 0))
+        if comment_task_id <= 0:
+            continue
         if comment.author_id == current_user.id:
-            latest_teacher_comment_at = comment.created_at
+            latest_teacher_by_task[comment_task_id] = comment.created_at
+        else:
+            last_teacher = latest_teacher_by_task.get(comment_task_id)
+            if last_teacher is None or (comment.created_at and comment.created_at > last_teacher):
+                unread_task_ids.add(comment_task_id)
+
+        if assignment_task_id is not None and comment_task_id != assignment_task_id:
+            continue
         author_name = (comment.author.username if comment.author else f'User {comment.author_id}')
         if comment.author and comment.author.profile:
             author_name = (
@@ -3771,6 +3807,7 @@ def submission_comments_list(submission_id):
             'text': comment.text or '',
             'created_at': comment.created_at.isoformat() if comment.created_at else None,
             'created_human': comment.created_at.strftime('%d.%m.%Y %H:%M') if comment.created_at else '',
+            'assignment_task_id': comment_task_id,
             'author': {
                 'id': comment.author_id,
                 'name': author_name,
@@ -3779,17 +3816,10 @@ def submission_comments_list(submission_id):
             'is_mine': comment.author_id == current_user.id,
         })
 
-    has_unread_student_comment = False
-    for comment in comments:
-        if comment['author']['id'] == current_user.id:
-            continue
-        created_at = next((c.created_at for c in (submission.comments or []) if c.comment_id == comment['id']), None)
-        if latest_teacher_comment_at is None or (created_at and created_at > latest_teacher_comment_at):
-            has_unread_student_comment = True
-            break
-
     return jsonify({
         'success': True,
         'comments': comments,
-        'has_unread_student_comment': has_unread_student_comment,
+        'assignment_task_id': assignment_task_id,
+        'unread_task_ids': sorted(unread_task_ids),
+        'has_unread_student_comment': assignment_task_id in unread_task_ids if assignment_task_id is not None else False,
     }), 200

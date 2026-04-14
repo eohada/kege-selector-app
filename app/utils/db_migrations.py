@@ -1677,6 +1677,20 @@ def ensure_schema_columns(app):
                     logger.info("Created SubmissionComments table")
                 except Exception as e:
                     logger.warning(f"Could not create SubmissionComments table: {e}")
+            else:
+                try:
+                    comment_cols = {c['name'] for c in inspector.get_columns(comments_table)}
+                    if 'assignment_task_id' not in comment_cols:
+                        if is_postgres:
+                            db.session.execute(text(f'ALTER TABLE "{comments_table}" ADD COLUMN assignment_task_id INTEGER'))
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_{comments_table.lower()}_assignment_task_id ON "{comments_table}"(assignment_task_id)'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE {comments_table} ADD COLUMN assignment_task_id INTEGER'))
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_{comments_table}_assignment_task_id ON {comments_table}(assignment_task_id)'))
+                        logger.info(f"Added assignment_task_id to {comments_table}")
+                except Exception as e:
+                    logger.warning(f"Could not add assignment_task_id to {comments_table}: {e}")
+                    db.session.rollback()
 
             subjects_table = _resolve_table_name(table_names, 'subjects')
             if not subjects_table:

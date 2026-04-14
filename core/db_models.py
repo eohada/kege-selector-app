@@ -1818,6 +1818,7 @@ class SubmissionComment(db.Model):
     comment_id = db.Column(db.Integer, primary_key=True)
     submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    assignment_task_id = db.Column(db.Integer, db.ForeignKey('AssignmentTasks.assignment_task_id'), nullable=True)
     
     text = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False, nullable=False)
@@ -1826,6 +1827,7 @@ class SubmissionComment(db.Model):
     
     submission = db.relationship('Submission', backref=db.backref('comments', lazy=True, cascade='all, delete-orphan'))
     author = db.relationship('User')
+    assignment_task = db.relationship('AssignmentTask')
     
     def __repr__(self):
         return f'<Comment {self.comment_id}: submission {self.submission_id} by {self.author_id}>'

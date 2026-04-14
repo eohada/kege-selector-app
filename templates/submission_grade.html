@@ -520,21 +520,30 @@
             <div class="task-strip flex gap-1.5 overflow-x-auto hide-scroll w-full sm:w-auto sm:flex-1 sm:justify-end py-1.5 -my-1.5">
             {% for task_item in tasks_view %}
             {% set ti_answer = task_item.answer %}
-            <a href="#task-{{ loop.index }}" class="task-nav-btn {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} {% if task_item.is_triplet_19_21 %}min-w-[3.5rem] h-11 px-1.5 text-[10px] leading-tight{% else %}w-11 h-11{% endif %} shrink-0 rounded-[14px] flex items-center justify-center font-black no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ loop.index }}{% endif %}">
+            <a href="#task-{{ loop.index }}" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" class="task-nav-btn relative {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} {% if task_item.is_triplet_19_21 %}min-w-[3.5rem] h-11 px-1.5 text-[10px] leading-tight{% else %}w-11 h-11{% endif %} shrink-0 rounded-[14px] flex items-center justify-center font-black no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ loop.index }}{% endif %}">
                 {% if task_item.is_triplet_19_21 %}19–21{% else %}{{ loop.index }}{% endif %}
+                <span class="task-unread-dot absolute -top-1 -right-1 w-2.5 h-2.5{% if task_item.assignment_task.assignment_task_id not in unread_task_ids %} hidden{% endif %}" data-unread-for="{{ task_item.assignment_task.assignment_task_id }}"></span>
             </a>
             {% endfor %}
             </div>
-            <button type="button" id="chat-jump-btn" class="neo-button ghost sm rounded-xl px-3 py-2 inline-flex items-center gap-2 text-xs font-bold whitespace-nowrap">
-                <i class="ph-bold ph-chat-circle-dots"></i> Чат
-                <span id="chat-unread-dot" class="task-unread-dot{% if not has_unread_student_comment %} hidden{% endif %}"></span>
-            </button>
+            <div class="flex items-center gap-2">
+                <button type="button" id="task-prev-btn" class="neo-button ghost sm rounded-xl px-2.5 py-2 inline-flex items-center gap-1 text-xs font-bold" title="Предыдущее задание">
+                    <i class="ph-bold ph-caret-left"></i>
+                </button>
+                <button type="button" id="task-next-btn" class="neo-button ghost sm rounded-xl px-2.5 py-2 inline-flex items-center gap-1 text-xs font-bold" title="Следующее задание">
+                    <i class="ph-bold ph-caret-right"></i>
+                </button>
+                <button type="button" id="chat-jump-btn" class="neo-button ghost sm rounded-xl px-3 py-2 inline-flex items-center gap-2 text-xs font-bold whitespace-nowrap">
+                    <i class="ph-bold ph-chat-circle-dots"></i> Чат
+                    <span id="chat-unread-dot" class="task-unread-dot{% if not unread_task_ids %} hidden{% endif %}"></span>
+                </button>
+            </div>
         </div>
         
         <form id="grade-form">
             {% for task_item in tasks_view %}
             {% set grading_rows = [task_item] + (task_item.triplet_items if task_item.is_triplet_19_21 else []) %}
-            <div class="task-card-grade{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}{% if task_item.is_triplet_19_21 %} triplet-card{% endif %}{% if has_unread_student_comment %} has-chat-unread{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
+            <div class="task-card-grade{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}{% if task_item.is_triplet_19_21 %} triplet-card{% endif %}{% if task_item.assignment_task.assignment_task_id in unread_task_ids %} has-chat-unread{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header-grade">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
@@ -574,7 +583,7 @@
                         <i class="ph-bold ph-robot"></i> Авто
                     </span>
                     {% endif %}
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900{% if not has_unread_student_comment %} hidden{% endif %}" id="task-chat-unread-badge">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900 hidden" id="task-chat-unread-badge">
                         <span class="task-unread-dot"></span> Новые сообщения
                     </span>
                 </div>
@@ -753,7 +762,7 @@
 
         <section class="grade-comments">
             <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
-                <h3 class="text-lg font-black text-primary dark:text-white m-0">Чат по работе</h3>
+                <h3 class="text-lg font-black text-primary dark:text-white m-0">Чат по заданию <span id="chat-task-label">#1</span></h3>
                 <span class="text-xs font-bold text-muted">Ученик и преподаватель видят эти сообщения</span>
             </div>
             <div id="grade-comments-list" class="grade-comments-list">
@@ -845,29 +854,45 @@
                     ignoredClasses: ['katex']
                 });
             }
-            (function initGradeTaskSinglePage() {
-                var buttons = document.querySelectorAll('#taskNavGrade .task-nav-btn');
-                var cards = document.querySelectorAll('.task-card-grade[id^="task-"]');
+            (function initGradeTaskSinglePageAndChat() {
+                var buttons = Array.from(document.querySelectorAll('#taskNavGrade .task-nav-btn'));
+                var cards = Array.from(document.querySelectorAll('.task-card-grade[id^="task-"]'));
+                var prevBtn = document.getElementById('task-prev-btn');
+                var nextBtn = document.getElementById('task-next-btn');
+                var taskStrip = document.querySelector('#taskNavGrade .task-strip');
+                var currentTaskAtId = {{ initial_task_id if initial_task_id else 'null' }};
+
                 if (!buttons.length || !cards.length) return;
                 function setActiveByIndex(idx) {
                     cards.forEach(function(card, i) {
                         var isActive = (i + 1) === idx;
                         card.classList.toggle('task-panel-active', isActive);
                         card.classList.toggle('task-panel-hidden', !isActive);
+                        if (isActive) currentTaskAtId = parseInt(card.getAttribute('data-task-id'), 10) || currentTaskAtId;
                     });
                     buttons.forEach(function(btn) {
                         var href = btn.getAttribute('href') || '';
                         var m = href.match(/#task-(\d+)/);
-                        btn.classList.toggle('active', m && parseInt(m[1], 10) === idx);
+                        var isActive = !!(m && parseInt(m[1], 10) === idx);
+                        btn.classList.toggle('active', isActive);
+                        if (isActive && typeof btn.scrollIntoView === 'function') {
+                            btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                        }
                     });
+                    var activePos = buttons.findIndex(function(btn) { return btn.classList.contains('active'); });
+                    if (prevBtn) prevBtn.disabled = activePos <= 0;
+                    if (nextBtn) nextBtn.disabled = activePos < 0 || activePos >= buttons.length - 1;
+                    window.dispatchEvent(new CustomEvent('grade:active-task-changed', { detail: { assignmentTaskId: currentTaskAtId } }));
                 }
+
                 var initial = 1;
-                var explicit = Array.from(buttons).find(function(b) { return b.classList.contains('active'); });
+                var explicit = buttons.find(function(b) { return b.classList.contains('active'); });
                 if (explicit) {
                     var em = (explicit.getAttribute('href') || '').match(/#task-(\d+)/);
                     if (em) initial = parseInt(em[1], 10);
                 }
                 setActiveByIndex(initial);
+
                 buttons.forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
                         e.preventDefault();
@@ -877,23 +902,51 @@
                         setActiveByIndex(parseInt(m[1], 10));
                     });
                 });
-            })();
+                if (prevBtn) {
+                    prevBtn.addEventListener('click', function() {
+                        var activePos = buttons.findIndex(function(btn) { return btn.classList.contains('active'); });
+                        if (activePos > 0) setActiveByIndex(activePos);
+                    });
+                }
+                if (nextBtn) {
+                    nextBtn.addEventListener('click', function() {
+                        var activePos = buttons.findIndex(function(btn) { return btn.classList.contains('active'); });
+                        if (activePos >= 0 && activePos < buttons.length - 1) setActiveByIndex(activePos + 2);
+                    });
+                }
+                if (taskStrip) {
+                    taskStrip.addEventListener('wheel', function(e) {
+                        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                            taskStrip.scrollLeft += e.deltaY;
+                            e.preventDefault();
+                        }
+                    }, { passive: false });
+                }
 
-            (function initGradeCommentsChat() {
                 var commentsList = document.getElementById('grade-comments-list');
                 var form = document.getElementById('grade-comment-form');
                 var input = document.getElementById('grade-comment-input');
                 var chatDot = document.getElementById('chat-unread-dot');
                 var unreadBadge = document.getElementById('task-chat-unread-badge');
                 var chatJumpBtn = document.getElementById('chat-jump-btn');
+                var chatTaskLabel = document.getElementById('chat-task-label');
                 if (!commentsList) return;
 
-                function setUnread(hasUnread, emphasize) {
-                    if (chatDot) chatDot.classList.toggle('hidden', !hasUnread);
-                    if (unreadBadge) unreadBadge.classList.toggle('hidden', !hasUnread);
-                    document.querySelectorAll('.task-card-grade').forEach(function(card) {
-                        card.classList.toggle('has-chat-unread', !!hasUnread);
-                        if (emphasize) {
+                function setUnreadMap(unreadTaskIds, emphasize) {
+                    var unreadSet = new Set((unreadTaskIds || []).map(function(v) { return parseInt(v, 10); }));
+                    buttons.forEach(function(btn) {
+                        var atId = parseInt(btn.getAttribute('data-assignment-task-id'), 10) || 0;
+                        var dot = btn.querySelector('[data-unread-for]');
+                        if (dot) dot.classList.toggle('hidden', !unreadSet.has(atId));
+                    });
+                    if (chatDot) chatDot.classList.toggle('hidden', unreadSet.size === 0);
+                    var currentUnread = currentTaskAtId ? unreadSet.has(currentTaskAtId) : false;
+                    if (unreadBadge) unreadBadge.classList.toggle('hidden', !currentUnread);
+                    cards.forEach(function(card) {
+                        var atId = parseInt(card.getAttribute('data-task-id'), 10) || 0;
+                        var has = unreadSet.has(atId);
+                        card.classList.toggle('has-chat-unread', has);
+                        if (has && emphasize) {
                             card.classList.remove('chat-pop');
                             void card.offsetWidth;
                             card.classList.add('chat-pop');
@@ -935,10 +988,18 @@
                     commentsList.scrollTop = commentsList.scrollHeight;
                 }
 
-                var lastCommentId = {% if submission.comments %}{{ (submission.comments|sort(attribute='comment_id')|last).comment_id }}{% else %}0{% endif %};
+                function syncChatTaskLabel() {
+                    if (!chatTaskLabel) return;
+                    var activeBtn = buttons.find(function(btn) { return btn.classList.contains('active'); });
+                    chatTaskLabel.textContent = activeBtn ? (activeBtn.getAttribute('title') || '#') : '#';
+                }
+
+                var lastCommentIdByTask = {};
                 function refreshComments(opts) {
                     opts = opts || {};
-                    fetch('{{ url_for("assignments.submission_comments_list", submission_id=submission.submission_id) }}', {
+                    if (!currentTaskAtId) return;
+                    syncChatTaskLabel();
+                    fetch('{{ url_for("assignments.submission_comments_list", submission_id=submission.submission_id) }}?assignment_task_id=' + encodeURIComponent(currentTaskAtId), {
                         method: 'GET',
                         headers: { 'Accept': 'application/json' }
                     })
@@ -947,11 +1008,12 @@
                         if (!data.success) throw new Error(data.error || 'Не удалось получить сообщения');
                         var comments = data.comments || [];
                         var newestId = comments.length ? (comments[comments.length - 1].id || 0) : 0;
-                        var gotNew = newestId > lastCommentId;
+                        var prevLast = lastCommentIdByTask[currentTaskAtId] || 0;
+                        var gotNew = newestId > prevLast;
                         renderComments(comments);
-                        setUnread(!!data.has_unread_student_comment, gotNew && !opts.silent);
+                        setUnreadMap(data.unread_task_ids || [], gotNew && !opts.silent);
                         if (gotNew || opts.forceScroll) scrollCommentsToBottom();
-                        lastCommentId = newestId;
+                        lastCommentIdByTask[currentTaskAtId] = newestId;
                     })
                     .catch(function() {});
                 }
@@ -962,6 +1024,10 @@
                         if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     });
                 }
+                window.addEventListener('grade:active-task-changed', function(e) {
+                    if (e && e.detail && e.detail.assignmentTaskId) currentTaskAtId = parseInt(e.detail.assignmentTaskId, 10) || currentTaskAtId;
+                    refreshComments({ forceScroll: true, silent: true });
+                });
 
                 if (form) {
                     form.addEventListener('submit', function(e) {
@@ -974,14 +1040,13 @@
                                 'Content-Type': 'application/json',
                                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
                             },
-                            body: JSON.stringify({ text: text })
+                            body: JSON.stringify({ text: text, assignment_task_id: currentTaskAtId })
                         })
                         .then(function(response) { return response.json(); })
                         .then(function(data) {
                             if (!data.success) throw new Error(data.error || 'Не удалось отправить сообщение');
                             if (input) input.value = '';
                             if (typeof showToast === 'function') showToast('Сообщение отправлено', 'success');
-                            setUnread(false, false);
                             refreshComments({ forceScroll: true, silent: true });
                         })
                         .catch(function(err) {
@@ -989,6 +1054,7 @@
                         });
                     });
                 }
+                syncChatTaskLabel();
                 refreshComments({ forceScroll: true, silent: true });
                 window.setInterval(function() { refreshComments({ silent: false }); }, 10000);
             })();
