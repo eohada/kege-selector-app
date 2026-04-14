@@ -107,6 +107,7 @@ def _task_generator_page_url(
     bank_difficulty=None,
     bank_open=False,
     bank_show_inactive=False,
+    return_edit=None,
 ):
     """Единая точка сборки URL страницы генератора (поток + банк в одном месте)."""
     kwargs = {'assignment_type': assignment_type or 'homework'}
@@ -116,6 +117,11 @@ def _task_generator_page_url(
         kwargs['template_id'] = template_id
     if exam_course_id is not None:
         kwargs['exam_course_id'] = exam_course_id
+    if return_edit is not None:
+        try:
+            kwargs['return_edit'] = int(return_edit)
+        except (TypeError, ValueError):
+            pass
     if recipient_ids:
         kwargs['recipient_ids'] = ','.join(str(x) for x in recipient_ids)
     if task_ids:
@@ -280,7 +286,16 @@ def task_generator(lesson_id=None):
             )
             flash('Вся история сброшена.', 'success')
 
-        return redirect(url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('task_generator.task_generator', assignment_type=assignment_type))
+        _reset_redirect = {'assignment_type': assignment_type}
+        if lesson_id:
+            _reset_redirect['lesson_id'] = lesson_id
+        if template_id:
+            _reset_redirect['template_id'] = template_id
+        if return_edit:
+            _reset_redirect['return_edit'] = return_edit
+        if exam_course_id:
+            _reset_redirect['exam_course_id'] = exam_course_id
+        return redirect(url_for('task_generator.task_generator', **_reset_redirect))
     
     if search_form.search_submit.data and search_form.validate_on_submit():
         if not lesson_id:
@@ -381,6 +396,10 @@ def task_generator(lesson_id=None):
                     redirect_url_params['lesson_id'] = lesson_id
                 if template_id:
                     redirect_url_params['template_id'] = template_id
+                if return_edit:
+                    redirect_url_params['return_edit'] = return_edit
+                if exam_course_id:
+                    redirect_url_params['exam_course_id'] = exam_course_id
 
                 if lesson_id:
                     if added_to_lesson:
@@ -580,6 +599,7 @@ def task_generator(lesson_id=None):
                     bank_only_manual=bank_only_manual,
                     bank_open=True,
                     bank_show_inactive=bank_show_inactive,
+                    return_edit=return_edit,
                 ),
                 'current': p == bank_page,
             })

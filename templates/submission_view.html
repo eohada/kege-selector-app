@@ -1160,7 +1160,12 @@
         
         // Автосохранение (не вызывать, если работа уже сдана)
         let autosaveTimer = null;
+        let draftPersistTimer = null;
         const autosaveDelay = 2000; // 2 секунды после последнего изменения
+        const AUTOSAVE_INTERVAL_MS = 60000; // дополнительно — раз в минуту, даже без новых нажатий
+        const SUBMISSION_AUTOSAVE_URL = `{{ url_for('assignments.submission_autosave', submission_id=submission.submission_id) }}`;
+        const SUBMISSION_SAVE_CODE_URL = `{{ url_for('assignments.submission_save_code', submission_id=submission.submission_id) }}`;
+        const SUBMISSION_DRAFT_KEY = 'kege_submission_draft_{{ submission.submission_id }}';
         const SUBMISSION_CAN_EDIT = {{ 'true' if (submission.status in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) else 'false' }};
         
         function collectAnswers() {
@@ -1168,12 +1173,112 @@
             document.querySelectorAll('.answer-input').forEach(input => {
                 if (!input.disabled) {
                     answers.push({
-                        assignment_task_id: parseInt(input.dataset.taskId),
+                        assignment_task_id: parseInt(input.dataset.taskId, 10),
                         value: input.value
                     });
                 }
             });
             return answers;
+        }
+
+        function getCodeFromEditorWrap(wrap) {
+            if (!wrap) return '';
+            const textarea = wrap.querySelector('.code-editor-text:not(.code-editor-readonly)');
+            if (!textarea) return '';
+            if (textarea.cmInstance) return textarea.cmInstance.getValue();
+            return textarea.value || '';
+        }
+
+        function persistLocalDraft() {
+            if (!SUBMISSION_CAN_EDIT) return;
+            try {
+                const answers = collectAnswers();
+                const map = {};
+                answers.forEach((a) => { map[String(a.assignment_task_id)] = a.value; });
+                const codes = {};
+                document.querySelectorAll('.code-editor-wrap:not(.readonly-code-wrap)').forEach((wrap) => {
+                    const tid = wrap.getAttribute('data-assignment-task-id');
+                    if (!tid) return;
+                    const c = getCodeFromEditorWrap(wrap);
+                    if (c && c.trim()) codes[tid] = c;
+                });
+                localStorage.setItem(SUBMISSION_DRAFT_KEY, JSON.stringify({
+                    t: Date.now(),
+                    answers: map,
+                    codes: codes
+                }));
+            } catch (e) { /* ignore quota / private mode */ }
+        }
+
+        function restoreLocalDraftOnLoad() {
+            if (!SUBMISSION_CAN_EDIT) return;
+            try {
+                const raw = localStorage.getItem(SUBMISSION_DRAFT_KEY);
+                if (!raw) return;
+                const obj = JSON.parse(raw);
+                if (!obj || !obj.t || (Date.now() - obj.t) > 7 * 24 * 3600 * 1000) return;
+                if (obj.answers) {
+                    Object.keys(obj.answers).forEach((k) => {
+                        const inp = document.querySelector('.answer-input[data-task-id="' + k + '"]');
+                        if (!inp || inp.disabled) return;
+                        const v = obj.answers[k] || '';
+                        const cur = inp.value || '';
+                        if (v && !cur) inp.value = v;
+                    });
+                }
+                if (obj.codes) {
+                    Object.keys(obj.codes).forEach((k) => {
+                        const wrap = document.querySelector('.code-editor-wrap[data-assignment-task-id="' + k + '"]');
+                        if (!wrap || wrap.classList.contains('readonly-code-wrap')) return;
+                        const ta = wrap.querySelector('.code-editor-text:not(.code-editor-readonly)');
+                        if (!ta) return;
+                        const v = obj.codes[k] || '';
+                        const cur = ta.cmInstance ? ta.cmInstance.getValue() : (ta.value || '');
+                        if (v && !cur) {
+                            if (ta.cmInstance) ta.cmInstance.setValue(v);
+                            else ta.value = v;
+                        }
+                    });
+                }
+            } catch (e) { /* ignore */ }
+        }
+
+        function saveCodeDraftsSilent() {
+            if (!SUBMISSION_CAN_EDIT) return;
+            const tokenEl = document.querySelector('meta[name="csrf-token"]');
+            const token = tokenEl ? tokenEl.content : '';
+            document.querySelectorAll('.code-editor-wrap:not(.readonly-code-wrap)').forEach((wrap) => {
+                const tid = wrap.getAttribute('data-assignment-task-id');
+                if (!tid) return;
+                const code = getCodeFromEditorWrap(wrap);
+                if (!code || !String(code).trim()) return;
+                fetch(SUBMISSION_SAVE_CODE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': token
+                    },
+                    body: JSON.stringify({ assignment_task_id: parseInt(tid, 10), code: code })
+                }).catch(function () { /* сеть недоступна — ок */ });
+            });
+        }
+
+        function flushDraftsKeepalive() {
+            if (!SUBMISSION_CAN_EDIT) return;
+            const answers = collectAnswers();
+            const tokenEl = document.querySelector('meta[name="csrf-token"]');
+            const token = tokenEl ? tokenEl.content : '';
+            if (answers.length > 0) {
+                try {
+                    fetch(SUBMISSION_AUTOSAVE_URL, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
+                        body: JSON.stringify({ answers }),
+                        keepalive: true
+                    }).catch(function () {});
+                } catch (e) {}
+            }
+            persistLocalDraft();
         }
         
         function autosave() {
@@ -1181,7 +1286,7 @@
             const answers = collectAnswers();
             if (answers.length === 0) return;
             
-            fetch(`{{ url_for('assignments.submission_autosave', submission_id=submission.submission_id) }}`, {
+            fetch(SUBMISSION_AUTOSAVE_URL, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1196,7 +1301,9 @@
                     return;
                 }
                 if (data.success) {
-                    document.getElementById('last-save').textContent = 'Сохранено: ' + new Date().toLocaleTimeString();
+                    persistLocalDraft();
+                    const lastSaveEl = document.getElementById('last-save');
+                    if (lastSaveEl) lastSaveEl.textContent = 'Сохранено: ' + new Date().toLocaleTimeString();
                     answers.forEach(answer => {
                         const indicator = document.getElementById(`autosave-${answer.assignment_task_id}`);
                         if (indicator) {
@@ -1208,6 +1315,21 @@
             })
             .catch(error => {
                 console.error('Ошибка автосохранения:', error);
+            });
+        }
+
+        function runPeriodicSave() {
+            autosave();
+            saveCodeDraftsSilent();
+            persistLocalDraft();
+        }
+        let periodicAutosaveId = null;
+        if (SUBMISSION_CAN_EDIT) {
+            restoreLocalDraftOnLoad();
+            periodicAutosaveId = window.setInterval(runPeriodicSave, AUTOSAVE_INTERVAL_MS);
+            window.addEventListener('pagehide', flushDraftsKeepalive);
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') flushDraftsKeepalive();
             });
         }
         
@@ -1279,11 +1401,17 @@
             input.addEventListener('input', function() {
                 clearTimeout(autosaveTimer);
                 autosaveTimer = setTimeout(autosave, autosaveDelay);
+                clearTimeout(draftPersistTimer);
+                draftPersistTimer = setTimeout(persistLocalDraft, 3000);
             });
         });
         
         // Ручное сохранение
-        document.getElementById('autosave-btn')?.addEventListener('click', autosave);
+        document.getElementById('autosave-btn')?.addEventListener('click', function () {
+            autosave();
+            saveCodeDraftsSilent();
+            persistLocalDraft();
+        });
         
         // Сдача одного задания (при allow_separate_submission)
         const taskTimers = Object.create(null); // { [taskId]: { elapsedMs, runningSinceMs } }
@@ -1595,6 +1723,7 @@
                     .then(data => {
                         if (!data) return;
                         if (data.success) {
+                            try { localStorage.removeItem(SUBMISSION_DRAFT_KEY); } catch (e) {}
                             showToast(`✓ Работа успешно сдана! Оценка: ${data.score}/${data.max_score} (${data.percentage.toFixed(0)}%)`, 'success');
                             setTimeout(() => location.reload(), 1500);
                         } else {

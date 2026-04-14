@@ -14,6 +14,7 @@
             {% if lesson_id %}<input type="hidden" name="lesson_id" value="{{ lesson_id }}">{% endif %}
             <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
             {% if template_id %}<input type="hidden" name="template_id" value="{{ template_id }}">{% endif %}
+            {% if return_edit %}<input type="hidden" name="return_edit" value="{{ return_edit }}">{% endif %}
             {% if exam_course_id %}<input type="hidden" name="exam_course_id" value="{{ exam_course_id }}">{% endif %}
             {% if generator_recipient_ids and generator_recipient_ids|length > 0 %}
             <input type="hidden" name="recipient_ids" value="{{ generator_recipient_ids|join(',') }}">
