@@ -40,17 +40,42 @@ def create_app(config_name=None):
     db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
     
     database_url = os.environ.get('DATABASE_URL')
-    if database_url:
-        if database_url.startswith('postgres://'):
-            database_url = database_url.replace('postgres://', 'postgresql://', 1)
-        external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
-        if external_db_url:
-            if external_db_url.startswith('postgres://'):
-                external_db_url = external_db_url.replace('postgres://', 'postgresql://', 1)
-            database_url = external_db_url
-        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    database_url_source = None
+    external_db_url = os.environ.get('DATABASE_EXTERNAL_URL')
+    postgres_alt_url = os.environ.get('POSTGRES_URL')
+
+    def _normalize_db_url(url: str | None) -> str | None:
+        if not url:
+            return None
+        if url.startswith('postgres://'):
+            return url.replace('postgres://', 'postgresql://', 1)
+        return url
+
+    database_url = _normalize_db_url(database_url)
+    external_db_url = _normalize_db_url(external_db_url)
+    postgres_alt_url = _normalize_db_url(postgres_alt_url)
+
+    # Priority:
+    # 1. DATABASE_EXTERNAL_URL — explicit external override
+    # 2. DATABASE_URL          — primary runtime DSN
+    # 3. POSTGRES_URL          — legacy fallback only if DATABASE_URL is absent
+    selected_database_url = None
+    if external_db_url:
+        selected_database_url = external_db_url
+        database_url_source = 'DATABASE_EXTERNAL_URL'
+    elif database_url:
+        selected_database_url = database_url
+        database_url_source = 'DATABASE_URL'
+    elif postgres_alt_url:
+        selected_database_url = postgres_alt_url
+        database_url_source = 'POSTGRES_URL'
+
+    if selected_database_url:
+        database_url = selected_database_url
+        app.config['SQLALCHEMY_DATABASE_URI'] = selected_database_url
     else:
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+        database_url_source = 'sqlite'
     
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
@@ -187,13 +212,8 @@ def create_app(config_name=None):
     logger.info(f"=== Application Initialization ===")
     logger.info(f"Environment: {ENVIRONMENT}")
     if database_url:
-        external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
-        if external_db_url:
-            logger.info("Using external database URL (DATABASE_EXTERNAL_URL or POSTGRES_URL)")
-            logger.info("Database type: PostgreSQL (external)")
-        else:
-            logger.info("Using DATABASE_URL")
-            logger.info("Database type: PostgreSQL")
+        logger.info(f"Using database source: {database_url_source}")
+        logger.info("Database type: PostgreSQL")
         
         try:
             with app.app_context():

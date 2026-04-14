@@ -121,11 +121,29 @@ def _read_file_bytes(ws_file: StudentWorkspaceFile) -> bytes | None:
     return None
 
 
-def _parse_excel(data: bytes) -> list[dict]:
-    """Parse Excel bytes into list of sheets: [{name, rows: [[cell,...],...]}]."""
-    from openpyxl import load_workbook
-    wb = load_workbook(filename=io.BytesIO(data), read_only=True, data_only=True)
+def _parse_excel(data: bytes, filename: str | None = None) -> list[dict]:
+    """Parse .xlsx/.xlsm via openpyxl and legacy .xls via xlrd."""
+    ext = _ext(filename or '')
     sheets = []
+
+    if ext == 'xls':
+        import xlrd
+
+        wb = xlrd.open_workbook(file_contents=data)
+        for sheet in wb.sheets():
+            rows = []
+            for row_idx in range(sheet.nrows):
+                row = []
+                for col_idx in range(sheet.ncols):
+                    cell = sheet.cell_value(row_idx, col_idx)
+                    row.append('' if cell is None else str(cell))
+                rows.append(row)
+            sheets.append({'name': sheet.name, 'rows': rows})
+        return sheets
+
+    from openpyxl import load_workbook
+
+    wb = load_workbook(filename=io.BytesIO(data), read_only=True, data_only=True)
     for ws in wb.worksheets:
         rows = []
         for row in ws.iter_rows(values_only=True):
@@ -452,7 +470,7 @@ def file_content(file_id):
 
     if ext in EXCEL_EXTENSIONS:
         try:
-            sheets = _parse_excel(data)
+            sheets = _parse_excel(data, fname)
             return jsonify({
                 'success': True,
                 'type': 'excel',
@@ -552,7 +570,7 @@ def task_file_content():
     ext = _ext(file_name)
     if ext in EXCEL_EXTENSIONS:
         try:
-            sheets = _parse_excel(file_bytes)
+            sheets = _parse_excel(file_bytes, file_name)
             return jsonify({
                 'success': True, 'type': 'excel',
                 'filename': file_name, 'sheets': sheets,
