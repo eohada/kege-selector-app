@@ -65,6 +65,25 @@ CODEMIRROR_MODES = {
     'xml': 'xml', 'html': 'htmlmixed', 'css': 'css', 'md': 'markdown',
 }
 
+_workspace_tables_ready = False
+
+
+def _ensure_workspace_tables() -> None:
+    """
+    Make the feature resilient on environments where the app code is updated
+    before Alembic migrations are applied.
+    """
+    global _workspace_tables_ready
+    if _workspace_tables_ready:
+        return
+    try:
+        StudentWorkspaceFile.__table__.create(bind=db.engine, checkfirst=True)
+        TaskCanvasDrawing.__table__.create(bind=db.engine, checkfirst=True)
+        _workspace_tables_ready = True
+    except Exception as exc:
+        logger.exception("Failed to ensure workspace tables: %s", exc)
+        raise
+
 
 def _ext(filename: str) -> str:
     return filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
@@ -216,6 +235,7 @@ def _read_task_attachment_bytes(task_id: int, file_path: str | None, file_url: s
 @workspace_bp.route('/workspace/files', methods=['GET'])
 @login_required
 def list_files():
+    _ensure_workspace_tables()
     task_id = request.args.get('task_id', type=int)
     context_type = request.args.get('context_type', 'submission')
     context_id = request.args.get('context_id', type=int)
@@ -237,6 +257,7 @@ def list_files():
 @limiter.limit('30/minute')
 def copy_from_task():
     """Copy a file from task's attached_files into student's workspace."""
+    _ensure_workspace_tables()
     data = request.get_json(silent=True) or {}
     task_id = data.get('task_id')
     file_index = data.get('file_index')
@@ -321,6 +342,7 @@ def copy_from_task():
 @limiter.limit('30/minute')
 def upload_file():
     """Upload a file to the student's workspace."""
+    _ensure_workspace_tables()
     if 'file' not in request.files:
         return jsonify({'success': False, 'error': 'Файл не найден'}), 400
     f = request.files['file']
@@ -379,6 +401,7 @@ def upload_file():
 @workspace_bp.route('/workspace/<int:file_id>/rename', methods=['POST'])
 @login_required
 def rename_file(file_id):
+    _ensure_workspace_tables()
     ws_file = StudentWorkspaceFile.query.get_or_404(file_id)
     if ws_file.user_id != current_user.id:
         abort(403)
@@ -396,6 +419,7 @@ def rename_file(file_id):
 @workspace_bp.route('/workspace/<int:file_id>', methods=['DELETE'])
 @login_required
 def delete_file(file_id):
+    _ensure_workspace_tables()
     ws_file = StudentWorkspaceFile.query.get_or_404(file_id)
     if ws_file.user_id != current_user.id:
         abort(403)
@@ -412,6 +436,7 @@ def delete_file(file_id):
 @login_required
 def file_content(file_id):
     """Return file content: text as plain text, Excel as JSON with sheets."""
+    _ensure_workspace_tables()
     ws_file = StudentWorkspaceFile.query.get_or_404(file_id)
     if ws_file.user_id != current_user.id:
         if not (hasattr(current_user, 'is_tutor') and current_user.is_tutor()) and \
@@ -459,6 +484,7 @@ def file_content(file_id):
 @workspace_bp.route('/workspace/<int:file_id>/download', methods=['GET'])
 @login_required
 def download_file(file_id):
+    _ensure_workspace_tables()
     ws_file = StudentWorkspaceFile.query.get_or_404(file_id)
     if ws_file.user_id != current_user.id:
         if not (hasattr(current_user, 'is_tutor') and current_user.is_tutor()) and \
@@ -558,6 +584,7 @@ def task_file_content():
 @login_required
 @limiter.limit('60/minute')
 def canvas_save():
+    _ensure_workspace_tables()
     data = request.get_json(silent=True) or {}
     task_id = data.get('task_id')
     if not task_id:
@@ -599,6 +626,7 @@ def canvas_save():
 @workspace_bp.route('/api/canvas/load', methods=['GET'])
 @login_required
 def canvas_load():
+    _ensure_workspace_tables()
     task_id = request.args.get('task_id', type=int)
     if not task_id:
         return jsonify({'success': False, 'error': 'task_id required'}), 400
@@ -628,6 +656,7 @@ def canvas_load():
 @login_required
 def canvas_view(target_user_id):
     """Teacher views a student's canvas (RBAC: tutor/admin only)."""
+    _ensure_workspace_tables()
     if not (current_user.is_tutor() or current_user.is_admin()):
         abort(403)
 
@@ -660,6 +689,7 @@ def canvas_view(target_user_id):
 @login_required
 def canvas_list():
     """Teacher lists all canvases for a student (optionally filtered by task)."""
+    _ensure_workspace_tables()
     if not (current_user.is_tutor() or current_user.is_admin()):
         abort(403)
 
