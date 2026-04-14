@@ -3336,6 +3336,14 @@ def submission_grade_view(submission_id):
         rubric_templates = []
 
     can_submit_grade = submission.status in ('SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW')
+    latest_teacher_comment_at = None
+    has_unread_student_comment = False
+    for c in sorted((submission.comments or []), key=lambda x: (x.created_at or moscow_now(), x.comment_id or 0)):
+        if c.author_id == current_user.id:
+            latest_teacher_comment_at = c.created_at
+            continue
+        if latest_teacher_comment_at is None or (c.created_at and c.created_at > latest_teacher_comment_at):
+            has_unread_student_comment = True
     return render_template('submission_grade.html',
                          submission=submission,
                          assignment=assignment,
@@ -3349,7 +3357,8 @@ def submission_grade_view(submission_id):
                          effective_max_attempts=effective_max_attempts,
                          attempts_left=attempts_left,
                          attempts_per_task=attempts_per_task,
-                         can_submit_grade=can_submit_grade)
+                         can_submit_grade=can_submit_grade,
+                         has_unread_student_comment=has_unread_student_comment)
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/save-comments', methods=['POST'])
@@ -3726,3 +3735,61 @@ def submission_comment_create(submission_id):
         db.session.rollback()
         logger.error(f"Error creating comment: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/comments', methods=['GET'])
+@login_required
+def submission_comments_list(submission_id):
+    """Список комментариев к сдаче (для чата без перезагрузки)."""
+    submission = Submission.query.options(
+        joinedload(Submission.comments).joinedload(SubmissionComment.author),
+        joinedload(Submission.assignment),
+    ).get_or_404(submission_id)
+
+    scope = get_user_scope(current_user)
+    student = get_student_by_user_id(current_user.id)
+
+    is_author = student and submission.student_id == student.student_id
+    is_teacher = scope['can_see_all'] or submission.assignment.created_by_id == current_user.id
+
+    if not (is_author or is_teacher):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    comments = []
+    latest_teacher_comment_at = None
+    for comment in sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0)):
+        if comment.author_id == current_user.id:
+            latest_teacher_comment_at = comment.created_at
+        author_name = (comment.author.username if comment.author else f'User {comment.author_id}')
+        if comment.author and comment.author.profile:
+            author_name = (
+                f"{comment.author.profile.first_name or ''} {comment.author.profile.last_name or ''}".strip()
+                or comment.author.username
+            )
+        comments.append({
+            'id': comment.comment_id,
+            'text': comment.text or '',
+            'created_at': comment.created_at.isoformat() if comment.created_at else None,
+            'created_human': comment.created_at.strftime('%d.%m.%Y %H:%M') if comment.created_at else '',
+            'author': {
+                'id': comment.author_id,
+                'name': author_name,
+                'avatar_url': comment.author.avatar_url if comment.author else None,
+            },
+            'is_mine': comment.author_id == current_user.id,
+        })
+
+    has_unread_student_comment = False
+    for comment in comments:
+        if comment['author']['id'] == current_user.id:
+            continue
+        created_at = next((c.created_at for c in (submission.comments or []) if c.comment_id == comment['id']), None)
+        if latest_teacher_comment_at is None or (created_at and created_at > latest_teacher_comment_at):
+            has_unread_student_comment = True
+            break
+
+    return jsonify({
+        'success': True,
+        'comments': comments,
+        'has_unread_student_comment': has_unread_student_comment,
+    }), 200

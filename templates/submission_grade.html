@@ -122,6 +122,15 @@
             box-shadow: 0 8px 24px -4px rgba(15, 23, 42, 0.06);
             scroll-margin-top: 6rem;
         }
+        .task-card-grade.task-panel-hidden { display: none !important; }
+        .task-card-grade.task-panel-active {
+            display: block !important;
+            animation: taskPanelFadeIn .28s ease;
+        }
+        @keyframes taskPanelFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .task-card-grade.triplet-card {
             border-color: #ddd6fe;
             box-shadow: 0 14px 30px -20px rgba(91, 33, 182, 0.35);
@@ -394,36 +403,30 @@
             color: var(--color-text-primary, #0f172a);
             font-size: 0.92rem;
         }
-        .scroll-to-top-btn {
-            position: fixed;
-            right: clamp(12px, 2.5vw, 28px);
-            bottom: 100px;
-            width: 46px;
-            height: 46px;
-            border: 1px solid var(--color-stroke, #e2e8f0);
+        .task-unread-dot {
+            width: 10px;
+            height: 10px;
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.92);
-            color: #7b5cff;
-            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            opacity: 0;
-            transform: translateY(10px);
-            pointer-events: none;
-            transition: opacity .2s ease, transform .2s ease;
-            z-index: 72;
+            background: #ef4444;
+            display: inline-block;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
+            animation: unreadPulse 1.4s infinite ease-in-out;
         }
-        .scroll-to-top-btn.is-visible {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: auto;
+        @keyframes unreadPulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.32); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0); }
         }
-        [data-theme="dark"] .scroll-to-top-btn {
-            background: rgba(30, 41, 59, 0.94);
-            border-color: rgba(148, 163, 184, 0.25);
-            color: #c4b5fd;
+        .task-card-grade.has-chat-unread {
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.28), 0 14px 30px -14px rgba(239, 68, 68, 0.32);
+        }
+        .task-card-grade.chat-pop {
+            animation: chatPop .45s ease;
+        }
+        @keyframes chatPop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.01); }
+            100% { transform: scale(1); }
         }
     </style>
     <script>
@@ -522,12 +525,16 @@
             </a>
             {% endfor %}
             </div>
+            <button type="button" id="chat-jump-btn" class="neo-button ghost sm rounded-xl px-3 py-2 inline-flex items-center gap-2 text-xs font-bold whitespace-nowrap">
+                <i class="ph-bold ph-chat-circle-dots"></i> Чат
+                <span id="chat-unread-dot" class="task-unread-dot{% if not has_unread_student_comment %} hidden{% endif %}"></span>
+            </button>
         </div>
         
         <form id="grade-form">
             {% for task_item in tasks_view %}
             {% set grading_rows = [task_item] + (task_item.triplet_items if task_item.is_triplet_19_21 else []) %}
-            <div class="task-card-grade{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}{% if task_item.is_triplet_19_21 %} triplet-card{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
+            <div class="task-card-grade{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}{% if task_item.is_triplet_19_21 %} triplet-card{% endif %}{% if has_unread_student_comment %} has-chat-unread{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header-grade">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
@@ -567,6 +574,9 @@
                         <i class="ph-bold ph-robot"></i> Авто
                     </span>
                     {% endif %}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900{% if not has_unread_student_comment %} hidden{% endif %}" id="task-chat-unread-badge">
+                        <span class="task-unread-dot"></span> Новые сообщения
+                    </span>
                 </div>
 
                 <div class="grade-card-body">
@@ -769,9 +779,6 @@
             </form>
         </section>
 
-        <button type="button" id="scroll-to-top-btn" class="scroll-to-top-btn" aria-label="Наверх">
-            <i class="ph-bold ph-arrow-up"></i>
-        </button>
         </div>
     </main>
     </div>
@@ -838,82 +845,152 @@
                     ignoredClasses: ['katex']
                 });
             }
-            (function initGradeTaskNavScroll() {
+            (function initGradeTaskSinglePage() {
                 var buttons = document.querySelectorAll('#taskNavGrade .task-nav-btn');
                 var cards = document.querySelectorAll('.task-card-grade[id^="task-"]');
                 if (!buttons.length || !cards.length) return;
-                var topBar = document.querySelector('.app-topbar');
-                var topOffset = (topBar ? topBar.offsetHeight : 0) + 92;
                 function setActiveByIndex(idx) {
+                    cards.forEach(function(card, i) {
+                        var isActive = (i + 1) === idx;
+                        card.classList.toggle('task-panel-active', isActive);
+                        card.classList.toggle('task-panel-hidden', !isActive);
+                    });
                     buttons.forEach(function(btn) {
                         var href = btn.getAttribute('href') || '';
                         var m = href.match(/#task-(\d+)/);
                         btn.classList.toggle('active', m && parseInt(m[1], 10) === idx);
                     });
                 }
-                var io = new IntersectionObserver(function(entries) {
-                    var visible = entries.filter(function(e) { return e.isIntersecting && e.intersectionRatio > 0; });
-                    if (!visible.length) return;
-                    visible.sort(function(a, b) { return (b.intersectionRatio || 0) - (a.intersectionRatio || 0); });
-                    var id = visible[0].target && visible[0].target.id;
-                    var mm = id && id.match(/^task-(\d+)$/);
-                    if (!mm) return;
-                    setActiveByIndex(parseInt(mm[1], 10));
-                }, { root: null, rootMargin: '-20% 0px -45% 0px', threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] });
-                cards.forEach(function(c) { io.observe(c); });
+                var initial = 1;
+                var explicit = Array.from(buttons).find(function(b) { return b.classList.contains('active'); });
+                if (explicit) {
+                    var em = (explicit.getAttribute('href') || '').match(/#task-(\d+)/);
+                    if (em) initial = parseInt(em[1], 10);
+                }
+                setActiveByIndex(initial);
                 buttons.forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
+                        e.preventDefault();
                         var href = btn.getAttribute('href') || '';
                         var m = href.match(/#task-(\d+)/);
                         if (!m) return;
-                        var target = document.getElementById('task-' + m[1]);
-                        if (!target) return;
-                        e.preventDefault();
-                        var targetY = window.pageYOffset + target.getBoundingClientRect().top - topOffset;
-                        window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+                        setActiveByIndex(parseInt(m[1], 10));
                     });
-                });
-            })();
-
-            (function initScrollToTop() {
-                var btn = document.getElementById('scroll-to-top-btn');
-                if (!btn) return;
-                function syncBtn() {
-                    btn.classList.toggle('is-visible', window.scrollY > 560);
-                }
-                window.addEventListener('scroll', syncBtn, { passive: true });
-                syncBtn();
-                btn.addEventListener('click', function() {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 });
             })();
 
             (function initGradeCommentsChat() {
+                var commentsList = document.getElementById('grade-comments-list');
                 var form = document.getElementById('grade-comment-form');
-                if (!form) return;
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    var input = document.getElementById('grade-comment-input');
-                    var text = (input && input.value ? input.value : '').trim();
-                    if (!text) return;
-                    fetch('{{ url_for("assignments.submission_comment_create", submission_id=submission.submission_id) }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({ text: text })
+                var input = document.getElementById('grade-comment-input');
+                var chatDot = document.getElementById('chat-unread-dot');
+                var unreadBadge = document.getElementById('task-chat-unread-badge');
+                var chatJumpBtn = document.getElementById('chat-jump-btn');
+                if (!commentsList) return;
+
+                function setUnread(hasUnread, emphasize) {
+                    if (chatDot) chatDot.classList.toggle('hidden', !hasUnread);
+                    if (unreadBadge) unreadBadge.classList.toggle('hidden', !hasUnread);
+                    document.querySelectorAll('.task-card-grade').forEach(function(card) {
+                        card.classList.toggle('has-chat-unread', !!hasUnread);
+                        if (emphasize) {
+                            card.classList.remove('chat-pop');
+                            void card.offsetWidth;
+                            card.classList.add('chat-pop');
+                        }
+                    });
+                }
+
+                function escapeHtml(text) {
+                    return String(text || '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                }
+
+                function renderComments(comments) {
+                    commentsList.innerHTML = '';
+                    if (!comments || !comments.length) {
+                        commentsList.innerHTML = '<div id="grade-no-comments" class="text-sm text-muted">Пока нет сообщений. Напишите ученику первым.</div>';
+                        return;
+                    }
+                    comments.forEach(function(comment) {
+                        var wrap = document.createElement('div');
+                        wrap.className = 'grade-comment-item' + (comment.is_mine ? ' mine' : '');
+                        wrap.innerHTML =
+                            '<div class="grade-comment-bubble">' +
+                                '<div class="grade-comment-meta">' +
+                                    '<strong>' + escapeHtml(comment.author && comment.author.name ? comment.author.name : 'Пользователь') + '</strong>' +
+                                    '<span>' + escapeHtml(comment.created_human || '') + '</span>' +
+                                '</div>' +
+                                '<div class="grade-comment-text">' + escapeHtml(comment.text || '') + '</div>' +
+                            '</div>';
+                        commentsList.appendChild(wrap);
+                    });
+                }
+
+                function scrollCommentsToBottom() {
+                    commentsList.scrollTop = commentsList.scrollHeight;
+                }
+
+                var lastCommentId = {% if submission.comments %}{{ (submission.comments|sort(attribute='comment_id')|last).comment_id }}{% else %}0{% endif %};
+                function refreshComments(opts) {
+                    opts = opts || {};
+                    fetch('{{ url_for("assignments.submission_comments_list", submission_id=submission.submission_id) }}', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
                     })
                     .then(function(response) { return response.json(); })
                     .then(function(data) {
-                        if (!data.success) throw new Error(data.error || 'Не удалось отправить сообщение');
-                        if (typeof showToast === 'function') showToast('Сообщение отправлено', 'success');
-                        window.location.reload();
+                        if (!data.success) throw new Error(data.error || 'Не удалось получить сообщения');
+                        var comments = data.comments || [];
+                        var newestId = comments.length ? (comments[comments.length - 1].id || 0) : 0;
+                        var gotNew = newestId > lastCommentId;
+                        renderComments(comments);
+                        setUnread(!!data.has_unread_student_comment, gotNew && !opts.silent);
+                        if (gotNew || opts.forceScroll) scrollCommentsToBottom();
+                        lastCommentId = newestId;
                     })
-                    .catch(function(err) {
-                        if (typeof showToast === 'function') showToast('Ошибка: ' + (err && err.message ? err.message : 'сеть'), 'error');
+                    .catch(function() {});
+                }
+
+                if (chatJumpBtn) {
+                    chatJumpBtn.addEventListener('click', function() {
+                        var section = commentsList.closest('.grade-comments');
+                        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     });
-                });
+                }
+
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        var text = (input && input.value ? input.value : '').trim();
+                        if (!text) return;
+                        fetch('{{ url_for("assignments.submission_comment_create", submission_id=submission.submission_id) }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({ text: text })
+                        })
+                        .then(function(response) { return response.json(); })
+                        .then(function(data) {
+                            if (!data.success) throw new Error(data.error || 'Не удалось отправить сообщение');
+                            if (input) input.value = '';
+                            if (typeof showToast === 'function') showToast('Сообщение отправлено', 'success');
+                            setUnread(false, false);
+                            refreshComments({ forceScroll: true, silent: true });
+                        })
+                        .catch(function(err) {
+                            if (typeof showToast === 'function') showToast('Ошибка: ' + (err && err.message ? err.message : 'сеть'), 'error');
+                        });
+                    });
+                }
+                refreshComments({ forceScroll: true, silent: true });
+                window.setInterval(function() { refreshComments({ silent: false }); }, 10000);
             })();
         });
         
