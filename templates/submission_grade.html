@@ -186,6 +186,45 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+        .grade-page-inner {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+        .grade-header {
+            border-radius: 28px;
+            border: 1px solid #e2e8f0;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            box-shadow: 0 16px 34px -24px rgba(15, 23, 42, 0.35);
+        }
+        .task-card {
+            border-radius: 24px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            box-shadow: 0 10px 28px -22px rgba(15, 23, 42, 0.45);
+        }
+        .task-card.triplet-card {
+            border-color: #ddd6fe;
+            box-shadow: 0 14px 30px -20px rgba(91, 33, 182, 0.35);
+        }
+        .subtask-box {
+            margin-top: 0.85rem;
+            padding: 1rem;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .subtask-title {
+            font-weight: 800;
+            color: #6d28d9;
+            margin-bottom: 0.4rem;
+            font-size: 0.95rem;
+        }
+        [data-theme="dark"] .grade-header,
+        [data-theme="dark"] .task-card,
+        [data-theme="dark"] .subtask-box {
+            border-color: var(--stroke-1);
+            background: var(--surface-1);
+        }
     </style>
     <script>
         (function(){
@@ -250,17 +289,22 @@
         </div>
         
         <form id="grade-form">
-            {% for task_item in tasks_data %}
-            <div class="task-card" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
+            {% for task_item in tasks_view %}
+            {% set grading_rows = [task_item] + (task_item.triplet_items if task_item.is_triplet_19_21 else []) %}
+            <div class="task-card {% if task_item.is_triplet_19_21 %}triplet-card{% endif %}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
                     <div>
                         <div style="font-size: 1.2em; font-weight: 700; color: var(--accent-1);">
-                            Задание {{ loop.index }}
+                            {% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ loop.index }}{% endif %}
                         </div>
                         <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">
+                            {% if task_item.is_triplet_19_21 %}
+                            Тройной блок проверки (3 задания в одной карточке)
+                            {% else %}
                             Максимальный балл: {{ task_item.assignment_task.max_score }}
                             {% if attempts_per_task and task_item.max_attempts_for_task is defined %}
                             <span style="margin-left: 0.5rem;">· Попытки по заданию: {{ task_item.task_attempts_used }} / {{ task_item.max_attempts_for_task }}</span>
+                            {% endif %}
                             {% endif %}
                         </div>
                         {% if task_item.rating_meta %}
@@ -289,32 +333,32 @@
                 <div class="task-content">
                     {% if task_item.task and task_item.task.content_html %}{{ task_item.task.content_html|normalize_task_content_urls|sanitize_html }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
                 </div>
-                
-                <div class="answer-section">
+                {% for g in grading_rows %}
+                <div class="answer-section {% if task_item.is_triplet_19_21 %}subtask-box{% endif %}">
+                    {% if task_item.is_triplet_19_21 %}
+                    <div class="subtask-title">Проверка задания {{ g.task.task_number if g.task else loop.index }}</div>
+                    {% endif %}
                     <div style="font-weight: 600; margin-bottom: 0.25rem;">Ответ ученика:</div>
-                    <div class="student-answer-value">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
-                    {% set effective_answer = task_item.assignment_task.answer_override or (task_item.task.answer if task_item.task else '') %}
+                    <div class="student-answer-value">{{ g.answer.value if g.answer and g.answer.value else '(нет ответа)' }}</div>
+                    {% set effective_answer = g.assignment_task.answer_override or (g.task.answer if g.task else '') %}
                     {% if effective_answer %}
                     <div style="margin-top: 0.75rem;">
                         <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Правильный ответ:</div>
                         <div class="student-answer-value" style="background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.4);">{{ effective_answer }}</div>
                     </div>
                     {% endif %}
-                    {% if task_item.answer and task_item.answer.student_code %}
+                    {% if g.answer and g.answer.student_code %}
                     <div style="margin-top: 0.75rem;">
-                        <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Код ученика (Python){% if task_item.answer.student_code_saved_at %} — сохранён {{ task_item.answer.student_code_saved_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}:</div>
-                        <pre class="student-code-block" style="margin: 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; font-family: 'Consolas', 'Monaco', monospace; white-space: pre-wrap; word-break: break-word; max-height: 20rem; overflow: auto;">{{ task_item.answer.student_code }}</pre>
+                        <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Код ученика (Python){% if g.answer.student_code_saved_at %} — сохранён {{ g.answer.student_code_saved_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}:</div>
+                        <pre class="student-code-block" style="margin: 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; font-family: 'Consolas', 'Monaco', monospace; white-space: pre-wrap; word-break: break-word; max-height: 20rem; overflow: auto;">{{ g.answer.student_code }}</pre>
                     </div>
                     {% endif %}
-                    {% if task_item.answer and task_item.answer.files %}
+                    {% if g.answer and g.answer.files %}
                     <div style="margin-top: 0.75rem;">
                         <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem;">Прикреплённые файлы ученика:</div>
                         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                            {% for file_info in task_item.answer.files %}
-                            <a href="{{ file_info.url if file_info is mapping else file_info }}"
-                               target="_blank" download
-                               class="neo-button outline sm"
-                               style="display: inline-flex; align-items: center; gap: 0.35rem; text-decoration: none; font-size: 0.85rem;">
+                            {% for file_info in g.answer.files %}
+                            <a href="{{ file_info.url if file_info is mapping else file_info }}" target="_blank" download class="neo-button outline sm" style="display: inline-flex; align-items: center; gap: 0.35rem; text-decoration: none; font-size: 0.85rem;">
                                 {{ ui_icon('action.backup', 'sm') }}
                                 {{ file_info.name if file_info is mapping and file_info.name else 'Скачать файл' }}
                             </a>
@@ -322,48 +366,40 @@
                         </div>
                     </div>
                     {% endif %}
-                    {% if task_item.answer and task_item.answer.is_correct is not none %}
-                    <div style="margin-top: 0.75rem; padding: 0.5rem; background: {% if task_item.answer.is_correct %}var(--success){% else %}var(--danger){% endif %}; color: white; border-radius: var(--radius-sm); font-weight: 600;">
-                        {% if task_item.answer.is_correct %}{{ ui_icon('action.check', 'sm') }} Правильно{% else %}{{ ui_icon('action.close', 'sm') }} Неправильно{% endif %}
-                        (Авто-проверка: {{ task_item.answer.score }}/{{ task_item.assignment_task.max_score }})
+                    {% if g.answer and g.answer.is_correct is not none %}
+                    <div style="margin-top: 0.75rem; padding: 0.5rem; background: {% if g.answer.is_correct %}var(--success){% else %}var(--danger){% endif %}; color: white; border-radius: var(--radius-sm); font-weight: 600;">
+                        {% if g.answer.is_correct %}{{ ui_icon('action.check', 'sm') }} Правильно{% else %}{{ ui_icon('action.close', 'sm') }} Неправильно{% endif %}
+                        (Авто-проверка: {{ g.answer.score }}/{{ g.assignment_task.max_score }})
                     </div>
                     {% endif %}
-
-                    {% if submission.student and submission.student.user_id and task_item.task %}
+                    {% if submission.student and submission.student.user_id and g.task %}
                     <div style="margin-top: 0.75rem;">
-                        <button type="button" class="neo-button outline sm"
-                                style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;"
-                                onclick="BooCanvasViewer.open({{ submission.student.user_id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
+                        <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ submission.student.user_id }}, {{ g.task.task_id }}, 'submission', {{ submission.submission_id }})">
                             <i class="ph-bold ph-pencil-line"></i> Заметки ученика
                         </button>
                     </div>
                     {% endif %}
-                    
                     <div class="score-input-group">
                         <label style="font-weight: 600;">Балл:</label>
-                        <input 
-                            type="number" 
-                            class="score-input" 
-                            name="score_{{ task_item.assignment_task.assignment_task_id }}"
-                            value="{{ task_item.answer.score if task_item.answer and task_item.answer.score is not none else task_item.assignment_task.max_score if task_item.answer and task_item.answer.is_correct else 0 }}"
+                        <input
+                            type="number"
+                            class="score-input"
+                            name="score_{{ g.assignment_task.assignment_task_id }}"
+                            value="{{ g.answer.score if g.answer and g.answer.score is not none else g.assignment_task.max_score if g.answer and g.answer.is_correct else 0 }}"
                             min="0"
-                            max="{{ task_item.assignment_task.max_score }}"
-                            data-max="{{ task_item.assignment_task.max_score }}"
+                            max="{{ g.assignment_task.max_score }}"
+                            data-max="{{ g.assignment_task.max_score }}"
                             required
                         >
-                        <span class="max-score">/ {{ task_item.assignment_task.max_score }}</span>
+                        <span class="max-score">/ {{ g.assignment_task.max_score }}</span>
                     </div>
-                    
                     <div style="margin-top: 1rem;">
                         <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Комментарий к задаче:</label>
                         <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.5rem 0;">Ученик увидит этот комментарий при выполнении. Можно сохранить кнопкой «Сохранить комментарии» без завершения проверки.</p>
-                        <textarea 
-                            class="comment-input"
-                            name="comment_{{ task_item.assignment_task.assignment_task_id }}"
-                            placeholder="Например: обратите внимание на единицы измерения; подсказка к заданию..."
-                        >{{ task_item.answer.teacher_comment if task_item.answer and task_item.answer.teacher_comment else '' }}</textarea>
+                        <textarea class="comment-input" name="comment_{{ g.assignment_task.assignment_task_id }}" placeholder="Например: обратите внимание на единицы измерения; подсказка к заданию...">{{ g.answer.teacher_comment if g.answer and g.answer.teacher_comment else '' }}</textarea>
                     </div>
                 </div>
+                {% endfor %}
             </div>
             {% endfor %}
             

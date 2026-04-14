@@ -31,6 +31,7 @@ import subprocess
 import sys
 import os
 import time
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -622,6 +623,153 @@ def auto_grade_answer(answer, assignment_task):
     return False, 0
 
 
+def _get_triplet_task_ids(task: Tasks | None):
+    """
+    Для заданий 19–21 с task_group_id возвращает [task_id_19, task_id_20, task_id_21] по порядку
+    или None, если полной тройки в БД нет.
+    """
+    if not task or not getattr(task, 'task_group_id', None):
+        return None
+    try:
+        trio = Tasks.query.filter(
+            Tasks.task_group_id == task.task_group_id,
+            Tasks.task_number.in_([19, 20, 21])
+        ).order_by(Tasks.task_number).all()
+        if len(trio) != 3:
+            return None
+        return [t.task_id for t in trio]
+    except Exception:
+        return None
+
+
+def _expand_task_ids_for_triplets(task_ids: list[int]) -> list[int]:
+    """
+    Расширяет список task_id: тройка 19–21 по одному task_group_id добавляется целиком (19, 20, 21).
+    Повторяющиеся id в одной группе не дублируются.
+    """
+    out: list[int] = []
+    seen: set[int] = set()
+    seen_groups: set[str] = set()
+    for tid in task_ids:
+        try:
+            tid_int = int(tid)
+        except (TypeError, ValueError):
+            continue
+        task = Tasks.query.get(tid_int)
+        if not task:
+            continue
+        trip = _get_triplet_task_ids(task)
+        if trip:
+            gid = (str(task.task_group_id or '')).strip()
+            if not gid:
+                if tid_int not in seen:
+                    seen.add(tid_int)
+                    out.append(tid_int)
+                continue
+            if gid in seen_groups:
+                continue
+            seen_groups.add(gid)
+            for x in trip:
+                if x not in seen:
+                    seen.add(x)
+                    out.append(x)
+        else:
+            if tid_int not in seen:
+                seen.add(tid_int)
+                out.append(tid_int)
+    return out
+
+
+def _expand_tasks_list_for_triplets(tasks: list) -> list:
+    """Для мастера создания работы: расширяет список объектов Tasks по тройкам 19–21."""
+    out: list = []
+    seen: set[int] = set()
+    seen_groups: set[str] = set()
+    for t in tasks or []:
+        if not t:
+            continue
+        tid = getattr(t, 'task_id', None)
+        if tid is None:
+            continue
+        trip = _get_triplet_task_ids(t)
+        if trip:
+            gid = (str(t.task_group_id or '')).strip()
+            if not gid:
+                if tid not in seen:
+                    seen.add(tid)
+                    out.append(t)
+                continue
+            if gid in seen_groups:
+                continue
+            seen_groups.add(gid)
+            for sub_id in trip:
+                if sub_id in seen:
+                    continue
+                sub = Tasks.query.get(sub_id)
+                if sub:
+                    seen.add(sub_id)
+                    out.append(sub)
+        else:
+            if tid not in seen:
+                seen.add(tid)
+                out.append(t)
+    return out
+
+
+def _expand_tasks_data_for_triplets(tasks_data: list) -> list:
+    """
+    Для distribute / assignment_update: дублирует строки задач по полной тройке 19–21,
+    выставляет order и max_score по шаблону курса для каждой позиции.
+    """
+    flat: list[dict] = []
+    seen_groups: set[str] = set()
+    for row in tasks_data or []:
+        if not isinstance(row, dict):
+            continue
+        task_id = row.get('task_id')
+        if not task_id:
+            continue
+        try:
+            tid_int = int(task_id)
+        except (TypeError, ValueError):
+            continue
+        task = Tasks.query.get(tid_int)
+        if not task:
+            continue
+        trip_ids = _get_triplet_task_ids(task)
+        if trip_ids:
+            gid = (str(task.task_group_id or '')).strip()
+            if not gid:
+                flat.append(dict(row))
+                continue
+            if gid in seen_groups:
+                continue
+            seen_groups.add(gid)
+            for sub_tid in trip_ids:
+                sub_task = Tasks.query.get(sub_tid)
+                if not sub_task:
+                    continue
+                sub = dict(row)
+                sub['task_id'] = sub_tid
+                tpl = _get_task_template(sub_task)
+                if tpl and tpl.max_primary_score is not None:
+                    sub['max_score'] = int(tpl.max_primary_score)
+                else:
+                    try:
+                        sub['max_score'] = int(row.get('max_score', 1) or 1)
+                    except (TypeError, ValueError):
+                        sub['max_score'] = 1
+                has_ans = bool((sub_task.answer or '').strip())
+                sub['requires_manual_grading'] = _requires_manual_from_template(
+                    sub_task, has_ans, explicit_override=row.get('requires_manual_grading', False)
+                )
+                flat.append(sub)
+        else:
+            flat.append(dict(row))
+    for i, row in enumerate(flat):
+        row['order'] = i
+    return flat
+
 
 @assignments_bp.route('/assignments/distribute', methods=['POST'])
 @login_required
@@ -681,6 +829,10 @@ def distribute_assignment():
         except Exception as e:
             return jsonify({'success': False, 'error': f'Некорректный формат дедлайна: {e}'}), 400
         
+        if not tasks_data:
+            return jsonify({'success': False, 'error': 'Добавьте хотя бы одну задачу'}), 400
+
+        tasks_data = _expand_tasks_data_for_triplets(tasks_data)
         if not tasks_data:
             return jsonify({'success': False, 'error': 'Добавьте хотя бы одну задачу'}), 400
         
@@ -1483,6 +1635,8 @@ def assignment_create():
     except Exception:
         templates = []
 
+    tasks = _expand_tasks_list_for_triplets(tasks or [])
+
     task_ids = []
     try:
         task_ids = [int(t.task_id) for t in (tasks or []) if getattr(t, 'task_id', None)]
@@ -1589,6 +1743,8 @@ def assignment_update(assignment_id: int):
                 assignment.max_attempts_default = 1
         tasks_data = data.get('tasks', [])
         if isinstance(tasks_data, list) and len(tasks_data) > 0:
+            tasks_data = _expand_tasks_data_for_triplets(tasks_data)
+        if isinstance(tasks_data, list) and len(tasks_data) > 0:
             new_task_ids = [t.get('task_id') for t in tasks_data if t.get('task_id')]
             existing_by_task_id = {at.task_id: at for at in (assignment.tasks or [])}
             for idx, t_data in enumerate(tasks_data):
@@ -1654,6 +1810,7 @@ def assignment_add_tasks(assignment_id: int):
         if not isinstance(task_ids, list):
             task_ids = [task_ids]
         task_ids = [int(x) for x in task_ids if x is not None and str(x).strip() != '']
+        task_ids = _expand_task_ids_for_triplets(task_ids)
         existing_task_ids = {at.task_id for at in (assignment.tasks or [])}
         max_order = max((at.order_index for at in (assignment.tasks or [])), default=-1)
         added = 0
@@ -3083,6 +3240,42 @@ def submission_grade_view(submission_id):
             'difficulty_label': difficulty_label,
         })
 
+    tasks_view = []
+    i = 0
+    while i < len(tasks_data):
+        item = tasks_data[i]
+        item_task = item.get('task')
+        item_num = getattr(item_task, 'task_number', None) if item_task else None
+        item_group = getattr(item_task, 'task_group_id', None) if item_task else None
+
+        can_bundle = i + 2 < len(tasks_data)
+        if item_num == 19 and can_bundle:
+            next_20 = tasks_data[i + 1]
+            next_21 = tasks_data[i + 2]
+            task_20 = next_20.get('task')
+            task_21 = next_21.get('task')
+            num_20 = getattr(task_20, 'task_number', None) if task_20 else None
+            num_21 = getattr(task_21, 'task_number', None) if task_21 else None
+            group_20 = getattr(task_20, 'task_group_id', None) if task_20 else None
+            group_21 = getattr(task_21, 'task_group_id', None) if task_21 else None
+
+            same_group = bool(item_group and group_20 and group_21 and item_group == group_20 == group_21)
+            legacy_consecutive = (num_20 == 20 and num_21 == 21)
+
+            if (num_20 == 20 and num_21 == 21) and (same_group or legacy_consecutive):
+                root_item = dict(item)
+                root_item['is_triplet_19_21'] = True
+                root_item['triplet_items'] = [next_20, next_21]
+                tasks_view.append(root_item)
+                i += 3
+                continue
+
+        single_item = dict(item)
+        single_item['is_triplet_19_21'] = False
+        single_item['triplet_items'] = []
+        tasks_view.append(single_item)
+        i += 1
+
     rubric_template = None
     rubric_templates = []
     try:
@@ -3108,6 +3301,7 @@ def submission_grade_view(submission_id):
                          submission=submission,
                          assignment=assignment,
                          tasks_data=tasks_data,
+                         tasks_view=tasks_view,
                          rubric_template=rubric_template,
                          rubric_templates=rubric_templates,
                          display_status_label=display_status_label,
