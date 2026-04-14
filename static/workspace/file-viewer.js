@@ -17,10 +17,14 @@
 
   let modal = null;
   let cmInstance = null;
-  const inlinePreviewExtensions = new Set([
+  const textPreviewExtensions = new Set([
     'txt', 'csv', 'tsv', 'py', 'cpp', 'c', 'h', 'java', 'js',
     'json', 'xml', 'html', 'css', 'md', 'log', 'ini', 'cfg',
-    'dat', 'in', 'out', 'ans', 'xls', 'xlsx', 'xlsm',
+    'dat', 'in', 'out', 'ans',
+  ]);
+  const inlinePreviewExtensions = new Set([
+    ...textPreviewExtensions,
+    'xls', 'xlsx', 'xlsm',
   ]);
 
   function getModal() {
@@ -218,6 +222,60 @@
     return '';
   }
 
+  function buildTaskFetchUrl(taskId, fileMeta) {
+    if (!fileMeta) return '';
+    if (typeof fileMeta === 'string') {
+      const raw = fileMeta.trim();
+      if (/^https?:\/\/kompege\.ru\//i.test(raw)) {
+        return `/attachments/proxy?url=${encodeURIComponent(raw)}`;
+      }
+      return buildTaskDownloadUrl(taskId, raw);
+    }
+
+    const path = String(fileMeta.path || '').trim();
+    const url = String(fileMeta.url || '').trim();
+    if (/^https?:\/\/kompege\.ru\//i.test(url)) {
+      return `/attachments/proxy?url=${encodeURIComponent(url)}`;
+    }
+    if (path) return buildTaskDownloadUrl(taskId, fileMeta);
+    return url || '';
+  }
+
+  async function fetchTaskTextDirect(taskId, fileMeta) {
+    const url = buildTaskFetchUrl(taskId, fileMeta);
+    if (!url) throw new Error('No direct task file url');
+
+    const res = await fetch(url, {
+      credentials: 'same-origin',
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const filename = fileNameFromTaskMeta(fileMeta);
+    const ext = extOf(filename);
+    const text = await res.text();
+    return {
+      success: true,
+      type: 'text',
+      filename,
+      content: text,
+      mode: ({
+        py: 'python',
+        cpp: 'text/x-c++src',
+        c: 'text/x-csrc',
+        h: 'text/x-csrc',
+        java: 'text/x-java',
+        js: 'javascript',
+        json: 'application/json',
+        xml: 'xml',
+        html: 'htmlmixed',
+        css: 'css',
+        md: 'markdown',
+      })[ext] || 'text/plain',
+    };
+  }
+
   async function fetchAndRender(url) {
     show();
     setLoading(true);
@@ -260,6 +318,31 @@
 
   window.BooFileViewer = {
     openTaskFile(taskId, fileIndex, fileMeta) {
+      const filename = fileNameFromTaskMeta(fileMeta);
+      const ext = extOf(filename);
+
+      if (fileMeta && textPreviewExtensions.has(ext)) {
+        show();
+        setTitle(filename || 'Файл');
+        setLoading(true);
+        fetchTaskTextDirect(taskId, fileMeta)
+          .then((data) => {
+            setLoading(false);
+            renderText(data);
+          })
+          .catch(() => {
+            setLoading(false);
+            const directUrl = buildTaskFetchUrl(taskId, fileMeta) || buildTaskDownloadUrl(taskId, fileMeta);
+            if (directUrl) {
+              window.open(directUrl, '_blank', 'noopener');
+              hide();
+              return;
+            }
+            fetchAndRender(`/workspace/task-file-content?task_id=${taskId}&file_index=${fileIndex}`);
+          });
+        return;
+      }
+
       if (fileMeta && !isInlinePreviewable(fileMeta)) {
         const directUrl = buildTaskDownloadUrl(taskId, fileMeta);
         if (directUrl) {
