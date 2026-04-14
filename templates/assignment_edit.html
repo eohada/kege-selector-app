@@ -93,8 +93,8 @@
                 <p style="color: var(--color-text-muted); font-size: 0.85rem; margin: 0 0 0.5rem 0;">Ссылка «Открыть источник» и поле «Эталонный ответ» видны только преподавателям; ученики их не видят. Если ответ пустой — впишите его после просмотра источника (с ним будет сравниваться ответ ученика).</p>
                 <ul class="task-edit-list" id="taskList">
                     {% for at in assignment_tasks %}
-                    <li class="task-edit-item" draggable="true" data-assignment-task-id="{{ at.assignment_task_id }}" data-task-id="{{ at.task_id }}" data-order="{{ at.order_index }}" data-max-score="{{ at.max_score }}">
-                        <div class="task-drag-handle" title="Перетащить" aria-label="Изменить порядок задания">⋮⋮</div>
+                    <li class="task-edit-item" data-assignment-task-id="{{ at.assignment_task_id }}" data-task-id="{{ at.task_id }}" data-order="{{ at.order_index }}" data-max-score="{{ at.max_score }}">
+                        <div class="task-drag-handle" draggable="true" title="Перетащить" aria-label="Изменить порядок задания">⋮⋮</div>
                         <div style="flex: 1; min-width: 0;">
                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
                                 <span class="task-info">Задание {{ at.task.task_number }}</span>
@@ -169,20 +169,24 @@
                     ).element;
                 }
 
-                taskList.querySelectorAll('.task-edit-item').forEach((li) => {
-                    li.addEventListener('dragstart', (e) => {
-                        if (!e.target.closest('.task-drag-handle')) {
-                            e.preventDefault();
-                            return;
-                        }
+                // draggable на <li>: в dragstart e.target часто сам <li>, closest('.task-drag-handle') === null → drag отменялся.
+                // Держим draggable только на ручке; в DOM переставляем весь <li>.
+                taskList.querySelectorAll('.task-drag-handle').forEach((handle) => {
+                    const li = handle.closest('.task-edit-item');
+                    if (!li) return;
+                    handle.addEventListener('dragstart', (e) => {
                         draggedEl = li;
                         li.classList.add('dragging');
                         e.dataTransfer.effectAllowed = 'move';
                         try {
                             e.dataTransfer.setData('text/plain', String(li.getAttribute('data-task-id') || ''));
                         } catch (_) {}
+                        try {
+                            const rect = li.getBoundingClientRect();
+                            e.dataTransfer.setDragImage(li, Math.min(24, e.clientX - rect.left), Math.min(24, e.clientY - rect.top));
+                        } catch (_) {}
                     });
-                    li.addEventListener('dragend', () => {
+                    handle.addEventListener('dragend', () => {
                         li.classList.remove('dragging');
                         draggedEl = null;
                     });
