@@ -34,7 +34,7 @@ import time
 
 logger = logging.getLogger(__name__)
 
-# Редактор кода: песочница для запуска Python (только itertools, math, open для чтения)
+# Редактор кода: песочница для запуска Python
 _PYTHON_RUNNER = r"""
 import sys, io, os
 
@@ -53,25 +53,41 @@ def _safe_open(path, mode='r', encoding=None, **kw):
         return _real_open(abs_path, mode, **kw)
     return _real_open(abs_path, mode, encoding=encoding or 'utf-8', **kw)
 
+import itertools, math, ipaddress
+
+_ALLOWED_MODULES = {
+    'itertools': itertools, 'math': math, 'ipaddress': ipaddress,
+}
+_real_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__
+
+def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+    if name in _ALLOWED_MODULES:
+        mod = _ALLOWED_MODULES[name]
+        if fromlist:
+            return mod
+        return mod
+    raise ImportError(f"Модуль '{name}' недоступен в песочнице. Доступны: itertools, math, ipaddress")
+
 code = sys.stdin.read()
 out = io.StringIO()
 err = io.StringIO()
 sys.stdout = out
 sys.stderr = err
 try:
-    import itertools
-    import math
     safe_builtins = {'print': print, 'len': len, 'range': range, 'list': list, 'dict': dict, 'str': str, 'int': int, 'float': float,
                      'sum': sum, 'min': min, 'max': max, 'abs': abs, 'sorted': sorted, 'map': map, 'filter': filter, 'zip': zip,
                      'enumerate': enumerate, 'tuple': tuple, 'set': set, 'bool': bool, 'True': True, 'False': False, 'None': None,
                      'round': round, 'repr': repr, 'any': any, 'all': all,
-                     'open': _safe_open, 'input': input,
+                     'open': _safe_open, 'input': input, '__import__': _safe_import,
                      'type': type, 'isinstance': isinstance, 'chr': chr, 'ord': ord,
                      'hex': hex, 'bin': bin, 'pow': pow, 'reversed': reversed,
                      'bytes': bytes, 'format': format, 'hash': hash,
                      'Exception': Exception, 'ValueError': ValueError, 'TypeError': TypeError,
-                     'FileNotFoundError': FileNotFoundError}
-    safe = {'__builtins__': safe_builtins, 'itertools': itertools, 'math': math, 'os': None}
+                     'KeyError': KeyError, 'IndexError': IndexError, 'StopIteration': StopIteration,
+                     'FileNotFoundError': FileNotFoundError, 'ImportError': ImportError,
+                     'ZeroDivisionError': ZeroDivisionError, 'RuntimeError': RuntimeError,
+                     'AttributeError': AttributeError, 'OverflowError': OverflowError}
+    safe = {'__builtins__': safe_builtins, 'itertools': itertools, 'math': math, 'ipaddress': ipaddress, 'os': None}
     exec(code, safe)
 except Exception as e:
     err.write(str(e))

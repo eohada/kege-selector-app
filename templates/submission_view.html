@@ -619,7 +619,7 @@
                             <span class="code-editor-toggle-icon">▶</span>
                         </button>
                         <div class="code-editor-panel bg-surface border-t border-stroke" style="display: none; padding: 1rem;">
-                            <p class="code-editor-hint">Python 3. Доступны <code>itertools</code>, <code>math</code>. Файлы задания доступны через <code>open('имя_файла')</code>.</p>
+                            <p class="code-editor-hint">Python 3. Доступны <code>itertools</code>, <code>math</code>, <code>ipaddress</code>. Файлы задания доступны через <code>open('имя_файла')</code>.</p>
                             <div class="code-editor-cm-wrap" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
                                 <textarea class="code-editor-text" rows="14" placeholder="# Ваш код&#10;import math&#10;print(math.sqrt(16))" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; padding: 0.75rem; border: none; background: var(--surface-1); color: var(--text-primary); resize: vertical; box-sizing: border-box;">{{ task_item.answer.student_code if task_item.answer and task_item.answer.student_code else '' }}</textarea>
                             </div>
@@ -1245,7 +1245,7 @@
             if (!taskTimers[taskId]) taskTimers[taskId] = { elapsedMs: 0, runningSinceMs: null };
         }
         function isAppActive() {
-            return windowFocused && !document.hidden;
+            return true;
         }
         function isTaskRunning(taskId) {
             ensureTaskTimer(taskId);
