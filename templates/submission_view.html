@@ -1471,12 +1471,60 @@
         
         // Сдача одного задания (при allow_separate_submission)
         const taskTimers = Object.create(null); // { [taskId]: { elapsedMs, runningSinceMs } }
+        const TASK_TIMER_STORAGE_KEY = 'kege_submission_task_timers_{{ submission.submission_id }}';
         let activeTaskId = null;
         let windowFocused = !document.hidden;
         const nowMs = () => Date.now();
+        let lastTaskTimerPersistAt = 0;
         function ensureTaskTimer(taskId) {
             if (!Number.isFinite(taskId)) return;
             if (!taskTimers[taskId]) taskTimers[taskId] = { elapsedMs: 0, runningSinceMs: null };
+        }
+        function persistTaskTimers(force) {
+            const now = nowMs();
+            if (!force && now - lastTaskTimerPersistAt < 1500) return;
+            lastTaskTimerPersistAt = now;
+            try {
+                const out = { activeTaskId: activeTaskId, savedAt: now, timers: {} };
+                Object.keys(taskTimers).forEach(function(k) {
+                    const tid = parseInt(k, 10);
+                    if (!Number.isFinite(tid)) return;
+                    const st = taskTimers[tid];
+                    if (!st) return;
+                    out.timers[String(tid)] = {
+                        elapsedMs: Math.max(0, Math.floor(st.elapsedMs || 0)),
+                        runningSinceMs: (typeof st.runningSinceMs === 'number' ? st.runningSinceMs : null),
+                    };
+                });
+                localStorage.setItem(TASK_TIMER_STORAGE_KEY, JSON.stringify(out));
+            } catch (e) { /* ignore private mode/quota */ }
+        }
+        function loadTaskTimersFromStorage() {
+            try {
+                const raw = localStorage.getItem(TASK_TIMER_STORAGE_KEY);
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                if (!parsed || !parsed.timers) return;
+                const savedAt = parseInt(parsed.savedAt, 10) || nowMs();
+                Object.keys(parsed.timers).forEach(function(k) {
+                    const tid = parseInt(k, 10);
+                    if (!Number.isFinite(tid)) return;
+                    ensureTaskTimer(tid);
+                    const src = parsed.timers[k] || {};
+                    const elapsedMs = Math.max(0, Math.floor(src.elapsedMs || 0));
+                    let runningSinceMs = (typeof src.runningSinceMs === 'number') ? src.runningSinceMs : null;
+                    // Ограничиваем "офлайн-добор" после перезагрузки небольшим окном, чтобы не накручивать.
+                    if (runningSinceMs !== null) {
+                        const offlineDelta = Math.max(0, nowMs() - Math.max(runningSinceMs, savedAt));
+                        const graceDelta = Math.min(offlineDelta, 30000);
+                        taskTimers[tid].elapsedMs = elapsedMs + graceDelta;
+                        taskTimers[tid].runningSinceMs = null;
+                    } else {
+                        taskTimers[tid].elapsedMs = elapsedMs;
+                        taskTimers[tid].runningSinceMs = null;
+                    }
+                });
+            } catch (e) { /* ignore */ }
         }
         function isAppActive() {
             return true;
@@ -1496,6 +1544,7 @@
                 st.elapsedMs += Math.max(0, nowMs() - st.runningSinceMs);
                 st.runningSinceMs = null;
             }
+            persistTaskTimers(false);
         }
         function getTaskElapsedSec(taskId) {
             ensureTaskTimer(taskId);
@@ -1512,6 +1561,7 @@
             taskTimers[taskId].elapsedMs = 0;
             taskTimers[taskId].runningSinceMs = null;
             syncTaskTimer(taskId);
+            persistTaskTimers(true);
         }
         function updateTaskDebugTimer(taskId) {
             const el = document.querySelector('.task-debug-timer[data-task-id="' + taskId + '"]');
@@ -1529,6 +1579,7 @@
                 updateTaskDebugTimer(taskId);
             });
         }
+        loadTaskTimersFromStorage();
         document.querySelectorAll('.task-card[data-task-id]').forEach(function(card) {
             const taskId = parseInt(card.dataset.taskId, 10);
             if (!Number.isFinite(taskId)) return;
@@ -1543,7 +1594,8 @@
         }
         document.addEventListener('visibilitychange', syncAllTaskTimers);
         window.addEventListener('focus', function() { windowFocused = true; syncAllTaskTimers(); });
-        window.addEventListener('blur', function() { windowFocused = false; syncAllTaskTimers(); });
+        window.addEventListener('blur', function() { windowFocused = false; syncAllTaskTimers(); persistTaskTimers(true); });
+        window.addEventListener('beforeunload', function() { syncAllTaskTimers(); persistTaskTimers(true); });
         setInterval(syncAllTaskTimers, 1000);
         window.__syncActiveTaskTimer__ = syncActiveTaskFromDom;
         document.querySelectorAll('.submit-task-btn').forEach(function(btn) {

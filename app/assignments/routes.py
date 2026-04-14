@@ -2801,15 +2801,21 @@ def submission_submit_task(submission_id):
         answer.submitted_separately_at = moscow_now()
         answer.updated_at = moscow_now()
         db.session.flush()
-        time_spent_sec = (
-            client_time_spent_sec
-            if client_time_spent_sec is not None
-            else _resolve_answer_time_spent_sec(
-                submission,
-                answer.submitted_separately_at,
-                previous_answered_at=previous_answered_at,
-            )
+        server_time_spent_sec = _resolve_answer_time_spent_sec(
+            submission,
+            answer.submitted_separately_at,
+            previous_answered_at=previous_answered_at,
         )
+        # Анти-абуз: клиентское время используем только как диагностику, доверяем серверному окну.
+        time_spent_sec = max(0, int(server_time_spent_sec or 0))
+        if client_time_spent_sec is not None and abs(int(client_time_spent_sec) - time_spent_sec) > 30:
+            logger.info(
+                "submit_task time_spent mismatch: submission_id=%s assignment_task_id=%s client=%s server=%s",
+                submission_id,
+                assignment_task_id,
+                client_time_spent_sec,
+                time_spent_sec,
+            )
         is_correct, score = auto_grade_answer(answer, assignment_task)
         if is_correct is not None:
             answer.is_correct = is_correct
@@ -2840,6 +2846,7 @@ def submission_submit_task(submission_id):
             'is_correct': answer.is_correct,
             'score': answer.score,
             'max_score': assignment_task.max_score,
+            'time_spent_sec_used': time_spent_sec,
             'attempts_used': answer.attempts_used,
             'max_attempts': max_for_task,
             'rating_meta': details,
