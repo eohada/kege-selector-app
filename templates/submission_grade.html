@@ -517,9 +517,9 @@
             </div>
         </div>
 
-        <div class="task-nav task-nav-grade sticky top-20 z-40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-2.5 py-3 rounded-[20px] mt-2 mb-2 bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-nav dark:shadow-nav-dark" id="taskNavGrade">
+        <div class="task-nav task-nav-grade sticky top-20 z-40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-2.5 py-3 rounded-[20px] mt-2 mb-2 bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-nav dark:shadow-nav-dark min-w-0" id="taskNavGrade">
             <span class="task-nav-label text-[11px] font-extrabold text-slate-500 dark:text-dark-muted uppercase tracking-widest pl-2 shrink-0 hidden sm:block">Задания:</span>
-            <div class="task-strip flex gap-1.5 overflow-x-auto hide-scroll w-full sm:w-auto sm:flex-1 sm:justify-end py-1.5 -my-1.5">
+            <div class="task-strip flex gap-1.5 overflow-x-auto hide-scroll w-full min-w-0 flex-1 sm:justify-end py-1.5 -my-1.5">
             {% for task_item in tasks_view %}
             {% set ti_answer = task_item.answer %}
             <a href="#task-{{ loop.index }}" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" class="task-nav-btn relative {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} {% if task_item.is_triplet_19_21 %}min-w-[3.5rem] h-11 px-1.5 text-[10px] leading-tight{% else %}w-11 h-11{% endif %} shrink-0 rounded-[14px] flex items-center justify-center font-black no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ loop.index }}{% endif %}">
@@ -868,16 +868,18 @@
                 function ensureButtonVisible(btn) {
                     if (!taskStrip || !btn) return;
                     requestAnimationFrame(function() {
-                        var stripRect = taskStrip.getBoundingClientRect();
-                        var btnRect = btn.getBoundingClientRect();
-                        var pad = 48;
-                        if (btnRect.left < stripRect.left + pad) {
-                            var deltaL = (stripRect.left + pad) - btnRect.left;
-                            taskStrip.scrollLeft = Math.max(0, taskStrip.scrollLeft - deltaL);
-                        } else if (btnRect.right > stripRect.right - pad) {
-                            var deltaR = btnRect.right - (stripRect.right - pad);
-                            taskStrip.scrollLeft = Math.max(0, taskStrip.scrollLeft + deltaR);
-                        }
+                        requestAnimationFrame(function() {
+                            var stripRect = taskStrip.getBoundingClientRect();
+                            var btnRect = btn.getBoundingClientRect();
+                            var pad = 48;
+                            if (btnRect.left < stripRect.left + pad) {
+                                var deltaL = (stripRect.left + pad) - btnRect.left;
+                                taskStrip.scrollLeft = Math.max(0, taskStrip.scrollLeft - deltaL);
+                            } else if (btnRect.right > stripRect.right - pad) {
+                                var deltaR = btnRect.right - (stripRect.right - pad);
+                                taskStrip.scrollLeft = Math.max(0, taskStrip.scrollLeft + deltaR);
+                            }
+                        });
                     });
                 }
                 function setActiveByIndex(idx) {

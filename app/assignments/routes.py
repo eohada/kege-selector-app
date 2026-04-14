@@ -16,7 +16,7 @@ from app.models import (
     TaskTemplate, TemplateTask, CourseTaskTemplate, GroupStudent, AnalyticsEvent
 )
 from app.students.utils import get_sorted_assignments
-from core.db_models import SubmissionComment, MOSCOW_TZ
+from core.db_models import SubmissionComment, SubmissionCommentThreadRead, MOSCOW_TZ
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import moscow_now
 from core.audit_logger import audit_logger
@@ -160,23 +160,70 @@ def _submission_comment_task_id(comment, legacy_bucket_task_id: int | None) -> i
     return int(legacy_bucket_task_id or 0)
 
 
-def _compute_grade_chat_unread_task_ids(submission, viewer_user_id: int, legacy_bucket_task_id: int | None) -> set[int]:
+def _bump_submission_comment_thread_read(submission_id: int, assignment_task_id: int, user_id: int, up_to_comment_id: int) -> None:
+    """Поднять курсор «просмотрено до comment_id» для ветки чата (идемпотентно)."""
+    if assignment_task_id is None or int(up_to_comment_id or 0) <= 0:
+        return
+    sid = int(submission_id)
+    tid = int(assignment_task_id)
+    uid = int(user_id)
+    upto = int(up_to_comment_id)
+    row = SubmissionCommentThreadRead.query.filter_by(
+        submission_id=sid, assignment_task_id=tid, user_id=uid
+    ).first()
+    if not row:
+        db.session.add(SubmissionCommentThreadRead(
+            submission_id=sid,
+            assignment_task_id=tid,
+            user_id=uid,
+            last_read_comment_id=upto,
+            updated_at=moscow_now(),
+        ))
+    elif upto > int(row.last_read_comment_id or 0):
+        row.last_read_comment_id = upto
+        row.updated_at = moscow_now()
+
+
+def _mark_all_submission_comment_threads_read_on_page_view(submission, viewer_user_id: int, legacy_bucket_task_id: int | None) -> None:
     """
-    Непрочитанное для преподавателя: есть сообщение ученика после последнего ответа преподавателя в этом же треде.
-    Для legacy-треда (без assignment_task_id) используем legacy_bucket_task_id.
+    Страница ученика с общим списком комментариев: считаем все ветки просмотренными для этого пользователя.
     """
+    per_tid: dict[int, int] = {}
+    for c in (submission.comments or []):
+        tid = _submission_comment_task_id(c, legacy_bucket_task_id)
+        if tid <= 0:
+            continue
+        cid = int(c.comment_id or 0)
+        if cid > 0:
+            per_tid[tid] = max(per_tid.get(tid, 0), cid)
+    for tid, mx in per_tid.items():
+        _bump_submission_comment_thread_read(submission.submission_id, tid, int(viewer_user_id), mx)
+
+
+def _compute_submission_chat_unread_task_ids(submission, viewer_user_id: int, legacy_bucket_task_id: int | None) -> set[int]:
+    """
+    Непрочитанные ветки: есть сообщение не от текущего пользователя с comment_id выше сохранённого курсора прочтения.
+    Курсор обновляется при GET /comments?assignment_task_id=… (и при открытии страницы учеником — см. submission_view).
+    """
+    uid = int(viewer_user_id)
+    reads = {
+        int(r.assignment_task_id): int(r.last_read_comment_id or 0)
+        for r in SubmissionCommentThreadRead.query.filter_by(
+            submission_id=submission.submission_id,
+            user_id=uid,
+        ).all()
+    }
     unread: set[int] = set()
-    last_teacher_at: dict[int, datetime] = {}
     ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
     for c in ordered:
         tid = _submission_comment_task_id(c, legacy_bucket_task_id)
         if tid <= 0:
             continue
-        if int(c.author_id) == int(viewer_user_id):
-            last_teacher_at[tid] = c.created_at or moscow_now()
+        if int(c.author_id) == uid:
             continue
-        last_t = last_teacher_at.get(tid)
-        if last_t is None or (c.created_at and c.created_at > last_t):
+        cid = int(c.comment_id or 0)
+        lr = reads.get(tid, 0)
+        if cid > lr:
             unread.add(tid)
     return unread
 
@@ -2381,6 +2428,22 @@ def submission_view(submission_id):
             tasks_view.append(single_item)
             i += 1
         
+        legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
+        chat_default_assignment_task_id = legacy_bucket_task_id
+        if chat_default_assignment_task_id is None and (assignment.tasks or []):
+            ot = sorted(assignment.tasks, key=lambda t: getattr(t, 'order_index', 0))
+            chat_default_assignment_task_id = int(ot[0].assignment_task_id) if ot else None
+
+        try:
+            _mark_all_submission_comment_threads_read_on_page_view(submission, current_user.id, legacy_bucket_task_id)
+            db.session.commit()
+        except Exception as e:
+            logger.warning('submission_view thread read bump failed: %s', e)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
         return render_template('submission_view.html',
                              submission=submission,
                              assignment=assignment,
@@ -2394,7 +2457,8 @@ def submission_view(submission_id):
                              allow_separate_submission=assignment.allow_separate_submission,
                              attempts_per_task=attempts_per_task,
                              time_limit_strict=assignment.time_limit_strict,
-                             timer_expired=timer_expired)
+                             timer_expired=timer_expired,
+                             chat_default_assignment_task_id=chat_default_assignment_task_id)
     except Exception as e:
         logger.error(f"Error processing submission_view for submission {submission_id}: {e}", exc_info=True)
         flash('Ошибка при обработке данных работы', 'danger')
@@ -3381,7 +3445,7 @@ def submission_grade_view(submission_id):
     can_submit_grade = submission.status in ('SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW')
     legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
     initial_task_id = (tasks_view[0]['assignment_task'].assignment_task_id if tasks_view else legacy_bucket_task_id)
-    unread_task_ids = _compute_grade_chat_unread_task_ids(submission, current_user.id, legacy_bucket_task_id)
+    unread_task_ids = _compute_submission_chat_unread_task_ids(submission, current_user.id, legacy_bucket_task_id)
     return render_template('submission_grade.html',
                          submission=submission,
                          assignment=assignment,
@@ -3813,7 +3877,6 @@ def submission_comments_list(submission_id):
         return jsonify({'success': False, 'error': 'Задание не принадлежит этой работе'}), 400
 
     comments = []
-    unread_task_ids = _compute_grade_chat_unread_task_ids(submission, current_user.id, legacy_bucket_task_id)
     ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
     for comment in ordered:
         comment_task_id = _submission_comment_task_id(comment, legacy_bucket_task_id)
@@ -3841,6 +3904,24 @@ def submission_comments_list(submission_id):
             },
             'is_mine': comment.author_id == current_user.id,
         })
+
+    max_in_thread = 0
+    for c in ordered:
+        if assignment_task_id is not None and _submission_comment_task_id(c, legacy_bucket_task_id) == assignment_task_id:
+            max_in_thread = max(max_in_thread, int(c.comment_id or 0))
+
+    if assignment_task_id is not None:
+        try:
+            _bump_submission_comment_thread_read(submission.submission_id, assignment_task_id, current_user.id, max_in_thread)
+            db.session.commit()
+        except Exception as ex:
+            logger.warning('submission_comments_list thread read bump failed: %s', ex)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+    unread_task_ids = _compute_submission_chat_unread_task_ids(submission, current_user.id, legacy_bucket_task_id)
 
     return jsonify({
         'success': True,

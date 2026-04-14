@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime, String, Boolean, Enum as SQLEnum, Text, TypeDecorator
+from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime, String, Boolean, Enum as SQLEnum, Text, TypeDecorator, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB as PG_JSONB
 import json
 import uuid
@@ -1832,6 +1832,27 @@ class SubmissionComment(db.Model):
     def __repr__(self):
         return f'<Comment {self.comment_id}: submission {self.submission_id} by {self.author_id}>'
 
+
+class SubmissionCommentThreadRead(db.Model):
+    """
+    До какого comment_id пользователь просмотрел чат по конкретному заданию в сдаче.
+    Используется для точек «непрочитано» и сброса после открытия ветки (GET списка сообщений).
+    """
+    __tablename__ = 'SubmissionCommentThreadReads'
+
+    read_id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id', ondelete='CASCADE'), nullable=False, index=True)
+    assignment_task_id = db.Column(db.Integer, db.ForeignKey('AssignmentTasks.assignment_task_id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    last_read_comment_id = db.Column(db.Integer, nullable=False, default=0)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('submission_id', 'assignment_task_id', 'user_id', name='uq_submission_comment_thread_read'),
+    )
+
+    def __repr__(self):
+        return f'<ThreadRead sub={self.submission_id} task={self.assignment_task_id} user={self.user_id} up_to={self.last_read_comment_id}>'
 
 
 class GradebookEntry(db.Model):

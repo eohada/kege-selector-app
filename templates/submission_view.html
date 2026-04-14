@@ -1034,13 +1034,18 @@
                 const text = input.value.trim();
                 if (!text) return;
                 
+                var chatTaskId = {{ chat_default_assignment_task_id if chat_default_assignment_task_id is not none else 'null' }};
+                if (!chatTaskId) {
+                    showToast('Ошибка: не удалось определить задание для сообщения', 'error');
+                    return;
+                }
                 fetch(`{{ url_for('assignments.submission_comment_create', submission_id=submission.submission_id) }}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({ text })
+                    body: JSON.stringify({ text: text, assignment_task_id: chatTaskId })
                 })
                 .then(response => response.json())
                 .then(data => {

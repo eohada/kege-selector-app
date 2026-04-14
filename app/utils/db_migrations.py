@@ -1692,6 +1692,18 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not add assignment_task_id to {comments_table}: {e}")
                     db.session.rollback()
 
+            try:
+                from core.db_models import SubmissionCommentThreadRead
+                inspector_reads = inspect(db.engine)
+                reads_names = inspector_reads.get_table_names()
+                reads_table = _resolve_table_name(reads_names, 'SubmissionCommentThreadReads')
+                if not reads_table:
+                    SubmissionCommentThreadRead.__table__.create(db.engine)
+                    logger.info("Created SubmissionCommentThreadReads table")
+            except Exception as e:
+                logger.warning(f"Could not ensure SubmissionCommentThreadReads table: {e}")
+                db.session.rollback()
+
             subjects_table = _resolve_table_name(table_names, 'subjects')
             if not subjects_table:
                 try:
