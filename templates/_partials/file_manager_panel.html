@@ -3,17 +3,16 @@
   Переменные (задать перед include или передать через x-data):
     fm_task_id, fm_context_type, fm_context_id, fm_task_files (JSON array)
 #}
-<div x-data="fileManager({
-  taskId: {{ fm_task_id | default(0) }},
+<div class="boo-file-manager" x-data="fileManager({
+  taskId: {{ (fm_task_id if fm_task_id is defined else 0) | tojson }},
   contextType: '{{ fm_context_type | default('submission') }}',
-  contextId: {{ fm_context_id | default('null') }},
-  taskFiles: {{ fm_task_files | default('[]') | safe }}
+  contextId: {{ (fm_context_id if fm_context_id is defined else none) | tojson }},
+  taskFiles: {{ (fm_task_files if fm_task_files is defined else []) | tojson | safe }}
 })">
 
   {# Toggle button #}
   <button @click="open = !open"
-    class="neo-button outline sm"
-    style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.9rem; padding:0.5rem 1rem;">
+    class="neo-button outline sm boo-file-manager__toggle">
     <i class="ph-bold ph-folder-open"></i>
     <span>Файлы</span>
     <span x-show="workspaceFiles.length"
@@ -23,9 +22,7 @@
   </button>
 
   {# Panel #}
-  <div x-show="open" x-transition x-cloak
-    style="margin-top:0.75rem; border:1px solid var(--stroke-1); border-radius:var(--radius-md);
-           background:var(--color-bg-surface); overflow:hidden;">
+  <div x-show="open" x-transition x-cloak class="boo-file-manager__panel">
 
     {# Error #}
     <div x-show="error" x-text="error"
@@ -34,23 +31,21 @@
 
     {# Task files section #}
     <template x-if="taskFiles.length > 0">
-      <div style="padding:0.75rem 1rem; border-bottom:1px solid var(--stroke-1);">
-        <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.5rem; color:var(--text-primary);">
+      <div class="boo-file-manager__task-section">
+        <div class="boo-file-manager__title">
           <i class="ph-bold ph-paperclip"></i> Файлы задания
         </div>
-        <div style="display:flex; flex-direction:column; gap:0.35rem;">
+        <div class="boo-file-manager__list">
           <template x-for="(tf, idx) in taskFiles" :key="idx">
-            <div style="display:flex; align-items:center; gap:0.5rem; padding:0.35rem 0.5rem; border-radius:8px; background:var(--surface-2);">
-              <i class="ph-bold" :class="fileIcon(tf.name || tf.filename || 'file')" style="font-size:1rem; color:var(--accent-1);"></i>
+            <div class="boo-file-manager__item">
+              <i class="ph-bold boo-file-manager__icon" :class="fileIcon(tf.name || tf.filename || 'file')"></i>
               <span x-text="tf.name || tf.filename || ('Файл ' + (idx+1))"
-                style="flex:1; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                class="boo-file-manager__filename">
               </span>
-              <button @click="viewTaskFile(idx)" class="neo-button outline sm"
-                style="padding:0.2rem 0.5rem; font-size:0.78rem;">
+              <button @click="viewTaskFile(idx)" class="neo-button outline sm boo-file-manager__btn">
                 <i class="ph-bold ph-eye"></i> Смотреть
               </button>
-              <button @click="copyFromTask(idx)" class="neo-button outline sm"
-                style="padding:0.2rem 0.5rem; font-size:0.78rem;">
+              <button @click="copyFromTask(idx)" class="neo-button outline sm boo-file-manager__btn">
                 <i class="ph-bold ph-copy"></i> Копировать
               </button>
             </div>
@@ -60,8 +55,8 @@
     </template>
 
     {# Workspace files section #}
-    <div style="padding:0.75rem 1rem;">
-      <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.5rem; color:var(--text-primary);">
+    <div class="boo-file-manager__workspace-section">
+      <div class="boo-file-manager__title">
         <i class="ph-bold ph-hard-drives"></i> Мини-хранилище
       </div>
 
@@ -75,16 +70,16 @@
         </div>
       </template>
 
-      <div style="display:flex; flex-direction:column; gap:0.35rem;">
+      <div class="boo-file-manager__list">
         <template x-for="wf in workspaceFiles" :key="wf.id">
-          <div style="display:flex; align-items:center; gap:0.5rem; padding:0.35rem 0.5rem; border-radius:8px; background:var(--surface-2);">
-            <i class="ph-bold" :class="fileIcon(wf.current_filename)" style="font-size:1rem; color:var(--accent-1);"></i>
+          <div class="boo-file-manager__item">
+            <i class="ph-bold boo-file-manager__icon" :class="fileIcon(wf.current_filename)"></i>
 
             {# Filename or rename input #}
             <template x-if="renamingId !== wf.id">
               <span x-text="wf.current_filename"
                 @dblclick="startRename(wf)"
-                style="flex:1; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;"
+                class="boo-file-manager__filename"
                 title="Двойной клик для переименования">
               </span>
             </template>
@@ -95,26 +90,21 @@
                        border-radius:6px; outline:none; background:var(--color-bg-surface); color:var(--text-primary);">
             </template>
 
-            <button @click="viewWorkspaceFile(wf)" title="Просмотреть"
-              style="background:none; border:none; cursor:pointer; padding:0.2rem; color:var(--accent-1);">
+            <button @click="viewWorkspaceFile(wf)" title="Просмотреть" class="boo-file-manager__icon-btn">
               <i class="ph-bold ph-eye" style="font-size:0.9rem;"></i>
             </button>
             <template x-if="isTextFile(wf.current_filename)">
-              <button @click="openInEditor(wf)" title="Открыть в редакторе кода"
-                style="background:none; border:none; cursor:pointer; padding:0.2rem; color:var(--accent-1);">
+              <button @click="openInEditor(wf)" title="Открыть в редакторе кода" class="boo-file-manager__icon-btn">
                 <i class="ph-bold ph-code" style="font-size:0.9rem;"></i>
               </button>
             </template>
-            <button @click="startRename(wf)" title="Переименовать"
-              style="background:none; border:none; cursor:pointer; padding:0.2rem; color:var(--text-muted);">
+            <button @click="startRename(wf)" title="Переименовать" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--muted">
               <i class="ph-bold ph-pencil-simple" style="font-size:0.9rem;"></i>
             </button>
-            <a :href="'/workspace/' + wf.id + '/download'" target="_blank" title="Скачать"
-              style="color:var(--text-muted); padding:0.2rem;">
+            <a :href="'/workspace/' + wf.id + '/download'" target="_blank" title="Скачать" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--muted">
               <i class="ph-bold ph-download-simple" style="font-size:0.9rem;"></i>
             </a>
-            <button @click="deleteFile(wf.id)" title="Удалить"
-              style="background:none; border:none; cursor:pointer; padding:0.2rem; color:var(--error, #ef4444);">
+            <button @click="deleteFile(wf.id)" title="Удалить" class="boo-file-manager__icon-btn boo-file-manager__icon-btn--danger">
               <i class="ph-bold ph-trash" style="font-size:0.9rem;"></i>
             </button>
           </div>
@@ -124,10 +114,10 @@
       {# Upload area #}
       <div @dragover.prevent="dragOver = true" @dragleave.prevent="dragOver = false"
         @drop.prevent="uploadFile($event)"
-        :style="'margin-top:0.75rem; border:2px dashed ' + (dragOver ? 'var(--accent-1)' : 'var(--stroke-1)') + '; border-radius:12px; padding:1rem; text-align:center; transition:border-color 0.15s;'">
-        <i class="ph-bold ph-cloud-arrow-up" style="font-size:1.5rem; color:var(--text-muted);"></i>
-        <p style="margin:0.25rem 0 0; color:var(--text-muted); font-size:0.85rem;">Перетащите файл или</p>
-        <label class="neo-button outline sm" style="cursor:pointer; display:inline-block; margin-top:0.35rem; padding:0.35rem 0.75rem; font-size:0.8rem;">
+        :class=\"dragOver ? 'boo-file-manager__upload boo-file-manager__upload--drag' : 'boo-file-manager__upload'\">
+        <i class="ph-bold ph-cloud-arrow-up boo-file-manager__upload-icon"></i>
+        <p class="boo-file-manager__upload-text">Перетащите файл или</p>
+        <label class="neo-button outline sm boo-file-manager__btn">
           Выберите файл
           <input type="file" style="display:none;" @change="uploadFile($event)" multiple>
         </label>
@@ -135,3 +125,23 @@
     </div>
   </div>
 </div>
+<style>
+  .boo-file-manager__toggle { display:inline-flex; align-items:center; gap:.4rem; font-size:.9rem; padding:.5rem 1rem; }
+  .boo-file-manager__panel { margin-top:.75rem; border:1px solid var(--stroke-1); border-radius:14px; background:var(--color-bg-surface); overflow:hidden; }
+  .boo-file-manager__task-section { padding:.85rem 1rem; border-bottom:1px solid var(--stroke-1); background:var(--surface-1, transparent); }
+  .boo-file-manager__workspace-section { padding:.85rem 1rem; }
+  .boo-file-manager__title { font-weight:800; font-size:.85rem; margin-bottom:.55rem; color:var(--text-primary); display:flex; align-items:center; gap:.35rem; }
+  .boo-file-manager__list { display:flex; flex-direction:column; gap:.4rem; }
+  .boo-file-manager__item { display:flex; align-items:center; gap:.5rem; padding:.45rem .55rem; border-radius:10px; background:var(--surface-2); border:1px solid var(--stroke-1); }
+  .boo-file-manager__icon { font-size:1rem; color:var(--accent-1); }
+  .boo-file-manager__filename { flex:1; font-size:.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .boo-file-manager__btn { padding:.32rem .7rem; font-size:.78rem; }
+  .boo-file-manager__icon-btn { background:none; border:none; cursor:pointer; padding:.2rem; color:var(--accent-1); border-radius:6px; }
+  .boo-file-manager__icon-btn:hover { background:var(--surface-1); }
+  .boo-file-manager__icon-btn--muted { color:var(--text-muted); }
+  .boo-file-manager__icon-btn--danger { color:var(--danger, #ef4444); }
+  .boo-file-manager__upload { margin-top:.8rem; border:2px dashed var(--stroke-1); border-radius:12px; padding:1rem; text-align:center; transition:border-color .15s, background .15s; }
+  .boo-file-manager__upload--drag { border-color:var(--accent-1); background:rgba(99,102,241,.06); }
+  .boo-file-manager__upload-icon { font-size:1.35rem; color:var(--text-muted); }
+  .boo-file-manager__upload-text { margin:.3rem 0 0; color:var(--text-muted); font-size:.85rem; }
+</style>

@@ -39,7 +39,24 @@ document.addEventListener('alpine:init', () => {
     error: '',
 
     async init() {
+      this.taskFiles = this.normalizeTaskFiles(this.taskFiles);
       if (this.taskId) await this.loadFiles();
+    },
+
+    normalizeTaskFiles(raw) {
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+          if (parsed && typeof parsed === 'object') return [parsed];
+        } catch (_) {
+          return [];
+        }
+      }
+      if (typeof raw === 'object') return [raw];
+      return [];
     },
 
     async loadFiles() {
@@ -69,7 +86,7 @@ document.addEventListener('alpine:init', () => {
         },
       });
       if (data.success) {
-        this.workspaceFiles.unshift(data.file);
+        await this.loadFiles();
       } else {
         this.error = data.error || 'Ошибка копирования';
       }
@@ -100,7 +117,7 @@ document.addEventListener('alpine:init', () => {
           });
           const data = await res.json();
           if (data.success) {
-            this.workspaceFiles.unshift(data.file);
+            await this.loadFiles();
           } else {
             this.error = data.error || 'Ошибка загрузки';
           }

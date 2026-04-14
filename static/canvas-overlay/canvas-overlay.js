@@ -40,6 +40,7 @@
   let penSize = 3;
   let dirty = false;
   let saveTimer = null;
+  let pendingSavePromise = null;
 
   // Toolbar drag state
   let tbDragging = false;
@@ -333,26 +334,40 @@
       strokes: strokes,
     };
 
-    try {
-      await fetch('/api/canvas/save', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken(),
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify(body),
-      });
-      dirty = false;
-      updateBadge();
-    } catch (e) {
-      console.warn('Canvas save failed:', e);
+    pendingSavePromise = (async () => {
+      try {
+        await fetch('/api/canvas/save', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken(),
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify(body),
+        });
+        dirty = false;
+        updateBadge();
+      } catch (e) {
+        console.warn('Canvas save failed:', e);
+      } finally {
+        pendingSavePromise = null;
+      }
+    })();
+    await pendingSavePromise;
+  }
+
+  async function waitPendingSave() {
+    if (pendingSavePromise) {
+      try {
+        await pendingSavePromise;
+      } catch (_) {}
     }
   }
 
   async function loadFromServer() {
     if (!taskId) { strokes = []; redraw(); return; }
+    await waitPendingSave();
     try {
       const params = new URLSearchParams({ task_id: taskId, context_type: contextType });
       if (contextId) params.set('context_id', contextId);
@@ -384,19 +399,21 @@
 
   // --- Open/Close ---
 
-  function open() {
+  async function open() {
     if (isOpen) return;
     isOpen = true;
     resizeCanvas();
     overlay.classList.add('active');
     toolbar.style.display = '';
     fab.style.display = 'none';
-    loadFromServer();
+    await loadFromServer();
   }
 
   function close() {
     if (!isOpen) return;
-    if (dirty) saveToServer();
+    if (dirty) {
+      saveToServer();
+    }
     isOpen = false;
     overlay.classList.remove('active');
     toolbar.style.display = 'none';
@@ -422,6 +439,7 @@
 
   async function checkExistingDrawing() {
     if (!taskId) { updateBadge(); return; }
+    await waitPendingSave();
     try {
       const params = new URLSearchParams({ task_id: taskId, context_type: contextType });
       if (contextId) params.set('context_id', contextId);
