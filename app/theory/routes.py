@@ -192,6 +192,25 @@ def _render_theory_content_html(content_value):
             prev_was_list = is_list
         return '\n'.join(out)
 
+    def _escape_literal_asterisks_in_quotes(src):
+        """
+        Keep star tokens visible in plain explanations like '"*"' / '"**"'
+        instead of letting Markdown treat them as emphasis markers.
+        """
+        if not src:
+            return src
+
+        def _replace(match):
+            token = match.group(2) or ''
+            return f'{match.group(1)}{token.replace("*", r"\*")}{match.group(3)}'
+
+        # ASCII quotes
+        src = re.sub(r'(["\'])((?:\*{1,})+)(\1)', _replace, src)
+        # Common Russian typography quotes
+        src = re.sub(r'(«)((?:\*{1,})+)(»)', _replace, src)
+        src = re.sub(r'(“)((?:\*{1,})+)(”)', _replace, src)
+        return src
+
     _CODE_BLOCK_RE = re.compile(
         r'\[CODE\s+lang="([^"]+)"\](.*?)\[/CODE\]',
         re.DOTALL | re.IGNORECASE,
@@ -210,6 +229,7 @@ def _render_theory_content_html(content_value):
 
     text = _normalize_markdown_lists(text)
     text = _preserve_blank_lines_outside_code_blocks(text)
+    text = _escape_literal_asterisks_in_quotes(text)
     # Convert star-list markers to dash-list markers before markdown parse
     # to reduce cases where raw "*" leaks into rendered text.
     text = re.sub(r'(?m)^\s*\*\s+', '- ', text)
