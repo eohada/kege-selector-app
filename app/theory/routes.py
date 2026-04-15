@@ -202,7 +202,8 @@ def _render_theory_content_html(content_value):
 
         def _replace(match):
             token = match.group(2) or ''
-            return f'{match.group(1)}{token.replace("*", r"\*")}{match.group(3)}'
+            escaped_token = token.replace('*', r'\*')
+            return '{}{}{}'.format(match.group(1), escaped_token, match.group(3))
 
         # ASCII quotes
         src = re.sub(r'(["\'])((?:\*{1,})+)(\1)', _replace, src)
