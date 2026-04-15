@@ -455,27 +455,89 @@
   function renderTheoryMath(root) {
     if (!root) return;
     const katexAutoRender = window.renderMathInElement;
-    if (typeof katexAutoRender !== 'function') return;
-    try {
-      katexAutoRender(root, {
-        delimiters: [
-          { left: '$$', right: '$$', display: true },
-          { left: '$', right: '$', display: false },
-          { left: '\\(', right: '\\)', display: false },
-          { left: '\\[', right: '\\]', display: true },
-        ],
-        throwOnError: false,
-        trust: true,
-        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-        ignoredClasses: ['katex'],
-      });
-    } catch (_) {}
+    if (typeof katexAutoRender === 'function') {
+      try {
+        katexAutoRender(root, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false },
+            { left: '\\(', right: '\\)', display: false },
+            { left: '\\[', right: '\\]', display: true },
+          ],
+          throwOnError: false,
+          trust: true,
+          ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+          ignoredClasses: ['katex'],
+        });
+        return;
+      } catch (_) {}
+    }
+
+    // Fallback: if auto-render is unavailable in this runtime, render common
+    // $...$ and $$...$$ formulas manually with KaTeX.
+    if (!window.katex || typeof window.katex.renderToString !== 'function') return;
+    const skipTags = new Set(['SCRIPT', 'NOSCRIPT', 'STYLE', 'TEXTAREA', 'PRE', 'CODE']);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    const textNodes = [];
+    let node = walker.nextNode();
+    while (node) {
+      const parent = node.parentElement;
+      if (
+        parent &&
+        !skipTags.has(parent.tagName) &&
+        !parent.closest('.katex')
+      ) {
+        textNodes.push(node);
+      }
+      node = walker.nextNode();
+    }
+
+    const formulaRe = /(\$\$[\s\S]+?\$\$|\$[^$\n]+\$)/g;
+    textNodes.forEach((textNode) => {
+      const src = textNode.textContent || '';
+      if (!formulaRe.test(src)) return;
+      formulaRe.lastIndex = 0;
+
+      const frag = document.createDocumentFragment();
+      let lastIdx = 0;
+      let match;
+      while ((match = formulaRe.exec(src)) !== null) {
+        const full = match[0];
+        const start = match.index;
+        const end = start + full.length;
+        if (start > lastIdx) {
+          frag.appendChild(document.createTextNode(src.slice(lastIdx, start)));
+        }
+        const isDisplay = full.startsWith('$$') && full.endsWith('$$');
+        const expr = isDisplay ? full.slice(2, -2) : full.slice(1, -1);
+        try {
+          const html = window.katex.renderToString(expr, {
+            displayMode: isDisplay,
+            throwOnError: false,
+            trust: true,
+          });
+          const holder = document.createElement('span');
+          holder.innerHTML = html;
+          if (holder.firstChild) frag.appendChild(holder.firstChild);
+          else frag.appendChild(document.createTextNode(full));
+        } catch (_) {
+          frag.appendChild(document.createTextNode(full));
+        }
+        lastIdx = end;
+      }
+      if (lastIdx < src.length) {
+        frag.appendChild(document.createTextNode(src.slice(lastIdx)));
+      }
+      if (frag.childNodes.length > 0) {
+        textNode.parentNode.replaceChild(frag, textNode);
+      }
+    });
   }
 
   function renderTheoryMathWhenReady(root, attempts) {
     const left = typeof attempts === 'number' ? attempts : 20;
     if (!root) return;
-    if (typeof window.renderMathInElement === 'function') {
+    if (typeof window.renderMathInElement === 'function' || (window.katex && typeof window.katex.renderToString === 'function')) {
       renderTheoryMath(root);
       return;
     }
