@@ -137,9 +137,22 @@ def _render_theory_content_html(content_value):
         # Inline markdown parity with teacher preview (bold/italic/code),
         # but keep it safe for direct HTML rendering.
         safe_body = html.escape(body)
-        safe_body = re.sub(r'`([^`]+)`', r'<code>\1</code>', safe_body)
+
+        # Protect inline code from bold/italic regexes so regex symbols like "*", "+", ".*"
+        # are rendered literally and are not consumed as Markdown emphasis markers.
+        code_placeholders = []
+
+        def _stash_code(code_match):
+            code_placeholders.append(code_match.group(1))
+            return f'__THEORY_INLINE_CODE_{len(code_placeholders) - 1}__'
+
+        safe_body = re.sub(r'`([^`]+)`', _stash_code, safe_body)
         safe_body = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', safe_body)
         safe_body = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<em>\1</em>', safe_body)
+
+        for idx, code_text in enumerate(code_placeholders):
+            safe_body = safe_body.replace(f'__THEORY_INLINE_CODE_{idx}__', f'<code>{code_text}</code>')
+
         safe_body = safe_body.replace('\n', '<br>')
         theme = {
             'attention': {'title': 'Внимание', 'bg': '#FFF7ED', 'border': '#FED7AA', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FFFFFF', 'icon_color': '#EA580C'},
