@@ -134,6 +134,7 @@ def _render_theory_content_html(content_value):
         ctype = (match.group(1) or 'tip').strip().lower()
         body = (match.group(2) or '').strip()
         body = re.sub(r'^(ВНИМАНИЕ|ЛАЙФХАК|ОСТОРОЖНО)\s*:\s*', '', body, flags=re.IGNORECASE)
+        body = _normalize_math_delimiters(body)
         # Inline markdown parity with teacher preview (bold/italic/code),
         # but keep it safe for direct HTML rendering.
         safe_body = html.escape(body)
@@ -206,6 +207,40 @@ def _render_theory_content_html(content_value):
             prev_was_list = is_list
         return '\n'.join(out)
 
+    def _normalize_math_delimiters(src):
+        """
+        Convert $...$ and $$...$$ math delimiters to KaTeX-friendly
+        \\(...\\) and \\[...\\] before markdown parsing.
+        Skip inline-code segments wrapped in backticks.
+        """
+        if not src:
+            return src
+
+        parts = re.split(r'(`[^`]*`)', src)
+        out = []
+        for chunk in parts:
+            if not chunk:
+                continue
+            # Keep inline code untouched.
+            if len(chunk) >= 2 and chunk.startswith('`') and chunk.endswith('`'):
+                out.append(chunk)
+                continue
+
+            # Display math first: $$...$$ -> \[...\]
+            chunk = re.sub(
+                r'\$\$([\s\S]+?)\$\$',
+                lambda m: r'\[' + m.group(1).strip() + r'\]',
+                chunk,
+            )
+            # Inline math: $...$ -> \(...\) (single-line, no nested $)
+            chunk = re.sub(
+                r'(?<!\\)\$([^\n$][^$]*?)\$',
+                lambda m: r'\(' + m.group(1).strip() + r'\)',
+                chunk,
+            )
+            out.append(chunk)
+        return ''.join(out)
+
     def _escape_literal_asterisks_in_quotes(src):
         """
         Keep star tokens visible in plain explanations like '"*"' / '"**"'
@@ -244,6 +279,7 @@ def _render_theory_content_html(content_value):
 
     text = _normalize_markdown_lists(text)
     text = _preserve_blank_lines_outside_code_blocks(text)
+    text = _normalize_math_delimiters(text)
     text = _escape_literal_asterisks_in_quotes(text)
     # Convert star-list markers to dash-list markers before markdown parse
     # to reduce cases where raw "*" leaks into rendered text.
