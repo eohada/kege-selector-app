@@ -232,6 +232,16 @@ def _render_theory_content_html(content_value):
 
         return '\n'.join(out)
 
+    def _escape_numeric_multiplication_stars(src):
+        """
+        Preserve multiplication signs in numeric expressions like 0*512.
+        Without escaping, markdown can treat such stars as emphasis markers.
+        """
+        if not src:
+            return src
+        # 12*34 -> 12\*34
+        return re.sub(r'(?<=\d)\*(?=\d)', r'\\*', src)
+
     def _normalize_code_body_for_theory(raw):
         """Strip spacer markers leaked into legacy CODE bodies (they must stay real newlines only)."""
         s = raw or ''
@@ -274,6 +284,7 @@ def _render_theory_content_html(content_value):
         ctype = (match.group(1) or 'tip').strip().lower()
         body = (match.group(2) or '').strip()
         body = re.sub(r'^(ВНИМАНИЕ|ЛАЙФХАК|ОСТОРОЖНО)\s*:\s*', '', body, flags=re.IGNORECASE)
+        body = _escape_numeric_multiplication_stars(body)
         # Inline markdown parity with teacher preview (bold/italic/code),
         # but keep it safe for direct HTML rendering.
         safe_body = html.escape(body)
@@ -386,6 +397,7 @@ def _render_theory_content_html(content_value):
     text = _normalize_markdown_lists(text)
     text = _preserve_blank_lines_outside_code_blocks(text)
     text = _render_ascii_tables_to_html(text)
+    text = _escape_numeric_multiplication_stars(text)
     text = _escape_literal_asterisks_in_quotes(text)
     # Convert star-list markers to dash-list markers before markdown parse
     # to reduce cases where raw "*" leaks into rendered text.
