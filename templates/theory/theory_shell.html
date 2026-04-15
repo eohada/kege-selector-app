@@ -453,9 +453,11 @@
   }
 
   function renderTheoryMath(root) {
-    if (!root || typeof renderMathInElement === 'undefined') return;
+    if (!root) return;
+    const katexAutoRender = window.renderMathInElement;
+    if (typeof katexAutoRender !== 'function') return;
     try {
-      renderMathInElement(root, {
+      katexAutoRender(root, {
         delimiters: [
           { left: '$$', right: '$$', display: true },
           { left: '$', right: '$', display: false },
@@ -473,7 +475,7 @@
   function renderTheoryMathWhenReady(root, attempts) {
     const left = typeof attempts === 'number' ? attempts : 20;
     if (!root) return;
-    if (typeof renderMathInElement !== 'undefined') {
+    if (typeof window.renderMathInElement === 'function') {
       renderTheoryMath(root);
       return;
     }
@@ -574,8 +576,11 @@
   setupCodeBlocks(document).catch(() => {});
   const initialMathRoot = document.getElementById('articleContainer') || document.body;
   renderTheoryMathWhenReady(initialMathRoot, 30);
+  document.addEventListener('DOMContentLoaded', () => {
+    renderTheoryMathWhenReady(initialMathRoot, 40);
+  });
   window.addEventListener('load', () => {
-    renderTheoryMathWhenReady(initialMathRoot, 30);
+    renderTheoryMathWhenReady(initialMathRoot, 40);
   });
 
   // Back button should return to catalog
