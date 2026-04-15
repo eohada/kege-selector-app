@@ -235,6 +235,30 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     {% block scripts_extra %}{% endblock %}
 
+    <script>
+    (function() {
+        function removeLegacyBugReporter() {
+            try {
+                document.querySelectorAll(
+                    '#bugReporterFab, #bugReporterModal, .bug-reporter-floating, .bug-reporter-modal'
+                ).forEach(function(node) {
+                    node.remove();
+                });
+            } catch (e) {}
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', removeLegacyBugReporter);
+        } else {
+            removeLegacyBugReporter();
+        }
+        window.addEventListener('load', removeLegacyBugReporter);
+
+        var observer = new MutationObserver(removeLegacyBugReporter);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+    })();
+    </script>
+
     {% include '_partials/canvas_overlay.html' %}
 </body>
 </html>
