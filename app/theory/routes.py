@@ -151,7 +151,8 @@ def _render_theory_content_html(content_value):
         safe_body = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<em>\1</em>', safe_body)
 
         for idx, code_text in enumerate(code_placeholders):
-            safe_body = safe_body.replace(f'__THEORY_INLINE_CODE_{idx}__', f'<code>{code_text}</code>')
+            code_literal = (code_text or '').replace('*', '&#42;')
+            safe_body = safe_body.replace(f'__THEORY_INLINE_CODE_{idx}__', f'<code>{code_literal}</code>')
 
         safe_body = safe_body.replace('\n', '<br>')
         theme = {
