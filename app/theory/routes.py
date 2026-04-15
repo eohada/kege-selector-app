@@ -92,6 +92,43 @@ def _render_theory_content_html(content_value):
         )
         return escaped
 
+    def _format_inline_math_html(expr):
+        """
+        Best-effort server-side math formatting for $...$ fragments.
+        Keeps display stable even if client-side KaTeX auto-render fails.
+        """
+        src = html.unescape((expr or '').strip())
+        src = src.replace('\\cdot', '·')
+        src = src.replace('\\times', '×')
+        src = src.replace('\\ge', '≥')
+        src = src.replace('\\le', '≤')
+
+        out = html.escape(src)
+        # x_{abc} / x_a
+        out = re.sub(r'_\{([^{}]+)\}', r'<sub>\1</sub>', out)
+        out = re.sub(r'_([A-Za-zА-Яа-я0-9]+)', r'<sub>\1</sub>', out)
+        # x^{abc} / x^a
+        out = re.sub(r'\^\{([^{}]+)\}', r'<sup>\1</sup>', out)
+        out = re.sub(r'\^([A-Za-zА-Яа-я0-9]+)', r'<sup>\1</sup>', out)
+        return out
+
+    def _render_math_in_html_fragment(fragment):
+        if not fragment:
+            return fragment
+        # Block math first
+        fragment = re.sub(
+            r'\$\$([\s\S]+?)\$\$',
+            lambda m: f'<div class="theory-inline-math">{_format_inline_math_html(m.group(1))}</div>',
+            fragment,
+        )
+        # Inline math
+        fragment = re.sub(
+            r'(?<!\\)\$([^\n$][^$]*?)\$',
+            lambda m: f'<span class="theory-inline-math">{_format_inline_math_html(m.group(1))}</span>',
+            fragment,
+        )
+        return fragment
+
     def _normalize_code_body_for_theory(raw):
         """Strip spacer markers leaked into legacy CODE bodies (they must stay real newlines only)."""
         s = raw or ''
@@ -134,7 +171,6 @@ def _render_theory_content_html(content_value):
         ctype = (match.group(1) or 'tip').strip().lower()
         body = (match.group(2) or '').strip()
         body = re.sub(r'^(ВНИМАНИЕ|ЛАЙФХАК|ОСТОРОЖНО)\s*:\s*', '', body, flags=re.IGNORECASE)
-        body = _normalize_math_delimiters(body)
         # Inline markdown parity with teacher preview (bold/italic/code),
         # but keep it safe for direct HTML rendering.
         safe_body = html.escape(body)
@@ -155,6 +191,7 @@ def _render_theory_content_html(content_value):
             code_literal = (code_text or '').replace('*', '&#42;')
             safe_body = safe_body.replace(f'__THEORY_INLINE_CODE_{idx}__', f'<code>{code_literal}</code>')
 
+        safe_body = _render_math_in_html_fragment(safe_body)
         safe_body = safe_body.replace('\n', '<br>')
         theme = {
             'attention': {'title': 'Внимание', 'bg': '#FFF7ED', 'border': '#FED7AA', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FFFFFF', 'icon_color': '#EA580C'},
@@ -207,40 +244,6 @@ def _render_theory_content_html(content_value):
             prev_was_list = is_list
         return '\n'.join(out)
 
-    def _normalize_math_delimiters(src):
-        """
-        Convert $...$ and $$...$$ math delimiters to KaTeX-friendly
-        \\(...\\) and \\[...\\] before markdown parsing.
-        Skip inline-code segments wrapped in backticks.
-        """
-        if not src:
-            return src
-
-        parts = re.split(r'(`[^`]*`)', src)
-        out = []
-        for chunk in parts:
-            if not chunk:
-                continue
-            # Keep inline code untouched.
-            if len(chunk) >= 2 and chunk.startswith('`') and chunk.endswith('`'):
-                out.append(chunk)
-                continue
-
-            # Display math first: $$...$$ -> \[...\]
-            chunk = re.sub(
-                r'\$\$([\s\S]+?)\$\$',
-                lambda m: r'\[' + m.group(1).strip() + r'\]',
-                chunk,
-            )
-            # Inline math: $...$ -> \(...\) (single-line, no nested $)
-            chunk = re.sub(
-                r'(?<!\\)\$([^\n$][^$]*?)\$',
-                lambda m: r'\(' + m.group(1).strip() + r'\)',
-                chunk,
-            )
-            out.append(chunk)
-        return ''.join(out)
-
     def _escape_literal_asterisks_in_quotes(src):
         """
         Keep star tokens visible in plain explanations like '"*"' / '"**"'
@@ -279,7 +282,6 @@ def _render_theory_content_html(content_value):
 
     text = _normalize_markdown_lists(text)
     text = _preserve_blank_lines_outside_code_blocks(text)
-    text = _normalize_math_delimiters(text)
     text = _escape_literal_asterisks_in_quotes(text)
     # Convert star-list markers to dash-list markers before markdown parse
     # to reduce cases where raw "*" leaks into rendered text.
@@ -296,6 +298,7 @@ def _render_theory_content_html(content_value):
     text = text.replace('__THEORY_SPACER__', '<div class="theory-spacer"></div>')
     text = text.replace('<p>THEORY_SPACER</p>', '<div class="theory-spacer"></div>')
     text = text.replace('THEORY_SPACER', '<div class="theory-spacer"></div>')
+    text = _render_math_in_html_fragment(text)
     return Markup(text)
 
 
