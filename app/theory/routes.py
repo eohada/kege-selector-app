@@ -129,6 +129,109 @@ def _render_theory_content_html(content_value):
         )
         return fragment
 
+    def _render_ascii_tables_to_html(src):
+        """
+        Convert plain-text ASCII tables to HTML tables before markdown parse.
+        Supports rows like "| a | b |" and borders like "+---+---+".
+        """
+        if not src:
+            return src
+
+        def _is_border_line(line):
+            stripped = (line or '').strip()
+            if not stripped:
+                return False
+            return bool(re.match(r'^[\+\-\=\|\:\s]{4,}$', stripped)) and '+' in stripped
+
+        def _is_separator_only(line):
+            stripped = (line or '').strip()
+            if not stripped:
+                return False
+            return bool(re.match(r'^[\+\-\=\|\:\s]{4,}$', stripped))
+
+        def _is_row_line(line):
+            stripped = (line or '').strip()
+            if not stripped:
+                return False
+            if '|' not in stripped:
+                return False
+            if _is_separator_only(stripped):
+                return False
+            return True
+
+        def _is_table_candidate_line(line):
+            stripped = (line or '').strip()
+            return _is_border_line(stripped) or _is_row_line(stripped)
+
+        def _split_cells(row_line):
+            parts = [p.strip() for p in row_line.strip().split('|')]
+            if parts and parts[0] == '':
+                parts = parts[1:]
+            if parts and parts[-1] == '':
+                parts = parts[:-1]
+            return parts
+
+        lines = (src or '').split('\n')
+        out = []
+        i = 0
+        n = len(lines)
+        while i < n:
+            line = lines[i]
+            if not _is_table_candidate_line(line):
+                out.append(line)
+                i += 1
+                continue
+
+            j = i
+            block = []
+            while j < n:
+                cur = lines[j]
+                if (not cur.strip()) or (not _is_table_candidate_line(cur)):
+                    break
+                block.append(cur)
+                j += 1
+
+            row_lines = [b for b in block if _is_row_line(b)]
+            if len(row_lines) < 2:
+                out.extend(block)
+                i = j
+                continue
+
+            rows = [_split_cells(r) for r in row_lines]
+            max_cols = max((len(r) for r in rows), default=0)
+            if max_cols < 2:
+                out.extend(block)
+                i = j
+                continue
+
+            normalized_rows = []
+            for r in rows:
+                rr = list(r)
+                if len(rr) < max_cols:
+                    rr.extend([''] * (max_cols - len(rr)))
+                normalized_rows.append(rr)
+
+            header = normalized_rows[0]
+            body = normalized_rows[1:]
+            table_html = [
+                '<div class="theory-table-wrap my-6 overflow-x-auto">',
+                '<table class="theory-table min-w-full border-collapse text-sm">',
+                '<thead><tr>',
+            ]
+            for cell in header:
+                table_html.append(f'<th class="px-3 py-2 border border-slate-300 bg-slate-50 text-left font-extrabold text-slate-800">{html.escape(cell)}</th>')
+            table_html.append('</tr></thead><tbody>')
+            for row in body:
+                table_html.append('<tr>')
+                for cell in row:
+                    table_html.append(f'<td class="px-3 py-2 border border-slate-300 align-top text-slate-700">{html.escape(cell)}</td>')
+                table_html.append('</tr>')
+            table_html.append('</tbody></table></div>')
+            out.append(''.join(table_html))
+            i = j
+
+        return '\n'.join(out)
+
     def _normalize_code_body_for_theory(raw):
         """Strip spacer markers leaked into legacy CODE bodies (they must stay real newlines only)."""
         s = raw or ''
@@ -282,6 +385,7 @@ def _render_theory_content_html(content_value):
 
     text = _normalize_markdown_lists(text)
     text = _preserve_blank_lines_outside_code_blocks(text)
+    text = _render_ascii_tables_to_html(text)
     text = _escape_literal_asterisks_in_quotes(text)
     # Convert star-list markers to dash-list markers before markdown parse
     # to reduce cases where raw "*" leaks into rendered text.
