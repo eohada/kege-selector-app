@@ -24,9 +24,6 @@
         body.layout-teacher .app-content.grade-app-content {
             background: var(--color-bg-app, #f8fafc);
         }
-        body.layout-teacher .app-topbar {
-            display: flex !important;
-        }
         [data-theme="dark"] body.layout-teacher .app-content.grade-app-content {
             background: var(--color-bg-app, #0f172a);
         }
@@ -471,9 +468,8 @@
 <body class="layout-teacher">
     <div class="app-layout">
         {% set active_page = 'assignments' %}
-        {% include '_sidebar.html' %}
+        {% include '_dock_nav.html' %}
     <div class="app-main">
-        {% include '_topbar.html' %}
         <main class="app-content grade-app-content w-full mx-auto mt-5 pb-32">
         <div class="grade-page-inner">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К работе</a></p>
