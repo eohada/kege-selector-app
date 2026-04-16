@@ -99,6 +99,7 @@
     fab.appendChild(fabBadge);
     fab.addEventListener('click', toggle);
     document.body.appendChild(fab);
+    syncFabVisibility();
   }
 
   function createOverlay() {
@@ -241,9 +242,31 @@
 
   function resizeCanvas() {
     if (!canvas) return;
+    const doc = document.documentElement;
+    const body = document.body;
+    const width = Math.max(
+      doc ? doc.scrollWidth : 0,
+      doc ? doc.clientWidth : 0,
+      body ? body.scrollWidth : 0,
+      body ? body.clientWidth : 0,
+      window.innerWidth || 0
+    );
+    const height = Math.max(
+      doc ? doc.scrollHeight : 0,
+      doc ? doc.clientHeight : 0,
+      body ? body.scrollHeight : 0,
+      body ? body.clientHeight : 0,
+      window.innerHeight || 0
+    );
     dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(window.innerWidth * dpr);
-    canvas.height = Math.floor(window.innerHeight * dpr);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    if (overlay) {
+      overlay.style.width = width + 'px';
+      overlay.style.height = height + 'px';
+    }
     redraw();
   }
 
@@ -280,11 +303,12 @@
   }
 
   function pointerPos(e) {
-    return { x: e.clientX, y: e.clientY };
+    return { x: e.pageX, y: e.pageY };
   }
 
   function onPointerDown(e) {
     if (e.button !== 0) return;
+    resizeCanvas();
     drawing = true;
     const pos = pointerPos(e);
     currentStroke = {
@@ -444,7 +468,7 @@
   // --- Open/Close ---
 
   async function open() {
-    if (isOpen) return;
+    if (isOpen || !hasValidContext()) return;
     isOpen = true;
     resizeCanvas();
     overlay.classList.add('active');
@@ -464,21 +488,43 @@
     fab.style.display = '';
     drawing = false;
     currentStroke = null;
+    syncFabVisibility();
   }
 
   function toggle() {
+    if (!hasValidContext()) return;
     if (isOpen) close(); else open();
   }
 
   function setContext(tid, ctype, cid) {
-    const changed = tid !== taskId || ctype !== contextType || cid !== contextId;
-    taskId = tid;
+    const normalizedTaskId = Number.isFinite(Number(tid)) && Number(tid) > 0 ? Number(tid) : null;
+    const normalizedContextId = Number.isFinite(Number(cid)) && Number(cid) > 0 ? Number(cid) : null;
+    const changed = normalizedTaskId !== taskId || ctype !== contextType || normalizedContextId !== contextId;
+    taskId = normalizedTaskId;
     contextType = ctype || 'submission';
-    contextId = cid || null;
+    contextId = normalizedContextId;
+    syncFabVisibility();
+    if (!hasValidContext() && isOpen) {
+      close();
+      strokes = [];
+      redoStack = [];
+      redraw();
+      updateBadge();
+      return;
+    }
     if (changed && isOpen) loadFromServer();
     if (changed && !isOpen) {
       checkExistingDrawing();
     }
+  }
+
+  function hasValidContext() {
+    return Number.isFinite(taskId) && taskId > 0;
+  }
+
+  function syncFabVisibility() {
+    if (!fab) return;
+    fab.style.display = hasValidContext() ? '' : 'none';
   }
 
   async function checkExistingDrawing() {
