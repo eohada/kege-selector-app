@@ -713,7 +713,7 @@ def review_queue():
                     qs0 = qs0.filter(Submission.student_id.in_(accessible_student_ids))
         rows2 = qs0.with_entities(Submission.status, db.func.count(Submission.submission_id)).group_by(Submission.status).all()
         raw = { (s or '').upper(): int(c or 0) for s, c in rows2 }
-        status_counts_assignments['submitted'] = raw.get('SUBMITTED', 0) + raw.get('LATE', 0) + raw.get('NEEDS_MANUAL_REVIEW', 0)
+        status_counts_assignments['submitted'] = raw.get('SUBMITTED', 0) + raw.get('NEEDS_MANUAL_REVIEW', 0)
         status_counts_assignments['returned'] = raw.get('RETURNED', 0)
         status_counts_assignments['graded'] = raw.get('GRADED', 0)
         status_counts_assignments['pending'] = raw.get('ASSIGNED', 0) + raw.get('IN_PROGRESS', 0)
@@ -786,12 +786,12 @@ def review_queue():
     assignment_cards = []
     if source in {'all', 'assignments'}:
         status_map = {
-            'submitted': ['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW'],
+            'submitted': ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'],
             'returned': ['RETURNED'],
             'graded': ['GRADED'],
             'pending': ['ASSIGNED', 'IN_PROGRESS'],
         }
-        statuses = status_map.get(status, ['SUBMITTED', 'LATE'])
+        statuses = status_map.get(status, ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'])
 
         qs = Submission.query.options(
             db.joinedload(Submission.assignment),
@@ -826,8 +826,8 @@ def review_queue():
                 deadline = None
             if deadline is not None and getattr(deadline, 'tzinfo', None) is None:
                 deadline = deadline.replace(tzinfo=MOSCOW_TZ)
-            overdue_flag = 1 if (deadline and now_local > deadline and (s.status or '').upper() in ['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW']) else 0
-            late_flag = 1 if (s.status or '').upper() == 'LATE' else 0
+            overdue_flag = 1 if (deadline and now_local > deadline and (s.status or '').upper() in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW']) else 0
+            late_flag = 1 if getattr(s, 'is_late', False) else 0
             dt = (s.submitted_at or s.updated_at or s.assigned_at or now_local)
             return (overdue_flag, late_flag, dt)
 

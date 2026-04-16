@@ -264,7 +264,7 @@ def _get_current_student_submission():
         return None, None
     sub = Submission.query.filter(
         Submission.student_id == student.student_id,
-        Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED', 'SUBMITTED', 'LATE'])
+        Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED', 'SUBMITTED', 'NEEDS_MANUAL_REVIEW'])
     ).order_by(Submission.updated_at.desc()).first()
     return student, sub
 
@@ -396,7 +396,7 @@ def bulk_approve():
         from app.auth.rbac_utils import get_user_scope
         scope = get_user_scope(current_user)
         q = Submission.query.join(Assignment, Assignment.assignment_id == Submission.assignment_id)
-        q = q.filter(Submission.status.in_(['SUBMITTED', 'LATE']))
+        q = q.filter(Submission.status.in_(['SUBMITTED', 'NEEDS_MANUAL_REVIEW']))
         if not scope.get('can_see_all'):
             q = q.filter(Assignment.created_by_id == current_user.id)
         subs = q.all()
@@ -422,7 +422,7 @@ def bulk_reject():
         from app.auth.rbac_utils import get_user_scope
         scope = get_user_scope(current_user)
         q = Submission.query.join(Assignment, Assignment.assignment_id == Submission.assignment_id)
-        q = q.filter(Submission.status.in_(['SUBMITTED', 'LATE']))
+        q = q.filter(Submission.status.in_(['SUBMITTED', 'NEEDS_MANUAL_REVIEW']))
         if not scope.get('can_see_all'):
             q = q.filter(Assignment.created_by_id == current_user.id)
         subs = q.all()
@@ -459,7 +459,7 @@ def inject_submission():
         a = random.choice(assigs)
         s = random.choice(pool_students)
         existing = Submission.query.filter_by(assignment_id=a.assignment_id, student_id=s.student_id).first()
-        if existing and (existing.status or '').upper() in ('SUBMITTED', 'LATE'):
+        if existing and (existing.status or '').upper() in ('SUBMITTED', 'NEEDS_MANUAL_REVIEW'):
             return jsonify({'status': 'success', 'message': 'Уже есть сданная работа в очереди.'})
         if existing:
             existing.status = 'SUBMITTED'
@@ -518,7 +518,7 @@ def generate_debtor():
             submission = Submission(
                 assignment_id=assignment.assignment_id,
                 student_id=student.student_id,
-                status='LATE',
+                status='SUBMITTED',
                 assigned_at=lesson_dt - timedelta(days=2),
                 started_at=lesson_dt - timedelta(days=1, hours=4),
                 submitted_at=lesson_dt - timedelta(hours=1),
@@ -555,12 +555,12 @@ def overwhelm_reviews():
             return jsonify({'status': 'error', 'message': 'Пул учеников не инициализирован'})
 
         now = moscow_now().replace(tzinfo=None)
-        statuses = ['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW']
+        statuses = ['SUBMITTED', 'NEEDS_MANUAL_REVIEW']
         created = 0
         for i in range(20):
             user, student = pool[i % len(pool)]
             status = statuses[i % len(statuses)]
-            deadline = now - timedelta(hours=(i % 6) + 1) if status in ('LATE', 'NEEDS_MANUAL_REVIEW') else now + timedelta(hours=12)
+            deadline = now - timedelta(hours=(i % 6) + 1) if status in ('SUBMITTED', 'NEEDS_MANUAL_REVIEW') else now + timedelta(hours=12)
             assignment = Assignment(
                 title=f'[QA PRESET] Очередь ревью #{i + 1}',
                 description='Сгенерировано пресетом "Завалить проверками"',
@@ -580,7 +580,7 @@ def overwhelm_reviews():
                 assigned_at=now - timedelta(days=1),
                 started_at=now - timedelta(hours=8),
                 submitted_at=now - timedelta(minutes=(i + 1) * 3),
-                is_late=(status == 'LATE'),
+                is_late=True,
             )
             db.session.add(submission)
             created += 1

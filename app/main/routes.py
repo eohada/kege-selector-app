@@ -603,7 +603,7 @@ def dashboard():
                 qlt = qlt.filter(Lesson.student_id.in_(accessible_ids))
         review_lesson_tasks_count = qlt.count()
 
-        qs = Submission.query.join(Assignment, Assignment.assignment_id == Submission.assignment_id).filter(Submission.status.in_(['SUBMITTED', 'LATE']))
+        qs = Submission.query.join(Assignment, Assignment.assignment_id == Submission.assignment_id).filter(Submission.status.in_(['SUBMITTED', 'NEEDS_MANUAL_REVIEW']))
         if not scope.get('can_see_all'):
             qs = qs.filter(Assignment.created_by_id == current_user.id)
         if accessible_ids is not None:
@@ -764,7 +764,7 @@ def student_dashboard():
     try:
         completed_tasks = Submission.query.filter(
             Submission.student_id == student.student_id,
-            Submission.status.in_(['GRADED', 'AUTO_GRADED'])
+            Submission.status.in_(['GRADED'])
         ).count()
     except Exception:
         completed_tasks = 0

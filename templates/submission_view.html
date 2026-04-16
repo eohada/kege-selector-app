@@ -511,6 +511,11 @@
                 <div class="task-content text-[15px] leading-relaxed text-primary space-y-4">
                     {{ task_item.task.content_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
                 </div>
+                <div style="margin-top: 0.75rem;">
+                    <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
+                        <i class="ph-bold ph-pencil-line"></i> Мои заметки
+                    </button>
+                </div>
                 {% if (not should_hide_tasks) and task_item.task.starter_code %}
                 <div class="mt-4 p-4 rounded-[16px] border border-slate-200 bg-slate-50 text-[15px]">
                     <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
@@ -558,6 +563,7 @@
                 {% endfor %}
                 {% endif %}
                 
+                {% set task_can_edit = task_item.task_can_edit if task_item.task_can_edit is defined else true %}
                 <div class="task-input bg-surface border border-slate-200 rounded-[20px] p-2 transition-all shadow-sm dark:shadow-none dark:shadow-none">
                     {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task and task_item.answer %}
                     <div style="margin-bottom: 0.5rem; padding: 0.5rem 0; font-weight: 600;">
@@ -592,7 +598,7 @@
                     </div>
                     {% endif %}
                     <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-2 mb-2 block">Ваш ответ:</label>
-                    {% if task_item.requires_manual_review and submission.status in ['IN_PROGRESS', 'RETURNED'] and (not attempts_per_task or task_item.task_attempts_used < task_item.max_attempts_for_task) %}
+                    {% if task_can_edit and task_item.requires_manual_review and submission.status in ['IN_PROGRESS', 'RETURNED'] and (not attempts_per_task or task_item.task_attempts_used < task_item.max_attempts_for_task) %}
                     <div class="file-upload-zone"
                          ondragover="event.preventDefault(); this.classList.add('bg-light')"
                          ondragleave="this.classList.remove('bg-light')"
@@ -615,20 +621,21 @@
                         class="answer-input{% if loop.first and current_user.is_demo_user %} demo-first-answer{% endif %}"
                         name="answer"
                         data-task-id="{{ task_item.assignment_task.assignment_task_id }}"
-                        {% if awaiting_work_start or submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
+                        {% if awaiting_work_start or submission.status == 'SUBMITTED' or not can_submit or not task_can_edit %}disabled{% endif %}
                         {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
                     <div class="autosave-indicator" id="autosave-{{ task_item.assignment_task.assignment_task_id }}"></div>
                     {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
                     {% for sub_item in task_item.triplet_items %}
                     <div style="margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px dashed var(--stroke-1);">
+                        {% set sub_task_can_edit = sub_item.task_can_edit if sub_item.task_can_edit is defined else true %}
                         <label for="answer-{{ sub_item.assignment_task.assignment_task_id }}" class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-2 mb-2 block">Ответ {{ sub_item.task.task_number }}:</label>
                         <textarea
                             id="answer-{{ sub_item.assignment_task.assignment_task_id }}"
                             class="answer-input"
                             name="answer"
                             data-task-id="{{ sub_item.assignment_task.assignment_task_id }}"
-                            {% if awaiting_work_start or submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
+                            {% if awaiting_work_start or submission.status == 'SUBMITTED' or not can_submit or not sub_task_can_edit %}disabled{% endif %}
                             {% if attempts_per_task and sub_item.task_attempts_used >= sub_item.max_attempts_for_task %}disabled{% endif %}
                         >{{ sub_item.answer.value if sub_item.answer else '' }}</textarea>
                         <div class="autosave-indicator" id="autosave-{{ sub_item.assignment_task.assignment_task_id }}"></div>
@@ -641,7 +648,7 @@
                         <div style="white-space: pre-wrap;">{{ task_item.answer.teacher_comment }}</div>
                     </div>
                     {% endif %}
-                    {% if attempts_per_task and allow_separate_submission and submission.status in ['IN_PROGRESS', 'RETURNED'] and task_item.task_attempts_used < task_item.max_attempts_for_task %}
+                    {% if task_can_edit and attempts_per_task and allow_separate_submission and submission.status in ['IN_PROGRESS', 'RETURNED'] and task_item.task_attempts_used < task_item.max_attempts_for_task %}
                     <div class="submit-task-wrap" style="margin-top: 0.75rem;" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" data-max-attempts="{{ task_item.max_attempts_for_task }}" data-attempts-used="{{ task_item.task_attempts_used }}">
                         {% if time_limit_strict and timer_expired %}
                         <button type="button" class="neo-button ghost submit-task-btn submit-task-btn-overdue" disabled style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem; font-weight: 600; font-size: 0.9em; background: rgba(239, 68, 68, 0.25); border-color: #ef4444; color: #ef4444; text-decoration: line-through; cursor: not-allowed;">
@@ -656,7 +663,7 @@
                         {% endif %}
                     </div>
                     {% endif %}
-                    {% if submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0) %}
+                    {% if task_can_edit and (submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) %}
                     <div class="code-editor-wrap border border-stroke rounded-[24px] overflow-hidden" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 0.75rem;">
                         <button type="button" class="code-editor-toggle w-full px-6 py-4 bg-surface-alt hover:bg-surface-alt flex items-center justify-between transition-colors font-bold text-secondary">
                             <span class="flex items-center gap-2"><i class="ph-bold ph-code text-boo-primary text-lg"></i> Редактор кода</span>
@@ -677,6 +684,11 @@
                                 <pre class="code-editor-output" style="margin: 0.35rem 0 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; min-height: 3rem; max-height: 12rem; overflow: auto;"></pre>
                             </div>
                         </div>
+                    </div>
+                    {% elif task_item.answer and task_item.answer.student_code %}
+                    <div class="readonly-code-wrap code-editor-wrap" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 0.75rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш код (Python):</div>
+                        <pre class="code-editor-output" style="margin: 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word;">{{ task_item.answer.student_code }}</pre>
                     </div>
                     {% endif %}
                     {% endif %}
@@ -735,6 +747,11 @@
             
             <div class="task-content">
                 {{ task_item.task.content_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+            </div>
+            <div style="margin-top: 0.75rem;">
+                <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
+                    <i class="ph-bold ph-pencil-line"></i> Мои заметки
+                </button>
             </div>
             {% if task_item.task.starter_code %}
             <div class="mt-4 p-4 rounded-[16px] border border-slate-200 bg-slate-50 text-[15px]">
@@ -1949,6 +1966,7 @@
         })();
     </script>
     {% include '_partials/file_viewer_modal.html' %}
+    {% include '_partials/canvas_viewer_modal.html' %}
     {% include '_partials/canvas_overlay.html' %}
     <script>
         document.addEventListener('boo:load-code', function(e) {

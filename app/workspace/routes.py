@@ -892,9 +892,10 @@ def canvas_load():
 @workspace_bp.route('/api/canvas/view/<int:target_user_id>', methods=['GET'])
 @login_required
 def canvas_view(target_user_id):
-    """Teacher views a student's canvas (RBAC: tutor/admin only)."""
+    """Teacher views student's canvas or user views own canvas."""
     _ensure_workspace_tables()
-    if not (current_user.is_tutor() or current_user.is_admin()):
+    can_view_other = current_user.is_tutor() or current_user.is_admin()
+    if not can_view_other and int(current_user.id) != int(target_user_id):
         abort(403)
 
     task_id = request.args.get('task_id', type=int)

@@ -689,6 +689,15 @@
                         >
                         <span class="max-score">/ {{ g.assignment_task.max_score }}</span>
                     </div>
+                    <div style="margin-top: 0.75rem;">
+                        <label style="display:inline-flex; align-items:center; gap:0.5rem; font-size:0.9rem; font-weight:600; cursor:pointer;">
+                            <input type="checkbox"
+                                   class="return-task-checkbox"
+                                   data-assignment-task-id="{{ g.assignment_task.assignment_task_id }}"
+                                   checked>
+                            Вернуть это задание на доработку
+                        </label>
+                    </div>
                     <div style="margin-top: 1rem;">
                         <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Комментарий к задаче:</label>
                         <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.5rem 0;">Ученик увидит этот комментарий при выполнении. Можно сохранить кнопкой «Сохранить комментарии» без завершения проверки.</p>
@@ -1308,11 +1317,17 @@
             var newAttemptsRaw = (returnAttemptsInput.value || '').trim();
             var newMaxAttempts = newAttemptsRaw === '' ? null : (parseInt(newAttemptsRaw, 10) || null);
             if (newMaxAttempts !== null && newMaxAttempts < 1) newMaxAttempts = null;
+            var returnTaskIds = [];
+            document.querySelectorAll('.return-task-checkbox:checked').forEach(function(cb) {
+                var v = parseInt(cb.getAttribute('data-assignment-task-id'), 10);
+                if (!Number.isNaN(v) && v > 0) returnTaskIds.push(v);
+            });
 
             var data = {
                 scores: scores,
                 teacher_feedback: document.getElementById('teacher-feedback').value,
                 status: 'RETURNED',
+                return_assignment_task_ids: returnTaskIds,
                 rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null,
                 rubric_scores: collectRubricScores()
             };

@@ -235,7 +235,6 @@ def notify_student_graded(submission_id: int) -> bool:
         status_map = {
             'GRADED':       '✅ Проверено',
             'RETURNED':     '↩️ На доработку',
-            'AUTO_GRADED':  '🤖 Автопроверка завершена',
         }
         status_text = status_map.get(status, f'Статус: {status}')
         view_url = f'{(APP_URL or "").rstrip("/")}/submissions/{submission_id}' if APP_URL else ''
@@ -427,13 +426,13 @@ def on_submission_status_changed(submission) -> None:
         except Exception:
             logger.exception('on_submission_status_changed: notify_teacher_manual_review failed for %s', sid)
 
-    elif status in (SubmissionStatus.SUBMITTED, SubmissionStatus.LATE):
+    elif status in (SubmissionStatus.SUBMITTED, SubmissionStatus.NEEDS_MANUAL_REVIEW):
         try:
             notify_submission_submitted_to_staff(sid)
         except Exception:
             logger.exception('on_submission_status_changed: notify_submission_submitted_to_staff failed for %s', sid)
 
-    elif status in (SubmissionStatus.GRADED, SubmissionStatus.RETURNED, SubmissionStatus.AUTO_GRADED):
+    elif status in (SubmissionStatus.GRADED, SubmissionStatus.RETURNED):
         try:
             notify_student_graded(sid)
         except Exception:

@@ -1762,6 +1762,7 @@ class Answer(db.Model):
     max_score = db.Column(db.Integer, nullable=True)  # Максимальный балл (копия из AssignmentTask)
     
     teacher_comment = db.Column(db.Text, nullable=True)
+    needs_revision = db.Column(db.Boolean, default=False, nullable=False)  # Вернуть это задание на доработку
     
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
@@ -1795,7 +1796,7 @@ class SubmissionAttempt(db.Model):
 
     submitted_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     graded_at = db.Column(db.DateTime, nullable=True)
-    status = db.Column(db.String(50), nullable=True)  # SUBMITTED/GRADED/RETURNED/LATE
+    status = db.Column(db.String(50), nullable=True)  # SUBMITTED/NEEDS_MANUAL_REVIEW/GRADED/RETURNED
 
     total_score = db.Column(db.Integer, nullable=True)
     max_score = db.Column(db.Integer, nullable=True)

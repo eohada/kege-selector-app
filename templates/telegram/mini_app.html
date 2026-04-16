@@ -749,9 +749,8 @@ function pillHtml(status) {
     'IN_PROGRESS':  ['pill-progress', '🔄 В процессе'],
     'RETURNED':     ['pill-returned', '↩️ Доработка'],
     'GRADED':       ['pill-graded',   '✅ Проверено'],
-    'AUTO_GRADED':  ['pill-auto',     '🤖 Авто'],
     'SUBMITTED':    ['pill-progress', '📤 Сдано'],
-    'LATE':         ['pill-returned', '⏰ Просрочено'],
+    'NEEDS_MANUAL_REVIEW': ['pill-progress', '🔍 Требует проверки'],
   };
   const [cls, txt] = map[status] || ['pill-pending', status];
   return `<span class="pill ${cls}">${txt}</span>`;

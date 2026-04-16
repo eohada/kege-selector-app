@@ -560,7 +560,7 @@ def mini_app_api_assignments():
     if status_filter == 'pending':
         status_clause = "AND s.status IN ('ASSIGNED','IN_PROGRESS','RETURNED')"
     elif status_filter == 'graded':
-        status_clause = "AND s.status IN ('GRADED','AUTO_GRADED')"
+        status_clause = "AND s.status IN ('GRADED')"
     else:
         status_clause = ''
 

@@ -7,7 +7,7 @@
 {% block content %}
 {% set in_work_statuses = ['ASSIGNED','IN_PROGRESS','RETURNED'] %}
 {% set on_review_statuses = ['SUBMITTED','NEEDS_MANUAL_REVIEW'] %}
-{% set completed_statuses = ['GRADED','AUTO_GRADED'] %}
+{% set completed_statuses = ['GRADED'] %}
 {% set in_work_count = (submissions|selectattr('status','in',in_work_statuses)|list)|length if submissions else 0 %}
 {% set on_review_count = (submissions|selectattr('status','in',on_review_statuses)|list)|length if submissions else 0 %}
 {% set completed_count = (submissions|selectattr('status','in',completed_statuses)|list)|length if submissions else 0 %}

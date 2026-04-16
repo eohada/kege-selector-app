@@ -104,7 +104,7 @@
                     {% set a = card.assignment %}
                     {% for sub in (card.submissions or []) %}
                         {% set rendered = rendered + 1 %}
-                        {% set is_late = (sub.status or '').upper() in ['LATE'] %}
+                        {% set is_late = (sub.is_late if sub.is_late is defined else false) %}
                         <div class="{% if is_late %}bg-gradient-to-b from-[#FFF5F5] to-white border-red-200 border-b-boo-coral{% else %}bg-surface border-slate-200 border-b-slate-300{% endif %} rounded-[24px] border border-b-[4px] shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
                             <div class="p-5 flex-1">
                                 <div class="flex justify-between items-start mb-4">

@@ -24,6 +24,11 @@ from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, notify_user, build_task_number_summary, build_task_number_counts
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
 from app.utils.course_tasks import get_task_numbers
+from app.assignments.submission_lifecycle_service import (
+    normalize_legacy_status,
+    transition_submission_status,
+    SubmissionLifecycleError,
+)
 import requests
 from flask import Response, stream_with_context, abort, send_from_directory
 from werkzeug.utils import secure_filename
@@ -277,7 +282,8 @@ def _submission_display_status(submission, assignment, now):
     Возвращает отображаемый статус для списков: "Просрочено по таймеру",
     "Просрочено по дедлайну" или None (показывать обычный submission.status).
     """
-    if submission.status not in ('ASSIGNED', 'IN_PROGRESS', 'RETURNED'):
+    canonical_status = normalize_legacy_status(submission.status)
+    if canonical_status not in ('ASSIGNED', 'IN_PROGRESS', 'RETURNED'):
         return None
     if getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None):
         started_utc = _started_at_to_utc(submission.started_at)
@@ -289,6 +295,60 @@ def _submission_display_status(submission, assignment, now):
     if deadline and now > deadline:
         return 'Просрочено по дедлайну'
     return None
+
+
+def _submission_revision_task_ids(submission: Submission) -> set[int]:
+    out: set[int] = set()
+    for a in (submission.answers or []):
+        try:
+            if getattr(a, 'needs_revision', False):
+                out.add(int(a.assignment_task_id))
+        except Exception:
+            continue
+    return out
+
+
+def _can_student_edit_submission_task(submission: Submission, assignment_task_id: int | None) -> bool:
+    status = normalize_legacy_status(getattr(submission, 'status', None))
+    if status != 'RETURNED':
+        return True
+    try:
+        atid = int(assignment_task_id or 0)
+    except Exception:
+        return False
+    if atid <= 0:
+        return False
+    allowed_ids = _submission_revision_task_ids(submission)
+    # Legacy returned submissions without per-task flags: allow editing all tasks.
+    if not allowed_ids:
+        return True
+    return atid in allowed_ids
+
+
+def _set_submission_task_revision_flags(submission: Submission, *, mark_all: bool, selected_task_ids: set[int] | None = None) -> None:
+    """
+    Update Answer.needs_revision flags for submission.
+
+    mark_all=True: all assignment tasks become revision-required.
+    mark_all=False: only selected_task_ids are revision-required (empty -> all False).
+    """
+    selected_task_ids = selected_task_ids or set()
+    assignment = submission.assignment
+    if not assignment:
+        return
+    answers_by_task = {int(a.assignment_task_id): a for a in (submission.answers or []) if getattr(a, 'assignment_task_id', None) is not None}
+    for assignment_task in (assignment.tasks or []):
+        atid = int(assignment_task.assignment_task_id)
+        answer = answers_by_task.get(atid)
+        if answer is None:
+            answer = Answer(
+                submission_id=submission.submission_id,
+                assignment_task_id=atid,
+                max_score=assignment_task.max_score,
+            )
+            db.session.add(answer)
+            answers_by_task[atid] = answer
+        answer.needs_revision = True if mark_all else (atid in selected_task_ids)
 
 def _normalize_assignment_type(value: str | None) -> str:
     v = (value or '').strip().lower()
@@ -374,7 +434,7 @@ def assignment_review_bulk_update(assignment_id: int):
         return redirect(url_for('assignments.assignments_list'))
 
     q = Submission.query.options(joinedload(Submission.student)).filter(Submission.assignment_id == assignment.assignment_id)
-    q = q.filter(Submission.status.in_(['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW']))
+    q = q.filter(Submission.status.in_(['SUBMITTED', 'NEEDS_MANUAL_REVIEW']))
 
     subs = q.all()
     if not subs:
@@ -385,13 +445,15 @@ def assignment_review_bulk_update(assignment_id: int):
     skipped = 0
     for sub in subs:
         if action == 'mark_returned':
-            sub.status = 'RETURNED'
+            transition_submission_status(sub, 'RETURNED', force=True)
+            _set_submission_task_revision_flags(sub, mark_all=True)
         else:
             if sub.total_score is None or sub.max_score is None:
                 skipped += 1
                 continue
-            sub.status = 'GRADED'
+            transition_submission_status(sub, 'GRADED', force=True)
             sub.graded_at = moscow_now()
+            _set_submission_task_revision_flags(sub, mark_all=False, selected_task_ids=set())
         try:
             _record_submission_attempt(sub)
         except Exception:
@@ -485,11 +547,12 @@ def submission_quick_return(submission_id: int):
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
-    if (submission.status or '').upper() not in {'SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW'}:
+    if normalize_legacy_status(submission.status) not in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW'}:
         flash('Эту сдачу нельзя вернуть из текущего статуса.', 'warning')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
-    submission.status = 'RETURNED'
+    transition_submission_status(submission, 'RETURNED', force=True)
+    _set_submission_task_revision_flags(submission, mark_all=True)
     try:
         _record_submission_attempt(submission)
     except Exception:
@@ -542,7 +605,7 @@ def _upsert_gradebook_from_submission(submission: Submission, actor_user_id: int
     """Создаёт/обновляет запись в журнале по результату проверенной работы."""
     if not submission:
         return
-    if (submission.status or '').upper() != 'GRADED':
+    if normalize_legacy_status(submission.status) != 'GRADED':
         return
     if not submission.assignment:
         return
@@ -1181,13 +1244,13 @@ def assignments_list():
             func.count(Submission.submission_id).label('total_students'),
             func.sum(
                 case(
-                    (Submission.status.in_(['SUBMITTED', 'LATE', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW']), 1),
+                    (Submission.status.in_(['SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW']), 1),
                     else_=0,
                 )
             ).label('submitted'),
             func.sum(
                 case(
-                    (Submission.status.in_(['SUBMITTED', 'LATE']), 1),
+                    (Submission.status.in_(['SUBMITTED', 'NEEDS_MANUAL_REVIEW']), 1),
                     else_=0,
                 )
             ).label('to_grade'),
@@ -2155,13 +2218,12 @@ def assignment_view(assignment_id):
             'assigned': 0,
             'in_progress': 0,
             'submitted': 0,
-            'late': 0,
             'returned': 0,
             'graded': 0,
             'needs_grading': 0,
         }
         for s in subs_all:
-            st = (getattr(s, 'status', '') or '').upper()
+            st = normalize_legacy_status(getattr(s, 'status', '')) or ''
             counts['total'] += 1
             if st == 'ASSIGNED':
                 counts['assigned'] += 1
@@ -2171,22 +2233,21 @@ def assignment_view(assignment_id):
                 counts['returned'] += 1
             elif st == 'GRADED':
                 counts['graded'] += 1
-            elif st == 'LATE':
-                counts['late'] += 1
+            elif st == 'SUBMITTED':
                 counts['submitted'] += 1
                 counts['needs_grading'] += 1
-            elif st == 'SUBMITTED':
+            elif st == 'NEEDS_MANUAL_REVIEW':
                 counts['submitted'] += 1
                 counts['needs_grading'] += 1
 
         def _matches_status(s: Submission) -> bool:
             if status_filter in {'', 'all'}:
                 return True
-            st = (getattr(s, 'status', '') or '').upper()
+            st = normalize_legacy_status(getattr(s, 'status', '')) or ''
             if status_filter == 'needs_grading':
-                return st in {'SUBMITTED', 'LATE'}
+                return st in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW'}
             if status_filter == 'submitted':
-                return st in {'SUBMITTED', 'LATE', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW'}
+                return st in {'SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW'}
             if status_filter == 'pending':
                 return st in {'ASSIGNED', 'IN_PROGRESS'}
             return st.lower() == status_filter
@@ -2207,13 +2268,13 @@ def assignment_view(assignment_id):
         def _sort_key(s: Submission):
             order = {
                 'SUBMITTED': 0,
-                'LATE': 0,
+                'NEEDS_MANUAL_REVIEW': 0,
                 'RETURNED': 1,
                 'IN_PROGRESS': 2,
                 'ASSIGNED': 3,
                 'GRADED': 4,
             }
-            st = (getattr(s, 'status', '') or '').upper()
+            st = normalize_legacy_status(getattr(s, 'status', '')) or ''
             ts = getattr(s, 'submitted_at', None) or getattr(s, 'assigned_at', None) or getattr(s, 'created_at', None)
             try:
                 ts_val = ts.timestamp() if ts else 0
@@ -2264,8 +2325,7 @@ def submissions_list():
         return redirect(url_for('auth.user_profile'))
     
     submissions = Submission.query.join(Submission.assignment).filter(
-        Submission.student_id == student.student_id,
-        Assignment.is_active.is_(True)
+        Submission.student_id == student.student_id
     ).options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks),
         joinedload(Submission.assignment).joinedload(Assignment.created_by),
@@ -2434,6 +2494,7 @@ def submission_view(submission_id):
                 'requires_manual_review': requires_manual_review,
                 'rating_meta': rating_meta,
                 'difficulty_label': difficulty_label,
+                'task_can_edit': _can_student_edit_submission_task(submission, assignment_task.assignment_task_id),
             })
 
         tasks_view = []
@@ -2527,7 +2588,7 @@ def submission_start(submission_id):
             logger.warning(f"Access denied: student={student}, submission.student_id={submission.student_id}")
             return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
         
-        if submission.status != 'ASSIGNED':
+        if normalize_legacy_status(submission.status) != 'ASSIGNED':
             logger.warning(f"Invalid status for submission {submission_id}: {submission.status}")
             return jsonify({'success': False, 'error': 'Работа уже начата или сдана'}), 400
         
@@ -2539,7 +2600,7 @@ def submission_start(submission_id):
             logger.warning(f"Deadline passed for submission {submission_id}")
             return jsonify({'success': False, 'error': 'Дедлайн истек'}), 400
         
-        submission.status = 'IN_PROGRESS'
+        transition_submission_status(submission, 'IN_PROGRESS')
         submission.started_at = now
         logger.info(f"Saving submission {submission_id} with status IN_PROGRESS and started_at {now}")
         db.session.commit()
@@ -2669,7 +2730,7 @@ def upload_answer_file(submission_id):
     if not is_owner and not can_see:
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
-    if submission.status not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
+    if normalize_legacy_status(submission.status) not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
         return jsonify({'success': False, 'error': 'Нельзя загружать файлы для сданной работы'}), 400
 
     if 'file' not in request.files:
@@ -2691,6 +2752,8 @@ def upload_answer_file(submission_id):
     at = next((t for t in (assignment.tasks or []) if t.assignment_task_id == assignment_task_id), None)
     if not at:
         return jsonify({'success': False, 'error': 'Задание не найдено в этой работе'}), 404
+    if not _can_student_edit_submission_task(submission, assignment_task_id):
+        return jsonify({'success': False, 'error': 'Это задание не отправлено на доработку'}), 403
 
     root = current_app.config.get('ANSWER_ATTACHMENTS_ROOT')
     if not root:
@@ -2738,8 +2801,8 @@ def upload_answer_file(submission_id):
     answer.files = files_list
     answer.updated_at = moscow_now()
 
-    if submission.status in ['ASSIGNED', 'RETURNED']:
-        submission.status = 'IN_PROGRESS'
+    if normalize_legacy_status(submission.status) in ['ASSIGNED', 'RETURNED']:
+        transition_submission_status(submission, 'IN_PROGRESS')
         if not submission.started_at:
             submission.started_at = moscow_now()
 
@@ -2827,7 +2890,7 @@ def submission_autosave(submission_id):
     if not student or submission.student_id != student.student_id:
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
-    if submission.status not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
+    if normalize_legacy_status(submission.status) not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
         return jsonify({'success': False, 'error': 'Нельзя сохранять ответы для этой работы'}), 400
     
     try:
@@ -2848,6 +2911,8 @@ def submission_autosave(submission_id):
             
             if not assignment_task:
                 continue
+            if not _can_student_edit_submission_task(submission, assignment_task_id):
+                continue
             
             answer = Answer.query.filter_by(
                 submission_id=submission_id,
@@ -2865,8 +2930,8 @@ def submission_autosave(submission_id):
             answer.value = value
             answer.updated_at = moscow_now()
         
-        if submission.status in ['ASSIGNED', 'RETURNED']:
-            submission.status = 'IN_PROGRESS'
+        if normalize_legacy_status(submission.status) in ['ASSIGNED', 'RETURNED']:
+            transition_submission_status(submission, 'IN_PROGRESS')
             if not submission.started_at:
                 submission.started_at = moscow_now()
         
@@ -2893,7 +2958,7 @@ def submission_submit_task(submission_id):
         student = get_student_by_user_id(current_user.id)
         if not student or submission.student_id != student.student_id:
             return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
-        if submission.status not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
+        if normalize_legacy_status(submission.status) not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
             return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
         assignment = submission.assignment
         if not assignment.allow_separate_submission or not getattr(assignment, 'attempts_per_task', False):
@@ -2917,6 +2982,8 @@ def submission_submit_task(submission_id):
                 client_time_spent_sec = None
         if not assignment_task_id:
             return jsonify({'success': False, 'error': 'Укажите assignment_task_id'}), 400
+        if not _can_student_edit_submission_task(submission, assignment_task_id):
+            return jsonify({'success': False, 'error': 'Это задание не отправлено на доработку'}), 403
         assignment_task = AssignmentTask.query.filter_by(
             assignment_task_id=assignment_task_id,
             assignment_id=submission.assignment_id
@@ -2979,8 +3046,8 @@ def submission_submit_task(submission_id):
             except Exception as anal_err:
                 logger.warning("Analytics process_submission (submit_task) failed: %s", anal_err)
                 details = None
-        if submission.status in ['ASSIGNED', 'RETURNED']:
-            submission.status = 'IN_PROGRESS'
+        if normalize_legacy_status(submission.status) in ['ASSIGNED', 'RETURNED']:
+            transition_submission_status(submission, 'IN_PROGRESS')
             if not submission.started_at:
                 submission.started_at = moscow_now()
         db.session.commit()
@@ -3016,7 +3083,7 @@ def submission_submit(submission_id):
         if not student or submission.student_id != student.student_id:
             return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
         
-        if submission.status not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
+        if normalize_legacy_status(submission.status) not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
             return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
         
         assignment = submission.assignment
@@ -3027,7 +3094,7 @@ def submission_submit(submission_id):
         attempts_used = sum(1 for a in all_attempts if getattr(a, 'status', '') == 'SUBMITTED')
         effective_max = assignment.get_effective_max_attempts()
         attempts_per_task = getattr(assignment, 'attempts_per_task', False)
-        if not attempts_per_task and attempts_used >= effective_max and submission.status != 'RETURNED':
+        if not attempts_per_task and attempts_used >= effective_max and normalize_legacy_status(submission.status) != 'RETURNED':
             return jsonify({'success': False, 'error': f'Исчерпан лимит попыток ({attempts_used}/{effective_max})'}), 403
         
         is_late = deadline and now > deadline
@@ -3043,7 +3110,7 @@ def submission_submit(submission_id):
                 if assignment.time_limit_strict:
                     return jsonify({'success': False, 'error': 'Время на выполнение истекло. Сдача заблокирована.'}), 403
                 is_overtime = True
-        submission.status = 'SUBMITTED'
+        transition_submission_status(submission, 'SUBMITTED')
         submission.submitted_at = now
         submission.is_late = is_late
         submission.is_overtime = is_overtime
@@ -3120,9 +3187,9 @@ def submission_submit(submission_id):
         
         if all_auto_graded:
             if _assignment_has_manual_review_tasks(assignment):
-                submission.status = 'NEEDS_MANUAL_REVIEW'
+                transition_submission_status(submission, 'NEEDS_MANUAL_REVIEW', force=True)
             else:
-                submission.status = 'GRADED'
+                transition_submission_status(submission, 'GRADED', force=True)
                 _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
             submission.graded_at = now
 
@@ -3310,6 +3377,8 @@ def submission_save_code(submission_id):
     assignment_task_id = data.get('assignment_task_id')
     if assignment_task_id is None:
         return jsonify({'success': False, 'error': 'Не указано задание'}), 400
+    if not _can_student_edit_submission_task(submission, assignment_task_id):
+        return jsonify({'success': False, 'error': 'Это задание не отправлено на доработку'}), 403
     assignment = submission.assignment
     at = next((t for t in (assignment.tasks or []) if t.assignment_task_id == int(assignment_task_id)), None)
     if not at:
@@ -3602,7 +3671,7 @@ def submission_grade_save(submission_id):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
     # Разрешаем сохранять оценку и при IN_PROGRESS/ASSIGNED (таймер истёк, ученик не нажал «Сдать» — преподаватель может завершить проверку)
-    if submission.status not in ('SUBMITTED', 'GRADED', 'RETURNED', 'IN_PROGRESS', 'ASSIGNED', 'NEEDS_MANUAL_REVIEW'):
+    if normalize_legacy_status(submission.status) not in ('SUBMITTED', 'GRADED', 'RETURNED', 'IN_PROGRESS', 'ASSIGNED', 'NEEDS_MANUAL_REVIEW'):
         return jsonify({'success': False, 'error': 'Нельзя изменить оценку для этой сдачи'}), 400
 
     try:
@@ -3610,6 +3679,7 @@ def submission_grade_save(submission_id):
         scores_data = data.get('scores', [])
         teacher_feedback = data.get('teacher_feedback', '').strip()
         status = data.get('status', 'GRADED')  # GRADED или RETURNED
+        raw_return_task_ids = data.get('return_assignment_task_ids') or []
         rubric_template_id = data.get('rubric_template_id', None)
         rubric_scores = data.get('rubric_scores', None)
         new_deadline_str = (data.get('new_deadline') or '').strip()  # при RETURNED — опционально новый дедлайн
@@ -3617,6 +3687,15 @@ def submission_grade_save(submission_id):
 
         if status not in ['GRADED', 'RETURNED']:
             status = 'GRADED'
+        return_task_ids: set[int] = set()
+        if status == 'RETURNED' and isinstance(raw_return_task_ids, list):
+            for v in raw_return_task_ids:
+                try:
+                    iv = int(v)
+                except (TypeError, ValueError):
+                    continue
+                if iv > 0:
+                    return_task_ids.add(iv)
         
         total_score = 0
         max_score = 0
@@ -3660,6 +3739,15 @@ def submission_grade_save(submission_id):
         submission.max_score = max_score
         submission.percentage = (total_score / max_score * 100) if max_score > 0 else 0
         submission.teacher_feedback = teacher_feedback
+
+        if status == 'RETURNED':
+            _set_submission_task_revision_flags(
+                submission,
+                mark_all=(len(return_task_ids) == 0),
+                selected_task_ids=return_task_ids,
+            )
+        else:
+            _set_submission_task_revision_flags(submission, mark_all=False, selected_task_ids=set())
 
         try:
             selected_rubric = None
@@ -3712,7 +3800,10 @@ def submission_grade_save(submission_id):
         except Exception as e:
             logger.warning(f"Failed to save rubric data for submission {submission_id}: {e}")
 
-        submission.status = status
+        try:
+            transition_submission_status(submission, status, force=True)
+        except SubmissionLifecycleError as e:
+            return jsonify({'success': False, 'error': str(e)}), 400
         submission.graded_at = moscow_now()
         # Если ученик не нажал «Сдать» (таймер истёк и т.п.), при завершении проверки фиксируем дату закрытия
         if submission.submitted_at is None:
