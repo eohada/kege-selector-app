@@ -240,7 +240,11 @@ def _render_theory_content_html(content_value):
         if not src:
             return src
         # 12*34 -> 12\*34
-        return re.sub(r'(?<=\d)\*(?=\d)', r'\\*', src)
+        src = re.sub(r'(?<=\d)\*(?=\d)', r'\\*', src)
+        # (*) and (*?) -> (\*) and (\*?)
+        src = re.sub(r'(?<=\()\*(?=\))', r'\\*', src)
+        src = re.sub(r'(?<=\()\*(?=\?)', r'\\*', src)
+        return src
 
     def _normalize_code_body_for_theory(raw):
         """Strip spacer markers leaked into legacy CODE bodies (they must stay real newlines only)."""
