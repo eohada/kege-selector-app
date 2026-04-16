@@ -516,6 +516,7 @@ def task_generator(lesson_id=None):
     bank_total = 0
     bank_pagination = []
     assignment_task_ids = set()
+    selected_task_ids = {int(tid) for tid in current_task_ids if tid is not None}
     if return_edit:
         try:
             assignment = Assignment.query.get(return_edit)
@@ -564,6 +565,9 @@ def task_generator(lesson_id=None):
             t.student_task_mmr = _get_user_task_mmr(target_user_id, t.task_number)
             if return_edit:
                 t.bank_target_already_added = int(t.task_id) in assignment_task_ids
+            elif recipient_ids:
+                # For "current work" mode, preserve added badge from selected task_ids in URL/session.
+                t.bank_target_already_added = int(t.task_id) in selected_task_ids
         if lesson_id or template_id:
             try:
                 _le_ids, _tpl_ids = _picker_target_sets(lesson_id, template_id, assignment_type)

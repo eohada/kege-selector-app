@@ -454,6 +454,22 @@
             -webkit-overflow-scrolling: touch;
             justify-content: flex-start;
         }
+        .return-task-toggle-btn {
+            border: 1px solid rgba(148, 163, 184, 0.45);
+            background: rgba(248, 250, 252, 0.9);
+            color: #475569;
+        }
+        .return-task-toggle-btn:hover {
+            border-color: rgba(245, 158, 11, 0.45);
+            background: rgba(254, 243, 199, 0.55);
+            color: #92400e;
+        }
+        .return-task-toggle-btn.is-selected {
+            border-color: rgba(245, 158, 11, 0.7);
+            background: rgba(254, 243, 199, 0.9);
+            color: #92400e;
+            box-shadow: inset 0 -2px 0 rgba(180, 83, 9, 0.18);
+        }
     </style>
     <script>
         (function(){
@@ -478,7 +494,7 @@
             <div class="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 mb-3 flex-wrap">
-                        <span class="submission-type-chip text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg border bg-purple-50 text-boo-primary border-purple-100 dark:bg-purple-950/40 dark:border-purple-800/50">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else 'Проверочная') }}</span>
+                        <span class="submission-type-chip text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg border bg-purple-50 text-boo-primary border-purple-100 dark:bg-purple-950/40 dark:border-purple-800/50">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else ('Без правильных ответов' if assignment.assignment_type == 'manual_review' else 'Проверочная')) }}</span>
                         <span class="text-xs font-bold text-muted">#{{ assignment.assignment_id }}</span>
                     </div>
                     <p class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-1">Проверка работы</p>
@@ -689,14 +705,15 @@
                         >
                         <span class="max-score">/ {{ g.assignment_task.max_score }}</span>
                     </div>
-                    <div style="margin-top: 0.75rem;">
-                        <label style="display:inline-flex; align-items:center; gap:0.5rem; font-size:0.9rem; font-weight:600; cursor:pointer;">
-                            <input type="checkbox"
-                                   class="return-task-checkbox"
-                                   data-assignment-task-id="{{ g.assignment_task.assignment_task_id }}"
-                                   checked>
-                            Вернуть это задание на доработку
-                        </label>
+                    <div style="margin-top: 0.85rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                        <button type="button"
+                                class="neo-button sm rounded-xl px-3 py-2 inline-flex items-center gap-1.5 text-xs font-bold return-task-toggle-btn{% if g.answer and g.answer.needs_revision %} is-selected{% endif %}"
+                                data-return-task-toggle="1"
+                                data-assignment-task-id="{{ g.assignment_task.assignment_task_id }}"
+                                aria-pressed="{% if g.answer and g.answer.needs_revision %}true{% else %}false{% endif %}">
+                            <i class="ph-bold ph-arrow-u-up-left"></i>
+                            <span class="return-task-toggle-label">{% if g.answer and g.answer.needs_revision %}Вернется на доработку{% else %}Не возвращать{% endif %}</span>
+                        </button>
                     </div>
                     <div style="margin-top: 1rem;">
                         <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Комментарий к задаче:</label>
@@ -1266,6 +1283,23 @@
         var returnModal = document.getElementById('return-revision-modal');
         var returnDeadlineInput = document.getElementById('return-modal-deadline');
         var returnAttemptsInput = document.getElementById('return-modal-attempts');
+        var returnTaskToggleButtons = Array.from(document.querySelectorAll('[data-return-task-toggle="1"]'));
+
+        function setReturnTaskToggleState(btn, isSelected) {
+            if (!btn) return;
+            var label = btn.querySelector('.return-task-toggle-label');
+            btn.classList.toggle('is-selected', !!isSelected);
+            btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+            if (label) {
+                label.textContent = isSelected ? 'Вернется на доработку' : 'Не возвращать';
+            }
+        }
+        returnTaskToggleButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var selected = btn.classList.contains('is-selected');
+                setReturnTaskToggleState(btn, !selected);
+            });
+        });
 
         function openReturnModal() {
             if (typeof assignmentDeadline !== 'undefined' && assignmentDeadline) {
@@ -1318,8 +1352,8 @@
             var newMaxAttempts = newAttemptsRaw === '' ? null : (parseInt(newAttemptsRaw, 10) || null);
             if (newMaxAttempts !== null && newMaxAttempts < 1) newMaxAttempts = null;
             var returnTaskIds = [];
-            document.querySelectorAll('.return-task-checkbox:checked').forEach(function(cb) {
-                var v = parseInt(cb.getAttribute('data-assignment-task-id'), 10);
+            document.querySelectorAll('[data-return-task-toggle="1"].is-selected').forEach(function(btn) {
+                var v = parseInt(btn.getAttribute('data-assignment-task-id'), 10);
                 if (!Number.isNaN(v) && v > 0) returnTaskIds.push(v);
             });
 

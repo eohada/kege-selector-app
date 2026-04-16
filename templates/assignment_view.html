@@ -202,6 +202,7 @@
                                 {% elif assignment.assignment_type == 'classwork' %}КР
                                 {% elif assignment.assignment_type == 'exam' %}Проверочная
                                 {% elif assignment.assignment_type == 'test' %}Тест
+                                {% elif assignment.assignment_type == 'manual_review' %}Без ответов
                                 {% else %}{{ assignment.assignment_type }}{% endif %}
                             </span></span>
                             <span class="pill" style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('action.clock', 'sm') }} Дедлайн: <span class="meta-strong">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span></span>

@@ -57,11 +57,12 @@
 
         <div class="relative z-10 flex-1 flex flex-col">
           <div class="flex justify-between items-start mb-4 gap-3">
-            <span class="px-2.5 py-1 {% if submission.assignment and submission.assignment.assignment_type == 'exam' %}bg-boo-cyanLight text-boo-cyan border-cyan-100/50 dark:bg-boo-cyan/10 dark:text-boo-cyan dark:border-boo-cyan/25{% elif submission.assignment and submission.assignment.assignment_type == 'classwork' %}bg-surface-alt text-muted border-slate-200/60 dark:bg-white/5 dark:text-dark-muted dark:border-white/[0.08]{% else %}bg-red-50 text-boo-coral border-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/25{% endif %} text-[10px] font-extrabold rounded-lg uppercase tracking-wider border">
+            <span class="px-2.5 py-1 {% if submission.assignment and submission.assignment.assignment_type == 'exam' %}bg-boo-cyanLight text-boo-cyan border-cyan-100/50 dark:bg-boo-cyan/10 dark:text-boo-cyan dark:border-boo-cyan/25{% elif submission.assignment and submission.assignment.assignment_type == 'classwork' %}bg-surface-alt text-muted border-slate-200/60 dark:bg-white/5 dark:text-dark-muted dark:border-white/[0.08]{% elif submission.assignment and submission.assignment.assignment_type == 'manual_review' %}bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30{% else %}bg-red-50 text-boo-coral border-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/25{% endif %} text-[10px] font-extrabold rounded-lg uppercase tracking-wider border">
               {% if submission.assignment %}
                 {% if submission.assignment.assignment_type == 'homework' %}Домашнее задание
                 {% elif submission.assignment.assignment_type == 'classwork' %}Классная работа
                 {% elif submission.assignment.assignment_type == 'exam' %}Пробник
+                {% elif submission.assignment.assignment_type == 'manual_review' %}Без правильных ответов
                 {% else %}{{ submission.assignment.assignment_type }}{% endif %}
               {% else %}
                 Работа

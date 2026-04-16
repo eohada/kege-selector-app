@@ -412,7 +412,7 @@
             <div class="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 mb-4">
-                        <span class="submission-type-chip text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg border bg-purple-50 text-boo-primary border-purple-100">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else 'Проверочная') }}</span>
+                        <span class="submission-type-chip text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg border bg-purple-50 text-boo-primary border-purple-100">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else ('Без правильных ответов' if assignment.assignment_type == 'manual_review' else 'Проверочная')) }}</span>
                         <span class="text-xs font-bold text-muted">#{{ assignment.assignment_id }}</span>
                     </div>
                     <h1 class="submission-title text-3xl sm:text-4xl lg:text-5xl font-black text-primary dark:text-white tracking-tight leading-tight">{{ assignment.title }}</h1>
@@ -565,9 +565,12 @@
                 
                 {% set task_can_edit = task_item.task_can_edit if task_item.task_can_edit is defined else true %}
                 <div class="task-input bg-surface border border-slate-200 rounded-[20px] p-2 transition-all shadow-sm dark:shadow-none dark:shadow-none">
+                    {% set is_manual_review_assignment = assignment.assignment_type == 'manual_review' %}
                     {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task and task_item.answer %}
                     <div style="margin-bottom: 0.5rem; padding: 0.5rem 0; font-weight: 600;">
-                        {% if task_item.answer.is_correct == True %}
+                        {% if is_manual_review_assignment and task_item.answer.is_correct is none %}
+                        <span style="color: var(--text-muted);">Проверит преподаватель</span>
+                        {% elif task_item.answer.is_correct == True %}
                         <span style="color: var(--accent-1);">{{ ui_icon('action.check', 'sm') }} Верно</span> — {{ task_item.answer.score or 0 }}/{{ task_item.assignment_task.max_score }} баллов
                         {% elif task_item.answer.is_correct == False %}
                         <span style="color: #ef4444;">{{ ui_icon('action.warning', 'sm') }} Неверно</span> — 0/{{ task_item.assignment_task.max_score }} баллов
@@ -587,7 +590,9 @@
                     {% else %}
                     {% if attempts_per_task and task_item.task_attempts_used > 0 and task_item.answer %}
                     <div style="margin-bottom: 0.5rem; padding: 0.5rem 0; font-weight: 600;">
-                        {% if task_item.answer.is_correct == True %}
+                        {% if is_manual_review_assignment and task_item.answer.is_correct is none %}
+                        <span style="color: var(--text-muted);">Проверит преподаватель</span>
+                        {% elif task_item.answer.is_correct == True %}
                         <span style="color: var(--accent-1);">{{ ui_icon('action.check', 'sm') }} Верно</span> — {{ task_item.answer.score or 0 }}/{{ task_item.assignment_task.max_score }} баллов
                         {% elif task_item.answer.is_correct == False %}
                         <span style="color: #ef4444;">{{ ui_icon('action.warning', 'sm') }} Неверно</span> — 0/{{ task_item.assignment_task.max_score }} баллов
@@ -804,7 +809,9 @@
             <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
                 {% if task_item.answer %}
                 <div style="margin-bottom: 0.75rem; font-weight: 600;">
-                    {% if task_item.answer.is_correct == true %}
+                    {% if assignment.assignment_type == 'manual_review' and task_item.answer.is_correct is none %}
+                    <span style="color: var(--text-muted);">{{ ui_icon('action.clock', 'sm') }} Проверка преподавателем</span>
+                    {% elif task_item.answer.is_correct == true %}
                     <span style="color: rgb(16, 185, 129);">{{ ui_icon('action.check', 'sm') }} Верно</span> — {{ task_item.answer.score or 0 }}/{{ task_item.assignment_task.max_score }} баллов
                     {% elif task_item.answer.is_correct == false %}
                     <span style="color: #ef4444;">{{ ui_icon('action.warning', 'sm') }} Неверно</span> — {{ task_item.answer.score or 0 }}/{{ task_item.assignment_task.max_score }} баллов
@@ -835,7 +842,7 @@
                 {% endfor %}
                 {% endif %}
 
-                {% if task_item.task.answer and (submission.status == 'GRADED' or (task_item.answer and task_item.answer.is_correct is not none)) %}
+                {% if assignment.assignment_type != 'manual_review' and task_item.task.answer and (submission.status == 'GRADED' or (task_item.answer and task_item.answer.is_correct is not none)) %}
                 <div class="correct-answer-block">
                     <div class="correct-answer-label">Правильный ответ:</div>
                     <div class="correct-answer-value">{{ task_item.task.answer }}</div>

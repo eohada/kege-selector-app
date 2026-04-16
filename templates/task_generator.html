@@ -1199,6 +1199,7 @@
             const ids = Array.from(getAcceptedSessionSet());
             const csv = ids.join(',');
             document.querySelectorAll('input[name="task_ids"]').forEach((el) => { el.value = csv; });
+            saveSessionWorkState(ids);
             try {
                 const u = new URL(window.location.href);
                 if (csv) u.searchParams.set('task_ids', csv);
@@ -1206,6 +1207,38 @@
                 window.history.replaceState({}, '', u.toString());
             } catch (_) {}
             renderSelectedSummary();
+        }
+        function getSessionWorkStorageKey() {
+            const panel = document.getElementById('gen-bank-panel');
+            if (!panel || !panel.dataset || !panel.dataset.bankAddSessionWork) return null;
+            const ctx = getCtx();
+            if (!ctx.recipient_ids || !ctx.recipient_ids.length) return null;
+            const rid = ctx.recipient_ids.map((x) => parseInt(x, 10)).filter(Number.isFinite).sort((a, b) => a - b).join('-');
+            const at = (ctx.assignment_type || 'homework').toLowerCase();
+            return 'task-generator:session-work:' + at + ':' + rid;
+        }
+        function saveSessionWorkState(ids) {
+            const key = getSessionWorkStorageKey();
+            if (!key) return;
+            try {
+                window.localStorage.setItem(key, JSON.stringify({
+                    task_ids: Array.from(new Set((ids || []).map((x) => parseInt(x, 10)).filter(Number.isFinite))),
+                    updated_at: Date.now(),
+                }));
+            } catch (_) {}
+        }
+        function loadSessionWorkState() {
+            const key = getSessionWorkStorageKey();
+            if (!key) return [];
+            try {
+                const raw = window.localStorage.getItem(key);
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                if (!parsed || !Array.isArray(parsed.task_ids)) return [];
+                return parsed.task_ids.map((x) => parseInt(x, 10)).filter(Number.isFinite);
+            } catch (_) {
+                return [];
+            }
         }
         function syncBankBadgesFromSession() {
             const ids = getAcceptedSessionSet();
@@ -1374,6 +1407,10 @@
             if (taskIdsParam) {
                 taskIdsParam.split(',').forEach((x) => {
                     const id = parseInt((x || '').trim(), 10);
+                    if (Number.isFinite(id)) acceptedInSession.push(id);
+                });
+            } else {
+                loadSessionWorkState().forEach((id) => {
                     if (Number.isFinite(id)) acceptedInSession.push(id);
                 });
             }

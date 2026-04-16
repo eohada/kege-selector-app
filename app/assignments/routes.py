@@ -352,7 +352,7 @@ def _set_submission_task_revision_flags(submission: Submission, *, mark_all: boo
 
 def _normalize_assignment_type(value: str | None) -> str:
     v = (value or '').strip().lower()
-    if v in {'homework', 'classwork', 'exam', 'test'}:
+    if v in {'homework', 'classwork', 'exam', 'test', 'manual_review'}:
         return v
     return ''
 
@@ -364,6 +364,7 @@ def _assignment_type_label_short(value: str | None) -> str:
         'classwork': 'КР',
         'exam': 'Проверочная',
         'test': 'Тест',
+        'manual_review': 'Без ответов',
     }.get(v, v or '—')
 
 
@@ -374,6 +375,7 @@ def _assignment_type_label_long(value: str | None) -> str:
         'classwork': 'Классная работа',
         'exam': 'Проверочная работа',
         'test': 'Тест',
+        'manual_review': 'Без правильных ответов',
     }.get(v, v or 'Работа')
 
 
@@ -1021,7 +1023,7 @@ def distribute_assignment():
             return jsonify({'success': False, 'error': 'Некорректный формат данных'}), 400
         
         title = data.get('title', '').strip()
-        assignment_type = data.get('type', 'homework')  # homework, classwork, exam, test
+        assignment_type = _normalize_assignment_type(data.get('type', 'homework')) or 'homework'
         deadline_str = data.get('deadline')
         hard_deadline = data.get('hard_deadline', False)
         hide_before_start = data.get('hide_before_start', True)
@@ -1136,7 +1138,11 @@ def distribute_assignment():
                 continue
             
             has_answer = bool((task.answer or '').strip())
-            requires_manual_grading = _requires_manual_from_template(task, has_answer, explicit_override=requires_manual)
+            if assignment_type == 'manual_review':
+                # Special type: student answers are always checked manually by teacher.
+                requires_manual_grading = True
+            else:
+                requires_manual_grading = _requires_manual_from_template(task, has_answer, explicit_override=requires_manual)
             assignment_task = AssignmentTask(
                 assignment_id=assignment.assignment_id,
                 task_id=task_id,
@@ -1173,7 +1179,13 @@ def distribute_assignment():
         )
 
         task_ids = [at.task_id for at in assignment.tasks]
-        label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа', 'test': 'Проверочная работа'}.get((assignment_type or 'homework').strip().lower(), 'Задания')
+        label = {
+            'homework': 'Домашняя работа',
+            'classwork': 'Классная работа',
+            'exam': 'Проверочная работа',
+            'test': 'Проверочная работа',
+            'manual_review': 'Работа без правильных ответов',
+        }.get((assignment_type or 'homework').strip().lower(), 'Задания')
         summary = build_task_number_summary(task_ids)
         task_numbers = build_task_number_counts(task_ids)
         body = f"{label}: {summary}"
@@ -1482,7 +1494,7 @@ def assignments_accepted():
     try:
         task_type = request.args.get('task_type', type=int, default=None)
         assignment_type = (request.args.get('assignment_type') or 'homework').strip().lower()
-        if assignment_type not in ['homework', 'classwork', 'exam']:
+        if assignment_type not in ['homework', 'classwork', 'exam', 'manual_review']:
             assignment_type = 'homework'
         open_create = (request.args.get('create') or '').strip() == '1'
 
@@ -1609,7 +1621,7 @@ def assignments_generator_results():
         search_task_id = request.args.get('search_task_id', type=int)
         template_id = request.args.get('template_id', type=int)
 
-        if assignment_type not in ['homework', 'classwork', 'exam']:
+        if assignment_type not in ['homework', 'classwork', 'exam', 'manual_review']:
             assignment_type = 'homework'
 
         if not task_type or not limit_count:
