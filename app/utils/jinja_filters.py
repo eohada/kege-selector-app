@@ -8,7 +8,7 @@ from urllib.parse import quote
 from typing import Optional
 
 from bs4 import BeautifulSoup
-from bs4.element import NavigableString
+from bs4.element import NavigableString, Tag
 
 from app.auth.rbac_utils import mask_contact_info
 from flask import url_for, request
@@ -395,7 +395,10 @@ def _looks_like_author_signature(text_inside_parens: str) -> bool:
     """
     if not text_inside_parens:
         return False
-    normalized = ' '.join(str(text_inside_parens).replace('\xa0', ' ').split())
+    raw = str(text_inside_parens)
+    # В source часто внутри скобок есть <a ...>И.О.Фамилия</a>.
+    raw = re.sub(r"<[^>]+>", "", raw)
+    normalized = ' '.join(raw.replace('\xa0', ' ').split())
     if not normalized:
         return False
     if not re.search(r'[А-ЯЁа-яё]', normalized):
@@ -419,6 +422,82 @@ def _strip_leading_author_parenthesized(text: str) -> str:
     if _looks_like_author_signature(inside):
         return text[m.end():]
     return text
+
+
+def _split_row_cells(line: str) -> list[str]:
+    line = (line or "").strip()
+    if not line:
+        return []
+    if "\t" in line:
+        cells = [c.strip() for c in line.split("\t")]
+    elif "|" in line:
+        cells = [c.strip() for c in line.split("|")]
+    elif ";" in line:
+        cells = [c.strip() for c in line.split(";")]
+    else:
+        cells = [c.strip() for c in re.split(r"\s{2,}", line)]
+    return [c for c in cells if c]
+
+
+def _looks_like_table_lines(lines: list[str]) -> tuple[bool, list[list[str]]]:
+    rows: list[list[str]] = []
+    for line in lines:
+        cells = _split_row_cells(line)
+        if len(cells) < 2:
+            continue
+        rows.append(cells)
+    if len(rows) < 2:
+        return False, []
+    col_count = len(rows[0])
+    if col_count < 2 or col_count > 12:
+        return False, []
+    if any(len(r) != col_count for r in rows):
+        return False, []
+    short_cell_ratio = 0.0
+    total_cells = sum(len(r) for r in rows)
+    if total_cells > 0:
+        short_cells = sum(1 for r in rows for c in r if len(c) <= 20)
+        short_cell_ratio = short_cells / total_cells
+    if short_cell_ratio < 0.85:
+        return False, []
+    return True, rows
+
+
+def convert_text_tables_to_html(html_content: Optional[str]) -> str:
+    """
+    Преобразует псевдотаблицы (строки с разделителями) в HTML-таблицы.
+    Полезно для legacy-задач, где таблица хранится текстом.
+    """
+    if not html_content:
+        return html_content or ""
+    try:
+        soup = BeautifulSoup(str(html_content), "html.parser")
+        for block in soup.find_all(["p", "div"]):
+            if not isinstance(block, Tag):
+                continue
+            if block.find(["table", "ul", "ol", "img", "iframe", "video", "pre", "code"]):
+                continue
+            text = block.get_text("\n", strip=True)
+            if not text or "\n" not in text:
+                continue
+            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+            looks_like_table, rows = _looks_like_table_lines(lines)
+            if not looks_like_table:
+                continue
+            table = soup.new_tag("table")
+            tbody = soup.new_tag("tbody")
+            table.append(tbody)
+            for row in rows:
+                tr = soup.new_tag("tr")
+                for cell in row:
+                    td = soup.new_tag("td")
+                    td.string = cell
+                    tr.append(td)
+                tbody.append(tr)
+            block.replace_with(table)
+        return str(soup)
+    except Exception:
+        return str(html_content)
 
 
 def _strip_author_signatures_from_html(decoded_html: str) -> str:
@@ -576,6 +655,7 @@ def init_jinja_filters(app):
     app.jinja_env.filters['strip_attachment_links'] = strip_attachment_links
     app.jinja_env.filters['sanitize_html'] = sanitize_html
     app.jinja_env.filters['prepare_task_content_html'] = prepare_task_content_html
+    app.jinja_env.filters['convert_text_tables_to_html'] = convert_text_tables_to_html
     app.jinja_env.filters['normalize_task_plain_text_to_html'] = normalize_task_plain_text_to_html
     app.jinja_env.filters['normalize_task_attachments'] = normalize_task_attachments
     app.jinja_env.globals["ui_icon"] = ui_icon
