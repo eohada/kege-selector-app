@@ -1,6 +1,7 @@
 """
 Jinja2 фильтры для шаблонов
 """
+import html as html_lib
 import json
 import re
 from urllib.parse import quote
@@ -362,9 +363,12 @@ def prepare_task_content_html(raw_content: Optional[str]) -> str:
     text = (raw_content or '').strip()
     if not text:
         return '<div class="task-text"></div>'
-    if _HTML_TAG_PATTERN.search(text):
-        return text
-    return normalize_task_plain_text_to_html(text)
+    # Исторически часть заданий хранится как HTML, но экранированный (&lt;table&gt;...).
+    # Для корректного рендера сначала разворачиваем HTML-сущности.
+    decoded = html_lib.unescape(text).replace("\\r\\n", "\n").replace("\\n", "\n")
+    if _HTML_TAG_PATTERN.search(decoded):
+        return decoded
+    return normalize_task_plain_text_to_html(decoded)
 
 
 def _normalize_attachment_entry(item) -> Optional[dict]:
