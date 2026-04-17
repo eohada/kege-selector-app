@@ -115,6 +115,13 @@ def _render_theory_content_html(content_value):
     def _render_math_in_html_fragment(fragment):
         if not fragment:
             return fragment
+
+        def _looks_like_excel_ref(expr):
+            token = (expr or '').strip()
+            # Examples to ignore as "not math":
+            # $A1$, $A1:$F1$, $AA10$, $AA10:$BC200
+            return bool(re.fullmatch(r'\$?[A-Za-z]{1,3}\$?\d+(?::\$?[A-Za-z]{1,3}\$?\d+)?', token))
+
         # Block math first
         fragment = re.sub(
             r'\$\$([\s\S]+?)\$\$',
@@ -124,7 +131,11 @@ def _render_theory_content_html(content_value):
         # Inline math
         fragment = re.sub(
             r'(?<!\\)\$([^\n$][^$]*?)\$',
-            lambda m: f'<span class="theory-inline-math">{_format_inline_math_html(m.group(1))}</span>',
+            lambda m: (
+                m.group(0)
+                if _looks_like_excel_ref(m.group(1))
+                else f'<span class="theory-inline-math">{_format_inline_math_html(m.group(1))}</span>'
+            ),
             fragment,
         )
         return fragment
@@ -403,6 +414,7 @@ def _render_theory_content_html(content_value):
     text = _render_ascii_tables_to_html(text)
     text = _escape_numeric_multiplication_stars(text)
     text = _escape_literal_asterisks_in_quotes(text)
+    text = _render_math_in_html_fragment(text)
     # Convert star-list markers to dash-list markers before markdown parse
     # to reduce cases where raw "*" leaks into rendered text.
     text = re.sub(r'(?m)^\s*\*\s+', '- ', text)
@@ -418,7 +430,6 @@ def _render_theory_content_html(content_value):
     text = text.replace('__THEORY_SPACER__', '<div class="theory-spacer"></div>')
     text = text.replace('<p>THEORY_SPACER</p>', '<div class="theory-spacer"></div>')
     text = text.replace('THEORY_SPACER', '<div class="theory-spacer"></div>')
-    text = _render_math_in_html_fragment(text)
     return Markup(text)
 
 
