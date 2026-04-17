@@ -190,11 +190,16 @@
                             onclick="duplicateAssignment(this)"
                             data-assignment-id="{{ item.assignment.assignment_id }}"
                             data-title="{{ item.assignment.title or '' }}"
+                            data-description="{{ item.assignment.description or '' }}"
+                            data-assignment-type="{{ item.assignment.assignment_type or 'homework' }}"
                             data-deadline="{{ item.assignment.deadline.strftime('%Y-%m-%dT%H:%M') if item.assignment.deadline else '' }}"
                             data-max-attempts="{{ item.assignment.max_attempts_default or 1 }}"
+                            data-time-limit-minutes="{{ item.assignment.time_limit_minutes or '' }}"
                             data-hard-deadline="{{ 1 if item.assignment.hard_deadline else 0 }}"
                             data-hide-before-start="{{ 1 if item.assignment.hide_before_start else 0 }}"
                             data-time-limit-strict="{{ 1 if item.assignment.time_limit_strict else 0 }}"
+                            data-attempts-per-task="{{ 1 if item.assignment.attempts_per_task else 0 }}"
+                            data-allow-separate-submission="{{ 1 if item.assignment.allow_separate_submission else 0 }}"
                             data-default-recipient-ids="{% for ss in item.student_submissions %}{{ ss.student_id }}{% if not loop.last %},{% endif %}{% endfor %}">
                         <i class="ph-bold ph-copy"></i> Дублировать
                     </button>
@@ -249,6 +254,19 @@
                 <label style="display:block; font-weight:700; margin-bottom:.35rem;">Название копии</label>
                 <input id="dup-title" class="neo-input" style="width:100%;" placeholder="Название работы">
             </div>
+            <div>
+                <label style="display:block; font-weight:700; margin-bottom:.35rem;">Тип работы</label>
+                <select id="dup-type" class="neo-input" style="width:100%;">
+                    <option value="homework">Домашняя работа</option>
+                    <option value="classwork">Классная работа</option>
+                    <option value="exam">Проверочная / Тест</option>
+                    <option value="manual_review">Без правильных ответов (ручная проверка)</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; font-weight:700; margin-bottom:.35rem;">Описание / Комментарий</label>
+                <textarea id="dup-description" rows="3" class="neo-input" style="width:100%; resize:vertical;" placeholder="Комментарий для ученика"></textarea>
+            </div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
                 <div>
                     <label style="display:block; font-weight:700; margin-bottom:.35rem;">Дедлайн</label>
@@ -259,10 +277,20 @@
                     <input id="dup-max-attempts" type="number" min="1" class="neo-input" style="width:100%;">
                 </div>
             </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
+                <div>
+                    <label style="display:block; font-weight:700; margin-bottom:.35rem;">Лимит времени (мин)</label>
+                    <input id="dup-time-limit-minutes" type="number" min="1" class="neo-input" style="width:100%;" placeholder="Нет лимита">
+                </div>
+            </div>
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem;">
                 <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-hard-deadline" type="checkbox"> Жесткий дедлайн</label>
                 <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-hide-before-start" type="checkbox"> Скрывать до старта</label>
                 <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-time-limit-strict" type="checkbox"> Блок по таймеру</label>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
+                <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-attempts-per-task" type="checkbox"> Попытки на каждое задание</label>
+                <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-allow-separate-submission" type="checkbox"> Разрешить сдавать по одной</label>
             </div>
             <div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.35rem;">
@@ -350,11 +378,16 @@
         duplicateCtx = ctx || null;
         if (!duplicateCtx) return;
         document.getElementById('dup-title').value = duplicateCtx.title ? (duplicateCtx.title + ' (копия)') : '';
+        document.getElementById('dup-description').value = duplicateCtx.description || '';
+        document.getElementById('dup-type').value = duplicateCtx.assignmentType || 'homework';
         document.getElementById('dup-deadline').value = duplicateCtx.deadline || '';
         document.getElementById('dup-max-attempts').value = duplicateCtx.maxAttempts || 1;
+        document.getElementById('dup-time-limit-minutes').value = duplicateCtx.timeLimitMinutes || '';
         document.getElementById('dup-hard-deadline').checked = !!duplicateCtx.hardDeadline;
         document.getElementById('dup-hide-before-start').checked = !!duplicateCtx.hideBeforeStart;
         document.getElementById('dup-time-limit-strict').checked = !!duplicateCtx.timeLimitStrict;
+        document.getElementById('dup-attempts-per-task').checked = !!duplicateCtx.attemptsPerTask;
+        document.getElementById('dup-allow-separate-submission').checked = !!duplicateCtx.allowSeparateSubmission;
         const defaultSet = new Set((duplicateCtx.defaultRecipientIds || []).map((v) => parseInt(v, 10)).filter(Number.isFinite));
         document.querySelectorAll('#dup-recipient-list input[type="checkbox"]').forEach((el) => {
             const sid = parseInt(el.value, 10);
@@ -389,6 +422,11 @@
         if (t && t.matches && t.matches('input[type="checkbox"]')) syncDuplicateSelectedCount();
     });
     duplicateRecipientSearch?.addEventListener('input', applyDuplicateRecipientFilter);
+    document.getElementById('dup-attempts-per-task')?.addEventListener('change', function () {
+        const allowSeparate = document.getElementById('dup-allow-separate-submission');
+        if (!allowSeparate) return;
+        if (this.checked) allowSeparate.checked = true;
+    });
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && duplicateModal && duplicateModal.style.display !== 'none') closeDuplicateModal();
     });
@@ -399,11 +437,16 @@
             const payload = {
                 recipientIds,
                 title: (document.getElementById('dup-title').value || '').trim() || null,
+                description: (document.getElementById('dup-description').value || '').trim() || null,
+                assignment_type: (document.getElementById('dup-type').value || '').trim() || null,
                 deadline: (document.getElementById('dup-deadline').value || '').trim() || null,
                 max_attempts_default: parseInt(document.getElementById('dup-max-attempts').value, 10) || null,
+                time_limit_minutes: parseInt(document.getElementById('dup-time-limit-minutes').value, 10) || null,
                 hard_deadline: document.getElementById('dup-hard-deadline').checked,
                 hide_before_start: document.getElementById('dup-hide-before-start').checked,
                 time_limit_strict: document.getElementById('dup-time-limit-strict').checked,
+                attempts_per_task: document.getElementById('dup-attempts-per-task').checked,
+                allow_separate_submission: document.getElementById('dup-attempts-per-task').checked || document.getElementById('dup-allow-separate-submission').checked,
             };
             const url = '/assignments/' + encodeURIComponent(String(duplicateCtx.assignmentId)) + '/duplicate';
             const { ok, data } = await postJson(url, payload);
@@ -425,11 +468,16 @@
         openDuplicateModal({
             assignmentId: assignmentId,
             title: btnEl.getAttribute('data-title') || '',
+            description: btnEl.getAttribute('data-description') || '',
+            assignmentType: btnEl.getAttribute('data-assignment-type') || 'homework',
             deadline: btnEl.getAttribute('data-deadline') || '',
             maxAttempts: parseInt(btnEl.getAttribute('data-max-attempts') || '1', 10) || 1,
+            timeLimitMinutes: parseInt(btnEl.getAttribute('data-time-limit-minutes') || '', 10) || '',
             hardDeadline: (btnEl.getAttribute('data-hard-deadline') || '0') === '1',
             hideBeforeStart: (btnEl.getAttribute('data-hide-before-start') || '0') === '1',
             timeLimitStrict: (btnEl.getAttribute('data-time-limit-strict') || '0') === '1',
+            attemptsPerTask: (btnEl.getAttribute('data-attempts-per-task') || '0') === '1',
+            allowSeparateSubmission: (btnEl.getAttribute('data-allow-separate-submission') || '0') === '1',
             defaultRecipientIds: defaultRecipientIds,
         });
     };

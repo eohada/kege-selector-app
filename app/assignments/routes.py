@@ -2238,6 +2238,7 @@ def assignment_duplicate(assignment_id: int):
     requested_title = (payload.get('title') or '').strip()
     requested_description = payload.get('description')
     requested_deadline = (payload.get('deadline') or '').strip()
+    requested_assignment_type = _normalize_assignment_type(payload.get('assignment_type'))
     requested_max_attempts = payload.get('max_attempts_default')
     requested_time_limit = payload.get('time_limit_minutes')
     requested_hard_deadline = payload.get('hard_deadline')
@@ -2321,11 +2322,14 @@ def assignment_duplicate(assignment_id: int):
     hard_deadline = _to_bool(requested_hard_deadline, bool(src.hard_deadline))
     hide_before_start = _to_bool(requested_hide_before_start, bool(getattr(src, 'hide_before_start', True)))
     time_limit_strict = _to_bool(requested_time_limit_strict, bool(getattr(src, 'time_limit_strict', False)))
+    assignment_type = requested_assignment_type or _normalize_assignment_type(getattr(src, 'assignment_type', None))
+    if assignment_type not in {'homework', 'classwork', 'exam', 'manual_review'}:
+        assignment_type = _normalize_assignment_type(getattr(src, 'assignment_type', None)) or 'homework'
 
     new_assignment = Assignment(
         title=requested_title or f"{(src.title or 'Работа').strip()} (копия)",
         description=str(requested_description).strip() if requested_description is not None else src.description,
-        assignment_type=src.assignment_type,
+        assignment_type=assignment_type,
         deadline=new_deadline,
         hard_deadline=hard_deadline,
         hide_before_start=hide_before_start,
