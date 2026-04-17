@@ -385,7 +385,11 @@ _AUTHOR_SIGNATURE_RE = re.compile(
     r'\s*\)\s*',
     re.IGNORECASE,
 )
-_LEADING_PARENS_RE = re.compile(r'^\s*\(([^)]{1,80})\)\s*')
+_LEADING_PARENS_RE = re.compile(r'^\s*\(([^)]{1,120})\)\s*')
+_LEADING_HTML_AUTHOR_RE = re.compile(
+    r'^\s*\(\s*(?:<a\b[^>]*>\s*)?[А-ЯЁA-Z][^)]{0,80}(?:\s*</a>)?\s*\)\s*',
+    re.IGNORECASE,
+)
 
 
 def _looks_like_author_signature(text_inside_parens: str) -> bool:
@@ -446,7 +450,7 @@ def _looks_like_table_lines(lines: list[str]) -> tuple[bool, list[list[str]]]:
         if len(cells) < 2:
             continue
         rows.append(cells)
-    if len(rows) < 2:
+    if len(rows) < 3:
         return False, []
     col_count = len(rows[0])
     if col_count < 2 or col_count > 12:
@@ -463,13 +467,19 @@ def _looks_like_table_lines(lines: list[str]) -> tuple[bool, list[list[str]]]:
     return True, rows
 
 
-def convert_text_tables_to_html(html_content: Optional[str]) -> str:
+def convert_text_tables_to_html(html_content: Optional[str], task_number: Optional[int] = None) -> str:
     """
     Преобразует псевдотаблицы (строки с разделителями) в HTML-таблицы.
     Полезно для legacy-задач, где таблица хранится текстом.
     """
     if not html_content:
         return html_content or ""
+    try:
+        num = int(task_number) if task_number is not None else None
+    except Exception:
+        num = None
+    if num not in {12, 18, 22}:
+        return str(html_content)
     try:
         soup = BeautifulSoup(str(html_content), "html.parser")
         for block in soup.find_all(["p", "div"]):
@@ -516,16 +526,17 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
             if checked_blocks >= 6:
                 break
             checked_blocks += 1
-            for node in block.descendants:
-                if isinstance(node, NavigableString):
-                    raw = str(node)
-                    if not raw.strip():
-                        continue
-                    stripped = _strip_leading_author_parenthesized(raw)
-                    stripped = _AUTHOR_SIGNATURE_RE.sub('', stripped, count=1)
-                    if stripped != raw:
-                        node.replace_with(stripped)
-                    break
+            inner = block.decode_contents() or ''
+            if not inner.strip():
+                continue
+            stripped_inner = _LEADING_HTML_AUTHOR_RE.sub('', inner, count=1)
+            stripped_inner = _strip_leading_author_parenthesized(stripped_inner)
+            stripped_inner = _AUTHOR_SIGNATURE_RE.sub('', stripped_inner, count=1)
+            if stripped_inner != inner:
+                block.clear()
+                frag = BeautifulSoup(stripped_inner, 'html.parser')
+                for child in list(frag.contents):
+                    block.append(child)
         return str(soup)
     except Exception:
         return text_first

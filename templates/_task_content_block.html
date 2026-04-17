@@ -1,8 +1,9 @@
 {% macro render_task_content(task, show_attachments=true, content_class='task-content') %}
 {% set task_content = (task.content_html if task and task.content_html else '') %}
 {% set prepared_task_content = task_content|prepare_task_content_html %}
+{% set task_number = (task.task_number if task and task.task_number is not none else none) %}
 <div class="{{ content_class }}">
-    {{ prepared_task_content|convert_text_tables_to_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+    {{ prepared_task_content|convert_text_tables_to_html(task_number)|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
 
     {% if show_attachments and task and task.attached_files %}
     {% set files = task.attached_files | normalize_task_attachments %}
@@ -12,6 +13,10 @@
         <div class="attached-links" style="margin-top: .5rem; display: grid; gap: 0.35rem;">
             {% for file in files %}
             <a class="neo-link" href="{{ file.download_url }}" target="_blank" rel="noopener noreferrer" download="{{ file.name }}">{{ file.name }}</a>
+            {% set lower_name = (file.name or '')|lower %}
+            {% if lower_name.endswith('.png') or lower_name.endswith('.jpg') or lower_name.endswith('.jpeg') or lower_name.endswith('.gif') or lower_name.endswith('.webp') %}
+            <img src="{{ file.download_url }}" alt="{{ file.name }}" style="max-width: min(100%, 920px); height: auto; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); margin-top: .35rem;">
+            {% endif %}
             {% endfor %}
         </div>
     </div>
