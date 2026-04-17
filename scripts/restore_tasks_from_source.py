@@ -16,6 +16,10 @@ import os
 import re
 import sys
 from collections import defaultdict
+from typing import Optional
+
+import requests
+from bs4 import BeautifulSoup
 
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -49,6 +53,55 @@ def _source_task_id(source_url: str | None) -> str | None:
         return None
     m = TASK_ID_RE.search(source_url)
     return m.group(1) if m else None
+
+
+def _fetch_content_html_from_source_url(source_url: str | None) -> Optional[str]:
+    """
+    Фолбэк для старых задач, которые уже не отдаются в /api/v1/task/number/{N}.
+    Пытаемся забрать HTML условия напрямую со страницы задачи.
+    """
+    if not source_url:
+        return None
+    url = str(source_url).strip()
+    if not url:
+        return None
+    try:
+        resp = requests.get(
+            url,
+            timeout=(20, 60),
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            },
+        )
+        resp.raise_for_status()
+    except Exception:
+        return None
+
+    try:
+        soup = BeautifulSoup(resp.text, "html.parser")
+    except Exception:
+        return None
+
+    direct = soup.select_one("div.task-text")
+    if direct:
+        html = "".join(str(x) for x in direct.contents).strip()
+        if html:
+            return html
+
+    # Резерв: иногда контент лежит в первой крупной ячейке таблицы.
+    for td in soup.select("td"):
+        if td.select_one("div.task-text"):
+            node = td.select_one("div.task-text")
+            html = "".join(str(x) for x in node.contents).strip()
+            if html:
+                return html
+
+    return None
 
 
 def main() -> int:
@@ -87,6 +140,7 @@ def main() -> int:
 
         updated = 0
         skipped = 0
+        recovered_from_page = 0
         total_numbers = len(by_number)
         print(f"numbers_to_process={total_numbers}, tasks_to_process={len(rows)}")
         for task_number, tasks in sorted(by_number.items()):
@@ -100,14 +154,17 @@ def main() -> int:
 
             for t in tasks:
                 rid = _source_task_id(t.source_url)
-                if not rid or rid not in remote_by_id:
-                    skipped += 1
-                    print(f"  SKIP task_id={t.task_id}: source id not found")
-                    continue
-                src_html = (remote_by_id[rid].get("contentHtml") or "").strip()
+                src_html = ""
+                if rid and rid in remote_by_id:
+                    src_html = (remote_by_id[rid].get("contentHtml") or "").strip()
+                else:
+                    # Фолбэк: для части legacy taskId API по номеру уже не возвращает запись.
+                    src_html = (_fetch_content_html_from_source_url(t.source_url) or "").strip()
+                    if src_html:
+                        recovered_from_page += 1
                 if not src_html:
                     skipped += 1
-                    print(f"  SKIP task_id={t.task_id}: empty source html")
+                    print(f"  SKIP task_id={t.task_id}: source html not found")
                     continue
                 if src_html == (t.content_html or ""):
                     print(f"  SAME task_id={t.task_id}: unchanged")
@@ -122,10 +179,10 @@ def main() -> int:
 
         if args.apply:
             db.session.commit()
-            print(f"Done: updated={updated}, skipped={skipped}")
+            print(f"Done: updated={updated}, skipped={skipped}, recovered_from_page={recovered_from_page}")
         else:
             db.session.rollback()
-            print(f"Dry-run: would_update={updated}, skipped={skipped}")
+            print(f"Dry-run: would_update={updated}, skipped={skipped}, recovered_from_page={recovered_from_page}")
             print("Для применения используйте --apply")
     return 0
 
