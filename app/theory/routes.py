@@ -122,23 +122,39 @@ def _render_theory_content_html(content_value):
             # $A1$, $A1:$F1$, $AA10$, $AA10:$BC200
             return bool(re.fullmatch(r'\$?[A-Za-z]{1,3}\$?\d+(?::\$?[A-Za-z]{1,3}\$?\d+)?', token))
 
-        # Block math first
-        fragment = re.sub(
-            r'\$\$([\s\S]+?)\$\$',
-            lambda m: f'<div class="theory-inline-math">{_format_inline_math_html(m.group(1))}</div>',
-            fragment,
-        )
-        # Inline math
-        fragment = re.sub(
-            r'(?<!\\)\$([^\n$][^$]*?)\$',
-            lambda m: (
-                m.group(0)
-                if _looks_like_excel_ref(m.group(1))
-                else f'<span class="theory-inline-math">{_format_inline_math_html(m.group(1))}</span>'
-            ),
-            fragment,
-        )
-        return fragment
+        def _render_math_in_plain_text(chunk):
+            # Block math first
+            chunk = re.sub(
+                r'\$\$([\s\S]+?)\$\$',
+                lambda m: f'<div class="theory-inline-math">{_format_inline_math_html(m.group(1))}</div>',
+                chunk,
+            )
+            # Inline math:
+            # - no escaped opening dollar
+            # - closing dollar must NOT be followed by word char
+            #   (prevents Excel ranges like $A1:$F1 from being split as $A1:$)
+            chunk = re.sub(
+                r'(?<!\\)\$([^\n$][^$]*?)\$(?![A-Za-z0-9_])',
+                lambda m: (
+                    m.group(0)
+                    if _looks_like_excel_ref(m.group(1))
+                    else f'<span class="theory-inline-math">{_format_inline_math_html(m.group(1))}</span>'
+                ),
+                chunk,
+            )
+            return chunk
+
+        # Never render math inside inline code `...`.
+        parts = re.split(r'(`[^`]*`)', fragment)
+        rendered = []
+        for part in parts:
+            if not part:
+                continue
+            if len(part) >= 2 and part.startswith('`') and part.endswith('`'):
+                rendered.append(part)
+            else:
+                rendered.append(_render_math_in_plain_text(part))
+        return ''.join(rendered)
 
     def _render_ascii_tables_to_html(src):
         """
