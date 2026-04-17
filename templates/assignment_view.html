@@ -352,7 +352,7 @@
                                             type="button"
                                             class="neo-button ghost sm"
                                             style="color: var(--warning);"
-                                            onclick="revokeSubmission({{ submission.submission_id }}, {{ (submission.student.name if submission.student else 'Ученик')|tojson }})"
+                                            onclick='revokeSubmission({{ submission.submission_id }}, {{ (submission.student.name if submission.student else "Ученик")|tojson }})'
                                         >
                                             Отозвать
                                         </button>
