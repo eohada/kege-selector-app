@@ -397,6 +397,33 @@ def _safe_int(value, default: int = 0) -> int:
         return default
 
 
+def _duplicate_recipient_options_for_current_user() -> list[dict]:
+    """Recipient options for duplicate-assignment modal."""
+    options: list[dict] = []
+    try:
+        scope = get_user_scope(current_user)
+        if scope.get('can_see_all'):
+            students = (
+                Student.query.filter(Student.is_active.is_(True))
+                .order_by(Student.name.asc(), Student.student_id.asc())
+                .limit(1000)
+                .all()
+            )
+        else:
+            students = get_students_for_tutor(current_user.id) or []
+        for s in students:
+            sid = getattr(s, 'student_id', None)
+            if not sid:
+                continue
+            options.append({
+                'student_id': int(sid),
+                'name': getattr(s, 'name', None) or f'Ученик #{sid}',
+            })
+    except Exception:
+        logger.warning('Failed to load duplicate recipient options', exc_info=True)
+    return options
+
+
 def _can_manage_all_rubrics() -> bool:
     try:
         return bool(getattr(current_user, 'is_creator', None) and current_user.is_creator()) or bool(getattr(current_user, 'is_admin', None) and current_user.is_admin())
@@ -1479,6 +1506,7 @@ def assignments_list():
         kpis=kpis,
         now=now,
         can_create=has_permission(current_user, 'assignment.create'),
+        duplicate_recipient_options=_duplicate_recipient_options_for_current_user(),
     )
 
 
@@ -2402,6 +2430,7 @@ def assignment_view(assignment_id):
             student_query=student_query,
             can_manage=can_manage,
             submission_display_status=submission_display_status,
+            duplicate_recipient_options=_duplicate_recipient_options_for_current_user(),
         )
     except Exception as e:
         logger.error(f"Error processing assignment_view for assignment {assignment_id}: {e}", exc_info=True)

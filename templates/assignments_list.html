@@ -185,7 +185,19 @@
                 <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="text-xs font-bold text-muted hover:text-boo-primary transition-colors flex items-center gap-1 no-underline">Детали <i class="ph-bold ph-arrow-right"></i></a>
                 <div class="flex gap-2 flex-wrap justify-end">
                     {% if can_create and (not item.is_archived) %}
-                    <button type="button" class="text-xs font-bold text-boo-primary bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-100 hover:bg-purple-100 transition-colors flex items-center gap-1.5" onclick="duplicateAssignment({{ item.assignment.assignment_id }})"><i class="ph-bold ph-copy"></i> Дублировать</button>
+                    <button type="button"
+                            class="text-xs font-bold text-boo-primary bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-100 hover:bg-purple-100 transition-colors flex items-center gap-1.5"
+                            onclick="duplicateAssignment(this)"
+                            data-assignment-id="{{ item.assignment.assignment_id }}"
+                            data-title="{{ item.assignment.title or '' }}"
+                            data-deadline="{{ item.assignment.deadline.strftime('%Y-%m-%dT%H:%M') if item.assignment.deadline else '' }}"
+                            data-max-attempts="{{ item.assignment.max_attempts_default or 1 }}"
+                            data-hard-deadline="{{ 1 if item.assignment.hard_deadline else 0 }}"
+                            data-hide-before-start="{{ 1 if item.assignment.hide_before_start else 0 }}"
+                            data-time-limit-strict="{{ 1 if item.assignment.time_limit_strict else 0 }}"
+                            data-default-recipient-ids="{% for ss in item.student_submissions %}{{ ss.student_id }}{% if not loop.last %},{% endif %}{% endfor %}">
+                        <i class="ph-bold ph-copy"></i> Дублировать
+                    </button>
                     <button type="button" class="text-xs font-bold text-muted bg-surface-alt px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-surface-alt transition-colors flex items-center gap-1.5" onclick="archiveAssignment({{ item.assignment.assignment_id }})"><i class="ph-bold ph-archive"></i> В архив</button>
                     {% endif %}
                 </div>
@@ -226,6 +238,56 @@
     </div>
     {% endif %}
 </div>
+<div id="duplicate-modal" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(2,6,23,.55); backdrop-filter:blur(3px);">
+    <div style="max-width:760px; width:calc(100% - 2rem); margin:3rem auto; background:var(--surface-1); border:1px solid var(--stroke-1); border-radius:24px; box-shadow:var(--shadow-1); padding:1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:.75rem; margin-bottom:1rem;">
+            <h3 style="margin:0; font-size:1.2rem; font-weight:900;">Дублировать работу</h3>
+            <button type="button" class="neo-button ghost sm" id="duplicate-modal-close">Закрыть</button>
+        </div>
+        <div style="display:grid; gap:.85rem;">
+            <div>
+                <label style="display:block; font-weight:700; margin-bottom:.35rem;">Название копии</label>
+                <input id="dup-title" class="neo-input" style="width:100%;" placeholder="Название работы">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
+                <div>
+                    <label style="display:block; font-weight:700; margin-bottom:.35rem;">Дедлайн</label>
+                    <input id="dup-deadline" type="datetime-local" class="neo-input" style="width:100%;">
+                </div>
+                <div>
+                    <label style="display:block; font-weight:700; margin-bottom:.35rem;">Попытки</label>
+                    <input id="dup-max-attempts" type="number" min="1" class="neo-input" style="width:100%;">
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem;">
+                <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-hard-deadline" type="checkbox"> Жесткий дедлайн</label>
+                <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-hide-before-start" type="checkbox"> Скрывать до старта</label>
+                <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-time-limit-strict" type="checkbox"> Блок по таймеру</label>
+            </div>
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.35rem;">
+                    <label style="font-weight:700;">Получатели</label>
+                    <div style="display:flex; gap:.45rem;">
+                        <button type="button" class="neo-button ghost sm" id="dup-select-all">Все</button>
+                        <button type="button" class="neo-button ghost sm" id="dup-select-default">Текущие</button>
+                    </div>
+                </div>
+                <div id="dup-recipient-list" style="max-height:240px; overflow:auto; border:1px solid var(--stroke-1); border-radius:14px; padding:.5rem;">
+                    {% for opt in (duplicate_recipient_options or []) %}
+                    <label style="display:flex; align-items:center; gap:.5rem; padding:.35rem .45rem; border-radius:10px; cursor:pointer;">
+                        <input type="checkbox" value="{{ opt.student_id }}">
+                        <span>{{ opt.name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:.6rem; margin-top:.5rem;">
+                <button type="button" class="neo-button ghost" id="dup-cancel-btn">Отмена</button>
+                <button type="button" class="neo-button accent" id="dup-submit-btn">Создать копию</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -262,40 +324,81 @@
             window.location.reload();
         } catch (e) { toastAny('error', 'Ошибка архивации.'); }
     };
-    window.duplicateAssignment = async function (assignmentId) {
+    const duplicateModal = document.getElementById('duplicate-modal');
+    let duplicateCtx = null;
+    function openDuplicateModal(ctx) {
+        duplicateCtx = ctx || null;
+        if (!duplicateCtx) return;
+        document.getElementById('dup-title').value = duplicateCtx.title ? (duplicateCtx.title + ' (копия)') : '';
+        document.getElementById('dup-deadline').value = duplicateCtx.deadline || '';
+        document.getElementById('dup-max-attempts').value = duplicateCtx.maxAttempts || 1;
+        document.getElementById('dup-hard-deadline').checked = !!duplicateCtx.hardDeadline;
+        document.getElementById('dup-hide-before-start').checked = !!duplicateCtx.hideBeforeStart;
+        document.getElementById('dup-time-limit-strict').checked = !!duplicateCtx.timeLimitStrict;
+        const defaultSet = new Set((duplicateCtx.defaultRecipientIds || []).map((v) => parseInt(v, 10)).filter(Number.isFinite));
+        document.querySelectorAll('#dup-recipient-list input[type="checkbox"]').forEach((el) => {
+            const sid = parseInt(el.value, 10);
+            el.checked = defaultSet.has(sid);
+        });
+        duplicateModal.style.display = 'block';
+    }
+    function closeDuplicateModal() {
+        duplicateModal.style.display = 'none';
+        duplicateCtx = null;
+    }
+    document.getElementById('duplicate-modal-close')?.addEventListener('click', closeDuplicateModal);
+    document.getElementById('dup-cancel-btn')?.addEventListener('click', closeDuplicateModal);
+    duplicateModal?.addEventListener('click', function (e) { if (e.target === duplicateModal) closeDuplicateModal(); });
+    document.getElementById('dup-select-all')?.addEventListener('click', function () {
+        document.querySelectorAll('#dup-recipient-list input[type="checkbox"]').forEach((el) => { el.checked = true; });
+    });
+    document.getElementById('dup-select-default')?.addEventListener('click', function () {
+        const defaultSet = new Set(((duplicateCtx && duplicateCtx.defaultRecipientIds) || []).map((v) => parseInt(v, 10)).filter(Number.isFinite));
+        document.querySelectorAll('#dup-recipient-list input[type="checkbox"]').forEach((el) => {
+            const sid = parseInt(el.value, 10);
+            el.checked = defaultSet.has(sid);
+        });
+    });
+    document.getElementById('dup-submit-btn')?.addEventListener('click', async function () {
         try {
-            if (!assignmentId) return;
-            if (!window.confirm('Создать копию работы? Можно выбрать других учеников и изменить настройки.')) return;
-            const recipientsRaw = window.prompt('ID учеников через запятую (пусто = те же ученики):', '');
-            if (recipientsRaw === null) return;
-            const recipientIds = String(recipientsRaw || '')
-                .split(/[^0-9]+/)
-                .map(v => parseInt(v, 10))
-                .filter(Number.isFinite);
-            const titleRaw = window.prompt('Название копии (пусто = исходное + "(копия)"):', '');
-            if (titleRaw === null) return;
-            const deadlineRaw = window.prompt('Новый дедлайн в формате YYYY-MM-DDTHH:MM (пусто = +7 дней):', '');
-            if (deadlineRaw === null) return;
-            const maxAttemptsRaw = window.prompt('Макс. попыток (пусто = как в исходной):', '');
-            if (maxAttemptsRaw === null) return;
-            const maxAttempts = String(maxAttemptsRaw || '').trim() === '' ? null : parseInt(maxAttemptsRaw, 10);
-            if (String(maxAttemptsRaw || '').trim() !== '' && !Number.isFinite(maxAttempts)) {
-                toastAny('error', 'Некорректное число попыток');
-                return;
-            }
-            const url = '/assignments/' + encodeURIComponent(String(assignmentId)) + '/duplicate';
+            if (!duplicateCtx || !duplicateCtx.assignmentId) return;
+            const recipientIds = Array.from(document.querySelectorAll('#dup-recipient-list input[type="checkbox"]:checked')).map((el) => parseInt(el.value, 10)).filter(Number.isFinite);
             const payload = {
-                recipientIds: recipientIds,
-                title: (titleRaw || '').trim() || null,
-                deadline: (deadlineRaw || '').trim() || null,
-                max_attempts_default: maxAttempts,
+                recipientIds,
+                title: (document.getElementById('dup-title').value || '').trim() || null,
+                deadline: (document.getElementById('dup-deadline').value || '').trim() || null,
+                max_attempts_default: parseInt(document.getElementById('dup-max-attempts').value, 10) || null,
+                hard_deadline: document.getElementById('dup-hard-deadline').checked,
+                hide_before_start: document.getElementById('dup-hide-before-start').checked,
+                time_limit_strict: document.getElementById('dup-time-limit-strict').checked,
             };
+            const url = '/assignments/' + encodeURIComponent(String(duplicateCtx.assignmentId)) + '/duplicate';
             const { ok, data } = await postJson(url, payload);
             if (!ok || !data || !data.success) { toastAny('error', (data && data.error) ? data.error : 'Не удалось создать копию.'); return; }
+            closeDuplicateModal();
             toastAny('success', 'Копия создана. Открываю…');
             if (data.assignment_id) window.location.href = '/assignments/' + encodeURIComponent(String(data.assignment_id));
             else window.location.reload();
         } catch (e) { toastAny('error', 'Ошибка при создании копии.'); }
+    });
+    window.duplicateAssignment = function (btnEl) {
+        if (!btnEl) return;
+        const assignmentId = parseInt(btnEl.getAttribute('data-assignment-id') || '', 10);
+        if (!assignmentId) return;
+        const defaultRecipientIds = String(btnEl.getAttribute('data-default-recipient-ids') || '')
+            .split(',')
+            .map((v) => parseInt((v || '').trim(), 10))
+            .filter(Number.isFinite);
+        openDuplicateModal({
+            assignmentId: assignmentId,
+            title: btnEl.getAttribute('data-title') || '',
+            deadline: btnEl.getAttribute('data-deadline') || '',
+            maxAttempts: parseInt(btnEl.getAttribute('data-max-attempts') || '1', 10) || 1,
+            hardDeadline: (btnEl.getAttribute('data-hard-deadline') || '0') === '1',
+            hideBeforeStart: (btnEl.getAttribute('data-hide-before-start') || '0') === '1',
+            timeLimitStrict: (btnEl.getAttribute('data-time-limit-strict') || '0') === '1',
+            defaultRecipientIds: defaultRecipientIds,
+        });
     };
     try {
         const archivedToggle = document.getElementById('archivedToggle');
