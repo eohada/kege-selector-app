@@ -1,7 +1,8 @@
 {% macro render_task_content(task, show_attachments=true, content_class='task-content') %}
 {% set task_content = (task.content_html if task and task.content_html else '') %}
+{% set prepared_task_content = task_content|prepare_task_content_html %}
 <div class="{{ content_class }}">
-    {{ task_content|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+    {{ prepared_task_content|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
 
     {% if show_attachments and task and task.attached_files %}
     {% set files = task.attached_files | normalize_task_attachments %}

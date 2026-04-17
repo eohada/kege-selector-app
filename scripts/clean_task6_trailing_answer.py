@@ -33,9 +33,20 @@ def _strip_trailing_answer_once(content: str, answer: str) -> str:
     # 1) Удалить весь блок answerWrap до конца (там внутри <p>ответ</p>)
     m_wrap = _ANSWER_WRAP_PATTERN.search(content)
     if m_wrap:
+        # Защита от ложного срабатывания: режем только хвостовые answerWrap-блоки.
+        if m_wrap.start() < int(len(content) * 0.65):
+            return content
+        wrap_tail = content[m_wrap.start():]
+        if not re.search(r'[Оо]твет', wrap_tail):
+            return content
         new_content = content[: m_wrap.start()].rstrip()
         # Убрать возможный хвост вроде незакрытого тега
         new_content = re.sub(r'<[a-zA-Z][^>]*$', '', new_content).rstrip()
+        # Не допускать обрезки в «пустое» или явный обрубок начала условия
+        plain = re.sub(r'<[^>]+>', ' ', new_content)
+        plain = re.sub(r'\s+', ' ', plain).strip()
+        if len(plain) < 120:
+            return content
         return new_content
     # 2) Классический вариант: число в конце после пробелов/тегов
     pattern = re.compile(

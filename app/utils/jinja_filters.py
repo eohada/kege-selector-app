@@ -291,8 +291,10 @@ _BLEACH_ALLOWED_ATTRS = {
     '*': ['class', 'id', 'style', 'data-*', 'role', 'aria-label', 'aria-hidden', 'title', 'dir', 'lang'],
     'a': ['href', 'target', 'rel', 'download'],
     'img': ['src', 'alt', 'width', 'height', 'loading'],
-    'td': ['colspan', 'rowspan'],
-    'th': ['colspan', 'rowspan', 'scope'],
+    'table': ['border', 'cellpadding', 'cellspacing', 'align', 'valign'],
+    'tr': ['align', 'valign'],
+    'td': ['colspan', 'rowspan', 'align', 'valign'],
+    'th': ['colspan', 'rowspan', 'scope', 'align', 'valign'],
     'col': ['span'],
     'colgroup': ['span'],
     'svg': ['viewBox', 'width', 'height', 'fill', 'xmlns'],
@@ -347,6 +349,22 @@ def normalize_task_plain_text_to_html(raw_text: Optional[str]) -> str:
     for paragraph in paragraphs:
         html_paragraphs.append(f"<p>{paragraph.replace(chr(10), '<br>')}</p>")
     return '<div class="task-text">' + "".join(html_paragraphs) + "</div>"
+
+
+_HTML_TAG_PATTERN = re.compile(r"<[a-zA-Z!?][^>]*>")
+
+
+def prepare_task_content_html(raw_content: Optional[str]) -> str:
+    """
+    Подготавливает контент задания к рендеру:
+    plain-text -> HTML с переносами, HTML -> без изменений.
+    """
+    text = (raw_content or '').strip()
+    if not text:
+        return '<div class="task-text"></div>'
+    if _HTML_TAG_PATTERN.search(text):
+        return text
+    return normalize_task_plain_text_to_html(text)
 
 
 def _normalize_attachment_entry(item) -> Optional[dict]:
@@ -434,6 +452,7 @@ def init_jinja_filters(app):
     app.jinja_env.filters['normalize_task_content_urls'] = normalize_task_content_urls
     app.jinja_env.filters['strip_attachment_links'] = strip_attachment_links
     app.jinja_env.filters['sanitize_html'] = sanitize_html
+    app.jinja_env.filters['prepare_task_content_html'] = prepare_task_content_html
     app.jinja_env.filters['normalize_task_plain_text_to_html'] = normalize_task_plain_text_to_html
     app.jinja_env.filters['normalize_task_attachments'] = normalize_task_attachments
     app.jinja_env.globals["ui_icon"] = ui_icon

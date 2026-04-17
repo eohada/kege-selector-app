@@ -2626,6 +2626,22 @@ def submission_view(submission_id):
                 'task_can_edit': _can_student_edit_submission_task(submission, assignment_task.assignment_task_id),
             })
 
+        def _triplet_state(items: list[dict]) -> str:
+            verdicts = []
+            for row in items:
+                ans = row.get('answer')
+                verdicts.append(getattr(ans, 'is_correct', None) if ans is not None else None)
+            decided = [v for v in verdicts if v is not None]
+            if not decided:
+                return 'pending'
+            if len(decided) == len(verdicts):
+                if all(v is True for v in decided):
+                    return 'all_correct'
+                if all(v is False for v in decided):
+                    return 'all_incorrect'
+                return 'partial'
+            return 'partial'
+
         tasks_view = []
         i = 0
         while i < len(tasks_data):
@@ -2652,6 +2668,8 @@ def submission_view(submission_id):
                     root_item = dict(item)
                     root_item['is_triplet_19_21'] = True
                     root_item['triplet_items'] = [next_20, next_21]
+                    root_item['display_number'] = '19-21'
+                    root_item['triplet_state'] = _triplet_state([item, next_20, next_21])
                     tasks_view.append(root_item)
                     i += 3
                     continue
@@ -2659,6 +2677,9 @@ def submission_view(submission_id):
             single_item = dict(item)
             single_item['is_triplet_19_21'] = False
             single_item['triplet_items'] = []
+            single_num = getattr(single_item.get('task'), 'task_number', None)
+            single_item['display_number'] = str(single_num) if single_num is not None else str(len(tasks_view) + 1)
+            single_item['triplet_state'] = 'pending'
             tasks_view.append(single_item)
             i += 1
         
