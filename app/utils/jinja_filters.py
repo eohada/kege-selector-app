@@ -8,6 +8,7 @@ from urllib.parse import quote
 from typing import Optional
 
 from bs4 import BeautifulSoup
+from bs4.element import NavigableString
 
 from app.auth.rbac_utils import mask_contact_info
 from flask import url_for, request
@@ -372,6 +373,37 @@ def normalize_task_plain_text_to_html(raw_text: Optional[str]) -> str:
 
 
 _HTML_TAG_PATTERN = re.compile(r"<[a-zA-Z!?][^>]*>")
+_AUTHOR_SIGNATURE_RE = re.compile(
+    r'^\s*\(\s*(?:[А-ЯЁ]\.\s*(?:[А-ЯЁ]\.\s*)?[А-ЯЁ][а-яё-]+|[А-ЯЁ][а-яё-]+\s+[А-ЯЁ]\.?)\s*\)\s*',
+    re.IGNORECASE,
+)
+
+
+def _strip_author_signatures_from_html(decoded_html: str) -> str:
+    """
+    Удаляет подписи составителей в начале условий:
+    (И. Карпачев), (С.А. Скопинцева), (Иглин К.) и подобные.
+    """
+    if not decoded_html:
+        return decoded_html
+    text_first = _AUTHOR_SIGNATURE_RE.sub('', decoded_html, count=1)
+    try:
+        soup = BeautifulSoup(text_first, 'html.parser')
+        checked_blocks = 0
+        for block in soup.find_all(['p', 'div', 'span']):
+            if checked_blocks >= 6:
+                break
+            checked_blocks += 1
+            for node in block.descendants:
+                if isinstance(node, NavigableString):
+                    raw = str(node)
+                    stripped = _AUTHOR_SIGNATURE_RE.sub('', raw, count=1)
+                    if stripped != raw:
+                        node.replace_with(stripped)
+                    break
+        return str(soup)
+    except Exception:
+        return text_first
 
 
 def prepare_task_content_html(raw_content: Optional[str]) -> str:
@@ -406,6 +438,7 @@ def prepare_task_content_html(raw_content: Optional[str]) -> str:
     )
     # Исторически часть заданий хранится как HTML, но экранированный (&lt;table&gt;...).
     decoded = html_lib.unescape(decoded)
+    decoded = _strip_author_signatures_from_html(decoded)
     if _HTML_TAG_PATTERN.search(decoded):
         return decoded
     return normalize_task_plain_text_to_html(decoded)
