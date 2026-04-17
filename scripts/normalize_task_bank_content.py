@@ -22,10 +22,25 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from app import create_app, db  # noqa: E402
 from app.models import Tasks  # noqa: E402
-from app.utils.jinja_filters import normalize_task_plain_text_to_html  # noqa: E402
 
 
 TAG_RE = re.compile(r"<[a-zA-Z!?][^>]*>")
+
+
+def normalize_task_plain_text_to_html(raw_text: str) -> str:
+    text = (raw_text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not text:
+        return '<div class="task-text"></div>'
+    escaped = (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+    paragraphs = [p.strip() for p in re.split(r"\n{2,}", escaped) if p.strip()]
+    if not paragraphs:
+        return '<div class="task-text"></div>'
+    html_paragraphs = [f"<p>{paragraph.replace(chr(10), '<br>')}</p>" for paragraph in paragraphs]
+    return '<div class="task-text">' + "".join(html_paragraphs) + "</div>"
 
 
 def normalize_content_html(value: Any) -> str:
