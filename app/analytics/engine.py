@@ -283,24 +283,32 @@ class AnalyticsEngine:
             "difficulty_label": cls._difficulty_label(difficulty_level),
             **time_meta,
         }
-        event = AnalyticsEvent(
-            user_id=user_id,
-            node_id=(node.id if node else None),
-            task_id=task.task_id,
-            submission_id=submission_id,
-            answer_id=answer_id,
-            is_correct=is_correct,
-            task_difficulty=difficulty_level,
-            old_rating=old_rating,
-            new_rating=new_rating,
-            mmr_delta=(new_rating - old_rating),
-            task_type=task_type,
-            attempt_no=attempt_no,
-            mode=mode,
-            time_spent_sec=time_meta.get("effective_time_sec", time_spent_sec),
-            behavior_flags=behavior,
-        )
-        db.session.add(event)
+        if node is not None:
+            event = AnalyticsEvent(
+                user_id=user_id,
+                node_id=node.id,
+                task_id=task.task_id,
+                submission_id=submission_id,
+                answer_id=answer_id,
+                is_correct=is_correct,
+                task_difficulty=difficulty_level,
+                old_rating=old_rating,
+                new_rating=new_rating,
+                mmr_delta=(new_rating - old_rating),
+                task_type=task_type,
+                attempt_no=attempt_no,
+                mode=mode,
+                time_spent_sec=time_meta.get("effective_time_sec", time_spent_sec),
+                behavior_flags=behavior,
+            )
+            db.session.add(event)
+        else:
+            logger.warning(
+                "AnalyticsEvent skipped: missing knowledge node for task_id=%s task_type=%s mode=%s",
+                task.task_id,
+                task_type,
+                mode,
+            )
         cls._create_or_update_rematch(
             user_id=user_id,
             task=task,

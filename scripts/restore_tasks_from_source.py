@@ -104,6 +104,13 @@ def _fetch_content_html_from_source_url(source_url: str | None) -> Optional[str]
     return None
 
 
+def _has_visual_table_or_image(html: str | None) -> bool:
+    if not html:
+        return False
+    low = str(html).lower()
+    return ("<table" in low) or ("<img" in low)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Restore selected tasks content_html from kompege API")
     parser.add_argument("--task-ids", default="", help="Comma-separated local task_id list")
@@ -155,8 +162,17 @@ def main() -> int:
             for t in tasks:
                 rid = _source_task_id(t.source_url)
                 src_html = ""
+                api_html = ""
+                page_html = ""
                 if rid and rid in remote_by_id:
-                    src_html = (remote_by_id[rid].get("contentHtml") or "").strip()
+                    api_html = (remote_by_id[rid].get("contentHtml") or "").strip()
+                    page_html = (_fetch_content_html_from_source_url(t.source_url) or "").strip()
+                    # Для задач с таблицами/картинками берём более "богатый" HTML со страницы.
+                    if _has_visual_table_or_image(page_html) and not _has_visual_table_or_image(api_html):
+                        src_html = page_html
+                        recovered_from_page += 1
+                    else:
+                        src_html = api_html
                 else:
                     # Фолбэк: для части legacy taskId API по номеру уже не возвращает запись.
                     src_html = (_fetch_content_html_from_source_url(t.source_url) or "").strip()
