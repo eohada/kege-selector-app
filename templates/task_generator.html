@@ -962,6 +962,7 @@
                         const data = await r.json().catch(() => ({}));
                         if (!r.ok || !data.success) throw new Error(data.error || 'Ошибка');
                         if (window.toast) window.toast.success('Задания добавлены в работу');
+                        clearSessionWorkState();
                         location.href = data.redirect || ('/assignments/' + returnEdit + '/edit');
                     } catch (e) {
                         if (window.toast) window.toast.error(e.message || 'Ошибка');
@@ -977,6 +978,7 @@
             const url = acceptedInSession.length
                 ? base + '&source=generator&task_ids=' + acceptedInSession.join(',')
                 : base + '&source=manual';
+            clearSessionWorkState();
             location.href = url;
         }
 
@@ -1223,7 +1225,15 @@
             if (!ctx.recipient_ids || !ctx.recipient_ids.length) return null;
             const rid = ctx.recipient_ids.map((x) => parseInt(x, 10)).filter(Number.isFinite).sort((a, b) => a - b).join('-');
             const at = (ctx.assignment_type || 'homework').toLowerCase();
-            return 'task-generator:session-work:' + at + ':' + rid;
+            const coursePart = Number.isFinite(parseInt(ctx.exam_course_id, 10))
+                ? String(parseInt(ctx.exam_course_id, 10))
+                : 'no-course';
+            return 'task-generator:session-work:' + at + ':' + rid + ':' + coursePart;
+        }
+        function clearSessionWorkState() {
+            const key = getSessionWorkStorageKey();
+            if (!key) return;
+            try { window.localStorage.removeItem(key); } catch (_) {}
         }
         function saveSessionWorkState(ids) {
             const key = getSessionWorkStorageKey();
