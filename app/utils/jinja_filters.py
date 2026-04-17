@@ -266,7 +266,12 @@ def strip_attachment_links(html):
             href = a_tag['href']
             if file_ext_re.search(href) or file_path_re.search(href):
                 parent = a_tag.parent
-                a_tag.decompose()
+                # Если ссылка оборачивает изображение (частый кейс таблиц-картинок),
+                # не удаляем саму картинку — только "снимаем" ссылку.
+                if a_tag.find('img'):
+                    a_tag.unwrap()
+                else:
+                    a_tag.decompose()
                 if parent and parent.name in ('p', 'div', 'span', 'li') and not parent.get_text(strip=True):
                     parent.decompose()
                 changed = True
@@ -323,6 +328,7 @@ def sanitize_html(html):
             str(html),
             tags=_BLEACH_ALLOWED_TAGS,
             attributes=_BLEACH_ALLOWED_ATTRS,
+            protocols=['http', 'https', 'mailto', 'data'],
             strip=True,
         )
         return Markup(cleaned)
