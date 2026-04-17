@@ -2,11 +2,15 @@
 {% set task_content = (task.content_html if task and task.content_html else '') %}
 {% set prepared_task_content = task_content|prepare_task_content_html %}
 {% set task_number = (task.task_number if task and task.task_number is not none else none) %}
+{% set files = (task.attached_files | normalize_task_attachments) if task else [] %}
 <div class="{{ content_class }}">
+    {% if files %}
     {{ prepared_task_content|convert_text_tables_to_html(task_number)|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+    {% else %}
+    {{ prepared_task_content|convert_text_tables_to_html(task_number)|normalize_task_content_urls|sanitize_html }}
+    {% endif %}
 
     {% if show_attachments and task and task.attached_files %}
-    {% set files = task.attached_files | normalize_task_attachments %}
     {% if files %}
     <div class="task-attachments" style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
         <strong>Вложения:</strong>

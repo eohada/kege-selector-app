@@ -394,6 +394,7 @@ _FORCE_REMOVE_AUTHOR_RE = re.compile(
     r'\(\s*(?:<a\b[^>]*>\s*)?Иглин\s*К\.?(?:\s*</a>)?\s*\)\s*',
     re.IGNORECASE,
 )
+_FORCE_REMOVE_AUTHOR_SIMPLE_RE = re.compile(r'\(\s*Иглин\s*[КK]\.?\s*\)\s*', re.IGNORECASE)
 
 
 def _looks_like_author_signature(text_inside_parens: str) -> bool:
@@ -522,6 +523,7 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
     if not decoded_html:
         return decoded_html
     text_first = _FORCE_REMOVE_AUTHOR_RE.sub('', decoded_html)
+    text_first = _FORCE_REMOVE_AUTHOR_SIMPLE_RE.sub('', text_first)
     text_first = _strip_leading_author_parenthesized(text_first)
     text_first = _AUTHOR_SIGNATURE_RE.sub('', text_first, count=1)
     try:
@@ -535,6 +537,7 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
             if not inner.strip():
                 continue
             stripped_inner = _FORCE_REMOVE_AUTHOR_RE.sub('', inner)
+            stripped_inner = _FORCE_REMOVE_AUTHOR_SIMPLE_RE.sub('', stripped_inner)
             stripped_inner = _LEADING_HTML_AUTHOR_RE.sub('', stripped_inner, count=1)
             stripped_inner = _strip_leading_author_parenthesized(stripped_inner)
             stripped_inner = _AUTHOR_SIGNATURE_RE.sub('', stripped_inner, count=1)
