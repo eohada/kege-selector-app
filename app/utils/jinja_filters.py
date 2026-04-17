@@ -584,9 +584,11 @@ def prepare_task_content_html(raw_content: Optional[str]) -> str:
         .replace("\\u003e", ">")
         .replace("\\u0026", "&")
         .replace("\\/", "/")
-        .replace("\\r\\n", "\n")
-        .replace("\\n", "\n")
     )
+    # Важно: не ломаем LaTeX-команды вида \neg, \neq, \nu и т.п.
+    # Декодируем escaped-newline только в позициях, похожих на реальные переносы.
+    decoded = re.sub(r"\\r\\n(?=(?:\s*<)|\s|$)", "\n", decoded)
+    decoded = re.sub(r"\\n(?=(?:\s*<)|\s|$)", "\n", decoded)
     # Исторически часть заданий хранится как HTML, но экранированный (&lt;table&gt;...).
     decoded = html_lib.unescape(decoded)
     decoded = _strip_author_signatures_from_html(decoded)
