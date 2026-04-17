@@ -390,6 +390,10 @@ _LEADING_HTML_AUTHOR_RE = re.compile(
     r'^\s*\(\s*(?:<a\b[^>]*>\s*)?[А-ЯЁA-Z][^)]{0,80}(?:\s*</a>)?\s*\)\s*',
     re.IGNORECASE,
 )
+_FORCE_REMOVE_AUTHOR_RE = re.compile(
+    r'\(\s*(?:<a\b[^>]*>\s*)?Иглин\s*К\.?(?:\s*</a>)?\s*\)\s*',
+    re.IGNORECASE,
+)
 
 
 def _looks_like_author_signature(text_inside_parens: str) -> bool:
@@ -517,7 +521,8 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
     """
     if not decoded_html:
         return decoded_html
-    text_first = _strip_leading_author_parenthesized(decoded_html)
+    text_first = _FORCE_REMOVE_AUTHOR_RE.sub('', decoded_html)
+    text_first = _strip_leading_author_parenthesized(text_first)
     text_first = _AUTHOR_SIGNATURE_RE.sub('', text_first, count=1)
     try:
         soup = BeautifulSoup(text_first, 'html.parser')
@@ -529,7 +534,8 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
             inner = block.decode_contents() or ''
             if not inner.strip():
                 continue
-            stripped_inner = _LEADING_HTML_AUTHOR_RE.sub('', inner, count=1)
+            stripped_inner = _FORCE_REMOVE_AUTHOR_RE.sub('', inner)
+            stripped_inner = _LEADING_HTML_AUTHOR_RE.sub('', stripped_inner, count=1)
             stripped_inner = _strip_leading_author_parenthesized(stripped_inner)
             stripped_inner = _AUTHOR_SIGNATURE_RE.sub('', stripped_inner, count=1)
             if stripped_inner != inner:

@@ -14,7 +14,9 @@
             {% for file in files %}
             <a class="neo-link" href="{{ file.download_url }}" target="_blank" rel="noopener noreferrer" download="{{ file.name }}">{{ file.name }}</a>
             {% set lower_name = (file.name or '')|lower %}
-            {% if lower_name.endswith('.png') or lower_name.endswith('.jpg') or lower_name.endswith('.jpeg') or lower_name.endswith('.gif') or lower_name.endswith('.webp') %}
+            {% set lower_url = (file.download_url or file.url or '')|lower %}
+            {% if lower_name.endswith('.png') or lower_name.endswith('.jpg') or lower_name.endswith('.jpeg') or lower_name.endswith('.gif') or lower_name.endswith('.webp')
+                  or '.png' in lower_url or '.jpg' in lower_url or '.jpeg' in lower_url or '.gif' in lower_url or '.webp' in lower_url %}
             <img src="{{ file.download_url }}" alt="{{ file.name }}" style="max-width: min(100%, 920px); height: auto; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); margin-top: .35rem;">
             {% endif %}
             {% endfor %}
