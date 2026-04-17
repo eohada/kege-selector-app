@@ -5,6 +5,8 @@
 Использование:
   python scripts/restore_tasks_from_source.py --task-ids 6039,6065,6118,4684,6203 --dry-run
   python scripts/restore_tasks_from_source.py --task-ids 6039,6065,6118,4684,6203 --apply
+  python scripts/restore_tasks_from_source.py --all-with-source --dry-run
+  python scripts/restore_tasks_from_source.py --all-with-source --apply
 """
 from __future__ import annotations
 
@@ -51,14 +53,20 @@ def _source_task_id(source_url: str | None) -> str | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Restore selected tasks content_html from kompege API")
-    parser.add_argument("--task-ids", required=True, help="Comma-separated local task_id list")
+    parser.add_argument("--task-ids", default="", help="Comma-separated local task_id list")
+    parser.add_argument("--all-with-source", action="store_true", help="Restore all tasks that have source_url with kompege task id")
+    parser.add_argument("--task-numbers", default="", help="Optional filter for --all-with-source, e.g. 5,6,8,12,18,23")
     parser.add_argument("--apply", action="store_true", help="Persist changes")
     parser.add_argument("--dry-run", action="store_true", help="Show planned updates only")
     args = parser.parse_args()
 
     task_ids = _parse_ids(args.task_ids)
-    if not task_ids:
-        print("Пустой список --task-ids")
+    task_numbers_filter = set(_parse_ids(args.task_numbers))
+    if not args.all_with_source and not task_ids:
+        print("Укажите --task-ids или --all-with-source")
+        return 1
+    if args.all_with_source and task_ids:
+        print("Используйте либо --task-ids, либо --all-with-source")
         return 1
     if args.apply and args.dry_run:
         print("Укажите только один режим: --apply или --dry-run")
@@ -66,13 +74,21 @@ def main() -> int:
 
     app = create_app()
     with app.app_context():
-        rows = Tasks.query.filter(Tasks.task_id.in_(task_ids)).all()
+        if args.all_with_source:
+            q = Tasks.query.filter(Tasks.source_url.isnot(None))
+            rows = [r for r in q.all() if _source_task_id(r.source_url)]
+            if task_numbers_filter:
+                rows = [r for r in rows if int(r.task_number) in task_numbers_filter]
+        else:
+            rows = Tasks.query.filter(Tasks.task_id.in_(task_ids)).all()
         by_number: dict[int, list[Tasks]] = defaultdict(list)
         for row in rows:
             by_number[int(row.task_number)].append(row)
 
         updated = 0
         skipped = 0
+        total_numbers = len(by_number)
+        print(f"numbers_to_process={total_numbers}, tasks_to_process={len(rows)}")
         for task_number, tasks in sorted(by_number.items()):
             remote_items = fetch_kompege_listing_from_api(task_number) or []
             remote_by_id = {}
