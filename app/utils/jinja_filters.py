@@ -326,8 +326,27 @@ def sanitize_html(html):
         )
         return Markup(cleaned)
     except Exception:
-        from markupsafe import Markup, escape
-        return Markup(escape(str(html)))
+        # Fallback без bleach: сохраняем HTML-структуру (p/table/img), но чистим опасные узлы/атрибуты.
+        from markupsafe import Markup
+        try:
+            soup = BeautifulSoup(str(html), 'html.parser')
+            for tag in soup.find_all(['script', 'style', 'iframe', 'object', 'embed']):
+                tag.decompose()
+            for tag in soup.find_all(True):
+                attrs = dict(tag.attrs or {})
+                for attr_name, attr_value in list(attrs.items()):
+                    low_name = str(attr_name).lower()
+                    if low_name.startswith('on'):
+                        tag.attrs.pop(attr_name, None)
+                        continue
+                    if low_name in ('href', 'src', 'xlink:href'):
+                        val = attr_value if isinstance(attr_value, str) else ' '.join(attr_value) if isinstance(attr_value, list) else str(attr_value)
+                        if val.strip().lower().startswith('javascript:'):
+                            tag.attrs.pop(attr_name, None)
+            return Markup(str(soup))
+        except Exception:
+            # Крайний fallback: не ломаем страницу, отдаём исходник как safe-string.
+            return Markup(str(html))
 
 
 def normalize_task_plain_text_to_html(raw_text: Optional[str]) -> str:
