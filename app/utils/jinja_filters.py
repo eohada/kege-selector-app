@@ -416,7 +416,8 @@ _FORCE_REMOVE_AUTHOR_NAMES_RE = re.compile(
     r'А\.\s*Богданов|'
     r'А\.\s*Рогов|'
     r'Е\.\s*Джобс|'
-    r'А\.\s*Калинин'
+    r'А\.\s*Калинин|'
+    r'В\.\s*Лашин'
     r')'
     r'(?:\s*</a>)?\s*\)\s*',
     re.IGNORECASE,

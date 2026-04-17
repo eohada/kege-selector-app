@@ -701,11 +701,11 @@
                             type="number"
                             class="score-input"
                             name="score_{{ g.assignment_task.assignment_task_id }}"
-                            value="{{ g.answer.score if g.answer and g.answer.score is not none else g.assignment_task.max_score if g.answer and g.answer.is_correct else 0 }}"
+                            value="{% if g.answer and g.answer.score is not none %}{{ g.answer.score }}{% elif g.answer and g.answer.is_correct == true %}{{ g.assignment_task.max_score }}{% else %}{% endif %}"
                             min="0"
                             max="{{ g.assignment_task.max_score }}"
                             data-max="{{ g.assignment_task.max_score }}"
-                            required
+                            placeholder="nothing"
                         >
                         <span class="max-score">/ {{ g.assignment_task.max_score }}</span>
                     </div>
@@ -1140,14 +1140,16 @@
             if (!input) return;
             const assignmentTaskId = parseInt(String(input.name || '').replace('score_', ''), 10);
             if (!assignmentTaskId) return;
-            const score = parseInt(input.value, 10) || 0;
-            const isCorrect = score >= 1;
+            const raw = String(input.value ?? '').trim();
             const navBtn = document.querySelector(`#taskNavGrade .task-nav-btn[data-assignment-task-id="${assignmentTaskId}"]`);
             const taskCard = document.querySelector(`.task-card-grade[data-task-id="${assignmentTaskId}"]`);
             [navBtn, taskCard].forEach((el) => {
                 if (!el) return;
                 el.classList.remove('correct', 'incorrect', 'pending-review', 'task-correct', 'task-incorrect');
-                if (isCorrect) {
+                if (!raw) return; // nothing-state: не правильно и не неправильно
+                const score = parseInt(raw, 10);
+                if (Number.isNaN(score)) return;
+                if (score >= 1) {
                     if (el.classList.contains('task-card-grade')) el.classList.add('task-correct');
                     else el.classList.add('correct');
                 } else {
