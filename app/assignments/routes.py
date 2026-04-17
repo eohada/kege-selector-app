@@ -3882,6 +3882,8 @@ def submission_grade_save(submission_id):
                 db.session.add(answer)
             
             answer.score = min(max(0, score), assignment_task.max_score)  # Ограничиваем максимумом
+            # Для ручной проверки считаем задание выполненным корректно, если преподаватель выставил >= 1 балла.
+            answer.is_correct = bool((answer.score or 0) >= 1)
             answer.teacher_comment = comment
             total_score += answer.score
         
@@ -4016,7 +4018,7 @@ def submission_grade_save(submission_id):
                 at = task_by_at_id.get(answer.assignment_task_id)
                 if not at or not at.task:
                     continue
-                is_correct = (answer.score or 0) >= (at.max_score or 1)
+                is_correct = bool(answer.is_correct) if answer.is_correct is not None else bool((answer.score or 0) >= 1)
                 try:
                     from app.analytics import AnalyticsEngine
                     answer_time_spent_sec = _resolve_answer_time_spent_sec(
