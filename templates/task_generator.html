@@ -1438,9 +1438,9 @@
                     if (Number.isFinite(id)) acceptedInSession.push(id);
                 });
             } else {
-                loadSessionWorkState().forEach((id) => {
-                    if (Number.isFinite(id)) acceptedInSession.push(id);
-                });
+                // Новый заход в генератор без task_ids должен стартовать "с нуля":
+                // не подтягиваем старую подборку из localStorage.
+                clearSessionWorkState();
             }
             syncSessionTaskIdsState();
             syncBankBadgesFromSession();
