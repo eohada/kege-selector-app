@@ -363,9 +363,30 @@ def prepare_task_content_html(raw_content: Optional[str]) -> str:
     text = (raw_content or '').strip()
     if not text:
         return '<div class="task-text"></div>'
+    # Часть контента в legacy-хранилище бывает:
+    # - HTML-escaped: &lt;table&gt;
+    # - JSON-escaped: \"...\", \u003c...\u003e, \\n
+    # - завёрнута в JSON-строку целиком.
+    decoded = text
+    # Попытка распаковать JSON-строку вида "\"<p>..</p>\""
+    if len(decoded) >= 2 and decoded[0] == '"' and decoded[-1] == '"':
+        try:
+            loaded = json.loads(decoded)
+            if isinstance(loaded, str) and loaded.strip():
+                decoded = loaded.strip()
+        except Exception:
+            pass
+    decoded = (
+        decoded
+        .replace("\\u003c", "<")
+        .replace("\\u003e", ">")
+        .replace("\\u0026", "&")
+        .replace("\\/", "/")
+        .replace("\\r\\n", "\n")
+        .replace("\\n", "\n")
+    )
     # Исторически часть заданий хранится как HTML, но экранированный (&lt;table&gt;...).
-    # Для корректного рендера сначала разворачиваем HTML-сущности.
-    decoded = html_lib.unescape(text).replace("\\r\\n", "\n").replace("\\n", "\n")
+    decoded = html_lib.unescape(decoded)
     if _HTML_TAG_PATTERN.search(decoded):
         return decoded
     return normalize_task_plain_text_to_html(decoded)
