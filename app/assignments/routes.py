@@ -336,7 +336,23 @@ def _set_submission_task_revision_flags(submission: Submission, *, mark_all: boo
     assignment = submission.assignment
     if not assignment:
         return
-    answers_by_task = {int(a.assignment_task_id): a for a in (submission.answers or []) if getattr(a, 'assignment_task_id', None) is not None}
+    answers_by_task = {
+        int(a.assignment_task_id): a
+        for a in (submission.answers or [])
+        if getattr(a, 'assignment_task_id', None) is not None
+    }
+    # В рамках одной транзакции в submission.answers могут не попасть только что созданные Answer.
+    # Учитываем pending-объекты из сессии, чтобы не пытаться вставить дубликат пары
+    # (submission_id, assignment_task_id) и не ловить UniqueViolation на autoflush.
+    for pending in list(db.session.new):
+        if not isinstance(pending, Answer):
+            continue
+        if int(getattr(pending, 'submission_id', 0) or 0) != int(submission.submission_id):
+            continue
+        atid_pending = getattr(pending, 'assignment_task_id', None)
+        if atid_pending is None:
+            continue
+        answers_by_task[int(atid_pending)] = pending
     for assignment_task in (assignment.tasks or []):
         atid = int(assignment_task.assignment_task_id)
         answer = answers_by_task.get(atid)
@@ -347,6 +363,11 @@ def _set_submission_task_revision_flags(submission: Submission, *, mark_all: boo
                 max_score=assignment_task.max_score,
             )
             db.session.add(answer)
+            try:
+                if hasattr(submission, 'answers') and answer not in (submission.answers or []):
+                    submission.answers.append(answer)
+            except Exception:
+                pass
             answers_by_task[atid] = answer
         answer.needs_revision = True if mark_all else (atid in selected_task_ids)
 
@@ -3890,6 +3911,11 @@ def submission_grade_save(submission_id):
                     max_score=assignment_task.max_score
                 )
                 db.session.add(answer)
+                try:
+                    if hasattr(submission, 'answers') and answer not in (submission.answers or []):
+                        submission.answers.append(answer)
+                except Exception:
+                    pass
                 answers_by_task_id[assignment_task_id] = answer
 
             answer.score = min(max(0, score), assignment_task.max_score)  # Ограничиваем максимумом
