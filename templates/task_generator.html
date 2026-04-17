@@ -948,21 +948,30 @@
         }
 
         function finishAndCreate() {
+            const resetCurrentSelectionState = () => {
+                try {
+                    acceptedInSession = [];
+                    acceptedMetaByTaskId = {};
+                    syncSessionTaskIdsState(); // убирает task_ids из URL текущей страницы
+                    clearSessionWorkState();
+                } catch (_) {}
+            };
             const params = new URLSearchParams(window.location.search);
             const returnEdit = params.get('return_edit');
             if (returnEdit && acceptedInSession.length) {
                 (async () => {
                     try {
+                        const taskIdsSnapshot = Array.from(new Set((acceptedInSession || []).map((x) => parseInt(x, 10)).filter(Number.isFinite)));
                         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                         const r = await fetch('/assignments/' + returnEdit + '/tasks', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
-                            body: JSON.stringify({ task_ids: acceptedInSession })
+                            body: JSON.stringify({ task_ids: taskIdsSnapshot })
                         });
                         const data = await r.json().catch(() => ({}));
                         if (!r.ok || !data.success) throw new Error(data.error || 'Ошибка');
                         if (window.toast) window.toast.success('Задания добавлены в работу');
-                        clearSessionWorkState();
+                        resetCurrentSelectionState();
                         location.href = data.redirect || ('/assignments/' + returnEdit + '/edit');
                     } catch (e) {
                         if (window.toast) window.toast.error(e.message || 'Ошибка');
@@ -975,10 +984,11 @@
             if (ctx.recipient_ids && ctx.recipient_ids.length) {
                 base += '&recipient_ids=' + ctx.recipient_ids.join(',');
             }
-            const url = acceptedInSession.length
-                ? base + '&source=generator&task_ids=' + acceptedInSession.join(',')
+            const taskIdsSnapshot = Array.from(new Set((acceptedInSession || []).map((x) => parseInt(x, 10)).filter(Number.isFinite)));
+            const url = taskIdsSnapshot.length
+                ? base + '&source=generator&task_ids=' + taskIdsSnapshot.join(',')
                 : base + '&source=manual';
-            clearSessionWorkState();
+            resetCurrentSelectionState();
             location.href = url;
         }
 
