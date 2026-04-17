@@ -1,3 +1,4 @@
+{% from '_task_content_block.html' import render_task_content %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -170,6 +171,7 @@
     </style>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
     <script>
         (function(){
             try {
@@ -390,7 +392,7 @@
                                     </div>
                                 </summary>
                                 <div class="task-body">
-                                    {{ task.task.content_html|normalize_task_content_urls|sanitize_html }}
+                                    {{ render_task_content(task.task, true, 'task-content') }}
                                 </div>
                             </details>
                         </div>
@@ -432,11 +434,13 @@
                 <div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.35rem;">
                         <label style="font-weight:700;">Получатели</label>
+                        <span id="dup-selected-count" style="font-size:.85rem; color:var(--text-muted); font-weight:700;">Выбрано: 0</span>
                         <div style="display:flex; gap:.45rem;">
                             <button type="button" class="neo-button ghost sm" id="dup-select-all">Все</button>
                             <button type="button" class="neo-button ghost sm" id="dup-select-default">Текущие</button>
                         </div>
                     </div>
+                    <input id="dup-recipient-search" class="neo-input" style="width:100%; margin-bottom:.45rem;" placeholder="Поиск ученика...">
                     <div id="dup-recipient-list" style="max-height:240px; overflow:auto; border:1px solid var(--stroke-1); border-radius:14px; padding:.5rem;">
                         {% for opt in (duplicate_recipient_options or []) %}
                         <label class="dup-rec-item" data-student-id="{{ opt.student_id }}" style="display:flex; align-items:center; gap:.5rem; padding:.35rem .45rem; border-radius:10px; cursor:pointer;">
@@ -507,7 +511,25 @@
             };
 
             const duplicateModal = document.getElementById('duplicate-modal');
+            const duplicateRecipientList = document.getElementById('dup-recipient-list');
+            const duplicateRecipientSearch = document.getElementById('dup-recipient-search');
+            const duplicateSelectedCount = document.getElementById('dup-selected-count');
+            const duplicateSubmitBtn = document.getElementById('dup-submit-btn');
             let duplicateCtx = null;
+            function syncDuplicateSelectedCount() {
+                if (!duplicateRecipientList || !duplicateSelectedCount || !duplicateSubmitBtn) return;
+                const checked = duplicateRecipientList.querySelectorAll('input[type="checkbox"]:checked').length;
+                duplicateSelectedCount.textContent = 'Выбрано: ' + checked;
+                duplicateSubmitBtn.disabled = checked === 0;
+            }
+            function applyDuplicateRecipientFilter() {
+                if (!duplicateRecipientList || !duplicateRecipientSearch) return;
+                const needle = (duplicateRecipientSearch.value || '').trim().toLowerCase();
+                duplicateRecipientList.querySelectorAll('label').forEach((row) => {
+                    const txt = (row.textContent || '').trim().toLowerCase();
+                    row.style.display = (!needle || txt.includes(needle)) ? 'flex' : 'none';
+                });
+            }
             function openDuplicateModal(ctx) {
                 duplicateCtx = ctx || null;
                 if (!duplicateCtx) return;
@@ -523,6 +545,9 @@
                     el.checked = defaultSet.has(sid);
                 });
                 duplicateModal.style.display = 'block';
+                if (duplicateRecipientSearch) duplicateRecipientSearch.value = '';
+                applyDuplicateRecipientFilter();
+                syncDuplicateSelectedCount();
             }
             function closeDuplicateModal() {
                 duplicateModal.style.display = 'none';
@@ -533,6 +558,7 @@
             duplicateModal?.addEventListener('click', function (e) { if (e.target === duplicateModal) closeDuplicateModal(); });
             document.getElementById('dup-select-all')?.addEventListener('click', function () {
                 document.querySelectorAll('#dup-recipient-list input[type="checkbox"]').forEach((el) => { el.checked = true; });
+                syncDuplicateSelectedCount();
             });
             document.getElementById('dup-select-default')?.addEventListener('click', function () {
                 const defaultSet = new Set(((duplicateCtx && duplicateCtx.defaultRecipientIds) || []).map((v) => parseInt(v, 10)).filter(Number.isFinite));
@@ -540,6 +566,15 @@
                     const sid = parseInt(el.value, 10);
                     el.checked = defaultSet.has(sid);
                 });
+                syncDuplicateSelectedCount();
+            });
+            duplicateRecipientList?.addEventListener('change', function (e) {
+                const t = e.target;
+                if (t && t.matches && t.matches('input[type="checkbox"]')) syncDuplicateSelectedCount();
+            });
+            duplicateRecipientSearch?.addEventListener('input', applyDuplicateRecipientFilter);
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && duplicateModal && duplicateModal.style.display !== 'none') closeDuplicateModal();
             });
             document.getElementById('dup-submit-btn')?.addEventListener('click', async function () {
                 try {
@@ -576,7 +611,7 @@
                     openDuplicateModal({
                         assignmentId: assignmentId,
                         title: {{ (assignment.title or '')|tojson }},
-                        deadline: {{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') if assignment.deadline else ''|tojson }},
+                        deadline: {{ (assignment.deadline.strftime('%Y-%m-%dT%H:%M') if assignment.deadline else '')|tojson }},
                         maxAttempts: {{ assignment.max_attempts_default or 1 }},
                         hardDeadline: {{ 'true' if assignment.hard_deadline else 'false' }},
                         hideBeforeStart: {{ 'true' if assignment.hide_before_start else 'false' }},
@@ -589,18 +624,8 @@
 
         // Initialize KaTeX
         document.addEventListener('DOMContentLoaded', function() {
-            if (typeof renderMathInElement !== 'undefined') {
-                renderMathInElement(document.body, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '\\(', right: '\\)', display: false},
-                        {left: '\\[', right: '\\]', display: true}
-                    ],
-                    throwOnError: false,
-                    trust: true,
-                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-                    ignoredClasses: ['katex']
-                });
+            if (typeof window.boostudyRenderTaskMath === 'function') {
+                window.boostudyRenderTaskMath(document.body, 35);
             }
         });
     </script>

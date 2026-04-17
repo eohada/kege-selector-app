@@ -682,7 +682,15 @@
             if (/<[a-zA-Z!?]/.test(raw)) {
                 el.innerHTML = raw;
             } else {
-                el.innerHTML = '<div class="task-text">' + escapeHtml(raw) + '</div>';
+                const normalized = escapeHtml(raw)
+                    .replace(/\r\n/g, '\n')
+                    .replace(/\r/g, '\n')
+                    .split(/\n{2,}/)
+                    .map((chunk) => chunk.trim())
+                    .filter(Boolean)
+                    .map((chunk) => `<p>${chunk.replace(/\n/g, '<br>')}</p>`)
+                    .join('');
+                el.innerHTML = '<div class="task-text">' + normalized + '</div>';
             }
             renderMath(el);
         }

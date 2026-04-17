@@ -1,4 +1,5 @@
 {% from '_ui_icon.html' import ui_icon %}
+{% from '_task_content_block.html' import render_task_content %}
 <!DOCTYPE html>
 <html lang="ru" data-grade-page="1">
 <head>
@@ -12,6 +13,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
     
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.1">
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
@@ -633,14 +635,14 @@
 
                 <div class="grade-card-body">
                 <div class="task-content-grade">
-                    {% if task_item.task and task_item.task.content_html %}{{ task_item.task.content_html|normalize_task_content_urls|sanitize_html }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
+                    {% if task_item.task %}{{ render_task_content(task_item.task, true, 'task-content-grade') }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
                 </div>
                 {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
                 {% for sub_item in task_item.triplet_items %}
                 {% if sub_item.task and sub_item.task.content_html and sub_item.task.content_html|striptags|trim %}
                 <div class="task-content-grade" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
                     <div class="subtask-title" style="margin-bottom: 0.5rem;">Условие задания {{ sub_item.task.task_number }}</div>
-                    {{ sub_item.task.content_html|normalize_task_content_urls|sanitize_html }}
+                    {{ render_task_content(sub_item.task, true, 'task-content-grade') }}
                 </div>
                 {% endif %}
                 {% endfor %}
@@ -894,18 +896,8 @@
     <script>
         // Инициализация KaTeX
         document.addEventListener('DOMContentLoaded', function() {
-            if (typeof renderMathInElement !== 'undefined') {
-                renderMathInElement(document.body, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '\\[', right: '\\]', display: true},
-                        {left: '\\(', right: '\\)', display: false}
-                    ],
-                    throwOnError: false,
-                    trust: true,
-                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-                    ignoredClasses: ['katex']
-                });
+            if (typeof window.boostudyRenderTaskMath === 'function') {
+                window.boostudyRenderTaskMath(document.body, 35);
             }
             (function initGradeTaskSinglePageAndChat() {
                 var buttons = Array.from(document.querySelectorAll('#taskNavGrade .task-nav-btn'));

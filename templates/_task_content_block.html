@@ -1,0 +1,20 @@
+{% macro render_task_content(task, show_attachments=true, content_class='task-content') %}
+{% set task_content = (task.content_html if task and task.content_html else '') %}
+<div class="{{ content_class }}">
+    {{ task_content|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+
+    {% if show_attachments and task and task.attached_files %}
+    {% set files = task.attached_files | normalize_task_attachments %}
+    {% if files %}
+    <div class="task-attachments" style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+        <strong>Вложения:</strong>
+        <div class="attached-links" style="margin-top: .5rem; display: grid; gap: 0.35rem;">
+            {% for file in files %}
+            <a class="neo-link" href="{{ file.download_url }}" target="_blank" rel="noopener noreferrer" download="{{ file.name }}">{{ file.name }}</a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endmacro %}

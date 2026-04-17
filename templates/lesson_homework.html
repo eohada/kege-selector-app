@@ -1,3 +1,4 @@
+{% from '_task_content_block.html' import render_task_content %}
 <!DOCTYPE html>
 <html lang="ru" data-student-lesson-room="1">
 <head>
@@ -1120,7 +1121,7 @@
                         </div>
                     </div>
                     <div class="task-content">
-                        {{ lt19.task.content_html|normalize_task_content_urls|sanitize_html }}
+                        {{ render_task_content(lt19.task, false, 'task-content') }}
                         {% if lt19.task.starter_code %}
                         <div class="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50/80 dark:bg-slate-900/30">
                             <div class="text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
@@ -1128,7 +1129,7 @@
                         </div>
                         {% endif %}
                         {% if lt19.task.attached_files %}
-                        {% set files = lt19.task.attached_files | from_json %}
+                        {% set files = lt19.task.attached_files | normalize_task_attachments %}
                         {% if files %}
                         <div style="margin-top: 1rem;">
                           {% set fm_task_id = lt19.task.task_id %}
@@ -1253,7 +1254,7 @@
                     </div>
                     
                     <div class="task-content">
-                        {{ hw_task.task.content_html|normalize_task_content_urls|sanitize_html }}
+                        {{ render_task_content(hw_task.task, false, 'task-content') }}
                         {% if hw_task.task.starter_code %}
                         <div class="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50/80 dark:bg-slate-900/30">
                             <div class="text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
@@ -1261,7 +1262,7 @@
                         </div>
                         {% endif %}
                         {% if hw_task.task.attached_files %}
-                        {% set files = hw_task.task.attached_files | from_json %}
+                        {% set files = hw_task.task.attached_files | normalize_task_attachments %}
                         {% if files %}
                         <div style="margin-top: 1rem;">
                           {% set fm_task_id = hw_task.task.task_id %}

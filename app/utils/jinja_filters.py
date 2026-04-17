@@ -1,7 +1,9 @@
 """
 Jinja2 фильтры для шаблонов
 """
+import json
 import re
+from urllib.parse import quote
 from typing import Optional
 
 from bs4 import BeautifulSoup
@@ -325,6 +327,105 @@ def sanitize_html(html):
         return Markup(escape(str(html)))
 
 
+def normalize_task_plain_text_to_html(raw_text: Optional[str]) -> str:
+    """
+    Преобразует plain text условия в безопасный HTML с сохранением переносов строк.
+    """
+    text = (raw_text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not text:
+        return '<div class="task-text"></div>'
+    escaped = (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+    # Два и более перевода строки -> новый абзац. Одиночный перевод -> <br>.
+    paragraphs = [p.strip() for p in re.split(r"\n{2,}", escaped) if p.strip()]
+    if not paragraphs:
+        return '<div class="task-text"></div>'
+    html_paragraphs = []
+    for paragraph in paragraphs:
+        html_paragraphs.append(f"<p>{paragraph.replace(chr(10), '<br>')}</p>")
+    return '<div class="task-text">' + "".join(html_paragraphs) + "</div>"
+
+
+def _normalize_attachment_entry(item) -> Optional[dict]:
+    if not item:
+        return None
+    if isinstance(item, str):
+        item = {"url": item}
+    if not isinstance(item, dict):
+        return None
+
+    path = str(item.get("path") or "").strip()
+    raw_url = str(item.get("url") or item.get("href") or "").strip()
+    name = str(item.get("name") or item.get("filename") or "").strip()
+
+    if path:
+        path = path.replace("\\", "/")
+        fallback_name = path.split("/")[-1].split("?")[0]
+        if not name:
+            name = fallback_name or "file"
+        download_url = path + (f"?download_name={name}" if name else "")
+        return {
+            "name": name,
+            "path": path,
+            "url": raw_url or path,
+            "download_url": download_url,
+            "source_url": raw_url or path,
+            "is_local": True,
+        }
+
+    if not raw_url:
+        return None
+    if raw_url.startswith("//"):
+        raw_url = "https:" + raw_url
+    elif raw_url.startswith("/"):
+        raw_url = "https://kompege.ru" + raw_url
+
+    fallback_name = raw_url.split("/")[-1].split("?")[0]
+    if not name:
+        name = fallback_name or "file"
+
+    download_url = raw_url
+    if raw_url.startswith("https://kompege.ru/") or raw_url.startswith("http://kompege.ru/"):
+        try:
+            download_url = url_for("assignments.attached_proxy") + "?url=" + quote(raw_url, safe="")
+        except Exception:
+            download_url = raw_url
+
+    return {
+        "name": name,
+        "url": raw_url,
+        "download_url": str(download_url),
+        "source_url": raw_url,
+        "is_local": False,
+    }
+
+
+def normalize_task_attachments(value) -> list[dict]:
+    """
+    Унифицированный список вложений для рендера в шаблонах.
+    """
+    if not value:
+        return []
+    data = value
+    if isinstance(value, str):
+        try:
+            data = json.loads(value)
+        except Exception:
+            return []
+    if not isinstance(data, list):
+        return []
+
+    normalized = []
+    for item in data:
+        entry = _normalize_attachment_entry(item)
+        if entry:
+            normalized.append(entry)
+    return normalized
+
+
 def init_jinja_filters(app):
     """Инициализация Jinja2 фильтров"""
     app.jinja_env.filters['mask_contact'] = mask_contact_if_tutor
@@ -333,5 +434,7 @@ def init_jinja_filters(app):
     app.jinja_env.filters['normalize_task_content_urls'] = normalize_task_content_urls
     app.jinja_env.filters['strip_attachment_links'] = strip_attachment_links
     app.jinja_env.filters['sanitize_html'] = sanitize_html
+    app.jinja_env.filters['normalize_task_plain_text_to_html'] = normalize_task_plain_text_to_html
+    app.jinja_env.filters['normalize_task_attachments'] = normalize_task_attachments
     app.jinja_env.globals["ui_icon"] = ui_icon
     app.jinja_env.globals["ui_icon_global"] = ui_icon

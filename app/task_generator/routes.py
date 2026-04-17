@@ -11,7 +11,11 @@ from flask_login import login_required, current_user
 from sqlalchemy import or_, func, text, delete
 from sqlalchemy.orm import joinedload
 
-from app.utils.jinja_filters import normalize_task_content_urls
+from app.utils.jinja_filters import (
+    normalize_task_attachments,
+    normalize_task_content_urls,
+    normalize_task_plain_text_to_html,
+)
 
 from app.task_generator import task_generator_bp
 from app.task_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
@@ -1300,12 +1304,7 @@ def _normalize_manual_content_html(raw: str) -> str:
         return '<div class="task-text"></div>'
     if re.search(r'<[a-zA-Z!?][^>]*>', text):
         return text
-    escape = (
-        text.replace('&', '&amp;')
-        .replace('<', '&lt;')
-        .replace('>', '&gt;')
-    )
-    return f'<div class="task-text">{escape}</div>'
+    return normalize_task_plain_text_to_html(text)
 
 
 def _parse_hints_payload(raw):
@@ -1341,18 +1340,26 @@ def _parse_difficulty_level(raw):
 
 
 def _attached_files_list(task: Tasks) -> list:
-    if not task.attached_files:
-        return []
-    try:
-        data = json.loads(task.attached_files) if isinstance(task.attached_files, str) else task.attached_files
-        return data if isinstance(data, list) else []
-    except Exception:
-        return []
+    return normalize_task_attachments(task.attached_files)
 
 
 def _attached_files_append(task: Tasks, entry: dict) -> None:
     items = _attached_files_list(task)
-    items.append(entry)
+    normalized_entry = None
+    if isinstance(entry, dict):
+        name = (entry.get('name') or entry.get('filename') or '').strip()
+        path = (entry.get('path') or '').strip()
+        url = (entry.get('url') or entry.get('href') or '').strip()
+        if name or path or url:
+            normalized_entry = {
+                'name': name or ((path or url).split('/')[-1].split('?')[0] or 'file'),
+                **({'path': path} if path else {}),
+                **({'url': url} if url else {}),
+            }
+    elif isinstance(entry, str) and entry.strip():
+        normalized_entry = {'name': entry.strip().split('/')[-1].split('?')[0] or 'file', 'url': entry.strip()}
+    if normalized_entry:
+        items.append(normalized_entry)
     task.attached_files = json.dumps(items, ensure_ascii=False)
 
 

@@ -1,3 +1,4 @@
+{% from '_task_content_block.html' import render_task_content %}
 {# Эталон generator_light.html: фильтры, заголовок, карточки #}
 <div id="gen-bank-panel" class="flex flex-col gap-6 w-full"
      {% if lesson_id or template_id %}
@@ -167,7 +168,7 @@
         <div>
             <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Условие</label>
             <div class="bank-task-preview task-content bg-slate-50/50 border border-slate-200 rounded-2xl p-6 text-[15px] leading-relaxed text-slate-800 shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] max-h-96 overflow-y-auto [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-xl">
-                {{ (t.content_html or '')|normalize_task_content_urls|sanitize_html }}
+                {{ render_task_content(t, true, 'task-content') }}
             </div>
         </div>
 

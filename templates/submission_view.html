@@ -1,4 +1,5 @@
 {% from '_ui_icon.html' import ui_icon %}
+{% from '_task_content_block.html' import render_task_content %}
 <!DOCTYPE html>
 <html lang="ru" data-student-submission="1">
 <head>
@@ -12,6 +13,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
     
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.1">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
@@ -509,7 +511,7 @@
                 {% if not should_hide_tasks %}
                 <div class="exec-unlocked">
                 <div class="task-content text-[15px] leading-relaxed text-primary space-y-4">
-                    {{ task_item.task.content_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+                    {{ render_task_content(task_item.task, false, 'task-content text-[15px] leading-relaxed text-primary space-y-4') }}
                 </div>
                 <div style="margin-top: 0.75rem;">
                     <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
@@ -523,7 +525,7 @@
                 </div>
                 {% endif %}
                 {% if (not should_hide_tasks) and task_item.task.attached_files %}
-                {% set files = task_item.task.attached_files | from_json %}
+                {% set files = task_item.task.attached_files | normalize_task_attachments %}
                 {% if files %}
                 <div style="margin-top: 1rem;">
                   {% set fm_task_id = task_item.task.task_id %}
@@ -539,7 +541,7 @@
                 {% if sub_item.task and sub_item.task.content_html and sub_item.task.content_html|striptags|trim %}
                 <div class="task-content text-[15px] leading-relaxed text-primary space-y-4 border-t border-slate-200 dark:border-white/10 pt-4 mt-4">
                     <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Задание {{ sub_item.task.task_number }}</div>
-                    {{ sub_item.task.content_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+                    {{ render_task_content(sub_item.task, false, 'task-content text-[15px] leading-relaxed text-primary space-y-4 border-t border-slate-200 dark:border-white/10 pt-4 mt-4') }}
                 </div>
                 {% endif %}
                 {% if (not should_hide_tasks) and sub_item.task and sub_item.task.starter_code %}
@@ -549,7 +551,7 @@
                 </div>
                 {% endif %}
                 {% if (not should_hide_tasks) and sub_item.task and sub_item.task.attached_files %}
-                {% set files = sub_item.task.attached_files | from_json %}
+                {% set files = sub_item.task.attached_files | normalize_task_attachments %}
                 {% if files %}
                 <div style="margin-top: 1rem;">
                   {% set fm_task_id = sub_item.task.task_id %}
@@ -751,7 +753,7 @@
             </div>
             
             <div class="task-content">
-                {{ task_item.task.content_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+                {{ render_task_content(task_item.task, false, 'task-content') }}
             </div>
             <div style="margin-top: 0.75rem;">
                 <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
@@ -766,7 +768,7 @@
             {% endif %}
 
             {% if task_item.task.attached_files %}
-            {% set files = task_item.task.attached_files | from_json %}
+            {% set files = task_item.task.attached_files | normalize_task_attachments %}
             {% if files %}
             <div style="margin-top: 1rem;">
               {% set fm_task_id = task_item.task.task_id %}
@@ -782,7 +784,7 @@
             {% if sub_item.task and sub_item.task.content_html and sub_item.task.content_html|striptags|trim %}
             <div class="task-content border-t border-slate-200 dark:border-white/10 pt-4 mt-4">
                 <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Задание {{ sub_item.task.task_number }}</div>
-                {{ sub_item.task.content_html|normalize_task_content_urls|strip_attachment_links|sanitize_html }}
+                {{ render_task_content(sub_item.task, false, 'task-content border-t border-slate-200 dark:border-white/10 pt-4 mt-4') }}
             </div>
             {% endif %}
             {% if sub_item.task and sub_item.task.starter_code %}
@@ -792,7 +794,7 @@
             </div>
             {% endif %}
             {% if sub_item.task and sub_item.task.attached_files %}
-            {% set files = sub_item.task.attached_files | from_json %}
+            {% set files = sub_item.task.attached_files | normalize_task_attachments %}
             {% if files %}
             <div style="margin-top: 1rem;">
               {% set fm_task_id = sub_item.task.task_id %}
@@ -1089,18 +1091,8 @@
         
         // Инициализация KaTeX для рендеринга формул
         document.addEventListener('DOMContentLoaded', function() {
-            if (typeof renderMathInElement !== 'undefined') {
-                renderMathInElement(document.body, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '\\[', right: '\\]', display: true},
-                        {left: '\\(', right: '\\)', display: false}
-                    ],
-                    throwOnError: false,
-                    trust: true,
-                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-                    ignoredClasses: ['katex']
-                });
+            if (typeof window.boostudyRenderTaskMath === 'function') {
+                window.boostudyRenderTaskMath(document.body, 35);
             }
 
             // Редактор кода: открытие/закрытие панели, опционально CodeMirror
