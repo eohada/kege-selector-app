@@ -1301,7 +1301,12 @@ def assignments_list():
     subq = (
         db.session.query(
             Submission.assignment_id.label('assignment_id'),
-            func.count(Submission.submission_id).label('total_students'),
+            func.sum(
+                case(
+                    (Submission.status != 'REVOKED', 1),
+                    else_=0,
+                )
+            ).label('total_students'),
             func.sum(
                 case(
                     (Submission.status.in_(['SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW']), 1),
@@ -1463,6 +1468,7 @@ def assignments_list():
             )
             .join(Student, Student.student_id == Submission.student_id)
             .filter(Submission.assignment_id.in_(assignment_ids))
+            .filter(Submission.status != 'REVOKED')
             .order_by(Student.name)
             .all()
         )
@@ -2156,6 +2162,41 @@ def assignment_archive(assignment_id: int):
     return jsonify({'success': True}), 200
 
 
+@assignments_bp.route('/submissions/<int:submission_id>/revoke', methods=['POST'])
+@login_required
+@check_access('assignment.create')
+def submission_revoke(submission_id: int):
+    """Отзывает назначенную работу у конкретного ученика без удаления Assignment."""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
+
+    submission = Submission.query.options(
+        joinedload(Submission.assignment),
+        joinedload(Submission.student),
+    ).get_or_404(submission_id)
+
+    assignment = submission.assignment
+    if not assignment:
+        return jsonify({'success': False, 'error': 'Работа не найдена'}), 404
+
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    if (submission.status or '').upper() == 'REVOKED':
+        return jsonify({'success': True, 'already_revoked': True}), 200
+
+    submission.status = 'REVOKED'
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Revoke submission failed: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Не удалось отозвать работу'}), 500
+
+    return jsonify({'success': True}), 200
+
+
 @assignments_bp.route('/assignments/<int:assignment_id>/duplicate', methods=['POST'])
 @login_required
 @check_access('assignment.create')
@@ -2373,6 +2414,8 @@ def assignment_view(assignment_id):
         }
         for s in subs_all:
             st = normalize_legacy_status(getattr(s, 'status', '')) or ''
+            if st == 'REVOKED':
+                continue
             counts['total'] += 1
             if st == 'ASSIGNED':
                 counts['assigned'] += 1
@@ -2391,8 +2434,11 @@ def assignment_view(assignment_id):
 
         def _matches_status(s: Submission) -> bool:
             if status_filter in {'', 'all'}:
-                return True
+                st_all = normalize_legacy_status(getattr(s, 'status', '')) or ''
+                return st_all != 'REVOKED'
             st = normalize_legacy_status(getattr(s, 'status', '')) or ''
+            if st == 'REVOKED':
+                return False
             if status_filter == 'needs_grading':
                 return st in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW'}
             if status_filter == 'submitted':
@@ -2475,7 +2521,8 @@ def submissions_list():
         return redirect(url_for('auth.user_profile'))
     
     submissions = Submission.query.join(Submission.assignment).filter(
-        Submission.student_id == student.student_id
+        Submission.student_id == student.student_id,
+        Submission.status != 'REVOKED',
     ).options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks),
         joinedload(Submission.assignment).joinedload(Assignment.created_by),
@@ -2550,6 +2597,9 @@ def submission_view(submission_id):
         student = get_student_by_user_id(current_user.id)
         if not student or submission.student_id != student.student_id:
             flash('Доступ запрещен', 'danger')
+            return redirect(url_for('assignments.submissions_list'))
+        if (submission.status or '').upper() == 'REVOKED':
+            flash('Эта работа была отозвана преподавателем.', 'info')
             return redirect(url_for('assignments.submissions_list'))
     except Exception as e:
         logger.error(f"Error checking access for submission {submission_id}: {e}", exc_info=True)

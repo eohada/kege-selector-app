@@ -405,6 +405,22 @@ _FORCE_REMOVE_KARPACHEV_RE = re.compile(
     r'\(\s*(?:<a\b[^>]*>\s*)?(?:И\.\s*)?Карпач[её]в(?:\s*</a>)?\s*\)\s*',
     re.IGNORECASE,
 )
+_FORCE_REMOVE_AUTHOR_NAMES_RE = re.compile(
+    r'\(\s*(?:<a\b[^>]*>\s*)?'
+    r'(?:'
+    r'М\.\s*Рубцов[аы]|'
+    r'С\.?\s*А\.?\s*Скопинцев[аы]|'
+    r'А\.\s*Сражаев|'
+    r'М\.?\s*В\.?\s*Кузнецов[аы]|'
+    r'М\.\s*Ишимов|'
+    r'А\.\s*Богданов|'
+    r'А\.\s*Рогов|'
+    r'Е\.\s*Джобс|'
+    r'А\.\s*Калинин'
+    r')'
+    r'(?:\s*</a>)?\s*\)\s*',
+    re.IGNORECASE,
+)
 
 
 def _looks_like_author_signature(text_inside_parens: str) -> bool:
@@ -535,6 +551,7 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
     text_first = _FORCE_REMOVE_AUTHOR_RE.sub('', decoded_html)
     text_first = _FORCE_REMOVE_AUTHOR_SIMPLE_RE.sub('', text_first)
     text_first = _FORCE_REMOVE_KARPACHEV_RE.sub('', text_first)
+    text_first = _FORCE_REMOVE_AUTHOR_NAMES_RE.sub('', text_first)
     text_first = _strip_leading_author_parenthesized(text_first)
     text_first = _AUTHOR_SIGNATURE_RE.sub('', text_first, count=1)
     try:
@@ -550,6 +567,7 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
             stripped_inner = _FORCE_REMOVE_AUTHOR_RE.sub('', inner)
             stripped_inner = _FORCE_REMOVE_AUTHOR_SIMPLE_RE.sub('', stripped_inner)
             stripped_inner = _FORCE_REMOVE_KARPACHEV_RE.sub('', stripped_inner)
+            stripped_inner = _FORCE_REMOVE_AUTHOR_NAMES_RE.sub('', stripped_inner)
             stripped_inner = _LEADING_HTML_AUTHOR_RE.sub('', stripped_inner, count=1)
             stripped_inner = _strip_leading_author_parenthesized(stripped_inner)
             stripped_inner = _AUTHOR_SIGNATURE_RE.sub('', stripped_inner, count=1)

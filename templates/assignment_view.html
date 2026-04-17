@@ -347,6 +347,16 @@
                                             Проверить
                                         </a>
                                         {% endif %}
+                                        {% if can_manage %}
+                                        <button
+                                            type="button"
+                                            class="neo-button ghost sm"
+                                            style="color: var(--warning);"
+                                            onclick="revokeSubmission({{ submission.submission_id }}, {{ (submission.student.name if submission.student else 'Ученик')|tojson }})"
+                                        >
+                                            Отозвать
+                                        </button>
+                                        {% endif %}
                                     </div>
                                 </div>
 
@@ -509,6 +519,26 @@
                     window.location.href = '/assignments?status=archived&archived=1';
                 } catch (e) {
                     toastAny('error', 'Ошибка архивации.');
+                }
+            };
+
+            window.revokeSubmission = async function (submissionId, studentName) {
+                try {
+                    if (!submissionId) return;
+                    const targetName = (studentName || 'ученика').toString();
+                    const confirmed = window.confirm('Отозвать работу у ' + targetName + '? Ученик перестанет видеть её у себя, но сама работа останется у вас.');
+                    if (!confirmed) return;
+
+                    const url = '/submissions/' + encodeURIComponent(String(submissionId)) + '/revoke';
+                    const { ok, data } = await postJson(url, {});
+                    if (!ok || !data || !data.success) {
+                        toastAny('error', (data && data.error) ? data.error : 'Не удалось отозвать работу.');
+                        return;
+                    }
+                    toastAny('success', 'Работа отозвана у ученика.');
+                    window.location.reload();
+                } catch (e) {
+                    toastAny('error', 'Ошибка при отзыве работы.');
                 }
             };
 
