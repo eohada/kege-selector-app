@@ -114,6 +114,7 @@ def _has_visual_table_or_image(html: str | None) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Restore selected tasks content_html from kompege API")
     parser.add_argument("--task-ids", default="", help="Comma-separated local task_id list")
+    parser.add_argument("--source-task-ids", default="", help="Comma-separated kompege task ids (from source_url/site_task_id), e.g. 275,25208")
     parser.add_argument("--all-with-source", action="store_true", help="Restore all tasks that have source_url with kompege task id")
     parser.add_argument("--task-numbers", default="", help="Optional filter for --all-with-source, e.g. 5,6,8,12,18,23")
     parser.add_argument("--apply", action="store_true", help="Persist changes")
@@ -121,12 +122,13 @@ def main() -> int:
     args = parser.parse_args()
 
     task_ids = _parse_ids(args.task_ids)
+    source_task_ids = {str(x) for x in _parse_ids(args.source_task_ids)}
     task_numbers_filter = set(_parse_ids(args.task_numbers))
-    if not args.all_with_source and not task_ids:
-        print("Укажите --task-ids или --all-with-source")
+    if not args.all_with_source and not task_ids and not source_task_ids:
+        print("Укажите --task-ids, --source-task-ids или --all-with-source")
         return 1
-    if args.all_with_source and task_ids:
-        print("Используйте либо --task-ids, либо --all-with-source")
+    if args.all_with_source and (task_ids or source_task_ids):
+        print("Используйте либо --all-with-source, либо (--task-ids/--source-task-ids)")
         return 1
     if args.apply and args.dry_run:
         print("Укажите только один режим: --apply или --dry-run")
@@ -139,6 +141,16 @@ def main() -> int:
             rows = [r for r in q.all() if _source_task_id(r.source_url)]
             if task_numbers_filter:
                 rows = [r for r in rows if int(r.task_number) in task_numbers_filter]
+        elif source_task_ids:
+            rows = []
+            q = Tasks.query
+            if task_numbers_filter:
+                q = q.filter(Tasks.task_number.in_(list(task_numbers_filter)))
+            for r in q.all():
+                src_id = _source_task_id(r.source_url)
+                site_id = str(r.site_task_id).strip() if getattr(r, "site_task_id", None) is not None else ""
+                if (src_id and src_id in source_task_ids) or (site_id and site_id in source_task_ids):
+                    rows.append(r)
         else:
             rows = Tasks.query.filter(Tasks.task_id.in_(task_ids)).all()
         by_number: dict[int, list[Tasks]] = defaultdict(list)
@@ -161,6 +173,8 @@ def main() -> int:
 
             for t in tasks:
                 rid = _source_task_id(t.source_url)
+                if not rid and getattr(t, "site_task_id", None):
+                    rid = str(t.site_task_id).strip() or None
                 src_html = ""
                 api_html = ""
                 page_html = ""
@@ -175,7 +189,10 @@ def main() -> int:
                         src_html = api_html
                 else:
                     # Фолбэк: для части legacy taskId API по номеру уже не возвращает запись.
-                    src_html = (_fetch_content_html_from_source_url(t.source_url) or "").strip()
+                    fallback_url = t.source_url
+                    if not fallback_url and rid:
+                        fallback_url = f"https://kompege.ru/task?id={rid}"
+                    src_html = (_fetch_content_html_from_source_url(fallback_url) or "").strip()
                     if src_html:
                         recovered_from_page += 1
                 if not src_html:
