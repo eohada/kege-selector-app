@@ -374,9 +374,51 @@ def normalize_task_plain_text_to_html(raw_text: Optional[str]) -> str:
 
 _HTML_TAG_PATTERN = re.compile(r"<[a-zA-Z!?][^>]*>")
 _AUTHOR_SIGNATURE_RE = re.compile(
-    r'^\s*\(\s*(?:[А-ЯЁ]\.\s*(?:[А-ЯЁ]\.\s*)?[А-ЯЁ][а-яё-]+|[А-ЯЁ][а-яё-]+\s+[А-ЯЁ]\.?)\s*\)\s*',
+    r'^\s*\(\s*'
+    r'(?:'
+    r'[А-ЯЁ]\.\s*(?:[А-ЯЁ]\.\s*)?[А-ЯЁ][а-яё-]+'
+    r'|'
+    r'[А-ЯЁ][а-яё-]+\s+[А-ЯЁ]\.?'
+    r'|'
+    r'[А-ЯЁ][а-яё-]+\s+[А-ЯЁ]\.\s*[А-ЯЁ]\.?'
+    r')'
+    r'\s*\)\s*',
     re.IGNORECASE,
 )
+_LEADING_PARENS_RE = re.compile(r'^\s*\(([^)]{1,80})\)\s*')
+
+
+def _looks_like_author_signature(text_inside_parens: str) -> bool:
+    """
+    Эвристика для legacy-подписей составителей:
+    "И. Карпачев", "С.А. Скопинцева", "Иглин К." и т.п.
+    """
+    if not text_inside_parens:
+        return False
+    normalized = ' '.join(str(text_inside_parens).replace('\xa0', ' ').split())
+    if not normalized:
+        return False
+    if not re.search(r'[А-ЯЁа-яё]', normalized):
+        return False
+    # Для подписи обычно характерны инициалы/точки и короткая длина.
+    if ('.' in normalized and len(normalized) <= 48):
+        return True
+    # Фолбэк для "Фамилия И" / "Фамилия И И"
+    if re.fullmatch(r'[А-ЯЁ][а-яё-]+\s+[А-ЯЁ](?:\s+[А-ЯЁ])?', normalized):
+        return True
+    return False
+
+
+def _strip_leading_author_parenthesized(text: str) -> str:
+    if not text:
+        return text
+    m = _LEADING_PARENS_RE.match(text)
+    if not m:
+        return text
+    inside = m.group(1)
+    if _looks_like_author_signature(inside):
+        return text[m.end():]
+    return text
 
 
 def _strip_author_signatures_from_html(decoded_html: str) -> str:
@@ -386,7 +428,8 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
     """
     if not decoded_html:
         return decoded_html
-    text_first = _AUTHOR_SIGNATURE_RE.sub('', decoded_html, count=1)
+    text_first = _strip_leading_author_parenthesized(decoded_html)
+    text_first = _AUTHOR_SIGNATURE_RE.sub('', text_first, count=1)
     try:
         soup = BeautifulSoup(text_first, 'html.parser')
         checked_blocks = 0
@@ -397,7 +440,10 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
             for node in block.descendants:
                 if isinstance(node, NavigableString):
                     raw = str(node)
-                    stripped = _AUTHOR_SIGNATURE_RE.sub('', raw, count=1)
+                    if not raw.strip():
+                        continue
+                    stripped = _strip_leading_author_parenthesized(raw)
+                    stripped = _AUTHOR_SIGNATURE_RE.sub('', stripped, count=1)
                     if stripped != raw:
                         node.replace_with(stripped)
                     break
