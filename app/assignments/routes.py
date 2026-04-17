@@ -3849,30 +3849,40 @@ def submission_grade_save(submission_id):
         
         total_score = 0
         max_score = 0
-        
+
+        assignment_tasks_by_id = {
+            int(at.assignment_task_id): at
+            for at in assignment.tasks
+        }
+        answers_by_task_id = {
+            int(ans.assignment_task_id): ans
+            for ans in (submission.answers or [])
+            if getattr(ans, 'assignment_task_id', None) is not None
+        }
+        processed_task_ids: set[int] = set()
+
         for score_data in scores_data:
-            assignment_task_id = score_data.get('assignment_task_id')
-            score = score_data.get('score', 0)
-            comment = score_data.get('comment', '').strip()
-            
-            if not assignment_task_id:
+            if not isinstance(score_data, dict):
                 continue
-            
-            assignment_task = AssignmentTask.query.filter_by(
-                assignment_task_id=assignment_task_id,
-                assignment_id=assignment.assignment_id
-            ).first()
-            
+            raw_assignment_task_id = score_data.get('assignment_task_id')
+            try:
+                assignment_task_id = int(raw_assignment_task_id)
+            except (TypeError, ValueError):
+                continue
+            if assignment_task_id in processed_task_ids:
+                continue
+            processed_task_ids.add(assignment_task_id)
+
+            score = score_data.get('score', 0)
+            comment = str(score_data.get('comment', '') or '').strip()
+
+            assignment_task = assignment_tasks_by_id.get(assignment_task_id)
             if not assignment_task:
                 continue
-            
+
             max_score += assignment_task.max_score
-            
-            answer = Answer.query.filter_by(
-                submission_id=submission_id,
-                assignment_task_id=assignment_task_id
-            ).first()
-            
+
+            answer = answers_by_task_id.get(assignment_task_id)
             if not answer:
                 answer = Answer(
                     submission_id=submission_id,
@@ -3880,7 +3890,8 @@ def submission_grade_save(submission_id):
                     max_score=assignment_task.max_score
                 )
                 db.session.add(answer)
-            
+                answers_by_task_id[assignment_task_id] = answer
+
             answer.score = min(max(0, score), assignment_task.max_score)  # Ограничиваем максимумом
             # Для ручной проверки считаем задание выполненным корректно, если преподаватель выставил >= 1 балла.
             answer.is_correct = bool((answer.score or 0) >= 1)

@@ -1136,6 +1136,27 @@
             })();
         });
         
+        function updateTaskVisualStateByScoreInput(input) {
+            if (!input) return;
+            const assignmentTaskId = parseInt(String(input.name || '').replace('score_', ''), 10);
+            if (!assignmentTaskId) return;
+            const score = parseInt(input.value, 10) || 0;
+            const isCorrect = score >= 1;
+            const navBtn = document.querySelector(`#taskNavGrade .task-nav-btn[data-assignment-task-id="${assignmentTaskId}"]`);
+            const taskCard = document.querySelector(`.task-card-grade[data-task-id="${assignmentTaskId}"]`);
+            [navBtn, taskCard].forEach((el) => {
+                if (!el) return;
+                el.classList.remove('correct', 'incorrect', 'pending-review', 'task-correct', 'task-incorrect');
+                if (isCorrect) {
+                    if (el.classList.contains('task-card-grade')) el.classList.add('task-correct');
+                    else el.classList.add('correct');
+                } else {
+                    if (el.classList.contains('task-card-grade')) el.classList.add('task-incorrect');
+                    else el.classList.add('incorrect');
+                }
+            });
+        }
+
         // Подсчет итогового балла
         function updateTotalScore() {
             let total = 0;
@@ -1161,9 +1182,16 @@
                 }
                 updateTotalScore();
             });
+            input.addEventListener('input', function() {
+                updateTaskVisualStateByScoreInput(this);
+            });
+            input.addEventListener('change', function() {
+                updateTaskVisualStateByScoreInput(this);
+            });
         });
         
         updateTotalScore();
+        document.querySelectorAll('.score-input').forEach(input => updateTaskVisualStateByScoreInput(input));
         
         function collectRubricScores() {
             const out = {};
