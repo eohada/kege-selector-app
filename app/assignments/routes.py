@@ -2111,7 +2111,7 @@ def assignment_archive(assignment_id: int):
 @login_required
 @check_access('assignment.create')
 def assignment_duplicate(assignment_id: int):
-    """Быстро создаёт копию работы и раздаёт тем же ученикам (с новым дедлайном)."""
+    """Создаёт копию работы с возможностью выбрать учеников и настройки."""
     if current_user.is_student() or current_user.is_parent():  # comment
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
 
@@ -2125,7 +2125,45 @@ def assignment_duplicate(assignment_id: int):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
     now = _now_naive_msk()
+    payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        payload = {}
+
+    def _to_bool(val, default=False):
+        if val is None:
+            return default
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            return bool(val)
+        s = str(val).strip().lower()
+        if s in {'1', 'true', 'yes', 'on'}:
+            return True
+        if s in {'0', 'false', 'no', 'off'}:
+            return False
+        return default
+
+    requested_title = (payload.get('title') or '').strip()
+    requested_description = payload.get('description')
+    requested_deadline = (payload.get('deadline') or '').strip()
+    requested_max_attempts = payload.get('max_attempts_default')
+    requested_time_limit = payload.get('time_limit_minutes')
+    requested_hard_deadline = payload.get('hard_deadline')
+    requested_hide_before_start = payload.get('hide_before_start')
+    requested_allow_separate_submission = payload.get('allow_separate_submission')
+    requested_attempts_per_task = payload.get('attempts_per_task')
+    requested_time_limit_strict = payload.get('time_limit_strict')
+    requested_recipient_ids = payload.get('recipientIds') or []
+
     new_deadline = now + timedelta(days=7)
+    if requested_deadline:
+        try:
+            parsed_deadline = datetime.fromisoformat(str(requested_deadline).replace('Z', '+00:00'))
+            if parsed_deadline.tzinfo:
+                parsed_deadline = parsed_deadline.astimezone(moscow_now().tzinfo).replace(tzinfo=None)
+            new_deadline = parsed_deadline
+        except Exception:
+            return jsonify({'success': False, 'error': 'Некорректный дедлайн'}), 400
 
     max_total = 0
     try:
@@ -2134,15 +2172,76 @@ def assignment_duplicate(assignment_id: int):
     except Exception:
         max_total = None  # type: ignore[assignment]
 
+    selected_student_ids = []
+    if isinstance(requested_recipient_ids, list) and requested_recipient_ids:
+        for raw_sid in requested_recipient_ids:
+            try:
+                sid = int(raw_sid)
+            except (TypeError, ValueError):
+                continue
+            if sid > 0:
+                selected_student_ids.append(sid)
+    else:
+        for s in (src.submissions or []):
+            if getattr(s, 'student_id', None):
+                selected_student_ids.append(int(s.student_id))
+
+    uniq_ids = []
+    seen = set()
+    for sid in selected_student_ids:
+        if sid not in seen:
+            seen.add(sid)
+            uniq_ids.append(sid)
+
+    if not uniq_ids:
+        return jsonify({'success': False, 'error': 'Не выбраны получатели копии'}), 400
+
+    # Scope guard for selected recipients
+    if not scope.get('can_see_all'):
+        accessible_students = get_students_for_tutor(current_user.id)
+        accessible_ids = {int(s.student_id) for s in (accessible_students or []) if getattr(s, 'student_id', None)}
+        uniq_ids = [sid for sid in uniq_ids if sid in accessible_ids]
+        if not uniq_ids:
+            return jsonify({'success': False, 'error': 'Нет доступных получателей для дублирования'}), 403
+
+    max_attempts_default = getattr(src, 'max_attempts_default', None)
+    if requested_max_attempts is not None:
+        try:
+            max_attempts_default = max(1, int(requested_max_attempts))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Некорректное число попыток'}), 400
+
+    time_limit_minutes = src.time_limit_minutes
+    if requested_time_limit is not None and str(requested_time_limit).strip() != '':
+        try:
+            time_limit_minutes = max(1, int(requested_time_limit))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Некорректный лимит времени'}), 400
+
+    attempts_per_task = _to_bool(requested_attempts_per_task, bool(getattr(src, 'attempts_per_task', False)))
+    allow_separate_submission = _to_bool(
+        requested_allow_separate_submission,
+        bool(getattr(src, 'allow_separate_submission', True)),
+    )
+    if attempts_per_task:
+        allow_separate_submission = True
+
+    hard_deadline = _to_bool(requested_hard_deadline, bool(src.hard_deadline))
+    hide_before_start = _to_bool(requested_hide_before_start, bool(getattr(src, 'hide_before_start', True)))
+    time_limit_strict = _to_bool(requested_time_limit_strict, bool(getattr(src, 'time_limit_strict', False)))
+
     new_assignment = Assignment(
-        title=f"{(src.title or 'Работа').strip()} (копия)",
-        description=src.description,
+        title=requested_title or f"{(src.title or 'Работа').strip()} (копия)",
+        description=str(requested_description).strip() if requested_description is not None else src.description,
         assignment_type=src.assignment_type,
         deadline=new_deadline,
-        hard_deadline=bool(src.hard_deadline),
-        hide_before_start=bool(getattr(src, 'hide_before_start', True)),
-        time_limit_minutes=src.time_limit_minutes,
-        max_attempts_default=getattr(src, 'max_attempts_default', None),
+        hard_deadline=hard_deadline,
+        hide_before_start=hide_before_start,
+        allow_separate_submission=allow_separate_submission,
+        attempts_per_task=attempts_per_task,
+        time_limit_minutes=time_limit_minutes,
+        time_limit_strict=time_limit_strict,
+        max_attempts_default=max_attempts_default,
         created_by_id=current_user.id,
         lesson_id=None,
         rubric_template_id=src.rubric_template_id,
@@ -2161,17 +2260,6 @@ def assignment_duplicate(assignment_id: int):
             answer_override=getattr(t, 'answer_override', None),
             requires_manual_grading=bool(t.requires_manual_grading),
         ))
-
-    student_ids = []
-    for s in (src.submissions or []):
-        if getattr(s, 'student_id', None):
-            student_ids.append(int(s.student_id))
-    uniq_ids = []
-    seen = set()
-    for sid in student_ids:
-        if sid not in seen:
-            seen.add(sid)
-            uniq_ids.append(sid)
 
     for sid in uniq_ids:
         db.session.add(Submission(

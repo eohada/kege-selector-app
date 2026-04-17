@@ -458,11 +458,38 @@
             window.duplicateAssignment = async function (assignmentId) {
                 try {
                     if (!assignmentId) return;
-                    const confirmed = window.confirm('Создать копию работы и назначить тем же ученикам (дедлайн +7 дней)?');
+                    const confirmed = window.confirm('Создать копию работы? Можно выбрать других учеников и изменить настройки.');
                     if (!confirmed) return;
 
+                    const recipientsRaw = window.prompt('ID учеников через запятую (пусто = те же ученики):', '');
+                    if (recipientsRaw === null) return;
+                    const recipientIds = String(recipientsRaw || '')
+                        .split(/[^0-9]+/)
+                        .map(v => parseInt(v, 10))
+                        .filter(Number.isFinite);
+
+                    const titleRaw = window.prompt('Название копии (пусто = исходное + "(копия)"):', '');
+                    if (titleRaw === null) return;
+
+                    const deadlineRaw = window.prompt('Новый дедлайн в формате YYYY-MM-DDTHH:MM (пусто = +7 дней):', '');
+                    if (deadlineRaw === null) return;
+
+                    const maxAttemptsRaw = window.prompt('Макс. попыток (пусто = как в исходной):', '');
+                    if (maxAttemptsRaw === null) return;
+                    const maxAttempts = String(maxAttemptsRaw || '').trim() === '' ? null : parseInt(maxAttemptsRaw, 10);
+                    if (String(maxAttemptsRaw || '').trim() !== '' && !Number.isFinite(maxAttempts)) {
+                        toastAny('error', 'Некорректное число попыток');
+                        return;
+                    }
+
                     const url = '/assignments/' + encodeURIComponent(String(assignmentId)) + '/duplicate';
-                    const { ok, data } = await postJson(url, {});
+                    const payload = {
+                        recipientIds: recipientIds,
+                        title: (titleRaw || '').trim() || null,
+                        deadline: (deadlineRaw || '').trim() || null,
+                        max_attempts_default: maxAttempts,
+                    };
+                    const { ok, data } = await postJson(url, payload);
                     if (!ok || !data || !data.success) {
                         toastAny('error', (data && data.error) ? data.error : 'Не удалось создать копию.');
                         return;
