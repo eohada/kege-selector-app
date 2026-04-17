@@ -1303,7 +1303,7 @@ def assignments_list():
             Submission.assignment_id.label('assignment_id'),
             func.sum(
                 case(
-                    (Submission.status != 'REVOKED', 1),
+                    (func.upper(func.coalesce(Submission.status, '')) != 'REVOKED', 1),
                     else_=0,
                 )
             ).label('total_students'),
@@ -1468,17 +1468,19 @@ def assignments_list():
             )
             .join(Student, Student.student_id == Submission.student_id)
             .filter(Submission.assignment_id.in_(assignment_ids))
-            .filter(Submission.status != 'REVOKED')
             .order_by(Student.name)
             .all()
         )
         for aid, sub_status, sname, sid in student_subs:
+            normalized_status = normalize_legacy_status(sub_status) or ''
+            if normalized_status == 'REVOKED':
+                continue
             if aid not in students_by_assignment:
                 students_by_assignment[aid] = []
             students_by_assignment[aid].append({
                 'name': sname,
                 'student_id': sid,
-                'status': sub_status,
+                'status': normalized_status or sub_status,
             })
 
     assignments_data = []
@@ -2522,7 +2524,7 @@ def submissions_list():
     
     submissions = Submission.query.join(Submission.assignment).filter(
         Submission.student_id == student.student_id,
-        Submission.status != 'REVOKED',
+        func.upper(func.coalesce(Submission.status, '')) != 'REVOKED',
     ).options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks),
         joinedload(Submission.assignment).joinedload(Assignment.created_by),
