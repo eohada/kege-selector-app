@@ -16,7 +16,7 @@
   <script type="application/json" class="boo-file-manager__config">{{ (fm_task_files if fm_task_files is defined else []) | tojson }}</script>
 
   {# Toggle button #}
-  <button type="button" x-on:click="open = !open" class="neo-button outline sm boo-fm-toggle">
+  <button type="button" x-on:click="open = !open" class="boo-fm-toggle">
     <i class="ph-bold ph-folder-open"></i>
     <span>Файлы</span>
     <span x-show="workspaceFiles.length" x-text="workspaceFiles.length" class="boo-fm-badge"></span>
@@ -162,7 +162,38 @@
 
 <style>
 /* ─── Toggle ─── */
-.boo-fm-toggle{display:inline-flex;align-items:center;gap:.45rem;font-size:.85rem;padding:.58rem 1rem;border-radius:14px;font-weight:800;}
+.boo-fm-toggle{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:.42rem;
+  padding:.58rem 1rem;
+  border-radius:.9rem;
+  border:1px solid #ddd6fe;
+  background:linear-gradient(180deg,#faf5ff 0%,#f5f3ff 100%);
+  color:#6d28d9;
+  font-size:.82rem;
+  font-weight:800;
+  letter-spacing:.01em;
+  box-shadow:0 2px 6px rgba(109,40,217,.1);
+  transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease,background .14s ease;
+}
+.boo-fm-toggle:hover{
+  border-color:#c4b5fd;
+  background:linear-gradient(180deg,#f3e8ff 0%,#ede9fe 100%);
+  box-shadow:0 6px 14px rgba(109,40,217,.16);
+  transform:translateY(-1px);
+}
+[data-theme="dark"] .boo-fm-toggle{
+  border-color:rgba(167,139,250,.45);
+  background:linear-gradient(180deg,rgba(76,29,149,.38) 0%,rgba(67,56,202,.28) 100%);
+  color:#ddd6fe;
+  box-shadow:0 2px 8px rgba(15,23,42,.45);
+}
+[data-theme="dark"] .boo-fm-toggle:hover{
+  border-color:rgba(196,181,253,.7);
+  background:linear-gradient(180deg,rgba(91,33,182,.48) 0%,rgba(79,70,229,.34) 100%);
+}
 .boo-fm-badge{background:var(--accent-1,#7B5CFF);color:#fff;border-radius:99px;padding:0 .4rem;font-size:.75rem;font-weight:700;margin-left:.15rem;line-height:1.5;}
 
 /* ─── Panel ─── */

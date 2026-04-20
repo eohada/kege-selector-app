@@ -411,6 +411,45 @@
             flex-direction: column;
             gap: 1.25rem;
         }
+        .task-tools {
+            margin-top: 0.75rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .task-tool-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.42rem;
+            padding: 0.58rem 1rem;
+            border-radius: 0.9rem;
+            border: 1px solid #ddd6fe;
+            background: linear-gradient(180deg, #faf5ff 0%, #f5f3ff 100%);
+            color: #6d28d9;
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            box-shadow: 0 2px 6px rgba(109, 40, 217, 0.1);
+            transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+        }
+        .task-tool-btn:hover {
+            border-color: #c4b5fd;
+            background: linear-gradient(180deg, #f3e8ff 0%, #ede9fe 100%);
+            box-shadow: 0 6px 14px rgba(109, 40, 217, 0.16);
+            transform: translateY(-1px);
+        }
+        [data-theme="dark"] .task-tool-btn {
+            border-color: rgba(167, 139, 250, 0.45);
+            background: linear-gradient(180deg, rgba(76, 29, 149, 0.38) 0%, rgba(67, 56, 202, 0.28) 100%);
+            color: #ddd6fe;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.45);
+        }
+        [data-theme="dark"] .task-tool-btn:hover {
+            border-color: rgba(196, 181, 253, 0.7);
+            background: linear-gradient(180deg, rgba(91, 33, 182, 0.48) 0%, rgba(79, 70, 229, 0.34) 100%);
+        }
     </style>
     <script>
         (function(){
@@ -570,8 +609,8 @@
                 <div class="task-content text-[15px] leading-relaxed text-primary space-y-4">
                     {{ render_task_content(task_item.task, false, 'task-content text-[15px] leading-relaxed text-primary space-y-4') }}
                 </div>
-                <div style="margin-top: 0.75rem;">
-                    <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
+                <div class="task-tools">
+                    <button type="button" class="task-tool-btn" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
                         <i class="ph-bold ph-pencil-line"></i> Мои заметки
                     </button>
                 </div>
@@ -830,8 +869,8 @@
             <div class="task-content">
                 {{ render_task_content(task_item.task, false, 'task-content') }}
             </div>
-            <div style="margin-top: 0.75rem;">
-                <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
+            <div class="task-tools">
+                <button type="button" class="task-tool-btn" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
                     <i class="ph-bold ph-pencil-line"></i> Мои заметки
                 </button>
             </div>
