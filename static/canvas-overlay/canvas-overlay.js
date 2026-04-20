@@ -284,6 +284,7 @@
 
   function drawStroke(s) {
     if (!s.points || s.points.length < 1) return;
+    const activeRect = getActiveTaskContentRect();
     ctx.save();
     if (s.eraser) {
       ctx.globalCompositeOperation = 'destination-out';
@@ -295,26 +296,80 @@
     ctx.lineWidth = s.width || 3;
     ctx.beginPath();
     s.points.forEach((p, i) => {
-      if (i === 0) ctx.moveTo(p.x, p.y);
-      else ctx.lineTo(p.x, p.y);
+      const mapped = resolvePointForRender(p, s, activeRect);
+      if (i === 0) ctx.moveTo(mapped.x, mapped.y);
+      else ctx.lineTo(mapped.x, mapped.y);
     });
     ctx.stroke();
     ctx.restore();
   }
 
-  function pointerPos(e) {
-    return { x: e.pageX, y: e.pageY };
+  function getActiveTaskContentRect() {
+    let el = document.querySelector('.task-card.task-panel-active .task-content');
+    if (!el) {
+      el = document.querySelector('.task-card-grade.task-panel-active .task-content-grade');
+    }
+    if (!el) {
+      el = document.querySelector('.task-card .task-content, .task-card-grade .task-content-grade');
+    }
+    if (!el || !el.getBoundingClientRect) return null;
+    const rect = el.getBoundingClientRect();
+    const left = rect.left + window.scrollX;
+    const top = rect.top + window.scrollY;
+    const width = Math.max(rect.width, 1);
+    const height = Math.max(rect.height, 1);
+    return { left, top, width, height, task_id: taskId || null };
+  }
+
+  function pointForEvent(e, space) {
+    const x = e.pageX;
+    const y = e.pageY;
+    if (!space) return { x, y };
+    const rx = (x - space.left) / Math.max(space.width, 1);
+    const ry = (y - space.top) / Math.max(space.height, 1);
+    return { x, y, rx, ry };
+  }
+
+  function resolvePointForRender(p, stroke, activeRect) {
+    if (!p) return { x: 0, y: 0 };
+    const hasRelative = Number.isFinite(Number(p.rx)) && Number.isFinite(Number(p.ry));
+    if (hasRelative) {
+      if (activeRect && (!stroke.space || !stroke.space.task_id || Number(stroke.space.task_id) === Number(activeRect.task_id))) {
+        return {
+          x: activeRect.left + Number(p.rx) * activeRect.width,
+          y: activeRect.top + Number(p.ry) * activeRect.height,
+        };
+      }
+      if (stroke.space) {
+        return {
+          x: Number(stroke.space.left || 0) + Number(p.rx) * Number(stroke.space.width || 1),
+          y: Number(stroke.space.top || 0) + Number(p.ry) * Number(stroke.space.height || 1),
+        };
+      }
+    }
+    return {
+      x: Number.isFinite(Number(p.x)) ? Number(p.x) : 0,
+      y: Number.isFinite(Number(p.y)) ? Number(p.y) : 0,
+    };
   }
 
   function onPointerDown(e) {
     if (e.button !== 0) return;
     resizeCanvas();
     drawing = true;
-    const pos = pointerPos(e);
+    const space = getActiveTaskContentRect();
+    const pos = pointForEvent(e, space);
     currentStroke = {
       color: tool === 'eraser' ? null : penColor,
       width: tool === 'eraser' ? penSize * 3 : penSize,
       eraser: tool === 'eraser',
+      space: space ? {
+        left: space.left,
+        top: space.top,
+        width: space.width,
+        height: space.height,
+        task_id: space.task_id,
+      } : null,
       points: [pos],
     };
     strokes.push(currentStroke);
@@ -325,7 +380,7 @@
 
   function onPointerMove(e) {
     if (!drawing || !currentStroke) return;
-    currentStroke.points.push(pointerPos(e));
+    currentStroke.points.push(pointForEvent(e, currentStroke.space));
     redraw();
     e.preventDefault();
   }

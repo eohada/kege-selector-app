@@ -1,7 +1,7 @@
-{# Canvas Viewer Modal — преподаватель просматривает заметки ученика #}
+{# Canvas Viewer Modal — преподаватель просматривает заметки ученика поверх условия #}
 <div id="boo-canvas-viewer-modal" class="hidden" style="display:none; position:fixed; inset:0; z-index:10000;">
   <div style="position:absolute; inset:0; background:rgba(0,0,0,0.5);" onclick="BooCanvasViewer.close()"></div>
-  <div style="position:relative; margin:2vh auto; width:94vw; max-width:1100px; height:94vh;
+  <div style="position:relative; margin:2vh auto; width:94vw; max-width:1180px; height:94vh;
               background:var(--color-bg-surface, #fff); border-radius:20px;
               display:flex; flex-direction:column; overflow:hidden;
               box-shadow:0 24px 64px rgba(0,0,0,0.18); z-index:1;">
@@ -16,8 +16,11 @@
     <div id="cv-loader" style="flex:1; display:flex; align-items:center; justify-content:center;">
       <span style="color:var(--text-muted); font-size:0.95rem;">Загрузка...</span>
     </div>
-    <div id="cv-canvas-wrap" style="flex:1; overflow:auto; position:relative; display:none;">
-      <canvas id="cv-canvas" style="width:100%; height:100%;"></canvas>
+    <div id="cv-stage-wrap" style="flex:1; overflow:auto; display:none; background:var(--surface-2,#f8fafc);">
+      <div id="cv-stage" style="position:relative; margin:0 auto; width:min(100%, 980px); padding:1.25rem;">
+        <div id="cv-task-snapshot" class="task-content" style="background:var(--color-bg-surface,#fff); border:1px solid var(--stroke-1,#e2e8f0); border-radius:16px; padding:1rem;"></div>
+        <canvas id="cv-overlay-canvas" style="position:absolute; pointer-events:none;"></canvas>
+      </div>
     </div>
     <div id="cv-empty" style="flex:1; display:none; align-items:center; justify-content:center;">
       <span style="color:var(--text-muted); font-size:0.95rem;">Ученик не оставил заметок для этого задания.</span>
@@ -31,10 +34,11 @@
 
   var modal = document.getElementById('boo-canvas-viewer-modal');
   var loader = document.getElementById('cv-loader');
-  var canvasWrap = document.getElementById('cv-canvas-wrap');
-  var canvas = document.getElementById('cv-canvas');
+  var stageWrap = document.getElementById('cv-stage-wrap');
+  var stage = document.getElementById('cv-stage');
+  var snapshotEl = document.getElementById('cv-task-snapshot');
+  var canvas = document.getElementById('cv-overlay-canvas');
   var emptyEl = document.getElementById('cv-empty');
-  var titleEl = document.getElementById('cv-title');
   var updatedEl = document.getElementById('cv-updated');
 
   function show() {
@@ -48,24 +52,69 @@
     document.body.style.overflow = '';
   }
 
-  function renderStrokes(strokes) {
-    if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-    var rect = canvasWrap.getBoundingClientRect();
-    var dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(rect.width * dpr);
-    canvas.height = Math.floor(rect.height * dpr);
+  function buildSnapshotFromTrigger(triggerEl) {
+    if (!snapshotEl) return false;
+    snapshotEl.innerHTML = '';
+    if (!triggerEl || !triggerEl.closest) return false;
+    var card = triggerEl.closest('.task-card, .task-card-grade');
+    if (!card) return false;
+    var blocks = card.querySelectorAll('.task-content, .task-content-grade');
+    if (!blocks || !blocks.length) return false;
+    blocks.forEach(function(node) {
+      var clone = node.cloneNode(true);
+      snapshotEl.appendChild(clone);
+    });
+    return true;
+  }
 
+  function toNumber(v) {
+    var n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function renderStrokes(strokes) {
+    if (!canvas || !snapshotEl || !stage) return;
+    var contentWidth = Math.max(snapshotEl.scrollWidth, snapshotEl.clientWidth, 1);
+    var contentHeight = Math.max(snapshotEl.scrollHeight, snapshotEl.clientHeight, 1);
+    var dpr = window.devicePixelRatio || 1;
+
+    var left = snapshotEl.offsetLeft;
+    var top = snapshotEl.offsetTop;
+    canvas.style.left = left + 'px';
+    canvas.style.top = top + 'px';
+    canvas.style.width = contentWidth + 'px';
+    canvas.style.height = contentHeight + 'px';
+    canvas.width = Math.floor(contentWidth * dpr);
+    canvas.height = Math.floor(contentHeight * dpr);
+
+    var ctx = canvas.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    var bg = document.documentElement.getAttribute('data-theme') === 'dark' ? '#1e1e2e' : '#f8fafc';
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+
+    function pointToLocal(point, stroke) {
+      var rx = toNumber(point && point.rx);
+      var ry = toNumber(point && point.ry);
+      if (rx !== null && ry !== null) {
+        return { x: rx * contentWidth, y: ry * contentHeight };
+      }
+      var sx = toNumber(point && point.x);
+      var sy = toNumber(point && point.y);
+      var space = stroke && stroke.space ? stroke.space : null;
+      if (space && sx !== null && sy !== null) {
+        var sw = toNumber(space.width) || contentWidth;
+        var sh = toNumber(space.height) || contentHeight;
+        var sl = toNumber(space.left) || 0;
+        var st = toNumber(space.top) || 0;
+        return {
+          x: (sx - sl) * (contentWidth / Math.max(sw, 1)),
+          y: (sy - st) * (contentHeight / Math.max(sh, 1)),
+        };
+      }
+      return { x: sx || 0, y: sy || 0 };
+    }
 
     strokes.forEach(function(s) {
       if (!s.points || !s.points.length) return;
@@ -75,13 +124,14 @@
         ctx.strokeStyle = 'rgba(0,0,0,1)';
       } else {
         ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = s.color || '#000';
+        ctx.strokeStyle = s.color || '#ef4444';
       }
       ctx.lineWidth = s.width || 3;
       ctx.beginPath();
       s.points.forEach(function(p, i) {
-        if (i === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
+        var pt = pointToLocal(p, s);
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
       });
       ctx.stroke();
       ctx.restore();
@@ -89,11 +139,14 @@
   }
 
   window.BooCanvasViewer = {
-    async open(studentUserId, taskId, contextType, contextId) {
+    async open(studentUserId, taskId, contextType, contextId, triggerEl) {
       show();
       loader.style.display = 'flex';
-      canvasWrap.style.display = 'none';
+      stageWrap.style.display = 'none';
       emptyEl.style.display = 'none';
+      updatedEl.textContent = '';
+
+      buildSnapshotFromTrigger(triggerEl);
 
       try {
         var params = new URLSearchParams({ task_id: taskId, context_type: contextType || 'submission' });
@@ -108,7 +161,7 @@
         if (data.success && data.exists) {
           var strokes = typeof data.strokes === 'string' ? JSON.parse(data.strokes) : data.strokes;
           if (Array.isArray(strokes) && strokes.length > 0) {
-            canvasWrap.style.display = '';
+            stageWrap.style.display = '';
             if (data.updated_at) {
               updatedEl.textContent = 'Обновлено: ' + new Date(data.updated_at).toLocaleString('ru-RU');
             }
@@ -120,11 +173,19 @@
       } catch (e) {
         loader.style.display = 'none';
         emptyEl.style.display = 'flex';
-        emptyEl.querySelector('span').textContent = 'Ошибка загрузки заметок.';
+        var span = emptyEl.querySelector('span');
+        if (span) span.textContent = 'Ошибка загрузки заметок.';
       }
     },
     close: hide,
   };
+
+  window.addEventListener('resize', function() {
+    if (!modal || modal.style.display === 'none') return;
+    var hasCanvas = stageWrap && stageWrap.style.display !== 'none';
+    if (!hasCanvas) return;
+    // no-op here; canvas is rerendered only on open to avoid heavy redraw loop
+  });
 
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') hide();

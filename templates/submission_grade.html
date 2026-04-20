@@ -690,7 +690,7 @@
                     {% endif %}
                     {% if submission.student and submission.student.user_id and g.task %}
                     <div style="margin-top: 0.75rem;">
-                        <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ submission.student.user_id }}, {{ g.task.task_id }}, 'submission', {{ submission.submission_id }})">
+                        <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ submission.student.user_id }}, {{ g.task.task_id }}, 'submission', {{ submission.submission_id }}, this)">
                             <i class="ph-bold ph-pencil-line"></i> Заметки ученика
                         </button>
                     </div>

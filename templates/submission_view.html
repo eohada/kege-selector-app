@@ -610,7 +610,7 @@
                     {{ render_task_content(task_item.task, false, 'task-content text-[15px] leading-relaxed text-primary space-y-4') }}
                 </div>
                 <div class="task-tools">
-                    <button type="button" class="task-tool-btn" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
+                    <button type="button" class="task-tool-btn" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }}, this)">
                         <i class="ph-bold ph-pencil-line"></i> Мои заметки
                     </button>
                 </div>
@@ -870,7 +870,7 @@
                 {{ render_task_content(task_item.task, false, 'task-content') }}
             </div>
             <div class="task-tools">
-                <button type="button" class="task-tool-btn" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }})">
+                <button type="button" class="task-tool-btn" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }}, this)">
                     <i class="ph-bold ph-pencil-line"></i> Мои заметки
                 </button>
             </div>
