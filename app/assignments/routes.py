@@ -29,6 +29,7 @@ from app.assignments.submission_lifecycle_service import (
     transition_submission_status,
     SubmissionLifecycleError,
 )
+from app.sandbox.python_runner import normalize_leading_tabs_to_spaces, run_python_sandbox
 import requests
 from flask import Response, stream_with_context, abort, send_from_directory
 from werkzeug.utils import secure_filename
@@ -58,68 +59,6 @@ def _ensure_submission_comment_thread_reads_schema() -> bool:
         logger.warning('Could not ensure SubmissionCommentThreadReads table: %s', e)
         return False
 
-# Редактор кода: песочница для запуска Python
-_PYTHON_RUNNER = r"""
-import sys, io, os
-
-_cwd = os.getcwd()
-_real_open = open
-
-def _safe_open(path, mode='r', encoding=None, **kw):
-    if any(c in mode for c in 'wax+'):
-        raise PermissionError('Запись файлов запрещена в песочнице')
-    abs_path = os.path.abspath(path)
-    if not abs_path.startswith(_cwd + os.sep) and abs_path != _cwd:
-        raise PermissionError('Доступ к файлам за пределами рабочей директории запрещён')
-    if not os.path.isfile(abs_path):
-        raise FileNotFoundError(f"Файл не найден: {path}")
-    if 'b' in mode:
-        return _real_open(abs_path, mode, **kw)
-    return _real_open(abs_path, mode, encoding=encoding or 'utf-8', **kw)
-
-import itertools, math, ipaddress
-
-_ALLOWED_MODULES = {
-    'itertools': itertools, 'math': math, 'ipaddress': ipaddress,
-}
-_real_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__
-
-def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
-    if name in _ALLOWED_MODULES:
-        mod = _ALLOWED_MODULES[name]
-        if fromlist:
-            return mod
-        return mod
-    raise ImportError(f"Модуль '{name}' недоступен в песочнице. Доступны: itertools, math, ipaddress")
-
-code = sys.stdin.read()
-out = io.StringIO()
-err = io.StringIO()
-sys.stdout = out
-sys.stderr = err
-try:
-    safe_builtins = {'print': print, 'len': len, 'range': range, 'list': list, 'dict': dict, 'str': str, 'int': int, 'float': float,
-                     'sum': sum, 'min': min, 'max': max, 'abs': abs, 'sorted': sorted, 'map': map, 'filter': filter, 'zip': zip,
-                     'enumerate': enumerate, 'tuple': tuple, 'set': set, 'bool': bool, 'True': True, 'False': False, 'None': None,
-                     'round': round, 'repr': repr, 'any': any, 'all': all,
-                     'open': _safe_open, 'input': input, '__import__': _safe_import,
-                     'type': type, 'isinstance': isinstance, 'chr': chr, 'ord': ord,
-                     'hex': hex, 'bin': bin, 'pow': pow, 'reversed': reversed,
-                     'bytes': bytes, 'format': format, 'hash': hash,
-                     'Exception': Exception, 'ValueError': ValueError, 'TypeError': TypeError,
-                     'KeyError': KeyError, 'IndexError': IndexError, 'StopIteration': StopIteration,
-                     'FileNotFoundError': FileNotFoundError, 'ImportError': ImportError,
-                     'ZeroDivisionError': ZeroDivisionError, 'RuntimeError': RuntimeError,
-                     'AttributeError': AttributeError, 'OverflowError': OverflowError}
-    safe = {'__builtins__': safe_builtins, 'itertools': itertools, 'math': math, 'ipaddress': ipaddress, 'os': None}
-    exec(code, safe)
-except Exception as e:
-    err.write(str(e))
-sys.stdout = sys.__stdout__
-sys.stderr = sys.__stderr__
-print(out.getvalue())
-print(err.getvalue(), file=sys.__stderr__)
-"""
 
 def _ensure_aware_datetime(dt):
     """Конвертирует naive datetime в aware (Moscow timezone)"""
@@ -3529,32 +3468,6 @@ def _collect_sandbox_files(task_id: int | None, user_id: int) -> list[tuple[str,
     return result
 
 
-def _run_python_sandbox(code: str, timeout_sec: int = 5,
-                        task_files: list[tuple[str, bytes]] | None = None):
-    """Запуск кода Python в песочнице. task_files — [(filename, bytes), ...]."""
-    import tempfile
-    try:
-        with tempfile.TemporaryDirectory(prefix='boostudy_sandbox_') as tmpdir:
-            if task_files:
-                for fname, fbytes in task_files:
-                    fpath = os.path.join(tmpdir, fname)
-                    with open(fpath, 'wb') as f:
-                        f.write(fbytes)
-            proc = subprocess.run(
-                [sys.executable, '-c', _PYTHON_RUNNER],
-                input=code,
-                capture_output=True,
-                text=True,
-                timeout=timeout_sec,
-                cwd=tmpdir,
-            )
-            return proc.stdout or '', proc.stderr or ''
-    except subprocess.TimeoutExpired:
-        return '', 'Превышено время выполнения (макс. {} с).'.format(timeout_sec)
-    except Exception as e:
-        return '', str(e)
-
-
 @assignments_bp.route('/submissions/<int:submission_id>/run-code', methods=['POST'])
 @login_required
 @limiter.limit('30/minute')
@@ -3568,10 +3481,11 @@ def submission_run_code(submission_id):
     if not is_owner and not can_see:
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     data = request.get_json() or {}
-    code = (data.get('code') or '').strip()
-    assignment_task_id = data.get('assignment_task_id')
-    if not code:
+    raw_code = data.get('code') or ''
+    if not raw_code.strip():
         return jsonify({'success': False, 'error': 'Код не передан'}), 400
+    code = normalize_leading_tabs_to_spaces(raw_code)
+    assignment_task_id = data.get('assignment_task_id')
     assignment = submission.assignment
     at = None
     if assignment_task_id is not None:
@@ -3583,7 +3497,7 @@ def submission_run_code(submission_id):
         task_id=at.task_id if at else None,
         user_id=current_user.id,
     )
-    stdout, stderr = _run_python_sandbox(code, task_files=task_files)
+    stdout, stderr = run_python_sandbox(code, task_files=task_files)
     return jsonify({'success': True, 'stdout': stdout, 'stderr': stderr})
 
 
@@ -3600,7 +3514,8 @@ def submission_save_code(submission_id):
     if not student or student.student_id != submission.student_id:
         return jsonify({'success': False, 'error': 'Только автор сдачи может сохранять код'}), 403
     data = request.get_json() or {}
-    code = (data.get('code') or '').strip()
+    raw_code = data.get('code') or ''
+    code = normalize_leading_tabs_to_spaces(raw_code)[:100_000]
     assignment_task_id = data.get('assignment_task_id')
     if assignment_task_id is None:
         return jsonify({'success': False, 'error': 'Не указано задание'}), 400
@@ -3618,7 +3533,7 @@ def submission_save_code(submission_id):
             max_score=at.max_score,
         )
         db.session.add(answer)
-    answer.student_code = code[: 100_000]
+    answer.student_code = code
     answer.student_code_saved_at = moscow_now()
     try:
         db.session.commit()

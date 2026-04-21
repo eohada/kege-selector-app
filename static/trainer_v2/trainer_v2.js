@@ -1224,9 +1224,17 @@
         theme: eff === 'light' ? 'default' : 'dracula',
         lineNumbers: true,
         indentUnit: 4,
+        tabSize: 4,
+        indentWithTabs: false,
+        smartIndent: true,
+        electricChars: true,
         lineWrapping: true,
         autoCloseBrackets: true,
-        matchBrackets: true
+        matchBrackets: true,
+        extraKeys: {
+          Tab: 'indentMore',
+          'Shift-Tab': 'indentLess'
+        }
       });
       cm.setSize(null, '100%');
       State.cm = cm;

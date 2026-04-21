@@ -1,6 +1,11 @@
 # Пример конфигурации для деплоя на сервере.
 # Скопируй в docker-compose.yml и адаптируй под свои сервисы.
 #
+# Песочница Python (запуск кода ученика, модуль turtle):
+# В образе веб-сервиса установи системные пакеты: xvfb, python3-tk (Debian/Ubuntu:
+# apt-get install -y xvfb python3-tk). Бинарь xvfb-run должен быть в PATH — тогда
+# app/sandbox/python_runner.py оборачивает subprocess в xvfb-run -a для tkinter/turtle.
+#
 # Telegram-бот BooStudy работает через WEBHOOK внутри сервиса web
 # (POST /webhook/telegram). Отдельный контейнер bot/bot_prod НЕ нужен.
 # См. DEPLOY_TELEGRAM_WEBHOOK.md
