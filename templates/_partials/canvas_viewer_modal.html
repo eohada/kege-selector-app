@@ -56,6 +56,8 @@
   var lastStrokes = null;
   var renderBaseWidth = null;
   var renderBaseHeight = null;
+  var triggerBaseWidth = null;
+  var triggerBaseHeight = null;
   var currentZoom = 1;
   var resizeTimer = null;
 
@@ -70,6 +72,10 @@
     modal.style.display = 'none';
     document.body.style.overflow = '';
     lastStrokes = null;
+    renderBaseWidth = null;
+    renderBaseHeight = null;
+    triggerBaseWidth = null;
+    triggerBaseHeight = null;
   }
 
   function collectTopLevelBlocks(card, selector) {
@@ -98,6 +104,14 @@
     if (!card) return false;
     var blocks = collectTopLevelBlocks(card, '.task-content, .task-content-grade');
     if (!blocks || !blocks.length) return false;
+    var firstRect = blocks[0].getBoundingClientRect ? blocks[0].getBoundingClientRect() : null;
+    if (firstRect) {
+      triggerBaseWidth = Math.max(firstRect.width || 0, 1);
+      triggerBaseHeight = Math.max(firstRect.height || 0, 1);
+    } else {
+      triggerBaseWidth = null;
+      triggerBaseHeight = null;
+    }
     blocks.forEach(function(node) {
       var clone = node.cloneNode(true);
       snapshotEl.appendChild(clone);
@@ -113,8 +127,10 @@
   function renderStrokes(strokes) {
     if (!canvas || !snapshotEl || !stage) return;
     lastStrokes = Array.isArray(strokes) ? strokes : [];
-    var contentWidth = Math.max(renderBaseWidth || 0, snapshotEl.scrollWidth, snapshotEl.clientWidth, 1);
-    var contentHeight = Math.max(renderBaseHeight || 0, snapshotEl.scrollHeight, snapshotEl.clientHeight, 1);
+    var preferredWidth = renderBaseWidth || triggerBaseWidth || 0;
+    var contentWidth = Math.max(preferredWidth, snapshotEl.scrollWidth, snapshotEl.clientWidth, 1);
+    var preferredHeight = renderBaseHeight || triggerBaseHeight || 0;
+    var contentHeight = Math.max(snapshotEl.scrollHeight, snapshotEl.clientHeight, preferredHeight || 0, 1);
     var dpr = window.devicePixelRatio || 1;
 
     var left = snapshotEl.offsetLeft;
@@ -207,6 +223,8 @@
       buildSnapshotFromTrigger(triggerEl);
       renderBaseWidth = null;
       renderBaseHeight = null;
+      triggerBaseWidth = null;
+      triggerBaseHeight = null;
       currentZoom = 1;
 
       try {
@@ -229,8 +247,8 @@
               renderBaseWidth = Number(refStroke.space.width) || null;
               renderBaseHeight = Number(refStroke.space.height) || null;
             }
-            if (renderBaseWidth) {
-              snapshotEl.style.width = Math.max(320, Math.round(renderBaseWidth)) + 'px';
+            if (renderBaseWidth || triggerBaseWidth) {
+              snapshotEl.style.width = Math.max(320, Math.round(renderBaseWidth || triggerBaseWidth || 320)) + 'px';
             } else {
               snapshotEl.style.width = '';
             }
