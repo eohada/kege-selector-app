@@ -131,6 +131,8 @@
     var contentWidth = Math.max(preferredWidth, snapshotEl.scrollWidth, snapshotEl.clientWidth, 1);
     var preferredHeight = renderBaseHeight || triggerBaseHeight || 0;
     var contentHeight = Math.max(snapshotEl.scrollHeight, snapshotEl.clientHeight, preferredHeight || 0, 1);
+    var renderSpaceWidth = Math.max(renderBaseWidth || triggerBaseWidth || contentWidth, 1);
+    var renderSpaceHeight = Math.max(renderBaseHeight || triggerBaseHeight || contentHeight, 1);
     var dpr = window.devicePixelRatio || 1;
 
     var left = snapshotEl.offsetLeft;
@@ -153,7 +155,7 @@
       var rx = toNumber(point && point.rx);
       var ry = toNumber(point && point.ry);
       if (rx !== null && ry !== null) {
-        return { x: rx * contentWidth, y: ry * contentHeight };
+        return { x: rx * renderSpaceWidth, y: ry * renderSpaceHeight };
       }
       var sx = toNumber(point && point.x);
       var sy = toNumber(point && point.y);
