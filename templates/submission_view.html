@@ -2057,6 +2057,7 @@
                 var tid = taskIdMap[index];
                 if (tid && window.BooCanvasOverlay) {
                     document.body.dataset.canvasTaskId = tid;
+                    document.body.dataset.canvasTaskCardId = 'task-' + index;
                     window.BooCanvasOverlay.setContext(tid, 'submission', {{ submission.submission_id }});
                 }
             }

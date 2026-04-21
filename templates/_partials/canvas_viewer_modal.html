@@ -40,6 +40,8 @@
   var canvas = document.getElementById('cv-overlay-canvas');
   var emptyEl = document.getElementById('cv-empty');
   var updatedEl = document.getElementById('cv-updated');
+  var lastStrokes = null;
+  var resizeTimer = null;
 
   function show() {
     modal.classList.remove('hidden');
@@ -52,13 +54,31 @@
     document.body.style.overflow = '';
   }
 
+  function collectTopLevelBlocks(card, selector) {
+    if (!card) return [];
+    var nodes = Array.prototype.slice.call(card.querySelectorAll(selector));
+    if (!nodes.length) return [];
+    return nodes.filter(function(node) {
+      if (node.closest('.task-content, .task-content-grade') === node) {
+        // keep only root-most content blocks to avoid duplicated nested wrappers
+        var p = node.parentElement;
+        while (p && p !== card) {
+          if (p.matches && p.matches('.task-content, .task-content-grade')) return false;
+          p = p.parentElement;
+        }
+        return true;
+      }
+      return false;
+    });
+  }
+
   function buildSnapshotFromTrigger(triggerEl) {
     if (!snapshotEl) return false;
     snapshotEl.innerHTML = '';
     if (!triggerEl || !triggerEl.closest) return false;
     var card = triggerEl.closest('.task-card, .task-card-grade');
     if (!card) return false;
-    var blocks = card.querySelectorAll('.task-content, .task-content-grade');
+    var blocks = collectTopLevelBlocks(card, '.task-content, .task-content-grade');
     if (!blocks || !blocks.length) return false;
     blocks.forEach(function(node) {
       var clone = node.cloneNode(true);
@@ -74,6 +94,7 @@
 
   function renderStrokes(strokes) {
     if (!canvas || !snapshotEl || !stage) return;
+    lastStrokes = Array.isArray(strokes) ? strokes : [];
     var contentWidth = Math.max(snapshotEl.scrollWidth, snapshotEl.clientWidth, 1);
     var contentHeight = Math.max(snapshotEl.scrollHeight, snapshotEl.clientHeight, 1);
     var dpr = window.devicePixelRatio || 1;
@@ -116,7 +137,7 @@
       return { x: sx || 0, y: sy || 0 };
     }
 
-    strokes.forEach(function(s) {
+    lastStrokes.forEach(function(s) {
       if (!s.points || !s.points.length) return;
       ctx.save();
       if (s.eraser) {
@@ -184,7 +205,10 @@
     if (!modal || modal.style.display === 'none') return;
     var hasCanvas = stageWrap && stageWrap.style.display !== 'none';
     if (!hasCanvas) return;
-    // no-op here; canvas is rerendered only on open to avoid heavy redraw loop
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      if (Array.isArray(lastStrokes) && lastStrokes.length) renderStrokes(lastStrokes);
+    }, 80);
   });
 
   document.addEventListener('keydown', function(e) {

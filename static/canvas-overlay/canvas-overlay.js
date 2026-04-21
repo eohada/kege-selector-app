@@ -305,7 +305,17 @@
   }
 
   function getActiveTaskContentRect() {
-    let el = document.querySelector('.task-card.task-panel-active .task-content');
+    let el = null;
+    const cardId = (document.body && document.body.dataset) ? document.body.dataset.canvasTaskCardId : null;
+    if (cardId) {
+      const card = document.getElementById(cardId);
+      if (card) {
+        el = card.querySelector('.exec-unlocked > .task-content, .task-content-grade');
+      }
+    }
+    if (!el) {
+      el = document.querySelector('.task-card.task-panel-active .exec-unlocked > .task-content');
+    }
     if (!el) {
       el = document.querySelector('.task-card-grade.task-panel-active .task-content-grade');
     }
