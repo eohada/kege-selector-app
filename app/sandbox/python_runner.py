@@ -288,7 +288,15 @@ def run_python_sandbox(
                 timeout=tsec,
                 cwd=tmpdir,
             )
-            return proc.stdout or '', proc.stderr or ''
+            stdout = (proc.stdout or '').strip()
+            stderr = (proc.stderr or '').strip()
+            # turtle не пишет в консоль — ученик думает, что «ничего не произошло»
+            if (not stdout) and (not stderr) and 'turtle' in (code or '').lower():
+                stdout = (
+                    '[turtle] Код выполнен без ошибок. Рисунок в окне в браузере не показывается — '
+                    'добавьте print(...) в программу, чтобы увидеть числа в «Вывод».'
+                )
+            return stdout, stderr
     except subprocess.TimeoutExpired:
         return '', 'Превышено время выполнения (макс. {} с).'.format(tsec)
     except Exception as e:
