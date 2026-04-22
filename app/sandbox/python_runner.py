@@ -100,6 +100,17 @@ else:
             _c = getattr(turtle, _cls_name)
             if isinstance(_c, type):
                 _c.mainloop = lambda self, *_a, **_k: None
+    # turtle внутри вызывает tkinter mainloop(0) — вечный цикл, пока «живо» окно; режем здесь.
+    try:
+        import tkinter as _tki
+        _turtle_orig_tk_mloop = _tki.Misc.mainloop
+        def _turtle_tk_mloop(self, n=0):
+            if n == 0:
+                return None
+            return _turtle_orig_tk_mloop(self, n)
+        _tki.Misc.mainloop = _turtle_tk_mloop
+    except Exception:
+        pass
 
 _ALLOWED_MODULES = {
     're': re,
@@ -241,12 +252,23 @@ def normalize_leading_tabs_to_spaces(code: str, tab_width: int = 4) -> str:
     return '\n'.join(out)
 
 
+def _sandbox_timeout_seconds(code: str, explicit: int | None) -> int:
+    """Turtle + xvfb + tk: первый запуск и отрисовка часто > 5 с."""
+    if explicit is not None:
+        return explicit
+    c = (code or '').lower()
+    if 'turtle' in c:
+        return 30
+    return 5
+
+
 def run_python_sandbox(
     code: str,
-    timeout_sec: int = 5,
+    timeout_sec: int | None = None,
     task_files: list[tuple[str, bytes]] | None = None,
 ) -> tuple[str, str]:
     """Запуск кода Python в песочнице. task_files — [(filename, bytes), ...]."""
+    tsec = _sandbox_timeout_seconds(code, timeout_sec)
     xvfb = shutil.which('xvfb-run')
     cmd: list[str] = [sys.executable, '-c', PYTHON_RUNNER]
     if xvfb:
@@ -263,11 +285,11 @@ def run_python_sandbox(
                 input=code,
                 capture_output=True,
                 text=True,
-                timeout=timeout_sec,
+                timeout=tsec,
                 cwd=tmpdir,
             )
             return proc.stdout or '', proc.stderr or ''
     except subprocess.TimeoutExpired:
-        return '', 'Превышено время выполнения (макс. {} с).'.format(timeout_sec)
+        return '', 'Превышено время выполнения (макс. {} с).'.format(tsec)
     except Exception as e:
         return '', str(e)
