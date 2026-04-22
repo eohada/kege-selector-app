@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import base64
 import os
 import shutil
 import subprocess
@@ -227,6 +228,15 @@ try:
     if turtle is not None:
         safe['turtle'] = turtle
     exec(code, safe)
+    if turtle is not None:
+        try:
+            turtle.update()
+            _pss = os.path.join(_cwd, '.boostudy_turtle.ps')
+            _scr = turtle.getscreen()
+            _cv = _scr.getcanvas()
+            _cv.postscript(file=_pss, colormode='color')
+        except Exception:
+            pass
 except Exception as e:
     err.write(str(e))
 _py_sys.stdout = _real_sys.__stdout__
@@ -262,12 +272,85 @@ def _sandbox_timeout_seconds(code: str, explicit: int | None) -> int:
     return 5
 
 
+# Файл PostScript пишет раннер (tk canvas) в cwd песочницы.
+TURTLE_PS_NAME = '.boostudy_turtle.ps'
+_MAX_TURTLE_PNG = 2_500_000  # ~3.3MB base64
+
+
+def _postscript_to_png_b64(ps_path: str) -> str | None:
+    """PostScript → PNG (нужен ghostscript: gs) или ImageMagick: convert."""
+    if not os.path.isfile(ps_path) or os.path.getsize(ps_path) < 8:
+        return None
+    gs = shutil.which('gs')
+    if gs:
+        out_png: str | None = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as t:
+                out_png = t.name
+            r = subprocess.run(
+                [
+                    gs,
+                    '-dSAFER',
+                    '-dBATCH',
+                    '-dNOPAUSE',
+                    '-sDEVICE=png16m',
+                    '-dGraphicsAlphaBits=4',
+                    '-dTextAlphaBits=4',
+                    '-dEPSCrop',
+                    '-r150',
+                    f'-sOutputFile={out_png}',
+                    ps_path,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=25,
+            )
+            if r.returncode == 0 and out_png and os.path.isfile(out_png) and os.path.getsize(out_png) > 0:
+                with open(out_png, 'rb') as f:
+                    b = f.read()
+                if len(b) <= _MAX_TURTLE_PNG:
+                    return base64.b64encode(b).decode('ascii')
+        except Exception:
+            pass
+        finally:
+            if out_png and os.path.isfile(out_png):
+                try:
+                    os.unlink(out_png)
+                except OSError:
+                    pass
+    cvt = shutil.which('convert')
+    if cvt:
+        out_png2: str | None = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as t:
+                out_png2 = t.name
+            r = subprocess.run(
+                [cvt, '-density', '150', ps_path, out_png2],
+                capture_output=True,
+                timeout=25,
+            )
+            if r.returncode == 0 and out_png2 and os.path.isfile(out_png2) and os.path.getsize(out_png2) > 0:
+                with open(out_png2, 'rb') as f:
+                    b = f.read()
+                if len(b) <= _MAX_TURTLE_PNG:
+                    return base64.b64encode(b).decode('ascii')
+        except Exception:
+            pass
+        finally:
+            if out_png2 and os.path.isfile(out_png2):
+                try:
+                    os.unlink(out_png2)
+                except OSError:
+                    pass
+    return None
+
+
 def run_python_sandbox(
     code: str,
     timeout_sec: int | None = None,
     task_files: list[tuple[str, bytes]] | None = None,
-) -> tuple[str, str]:
-    """Запуск кода Python в песочнице. task_files — [(filename, bytes), ...]."""
+) -> tuple[str, str, str | None]:
+    """Запуск кода Python в песочнице. Возвращает (stdout, stderr, base64 png или None)."""
     tsec = _sandbox_timeout_seconds(code, timeout_sec)
     xvfb = shutil.which('xvfb-run')
     cmd: list[str] = [sys.executable, '-c', PYTHON_RUNNER]
@@ -290,14 +373,17 @@ def run_python_sandbox(
             )
             stdout = (proc.stdout or '').strip()
             stderr = (proc.stderr or '').strip()
-            # turtle не пишет в консоль — ученик думает, что «ничего не произошло»
-            if (not stdout) and (not stderr) and 'turtle' in (code or '').lower():
+            turtle_b64: str | None = None
+            if 'turtle' in (code or '').lower():
+                ps = os.path.join(tmpdir, TURTLE_PS_NAME)
+                turtle_b64 = _postscript_to_png_b64(ps)
+            if not turtle_b64 and (not stdout) and (not stderr) and 'turtle' in (code or '').lower():
                 stdout = (
-                    '[turtle] Код выполнен без ошибок. Рисунок в окне в браузере не показывается — '
-                    'добавьте print(...) в программу, чтобы увидеть числа в «Вывод».'
+                    '[turtle] Код выполнен. Рисунок не сгенерировался (нужен ghostscript: «gs» в '
+                    'образе) или в программе нет рисования. Можно добавить print(...).'
                 )
-            return stdout, stderr
+            return stdout, stderr, turtle_b64
     except subprocess.TimeoutExpired:
-        return '', 'Превышено время выполнения (макс. {} с).'.format(tsec)
+        return '', 'Превышено время выполнения (макс. {} с).'.format(tsec), None
     except Exception as e:
-        return '', str(e)
+        return '', str(e), None

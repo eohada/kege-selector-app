@@ -773,7 +773,7 @@
                             <span class="code-editor-toggle-icon">▶</span>
                         </button>
                         <div class="code-editor-panel bg-surface border-t border-stroke" style="display: none; padding: 1rem;">
-                            <p class="code-editor-hint">Python 3. Типичные модули ЕГЭ: <code>re</code>, <code>itertools</code>, <code>math</code>, <code>functools</code>, <code>collections</code> (в т.ч. <code>collections.abc</code>), <code>heapq</code>, <code>bisect</code>, <code>copy</code>, <code>random</code>, <code>operator</code>, <code>string</code>, <code>decimal</code>, <code>datetime</code>, <code>enum</code>, <code>statistics</code>, <code>json</code>, <code>hashlib</code>, <code>contextlib</code>, <code>dataclasses</code>, <code>typing</code>, <code>fractions</code>, <code>textwrap</code>, <code>abc</code>, <code>struct</code>, <code>binascii</code>, <code>ipaddress</code>; ограниченный <code>sys</code> (<code>setrecursionlimit</code> / <code>getrecursionlimit</code>); <code>turtle</code> — если в образе есть <code>xvfb-run</code> и tk. <code>done()</code>/<code>mainloop()</code> не блокируют. Окно с рисунком в интерфейсе не показывается — смотрите «Вывод» (в т.ч. служебная строка для turtle) и <code>print()</code>. Файлы: <code>open('имя_файла')</code>.</p>
+                            <p class="code-editor-hint">Python 3. Типичные модули ЕГЭ: <code>re</code>, <code>itertools</code>, <code>math</code>, <code>functools</code>, <code>collections</code> (в т.ч. <code>collections.abc</code>), <code>heapq</code>, <code>bisect</code>, <code>copy</code>, <code>random</code>, <code>operator</code>, <code>string</code>, <code>decimal</code>, <code>datetime</code>, <code>enum</code>, <code>statistics</code>, <code>json</code>, <code>hashlib</code>, <code>contextlib</code>, <code>dataclasses</code>, <code>typing</code>, <code>fractions</code>, <code>textwrap</code>, <code>abc</code>, <code>struct</code>, <code>binascii</code>, <code>ipaddress</code>; ограниченный <code>sys</code> (<code>setrecursionlimit</code> / <code>getrecursionlimit</code>); <code>turtle</code> — <code>xvfb-run</code>, tk и <code>gs</code> (ghostscript) в образе: рисунок появится под «Вывод». <code>done()</code>/<code>mainloop()</code> не блокируют. Файлы: <code>open('имя_файла')</code>.</p>
                             <div class="code-editor-cm-wrap" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
                                 <textarea class="code-editor-text" rows="14" placeholder="# Ваш код&#10;import math&#10;print(math.sqrt(16))" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; padding: 0.75rem; border: none; background: var(--surface-1); color: var(--text-primary); resize: vertical; box-sizing: border-box;">{{ task_item.answer.student_code if task_item.answer and task_item.answer.student_code else '' }}</textarea>
                             </div>
@@ -785,6 +785,10 @@
                             <div class="code-editor-output-wrap" style="margin-top: 0.75rem;">
                                 <label class="code-editor-output-label">Вывод:</label>
                                 <pre class="code-editor-output" style="margin: 0.35rem 0 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; min-height: 3rem; max-height: 12rem; overflow: auto;"></pre>
+                                <div class="code-editor-turtle-wrap" style="display: none; margin-top: 0.65rem;">
+                                    <div class="code-editor-turtle-label" style="font-size: 0.8em; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Рисунок turtle</div>
+                                    <img class="code-editor-turtle-img" alt="Рисунок turtle" style="display: block; max-width: 100%; max-height: min(50vh, 400px); height: auto; object-fit: contain; border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,.04);" />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -978,6 +982,10 @@
                         <div class="code-editor-output-wrap" style="margin-top: 0.75rem;">
                             <label class="code-editor-output-label">Вывод:</label>
                             <pre class="code-editor-output" style="margin: 0.35rem 0 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; min-height: 3rem; max-height: 12rem; overflow: auto;"></pre>
+                            <div class="code-editor-turtle-wrap" style="display: none; margin-top: 0.65rem;">
+                                <div class="code-editor-turtle-label" style="font-size: 0.8em; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Рисунок turtle</div>
+                                <img class="code-editor-turtle-img" alt="Рисунок turtle" style="display: block; max-width: 100%; max-height: min(50vh, 400px); height: auto; object-fit: contain; border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,.04);" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1308,6 +1316,17 @@
                                 text = (o ? o + '\n\n' : '') + '--- stderr ---\n' + e;
                             }
                             output.textContent = text || '(пусто)';
+                            var tw = wrap && wrap.querySelector('.code-editor-turtle-wrap');
+                            var ti = wrap && wrap.querySelector('.code-editor-turtle-img');
+                            if (tw && ti) {
+                                if (data.turtle_image_b64) {
+                                    ti.src = 'data:image/png;base64,' + data.turtle_image_b64;
+                                    tw.style.display = 'block';
+                                } else {
+                                    tw.style.display = 'none';
+                                    ti.removeAttribute('src');
+                                }
+                            }
                         } else {
                             output.textContent = 'Ошибка: ' + (data.error || data.message || 'Не удалось запустить');
                         }

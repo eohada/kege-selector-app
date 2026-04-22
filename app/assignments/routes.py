@@ -3497,8 +3497,11 @@ def submission_run_code(submission_id):
         task_id=at.task_id if at else None,
         user_id=current_user.id,
     )
-    stdout, stderr = run_python_sandbox(code, task_files=task_files)
-    return jsonify({'success': True, 'stdout': stdout, 'stderr': stderr})
+    stdout, stderr, turtle_b64 = run_python_sandbox(code, task_files=task_files)
+    payload: dict = {'success': True, 'stdout': stdout, 'stderr': stderr}
+    if turtle_b64:
+        payload['turtle_image_b64'] = turtle_b64
+    return jsonify(payload)
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/save-code', methods=['POST'])
