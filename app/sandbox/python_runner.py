@@ -88,6 +88,18 @@ try:
     import turtle
 except Exception:
     turtle = None
+else:
+    # В headless/песочнице done()/mainloop() блокируют процесс, ожидая закрытия окна — таймаут.
+    def _turtle_noop(*_a, **_k):
+        return None
+    turtle.done = _turtle_noop
+    turtle.mainloop = _turtle_noop
+    turtle.exitonclick = _turtle_noop
+    for _cls_name in ('TurtleScreen', '_Screen', 'Screen'):
+        if hasattr(turtle, _cls_name):
+            _c = getattr(turtle, _cls_name)
+            if isinstance(_c, type):
+                _c.mainloop = lambda self, *_a, **_k: None
 
 _ALLOWED_MODULES = {
     're': re,
