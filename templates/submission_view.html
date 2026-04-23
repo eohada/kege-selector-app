@@ -576,7 +576,7 @@
                     {% set card_state_class = ' task-incorrect' %}
                 {% endif %}
             {% endif %}
-            <div class="task-card{{ card_state_class }}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
+            <div class="task-card{{ card_state_class }}{% if not loop.first %} task-panel-hidden{% else %} task-panel-active{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
                     <div style="display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;">
                         <span class="task-number">{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}</span>
@@ -873,7 +873,7 @@
                 {% set card_state_class = ' task-pending-review' %}
             {% endif %}
         {% endif %}
-        <div class="task-card{{ card_state_class }}" id="task-{{ loop.index }}">
+        <div class="task-card{{ card_state_class }}{% if not loop.first %} task-panel-hidden{% else %} task-panel-active{% endif %}" id="task-{{ loop.index }}">
             <div class="task-header">
                 <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                     <span class="task-number">{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}</span>

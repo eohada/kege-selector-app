@@ -568,7 +568,7 @@
         <form id="grade-form">
             {% for task_item in tasks_view %}
             {% set grading_rows = [task_item] + (task_item.triplet_items if task_item.is_triplet_19_21 else []) %}
-            <div class="task-card-grade{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}{% if task_item.is_triplet_19_21 %} triplet-card{% endif %}{% if task_item.assignment_task.assignment_task_id in unread_task_ids %} has-chat-unread{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
+            <div class="task-card-grade{% if not loop.first %} task-panel-hidden{% else %} task-panel-active{% endif %}{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}{% if task_item.is_triplet_19_21 %} triplet-card{% endif %}{% if task_item.assignment_task.assignment_task_id in unread_task_ids %} has-chat-unread{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header-grade">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
