@@ -390,6 +390,10 @@ def register_hooks(app):
                 return None
             if request.path.startswith('/api/telegram/') or request.path.startswith('/telegram/'):
                 return None
+            # Presence должен обновляться по page-view/heartbeat, а не по служебным API
+            # (иначе /api/audit-log перетирает activity в fallback).
+            if request.path.startswith('/api/'):
+                return None
             if request.path.startswith('/api/presence/'):
                 return None
 
