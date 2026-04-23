@@ -1,24 +1,14 @@
+{% extends 'base.html' %}
 {% from '_task_content_block.html' import render_task_content %}
-<!DOCTYPE html>
-<html lang="ru" data-student-lesson-room="1">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ lesson.topic or 'Урок' }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=2.8">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+{% block html_attrs %}data-student-lesson-room="1"{% endblock %}
+{% block title %}{{ lesson.topic or 'Урок' }} · BooStudy{% endblock %}
+{% set active_page = 'student_profile' if (is_student_view or is_parent_view) else 'dashboard' %}
+{% block body_attrs %}data-cinema-scene="lesson"{% endblock %}
+{% block body_class %}{% if is_student_view or is_parent_view %}layout-student{% else %}layout-teacher teacher-mode{% endif %} min-h-screen{% endblock %}
+
+{% block head_css %}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    {% if is_student_view or is_parent_view %}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
-    {% endif %}
-    <script src="{{ url_for('static', filename='workspace/file-manager.js') }}?v=6"></script>
-    <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}?v=6"></script>
-    {% include '_ux_enhancements.html' %}
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
     <style>
     .hide-scroll::-webkit-scrollbar { display: none; }
     .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
@@ -697,33 +687,15 @@
         }
     }
     </style>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body data-cinema-scene="lesson" class="{% if is_student_view or is_parent_view %}layout-student {% else %}teacher-mode {% endif %}min-h-screen">
-    <div class="app-layout">
-        {% if is_student_view or is_parent_view %}
-        {% set active_page = 'student_profile' %}
-        {% include '_dock_nav.html' %}
-        {% else %}
-        {% set active_page = None %}
-        {% include '_sidebar.html' %}
-        {% endif %}
-    <div class="app-main">
-        {% if not is_student_view and not is_parent_view %}
-        {% include '_topbar.html' %}
-        {% endif %}
-        <main class="app-content">
+{% endblock %}
+
+{% block head_js %}
+<script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
+<script src="{{ url_for('static', filename='workspace/file-manager.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='workspace/file-viewer.js') }}?v=6"></script>
+{% endblock %}
+
+{% block content %}
         <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
 
         <div class="flex items-center">
@@ -1651,15 +1623,13 @@
     </form>
     {% endfor %}
 
-    </main>
-    </div>
-    </div>
+{% endblock %}
 
+{% block scripts_extra %}
     <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
     <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
 
     <script>
@@ -3669,11 +3639,5 @@
         });
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
-    {% if is_student_view or is_parent_view %}
-    {% include '_command_palette.html' %}
-    {% endif %}
-    <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
     {% include '_partials/file_viewer_modal.html' %}
-    {% include '_partials/canvas_overlay.html' %}
-</body>
-</html>
+{% endblock %}

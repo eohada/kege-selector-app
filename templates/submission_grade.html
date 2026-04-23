@@ -1,32 +1,18 @@
+{% extends 'base.html' %}
 {% from '_ui_icon.html' import ui_icon %}
 {% from '_task_content_block.html' import render_task_content %}
-<!DOCTYPE html>
-<html lang="ru" data-grade-page="1">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Проверка работы - {{ assignment.title }}</title>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.1">
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    {% include '_ux_enhancements.html' %}
-    
-    <style>
-        body.layout-teacher .app-content.grade-app-content {
+{% block html_attrs %}data-grade-page="1"{% endblock %}
+{% block title %}Проверка работы - {{ assignment.title }}{% endblock %}
+{% set active_page = 'assignments' %}
+{% block body_class %}layout-teacher{% endblock %}
+
+{% block head_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
+<style>
+        body.layout-teacher .grade-app-content {
             background: var(--color-bg-app, #f8fafc);
         }
-        [data-theme="dark"] body.layout-teacher .app-content.grade-app-content {
+        [data-theme="dark"] body.layout-teacher .grade-app-content {
             background: var(--color-bg-app, #0f172a);
         }
         .grade-hero {
@@ -475,22 +461,14 @@
             box-shadow: inset 0 -2px 0 rgba(180, 83, 9, 0.18);
         }
     </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="layout-teacher">
-    <div class="app-layout">
-        {% set active_page = 'assignments' %}
-        {% include '_dock_nav.html' %}
-    <div class="app-main">
-        <main class="app-content grade-app-content w-full mx-auto mt-5 pb-32">
+{% endblock %}
+
+{% block head_js %}
+<script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+        <div class="grade-app-content w-full mx-auto mt-5 pb-32">
         <div class="grade-page-inner">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К работе</a></p>
 
@@ -846,9 +824,7 @@
         </section>
 
         </div>
-    </main>
-    </div>
-</div>
+        </div>
 
     <!-- Модальное окно «Вернуть на доработку»: дедлайн и попытки -->
     <div id="return-revision-modal" class="return-revision-overlay" style="display: none;" aria-hidden="true">
@@ -889,7 +865,9 @@
         .return-revision-field .neo-input { width: 100%; box-sizing: border-box; }
         .return-revision-actions { display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap; }
     </style>
-    
+{% endblock %}
+
+{% block scripts_extra %}
     <script>
     var assignmentDeadline = {% if assignment.deadline %}"{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') }}"{% else %}null{% endif %};
     var assignmentMaxAttempts = {{ assignment.max_attempts_default or 1 }};
@@ -1424,8 +1402,6 @@
             });
         });
     </script>
-    <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
     {% include '_partials/canvas_viewer_modal.html' %}
-</body>
-</html>
+{% endblock %}

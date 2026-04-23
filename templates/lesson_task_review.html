@@ -1,20 +1,11 @@
+{% extends 'base.html' %}
 {% from '_task_content_block.html' import render_task_content %}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Проверка · Задача урока</title>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=2.4">
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    {% include '_ux_enhancements.html' %}
-    <style>
+{% block title %}Проверка · Задача урока · BooStudy{% endblock %}
+{% set active_page = 'review_queue' %}
+{% block body_class %}layout-teacher{% endblock %}
+
+{% block head_css %}
+<style>
         .page-hero {
             background: radial-gradient(900px 420px at 14% 10%, rgba(0, 255, 213, 0.10), transparent 60%),
                         radial-gradient(900px 420px at 85% 20%, rgba(31, 123, 255, 0.10), transparent 55%);
@@ -108,32 +99,19 @@
         .correctness-toggle button.active-none { background: rgba(255,255,255,0.06); color: var(--text-muted); }
         .muted { color: var(--text-muted); }
     </style>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body class="layout-teacher">
-    <div class="app-layout">
-        {% include '_sidebar.html' %}
-    <div class="app-main">
-        {% include '_topbar.html' %}
-        <main class="app-content">
+{% endblock %}
 
+{% block head_js %}
+<script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
         {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
         {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) if lesson and lesson.lesson_date else None %}
         {% set tnum = (lesson_task.task.task_number if lesson_task and lesson_task.task and lesson_task.task.task_number else None) %}
         {% set task_status = ((lesson_task.status or 'pending')|lower) %}
 
-        <main style="margin-top: 1.25rem;">
             <section class="page-hero">
                 <div style="display:flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start;">
                     <div style="min-width:0;">
@@ -143,8 +121,8 @@
                         </div>
                         <h1 class="hero-title">Проверка задачи {% if tnum %}№{{ tnum }}{% else %}#{{ lesson_task.lesson_task_id }}{% endif %}</h1>
                         <div class="hero-meta">
-                            <span class="pill"><i class="fas fa-user-graduate"></i> {{ student.name if student else '—' }}</span>
-                            <span class="pill"><i class="far fa-calendar"></i> {{ lesson_local.strftime('%d.%m.%Y %H:%M') if lesson_local else '—' }}</span>
+                            <span class="pill"><i class="ph-bold ph-student"></i> {{ student.name if student else '—' }}</span>
+                            <span class="pill"><i class="ph-bold ph-calendar-blank"></i> {{ lesson_local.strftime('%d.%m.%Y %H:%M') if lesson_local else '—' }}</span>
                             <span class="pill">
                                 {% if assignment_type == 'classwork' %}КР{% elif assignment_type == 'exam' %}Проверочная{% else %}ДЗ{% endif %}
                             </span>
@@ -155,7 +133,7 @@
                     </div>
                     <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center; justify-content:flex-end;">
                         <button type="button" class="neo-button accent" onclick="saveFeedback()">
-                            <i class="fas fa-save ui-icon ui-icon--sm"></i> Сохранить
+                            <i class="ph-bold ph-floppy-disk text-base"></i> Сохранить
                         </button>
                     </div>
                 </div>
@@ -180,7 +158,7 @@
                         {% if correct_val %}
                         <div style="margin-top: 0.8rem; padding: 0.9rem; background: rgba(0, 254, 202, 0.05); border: 1px solid rgba(0, 254, 202, 0.2); border-radius: var(--radius-md);">
                             <div style="font-weight: 900; color: var(--success); display:flex; align-items:center; gap:.5rem; flex-wrap: wrap;">
-                                <i class="fas fa-check"></i> Правильный ответ:
+                                <i class="ph-bold ph-check"></i> Правильный ответ:
                                 <span style="font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); padding: 0.2rem 0.5rem; border-radius: 6px;">{{ correct_val }}</span>
                             </div>
                         </div>
@@ -195,9 +173,9 @@
                         <div class="neo-label">Вердикт (верно/неверно)</div>
                         <div style="margin-top: 0.5rem; display:flex; gap:.6rem; align-items:center; flex-wrap: wrap;">
                             <div class="correctness-toggle" role="group" aria-label="correctness">
-                                <button type="button" id="btn-correct" onclick="setCorrectness('correct')"><i class="fas fa-check"></i></button>
-                                <button type="button" id="btn-none" onclick="setCorrectness('none')"><i class="fas fa-minus"></i></button>
-                                <button type="button" id="btn-incorrect" onclick="setCorrectness('incorrect')"><i class="fas fa-times"></i></button>
+                                <button type="button" id="btn-correct" onclick="setCorrectness('correct')"><i class="ph-bold ph-check"></i></button>
+                                <button type="button" id="btn-none" onclick="setCorrectness('none')"><i class="ph-bold ph-minus"></i></button>
+                                <button type="button" id="btn-incorrect" onclick="setCorrectness('incorrect')"><i class="ph-bold ph-x"></i></button>
                             </div>
                             <span class="muted" id="correctness-label"></span>
                         </div>
@@ -253,14 +231,14 @@
                         <textarea class="neo-textarea" id="comment_new" style="margin-top: 0.75rem;" placeholder="Добавить новый комментарий в историю..."></textarea>
                         <div style="margin-top: 0.6rem; display:flex; gap:.6rem; flex-wrap: wrap;">
                             <button type="button" class="neo-button outline sm" onclick="addComment()">
-                                <i class="fas fa-comment-dots ui-icon ui-icon--sm"></i> Добавить в историю
+                                <i class="ph-bold ph-chat-dots text-base"></i> Добавить в историю
                             </button>
                         </div>
                     </div>
 
                     <div style="margin-top: 1rem; display:flex; gap:.6rem; flex-wrap: wrap;">
                         <button type="button" class="neo-button accent" onclick="saveFeedback()">
-                            <i class="fas fa-save ui-icon ui-icon--sm"></i> Сохранить
+                            <i class="ph-bold ph-floppy-disk text-base"></i> Сохранить
                         </button>
                         <a class="neo-button ghost" href="{{ back_queue_url }}" style="text-decoration:none;">
                             ↩ В очередь
@@ -268,11 +246,10 @@
                     </div>
                 </aside>
             </div>
-        </main>
-    </main>
-    </div>
 </div>
+{% endblock %}
 
+{% block scripts_extra %}
     <script>
         const LESSON_ID = {{ lesson.lesson_id }};
         const LESSON_TASK_ID = {{ lesson_task.lesson_task_id }};
@@ -406,6 +383,5 @@
             }
         });
     </script>
-</body>
-</html>
+{% endblock %}
 

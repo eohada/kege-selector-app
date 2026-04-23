@@ -2,16 +2,17 @@
 {% block title %}Ученики · BooStudy{% endblock %}
 
 {% set active_page = 'dashboard' %}
+{% block body_class %}layout-teacher{% endblock %}
 
 {% block content %}
 <div class="space-y-8">
 
     {# ── HERO + BENTO STATS ── #}
     <div class="flex flex-col lg:flex-row gap-6">
-        <div class="lg:w-1/3 bg-surface rounded-[28px] p-8 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between">
+        <div class="lg:w-1/3 bg-surface dark:bg-dark-card rounded-[28px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between">
             <div>
-                <h1 class="text-3xl font-black text-primary tracking-tight mb-2">Ученики</h1>
-                <p class="text-muted font-medium text-sm leading-relaxed">
+                <h1 class="text-3xl font-black text-primary dark:text-white tracking-tight mb-2">Ученики</h1>
+                <p class="text-muted dark:text-dark-muted font-medium text-sm leading-relaxed">
                     Управление потоком. У вас {{ total_students }} активн{{ 'ых' if total_students != 1 else 'ый' }} ученик{{ 'ов' if total_students != 1 else '' }} в этом месяце.
                 </p>
             </div>
@@ -51,20 +52,20 @@
 
             {# Ближайший урок — как в макете (fallback без данных) #}
             <a href="{{ url_for('schedule.schedule') }}"
-               class="bg-surface rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between cursor-pointer hover:shadow-tactile-hover transition-all group">
+               class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between cursor-pointer hover:shadow-tactile-hover transition-all group">
                 <div class="flex justify-between items-start">
                     <span class="text-xs font-bold text-muted bg-surface-alt px-3 py-1.5 rounded-lg uppercase tracking-wide">Ближайший урок</span>
                     <i class="ph-fill ph-video-camera text-2xl text-boo-cyan group-hover:scale-110 transition-transform"></i>
                 </div>
                 <div class="mt-6">
                     {% if next_lesson is defined and next_lesson %}
-                        <h3 class="text-xl font-black text-primary mb-1">{{ next_lesson.title }}</h3>
-                        <p class="text-sm font-bold text-muted mb-0 flex items-center gap-1">
+                        <h3 class="text-xl font-black text-primary dark:text-white mb-1">{{ next_lesson.title }}</h3>
+                        <p class="text-sm font-bold text-muted dark:text-dark-muted mb-0 flex items-center gap-1">
                             <i class="ph-bold ph-clock text-boo-accent"></i> {{ next_lesson.time_display }}
                         </p>
                     {% else %}
-                        <h3 class="text-xl font-black text-primary mb-1">Нет ближайших уроков</h3>
-                        <p class="text-sm font-bold text-muted mb-0 flex items-center gap-1">
+                        <h3 class="text-xl font-black text-primary dark:text-white mb-1">Нет ближайших уроков</h3>
+                        <p class="text-sm font-bold text-muted dark:text-dark-muted mb-0 flex items-center gap-1">
                             <i class="ph-bold ph-clock text-boo-accent"></i> Запланируйте занятие в расписании
                         </p>
                     {% endif %}
@@ -72,7 +73,7 @@
             </a>
 
             {# KPI: Активные ученики (как отдельная карточка) #}
-            <div class="bg-surface rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between">
+            <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between">
                 <div class="flex items-start justify-between">
                     <i class="ph-fill ph-users-three text-2xl text-boo-cyan"></i>
                     {% if students_delta_7d is defined %}
@@ -80,13 +81,13 @@
                     {% endif %}
                 </div>
                 <div class="mt-6">
-                    <div class="text-5xl font-black tracking-tight text-primary">{{ total_students }}</div>
-                    <div class="text-xs font-bold text-muted uppercase tracking-wide mt-1">активных учеников</div>
+                    <div class="text-5xl font-black tracking-tight text-primary dark:text-white">{{ total_students }}</div>
+                    <div class="text-xs font-bold text-muted dark:text-dark-muted uppercase tracking-wide mt-1">активных учеников</div>
                 </div>
             </div>
 
             {# KPI: Проведено уроков (как отдельная карточка) #}
-            <div class="bg-surface rounded-[28px] p-6 border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col justify-between">
+            <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between">
                 <div class="flex items-start justify-between">
                     <i class="ph-fill ph-lightning text-2xl text-boo-accent"></i>
                     {% if completed_lessons_delta_7d is defined %}
@@ -94,8 +95,8 @@
                     {% endif %}
                 </div>
                 <div class="mt-6">
-                    <div class="text-5xl font-black tracking-tight text-primary">{{ completed_lessons }}</div>
-                    <div class="text-xs font-bold text-muted uppercase tracking-wide mt-1">проведённых уроков</div>
+                    <div class="text-5xl font-black tracking-tight text-primary dark:text-white">{{ completed_lessons }}</div>
+                    <div class="text-xs font-bold text-muted dark:text-dark-muted uppercase tracking-wide mt-1">проведённых уроков</div>
                 </div>
             </div>
         </div>
@@ -125,7 +126,7 @@
 
     {# ── FILTERS (Segmented + Search) ── #}
     <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div class="bg-slate-200/50 p-1.5 rounded-xl border border-slate-200 inline-flex w-full md:w-auto">
+        <div class="bg-slate-200/50 dark:bg-white/5 p-1.5 rounded-xl border border-slate-200 dark:border-white/[0.08] inline-flex w-full md:w-auto">
             <a href="{{ url_for('main.dashboard', search=search_query, show_archive='false') }}"
                class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if not show_archive and not category_filter %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %}">
                 Все ({{ total_students }})
@@ -149,7 +150,7 @@
             {% if category_filter %}<input type="hidden" name="category" value="{{ category_filter }}">{% endif %}
             <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-muted"></i>
             <input type="text" name="search" value="{{ search_query }}" placeholder="Поиск ученика (Ctrl+F)"
-                   class="w-full bg-surface border border-slate-200 border-b-2 border-b-slate-300 rounded-xl pl-11 pr-12 py-2.5 text-sm font-medium text-primary focus:outline-none focus:border-b-boo-primary transition-colors shadow-sm dark:shadow-none dark:shadow-none">
+                   class="w-full bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.08] border-b-2 border-b-slate-300 dark:border-b-0 rounded-xl pl-11 pr-12 py-2.5 text-sm font-medium text-primary dark:text-white focus:outline-none focus:border-b-boo-primary transition-colors shadow-sm dark:shadow-glass-dark">
             <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-boo-primary transition-colors p-1 bg-transparent border-none cursor-pointer" title="Фильтры">
                 <i class="ph-bold ph-faders text-lg"></i>
             </button>

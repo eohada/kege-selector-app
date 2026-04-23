@@ -1,29 +1,16 @@
+{% extends 'base.html' %}
 {% from '_ui_icon.html' import ui_icon %}
 {% from '_task_content_block.html' import render_task_content %}
-<!DOCTYPE html>
-<html lang="ru" data-student-submission="1">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ assignment.title }} - Выполнение работы</title>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
-    
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.1">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+{% block html_attrs %}data-student-submission="1"{% endblock %}
+{% block title %}{{ assignment.title }} - Выполнение работы{% endblock %}
+{% set active_page = 'assignments' %}
+{% block body_attrs %}data-cinema-scene="submission-work"{% if tasks_view %} data-canvas-task-id="{{ tasks_view[0].task.task_id }}" data-canvas-context-type="submission" data-canvas-context-id="{{ submission.submission_id }}"{% endif %}{% endblock %}
+{% block body_class %}min-h-screen{% endblock %}
+
+{% block head_css %}
     <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
-    <script src="{{ url_for('static', filename='workspace/file-manager.js') }}?v=6"></script>
-    <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}?v=6"></script>
     <style>
         /* Редактор кода: в тёмной теме фон и текст по переменным темы */
         [data-theme="dark"] .code-editor-panel .CodeMirror { background: var(--surface-1); color: var(--text-primary); }
@@ -59,10 +46,7 @@
         .boo-turtle-lb-hint kbd { display: inline-block; padding: 0.1em 0.35em; font-size: 0.9em; font-family: inherit; background: var(--surface-2, #f1f5f9); border: 1px solid var(--stroke-1, #e2e8f0); border-radius: 4px; }
         .boo-turtle-lb-panel:fullscreen { max-height: 100% !important; min-height: 0 !important; margin: 0; border-radius: 0; width: 100% !important; height: 100% !important; }
         .boo-turtle-lb-panel:fullscreen .boo-turtle-lb-viewport { flex: 1 1 0; min-height: 0; max-height: none; }
-    </style>
-    {% include '_ux_enhancements.html' %}
     
-    <style>
         /* Визуал как tasks_example_light / tasks_example_dark; размеры hero и task-nav — в разметке */
         body {
             background: var(--color-bg-app);
@@ -477,24 +461,16 @@
             background: linear-gradient(180deg, rgba(91, 33, 182, 0.48) 0%, rgba(79, 70, 229, 0.34) 100%);
         }
     </style>
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
-</head>
-<body data-cinema-scene="submission-work"
-      {% if tasks_view %}data-canvas-task-id="{{ tasks_view[0].task.task_id }}" data-canvas-context-type="submission" data-canvas-context-id="{{ submission.submission_id }}"{% endif %}
-      class="{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student {% endif %}min-h-screen">
-    <div class="app-layout">
-        {% set active_page = 'assignments' %}
-        {% include '_dock_nav.html' %}
-    <div class="app-main">
-        <main class="app-content w-full mx-auto mt-5 pb-32">
+{% endblock %}
+
+{% block head_js %}
+<script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
+<script src="{{ url_for('static', filename='workspace/file-manager.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='workspace/file-viewer.js') }}?v=6"></script>
+{% endblock %}
+
+{% block content %}
+        <div class="submission-workspace w-full mx-auto mt-5 pb-32">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
         <div class="submission-header relative overflow-hidden">
             {% set awaiting_work_start = submission.status == 'ASSIGNED' and not submission.started_at %}
@@ -1108,10 +1084,10 @@
                 <button type="submit" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-md text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 shrink-0">Отправить</button>
             </form>
         </section>
-        </main>
-    </div>
-    </div>
-    
+        </div>
+{% endblock %}
+
+{% block scripts_extra %}
     <script src="{{ url_for('static', filename='turtle-image-viewer.js') }}?v=3"></script>
     <script>
         function handleFileDrop(event, assignmentTaskId) {
@@ -2116,7 +2092,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
     <script>if (typeof window._initReadonlyEditors === 'function') window._initReadonlyEditors();</script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
-    <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
     <script>
         (function() {
             var navButtons = Array.from(document.querySelectorAll('.task-nav-btn'));
@@ -2170,7 +2145,6 @@
     </script>
     {% include '_partials/file_viewer_modal.html' %}
     {% include '_partials/canvas_viewer_modal.html' %}
-    {% include '_partials/canvas_overlay.html' %}
     <script>
         document.addEventListener('boo:load-code', function(e) {
             var content = e.detail && e.detail.content;
@@ -2184,5 +2158,4 @@
             }
         });
     </script>
-</body>
-</html>
+{% endblock %}
