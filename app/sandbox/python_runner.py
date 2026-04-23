@@ -235,8 +235,29 @@ try:
             _scr = turtle.getscreen()
             _cv = _scr.getcanvas()
             _cv.update_idletasks()
-            # Без x/y/width/height: в части стеков явный прямоугольник дал пустой PS/PNG; полный холст — по умолчанию.
-            _cv.postscript(file=_pss, colormode='color')
+            # Центр в turtle — (0,0) по центру холста; рисунок занимает лишь часть. Экспорт «всего квадрата»
+            # 0..W даёт огромные поля и ощущение смещения. Экспорт по bbox("all") — только мазня + отступ.
+            # Регион: верх-лево (x0,y0), вниз y; width/height в пикселях.
+            _bb = _cv.bbox("all")
+            if _bb and len(_bb) == 4 and not any(x is None for x in _bb):
+                _x0, _y0, _x1, _y1 = (float(t) for t in _bb)
+                _pad = 16.0
+                _w = int(_x1 - _x0 + 2.0 * _pad)
+                _h = int(_y1 - _y0 + 2.0 * _pad)
+                if _w < 1:
+                    _w = 1
+                if _h < 1:
+                    _h = 1
+                _cv.postscript(
+                    file=_pss,
+                    colormode="color",
+                    x=int(_x0 - _pad),
+                    y=int(_y0 - _pad),
+                    width=_w,
+                    height=_h,
+                )
+            else:
+                _cv.postscript(file=_pss, colormode='color')
         except Exception:
             pass
 except Exception as e:
@@ -278,12 +299,13 @@ def _sandbox_timeout_seconds(code: str, explicit: int | None) -> int:
 TURTLE_PS_NAME = '.boostudy_turtle.ps'
 _MAX_TURTLE_PNG = 2_500_000  # ~3.3MB base64
 
-# Выполняется внутри exec ДО кода ученика: холст по умолчанию 400×300 — обрезка; как в заданиях с screensize(2000,2000).
-# Не вызывать screensize в раннере до exec — ломалось с postscript/холстом; префикс в stdin — безопаснее.
+# Выполняется внутри exec ДО кода ученика: холст по умолчанию 400×300 — обрезка. Ниже — запас, чтобы сетка/прямоугольники
+# не уперлись в край; код может вызвать screensize() снова.
+# Не вызывать screensize в раннере до exec — ломалось; префикс в stdin.
 _TURTLE_CANVAS_PREFIX = (
     "try:\n"
     "    import turtle as _boostudy_turtle_sz\n"
-    "    _boostudy_turtle_sz.screensize(2000, 2000, 'white')\n"
+    "    _boostudy_turtle_sz.screensize(3000, 3000, 'white')\n"
     "except Exception:\n"
     "    pass\n\n"
 )
