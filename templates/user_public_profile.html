@@ -196,12 +196,16 @@
                         <span class="creator-row-key"><i class="ph-bold ph-activity"></i> Статус</span>
                         <span class="creator-row-value"><span class="creator-chip" style="background:{% if public_user.is_online_now() %}#ecfdf5{% else %}#f1f5f9{% endif %};border-color:{% if public_user.is_online_now() %}#bbf7d0{% else %}#cbd5e1{% endif %};color:{% if public_user.is_online_now() %}#166534{% else %}#334155{% endif %};"><i class="ph-fill {% if public_user.is_online_now() %}ph-check-circle{% else %}ph-moon{% endif %}"></i> {{ public_user.presence_state_label() }}</span></span>
                     </div>
-                    {% if public_user.get_live_activity_text() %}
                     <div class="creator-row">
                         <span class="creator-row-key"><i class="ph-bold ph-lightning"></i> Активность</span>
-                        <span class="creator-row-value">{{ public_user.get_live_activity_text() }}</span>
+                        <span id="pub-summary-activity" class="creator-row-value">
+                            {% if public_user.is_online_now() %}
+                                {{ public_user.get_live_activity_text() or (_custom_status and ('"' ~ _custom_status ~ '"')) or 'На платформе' }}
+                            {% else %}
+                                Неактивен
+                            {% endif %}
+                        </span>
                     </div>
-                    {% endif %}
                 </div>
             </div>
         </section>
@@ -395,6 +399,7 @@
 
     var dotEl = document.getElementById('pub-presence-dot');
     var actEl = document.getElementById('pub-presence-activity');
+    var summaryActEl = document.getElementById('pub-summary-activity');
 
     function applyPresence(online, activity, raw) {
         if (dotEl) {
@@ -414,6 +419,13 @@
                 actEl.style.display = '';
             } else {
                 actEl.style.display = 'none';
+            }
+        }
+        if (summaryActEl) {
+            if (online) {
+                summaryActEl.textContent = activity || (customStatus ? ('"' + customStatus + '"') : 'На платформе');
+            } else {
+                summaryActEl.textContent = 'Неактивен';
             }
         }
     }
