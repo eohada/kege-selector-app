@@ -227,6 +227,13 @@ try:
     }
     if turtle is not None:
         safe['turtle'] = turtle
+        # Холст по умолчанию 400×300 — рисование обрезается по краю canvas (как в PostScript/PNG),
+        # поэтому в среде на ПК/VS Code картинка больше. Задаём крупный холст до кода: код может
+        # вызвать screensize() и переопределить.
+        try:
+            turtle.screensize(2000, 2000, 'white')
+        except Exception:
+            pass
     exec(code, safe)
     if turtle is not None:
         try:
@@ -234,7 +241,15 @@ try:
             _pss = os.path.join(_cwd, '.boostudy_turtle.ps')
             _scr = turtle.getscreen()
             _cv = _scr.getcanvas()
-            _cv.postscript(file=_pss, colormode='color')
+            _cv.update_idletasks()
+            _w = int(float(_cv.cget('width'))) or 2000
+            _h = int(float(_cv.cget('height'))) or 2000
+            if _w < 1:
+                _w = 2000
+            if _h < 1:
+                _h = 2000
+            # Весь холст в пикселях (не обрезка по видимому вьюпорту окна)
+            _cv.postscript(file=_pss, colormode='color', x=0, y=0, width=_w, height=_h)
         except Exception:
             pass
 except Exception as e:
@@ -296,7 +311,7 @@ def _postscript_to_png_b64(ps_path: str) -> str | None:
                     '-sDEVICE=png16m',
                     '-dGraphicsAlphaBits=4',
                     '-dTextAlphaBits=4',
-                    '-dEPSCrop',
+                    # Без -dEPSCrop: иначе по %%BoundingBox иногда срезались края, совпавшие с холстом
                     '-r150',
                     f'-sOutputFile={out_png}',
                     ps_path,
