@@ -1,8 +1,9 @@
 """
 Песочница Python для запуска кода ученика (ЕГЭ информатика).
 
-Раннер выполняется в отдельном subprocess; файлы задания — в cwd временной директории.
-При наличии xvfb-run в PATH запуск оборачивается для поддержки turtle/tkinter.
+Раннер в subprocess; файлы задания — в cwd. Доступны только: re, itertools, fnmatch,
+ipaddress, functools, sys (setrecursionlimit/getrecursionlimit), turtle; остальное через __import__ недоступно.
+При наличии xvfb-run в PATH — turtle/tkinter.
 """
 from __future__ import annotations
 
@@ -57,33 +58,11 @@ class _SysStub:
 
 _sys_stub = _SysStub()
 
-import itertools
-import math
-import ipaddress
 import re
+import itertools
 import functools
-import collections
-import heapq
-import bisect
-import copy
-import random
-import operator
-import string
-import decimal
-import datetime
-import enum
-import statistics
-import json
-import hashlib
-import contextlib
-import dataclasses
-import typing
-import collections.abc as collections_abc
-import fractions
-import textwrap
-import abc as abc_mod
-import struct
-import binascii
+import fnmatch
+import ipaddress
 
 try:
     import turtle
@@ -116,31 +95,9 @@ else:
 _ALLOWED_MODULES = {
     're': re,
     'itertools': itertools,
-    'math': math,
+    'fnmatch': fnmatch,
     'ipaddress': ipaddress,
     'functools': functools,
-    'collections': collections,
-    'heapq': heapq,
-    'bisect': bisect,
-    'copy': copy,
-    'random': random,
-    'operator': operator,
-    'string': string,
-    'decimal': decimal,
-    'datetime': datetime,
-    'enum': enum,
-    'statistics': statistics,
-    'json': json,
-    'hashlib': hashlib,
-    'contextlib': contextlib,
-    'dataclasses': dataclasses,
-    'typing': typing,
-    'collections.abc': collections_abc,
-    'fractions': fractions,
-    'textwrap': textwrap,
-    'abc': abc_mod,
-    'struct': struct,
-    'binascii': binascii,
     'sys': _sys_stub,
     'turtle': turtle,
 }
@@ -150,7 +107,7 @@ def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
         raise ImportError('Относительные импорты недоступны в песочнице')
     if name not in _ALLOWED_MODULES:
         raise ImportError(
-            "Модуль '" + name + "' недоступен в песочнице. Доступны stdlib-модули для ЕГЭ (см. подсказку в редакторе)."
+            "Модуль '" + name + "' недоступен в песочнице. См. «Доступные библиотеки» в подсказке к редактору кода."
         )
     mod = _ALLOWED_MODULES[name]
     if mod is None:
@@ -197,31 +154,9 @@ try:
         '__builtins__': safe_builtins,
         're': re,
         'itertools': itertools,
-        'math': math,
+        'fnmatch': fnmatch,
         'ipaddress': ipaddress,
         'functools': functools,
-        'collections': collections,
-        'heapq': heapq,
-        'bisect': bisect,
-        'copy': copy,
-        'random': random,
-        'operator': operator,
-        'string': string,
-        'decimal': decimal,
-        'datetime': datetime,
-        'enum': enum,
-        'statistics': statistics,
-        'json': json,
-        'hashlib': hashlib,
-        'contextlib': contextlib,
-        'dataclasses': dataclasses,
-        'typing': typing,
-        'fractions': fractions,
-        'textwrap': textwrap,
-        'abc': abc_mod,
-        'struct': struct,
-        'binascii': binascii,
-        'collections.abc': collections_abc,
         'sys': _sys_stub,
         'os': None,
     }

@@ -48,7 +48,7 @@ def _get_allowed_imports() -> list[str]:
                 seen.add(top)
                 out.append(top)
         return out[:50]
-    return ['math', 'itertools', 'collections', 'functools', 'heapq', 'bisect', 'string', 're']
+    return ['re', 'itertools', 'fnmatch', 'ipaddress', 'functools', 'sys', 'turtle']
 
 
 def validate_python_code_for_runner(code: str) -> dict[str, Any]:
