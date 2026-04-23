@@ -20,7 +20,7 @@
     var sLabel = document.getElementById('student-presence-label');
     var sAct = document.getElementById('student-presence-activity');
 
-    function applyMentorPresence(online, activity) {
+    function applyMentorPresence(online, activity, raw) {
         if (mentorId == null) return;
         if (dotEl) {
             dotEl.classList.toggle('bg-green-500', online);
@@ -41,7 +41,14 @@
                 badgeEl.classList.add('bg-slate-100', 'text-slate-500', 'dark:bg-white/5', 'dark:text-slate-400');
             }
         }
-        if (actEl && activity) actEl.textContent = activity;
+        if (actEl) {
+            if (online) {
+                actEl.textContent = activity || 'На платформе';
+            } else {
+                var lastSeen = (raw && raw.last_seen_label) ? raw.last_seen_label : '';
+                actEl.textContent = lastSeen ? ('Неактивен · был(а) ' + lastSeen) : 'Неактивен';
+            }
+        }
     }
 
     function applyStudentPresence(online, activity, raw) {
@@ -85,7 +92,7 @@
     }
 
     function pollAll() {
-        if (mentorId != null) pollUser(mentorId, function (on, act) { applyMentorPresence(on, act); });
+        if (mentorId != null) pollUser(mentorId, applyMentorPresence);
         if (studentUserId != null) pollUser(studentUserId, applyStudentPresence);
     }
 
@@ -98,7 +105,7 @@
         socket.on('presence_update', function (data) {
             if (!data) return;
             if (mentorId != null && data.user_id === mentorId) {
-                applyMentorPresence(!!data.online, data.activity || '');
+                applyMentorPresence(!!data.online, data.activity || '', data);
             }
             if (studentUserId != null && data.user_id === studentUserId) {
                 applyStudentPresence(!!data.online, data.activity || '', data);

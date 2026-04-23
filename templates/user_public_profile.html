@@ -135,7 +135,11 @@
                             <h1 class="creator-name">{{ public_display_name }}</h1>
                             <i class="ph-fill ph-check-circle" style="color:#7B5CFF;font-size:1.7rem;" title="Верифицированный создатель"></i>
                         </div>
-                        {% if public_user.get_live_activity_text() %}<p id="pub-presence-activity" class="creator-quote">{{ public_user.get_live_activity_text() }}</p>{% elif _custom_status %}<p id="pub-presence-activity" class="creator-quote" data-custom="{{ _custom_status }}">"{{ _custom_status }}"</p>{% else %}<p id="pub-presence-activity" class="creator-quote" style="display:none;"></p>{% endif %}
+                        {% if public_user.is_online_now() %}
+                            {% if public_user.get_live_activity_text() %}<p id="pub-presence-activity" class="creator-quote">{{ public_user.get_live_activity_text() }}</p>{% elif _custom_status %}<p id="pub-presence-activity" class="creator-quote" data-custom="{{ _custom_status }}">"{{ _custom_status }}"</p>{% else %}<p id="pub-presence-activity" class="creator-quote">На платформе</p>{% endif %}
+                        {% else %}
+                            <p id="pub-presence-activity" class="creator-quote">Неактивен</p>
+                        {% endif %}
                         <div class="creator-badges">
                             <span class="creator-badge" style="background:linear-gradient(90deg,#0f172a,#1e293b);color:#fff;border-color:#1e293b;"><i class="ph-fill ph-crown" style="color:#FF9F1C;font-size:1rem;"></i> Создатель</span>
                             {% for role_name in public_user.get_roles_display() %}
@@ -356,12 +360,12 @@
                     <span class="data-value">{{ public_user.telegram_link }}</span>
                 </div>
                 {% endif %}
-                {% if public_user.get_live_activity_text() %}
+                {% if public_user.is_online_now() and public_user.get_live_activity_text() %}
                 <div class="data-row">
                     <span class="data-label">Активность</span>
                     <span class="data-value">{{ public_user.get_live_activity_text() }}</span>
                 </div>
-                {% elif public_user.custom_status %}
+                {% elif public_user.is_online_now() and public_user.custom_status %}
                 <div class="data-row">
                     <span class="data-label">Статус</span>
                     <span class="data-value">{{ public_user.custom_status }}</span>
@@ -392,14 +396,19 @@
     var dotEl = document.getElementById('pub-presence-dot');
     var actEl = document.getElementById('pub-presence-activity');
 
-    function applyPresence(online, activity) {
+    function applyPresence(online, activity, raw) {
         if (dotEl) {
             dotEl.style.background = online ? '#22c55e' : '#94a3b8';
             dotEl.title = online ? 'В сети' : 'Не в сети';
         }
         if (actEl) {
-            var text = activity || (online ? '' : '');
-            if (!text && !online && customStatus) text = '"' + customStatus + '"';
+            var text = '';
+            if (online) {
+                text = activity || (customStatus ? ('"' + customStatus + '"') : 'На платформе');
+            } else {
+                var lastSeen = (raw && raw.last_seen_label) ? raw.last_seen_label : '';
+                text = lastSeen ? ('Неактивен · был(а) ' + lastSeen) : 'Неактивен';
+            }
             if (text) {
                 actEl.textContent = text;
                 actEl.style.display = '';
@@ -417,7 +426,7 @@
         });
         socket.on('presence_update', function (data) {
             if (data && data.user_id == profileUserId) {
-                applyPresence(!!data.online, data.activity || '');
+                applyPresence(!!data.online, data.activity || '', data);
             }
         });
     } catch (e) {}
@@ -431,7 +440,7 @@
                 var isOnline = (d.last_seen_seconds_ago != null)
                     ? d.last_seen_seconds_ago <= 120
                     : !!d.online;
-                applyPresence(isOnline, d.activity || '');
+                applyPresence(isOnline, d.activity || '', d);
             })
             .catch(function () {});
     }

@@ -179,13 +179,15 @@
                 </div>
 
                 <div class="bg-white/70 dark:bg-dark-inner/50 border border-purple-100 dark:border-white/[0.06] rounded-2xl p-4 shadow-sm dark:shadow-none dark:shadow-none">
-                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">
-                        {% if mentor and mentor.is_online_now() %}Активность{% else %}Статус преподавателя{% endif %}
-                    </div>
+                    <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Статус преподавателя</div>
                     <div id="mentor-activity-text" class="text-sm font-black text-primary dark:text-boo-primary mt-0.5">
                         {% if mentor %}
-                            {% set live_act = mentor.get_live_activity_text() %}
-                            {% if live_act %}{{ live_act }}{% elif mentor.custom_status %}{{ mentor.custom_status }}{% else %}—{% endif %}
+                            {% if mentor.is_online_now() %}
+                                {% set live_act = mentor.get_live_activity_text() %}
+                                {% if live_act %}{{ live_act }}{% elif mentor.custom_status %}{{ mentor.custom_status }}{% else %}На платформе{% endif %}
+                            {% else %}
+                                Неактивен
+                            {% endif %}
                         {% else %}—{% endif %}
                     </div>
                     <div class="text-xs font-bold text-muted mt-1">
