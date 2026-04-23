@@ -44,19 +44,21 @@
         .boo-turtle-lightbox { position: fixed; inset: 0; z-index: 10050; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
         .boo-turtle-lightbox[hidden] { display: none !important; }
         .boo-turtle-lb-backdrop { position: absolute; inset: 0; background: rgba(2, 6, 23, 0.92); cursor: zoom-out; }
-        .boo-turtle-lb-panel { position: relative; z-index: 1; max-width: min(100vw, 100%); max-height: 100vh; display: flex; flex-direction: column; background: var(--surface-1, #fff); color: var(--text-primary, #0f172a); border: 1px solid var(--stroke-1, #e2e8f0); border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.35); margin: 0.5rem; }
+        /* Фиксированный размер окна: масштаб меняет только <img> внутри прокручиваемой области, не панель */
+        .boo-turtle-lb-panel { position: relative; z-index: 1; align-self: center; width: min(96vw, 1280px); height: min(86vh, 900px); max-height: 86vh; min-height: 200px; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; background: var(--surface-1, #fff); color: var(--text-primary, #0f172a); border: 1px solid var(--stroke-1, #e2e8f0); border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.35); margin: 0.5rem; box-sizing: border-box; }
         [data-theme="dark"] .boo-turtle-lb-panel { background: var(--surface-1, #0f172a); border-color: var(--stroke-1, #334155); }
-        .boo-turtle-lb-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--stroke-1, #e2e8f0); }
+        .boo-turtle-lb-header { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--stroke-1, #e2e8f0); }
         .boo-turtle-lb-title { font-weight: 800; font-size: 0.9rem; }
         .boo-turtle-lb-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
         .boo-turtle-lb-zoom-pct { font-size: 0.75em; font-weight: 800; min-width: 2.5rem; text-align: center; }
-        .boo-turtle-lb-viewport { overflow: auto; flex: 1; min-height: 120px; max-height: calc(100vh - 7rem); text-align: center; line-height: 0; background: #f1f5f9; -webkit-overflow-scrolling: touch; }
+        .boo-turtle-lb-viewport { flex: 1 1 0; min-height: 0; overflow: auto; text-align: center; line-height: 0; background: #e2e8f0; -webkit-overflow-scrolling: touch; }
         [data-theme="dark"] .boo-turtle-lb-viewport { background: #020617; }
+        .boo-turtle-lb-canvas { display: inline-block; vertical-align: top; line-height: 0; text-align: left; max-width: none; }
         .boo-turtle-lb-img { display: block; box-sizing: content-box; border: 1px solid var(--stroke-1, #e2e8f0); background: #fff; }
-        .boo-turtle-lb-hint { margin: 0.35rem 0.6rem 0.55rem; font-size: 0.7rem; color: var(--text-muted, #64748b); }
+        .boo-turtle-lb-hint { flex: 0 0 auto; margin: 0.35rem 0.6rem 0.55rem; font-size: 0.7rem; color: var(--text-muted, #64748b); }
         .boo-turtle-lb-hint kbd { display: inline-block; padding: 0.1em 0.35em; font-size: 0.9em; font-family: inherit; background: var(--surface-2, #f1f5f9); border: 1px solid var(--stroke-1, #e2e8f0); border-radius: 4px; }
-        .boo-turtle-lb-panel:fullscreen { max-height: 100%; margin: 0; border-radius: 0; width: 100%; height: 100%; }
-        .boo-turtle-lb-panel:fullscreen .boo-turtle-lb-viewport { max-height: none; }
+        .boo-turtle-lb-panel:fullscreen { max-height: 100% !important; min-height: 0 !important; margin: 0; border-radius: 0; width: 100% !important; height: 100% !important; }
+        .boo-turtle-lb-panel:fullscreen .boo-turtle-lb-viewport { flex: 1 1 0; min-height: 0; max-height: none; }
     </style>
     {% include '_ux_enhancements.html' %}
     
@@ -1110,7 +1112,7 @@
     </div>
     </div>
     
-    <script src="{{ url_for('static', filename='turtle-image-viewer.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='turtle-image-viewer.js') }}?v=3"></script>
     <script>
         function handleFileDrop(event, assignmentTaskId) {
             event.preventDefault();

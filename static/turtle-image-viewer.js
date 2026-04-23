@@ -14,6 +14,16 @@
         return Math.max(a, Math.min(b, n));
     }
 
+    /** Масштаб «вписать в прямоугольник» (от натурального размера), не шире 1:1. */
+    function getFitScaleInBox(img, boxW, boxH, pad) {
+        if (!img.naturalWidth || !img.naturalHeight) return 1;
+        if (boxW < 4) boxW = 400;
+        if (boxH < 4) boxH = 300;
+        var sx = (boxW - pad * 2) / img.naturalWidth;
+        var sy = (boxH - pad * 2) / img.naturalHeight;
+        return clamp(Math.min(sx, sy), MIN, 1);
+    }
+
     function getInlineFitScale(img, viewport) {
         if (!img.naturalWidth || !viewport) return 1;
         var w = viewport.clientWidth;
@@ -26,21 +36,7 @@
         }
         var h = Math.min(maxH, viewport.clientHeight || maxH) || maxH;
         if (h < 40) h = 200;
-        var pad = 8;
-        var sx = (w - pad * 2) / img.naturalWidth;
-        var sy = (h - pad * 2) / img.naturalHeight;
-        return clamp(Math.min(sx, sy), MIN, 1);
-    }
-
-    function getWindowFitForLb(img) {
-        if (!img.naturalWidth) return 0.5;
-        var pad = 24;
-        var w = global.innerWidth - pad * 2;
-        var h = global.innerHeight - 100;
-        if (h < 80) h = 300;
-        var sx = w / img.naturalWidth;
-        var sy = h / img.naturalHeight;
-        return clamp(Math.min(sx, sy), MIN, 1);
+        return getFitScaleInBox(img, w, h, 8);
     }
 
     function applySize(img, scale) {
@@ -107,6 +103,8 @@
         }
     }
 
+    var _lbLayoutAttempts = 0;
+
     function getOrCreateLightbox() {
         var ex = document.getElementById(LB_ID);
         if (ex) return ex;
@@ -131,7 +129,7 @@
             '<button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle-lb="close" title="Закрыть" aria-label="Закрыть">Esc</button>' +
             '</div></div>' +
             '<div class="boo-turtle-lb-viewport" tabindex="0" aria-label="Прокрутка: панорама. Ctrl+колёсико: масштаб.">' +
-            '<img class="boo-turtle-lb-img" alt="Рисунок turtle" />' +
+            '<div class="boo-turtle-lb-canvas"><img class="boo-turtle-lb-img" alt="Рисунок turtle" /></div>' +
             '</div>' +
             '<p class="boo-turtle-lb-hint">Прокрутка — панорама. <kbd>Ctrl</kbd>+колёсико — масштаб. <kbd>Esc</kbd> — выход.</p>' +
             '</div>';
@@ -150,21 +148,33 @@
     function onLbImageReady() {
         var root = getOrCreateLightbox();
         var img = root.querySelector('.boo-turtle-lb-img');
-        if (!img || !img.naturalWidth) return;
+        var vp = root.querySelector('.boo-turtle-lb-viewport');
+        if (!img || !img.naturalWidth || !vp) return;
+        var vw = vp.clientWidth;
+        var vh = vp.clientHeight;
+        if (vw < 4 || vh < 4) {
+            if (_lbLayoutAttempts < 20) {
+                _lbLayoutAttempts += 1;
+                requestAnimationFrame(function () {
+                    onLbImageReady();
+                });
+            } else {
+                _lbLayoutAttempts = 0;
+            }
+            return;
+        }
+        _lbLayoutAttempts = 0;
         var st = getLbState();
-        st.fit = getWindowFitForLb(img);
+        st.fit = getFitScaleInBox(img, vw, vh, 8);
         st.scale = st.fit;
         applySize(img, st.scale);
         setLabel(root, 'boo-turtle-lb-zoom-pct', st.scale);
-        var vp = root.querySelector('.boo-turtle-lb-viewport');
-        if (vp) {
-            vp.scrollLeft = 0;
-            vp.scrollTop = 0;
-            try {
-                vp.focus({ preventScroll: true });
-            } catch (e) {
-                vp.focus();
-            }
+        vp.scrollLeft = 0;
+        vp.scrollTop = 0;
+        try {
+            vp.focus({ preventScroll: true });
+        } catch (e) {
+            vp.focus();
         }
     }
 
@@ -210,17 +220,25 @@
 
     function openLightboxFromSourceImg(sourceImg) {
         if (!sourceImg || !sourceImg.getAttribute('src')) return;
+        _lbLayoutAttempts = 0;
         var root = getOrCreateLightbox();
         var lbImg = root.querySelector('.boo-turtle-lb-img');
         lbImg.src = sourceImg.currentSrc || sourceImg.src;
         root.removeAttribute('hidden');
         document.body.style.overflow = 'hidden';
+        function afterSrcReady() {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    onLbImageReady();
+                });
+            });
+        }
         if (lbImg.complete && lbImg.naturalWidth) {
-            onLbImageReady();
+            afterSrcReady();
         } else {
             lbImg.onload = function () {
                 lbImg.onload = null;
-                onLbImageReady();
+                afterSrcReady();
             };
         }
     }
@@ -234,7 +252,10 @@
             return;
         }
         if (panel.requestFullscreen) {
-            panel.requestFullscreen().catch(function () {});
+            panel.requestFullscreen().then(function () {
+                _lbLayoutAttempts = 0;
+                onLbImageReady();
+            }).catch(function () {});
         }
     }
 
@@ -256,10 +277,24 @@
         );
     }
 
+    var lbFsResizeT;
+    function onLightboxLayoutMaybeChanged() {
+        var r = document.getElementById(LB_ID);
+        if (!r || r.hasAttribute('hidden')) return;
+        clearTimeout(lbFsResizeT);
+        lbFsResizeT = setTimeout(function () {
+            onLbImageReady();
+        }, 50);
+    }
+
     function bindLightbox() {
         var root = getOrCreateLightbox();
         if (root._booTurtleInit) return;
         root._booTurtleInit = true;
+        document.addEventListener('fullscreenchange', function () {
+            if (!document.getElementById(LB_ID)) return;
+            onLightboxLayoutMaybeChanged();
+        });
         ensureLightboxKeyHandlers();
         root.addEventListener('click', function (e) {
             if (e.target.getAttribute('data-boo-turtle-close')) {
