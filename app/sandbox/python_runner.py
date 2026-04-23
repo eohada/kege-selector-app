@@ -227,13 +227,6 @@ try:
     }
     if turtle is not None:
         safe['turtle'] = turtle
-        # Холст по умолчанию 400×300 — рисование обрезается по краю canvas (как в PostScript/PNG),
-        # поэтому в среде на ПК/VS Code картинка больше. Задаём крупный холст до кода: код может
-        # вызвать screensize() и переопределить.
-        try:
-            turtle.screensize(2000, 2000, 'white')
-        except Exception:
-            pass
     exec(code, safe)
     if turtle is not None:
         try:
@@ -242,14 +235,8 @@ try:
             _scr = turtle.getscreen()
             _cv = _scr.getcanvas()
             _cv.update_idletasks()
-            _w = int(float(_cv.cget('width'))) or 2000
-            _h = int(float(_cv.cget('height'))) or 2000
-            if _w < 1:
-                _w = 2000
-            if _h < 1:
-                _h = 2000
-            # Весь холст в пикселях (не обрезка по видимому вьюпорту окна)
-            _cv.postscript(file=_pss, colormode='color', x=0, y=0, width=_w, height=_h)
+            # Без x/y/width/height: в части стеков явный прямоугольник дал пустой PS/PNG; полный холст — по умолчанию.
+            _cv.postscript(file=_pss, colormode='color')
         except Exception:
             pass
 except Exception as e:
@@ -290,6 +277,16 @@ def _sandbox_timeout_seconds(code: str, explicit: int | None) -> int:
 # Файл PostScript пишет раннер (tk canvas) в cwd песочницы.
 TURTLE_PS_NAME = '.boostudy_turtle.ps'
 _MAX_TURTLE_PNG = 2_500_000  # ~3.3MB base64
+
+# Выполняется внутри exec ДО кода ученика: холст по умолчанию 400×300 — обрезка; как в заданиях с screensize(2000,2000).
+# Не вызывать screensize в раннере до exec — ломалось с postscript/холстом; префикс в stdin — безопаснее.
+_TURTLE_CANVAS_PREFIX = (
+    "try:\n"
+    "    import turtle as _boostudy_turtle_sz\n"
+    "    _boostudy_turtle_sz.screensize(2000, 2000, 'white')\n"
+    "except Exception:\n"
+    "    pass\n\n"
+)
 
 
 def _postscript_to_png_b64(ps_path: str) -> str | None:
@@ -366,6 +363,9 @@ def run_python_sandbox(
     task_files: list[tuple[str, bytes]] | None = None,
 ) -> tuple[str, str, str | None]:
     """Запуск кода Python в песочнице. Возвращает (stdout, stderr, base64 png или None)."""
+    code_in = code or ''
+    if 'turtle' in code_in.lower():
+        code_in = _TURTLE_CANVAS_PREFIX + code_in
     tsec = _sandbox_timeout_seconds(code, timeout_sec)
     xvfb = shutil.which('xvfb-run')
     cmd: list[str] = [sys.executable, '-c', PYTHON_RUNNER]
@@ -380,7 +380,7 @@ def run_python_sandbox(
                         f.write(fbytes)
             proc = subprocess.run(
                 cmd,
-                input=code,
+                input=code_in,
                 capture_output=True,
                 text=True,
                 timeout=tsec,
