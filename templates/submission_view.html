@@ -33,6 +33,30 @@
         .code-editor-hint { font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.5rem; }
         .code-editor-hint code { font-size: 0.92em; }
         .code-editor-output-label { font-size: 0.85em; font-weight: 600; color: var(--text-muted); }
+        /* Просмотр рисунка turtle: масштаб и полноэкранный оверлей (см. static/turtle-image-viewer.js) */
+        .code-editor-turtle-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem; }
+        .code-editor-turtle-label { font-size: 0.8em; font-weight: 700; color: var(--text-muted); }
+        .code-editor-turtle-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+        .code-editor-turtle-zoom-pct { font-size: 0.75em; font-weight: 800; min-width: 2.6rem; text-align: center; color: var(--text-primary); }
+        .code-editor-turtle-btn { min-height: 2rem; padding: 0.2rem 0.5rem; }
+        .code-editor-turtle-viewport { overflow: auto; max-height: min(50vh, 400px); text-align: center; line-height: 0; background: #f1f5f9; border: 1px solid var(--stroke-1); border-radius: var(--radius-sm, 8px); -webkit-overflow-scrolling: touch; }
+        [data-theme="dark"] .code-editor-turtle-viewport { background: #0f172a; }
+        .boo-turtle-lightbox { position: fixed; inset: 0; z-index: 10050; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+        .boo-turtle-lightbox[hidden] { display: none !important; }
+        .boo-turtle-lb-backdrop { position: absolute; inset: 0; background: rgba(2, 6, 23, 0.92); cursor: zoom-out; }
+        .boo-turtle-lb-panel { position: relative; z-index: 1; max-width: min(100vw, 100%); max-height: 100vh; display: flex; flex-direction: column; background: var(--surface-1, #fff); color: var(--text-primary, #0f172a); border: 1px solid var(--stroke-1, #e2e8f0); border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.35); margin: 0.5rem; }
+        [data-theme="dark"] .boo-turtle-lb-panel { background: var(--surface-1, #0f172a); border-color: var(--stroke-1, #334155); }
+        .boo-turtle-lb-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--stroke-1, #e2e8f0); }
+        .boo-turtle-lb-title { font-weight: 800; font-size: 0.9rem; }
+        .boo-turtle-lb-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+        .boo-turtle-lb-zoom-pct { font-size: 0.75em; font-weight: 800; min-width: 2.5rem; text-align: center; }
+        .boo-turtle-lb-viewport { overflow: auto; flex: 1; min-height: 120px; max-height: calc(100vh - 7rem); text-align: center; line-height: 0; background: #f1f5f9; -webkit-overflow-scrolling: touch; }
+        [data-theme="dark"] .boo-turtle-lb-viewport { background: #020617; }
+        .boo-turtle-lb-img { display: block; box-sizing: content-box; border: 1px solid var(--stroke-1, #e2e8f0); background: #fff; }
+        .boo-turtle-lb-hint { margin: 0.35rem 0.6rem 0.55rem; font-size: 0.7rem; color: var(--text-muted, #64748b); }
+        .boo-turtle-lb-hint kbd { display: inline-block; padding: 0.1em 0.35em; font-size: 0.9em; font-family: inherit; background: var(--surface-2, #f1f5f9); border: 1px solid var(--stroke-1, #e2e8f0); border-radius: 4px; }
+        .boo-turtle-lb-panel:fullscreen { max-height: 100%; margin: 0; border-radius: 0; width: 100%; height: 100%; }
+        .boo-turtle-lb-panel:fullscreen .boo-turtle-lb-viewport { max-height: none; }
     </style>
     {% include '_ux_enhancements.html' %}
     
@@ -786,8 +810,20 @@
                                 <label class="code-editor-output-label">Вывод:</label>
                                 <pre class="code-editor-output" style="margin: 0.35rem 0 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; min-height: 3rem; max-height: 12rem; overflow: auto;"></pre>
                                 <div class="code-editor-turtle-wrap" style="display: none; margin-top: 0.65rem;">
-                                    <div class="code-editor-turtle-label" style="font-size: 0.8em; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Рисунок turtle</div>
-                                    <img class="code-editor-turtle-img" alt="Рисунок turtle" style="display: block; max-width: 100%; max-height: min(50vh, 400px); height: auto; object-fit: contain; border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,.04);" />
+                                    <div class="code-editor-turtle-head">
+                                        <span class="code-editor-turtle-label">Рисунок turtle</span>
+                                        <div class="code-editor-turtle-toolbar" role="toolbar" aria-label="Масштаб рисунка">
+                                            <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="zoom-out" title="Уменьшить" aria-label="Уменьшить"><i class="ph-bold ph-minus" aria-hidden="true"></i></button>
+                                            <span class="code-editor-turtle-zoom-pct" aria-live="polite">100%</span>
+                                            <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="zoom-in" title="Увеличить" aria-label="Увеличить"><i class="ph-bold ph-plus" aria-hidden="true"></i></button>
+                                            <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="fit" title="Вписать в рамку" aria-label="Вписать в рамку"><i class="ph-bold ph-arrows-in-simple" aria-hidden="true"></i></button>
+                                            <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="one" title="1:1 натуральный размер" aria-label="Натуральный размер 1 к 1">1:1</button>
+                                            <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="expand" title="На весь экран" aria-label="На весь экран"><i class="ph-bold ph-arrows-out" aria-hidden="true"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="code-editor-turtle-viewport" tabindex="0" aria-label="Прокрутка: панорама. Ctrl+колёсико: масштаб.">
+                                        <img class="code-editor-turtle-img" alt="Рисунок turtle" style="display: block; box-shadow: 0 1px 0 rgba(0,0,0,.04);" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -983,8 +1019,20 @@
                             <label class="code-editor-output-label">Вывод:</label>
                             <pre class="code-editor-output" style="margin: 0.35rem 0 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; min-height: 3rem; max-height: 12rem; overflow: auto;"></pre>
                             <div class="code-editor-turtle-wrap" style="display: none; margin-top: 0.65rem;">
-                                <div class="code-editor-turtle-label" style="font-size: 0.8em; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Рисунок turtle</div>
-                                <img class="code-editor-turtle-img" alt="Рисунок turtle" style="display: block; max-width: 100%; max-height: min(50vh, 400px); height: auto; object-fit: contain; border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,.04);" />
+                                <div class="code-editor-turtle-head">
+                                    <span class="code-editor-turtle-label">Рисунок turtle</span>
+                                    <div class="code-editor-turtle-toolbar" role="toolbar" aria-label="Масштаб рисунка">
+                                        <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="zoom-out" title="Уменьшить" aria-label="Уменьшить"><i class="ph-bold ph-minus" aria-hidden="true"></i></button>
+                                        <span class="code-editor-turtle-zoom-pct" aria-live="polite">100%</span>
+                                        <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="zoom-in" title="Увеличить" aria-label="Увеличить"><i class="ph-bold ph-plus" aria-hidden="true"></i></button>
+                                        <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="fit" title="Вписать в рамку" aria-label="Вписать в рамку"><i class="ph-bold ph-arrows-in-simple" aria-hidden="true"></i></button>
+                                        <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="one" title="1:1 натуральный размер" aria-label="Натуральный размер 1 к 1">1:1</button>
+                                        <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="expand" title="На весь экран" aria-label="На весь экран"><i class="ph-bold ph-arrows-out" aria-hidden="true"></i></button>
+                                    </div>
+                                </div>
+                                <div class="code-editor-turtle-viewport" tabindex="0" aria-label="Прокрутка: панорама. Ctrl+колёсико: масштаб.">
+                                    <img class="code-editor-turtle-img" alt="Рисунок turtle" style="display: block; box-shadow: 0 1px 0 rgba(0,0,0,.04);" />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1062,6 +1110,7 @@
     </div>
     </div>
     
+    <script src="{{ url_for('static', filename='turtle-image-viewer.js') }}?v=2"></script>
     <script>
         function handleFileDrop(event, assignmentTaskId) {
             event.preventDefault();
@@ -1216,6 +1265,9 @@
             if (typeof window.boostudyRenderTaskMath === 'function') {
                 window.boostudyRenderTaskMath(document.body, 35);
             }
+            if (window.BooTurtleImageViewer && typeof window.BooTurtleImageViewer.initAll === 'function') {
+                window.BooTurtleImageViewer.initAll();
+            }
 
             // Редактор кода: открытие/закрытие панели, опционально CodeMirror
             function getCodeFromEditor(wrap) {
@@ -1322,6 +1374,9 @@
                                 if (data.turtle_image_b64) {
                                     ti.src = 'data:image/png;base64,' + data.turtle_image_b64;
                                     tw.style.display = 'block';
+                                    if (window.BooTurtleImageViewer && typeof window.BooTurtleImageViewer.refresh === 'function') {
+                                        setTimeout(function () { window.BooTurtleImageViewer.refresh(tw); }, 0);
+                                    }
                                 } else {
                                     tw.style.display = 'none';
                                     ti.removeAttribute('src');
