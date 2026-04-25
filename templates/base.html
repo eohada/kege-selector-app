@@ -16,8 +16,8 @@
     {% block head_css %}{% endblock %}
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
-    <script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}?v=svg-fix-2026"></script>
+    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.js') }}?v=svg-fix-2026"></script>
     {% block head_js %}{% endblock %}
     
     <!-- Tom Select (скрипты; стили выше — до boostudy, чтобы наши темы перекрывали дефолт TS) -->

@@ -3813,7 +3813,7 @@ var SvgNode = function () {
   var _proto5 = SvgNode.prototype;
 
   _proto5.toNode = function toNode() {
-    var svgNS = "http:
+    var svgNS = "http://www.w3.org/2000/svg";
     var node = document.createElementNS(svgNS, "svg"); 
 
     for (var attr in this.attributes) {
@@ -3830,7 +3830,7 @@ var SvgNode = function () {
   };
 
   _proto5.toMarkup = function toMarkup() {
-    var markup = "<svg xmlns=\"http:
+    var markup = "<svg xmlns=\"http://www.w3.org/2000/svg\"";
 
     for (var attr in this.attributes) {
       if (Object.prototype.hasOwnProperty.call(this.attributes, attr)) {
@@ -3861,7 +3861,7 @@ var PathNode = function () {
   var _proto6 = PathNode.prototype;
 
   _proto6.toNode = function toNode() {
-    var svgNS = "http:
+    var svgNS = "http://www.w3.org/2000/svg";
     var node = document.createElementNS(svgNS, "path");
 
     if (this.alternate) {
@@ -3892,7 +3892,7 @@ var LineNode = function () {
   var _proto7 = LineNode.prototype;
 
   _proto7.toNode = function toNode() {
-    var svgNS = "http:
+    var svgNS = "http://www.w3.org/2000/svg";
     var node = document.createElementNS(svgNS, "line"); 
 
     for (var attr in this.attributes) {
@@ -5879,7 +5879,7 @@ var MathNode = function () {
   ;
 
   _proto.toNode = function toNode() {
-    var node = document.createElementNS("http:
+    var node = document.createElementNS("http://www.w3.org/1998/Math/MathML", this.type);
 
     for (var attr in this.attributes) {
       if (Object.prototype.hasOwnProperty.call(this.attributes, attr)) {
@@ -5997,7 +5997,7 @@ var SpaceNode = function () {
     if (this.character) {
       return document.createTextNode(this.character);
     } else {
-      var node = document.createElementNS("http:
+      var node = document.createElementNS("http://www.w3.org/1998/Math/MathML", "mspace");
       node.setAttribute("width", makeEm(this.width));
       return node;
     }
@@ -6217,7 +6217,7 @@ function buildMathML(tree, texExpression, options, isDisplayMode, forMathmlOnly)
   annotation.setAttribute("encoding", "application/x-tex");
   var semantics = new mathMLTree.MathNode("semantics", [wrapper, annotation]);
   var math = new mathMLTree.MathNode("math", [semantics]);
-  math.setAttribute("xmlns", "http:
+  math.setAttribute("xmlns", "http://www.w3.org/1998/Math/MathML");
 
   if (isDisplayMode) {
     math.setAttribute("display", "block");

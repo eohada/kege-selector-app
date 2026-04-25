@@ -288,8 +288,8 @@
 {% endblock %}
 
 {% block scripts_extra %}
-<script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script>
-<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.js') }}"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}?v=svg-fix-2026"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.js') }}?v=svg-fix-2026"></script>
 <script>
 (function() {
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
