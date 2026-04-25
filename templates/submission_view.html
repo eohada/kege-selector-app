@@ -1590,67 +1590,74 @@
             });
         }
         
-        // Обработчики событий
-        {% if awaiting_work_start %}
-        document.getElementById('start-btn').addEventListener('click', function() {
-            // Показываем подтверждение перед стартом выполнения
-            const doStart = () => {
-                const startBtn = document.getElementById('start-btn');
-                startBtn.disabled = true;
-                startBtn.textContent = 'Загрузка...';
-
-                fetch(`{{ url_for('assignments.submission_start', submission_id=submission.submission_id) }}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
-                        'Content-Type': 'application/json'
+        // Кнопка только до старта: вешаем обработчик, если в DOM есть #start-btn (не зависим от переменных в другом block).
+        (function attachSubmissionStartHandler() {
+            var startBtn = document.getElementById('start-btn');
+            if (!startBtn) return;
+            var startUrl = {{ url_for('assignments.submission_start', submission_id=submission.submission_id)|tojson }};
+            startBtn.addEventListener('click', function() {
+                var doStart = function() {
+                    var btn = document.getElementById('start-btn');
+                    if (!btn) return;
+                    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                    var csrf = csrfMeta ? csrfMeta.getAttribute('content') : '';
+                    if (!csrf) {
+                        if (typeof showToast === 'function') showToast('✕ Нет CSRF-токена. Обновите страницу.', 'error');
+                        return;
                     }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            console.error('Server error response:', response.status, text);
-                            throw new Error(`HTTP ${response.status}`);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        showToast('✓ Выполнение начато! Страница обновляется...', 'success');
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        showToast('✕ Ошибка: ' + (data.error || 'Не удалось начать выполнение'), 'error');
-                        startBtn.disabled = false;
-                        startBtn.textContent = 'Начать выполнение';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error in submission start:', error);
-                    showToast('✕ Ошибка при начале выполнения: ' + error.message, 'error');
-                    startBtn.disabled = false;
-                    startBtn.textContent = 'Начать выполнение';
-                });
-            };
-
-            if (document.cookie.indexOf('is_demo=true') !== -1) {
-                doStart();
-            } else if (typeof showConfirmDialog === 'function') {
-                showConfirmDialog(
-                    {% if assignment.hide_before_start %}
-                    'Вы уверены, что хотите начать выполнение? Таймер начнёт отсчёт (если он задан), полностью откроются условия заданий.',
-                    {% else %}
-                    'Вы уверены, что хотите начать выполнение? Таймер начнёт отсчёт (если он задан), работа перейдёт в статус «в процессе» — после этого станут доступны сохранение черновика и сдача.',
-                    {% endif %}
-                    doStart,
-                    () => {  },
-                    { title: 'Начать выполнение?', isDanger: false, confirmText: 'Начать', cancelText: 'Отмена' }
-                );
-            } else {
-                doStart();
-            }
-        });
-        {% endif %}
+                    btn.disabled = true;
+                    btn.textContent = 'Загрузка...';
+                    fetch(startUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrf,
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            return response.text().then(function(text) {
+                                console.error('Server error response:', response.status, text);
+                                throw new Error('HTTP ' + response.status);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (data.success) {
+                            if (typeof showToast === 'function') showToast('✓ Выполнение начато! Страница обновляется...', 'success');
+                            setTimeout(function() { location.reload(); }, 1000);
+                        } else {
+                            if (typeof showToast === 'function') showToast('✕ Ошибка: ' + (data.error || 'Не удалось начать выполнение'), 'error');
+                            btn.disabled = false;
+                            btn.textContent = 'Начать выполнение';
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Error in submission start:', error);
+                        if (typeof showToast === 'function') showToast('✕ Ошибка при начале выполнения: ' + (error && error.message ? error.message : 'сеть'), 'error');
+                        btn.disabled = false;
+                        btn.textContent = 'Начать выполнение';
+                    });
+                };
+                if (document.cookie.indexOf('is_demo=true') !== -1) {
+                    doStart();
+                } else if (typeof showConfirmDialog === 'function') {
+                    showConfirmDialog(
+                        {% if assignment.hide_before_start %}
+                        'Вы уверены, что хотите начать выполнение? Таймер начнёт отсчёт (если он задан), полностью откроются условия заданий.',
+                        {% else %}
+                        'Вы уверены, что хотите начать выполнение? Таймер начнёт отсчёт (если он задан), работа перейдёт в статус «в процессе» — после этого станут доступны сохранение черновика и сдача.',
+                        {% endif %}
+                        doStart,
+                        function() {},
+                        { title: 'Начать выполнение?', isDanger: false, confirmText: 'Начать', cancelText: 'Отмена' }
+                    );
+                } else {
+                    doStart();
+                }
+            });
+        })();
         
         {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0) %}
         // Автосохранение и сдача (назначено с уже начатым временем, в процессе, на доработку или повторная попытка)
