@@ -4,6 +4,9 @@
 {% block html_attrs %}data-student-submission="1"{% endblock %}
 {% block title %}{{ assignment.title }} - Выполнение работы{% endblock %}
 {% set active_page = 'assignments' %}
+{# Должно быть вне block content: иначе scripts_extra не видит переменные (Jinja scope по блокам) и не вешается обработчик «Начать выполнение». #}
+{% set awaiting_work_start = submission.status == 'ASSIGNED' and not submission.started_at %}
+{% set should_hide_tasks = assignment.hide_before_start and awaiting_work_start %}
 {% block body_attrs %}data-cinema-scene="submission-work"{% if tasks_view %} data-canvas-task-id="{{ tasks_view[0].task.task_id }}" data-canvas-context-type="submission" data-canvas-context-id="{{ submission.submission_id }}"{% endif %}{% endblock %}
 {% block body_class %}min-h-screen{% endblock %}
 
@@ -473,8 +476,6 @@
         <div class="submission-workspace w-full mx-auto mt-5 pb-32">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К списку заданий</a></p>
         <div class="submission-header relative overflow-hidden">
-            {% set awaiting_work_start = submission.status == 'ASSIGNED' and not submission.started_at %}
-            {% set should_hide_tasks = assignment.hide_before_start and awaiting_work_start %}
             <div class="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 mb-4">
