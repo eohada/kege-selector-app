@@ -551,7 +551,7 @@
                     {% set nav_state_class = 'pending-review' %}
                 {% endif %}
             {% endif %}
-            <a href="#task-{{ loop.index }}" class="task-nav-btn {% if loop.first %}active{% endif %} {{ nav_state_class }} {% if task_item.is_triplet_19_21 %}min-w-[3.8rem] h-11 px-1.5 text-[11px]{% else %}w-11 h-11{% endif %} shrink-0 rounded-[14px] flex items-center justify-center font-black text-base no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="Задание {{ task_item.display_number or loop.index }}">
+            <a href="#task-{{ loop.index }}" class="task-nav-btn {% if loop.first %}active{% endif %} {{ nav_state_class }} {% if task_item.is_triplet_19_21 %}min-w-[3.8rem] h-11 px-1.5 text-[11px]{% else %}w-11 h-11{% endif %} shrink-0 rounded-[14px] flex items-center justify-center font-black text-base no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}">
                 {{ task_item.display_number or loop.index }}
             </a>
             {% endfor %}
@@ -580,7 +580,7 @@
             <div class="task-card{{ card_state_class }}{% if not loop.first %} task-panel-hidden{% else %} task-panel-active{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
                     <div style="display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;">
-                        <span class="task-number">{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}</span>
+                        <span class="task-number">{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}</span>
                         <span class="submission-type-chip submission-score-chip" style="background:#f3e8ff; color:#7B5CFF; border:1px solid #e9d5ff; border-radius:6px; padding:2px 8px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.04em;">{{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }}</span>
                         {% if task_item.difficulty_label %}
                         <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">{{ task_item.difficulty_label }}</span>
@@ -877,7 +877,7 @@
         <div class="task-card{{ card_state_class }}{% if not loop.first %} task-panel-hidden{% else %} task-panel-active{% endif %}" id="task-{{ loop.index }}">
             <div class="task-header">
                 <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-                    <span class="task-number">{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}</span>
+                    <span class="task-number">{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}</span>
                     <span class="task-score">({{ task_item.assignment_task.max_score }} балл{{ 'а' if task_item.assignment_task.max_score > 1 else '' }})</span>
                     {% if task_item.task and task_item.task.is_manual_bank_task %}
                     <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">Создано вручную</span>

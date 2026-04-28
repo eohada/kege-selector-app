@@ -544,8 +544,8 @@
             <div class="grade-task-strip task-strip hide-scroll py-1.5 -my-1.5">
             {% for task_item in tasks_view %}
             {% set ti_answer = task_item.answer %}
-            <a href="#task-{{ loop.index }}" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" class="task-nav-btn relative {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} {% if task_item.is_triplet_19_21 %}min-w-[3.5rem] h-11 px-1.5 text-[10px] leading-tight{% else %}w-11 h-11{% endif %} shrink-0 rounded-[14px] flex items-center justify-center font-black no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ loop.index }}{% endif %}">
-                {% if task_item.is_triplet_19_21 %}19–21{% else %}{{ loop.index }}{% endif %}
+            <a href="#task-{{ loop.index }}" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" class="task-nav-btn relative {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} {% if task_item.is_triplet_19_21 %}min-w-[3.5rem] h-11 px-1.5 text-[10px] leading-tight{% else %}w-11 h-11{% endif %} shrink-0 rounded-[14px] flex items-center justify-center font-black no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}">
+                {{ task_item.display_number or loop.index }}
                 <span class="task-unread-dot absolute -top-1 -right-1 w-2.5 h-2.5" data-unread-for="{{ task_item.assignment_task.assignment_task_id }}" style="{% if task_item.assignment_task.assignment_task_id not in unread_task_ids %}display:none{% else %}display:inline-block{% endif %}"></span>
             </a>
             {% endfor %}
@@ -572,7 +572,7 @@
                 <div class="task-header-grade">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="task-title-grade">{% if task_item.is_triplet_19_21 %}Задания 19–21{% else %}Задание {{ loop.index }}{% endif %}</span>
+                            <span class="task-title-grade">{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}</span>
                             {% if not task_item.is_triplet_19_21 %}
                             <span class="submission-type-chip text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-md border" style="background:#f3e8ff; color:#7B5CFF; border-color:#e9d5ff;">{{ task_item.assignment_task.max_score }} б.</span>
                             {% endif %}

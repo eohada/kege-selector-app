@@ -84,6 +84,90 @@ def _started_at_to_utc(dt):
     return dt
 
 
+def _assignment_uses_ege_nav_numbering(assignment) -> bool:
+    """Пробник (exam): подписи как в ЕГЭ; ДЗ/КР и пр. — подряд 1, 2, 3…"""
+    return (getattr(assignment, 'assignment_type', None) or '').strip().lower() == 'exam'
+
+
+def _triplet_submission_state(items: list[dict]) -> str:
+    verdicts = []
+    for row in items:
+        ans = row.get('answer')
+        verdicts.append(getattr(ans, 'is_correct', None) if ans is not None else None)
+    decided = [v for v in verdicts if v is not None]
+    if not decided:
+        return 'pending'
+    if len(decided) == len(verdicts):
+        if all(v is True for v in decided):
+            return 'all_correct'
+        if all(v is False for v in decided):
+            return 'all_incorrect'
+        return 'partial'
+    return 'partial'
+
+
+def build_submission_tasks_view(tasks_data: list[dict], assignment) -> list[dict]:
+    """
+    Навигация по работе: для exam — номер задания ЕГЭ (task_number), 19+20+21 — один блок «19-21»;
+    для homework / classwork / manual_review — порядковый номер без склейки 19–21.
+    """
+    if not tasks_data:
+        return []
+
+    if not _assignment_uses_ege_nav_numbering(assignment):
+        out: list[dict] = []
+        for idx, item in enumerate(tasks_data):
+            single = dict(item)
+            single['is_triplet_19_21'] = False
+            single['triplet_items'] = []
+            single['display_number'] = str(idx + 1)
+            single['triplet_state'] = 'pending'
+            out.append(single)
+        return out
+
+    tasks_view: list[dict] = []
+    i = 0
+    while i < len(tasks_data):
+        item = tasks_data[i]
+        item_task = item.get('task')
+        item_num = getattr(item_task, 'task_number', None) if item_task else None
+        item_group = getattr(item_task, 'task_group_id', None) if item_task else None
+
+        can_bundle = i + 2 < len(tasks_data)
+        if item_num == 19 and can_bundle:
+            next_20 = tasks_data[i + 1]
+            next_21 = tasks_data[i + 2]
+            task_20 = next_20.get('task')
+            task_21 = next_21.get('task')
+            num_20 = getattr(task_20, 'task_number', None) if task_20 else None
+            num_21 = getattr(task_21, 'task_number', None) if task_21 else None
+            group_20 = getattr(task_20, 'task_group_id', None) if task_20 else None
+            group_21 = getattr(task_21, 'task_group_id', None) if task_21 else None
+
+            same_group = bool(item_group and group_20 and group_21 and item_group == group_20 == group_21)
+            legacy_consecutive = (num_20 == 20 and num_21 == 21)
+
+            if (num_20 == 20 and num_21 == 21) and (same_group or legacy_consecutive):
+                root_item = dict(item)
+                root_item['is_triplet_19_21'] = True
+                root_item['triplet_items'] = [next_20, next_21]
+                root_item['display_number'] = '19-21'
+                root_item['triplet_state'] = _triplet_submission_state([item, next_20, next_21])
+                tasks_view.append(root_item)
+                i += 3
+                continue
+
+        single_item = dict(item)
+        single_item['is_triplet_19_21'] = False
+        single_item['triplet_items'] = []
+        single_num = getattr(single_item.get('task'), 'task_number', None)
+        single_item['display_number'] = str(single_num) if single_num is not None else str(len(tasks_view) + 1)
+        single_item['triplet_state'] = 'pending'
+        tasks_view.append(single_item)
+        i += 1
+    return tasks_view
+
+
 def _resolve_answer_time_spent_sec(submission, answered_at, previous_answered_at=None):
     """
     Пытается оценить время решения ответа в секундах.
@@ -2642,62 +2726,7 @@ def submission_view(submission_id):
                 'task_can_edit': _can_student_edit_submission_task(submission, assignment_task.assignment_task_id),
             })
 
-        def _triplet_state(items: list[dict]) -> str:
-            verdicts = []
-            for row in items:
-                ans = row.get('answer')
-                verdicts.append(getattr(ans, 'is_correct', None) if ans is not None else None)
-            decided = [v for v in verdicts if v is not None]
-            if not decided:
-                return 'pending'
-            if len(decided) == len(verdicts):
-                if all(v is True for v in decided):
-                    return 'all_correct'
-                if all(v is False for v in decided):
-                    return 'all_incorrect'
-                return 'partial'
-            return 'partial'
-
-        tasks_view = []
-        i = 0
-        while i < len(tasks_data):
-            item = tasks_data[i]
-            item_task = item.get('task')
-            item_num = getattr(item_task, 'task_number', None) if item_task else None
-            item_group = getattr(item_task, 'task_group_id', None) if item_task else None
-
-            can_bundle = i + 2 < len(tasks_data)
-            if item_num == 19 and can_bundle:
-                next_20 = tasks_data[i + 1]
-                next_21 = tasks_data[i + 2]
-                task_20 = next_20.get('task')
-                task_21 = next_21.get('task')
-                num_20 = getattr(task_20, 'task_number', None) if task_20 else None
-                num_21 = getattr(task_21, 'task_number', None) if task_21 else None
-                group_20 = getattr(task_20, 'task_group_id', None) if task_20 else None
-                group_21 = getattr(task_21, 'task_group_id', None) if task_21 else None
-
-                same_group = bool(item_group and group_20 and group_21 and item_group == group_20 == group_21)
-                legacy_consecutive = (num_20 == 20 and num_21 == 21)
-
-                if (num_20 == 20 and num_21 == 21) and (same_group or legacy_consecutive):
-                    root_item = dict(item)
-                    root_item['is_triplet_19_21'] = True
-                    root_item['triplet_items'] = [next_20, next_21]
-                    root_item['display_number'] = '19-21'
-                    root_item['triplet_state'] = _triplet_state([item, next_20, next_21])
-                    tasks_view.append(root_item)
-                    i += 3
-                    continue
-
-            single_item = dict(item)
-            single_item['is_triplet_19_21'] = False
-            single_item['triplet_items'] = []
-            single_num = getattr(single_item.get('task'), 'task_number', None)
-            single_item['display_number'] = str(single_num) if single_num is not None else str(len(tasks_view) + 1)
-            single_item['triplet_state'] = 'pending'
-            tasks_view.append(single_item)
-            i += 1
+        tasks_view = build_submission_tasks_view(tasks_data, assignment)
         
         legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
         chat_default_assignment_task_id = legacy_bucket_task_id
@@ -3644,41 +3673,7 @@ def submission_grade_view(submission_id):
             'difficulty_label': difficulty_label,
         })
 
-    tasks_view = []
-    i = 0
-    while i < len(tasks_data):
-        item = tasks_data[i]
-        item_task = item.get('task')
-        item_num = getattr(item_task, 'task_number', None) if item_task else None
-        item_group = getattr(item_task, 'task_group_id', None) if item_task else None
-
-        can_bundle = i + 2 < len(tasks_data)
-        if item_num == 19 and can_bundle:
-            next_20 = tasks_data[i + 1]
-            next_21 = tasks_data[i + 2]
-            task_20 = next_20.get('task')
-            task_21 = next_21.get('task')
-            num_20 = getattr(task_20, 'task_number', None) if task_20 else None
-            num_21 = getattr(task_21, 'task_number', None) if task_21 else None
-            group_20 = getattr(task_20, 'task_group_id', None) if task_20 else None
-            group_21 = getattr(task_21, 'task_group_id', None) if task_21 else None
-
-            same_group = bool(item_group and group_20 and group_21 and item_group == group_20 == group_21)
-            legacy_consecutive = (num_20 == 20 and num_21 == 21)
-
-            if (num_20 == 20 and num_21 == 21) and (same_group or legacy_consecutive):
-                root_item = dict(item)
-                root_item['is_triplet_19_21'] = True
-                root_item['triplet_items'] = [next_20, next_21]
-                tasks_view.append(root_item)
-                i += 3
-                continue
-
-        single_item = dict(item)
-        single_item['is_triplet_19_21'] = False
-        single_item['triplet_items'] = []
-        tasks_view.append(single_item)
-        i += 1
+    tasks_view = build_submission_tasks_view(tasks_data, assignment)
 
     rubric_template = None
     rubric_templates = []
