@@ -16,7 +16,7 @@ from core.db_models import (
     Tasks,
     UserMastery,
     UserTaskMMR,
-    moscow_now,
+    utc_now,
 )
 
 logger = logging.getLogger(__name__)
@@ -176,7 +176,7 @@ class AnalyticsEngine:
             task_id=task.task_id,
             status='pending',
         ).order_by(RematchQueue.id.desc()).first()
-        now = moscow_now()
+        now = utc_now()
         if is_correct:
             min_days = int(rematch_cfg.get("first_min_days", 3))
             max_days = int(rematch_cfg.get("first_max_days", 4))
@@ -213,6 +213,9 @@ class AnalyticsEngine:
         attempt_no: int | None = None,
         mode: str | None = None,
         manual_low_mmr_mode: bool = False,
+        manual_mmr_delta: float | None = None,
+        rating_comment: str | None = None,
+        grader_user_id: int | None = None,
     ) -> float | None:
         task = Tasks.query.get(task_id)
         if not task:
@@ -239,35 +242,49 @@ class AnalyticsEngine:
             db.session.add(mmr_row)
 
         difficulty_level = difficulty_level_override if difficulty_level_override is not None else task.difficulty_level
-        d_value = cls._difficulty_weight(difficulty_level)
-        c_time, time_meta = cls._time_coeff(is_correct, time_spent_sec, task_type)
-        c_attempt = cls._attempt_coeff(is_correct, attempt_no)
-        calibration = cls._calibration_multiplier(int(mmr_row.solved_count or 0))
-
         cfg = cls._cfg()
-        delta = d_value * c_time * c_attempt
-        if not is_correct:
-            delta *= -1.0
-        delta *= calibration
-        delta *= float(cfg.get("delta_scale", 1.0))
         cap = cfg.get("delta_cap", {})
         max_gain = float(cap.get("max_gain", 99999.0))
         max_loss = float(cap.get("max_loss", 99999.0))
-        if delta > 0:
-            delta = min(delta, max_gain)
-        else:
-            delta = max(delta, -max_loss)
 
-        if manual_low_mmr_mode and not is_correct:
-            delta = -40.0
-        elif manual_low_mmr_mode and is_correct:
-            delta = 0.0
+        if manual_mmr_delta is not None:
+            delta = float(manual_mmr_delta)
+            if delta > 0:
+                delta = min(delta, max_gain)
+            else:
+                delta = max(delta, -max_loss)
+            calibration = 1.0
+            c_time = 1.0
+            c_attempt = 1.0
+            time_meta: dict = {"time_band": "manual_override"}
+            if time_spent_sec is not None:
+                time_meta["effective_time_sec"] = time_spent_sec
+        else:
+            d_value = cls._difficulty_weight(difficulty_level)
+            c_time, time_meta = cls._time_coeff(is_correct, time_spent_sec, task_type)
+            c_attempt = cls._attempt_coeff(is_correct, attempt_no)
+            calibration = cls._calibration_multiplier(int(mmr_row.solved_count or 0))
+
+            delta = d_value * c_time * c_attempt
+            if not is_correct:
+                delta *= -1.0
+            delta *= calibration
+            delta *= float(cfg.get("delta_scale", 1.0))
+            if delta > 0:
+                delta = min(delta, max_gain)
+            else:
+                delta = max(delta, -max_loss)
+
+            if manual_low_mmr_mode and not is_correct:
+                delta = -40.0
+            elif manual_low_mmr_mode and is_correct:
+                delta = 0.0
 
         old_rating = float((mastery.rating if mastery else mmr_row.mmr) or cls.INITIAL_RATING)
         new_rating = cls._clamp_mmr(old_rating + delta)
         if mastery:
             mastery.rating = new_rating
-            mastery.last_practiced_at = moscow_now()
+            mastery.last_practiced_at = utc_now()
             mastery.solved_count = int(mastery.solved_count or 0) + 1
             mastery.calibration_done = bool((mastery.solved_count or 0) >= int(cls._cfg().get("calibration", {}).get("second_stage_tasks", 10)))
             mastery.streak_days = (mastery.streak_days or 0) + 1 if is_correct else 0
@@ -283,6 +300,13 @@ class AnalyticsEngine:
             "difficulty_label": cls._difficulty_label(difficulty_level),
             **time_meta,
         }
+        if manual_mmr_delta is not None:
+            behavior["teacher_adjusted"] = True
+            behavior["applied_manual_mmr_delta"] = float(manual_mmr_delta)
+            if rating_comment:
+                behavior["rating_comment"] = str(rating_comment)[:4000]
+            if grader_user_id is not None:
+                behavior["grader_user_id"] = int(grader_user_id)
         if node is not None:
             event = AnalyticsEvent(
                 user_id=user_id,
@@ -332,6 +356,9 @@ class AnalyticsEngine:
         attempt_no: int | None = None,
         mode: str | None = None,
         manual_low_mmr_mode: bool = False,
+        manual_mmr_delta: float | None = None,
+        rating_comment: str | None = None,
+        grader_user_id: int | None = None,
     ) -> dict | None:
         new_rating = cls.process_submission(
             user_id=user_id,
@@ -344,6 +371,9 @@ class AnalyticsEngine:
             attempt_no=attempt_no,
             mode=mode,
             manual_low_mmr_mode=manual_low_mmr_mode,
+            manual_mmr_delta=manual_mmr_delta,
+            rating_comment=rating_comment,
+            grader_user_id=grader_user_id,
         )
         if new_rating is None:
             return None

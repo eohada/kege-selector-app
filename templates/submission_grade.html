@@ -702,6 +702,16 @@
                         <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.5rem 0;">Ученик увидит этот комментарий при выполнении. Можно сохранить кнопкой «Сохранить комментарии» без завершения проверки.</p>
                         <textarea class="comment-input" name="comment_{{ g.assignment_task.assignment_task_id }}" placeholder="Например: обратите внимание на единицы измерения; подсказка к заданию...">{{ g.answer.teacher_comment if g.answer and g.answer.teacher_comment else '' }}</textarea>
                     </div>
+                    {% if g.assignment_task.requires_manual_grading %}
+                    <div style="margin-top: 1rem; padding: 1rem; border: 1px dashed var(--stroke-1); border-radius: var(--radius-md); background: rgba(123, 92, 255, 0.06);">
+                        <div style="font-weight: 800; margin-bottom: 0.35rem;">Корректировка рейтинга (MMR)</div>
+                        <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.75rem 0;">Необязательно. Если указать Δ&nbsp;MMR, вместо автоматической формулы будет применено это изменение; комментарий попадёт в историю аналитики.</p>
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.35rem;">Δ MMR</label>
+                        <input type="number" step="any" name="mmr_delta_{{ g.assignment_task.assignment_task_id }}" class="neo-input" placeholder="Авто" style="max-width: 14rem; box-sizing: border-box;">
+                        <label style="font-weight: 600; display: block; margin: 0.75rem 0 0.35rem;">Комментарий к изменению рейтинга</label>
+                        <textarea name="rating_comment_{{ g.assignment_task.assignment_task_id }}" class="comment-input" rows="2" placeholder="Для журнала аналитики (не обязателен)"></textarea>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
                 </div>
@@ -935,6 +945,14 @@
                     if (em) initial = parseInt(em[1], 10);
                 }
                 setActiveByIndex(initial);
+                try {
+                    var _gfp = new URLSearchParams(window.location.search);
+                    var _gfid = _gfp.get('focus_at');
+                    if (_gfid) {
+                        var _gidx = cards.findIndex(function(c) { return String(c.getAttribute('data-task-id')) === String(_gfid); });
+                        if (_gidx >= 0) setActiveByIndex(_gidx + 1);
+                    }
+                } catch (_ge) {}
 
                 buttons.forEach(function(btn) {
                     btn.addEventListener('click', function(e) {
@@ -1191,15 +1209,28 @@
             return out;
         }
 
+        function appendManualMmrToScorePayload(entry, assignmentTaskId) {
+            const mmrEl = document.querySelector('input[name="mmr_delta_' + assignmentTaskId + '"]');
+            const rcEl = document.querySelector('textarea[name="rating_comment_' + assignmentTaskId + '"]');
+            if (mmrEl && String(mmrEl.value).trim() !== '') {
+                const v = parseFloat(String(mmrEl.value).replace(',', '.'));
+                if (!Number.isNaN(v)) entry.mmr_delta = v;
+            }
+            if (rcEl && rcEl.value.trim()) entry.rating_comment = rcEl.value.trim();
+        }
+
         // Сохранение оценки
         document.getElementById('grade-btn')?.addEventListener('click', function() {
             const scores = [];
             document.querySelectorAll('.score-input').forEach(input => {
-                scores.push({
-                    assignment_task_id: parseInt(input.name.replace('score_', '')),
+                const atid = parseInt(input.name.replace('score_', ''), 10);
+                const entry = {
+                    assignment_task_id: atid,
                     score: parseInt(input.value) || 0,
                     comment: document.querySelector(`textarea[name="comment_${input.name.replace('score_', '')}"]`)?.value || ''
-                });
+                };
+                appendManualMmrToScorePayload(entry, atid);
+                scores.push(entry);
             });
             
             const data = {
@@ -1343,11 +1374,14 @@
         document.getElementById('return-modal-confirm')?.addEventListener('click', function() {
             var scores = [];
             document.querySelectorAll('.score-input').forEach(function(input) {
-                scores.push({
-                    assignment_task_id: parseInt(input.name.replace('score_', ''), 10),
+                var atid = parseInt(input.name.replace('score_', ''), 10);
+                var entry = {
+                    assignment_task_id: atid,
                     score: parseInt(input.value, 10) || 0,
                     comment: (document.querySelector('textarea[name="comment_' + input.name.replace('score_', '') + '"]') || {}).value || ''
-                });
+                };
+                appendManualMmrToScorePayload(entry, atid);
+                scores.push(entry);
             });
             var newDeadline = (returnDeadlineInput.value || '').trim();
             var newAttemptsRaw = (returnAttemptsInput.value || '').trim();

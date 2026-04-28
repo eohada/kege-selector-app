@@ -375,6 +375,23 @@
                         </div>
                         {% endif %}
 
+                        <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;" id="user-timezone-panel">
+                            <div class="hero-eyebrow">время</div>
+                            <p style="margin: 0.35rem 0 0.75rem; color: var(--text-muted); font-size: 0.9rem;">Как показывать даты. «Авто» — часовой пояс браузера (обновляется при входе).</p>
+                            <label class="neo-label" for="tz-mode-select">Режим</label>
+                            <select id="tz-mode-select" class="neo-input" style="margin-bottom: 0.75rem;">
+                                <option value="auto" {% if (current_user.timezone_mode or 'auto') == 'auto' %}selected{% endif %}>Авто (браузер)</option>
+                                <option value="manual" {% if (current_user.timezone_mode or '') == 'manual' %}selected{% endif %}>Указать IANA</option>
+                            </select>
+                            <label class="neo-label" for="tz-iana-input">Часовой пояс (IANA)</label>
+                            <input type="text" id="tz-iana-input" class="neo-input" list="tz-common-list" value="{{ current_user.timezone_iana or '' }}" placeholder="Europe/Moscow" {% if (current_user.timezone_mode or 'auto') != 'manual' %}disabled{% endif %}>
+                            <datalist id="tz-common-list">
+                                <option value="Europe/Moscow"><option value="Europe/Kaliningrad"><option value="Asia/Yekaterinburg"><option value="Asia/Novosibirsk"><option value="Asia/Vladivostok"><option value="Europe/London"><option value="UTC">
+                            </datalist>
+                            <button type="button" id="tz-save-btn" class="neo-button primary sm" style="margin-top: 0.75rem;">Сохранить</button>
+                            <p id="tz-save-msg" style="margin-top: 0.5rem; font-size: 0.85rem; display: none;"></p>
+                        </div>
+
                         <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;" id="telegram-notifications-block">
                             <div class="hero-eyebrow">уведомления</div>
                             <h4 style="margin: 0.35rem 0 0.5rem 0;">Telegram бот</h4>
@@ -769,13 +786,55 @@
         const profileContainer = document.querySelector('.profile-container.theme-creator');
         if (profileContainer) document.body.classList.add('creator-theme-active');
 
+        const tzMeta = document.querySelector('meta[name="user-timezone-effective"]');
+        const tzName = tzMeta && tzMeta.content ? tzMeta.content : undefined;
         document.querySelectorAll('.local-time').forEach(el => {
             const timestamp = el.dataset.timestamp;
             if (timestamp) {
                 const date = new Date(timestamp);
-                el.textContent = date.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const opts = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+                if (tzName) opts.timeZone = tzName;
+                el.textContent = date.toLocaleString('ru-RU', opts);
             }
         });
+
+        const tzMode = document.getElementById('tz-mode-select');
+        const tzIana = document.getElementById('tz-iana-input');
+        const tzSave = document.getElementById('tz-save-btn');
+        const tzMsg = document.getElementById('tz-save-msg');
+        if (tzMode && tzIana) {
+            tzMode.addEventListener('change', () => {
+                tzIana.disabled = tzMode.value !== 'manual';
+            });
+        }
+        if (tzSave) {
+            tzSave.addEventListener('click', async () => {
+                if (!tzMode) return;
+                const csrf = document.querySelector('meta[name="csrf-token"]');
+                try {
+                    const r = await fetch('/api/me/timezone', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrf ? csrf.getAttribute('content') : '',
+                        },
+                        body: JSON.stringify({
+                            timezone_mode: tzMode.value,
+                            timezone_iana: tzIana && !tzIana.disabled ? (tzIana.value || '').trim() : '',
+                        }),
+                    });
+                    const data = await r.json();
+                    if (data.success) {
+                        if (tzMsg) { tzMsg.style.display = 'block'; tzMsg.textContent = 'Сохранено. Эффективная зона: ' + (data.effective || ''); }
+                        const effMeta = document.querySelector('meta[name="user-timezone-effective"]');
+                        if (effMeta && data.effective) effMeta.setAttribute('content', data.effective);
+                        if (window.toast) window.toast.success('Часовой пояс обновлён');
+                    } else if (window.toast) window.toast.error(data.error || 'Ошибка');
+                } catch (e) {
+                    if (window.toast) window.toast.error('Сеть');
+                }
+            });
+        }
     });
 </script>
 

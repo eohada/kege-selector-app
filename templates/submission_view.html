@@ -233,13 +233,6 @@
             box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
         }
         
-        .autosave-indicator {
-            font-size: 0.85em;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-            font-style: italic;
-        }
-        
         .submit-section {
             position: fixed;
             left: 50%;
@@ -730,7 +723,6 @@
                         {% if awaiting_work_start or submission.status == 'SUBMITTED' or not can_submit or not task_can_edit %}disabled{% endif %}
                         {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
-                    <div class="autosave-indicator" id="autosave-{{ task_item.assignment_task.assignment_task_id }}"></div>
                     {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
                     {% for sub_item in task_item.triplet_items %}
                     <div style="margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px dashed var(--stroke-1);">
@@ -744,7 +736,6 @@
                             {% if awaiting_work_start or submission.status == 'SUBMITTED' or not can_submit or not sub_task_can_edit %}disabled{% endif %}
                             {% if attempts_per_task and sub_item.task_attempts_used >= sub_item.max_attempts_for_task %}disabled{% endif %}
                         >{{ sub_item.answer.value if sub_item.answer else '' }}</textarea>
-                        <div class="autosave-indicator" id="autosave-{{ sub_item.assignment_task.assignment_task_id }}"></div>
                     </div>
                     {% endfor %}
                     {% endif %}
@@ -839,7 +830,6 @@
                     <button type="button" id="autosave-btn" class="px-5 py-3 bg-surface-alt text-muted border border-slate-200 rounded-xl font-bold text-sm hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-2" {% if awaiting_work_start %}disabled{% endif %}>
                         <i class="ph-bold ph-floppy-disk text-lg"></i> <span class="hidden sm:inline">Сохранить черновик</span>
                     </button>
-                    <span id="last-save" class="autosave-indicator" style="font-size: 0.85em; color: var(--text-muted); font-weight: 500;"></span>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
                     <div id="timer-blocked-msg" style="{% if timer_expired and time_limit_strict %}display: block;{% else %}display: none;{% endif %} padding: 0.75rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: var(--radius-md); color: #ef4444; font-weight: 700; font-size: 0.95em;">
@@ -1559,15 +1549,6 @@
                 }
                 if (data.success) {
                     persistLocalDraft();
-                    const lastSaveEl = document.getElementById('last-save');
-                    if (lastSaveEl) lastSaveEl.textContent = 'Сохранено: ' + new Date().toLocaleTimeString();
-                    answers.forEach(answer => {
-                        const indicator = document.getElementById(`autosave-${answer.assignment_task_id}`);
-                        if (indicator) {
-                            indicator.textContent = 'Сохранено';
-                            setTimeout(() => indicator.textContent = '', 2000);
-                        }
-                    });
                 }
             })
             .catch(error => {
@@ -2149,6 +2130,17 @@
                 initial = extractIndexFromHref(explicitActive) || 1;
             }
             setActiveTask(initial);
+            try {
+                var _fp = new URLSearchParams(window.location.search);
+                var _fid = _fp.get('focus_at');
+                if (_fid) {
+                    var _match = taskCards.find(function(c) { return String(c.getAttribute('data-task-id')) === String(_fid); });
+                    if (_match) {
+                        var _pos = taskCards.indexOf(_match);
+                        if (_pos >= 0) setActiveTask(_pos + 1);
+                    }
+                }
+            } catch (_e) {}
         })();
     </script>
     {% include '_partials/file_viewer_modal.html' %}

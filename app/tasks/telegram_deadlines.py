@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 from celery_app import celery
 
@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 @celery.task(name='app.tasks.telegram_deadlines.telegram_deadline_reminders_task')
 def telegram_deadline_reminders_task() -> dict:
     from app.models import Submission, Assignment, Student, db
-    from core.db_models import SubmissionTelegramDeadlineSent, moscow_now, MOSCOW_TZ
+    from core.db_models import SubmissionTelegramDeadlineSent, utc_now, MOSCOW_TZ
     from app.telegram.notifications import _esc
     from app.telegram.user_notify import notify_user_by_id
 
-    now = moscow_now()
+    now = utc_now()
     sent = 0
     try:
         q = (
@@ -36,10 +36,10 @@ def telegram_deadline_reminders_task() -> dict:
                     continue
                 dl = assignment.deadline
                 if getattr(dl, 'tzinfo', None) is None:
-                    dl = dl.replace(tzinfo=MOSCOW_TZ)
+                    dl_utc = dl.replace(tzinfo=MOSCOW_TZ).astimezone(timezone.utc)
                 else:
-                    dl = dl.astimezone(MOSCOW_TZ)
-                delta = dl - now
+                    dl_utc = dl.astimezone(timezone.utc)
+                delta = dl_utc - now
                 if delta.total_seconds() <= 0:
                     continue
                 window_key = None

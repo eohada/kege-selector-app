@@ -5,6 +5,7 @@ import logging
 import os
 import json
 import uuid
+from datetime import timezone as dt_timezone
 from werkzeug.utils import secure_filename
 from app.uploads.service import save_uploaded_file
 from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
@@ -145,13 +146,16 @@ def lesson_edit(lesson_id):
         form.timezone.data = user_tz
         
         if lesson.lesson_date:
-            lesson_date_msk = lesson.lesson_date.replace(tzinfo=MOSCOW_TZ) if lesson.lesson_date.tzinfo is None else lesson.lesson_date
-            
+            ld = lesson.lesson_date
+            if ld.tzinfo is None:
+                lu = ld.replace(tzinfo=MOSCOW_TZ).astimezone(dt_timezone.utc)
+            else:
+                lu = ld.astimezone(dt_timezone.utc)
+            lesson_date_msk = lu.astimezone(MOSCOW_TZ)
             if user_tz == 'tomsk':
                 lesson_date_local = lesson_date_msk.astimezone(TOMSK_TZ)
             else:
                 lesson_date_local = lesson_date_msk
-            
             form.lesson_date.data = lesson_date_local.replace(tzinfo=None)
 
     if form.validate_on_submit():
@@ -165,16 +169,13 @@ def lesson_edit(lesson_id):
         
         if timezone == 'tomsk':
             lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
-            lesson_date_utc = lesson_date_local.astimezone(MOSCOW_TZ)
-            logger.debug(f"Томское время: {lesson_date_local}, Московское время: {lesson_date_utc}")
+            lesson.lesson_date = lesson_date_local.astimezone(dt_timezone.utc)
+            logger.debug(f"Томское время: {lesson_date_local}, UTC: {lesson.lesson_date}")
         else:
             lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
-            lesson_date_utc = lesson_date_local
-        
-        lesson_date_utc = lesson_date_utc.replace(tzinfo=None) if lesson_date_utc.tzinfo else lesson_date_utc
+            lesson.lesson_date = lesson_date_local.astimezone(dt_timezone.utc)
         
         lesson.lesson_type = form.lesson_type.data
-        lesson.lesson_date = lesson_date_utc
         lesson.duration = form.duration.data
         lesson.status = form.status.data
         lesson.topic = form.topic.data
@@ -283,10 +284,10 @@ def lesson_delete(lesson_id):
 @login_required
 def lesson_start(lesson_id):
     """Начало урока: фиксируем started_at, опционально отмечаем опоздание."""
-    from core.db_models import moscow_now
+    from core.db_models import utc_now
     lesson = Lesson.query.get_or_404(lesson_id)
     lesson.status = 'in_progress'
-    now = moscow_now()
+    now = utc_now()
     lesson.started_at = now
     mark_late = request.form.get('student_late') in ('1', 'true', 'on', 'yes')
     if mark_late:
@@ -294,10 +295,12 @@ def lesson_start(lesson_id):
     elif lesson.lesson_date:
         try:
             from datetime import timedelta
-            lesson_dt = lesson.lesson_date if getattr(lesson.lesson_date, 'tzinfo', None) else lesson.lesson_date
-            now_naive = now.replace(tzinfo=None) if getattr(now, 'tzinfo', None) else now
-            ld = lesson_dt.replace(tzinfo=None) if getattr(lesson_dt, 'tzinfo', None) else lesson_dt
-            if now_naive > ld + timedelta(minutes=15):
+            ld = lesson.lesson_date
+            if getattr(ld, 'tzinfo', None) is None:
+                ld_utc = ld.replace(tzinfo=MOSCOW_TZ).astimezone(dt_timezone.utc)
+            else:
+                ld_utc = ld.astimezone(dt_timezone.utc)
+            if now > ld_utc + timedelta(minutes=15):
                 lesson.student_late = True
             else:
                 lesson.student_late = False

@@ -905,12 +905,53 @@ def api_analytics_calibration_reset():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@api_bp.route('/api/me/timezone', methods=['POST'])
+@login_required
+def api_me_timezone():
+    """Сохранить режим часового пояса и/или IANA; при auto — обновить UserProfiles.timezone из браузера."""
+    try:
+        from zoneinfo import ZoneInfo
+        from app.utils.datetime_utc import effective_timezone_name
+
+        data = request.get_json(silent=True) or {}
+        browser = (data.get('browser_iana') or '').strip()
+        mode = (data.get('timezone_mode') or '').strip().lower()
+        iana = (data.get('timezone_iana') or '').strip()
+
+        if mode in ('auto', 'manual'):
+            current_user.timezone_mode = mode
+        if iana:
+            try:
+                ZoneInfo(iana)
+                current_user.timezone_iana = iana[:64]
+            except Exception:
+                return jsonify({'success': False, 'error': 'Некорректный часовой пояс IANA'}), 400
+        elif mode == 'auto':
+            current_user.timezone_iana = None
+
+        if browser:
+            try:
+                ZoneInfo(browser)
+                prof = UserProfile.query.filter_by(user_id=current_user.id).first()
+                if prof:
+                    prof.timezone = browser[:50]
+            except Exception:
+                pass
+
+        db.session.commit()
+        return jsonify({'success': True, 'effective': effective_timezone_name(current_user)})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка /api/me/timezone: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @api_bp.route('/api/analytics/history')
 @login_required
 def api_analytics_history():
     """Detailed rating history for student and teacher analytics views."""
     try:
-        from core.db_models import AnalyticsEvent
+        from core.db_models import AnalyticsEvent, Submission, Answer
 
         user_id = current_user.id
         student_id = request.args.get('student_id', type=int)
@@ -927,15 +968,22 @@ def api_analytics_history():
             user_id = student.user_id
 
         rows = (
-            db.session.query(AnalyticsEvent, Tasks.task_number)
+            db.session.query(
+                AnalyticsEvent,
+                Tasks.task_number,
+                Submission.assignment_id,
+                Answer.assignment_task_id,
+            )
             .outerjoin(Tasks, AnalyticsEvent.task_id == Tasks.task_id)
+            .outerjoin(Submission, AnalyticsEvent.submission_id == Submission.submission_id)
+            .outerjoin(Answer, AnalyticsEvent.answer_id == Answer.answer_id)
             .filter(AnalyticsEvent.user_id == user_id)
             .order_by(AnalyticsEvent.timestamp.desc(), AnalyticsEvent.id.desc())
             .limit(200)
             .all()
         )
         history = []
-        for ev, task_number in rows:
+        for ev, task_number, assignment_id, assignment_task_id in rows:
             flags = ev.behavior_flags or {}
             difficulty = ev.task_difficulty
             if difficulty == 1:
@@ -944,11 +992,24 @@ def api_analytics_history():
                 difficulty_label = 'Хард'
             else:
                 difficulty_label = 'Стандарт'
+
+            sid = int(ev.submission_id) if ev.submission_id is not None else None
+            atid = int(assignment_task_id) if assignment_task_id is not None else None
+            urls = {'submission': None, 'submission_task': None, 'grade': None}
+            if sid is not None:
+                base = f'/submissions/{sid}'
+                focus = f'?focus_at={atid}' if atid is not None else ''
+                urls['submission'] = base
+                urls['submission_task'] = f'{base}{focus}' if atid is not None else base
+                urls['grade'] = f'{base}/grade{focus}' if atid is not None else f'{base}/grade'
+
             history.append({
+                'event_id': ev.id,
                 'timestamp': ev.timestamp.isoformat() if ev.timestamp else None,
                 'task_number': int(task_number) if task_number is not None else (int(ev.task_type) if ev.task_type else None),
                 'is_correct': bool(ev.is_correct),
                 'mmr_delta': round(float(ev.mmr_delta or 0.0), 2),
+                'old_rating': round(float(ev.old_rating or 0.0), 2) if ev.old_rating is not None else None,
                 'new_rating': round(float(ev.new_rating or 0.0), 2) if ev.new_rating is not None else None,
                 'difficulty_label': flags.get('difficulty_label') or difficulty_label,
                 'time_spent_sec': ev.time_spent_sec,
@@ -957,6 +1018,15 @@ def api_analytics_history():
                 'calibration_multiplier': flags.get('calibration_multiplier'),
                 'time_band': flags.get('time_band'),
                 'mode': ev.mode,
+                'attempt_no': ev.attempt_no,
+                'submission_id': sid,
+                'answer_id': int(ev.answer_id) if ev.answer_id is not None else None,
+                'task_id': int(ev.task_id) if ev.task_id is not None else None,
+                'assignment_id': int(assignment_id) if assignment_id is not None else None,
+                'assignment_task_id': atid,
+                'urls': urls,
+                'rating_comment': flags.get('rating_comment'),
+                'teacher_adjusted': bool(flags.get('teacher_adjusted')),
             })
         return jsonify({'success': True, 'history': history})
     except Exception as e:

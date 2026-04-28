@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 from celery_app import celery
 
@@ -17,11 +17,11 @@ def telegram_lesson_reminders_task() -> dict:
     Если напоминание ещё не отправлено — отправляет и ставит флаг.
     """
     from app.models import Lesson, Student, db
-    from core.db_models import MOSCOW_TZ, moscow_now
+    from core.db_models import MOSCOW_TZ, utc_now
     from app.telegram.user_notify import notify_user_by_id
     from app.telegram.notifications import _esc
 
-    now = moscow_now()
+    now = utc_now()
     window_start = now + timedelta(minutes=25)
     window_end = now + timedelta(minutes=35)
     sent = 0
@@ -32,8 +32,8 @@ def telegram_lesson_reminders_task() -> dict:
             .join(Student, Student.student_id == Lesson.student_id)
             .filter(
                 Lesson.status == 'planned',
-                Lesson.lesson_date >= window_start.replace(tzinfo=None),
-                Lesson.lesson_date <= window_end.replace(tzinfo=None),
+                Lesson.lesson_date >= window_start,
+                Lesson.lesson_date <= window_end,
                 Lesson.tg_reminder_30min_sent == False,
                 Student.user_id.isnot(None),
             )
@@ -51,7 +51,9 @@ def telegram_lesson_reminders_task() -> dict:
                 room_url = f'{base}/lesson/{lesson.lesson_id}/classwork-tasks' if base else ''
 
                 lesson_dt = lesson.lesson_date
-                if hasattr(lesson_dt, 'tzinfo') and lesson_dt.tzinfo:
+                if lesson_dt is not None:
+                    if getattr(lesson_dt, 'tzinfo', None) is None:
+                        lesson_dt = lesson_dt.replace(tzinfo=timezone.utc)
                     lesson_dt = lesson_dt.astimezone(MOSCOW_TZ)
                 time_str = lesson_dt.strftime('%H:%M') if lesson_dt else '—'
 

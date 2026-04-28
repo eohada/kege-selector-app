@@ -552,17 +552,26 @@
                         });
                     }
                     var historyUrl = '/api/analytics/history?student_id=' + encodeURIComponent(STUDENT_ID_FOR_ANALYTICS) + courseIdParam;
+                    var historyColspan = isStudentView ? 5 : 7;
+                    function historyUserTz() {
+                        var m = document.querySelector('meta[name="user-timezone-effective"]');
+                        return (m && m.content) ? m.content : 'Europe/Moscow';
+                    }
+                    function historyEsc(s) {
+                        if (s == null) return '';
+                        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                    }
                     fetch(historyUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
                       .then(function(r) { return r.json(); })
                       .then(function(hd) {
                         var hb = document.getElementById('analyticsHistoryBody');
                         if (!hb) return;
                         if (!hd.success || !Array.isArray(hd.history) || hd.history.length === 0) {
-                          hb.innerHTML = '<tr><td colspan="' + (isStudentView ? 5 : 7) + '" class="px-4 py-6 text-sm font-medium text-muted text-center">Пока нет данных по истории рейтинга.</td></tr>';
+                          hb.innerHTML = '<tr><td colspan="' + historyColspan + '" class="px-4 py-6 text-sm font-medium text-muted text-center">Пока нет данных по истории рейтинга.</td></tr>';
                           return;
                         }
                         hb.innerHTML = hd.history.slice(0, 80).map(function(row) {
-                          var dt = row.timestamp ? new Date(row.timestamp).toLocaleString('ru-RU') : '—';
+                          var dt = row.timestamp ? new Date(row.timestamp).toLocaleString('ru-RU', { timeZone: historyUserTz() }) : '—';
                           var tn = row.task_number != null ? ('№' + row.task_number) : '—';
                           var diff = row.difficulty_label || '—';
                           var ok = row.is_correct ? '<span class="px-2 py-0.5 rounded bg-green-50 dark:bg-emerald-500/15 border border-green-200 dark:border-emerald-500/35 text-green-700 dark:text-emerald-300 text-xs font-bold">Верно</span>' : '<span class="px-2 py-0.5 rounded bg-red-50 dark:bg-red-500/15 border border-red-200 dark:border-red-500/35 text-red-700 dark:text-red-300 text-xs font-bold">Ошибка</span>';
@@ -570,11 +579,41 @@
                           var coeff = 't=' + (row.time_coeff != null ? row.time_coeff : '—') + ', a=' + (row.attempt_coeff != null ? row.attempt_coeff : '—') + ', c=' + (row.calibration_multiplier != null ? row.calibration_multiplier : '—');
                           var delta = (row.mmr_delta != null ? (row.mmr_delta >= 0 ? '+' : '') + row.mmr_delta : '—');
                           var deltaCls = (row.mmr_delta != null && row.mmr_delta >= 0) ? 'text-green-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400';
+                          var exp = '<button type="button" class="history-expand-btn mr-2 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 dark:border-white/15 bg-surface-alt dark:bg-dark-inner text-xs font-bold text-secondary dark:text-white/80" aria-expanded="false" title="Подробнее">▸</button>';
+                          var u = row.urls || {};
+                          var linkBase = 'inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-white/12 bg-surface-alt dark:bg-dark-inner px-2.5 py-1 text-xs font-bold text-boo-primary hover:opacity-90';
+                          var links = [];
+                          if (u.submission) links.push('<a class="' + linkBase + '" href="' + historyEsc(u.submission) + '">Открыть работу</a>');
+                          if (u.submission_task && u.submission_task !== u.submission) links.push('<a class="' + linkBase + '" href="' + historyEsc(u.submission_task) + '">К заданию</a>');
+                          if (!isStudentView && u.grade) links.push('<a class="' + linkBase + '" href="' + historyEsc(u.grade) + '">К проверке</a>');
+                          var metaBits = [];
+                          if (row.event_id != null) metaBits.push('Событие #' + row.event_id);
+                          if (row.attempt_no != null) metaBits.push('Попытка: ' + row.attempt_no);
+                          if (row.old_rating != null && row.new_rating != null) metaBits.push('Рейтинг: ' + row.old_rating + ' → ' + row.new_rating);
+                          if (row.submission_id != null) metaBits.push('Сдача #' + row.submission_id);
+                          if (row.assignment_task_id != null) metaBits.push('Задание в работе #' + row.assignment_task_id);
+                          if (row.task_id != null) metaBits.push('Задача банка #' + row.task_id);
+                          if (row.mode) metaBits.push('Режим: ' + historyEsc(row.mode));
+                          if (row.teacher_adjusted) metaBits.push('Корректировка преподавателя');
+                          var commentBlock = row.rating_comment ? ('<p class="mt-2 text-xs text-muted"><span class="font-bold text-secondary dark:text-white/80">Комментарий:</span> ' + historyEsc(row.rating_comment) + '</p>') : '';
+                          var detailInner = '<div class="flex flex-wrap gap-2">' + links.join('') + '</div><p class="mt-2 text-xs text-muted">' + metaBits.map(historyEsc).join(' · ') + '</p>' + commentBlock;
+                          var detailRow = '<tr class="history-detail hidden border-b border-slate-100 dark:border-white/[0.08] bg-slate-50/80 dark:bg-white/[0.03]"><td colspan="' + historyColspan + '" class="px-4 py-3 text-sm">' + detailInner + '</td></tr>';
                           if (isStudentView) {
-                            return '<tr class="border-b border-slate-100 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]"><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + dt + '</td><td class="px-4 py-3 text-sm font-bold text-primary dark:text-white">' + tn + '</td><td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded border border-slate-200 dark:border-white/10 bg-surface-alt dark:bg-dark-inner font-bold text-secondary dark:text-white/90">' + diff + '</span></td><td class="px-4 py-3 text-sm">' + ok + '</td><td class="px-4 py-3 text-sm font-black text-right ' + deltaCls + '">' + delta + '</td></tr>';
+                            return '<tr class="history-main border-b border-slate-100 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]"><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + exp + '<span>' + dt + '</span></td><td class="px-4 py-3 text-sm font-bold text-primary dark:text-white">' + tn + '</td><td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded border border-slate-200 dark:border-white/10 bg-surface-alt dark:bg-dark-inner font-bold text-secondary dark:text-white/90">' + diff + '</span></td><td class="px-4 py-3 text-sm">' + ok + '</td><td class="px-4 py-3 text-sm font-black text-right ' + deltaCls + '">' + delta + '</td></tr>' + detailRow;
                           }
-                          return '<tr class="border-b border-slate-100 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]"><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + dt + '</td><td class="px-4 py-3 text-sm font-bold text-primary dark:text-white">' + tn + '</td><td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded border border-slate-200 dark:border-white/10 bg-surface-alt dark:bg-dark-inner font-bold text-secondary dark:text-white/90">' + diff + '</span></td><td class="px-4 py-3 text-sm">' + ok + '</td><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + tsec + '</td><td class="px-4 py-3 text-xs text-muted">' + coeff + '</td><td class="px-4 py-3 text-sm font-black text-right ' + deltaCls + '">' + delta + '</td></tr>';
+                          return '<tr class="history-main border-b border-slate-100 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]"><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + exp + '<span>' + dt + '</span></td><td class="px-4 py-3 text-sm font-bold text-primary dark:text-white">' + tn + '</td><td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded border border-slate-200 dark:border-white/10 bg-surface-alt dark:bg-dark-inner font-bold text-secondary dark:text-white/90">' + diff + '</span></td><td class="px-4 py-3 text-sm">' + ok + '</td><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + tsec + '</td><td class="px-4 py-3 text-xs text-muted">' + coeff + '</td><td class="px-4 py-3 text-sm font-black text-right ' + deltaCls + '">' + delta + '</td></tr>' + detailRow;
                         }).join('');
+                        hb.onclick = function(e) {
+                          var btn = e.target.closest('.history-expand-btn');
+                          if (!btn || !hb.contains(btn)) return;
+                          var tr = btn.closest('tr');
+                          var next = tr && tr.nextElementSibling;
+                          if (!next || !next.classList.contains('history-detail')) return;
+                          next.classList.toggle('hidden');
+                          var open = !next.classList.contains('hidden');
+                          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                          btn.textContent = open ? '▾' : '▸';
+                        };
                       })
                       .catch(function() {});
                 })

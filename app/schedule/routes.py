@@ -185,8 +185,7 @@ def _parse_local_datetime(date_str: str, time_str: str, timezone: str):
     lesson_datetime_str = f"{date_str} {time_str}"
     lesson_datetime_local = datetime.strptime(lesson_datetime_str, '%Y-%m-%d %H:%M')
     lesson_datetime_local = lesson_datetime_local.replace(tzinfo=input_tz)
-    base_lesson_datetime = lesson_datetime_local.astimezone(MOSCOW_TZ).replace(tzinfo=None)
-    return base_lesson_datetime
+    return lesson_datetime_local.astimezone(datetime.timezone.utc)
 
 
 def _student_has_overlap(student_id: int, start_dt: datetime, duration_min: int, exclude_lesson_id: int | None = None) -> bool:

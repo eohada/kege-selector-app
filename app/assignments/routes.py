@@ -19,7 +19,8 @@ from app.models import (
 from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment, SubmissionCommentThreadRead, MOSCOW_TZ
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
-from core.db_models import moscow_now
+from core.db_models import utc_now
+from app.utils.datetime_utc import deadline_from_form_to_utc
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, notify_user, build_task_number_summary, build_task_number_counts
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
@@ -67,6 +68,14 @@ def _ensure_aware_datetime(dt):
     if dt.tzinfo is None:
         return dt.replace(tzinfo=MOSCOW_TZ)
     return dt
+
+
+def _to_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=MOSCOW_TZ).astimezone(timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _started_at_to_utc(dt):
@@ -224,11 +233,11 @@ def _bump_submission_comment_thread_read(submission_id: int, assignment_task_id:
             assignment_task_id=tid,
             user_id=uid,
             last_read_comment_id=upto,
-            updated_at=moscow_now(),
+            updated_at=utc_now(),
         ))
     elif upto > int(row.last_read_comment_id or 0):
         row.last_read_comment_id = upto
-        row.updated_at = moscow_now()
+        row.updated_at = utc_now()
 
 
 def _mark_all_submission_comment_threads_read_on_page_view(submission, viewer_user_id: int, legacy_bucket_task_id: int | None) -> None:
@@ -267,7 +276,7 @@ def _compute_submission_chat_unread_task_ids(submission, viewer_user_id: int, le
         logger.warning('SubmissionCommentThreadRead query failed (schema?): %s', e)
         return _compute_submission_chat_unread_fallback_heuristic(submission, viewer_user_id, legacy_bucket_task_id)
     unread: set[int] = set()
-    ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
+    ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or utc_now(), c.comment_id or 0))
     for c in ordered:
         tid = _submission_comment_task_id(c, legacy_bucket_task_id)
         if tid <= 0:
@@ -286,13 +295,13 @@ def _compute_submission_chat_unread_fallback_heuristic(submission, viewer_user_i
     uid = int(viewer_user_id)
     unread: set[int] = set()
     last_own_at: dict[int, datetime] = {}
-    ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
+    ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or utc_now(), c.comment_id or 0))
     for c in ordered:
         tid = _submission_comment_task_id(c, legacy_bucket_task_id)
         if tid <= 0:
             continue
         if int(c.author_id) == uid:
-            last_own_at[tid] = c.created_at or moscow_now()
+            last_own_at[tid] = c.created_at or utc_now()
             continue
         last_t = last_own_at.get(tid)
         if last_t is None or (c.created_at and c.created_at > last_t):
@@ -310,12 +319,13 @@ def _submission_display_status(submission, assignment, now):
         return None
     if getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None):
         started_utc = _started_at_to_utc(submission.started_at)
-        now_utc = now.astimezone(timezone.utc)
+        now_utc = _to_utc(now)
         limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
-        if now_utc > limit_end_utc:
+        if now_utc and started_utc and now_utc > limit_end_utc:
             return 'Просрочено по таймеру'
-    deadline = _ensure_aware_datetime(assignment.deadline) if getattr(assignment, 'deadline', None) else None
-    if deadline and now > deadline:
+    dl_utc = _to_utc(getattr(assignment, 'deadline', None))
+    now_utc = _to_utc(now)
+    if dl_utc and now_utc and now_utc > dl_utc:
         return 'Просрочено по дедлайну'
     return None
 
@@ -424,14 +434,8 @@ def _assignment_type_label_long(value: str | None) -> str:
 
 
 def _now_naive_msk() -> datetime:
-    now = moscow_now()
-    try:
-        return now.astimezone(moscow_now().tzinfo).replace(tzinfo=None)  # type: ignore[attr-defined]
-    except Exception:
-        try:
-            return now.replace(tzinfo=None)  # type: ignore[call-arg]
-        except Exception:
-            return datetime.now()
+    """Текущий момент в UTC (для сравнения с дедлайнами и created_at в БД)."""
+    return utc_now()
 
 
 def _safe_int(value, default: int = 0) -> int:
@@ -525,7 +529,7 @@ def assignment_review_bulk_update(assignment_id: int):
                 skipped += 1
                 continue
             transition_submission_status(sub, 'GRADED', force=True)
-            sub.graded_at = moscow_now()
+            sub.graded_at = utc_now()
             _set_submission_task_revision_flags(sub, mark_all=False, selected_task_ids=set())
         try:
             _record_submission_attempt(sub)
@@ -725,7 +729,7 @@ def _record_submission_attempt(submission: Submission) -> None:
     attempt = SubmissionAttempt(
         submission_id=submission.submission_id,
         attempt_no=next_no,
-        submitted_at=submission.submitted_at or moscow_now(),
+        submitted_at=submission.submitted_at or utc_now(),
         graded_at=submission.graded_at,
         status=submission.status,
         total_score=submission.total_score,
@@ -1126,8 +1130,7 @@ def distribute_assignment():
         
         try:
             deadline = datetime.fromisoformat(deadline_str.replace('Z', '+00:00'))
-            if deadline.tzinfo:
-                deadline = deadline.astimezone(moscow_now().tzinfo).replace(tzinfo=None)
+            deadline = deadline_from_form_to_utc(deadline)
         except Exception as e:
             return jsonify({'success': False, 'error': f'Некорректный формат дедлайна: {e}'}), 400
         
@@ -1229,7 +1232,7 @@ def distribute_assignment():
                 assignment_id=assignment.assignment_id,
                 student_id=student_id,
                 status='ASSIGNED',
-                assigned_at=moscow_now(),
+                assigned_at=utc_now(),
                 max_score=sum(at.max_score for at in assignment.tasks)
             )
             db.session.add(submission)
@@ -1409,13 +1412,12 @@ def assignments_list():
         assigned = _safe_int(getattr(row, 'assigned', 0))
         pending = assigned + in_progress + returned
 
-        deadline_naive = None
-        if a.deadline:
-            deadline_naive = a.deadline.replace(tzinfo=None) if a.deadline.tzinfo else a.deadline
-        
-        is_overdue = bool(deadline_naive and deadline_naive < now and pending > 0)
+        dl_utc = _to_utc(a.deadline) if a.deadline else None
+        now_utc = _to_utc(now)
+
+        is_overdue = bool(dl_utc and now_utc and dl_utc < now_utc and pending > 0)
         is_completed = bool(total_students > 0 and pending == 0 and to_grade == 0)
-        is_active = bool(deadline_naive and deadline_naive >= now and (pending > 0 or to_grade > 0))
+        is_active = bool(dl_utc and now_utc and dl_utc >= now_utc and (pending > 0 or to_grade > 0))
         return {
             'total_students': total_students,
             'to_grade': to_grade,
@@ -2043,9 +2045,7 @@ def assignment_update(assignment_id: int):
         if deadline_str:
             try:
                 deadline = datetime.fromisoformat(deadline_str.replace('Z', '+00:00'))
-                if deadline.tzinfo:
-                    deadline = deadline.astimezone(moscow_now().tzinfo).replace(tzinfo=None)
-                assignment.deadline = deadline
+                assignment.deadline = deadline_from_form_to_utc(deadline)
             except Exception:
                 pass
         assignment.hard_deadline = bool(data.get('hard_deadline', assignment.hard_deadline))
@@ -2275,9 +2275,7 @@ def assignment_duplicate(assignment_id: int):
     if requested_deadline:
         try:
             parsed_deadline = datetime.fromisoformat(str(requested_deadline).replace('Z', '+00:00'))
-            if parsed_deadline.tzinfo:
-                parsed_deadline = parsed_deadline.astimezone(moscow_now().tzinfo).replace(tzinfo=None)
-            new_deadline = parsed_deadline
+            new_deadline = deadline_from_form_to_utc(parsed_deadline)
         except Exception:
             return jsonify({'success': False, 'error': 'Некорректный дедлайн'}), 400
 
@@ -2385,7 +2383,7 @@ def assignment_duplicate(assignment_id: int):
             assignment_id=new_assignment.assignment_id,
             student_id=sid,
             status='ASSIGNED',
-            assigned_at=moscow_now(),
+            assigned_at=utc_now(),
             max_score=max_total,
         ))
 
@@ -2508,7 +2506,7 @@ def assignment_view(assignment_id):
 
         submissions.sort(key=_sort_key)
 
-        now = moscow_now()
+        now = utc_now()
         submission_display_status = {}
         for s in submissions:
             label = _submission_display_status(s, assignment, now)
@@ -2590,7 +2588,7 @@ def submissions_list():
         logger.warning(f"Failed to build lesson_workspaces for student {student.student_id}: {e}")
         lesson_workspaces = []
 
-    now = moscow_now()
+    now = utc_now()
     submission_display_status = {}
     for sub in submissions:
         label = _submission_display_status(sub, sub.assignment, now)
@@ -2641,7 +2639,7 @@ def submission_view(submission_id):
         return redirect(url_for('assignments.submissions_list'))
     
     try:
-        now = moscow_now()
+        now = utc_now()
         deadline = _ensure_aware_datetime(assignment.deadline)
         
         if deadline:
@@ -2787,7 +2785,7 @@ def submission_start(submission_id):
             logger.warning(f"Invalid status for submission {submission_id}: {submission.status}")
             return jsonify({'success': False, 'error': 'Работа уже начата или сдана'}), 400
         
-        now = moscow_now()
+        now = utc_now()
         deadline = _ensure_aware_datetime(submission.assignment.deadline)
         logger.info(f"Current time: {now}, deadline: {deadline}, hard_deadline: {submission.assignment.hard_deadline}")
         
@@ -2994,12 +2992,12 @@ def upload_answer_file(submission_id):
         'assignment_task_id': assignment_task_id,
     })
     answer.files = files_list
-    answer.updated_at = moscow_now()
+    answer.updated_at = utc_now()
 
     if normalize_legacy_status(submission.status) in ['ASSIGNED', 'RETURNED']:
         transition_submission_status(submission, 'IN_PROGRESS')
         if not submission.started_at:
-            submission.started_at = moscow_now()
+            submission.started_at = utc_now()
 
     try:
         db.session.commit()
@@ -3123,12 +3121,12 @@ def submission_autosave(submission_id):
                 db.session.add(answer)
             
             answer.value = value
-            answer.updated_at = moscow_now()
+            answer.updated_at = utc_now()
         
         if normalize_legacy_status(submission.status) in ['ASSIGNED', 'RETURNED']:
             transition_submission_status(submission, 'IN_PROGRESS')
             if not submission.started_at:
-                submission.started_at = moscow_now()
+                submission.started_at = utc_now()
         
         db.session.commit()
         
@@ -3159,7 +3157,7 @@ def submission_submit_task(submission_id):
         if not assignment.allow_separate_submission or not getattr(assignment, 'attempts_per_task', False):
             return jsonify({'success': False, 'error': 'Сдача по одному заданию не разрешена для этой работы'}), 400
         if getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None):
-            now = moscow_now()
+            now = utc_now()
             started_utc = _started_at_to_utc(submission.started_at)
             now_utc = now.astimezone(timezone.utc)
             limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
@@ -3204,8 +3202,8 @@ def submission_submit_task(submission_id):
             return jsonify({'success': False, 'error': f'Попытки по этому заданию исчерпаны ({answer.attempts_used}/{max_for_task})'}), 403
         answer.value = value
         answer.attempts_used = (answer.attempts_used or 0) + 1
-        answer.submitted_separately_at = moscow_now()
-        answer.updated_at = moscow_now()
+        answer.submitted_separately_at = utc_now()
+        answer.updated_at = utc_now()
         db.session.flush()
         server_time_spent_sec = _resolve_answer_time_spent_sec(
             submission,
@@ -3244,7 +3242,7 @@ def submission_submit_task(submission_id):
         if normalize_legacy_status(submission.status) in ['ASSIGNED', 'RETURNED']:
             transition_submission_status(submission, 'IN_PROGRESS')
             if not submission.started_at:
-                submission.started_at = moscow_now()
+                submission.started_at = utc_now()
         db.session.commit()
         return jsonify({
             'success': True,
@@ -3282,7 +3280,7 @@ def submission_submit(submission_id):
             return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
         
         assignment = submission.assignment
-        now = moscow_now()
+        now = utc_now()
         deadline = _ensure_aware_datetime(assignment.deadline)
         
         all_attempts = submission.attempts or []
@@ -3566,7 +3564,7 @@ def submission_save_code(submission_id):
         )
         db.session.add(answer)
     answer.student_code = code
-    answer.student_code_saved_at = moscow_now()
+    answer.student_code_saved_at = utc_now()
     try:
         db.session.commit()
     except Exception as e:
@@ -3597,7 +3595,7 @@ def submission_grade_view(submission_id):
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('assignments.assignments_list'))
     
-    now = moscow_now()
+    now = utc_now()
     display_status_label = _submission_display_status(submission, assignment, now)
     display_status_class = ''
     if display_status_label == 'Просрочено по таймеру':
@@ -3850,6 +3848,8 @@ def submission_grade_save(submission_id):
             if getattr(ans, 'assignment_task_id', None) is not None
         }
         processed_task_ids: set[int] = set()
+        mmr_override_by_task_id: dict[int, float] = {}
+        rating_comment_override_by_task_id: dict[int, str] = {}
 
         for score_data in scores_data:
             if not isinstance(score_data, dict):
@@ -3892,6 +3892,16 @@ def submission_grade_save(submission_id):
             answer.is_correct = bool((answer.score or 0) >= 1)
             answer.teacher_comment = comment
             total_score += answer.score
+
+            raw_mmr = score_data.get('mmr_delta')
+            if raw_mmr is not None and str(raw_mmr).strip() != '':
+                try:
+                    mmr_override_by_task_id[assignment_task_id] = float(raw_mmr)
+                except (TypeError, ValueError):
+                    pass
+            rc_an = str(score_data.get('rating_comment') or '').strip()
+            if rc_an:
+                rating_comment_override_by_task_id[assignment_task_id] = rc_an[:4000]
         
         submission.total_score = total_score
         submission.max_score = max_score
@@ -3962,20 +3972,17 @@ def submission_grade_save(submission_id):
             transition_submission_status(submission, status, force=True)
         except SubmissionLifecycleError as e:
             return jsonify({'success': False, 'error': str(e)}), 400
-        submission.graded_at = moscow_now()
+        submission.graded_at = utc_now()
         # Если ученик не нажал «Сдать» (таймер истёк и т.п.), при завершении проверки фиксируем дату закрытия
         if submission.submitted_at is None:
-            submission.submitted_at = moscow_now()
+            submission.submitted_at = utc_now()
 
         # При возврате на доработку — опционально обновляем дедлайн и/или число попыток работы
         if status == 'RETURNED':
             if new_deadline_str:
                 try:
                     deadline_dt = datetime.fromisoformat(new_deadline_str.replace('Z', '+00:00'))
-                    if deadline_dt.tzinfo is None:
-                        deadline_dt = deadline_dt.replace(tzinfo=MOSCOW_TZ)
-                    deadline_dt = deadline_dt.astimezone(MOSCOW_TZ).replace(tzinfo=None)
-                    assignment.deadline = deadline_dt
+                    assignment.deadline = deadline_from_form_to_utc(deadline_dt)
                 except (ValueError, TypeError) as e:
                     logger.warning(f"Invalid new_deadline for submission {submission_id}: {e}")
             if new_max_attempts is not None:
@@ -4029,8 +4036,10 @@ def submission_grade_save(submission_id):
                     from app.analytics import AnalyticsEngine
                     answer_time_spent_sec = _resolve_answer_time_spent_sec(
                         submission,
-                        answer.submitted_separately_at or submission.graded_at or moscow_now(),
+                        answer.submitted_separately_at or submission.graded_at or utc_now(),
                     )
+                    manual_delta = mmr_override_by_task_id.get(int(answer.assignment_task_id))
+                    r_comment = rating_comment_override_by_task_id.get(int(answer.assignment_task_id))
                     AnalyticsEngine.process_submission(
                         user_id=user_id,
                         task_id=at.task.task_id,
@@ -4040,6 +4049,9 @@ def submission_grade_save(submission_id):
                         answer_id=answer.answer_id,
                         attempt_no=max(1, int(answer.attempts_used or 1)),
                         mode='homework_manual',
+                        manual_mmr_delta=manual_delta,
+                        rating_comment=r_comment if manual_delta is not None else None,
+                        grader_user_id=current_user.id if manual_delta is not None else None,
                     )
                 except Exception as anal_err:
                     logger.warning("Analytics process_submission (grade_save) failed: %s", anal_err)
@@ -4115,7 +4127,7 @@ def submission_comment_create(submission_id):
             author_id=current_user.id,
             assignment_task_id=assignment_task_id,
             text=text,
-            created_at=moscow_now()
+            created_at=utc_now()
         )
         db.session.add(comment)
         db.session.commit()
@@ -4171,7 +4183,7 @@ def submission_comments_list(submission_id):
         return jsonify({'success': False, 'error': 'Задание не принадлежит этой работе'}), 400
 
     comments = []
-    ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or moscow_now(), c.comment_id or 0))
+    ordered = sorted((submission.comments or []), key=lambda c: (c.created_at or utc_now(), c.comment_id or 0))
     for comment in ordered:
         comment_task_id = _submission_comment_task_id(comment, legacy_bucket_task_id)
         if comment_task_id <= 0:

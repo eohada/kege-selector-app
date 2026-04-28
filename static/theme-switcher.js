@@ -36,6 +36,9 @@
     }
 
     root.setAttribute('data-theme-mode', mode);
+    try {
+      window.dispatchEvent(new CustomEvent('boo:theme-changed', { detail: { mode: mode } }));
+    } catch (e) {}
   }
 
   function updateToggles(mode) {

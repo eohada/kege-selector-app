@@ -298,6 +298,16 @@
             </div>
 
             <div class="space-y-1.5">
+                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-mode-student">Часовой пояс</label>
+                <select id="tz-mode-student" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">
+                    <option value="auto" {% if (current_user.timezone_mode or 'auto') == 'auto' %}selected{% endif %}>Авто (браузер)</option>
+                    <option value="manual" {% if (current_user.timezone_mode or '') == 'manual' %}selected{% endif %}>Указать IANA</option>
+                </select>
+                <input type="text" id="tz-iana-student" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-medium text-sm text-primary dark:text-white" placeholder="Europe/Moscow" value="{{ current_user.timezone_iana or '' }}" {% if (current_user.timezone_mode or 'auto') != 'manual' %}disabled{% endif %}>
+                <button type="button" class="w-full py-2 rounded-xl border border-slate-200 dark:border-white/[0.12] font-bold text-sm text-boo-primary" id="tz-save-student">Сохранить часовой пояс</button>
+            </div>
+
+            <div class="space-y-1.5">
                 <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="telegram_link">Telegram</label>
                 <div class="relative">
                     <i class="ph-fill ph-telegram-logo absolute left-4 top-1/2 -translate-y-1/2 text-blue-400 text-lg pointer-events-none"></i>
@@ -384,6 +394,32 @@ document.addEventListener('DOMContentLoaded', () => {
         coverInput.addEventListener('change', () => {
             if (coverInput.files && coverInput.files.length > 0) {
                 submitProfileEdit(null, form);
+            }
+        });
+    }
+    const tm = document.getElementById('tz-mode-student');
+    const ti = document.getElementById('tz-iana-student');
+    const ts = document.getElementById('tz-save-student');
+    if (tm && ti) {
+        tm.addEventListener('change', () => { ti.disabled = tm.value !== 'manual'; });
+    }
+    if (ts && tm) {
+        ts.addEventListener('click', async () => {
+            const csrf = document.querySelector('meta[name="csrf-token"]');
+            try {
+                const r = await fetch('/api/me/timezone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf ? (csrf.content || csrf.getAttribute('content')) : '' },
+                    body: JSON.stringify({ timezone_mode: tm.value, timezone_iana: ti && !ti.disabled ? (ti.value || '').trim() : '' }),
+                });
+                const data = await r.json();
+                if (data.success) {
+                    const m = document.querySelector('meta[name="user-timezone-effective"]');
+                    if (m && data.effective) m.setAttribute('content', data.effective);
+                    if (window.toast) window.toast.success('Часовой пояс сохранён');
+                } else if (window.toast) window.toast.error(data.error || 'Ошибка');
+            } catch (e) {
+                if (window.toast) window.toast.error('Сеть');
             }
         });
     }

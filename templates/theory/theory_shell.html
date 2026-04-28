@@ -305,7 +305,7 @@
   let cmBundle = null;
   async function getCmBundle() {
     if (cmBundle) return cmBundle;
-    const [{ EditorState }, { EditorView, keymap }, { defaultKeymap, indentWithTab }, { python }, { cpp }] = await Promise.all([
+    const [{ EditorState, Compartment }, { EditorView, keymap }, { defaultKeymap, indentWithTab }, { python }, { cpp }] = await Promise.all([
       import('https://esm.sh/@codemirror/state'),
       import('https://esm.sh/@codemirror/view'),
       import('https://esm.sh/@codemirror/commands'),
@@ -335,6 +335,7 @@
     }
     cmBundle = {
       EditorState,
+      Compartment,
       EditorView,
       keymap,
       defaultKeymap,
@@ -370,6 +371,7 @@
     }
     const {
       EditorState,
+      Compartment,
       EditorView,
       keymap,
       defaultKeymap,
@@ -384,27 +386,41 @@
       closeBrackets,
       closeBracketsKeymap,
     } = bundle;
-    const isDarkTheory = document.documentElement.getAttribute("data-theme") === "dark";
     const cmNoLiga = { fontVariantLigatures: "none", fontFeatureSettings: '"liga" 0, "calt" 0' };
-    const cmTheme = EditorView.theme(
-      isDarkTheory
-        ? {
-            "&": { backgroundColor: "#09090b", color: "#fafafa", minHeight: "120px", height: "auto" },
-            ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7", caretColor: "#fafafa", ...cmNoLiga },
-            ".cm-scroller": { overflowX: "auto", overflowY: "hidden", minHeight: "120px" },
-            ".cm-gutters": { backgroundColor: "#18181b", borderColor: "rgba(255,255,255,0.08)", color: "#a1a1aa" },
-            ".cm-activeLineGutter": { backgroundColor: "rgba(139,92,246,0.12)" },
-            ".cm-focused": { outline: "none !important" },
-            "&.cm-focused": { outline: "none !important", boxShadow: "none !important" },
-          }
-        : {
-            "&": { backgroundColor: "#ffffff", color: "#0f172a", minHeight: "120px", height: "auto" },
-            ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7", ...cmNoLiga },
-            ".cm-scroller": { overflowX: "auto", overflowY: "hidden", minHeight: "120px" },
-            ".cm-focused": { outline: "none !important" },
-            "&.cm-focused": { outline: "none !important", boxShadow: "none !important" },
-          },
-    );
+    function makeTheoryCmTheme(isDark) {
+      return EditorView.theme(
+        isDark
+          ? {
+              "&": { backgroundColor: "#09090b", color: "#fafafa", minHeight: "120px", height: "auto" },
+              ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7", caretColor: "#fafafa", ...cmNoLiga },
+              ".cm-scroller": { overflowX: "auto", overflowY: "hidden", minHeight: "120px" },
+              ".cm-gutters": { backgroundColor: "#18181b", borderColor: "rgba(255,255,255,0.08)", color: "#a1a1aa" },
+              ".cm-activeLineGutter": { backgroundColor: "rgba(139,92,246,0.12)" },
+              ".cm-focused": { outline: "none !important" },
+              "&.cm-focused": { outline: "none !important", boxShadow: "none !important" },
+            }
+          : {
+              "&": { backgroundColor: "#ffffff", color: "#0f172a", minHeight: "120px", height: "auto" },
+              ".cm-content": { fontFamily: "JetBrains Mono, monospace", fontSize: "14px", lineHeight: "1.7", ...cmNoLiga },
+              ".cm-scroller": { overflowX: "auto", overflowY: "hidden", minHeight: "120px" },
+              ".cm-focused": { outline: "none !important" },
+              "&.cm-focused": { outline: "none !important", boxShadow: "none !important" },
+            },
+      );
+    }
+    if (!window.__theoryCmThemeBound) {
+      window.__theoryCmThemeBound = true;
+      document.addEventListener('boo:theme-changed', function () {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        (window.__theoryCmEditors || []).forEach(function (entry) {
+          try {
+            if (entry.view && entry.themeComp) {
+              entry.view.dispatch({ effects: entry.themeComp.reconfigure(makeTheoryCmTheme(isDark)) });
+            }
+          } catch (e) {}
+        });
+      });
+    }
     blocks.forEach((card) => {
       if (card.dataset.cmReady === '1') return;
       card.dataset.cmReady = '1';
@@ -421,6 +437,8 @@
           const height = Math.max(120, lines * 28 + 24);
           viewRef.dom.style.height = `${height}px`;
         };
+        const themeComp = new Compartment();
+        const isDarkInit = document.documentElement.getAttribute('data-theme') === 'dark';
         const extensions = [
           keymap.of([indentWithTab, ...(closeBracketsKeymap || []), ...defaultKeymap]),
           (lang === 'cpp' ? cpp() : python()),
@@ -429,7 +447,7 @@
           ...(closeBrackets ? [closeBrackets()] : []),
           ...(autocompletion ? [autocompletion()] : []),
           ...(syntaxHighlighting && defaultHighlightStyle ? [syntaxHighlighting(defaultHighlightStyle, { fallback: true })] : []),
-          cmTheme,
+          themeComp.of(makeTheoryCmTheme(isDarkInit)),
           EditorView.editable.of(true),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -443,6 +461,8 @@
           extensions,
         });
         viewRef = new EditorView({ state, parent: preview });
+        if (!window.__theoryCmEditors) window.__theoryCmEditors = [];
+        window.__theoryCmEditors.push({ view: viewRef, themeComp: themeComp });
         const contentHeight = Math.max(120, viewRef.contentHeight + 20);
         viewRef.dom.style.height = `${contentHeight}px`;
         syncHeight();

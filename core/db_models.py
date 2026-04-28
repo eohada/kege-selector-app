@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime, String, Boolean, Enum as SQLEnum, Text, TypeDecorator, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB as PG_JSONB
@@ -27,6 +27,11 @@ TOMSK_TZ = ZoneInfo("Asia/Tomsk")
 
 def moscow_now():
     return datetime.now(MOSCOW_TZ)
+
+
+def utc_now():
+    """Aware UTC «now» for DB defaults and business logic (timestamptz)."""
+    return datetime.now(timezone.utc)
 
 task_topics = Table('task_topics',
     db.metadata,
@@ -533,7 +538,7 @@ class Lesson(db.Model):
     course_module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
     exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
     lesson_type = db.Column(db.String(50), default='regular')
-    lesson_date = db.Column(db.DateTime, nullable=False)
+    lesson_date = db.Column(db.DateTime(timezone=True), nullable=False)
     duration = db.Column(db.Integer, default=60)
     status = db.Column(db.String(50), default='planned')
     topic = db.Column(db.String(300), nullable=True)
@@ -557,12 +562,12 @@ class Lesson(db.Model):
     allow_task_submit_homework = db.Column(db.Boolean, default=False, nullable=False)
     allow_task_submit_classwork = db.Column(db.Boolean, default=False, nullable=False)
     allow_task_submit_exam = db.Column(db.Boolean, default=False, nullable=False)
-    published_at = db.Column(db.DateTime, nullable=True) # Дата отправки урока/ДЗ ученику
+    published_at = db.Column(db.DateTime(timezone=True), nullable=True) # Дата отправки урока/ДЗ ученику
     student_late = db.Column(db.Boolean, default=False, nullable=False)  # Ученик опоздал на урок
-    started_at = db.Column(db.DateTime, nullable=True)  # Фактическое время начала (для авто-завершения через 1 ч)
+    started_at = db.Column(db.DateTime(timezone=True), nullable=True)  # Фактическое время начала (для авто-завершения через 1 ч)
     tg_reminder_30min_sent = db.Column(db.Boolean, default=False, nullable=False)  # Отправлено ли напоминание за 30 мин
-    created_at = db.Column(db.DateTime, default=moscow_now)
-    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     student = db.relationship('Student', back_populates='lessons')
     course_module = db.relationship('TrajectoryModule', foreign_keys=[course_module_id], back_populates='lessons')
@@ -746,8 +751,8 @@ class User(db.Model):
     role = db.Column(db.String(50), default='tester', nullable=False)
     numeric_id = db.Column(db.String(10), nullable=True, index=True)
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=moscow_now)
-    last_login = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
+    last_login = db.Column(db.DateTime(timezone=True), nullable=True)
 
     avatar_url = db.Column(db.String(500), nullable=True)
     cover_url = db.Column(db.String(500), nullable=True)  # Фоновое изображение профиля
@@ -757,9 +762,13 @@ class User(db.Model):
     github_link = db.Column(db.String(200), nullable=True)
     presence_activity_key = db.Column(db.String(80), nullable=True, index=True)
     presence_activity_text = db.Column(db.String(180), nullable=True)
-    presence_last_seen_at = db.Column(db.DateTime, nullable=True, index=True)
-    presence_updated_at = db.Column(db.DateTime, nullable=True)
-    
+    presence_last_seen_at = db.Column(db.DateTime(timezone=True), nullable=True, index=True)
+    presence_updated_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    # Часовой пояс отображения: auto = браузер (Intl) + профиль; manual = timezone_iana
+    timezone_mode = db.Column(db.String(16), nullable=False, default='auto')
+    timezone_iana = db.Column(db.String(64), nullable=True)
+
     def get_id(self):
         return str(self.id)
     
@@ -1361,7 +1370,7 @@ class SubmissionTelegramDeadlineSent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False, index=True)
     window_key = db.Column(db.String(16), nullable=False)  # e.g. 24h, 1h
-    sent_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    sent_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
 
     __table_args__ = (
         db.UniqueConstraint('submission_id', 'window_key', name='uq_submission_deadline_window'),
@@ -1624,7 +1633,7 @@ class Assignment(db.Model):
     description = db.Column(db.Text, nullable=True)  # Описание/инструкции
     assignment_type = db.Column(db.String(50), nullable=False)  # 'homework', 'classwork', 'exam', 'test'
     
-    deadline = db.Column(db.DateTime, nullable=False)  # Дедлайн сдачи
+    deadline = db.Column(db.DateTime(timezone=True), nullable=False)  # Дедлайн сдачи (UTC)
     hard_deadline = db.Column(db.Boolean, default=False)  # Если True - нельзя сдать после дедлайна
     hide_before_start = db.Column(db.Boolean, default=True, nullable=False)  # Скрывать условия до нажатия "Начать выполнение"
     allow_separate_submission = db.Column(db.Boolean, default=True, nullable=False)  # Разрешить сдавать по одной задаче
@@ -1639,10 +1648,10 @@ class Assignment(db.Model):
 
     rubric_template_id = db.Column(db.Integer, db.ForeignKey('RubricTemplates.rubric_id'), nullable=True, index=True)
 
-    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
-    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)  # Можно ли еще работать с этой работой
-    
+
     created_by = db.relationship('User', foreign_keys=[created_by_id], backref='created_assignments')
     lesson = db.relationship('Lesson', backref='assignments')
     exam_course = db.relationship('Course', foreign_keys=[exam_course_id])
@@ -1714,10 +1723,10 @@ class Submission(db.Model):
     
     status = db.Column(db.String(50), nullable=False, default='ASSIGNED')  
     
-    assigned_at = db.Column(db.DateTime, default=moscow_now, nullable=False)  # Когда назначено
-    started_at = db.Column(db.DateTime, nullable=True)  # Когда ученик начал выполнение
-    submitted_at = db.Column(db.DateTime, nullable=True)  # Когда сдано
-    graded_at = db.Column(db.DateTime, nullable=True)  # Когда проверено
+    assigned_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)  # Когда назначено
+    started_at = db.Column(db.DateTime(timezone=True), nullable=True)  # Когда ученик начал выполнение
+    submitted_at = db.Column(db.DateTime(timezone=True), nullable=True)  # Когда сдано
+    graded_at = db.Column(db.DateTime(timezone=True), nullable=True)  # Когда проверено
     
     is_late = db.Column(db.Boolean, default=False, nullable=False)  # Сдано с опозданием
     is_overtime = db.Column(db.Boolean, default=False, nullable=False)  # Сдано после истечения лимита времени (не уложился в таймер)
@@ -1731,9 +1740,9 @@ class Submission(db.Model):
     rubric_template_id = db.Column(db.Integer, db.ForeignKey('RubricTemplates.rubric_id'), nullable=True, index=True)
     rubric_scores = db.Column(db.JSON, nullable=True)  # {"crit1": {"score": 1, "comment": "..."}, ...}
     
-    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
-    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
-    
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
     assignment = db.relationship('Assignment', back_populates='submissions')
     student = db.relationship('Student', backref='submissions')
     answers = db.relationship('Answer', back_populates='submission', lazy=True, cascade='all, delete-orphan')
@@ -1764,12 +1773,12 @@ class Answer(db.Model):
     teacher_comment = db.Column(db.Text, nullable=True)
     needs_revision = db.Column(db.Boolean, default=False, nullable=False)  # Вернуть это задание на доработку
     
-    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
-    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
-    submitted_separately_at = db.Column(db.DateTime, nullable=True)  # Когда ученик нажал «Сдать задание» по этому ответу (при allow_separate_submission)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+    submitted_separately_at = db.Column(db.DateTime(timezone=True), nullable=True)  # Когда ученик нажал «Сдать задание» по этому ответу (при allow_separate_submission)
     attempts_used = db.Column(db.Integer, default=0, nullable=False)  # Сколько раз сдавали это задание (при attempts_per_task)
     student_code = db.Column(db.Text, nullable=True)  # Код ученика в редакторе (Python), для проверки преподавателем
-    student_code_saved_at = db.Column(db.DateTime, nullable=True)  # Когда ученик нажал «Сохранить код»
+    student_code_saved_at = db.Column(db.DateTime(timezone=True), nullable=True)  # Когда ученик нажал «Сохранить код»
 
     submission = db.relationship('Submission', back_populates='answers')
     assignment_task = db.relationship('AssignmentTask', back_populates='answers')
@@ -1794,8 +1803,8 @@ class SubmissionAttempt(db.Model):
     submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False, index=True)
     attempt_no = db.Column(db.Integer, nullable=False, default=1, index=True)
 
-    submitted_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
-    graded_at = db.Column(db.DateTime, nullable=True)
+    submitted_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    graded_at = db.Column(db.DateTime(timezone=True), nullable=True)
     status = db.Column(db.String(50), nullable=True)  # SUBMITTED/NEEDS_MANUAL_REVIEW/GRADED/RETURNED
 
     total_score = db.Column(db.Integer, nullable=True)
@@ -1824,8 +1833,8 @@ class SubmissionComment(db.Model):
     text = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False, nullable=False)
     
-    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
-    
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
     submission = db.relationship('Submission', backref=db.backref('comments', lazy=True, cascade='all, delete-orphan'))
     author = db.relationship('User')
     assignment_task = db.relationship('AssignmentTask')
@@ -1846,7 +1855,7 @@ class SubmissionCommentThreadRead(db.Model):
     assignment_task_id = db.Column(db.Integer, db.ForeignKey('AssignmentTasks.assignment_task_id', ondelete='CASCADE'), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
     last_read_comment_id = db.Column(db.Integer, nullable=False, default=0)
-    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
     __table_args__ = (
         UniqueConstraint('submission_id', 'assignment_task_id', 'user_id', name='uq_submission_comment_thread_read'),
@@ -1946,12 +1955,12 @@ class UserMastery(db.Model):
     rating = db.Column(db.Float, default=1000.0, nullable=False)
     volatility = db.Column(db.Float, default=350.0, nullable=False)
     streak_days = db.Column(db.Integer, default=0, nullable=False)
-    last_practiced_at = db.Column(db.DateTime, default=moscow_now, nullable=True)
+    last_practiced_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=True)
     # MMR concept fields (per task type calibration state)
     solved_count = db.Column(db.Integer, default=0, nullable=False)
     calibration_done = db.Column(db.Boolean, default=False, nullable=False)
 
-    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     user = db.relationship('User', foreign_keys=[user_id])
     node = db.relationship('KnowledgeNode', foreign_keys=[node_id])
@@ -1982,7 +1991,7 @@ class AnalyticsEvent(db.Model):
     mode = db.Column(db.String(32), nullable=True)
     time_spent_sec = db.Column(db.Integer, nullable=True)    # сколько секунд потратил ученик
     behavior_flags = db.Column(JSONBCompat, nullable=True)   # в PostgreSQL — JSONB; {"fast_fail": true, "fast_success_hard": true, ...}
-    timestamp = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    timestamp = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
 
     __table_args__ = (
         Index('ix_analytics_events_user_timestamp', 'user_id', 'timestamp'),
@@ -1999,7 +2008,7 @@ class UserTaskMMR(db.Model):
     task_type = db.Column(db.Integer, primary_key=True)
     mmr = db.Column(db.Float, nullable=False, default=1000.0)
     solved_count = db.Column(db.Integer, nullable=False, default=0)
-    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
     user = db.relationship('User', foreign_keys=[user_id])
 
@@ -2017,11 +2026,11 @@ class RematchQueue(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
     task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id', ondelete='CASCADE'), nullable=False, index=True)
     task_type = db.Column(db.Integer, nullable=False, index=True)
-    due_at = db.Column(db.DateTime, nullable=False, index=True)
+    due_at = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
     attempt_stage = db.Column(db.Integer, nullable=False, default=1)
     status = db.Column(db.String(20), nullable=False, default='pending', index=True)
-    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
-    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
     __table_args__ = (
         Index('ix_rematch_queue_user_due', 'user_id', 'due_at'),

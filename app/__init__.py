@@ -11,7 +11,7 @@ from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 from sqlalchemy import text
 from zoneinfo import ZoneInfo  # comment
-from datetime import datetime  # comment
+from datetime import datetime, timezone  # comment
 from werkzeug.exceptions import HTTPException
 
 from flask_migrate import Migrate
@@ -36,6 +36,9 @@ def create_app(config_name=None):
     app = Flask(__name__, 
                 template_folder=template_dir,
                 static_folder=static_dir)
+
+    from app.json_provider import BooJSONProvider
+    app.json = BooJSONProvider(app)
     
     db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
     
@@ -489,7 +492,22 @@ def create_app(config_name=None):
         if current_user.is_authenticated and getattr(current_user, 'is_demo_user', False):
             from flask import session as flask_session
             cinema_demo_ids = flask_session.get('cinema_demo_ids')
-        return dict(current_student=student_data, has_permission=has_permission, custom_theme_user_id=int(app.config.get('CUSTOM_THEME_USER_ID', 999)), cinema_demo_ids=cinema_demo_ids)
+        tz_eff = 'Europe/Moscow'
+        if current_user.is_authenticated:
+            try:
+                from app.utils.datetime_utc import effective_timezone_name
+                tz_eff = effective_timezone_name(current_user)
+            except Exception:
+                tz_eff = 'Europe/Moscow'
+        return dict(
+            current_student=student_data,
+            has_permission=has_permission,
+            custom_theme_user_id=int(app.config.get('CUSTOM_THEME_USER_ID', 999)),
+            cinema_demo_ids=cinema_demo_ids,
+            user_timezone_effective=tz_eff,
+            user_timezone_mode=(getattr(current_user, 'timezone_mode', 'auto') if current_user.is_authenticated else 'auto'),
+            user_timezone_iana=(getattr(current_user, 'timezone_iana', None) if current_user.is_authenticated else None),
+        )
     
     from app.admin.routes import (
         sandbox_internal_summary,
