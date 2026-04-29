@@ -3835,7 +3835,7 @@ def submission_grade_save(submission_id):
         ],
         "teacher_feedback": "Общий комментарий",
         "status": "GRADED" или "RETURNED"
-        "scores_only": true — только сохранить баллы/рубрику/отзыв, без смены статуса и без MMR
+        "scores_only": true — сохранить баллы/рубрику/отзыв без смены статуса уведомлений; MMR пересчитывается (как при завершении), без повторного суммирования при перезаписи
     }
     """
     if current_user.is_student() or current_user.is_parent():  # comment
@@ -4076,8 +4076,13 @@ def submission_grade_save(submission_id):
             except Exception as e:
                 logger.warning(f"Failed to notify student about submission grade: {e}")
 
-            user_id = submission.student.user_id if submission.student else None
-            if user_id:
+        user_id = submission.student.user_id if submission.student else None
+        if user_id:
+            anchor_for_time = utc_now() if scores_only else (submission.graded_at or utc_now())
+            try:
+                from app.analytics import AnalyticsEngine
+
+                AnalyticsEngine.revert_submission_teacher_grade_events(submission_id)
                 task_by_at_id = {at.assignment_task_id: at for at in assignment.tasks}
                 for answer in submission.answers:
                     at = task_by_at_id.get(answer.assignment_task_id)
@@ -4085,10 +4090,9 @@ def submission_grade_save(submission_id):
                         continue
                     is_correct = bool(answer.is_correct) if answer.is_correct is not None else bool((answer.score or 0) >= 1)
                     try:
-                        from app.analytics import AnalyticsEngine
                         answer_time_spent_sec = _resolve_answer_time_spent_sec(
                             submission,
-                            answer.submitted_separately_at or submission.graded_at or utc_now(),
+                            answer.submitted_separately_at or anchor_for_time,
                         )
                         manual_delta = mmr_override_by_task_id.get(int(answer.assignment_task_id))
                         r_comment = rating_comment_override_by_task_id.get(int(answer.assignment_task_id))
@@ -4100,13 +4104,19 @@ def submission_grade_save(submission_id):
                             submission_id=submission_id,
                             answer_id=answer.answer_id,
                             attempt_no=max(1, int(answer.attempts_used or 1)),
-                            mode='homework_manual',
+                            mode=AnalyticsEngine.TEACHER_GRADE_MODE,
                             manual_mmr_delta=manual_delta,
                             rating_comment=r_comment if manual_delta is not None else None,
                             grader_user_id=current_user.id if manual_delta is not None else None,
                         )
                     except Exception as anal_err:
                         logger.warning("Analytics process_submission (grade_save) failed: %s", anal_err)
+        elif submission.student and not submission.student.user_id:
+            logger.warning(
+                "submission_grade_save: skip MMR — student %s has no user_id (submission %s)",
+                submission.student_id,
+                submission_id,
+            )
 
         db.session.commit()
 

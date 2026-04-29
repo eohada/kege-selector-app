@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 class AnalyticsEngine:
     INITIAL_RATING = 1000.0
+    """Режим событий, создаваемых только из submission_grade_save (откатываются при следующем сохранении проверки)."""
+    TEACHER_GRADE_MODE = "homework_teacher_grade"
 
     @classmethod
     def _cfg(cls) -> dict[str, object]:
@@ -123,6 +125,46 @@ class AnalyticsEngine:
     def _clamp_mmr(cls, value: float) -> float:
         cfg = cls._cfg()
         return max(float(cfg.get("min_mmr", 0.0)), min(float(cfg.get("max_mmr", 2500.0)), value))
+
+    @classmethod
+    def revert_submission_teacher_grade_events(cls, submission_id: int | None) -> int:
+        """
+        Отменить начисления по прошлому сохранению проверки этой сдачи (для идемпотентного пересчёта MMR).
+        Удаляет события mode=TEACHER_GRADE_MODE и откатывает UserTaskMMR / UserMastery по записанному mmr_delta.
+        """
+        if submission_id is None:
+            return 0
+        sid = int(submission_id)
+        events = (
+            AnalyticsEvent.query.filter_by(submission_id=sid, mode=cls.TEACHER_GRADE_MODE)
+            .order_by(AnalyticsEvent.id.desc())
+            .all()
+        )
+        undone = 0
+        for ev in events:
+            uid = int(ev.user_id)
+            delta = float(ev.mmr_delta or 0.0)
+            tt = ev.task_type
+            if tt is not None:
+                row = UserTaskMMR.query.filter_by(user_id=uid, task_type=int(tt)).first()
+                if row:
+                    row.mmr = cls._clamp_mmr(float(row.mmr or cls.INITIAL_RATING) - delta)
+                    row.solved_count = max(0, int(row.solved_count or 0) - 1)
+            nid = ev.node_id
+            if nid is not None:
+                m = UserMastery.query.filter_by(user_id=uid, node_id=int(nid)).first()
+                if m:
+                    m.rating = cls._clamp_mmr(float(m.rating or cls.INITIAL_RATING) - delta)
+                    m.solved_count = max(0, int(m.solved_count or 0) - 1)
+            db.session.delete(ev)
+            undone += 1
+        if undone:
+            logger.info(
+                "Reverted %s teacher-grade analytics events for submission_id=%s",
+                undone,
+                sid,
+            )
+        return undone
 
     @classmethod
     def _resolve_task_knowledge_node(cls, task: Tasks) -> KnowledgeNode | None:
@@ -276,7 +318,15 @@ class AnalyticsEngine:
                 time_meta["effective_time_sec"] = time_spent_sec
         else:
             d_value = cls._difficulty_weight(difficulty_level)
-            c_time, time_meta = cls._time_coeff(is_correct, time_spent_sec, task_type)
+            if mode == cls.TEACHER_GRADE_MODE:
+                # Проверка ДЗ: доверяем вердикту учителя; интервал started_at→ответ часто секунды,
+                # иначе _time_coeff для верных даёт spiral_success (c_time=0) — MMR «не двигается».
+                c_time = 1.0
+                time_meta: dict = {"time_band": "teacher_grade_neutral"}
+                if time_spent_sec is not None:
+                    time_meta["effective_time_sec"] = time_spent_sec
+            else:
+                c_time, time_meta = cls._time_coeff(is_correct, time_spent_sec, task_type)
             c_attempt = cls._attempt_coeff(is_correct, attempt_no)
             calibration = cls._calibration_multiplier(int(mmr_row.solved_count or 0))
 

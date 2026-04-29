@@ -798,7 +798,7 @@
                     <button type="button" id="save-comments-btn" class="neo-button ghost rounded-2xl px-5 py-3 inline-flex items-center gap-2 font-bold border border-slate-200/90 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow" title="Сохранить комментарии к заданиям. Ученик увидит их при выполнении. Проверку завершать не нужно.">
                         {{ ui_icon('action.edit', 'sm') }} Сохранить комментарии
                     </button>
-                    <button type="button" id="save-scores-draft-btn" class="neo-button ghost rounded-2xl px-5 py-3 inline-flex items-center gap-2 font-bold border border-slate-200/90 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow" title="Сохранить выставленные баллы, общий комментарий и рубрику без завершения проверки (статус работы не меняется, MMR не пересчитывается).">
+                    <button type="button" id="save-scores-draft-btn" class="neo-button ghost rounded-2xl px-5 py-3 inline-flex items-center gap-2 font-bold border border-slate-200/90 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow" title="Сохранить баллы, общий комментарий и рубрику без смены статуса работы. Рейтинг (MMR) обновится; повторное сохранение пересчитает дельты, не суммируя прошлый вариант.">
                         <i class="ph-bold ph-floppy-disk"></i> Сохранить баллы
                     </button>
                     <button type="button" id="return-btn" class="neo-button ghost rounded-2xl px-5 py-3 inline-flex items-center gap-2 font-bold border border-amber-200/80 text-amber-900 dark:border-amber-800/60 dark:text-amber-100 bg-amber-50/80 dark:bg-amber-950/40 hover:bg-amber-100/90 transition-colors">
@@ -1240,15 +1240,26 @@
             return scores;
         }
 
-        function postGradeSave(scoresOnly) {
+        function notifyGrade(msg, kind) {
+            kind = kind || 'success';
+            if (typeof showToast === 'function') {
+                showToast(msg, kind);
+            } else {
+                alert(msg);
+            }
+        }
+
+        function postGradeSave(scoresOnlyRequest) {
             const data = {
                 scores: collectGradeScoresForSave(),
                 teacher_feedback: document.getElementById('teacher-feedback').value,
                 status: 'GRADED',
                 rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null,
                 rubric_scores: collectRubricScores(),
-                scores_only: !!scoresOnly
+                scores_only: !!scoresOnlyRequest
             };
+            const saveBtn = scoresOnlyRequest ? document.getElementById('save-scores-draft-btn') : document.getElementById('grade-btn');
+            if (saveBtn) saveBtn.disabled = true;
             fetch(`{{ url_for('assignments.submission_grade_save', submission_id=submission.submission_id) }}`, {
                 method: 'POST',
                 headers: {
@@ -1257,29 +1268,33 @@
                 },
                 body: JSON.stringify(data)
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (data.scores_only) {
-                        if (typeof showToast === 'function') {
-                            showToast('✓ Баллы сохранены. Статус работы не изменён.', 'success');
-                        }
-                        updateTotalScore();
+            .then(function(response) {
+                return response.json().catch(function() { return {}; }).then(function(body) {
+                    return { ok: response.ok, status: response.status, body: body };
+                });
+            })
+            .then(function(res) {
+                if (saveBtn) saveBtn.disabled = false;
+                const payload = res.body || {};
+                if (!res.ok) {
+                    notifyGrade('✕ ' + (payload.error || ('Ошибка сервера ' + res.status)), 'error');
+                    return;
+                }
+                if (payload.success) {
+                    if (scoresOnlyRequest) {
+                        notifyGrade('✓ Баллы сохранены. Статус работы не изменён.', 'success');
+                        try { updateTotalScore(); } catch (e) {}
                         return;
                     }
-                    if (typeof showToast === 'function') {
-                        showToast('✓ Работа успешно проверена!', 'success');
-                        setTimeout(function() { location.reload(); }, 1500);
-                    } else {
-                        location.reload();
-                    }
-                } else {
-                    if (typeof showToast === 'function') {
-                        showToast('✕ ' + (data.error || 'Не удалось сохранить оценку'), 'error');
-                    } else {
-                        alert('Ошибка: ' + (data.error || 'Не удалось сохранить оценку'));
-                    }
+                    notifyGrade('✓ Работа успешно проверена!', 'success');
+                    setTimeout(function() { location.reload(); }, 1500);
+                    return;
                 }
+                notifyGrade('✕ ' + (payload.error || 'Не удалось сохранить оценку'), 'error');
+            })
+            .catch(function(err) {
+                if (saveBtn) saveBtn.disabled = false;
+                notifyGrade('✕ Ошибка сети: ' + (err && err.message ? err.message : 'запрос не выполнен'), 'error');
             });
         }
 
