@@ -1197,6 +1197,13 @@
         updateTotalScore();
         document.querySelectorAll('.score-input').forEach(input => updateTaskVisualStateByScoreInput(input));
         
+        function escapeRubricKeyForSelector(key) {
+            if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+                return CSS.escape(String(key));
+            }
+            return String(key).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        }
+
         function collectRubricScores() {
             const out = {};
             document.querySelectorAll('.rubric-score-input').forEach(input => {
@@ -1209,7 +1216,8 @@
                 const maxRaw = input.dataset.max;
                 const max = (maxRaw === '' || maxRaw === null || maxRaw === undefined) ? null : parseInt(maxRaw, 10);
                 if (max !== null && !Number.isNaN(max) && score !== null && score > max) score = max;
-                const comment = document.querySelector(`.rubric-comment-input[data-key="${CSS.escape(key)}"]`)?.value || '';
+                var rcSel = document.querySelector('.rubric-comment-input[data-key="' + escapeRubricKeyForSelector(key) + '"]');
+                const comment = (rcSel && rcSel.value) ? rcSel.value : '';
                 out[key] = { score: score, comment: comment };
             });
             return out;
@@ -1242,17 +1250,53 @@
 
         function notifyGrade(msg, kind) {
             kind = kind || 'success';
-            if (typeof showToast === 'function') {
-                showToast(msg, kind);
-            } else {
+            try {
+                if (window.toast && typeof window.toast.success === 'function') {
+                    if (kind === 'error') window.toast.error(msg);
+                    else if (kind === 'warning') window.toast.warning(msg);
+                    else if (kind === 'info') window.toast.info(msg);
+                    else window.toast.success(msg);
+                    return;
+                }
+            } catch (e0) {}
+            try {
+                var banner = document.createElement('div');
+                banner.setAttribute('role', 'status');
+                banner.style.cssText = 'position:fixed;bottom:28px;right:28px;max-width:min(380px,94vw);padding:14px 18px;border-radius:14px;font:700 14px/1.45 system-ui,sans-serif;z-index:100000;box-shadow:0 12px 40px rgba(0,0,0,.18);' +
+                    (kind === 'error' ? 'background:#b91c1c;color:#fff;' : 'background:#065f46;color:#fff;');
+                banner.textContent = msg;
+                document.body.appendChild(banner);
+                window.setTimeout(function() { try { banner.remove(); } catch (e2) {} }, 4500);
+                return;
+            } catch (e3) {}
+            try {
                 alert(msg);
-            }
+            } catch (e4) {}
         }
 
+        function getGradePageCsrfToken() {
+            var m = document.querySelector('meta[name="csrf-token"]');
+            return (m && m.getAttribute('content')) ? m.getAttribute('content').trim() : '';
+        }
+
+        (function bindGradeFormNoAccidentalSubmit() {
+            var gf = document.getElementById('grade-form');
+            if (!gf) return;
+            gf.addEventListener('submit', function(e) {
+                e.preventDefault();
+            });
+        })();
+
         function postGradeSave(scoresOnlyRequest) {
+            var csrf = getGradePageCsrfToken();
+            if (!csrf) {
+                notifyGrade('✕ Нет CSRF-токена. Обновите страницу и попробуйте снова.', 'error');
+                return;
+            }
+            var tf = document.getElementById('teacher-feedback');
             const data = {
                 scores: collectGradeScoresForSave(),
-                teacher_feedback: document.getElementById('teacher-feedback').value,
+                teacher_feedback: (tf && tf.value) ? tf.value : '',
                 status: 'GRADED',
                 rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null,
                 rubric_scores: collectRubricScores(),
@@ -1264,8 +1308,9 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRFToken': csrf
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify(data)
             })
             .then(function(response) {
@@ -1308,6 +1353,11 @@
 
         // Сохранить только комментарии (без завершения проверки) — ученик увидит их при выполнении
         document.getElementById('save-comments-btn')?.addEventListener('click', function() {
+            var csrfSc = getGradePageCsrfToken();
+            if (!csrfSc) {
+                notifyGrade('✕ Нет CSRF-токена. Обновите страницу.', 'error');
+                return;
+            }
             const comments = [];
             document.querySelectorAll('.score-input').forEach(function(input) {
                 const assignmentTaskId = parseInt(input.name.replace('score_', ''), 10);
@@ -1325,28 +1375,21 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRFToken': csrfSc
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify(data)
             })
             .then(function(r) { return r.json(); })
             .then(function(res) {
                 if (res.success) {
-                    if (typeof showToast === 'function') {
-                        showToast('✓ Комментарии сохранены. Ученик увидит их при выполнении.', 'success');
-                    } else {
-                        alert('Комментарии сохранены.');
-                    }
+                    notifyGrade('✓ Комментарии сохранены. Ученик увидит их при выполнении.', 'success');
                 } else {
-                    if (typeof showToast === 'function') {
-                        showToast('✕ ' + (res.error || 'Не удалось сохранить'), 'error');
-                    } else {
-                        alert('Ошибка: ' + (res.error || 'Не удалось сохранить'));
-                    }
+                    notifyGrade('✕ ' + (res.error || 'Не удалось сохранить'), 'error');
                 }
             })
             .catch(function() {
-                if (typeof showToast === 'function') showToast('✕ Ошибка сети', 'error');
+                notifyGrade('✕ Ошибка сети', 'error');
             });
         });
         
@@ -1405,9 +1448,11 @@
         });
 
         document.getElementById('return-modal-cancel')?.addEventListener('click', closeReturnModal);
-        returnModal.addEventListener('click', function(e) {
-            if (e.target === returnModal) closeReturnModal();
-        });
+        if (returnModal) {
+            returnModal.addEventListener('click', function(e) {
+                if (e.target === returnModal) closeReturnModal();
+            });
+        }
 
         document.getElementById('return-modal-confirm')?.addEventListener('click', function() {
             var scores = [];
@@ -1431,9 +1476,10 @@
                 if (!Number.isNaN(v) && v > 0) returnTaskIds.push(v);
             });
 
+            var tfRet = document.getElementById('teacher-feedback');
             var data = {
                 scores: scores,
-                teacher_feedback: document.getElementById('teacher-feedback').value,
+                teacher_feedback: (tfRet && tfRet.value) ? tfRet.value : '',
                 status: 'RETURNED',
                 return_assignment_task_ids: returnTaskIds,
                 rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null,
@@ -1443,34 +1489,32 @@
             if (newMaxAttempts !== null) data.new_max_attempts = newMaxAttempts;
 
             closeReturnModal();
+            var csrfRet = getGradePageCsrfToken();
+            if (!csrfRet) {
+                notifyGrade('✕ Нет CSRF-токена. Обновите страницу.', 'error');
+                return;
+            }
 
             fetch('{{ url_for("assignments.submission_grade_save", submission_id=submission.submission_id) }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRFToken': csrfRet
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify(data)
             })
             .then(function(response) { return response.json(); })
             .then(function(res) {
                 if (res.success) {
-                    if (typeof showToast === 'function') {
-                        showToast('✓ Работа возвращена на доработку!', 'success');
-                        setTimeout(function() { location.reload(); }, 1500);
-                    } else {
-                        location.reload();
-                    }
+                    notifyGrade('✓ Работа возвращена на доработку!', 'success');
+                    window.setTimeout(function() { location.reload(); }, 1500);
                 } else {
-                    if (typeof showToast === 'function') {
-                        showToast('✕ ' + (res.error || 'Не удалось вернуть работу'), 'error');
-                    } else {
-                        alert('Ошибка: ' + (res.error || 'Не удалось вернуть работу'));
-                    }
+                    notifyGrade('✕ ' + (res.error || 'Не удалось вернуть работу'), 'error');
                 }
             })
             .catch(function() {
-                if (typeof showToast === 'function') showToast('✕ Ошибка сети', 'error');
+                notifyGrade('✕ Ошибка сети', 'error');
             });
         });
     </script>
