@@ -544,7 +544,7 @@
                     {% set nav_state_class = 'pending-review' %}
                 {% endif %}
             {% endif %}
-            <a href="#task-{{ loop.index }}" class="task-nav-btn {% if loop.first %}active{% endif %} {{ nav_state_class }} {% if task_item.is_triplet_19_21 %}min-w-[3.8rem] h-11 px-1.5 text-[11px]{% else %}w-11 h-11{% endif %} shrink-0 rounded-[14px] flex items-center justify-center font-black text-base no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}">
+            <a href="#task-{{ loop.index }}" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" class="task-nav-btn {% if loop.first %}active{% endif %} {{ nav_state_class }} {% if task_item.is_triplet_19_21 %}min-w-[3.8rem] h-11 px-1.5 text-[11px]{% else %}w-11 h-11{% endif %} shrink-0 rounded-[14px] flex items-center justify-center font-black text-base no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}">
                 {{ task_item.display_number or loop.index }}
             </a>
             {% endfor %}
@@ -1797,6 +1797,40 @@
         window.addEventListener('beforeunload', function() { syncAllTaskTimers(); persistTaskTimers(true); });
         setInterval(syncAllTaskTimers, 1000);
         window.__syncActiveTaskTimer__ = syncActiveTaskFromDom;
+        function applySubmitTaskVisualState(wrap, data) {
+            if (!wrap || !data) return;
+            var tri = data.triplet_nav;
+            var card = wrap.closest('.task-card');
+            var rootId = card ? card.getAttribute('data-task-id') : null;
+            if (tri && tri.root_assignment_task_id != null) {
+                var tcard = document.querySelector('.task-card[data-task-id="' + tri.root_assignment_task_id + '"]');
+                if (tcard) {
+                    tcard.classList.remove('task-correct', 'task-incorrect', 'task-pending-review');
+                    var tcls = tri.card_class || 'task-pending-review';
+                    if (tcls) tcard.classList.add(tcls);
+                }
+                var tnav = document.querySelector('.task-nav-btn[data-assignment-task-id="' + tri.root_assignment_task_id + '"]');
+                if (tnav) {
+                    tnav.classList.remove('correct', 'incorrect', 'pending-review', 'partial');
+                    var ncls = tri.nav_class;
+                    if (ncls) tnav.classList.add(ncls);
+                }
+                return;
+            }
+            if (card) {
+                card.classList.remove('task-correct', 'task-incorrect', 'task-pending-review');
+                if (data.is_correct === true) card.classList.add('task-correct');
+                else if (data.is_correct === false) card.classList.add('task-incorrect');
+            }
+            if (rootId) {
+                var nav = document.querySelector('.task-nav-btn[data-assignment-task-id="' + rootId + '"]');
+                if (nav) {
+                    nav.classList.remove('correct', 'incorrect', 'pending-review', 'partial');
+                    if (data.is_correct === true) nav.classList.add('correct');
+                    else if (data.is_correct === false) nav.classList.add('incorrect');
+                }
+            }
+        }
         document.querySelectorAll('.submit-task-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const assignmentTaskId = parseInt(btn.getAttribute('data-assignment-task-id'), 10);
@@ -1825,6 +1859,7 @@
                 .then(function(data) {
                     if (data.success) {
                         resetTaskTimer(assignmentTaskId);
+                        applySubmitTaskVisualState(wrap, data);
                         if (typeof showToast === 'function') {
                             var rm = data.rating_meta || {};
                             var d = (typeof rm.mmr_delta === 'number') ? (rm.mmr_delta >= 0 ? '+' + Math.round(rm.mmr_delta) : String(Math.round(rm.mmr_delta))) : '—';

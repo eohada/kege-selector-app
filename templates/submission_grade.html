@@ -798,6 +798,9 @@
                     <button type="button" id="save-comments-btn" class="neo-button ghost rounded-2xl px-5 py-3 inline-flex items-center gap-2 font-bold border border-slate-200/90 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow" title="Сохранить комментарии к заданиям. Ученик увидит их при выполнении. Проверку завершать не нужно.">
                         {{ ui_icon('action.edit', 'sm') }} Сохранить комментарии
                     </button>
+                    <button type="button" id="save-scores-draft-btn" class="neo-button ghost rounded-2xl px-5 py-3 inline-flex items-center gap-2 font-bold border border-slate-200/90 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow" title="Сохранить выставленные баллы, общий комментарий и рубрику без завершения проверки (статус работы не меняется, MMR не пересчитывается).">
+                        <i class="ph-bold ph-floppy-disk"></i> Сохранить баллы
+                    </button>
                     <button type="button" id="return-btn" class="neo-button ghost rounded-2xl px-5 py-3 inline-flex items-center gap-2 font-bold border border-amber-200/80 text-amber-900 dark:border-amber-800/60 dark:text-amber-100 bg-amber-50/80 dark:bg-amber-950/40 hover:bg-amber-100/90 transition-colors">
                         {{ ui_icon('action.refresh', 'sm') }} Вернуть на доработку
                     </button>
@@ -1222,8 +1225,7 @@
             if (rcEl && rcEl.value.trim()) entry.rating_comment = rcEl.value.trim();
         }
 
-        // Сохранение оценки
-        document.getElementById('grade-btn')?.addEventListener('click', function() {
+        function collectGradeScoresForSave() {
             const scores = [];
             document.querySelectorAll('.score-input').forEach(input => {
                 const atid = parseInt(input.name.replace('score_', ''), 10);
@@ -1235,15 +1237,18 @@
                 appendManualMmrToScorePayload(entry, atid);
                 scores.push(entry);
             });
-            
+            return scores;
+        }
+
+        function postGradeSave(scoresOnly) {
             const data = {
-                scores: scores,
+                scores: collectGradeScoresForSave(),
                 teacher_feedback: document.getElementById('teacher-feedback').value,
                 status: 'GRADED',
                 rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null,
-                rubric_scores: collectRubricScores()
+                rubric_scores: collectRubricScores(),
+                scores_only: !!scoresOnly
             };
-            
             fetch(`{{ url_for('assignments.submission_grade_save', submission_id=submission.submission_id) }}`, {
                 method: 'POST',
                 headers: {
@@ -1255,6 +1260,13 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    if (data.scores_only) {
+                        if (typeof showToast === 'function') {
+                            showToast('✓ Баллы сохранены. Статус работы не изменён.', 'success');
+                        }
+                        updateTotalScore();
+                        return;
+                    }
                     if (typeof showToast === 'function') {
                         showToast('✓ Работа успешно проверена!', 'success');
                         setTimeout(function() { location.reload(); }, 1500);
@@ -1269,6 +1281,14 @@
                     }
                 }
             });
+        }
+
+        document.getElementById('grade-btn')?.addEventListener('click', function() {
+            postGradeSave(false);
+        });
+
+        document.getElementById('save-scores-draft-btn')?.addEventListener('click', function() {
+            postGradeSave(true);
         });
 
         // Сохранить только комментарии (без завершения проверки) — ученик увидит их при выполнении

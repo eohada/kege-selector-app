@@ -115,6 +115,45 @@ def _triplet_submission_state(items: list[dict]) -> str:
     return 'partial'
 
 
+def _triplet_nav_update_meta(submission, assignment, submitted_assignment_task_id: int) -> dict | None:
+    """Для пробника (exam): связка 19–21 — актуальные классы карточки и кнопки навигации после сдачи одного подзадания."""
+    if not _assignment_uses_ege_nav_numbering(assignment):
+        return None
+    tasks_sorted = sorted((assignment.tasks or []), key=lambda t: (getattr(t, 'order_index', 0), t.assignment_task_id))
+    sid = int(submitted_assignment_task_id)
+    for i in range(len(tasks_sorted) - 2):
+        t0, t1, t2 = tasks_sorted[i], tasks_sorted[i + 1], tasks_sorted[i + 2]
+        n0 = getattr(t0.task, 'task_number', None) if t0.task else None
+        n1 = getattr(t1.task, 'task_number', None) if t1.task else None
+        n2 = getattr(t2.task, 'task_number', None) if t2.task else None
+        if n0 != 19 or n1 != 20 or n2 != 21:
+            continue
+        bundle_ids = {int(t0.assignment_task_id), int(t1.assignment_task_id), int(t2.assignment_task_id)}
+        if sid not in bundle_ids:
+            continue
+        answers_by_at = {int(a.assignment_task_id): a for a in (submission.answers or [])}
+        items = [
+            {'answer': answers_by_at.get(int(t0.assignment_task_id))},
+            {'answer': answers_by_at.get(int(t1.assignment_task_id))},
+            {'answer': answers_by_at.get(int(t2.assignment_task_id))},
+        ]
+        state = _triplet_submission_state(items)
+        if state == 'all_correct':
+            card_cls, nav_cls = 'task-correct', 'correct'
+        elif state == 'all_incorrect':
+            card_cls, nav_cls = 'task-incorrect', 'incorrect'
+        elif state == 'partial':
+            card_cls, nav_cls = 'task-pending-review', 'partial'
+        else:
+            card_cls, nav_cls = 'task-pending-review', 'pending-review'
+        return {
+            'root_assignment_task_id': int(t0.assignment_task_id),
+            'card_class': card_cls,
+            'nav_class': nav_cls,
+        }
+    return None
+
+
 def build_submission_tasks_view(tasks_data: list[dict], assignment) -> list[dict]:
     """
     Навигация по работе: для exam — номер задания ЕГЭ (task_number), 19+20+21 — один блок «19-21»;
@@ -3245,7 +3284,8 @@ def submission_submit_task(submission_id):
             if not submission.started_at:
                 submission.started_at = utc_now()
         db.session.commit()
-        return jsonify({
+        triplet_nav = _triplet_nav_update_meta(submission, assignment, int(assignment_task_id))
+        payload = {
             'success': True,
             'submitted_separately_at': answer.submitted_separately_at.isoformat(),
             'is_correct': answer.is_correct,
@@ -3255,7 +3295,10 @@ def submission_submit_task(submission_id):
             'attempts_used': answer.attempts_used,
             'max_attempts': max_for_task,
             'rating_meta': details,
-        }), 200
+        }
+        if triplet_nav:
+            payload['triplet_nav'] = triplet_nav
+        return jsonify(payload), 200
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error in submission_submit_task: {e}", exc_info=True)
@@ -3789,11 +3832,12 @@ def submission_grade_save(submission_id):
     Сохранение оценки работы
     Body: {
         "scores": [
-            {"assignment_task_id": 1, "score": 5, "comment": "Хорошо"},
+            {"assignment_task_id": 1, "score": 5, "comment": "Хорошо", "mmr_delta": optional },
             ...
         ],
         "teacher_feedback": "Общий комментарий",
         "status": "GRADED" или "RETURNED"
+        "scores_only": true — только сохранить баллы/рубрику/отзыв, без смены статуса и без MMR
     }
     """
     if current_user.is_student() or current_user.is_parent():  # comment
@@ -3816,6 +3860,7 @@ def submission_grade_save(submission_id):
 
     try:
         data = request.get_json()
+        scores_only = data.get('scores_only') in (True, 'true', 'True', 1, '1', 'yes', 'YES')
         scores_data = data.get('scores', [])
         teacher_feedback = data.get('teacher_feedback', '').strip()
         status = data.get('status', 'GRADED')  # GRADED или RETURNED
@@ -3898,7 +3943,12 @@ def submission_grade_save(submission_id):
             raw_mmr = score_data.get('mmr_delta')
             if raw_mmr is not None and str(raw_mmr).strip() != '':
                 try:
-                    mmr_override_by_task_id[assignment_task_id] = float(raw_mmr)
+                    mv = float(raw_mmr)
+                    score_for_mmr = min(max(0, int(score) if score is not None else 0), assignment_task.max_score)
+                    if mv > 0 and score_for_mmr < 1:
+                        pass  # игнор: при 0 баллов ручной «плюс» к MMR недопустим
+                    else:
+                        mmr_override_by_task_id[assignment_task_id] = mv
                 except (TypeError, ValueError):
                     pass
             rc_an = str(score_data.get('rating_comment') or '').strip()
@@ -3910,14 +3960,15 @@ def submission_grade_save(submission_id):
         submission.percentage = (total_score / max_score * 100) if max_score > 0 else 0
         submission.teacher_feedback = teacher_feedback
 
-        if status == 'RETURNED':
-            _set_submission_task_revision_flags(
-                submission,
-                mark_all=(len(return_task_ids) == 0),
-                selected_task_ids=return_task_ids,
-            )
-        else:
-            _set_submission_task_revision_flags(submission, mark_all=False, selected_task_ids=set())
+        if not scores_only:
+            if status == 'RETURNED':
+                _set_submission_task_revision_flags(
+                    submission,
+                    mark_all=(len(return_task_ids) == 0),
+                    selected_task_ids=return_task_ids,
+                )
+            else:
+                _set_submission_task_revision_flags(submission, mark_all=False, selected_task_ids=set())
 
         try:
             selected_rubric = None
@@ -3970,102 +4021,104 @@ def submission_grade_save(submission_id):
         except Exception as e:
             logger.warning(f"Failed to save rubric data for submission {submission_id}: {e}")
 
-        try:
-            transition_submission_status(submission, status, force=True)
-        except SubmissionLifecycleError as e:
-            return jsonify({'success': False, 'error': str(e)}), 400
-        submission.graded_at = utc_now()
-        # Если ученик не нажал «Сдать» (таймер истёк и т.п.), при завершении проверки фиксируем дату закрытия
-        if submission.submitted_at is None:
-            submission.submitted_at = utc_now()
+        if not scores_only:
+            try:
+                transition_submission_status(submission, status, force=True)
+            except SubmissionLifecycleError as e:
+                return jsonify({'success': False, 'error': str(e)}), 400
+            submission.graded_at = utc_now()
+            # Если ученик не нажал «Сдать» (таймер истёк и т.п.), при завершении проверки фиксируем дату закрытия
+            if submission.submitted_at is None:
+                submission.submitted_at = utc_now()
 
-        # При возврате на доработку — опционально обновляем дедлайн и/или число попыток работы
-        if status == 'RETURNED':
-            if new_deadline_str:
-                try:
-                    deadline_dt = datetime.fromisoformat(new_deadline_str.replace('Z', '+00:00'))
-                    assignment.deadline = deadline_from_form_to_utc(deadline_dt)
-                except (ValueError, TypeError) as e:
-                    logger.warning(f"Invalid new_deadline for submission {submission_id}: {e}")
-            if new_max_attempts is not None:
-                try:
-                    n = int(new_max_attempts)
-                    if n >= 1:
-                        assignment.max_attempts_default = n
-                except (ValueError, TypeError):
-                    pass
+            # При возврате на доработку — опционально обновляем дедлайн и/или число попыток работы
+            if status == 'RETURNED':
+                if new_deadline_str:
+                    try:
+                        deadline_dt = datetime.fromisoformat(new_deadline_str.replace('Z', '+00:00'))
+                        assignment.deadline = deadline_from_form_to_utc(deadline_dt)
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Invalid new_deadline for submission {submission_id}: {e}")
+                if new_max_attempts is not None:
+                    try:
+                        n = int(new_max_attempts)
+                        if n >= 1:
+                            assignment.max_attempts_default = n
+                    except (ValueError, TypeError):
+                        pass
 
-        if status == 'GRADED':
-            _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
-        try:
-            _record_submission_attempt(submission)
-        except Exception as e:
-            logger.warning(f"Could not record SubmissionAttempt (grade) for {submission.submission_id}: {e}")
+            if status == 'GRADED':
+                _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
+            try:
+                _record_submission_attempt(submission)
+            except Exception as e:
+                logger.warning(f"Could not record SubmissionAttempt (grade) for {submission.submission_id}: {e}")
 
-        try:
-            student = Student.query.get(submission.student_id)
-            if student:
-                if status == 'GRADED':
-                    notify_student_and_parents(
-                        student,
-                        kind='assignment_graded',
-                        title='Работа проверена',
-                        body=(teacher_feedback or '').strip() or None,
-                        link_url=url_for('assignments.submission_view', submission_id=submission.submission_id),
-                        meta={'submission_id': submission.submission_id, 'assignment_id': assignment.assignment_id, 'status': status},
-                    )
-                else:
-                    notify_student_and_parents(
-                        student,
-                        kind='assignment_returned',
-                        title='Работа возвращена на доработку',
-                        body=(teacher_feedback or '').strip() or None,
-                        link_url=url_for('assignments.submission_view', submission_id=submission.submission_id),
-                        meta={'submission_id': submission.submission_id, 'assignment_id': assignment.assignment_id, 'status': status},
-                    )
-        except Exception as e:
-            logger.warning(f"Failed to notify student about submission grade: {e}")
+            try:
+                student = Student.query.get(submission.student_id)
+                if student:
+                    if status == 'GRADED':
+                        notify_student_and_parents(
+                            student,
+                            kind='assignment_graded',
+                            title='Работа проверена',
+                            body=(teacher_feedback or '').strip() or None,
+                            link_url=url_for('assignments.submission_view', submission_id=submission.submission_id),
+                            meta={'submission_id': submission.submission_id, 'assignment_id': assignment.assignment_id, 'status': status},
+                        )
+                    else:
+                        notify_student_and_parents(
+                            student,
+                            kind='assignment_returned',
+                            title='Работа возвращена на доработку',
+                            body=(teacher_feedback or '').strip() or None,
+                            link_url=url_for('assignments.submission_view', submission_id=submission.submission_id),
+                            meta={'submission_id': submission.submission_id, 'assignment_id': assignment.assignment_id, 'status': status},
+                        )
+            except Exception as e:
+                logger.warning(f"Failed to notify student about submission grade: {e}")
 
-        user_id = submission.student.user_id if submission.student else None
-        if user_id:
-            task_by_at_id = {at.assignment_task_id: at for at in assignment.tasks}
-            for answer in submission.answers:
-                at = task_by_at_id.get(answer.assignment_task_id)
-                if not at or not at.task:
-                    continue
-                is_correct = bool(answer.is_correct) if answer.is_correct is not None else bool((answer.score or 0) >= 1)
-                try:
-                    from app.analytics import AnalyticsEngine
-                    answer_time_spent_sec = _resolve_answer_time_spent_sec(
-                        submission,
-                        answer.submitted_separately_at or submission.graded_at or utc_now(),
-                    )
-                    manual_delta = mmr_override_by_task_id.get(int(answer.assignment_task_id))
-                    r_comment = rating_comment_override_by_task_id.get(int(answer.assignment_task_id))
-                    AnalyticsEngine.process_submission(
-                        user_id=user_id,
-                        task_id=at.task.task_id,
-                        is_correct=is_correct,
-                        time_spent_sec=answer_time_spent_sec,
-                        submission_id=submission_id,
-                        answer_id=answer.answer_id,
-                        attempt_no=max(1, int(answer.attempts_used or 1)),
-                        mode='homework_manual',
-                        manual_mmr_delta=manual_delta,
-                        rating_comment=r_comment if manual_delta is not None else None,
-                        grader_user_id=current_user.id if manual_delta is not None else None,
-                    )
-                except Exception as anal_err:
-                    logger.warning("Analytics process_submission (grade_save) failed: %s", anal_err)
-        
+            user_id = submission.student.user_id if submission.student else None
+            if user_id:
+                task_by_at_id = {at.assignment_task_id: at for at in assignment.tasks}
+                for answer in submission.answers:
+                    at = task_by_at_id.get(answer.assignment_task_id)
+                    if not at or not at.task:
+                        continue
+                    is_correct = bool(answer.is_correct) if answer.is_correct is not None else bool((answer.score or 0) >= 1)
+                    try:
+                        from app.analytics import AnalyticsEngine
+                        answer_time_spent_sec = _resolve_answer_time_spent_sec(
+                            submission,
+                            answer.submitted_separately_at or submission.graded_at or utc_now(),
+                        )
+                        manual_delta = mmr_override_by_task_id.get(int(answer.assignment_task_id))
+                        r_comment = rating_comment_override_by_task_id.get(int(answer.assignment_task_id))
+                        AnalyticsEngine.process_submission(
+                            user_id=user_id,
+                            task_id=at.task.task_id,
+                            is_correct=is_correct,
+                            time_spent_sec=answer_time_spent_sec,
+                            submission_id=submission_id,
+                            answer_id=answer.answer_id,
+                            attempt_no=max(1, int(answer.attempts_used or 1)),
+                            mode='homework_manual',
+                            manual_mmr_delta=manual_delta,
+                            rating_comment=r_comment if manual_delta is not None else None,
+                            grader_user_id=current_user.id if manual_delta is not None else None,
+                        )
+                    except Exception as anal_err:
+                        logger.warning("Analytics process_submission (grade_save) failed: %s", anal_err)
+
         db.session.commit()
 
-        try:
-            from app.telegram.notifications import on_submission_status_changed
-            on_submission_status_changed(submission)
-        except Exception:
-            logger.warning('on_submission_status_changed after grade_save failed', exc_info=True)
-        
+        if not scores_only:
+            try:
+                from app.telegram.notifications import on_submission_status_changed
+                on_submission_status_changed(submission)
+            except Exception:
+                logger.warning('on_submission_status_changed after grade_save failed', exc_info=True)
+
         audit_logger.log(
             action='grade_submission',
             entity='Submission',
@@ -4075,18 +4128,19 @@ def submission_grade_save(submission_id):
                 'assignment_id': assignment.assignment_id,
                 'total_score': total_score,
                 'max_score': max_score,
-                'status': status
+                'status': status,
+                'scores_only': scores_only,
             }
         )
-        
-        
+
         return jsonify({
             'success': True,
             'total_score': total_score,
             'max_score': max_score,
-            'percentage': submission.percentage
+            'percentage': submission.percentage,
+            'scores_only': scores_only,
         }), 200
-        
+
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error in submission_grade_save: {e}", exc_info=True)

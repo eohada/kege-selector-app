@@ -247,8 +247,23 @@ class AnalyticsEngine:
         max_gain = float(cap.get("max_gain", 99999.0))
         max_loss = float(cap.get("max_loss", 99999.0))
 
+        effective_manual: float | None = None
         if manual_mmr_delta is not None:
-            delta = float(manual_mmr_delta)
+            try:
+                raw_m = float(manual_mmr_delta)
+            except (TypeError, ValueError):
+                raw_m = None
+            if raw_m is not None:
+                # Не применять ручной «плюс» при неверном ответе и «минус» при засчитанном — иначе путаница с 0/1 балла
+                if not is_correct and raw_m > 0:
+                    effective_manual = None
+                elif is_correct and raw_m < 0:
+                    effective_manual = None
+                else:
+                    effective_manual = raw_m
+
+        if effective_manual is not None:
+            delta = float(effective_manual)
             if delta > 0:
                 delta = min(delta, max_gain)
             else:
@@ -300,9 +315,9 @@ class AnalyticsEngine:
             "difficulty_label": cls._difficulty_label(difficulty_level),
             **time_meta,
         }
-        if manual_mmr_delta is not None:
+        if effective_manual is not None:
             behavior["teacher_adjusted"] = True
-            behavior["applied_manual_mmr_delta"] = float(manual_mmr_delta)
+            behavior["applied_manual_mmr_delta"] = float(effective_manual)
             if rating_comment:
                 behavior["rating_comment"] = str(rating_comment)[:4000]
             if grader_user_id is not None:
