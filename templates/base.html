@@ -15,6 +15,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     {% block head_css %}{% endblock %}
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/preload.js" defer></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
     <script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}?v=svg-fix-2026"></script>
     <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.js') }}?v=svg-fix-2026"></script>
@@ -51,13 +52,21 @@
     {% include '_active_lesson_banner.html' %}
     {% endif %}
 
-    <div class="app-layout">
+    <div class="app-layout" hx-ext="preload">
         {% set active_page = active_page | default('') %}
+        {% set mega_active_pages = ['assignments','templates','theory_manage','reminders','groups','generator','library','billing'] %}
 
         {# Floating Navigation Dock #}
         {% include '_dock_nav.html' %}
 
-        <main class="app-main">
+        <main class="app-main"
+              data-active-page="{{ active_page }}"
+              data-mega-active-pages="{{ mega_active_pages | join(',') }}"
+              hx-boost="true"
+              hx-target="main.app-main"
+              hx-select="main.app-main"
+              hx-swap="outerHTML show:window:top transition:true"
+              hx-push-url="true">
             <div class="app-content">
                 {% block content %}{% endblock %}
             </div>
@@ -71,6 +80,7 @@
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='spa-nav-sync.js') }}?v=1"></script>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}

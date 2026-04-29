@@ -1,9 +1,10 @@
 {% from '_ui_icon.html' import ui_icon %}
+{% from '_spa_main_nav_attrs.html' import spa_main_nav_attrs %}
 
 <div class="dock-wrapper">
     <header class="dock">
         {# ── Brand ── #}
-        <a href="{{ url_for('main.index') }}" class="dock-brand">
+        <a {{ spa_main_nav_attrs(url_for('main.index'), '', false) }} class="dock-brand">
             <div class="dock-brand-icon">
                 <i class="ph-fill ph-ghost text-xl"></i>
             </div>
@@ -16,16 +17,16 @@
 
             {# === PARENT role === #}
             {% if current_user.is_parent() %}
-            <a href="{{ url_for('parents.parent_dashboard') }}" class="dock-nav-item {% if active_page == 'parent_dashboard' %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('parents.parent_dashboard'), 'parent_dashboard') }} class="dock-nav-item {% if active_page == 'parent_dashboard' %}active{% endif %}">
                 <i class="ph-bold ph-baby text-lg"></i> Мои дети
             </a>
             {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
             {% if sub_allow_lessons and (has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule')) %}
-            <a href="{{ url_for('schedule.schedule') }}" class="dock-nav-item {% if active_page == 'schedule' %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('schedule.schedule'), 'schedule') }} class="dock-nav-item {% if active_page == 'schedule' %}active{% endif %}">
                 <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
             </a>
             {% endif %}
-            <a href="{{ url_for('main.faq') }}" class="dock-nav-item {% if active_page == 'faq' %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('main.faq'), 'faq') }} class="dock-nav-item {% if active_page == 'faq' %}active{% endif %}">
                 <i class="ph-bold ph-question text-lg"></i> FAQ
             </a>
 
@@ -34,59 +35,59 @@
             {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
             {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
             {% if current_student %}
-            <a href="{{ url_for('main.student_dashboard') }}" class="dock-nav-item {% if active_page in ['student_dashboard','dashboard'] %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('main.student_dashboard'), 'student_dashboard') }} class="dock-nav-item {% if active_page in ['student_dashboard','dashboard'] %}active{% endif %}">
                 <i class="ph-bold ph-house text-lg"></i> Главная
             </a>
             {% if sub_allow_lessons %}
-            <a href="{{ url_for('students.student_profile', student_id=current_student.student_id) }}" class="dock-nav-item {% if active_page == 'student_profile' %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('students.student_profile', student_id=current_student.student_id), 'student_profile') }} class="dock-nav-item {% if active_page == 'student_profile' %}active{% endif %}">
                 <i class="ph-bold ph-house text-lg"></i> Комната
             </a>
-            <a id="demo-nav-assignments" href="{{ url_for('assignments.submissions_list') }}" class="dock-nav-item {% if active_page == 'assignments' %}active{% endif %}">
+            <a id="demo-nav-assignments" {{ spa_main_nav_attrs(url_for('assignments.submissions_list'), 'assignments') }} class="dock-nav-item {% if active_page == 'assignments' %}active{% endif %}">
                 <i class="ph-bold ph-tray text-lg"></i> Задания
             </a>
             {% endif %}
             {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
-            <a id="demo-nav-trainer" href="{{ url_for('trainer.trainer_v2') }}" class="dock-nav-item {% if active_page == 'trainer' %}active{% endif %}">
+            <a id="demo-nav-trainer" {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="dock-nav-item {% if active_page == 'trainer' %}active{% endif %}">
                 <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
             </a>
             {% endif %}
             {% if has_permission(current_user, 'theory.view') %}
-            <a href="{{ url_for('theory.theory_index') }}" class="dock-nav-item {% if active_page == 'theory' %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('theory.theory_index'), 'theory') }} class="dock-nav-item {% if active_page == 'theory' %}active{% endif %}">
                 <i class="ph-bold ph-book-open text-lg"></i> Теория
             </a>
             {% endif %}
-            <a id="demo-nav-stats" href="{{ url_for('students.student_analytics', student_id=current_student.student_id) if current_student else '#' }}" class="dock-nav-item {% if active_page == 'student_analytics' %}active{% endif %}">
+            <a id="demo-nav-stats" {{ spa_main_nav_attrs(url_for('students.student_analytics', student_id=current_student.student_id) if current_student else '#', 'student_analytics') }} class="dock-nav-item {% if active_page == 'student_analytics' %}active{% endif %}">
                 <i class="ph-bold ph-chart-line-up text-lg"></i> Статистика
             </a>
             {% endif %}
 
             {# === TEACHER / ADMIN / CREATOR role === #}
             {% else %}
-            <a href="{{ url_for('main.dashboard') }}" class="dock-nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('main.dashboard'), 'dashboard') }} class="dock-nav-item {% if active_page == 'dashboard' %}active{% endif %}">
                 <i class="ph-bold ph-users-three text-lg"></i> Ученики
             </a>
-            <a href="{{ url_for('schedule.schedule') }}" class="dock-nav-item {% if active_page == 'schedule' %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('schedule.schedule'), 'schedule') }} class="dock-nav-item {% if active_page == 'schedule' %}active{% endif %}">
                 <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
             </a>
             {% if has_permission(current_user, 'assignment.grade') %}
-            <a href="{{ url_for('lessons.review_queue') }}" class="dock-nav-item {% if active_page == 'review_queue' %}active{% endif %}" style="position:relative;">
+            <a {{ spa_main_nav_attrs(url_for('lessons.review_queue'), 'review_queue') }} class="dock-nav-item {% if active_page == 'review_queue' %}active{% endif %}" style="position:relative;">
                 <i class="ph-bold ph-tray text-lg"></i> Проверка
             </a>
             {% endif %}
             {% if has_permission(current_user, 'trainer.use') %}
-            <a href="{{ url_for('trainer.trainer_v2') }}" class="dock-nav-item {% if active_page == 'trainer' %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="dock-nav-item {% if active_page == 'trainer' %}active{% endif %}">
                 <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
             </a>
             {% endif %}
             {% if current_user.is_creator() or current_user.is_chief_tester() or current_user.is_tester() %}
-            <a href="{{ url_for('chief_tester.dashboard') }}" class="dock-nav-item {% if active_page == 'chief_tester_dashboard' %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('chief_tester.dashboard'), 'chief_tester_dashboard') }} class="dock-nav-item {% if active_page == 'chief_tester_dashboard' %}active{% endif %}">
                 <i class="ph-bold ph-radar text-lg"></i> QA Отдел
             </a>
             {% endif %}
 
             {# ── Mega-menu: Инструменты ── #}
             <div class="dock-mega">
-                <button class="dock-nav-item {% if active_page in ['assignments','templates','theory_manage','reminders','groups','generator','library','billing'] %}active{% endif %}">
+                <button class="dock-nav-item {% if active_page in mega_active_pages %}active{% endif %}" data-mega-nav-trigger type="button">
                     <i class="ph-bold ph-squares-four text-lg"></i> Ещё
                     <i class="ph ph-caret-down text-xs" style="margin-left:2px;"></i>
                 </button>
@@ -95,30 +96,30 @@
                         <div>
                             <div class="dock-mega-group-title">Учёба</div>
                             {% if has_permission(current_user, 'assignment.view') %}
-                            <a href="{{ url_for('assignments.assignments_list') }}" class="dock-mega-link">
+                            <a {{ spa_main_nav_attrs(url_for('assignments.assignments_list'), 'assignments') }} class="dock-mega-link">
                                 <i class="ph-bold ph-file-text text-base text-muted"></i> Работы
                             </a>
                             {% endif %}
                             {% if has_permission(current_user, 'theory.manage') %}
-                            <a href="{{ url_for('theory.manage_list') }}" class="dock-mega-link">
+                            <a {{ spa_main_nav_attrs(url_for('theory.manage_list'), 'theory_manage') }} class="dock-mega-link">
                                 <i class="ph-bold ph-book-open text-base text-muted"></i> Теория
                             </a>
                             {% endif %}
-                            <a href="{{ url_for('reminders.reminders_list') }}" class="dock-mega-link">
+                            <a {{ spa_main_nav_attrs(url_for('reminders.reminders_list'), 'reminders') }} class="dock-mega-link">
                                 <i class="ph-bold ph-bell text-base text-muted"></i> Напоминания
                             </a>
 
                             <div class="dock-mega-group-title mt-3">Создание</div>
-                            <a href="{{ url_for('task_generator.task_generator') }}" class="dock-mega-link">
+                            <a {{ spa_main_nav_attrs(url_for('task_generator.task_generator'), 'generator') }} class="dock-mega-link">
                                 <i class="ph-bold ph-magic-wand text-base text-muted"></i> Генератор
                             </a>
                             {% if has_permission(current_user, 'task.manage') %}
-                            <a href="{{ url_for('templates.templates_list') }}" class="dock-mega-link">
+                            <a {{ spa_main_nav_attrs(url_for('templates.templates_list'), 'templates') }} class="dock-mega-link">
                                 <i class="ph-bold ph-file-dashed text-base text-muted"></i> Шаблоны
                             </a>
                             {% endif %}
                             {% if has_permission(current_user, 'lesson.edit') %}
-                            <a href="{{ url_for('library.materials_library') }}" class="dock-mega-link">
+                            <a {{ spa_main_nav_attrs(url_for('library.materials_library'), 'library') }} class="dock-mega-link">
                                 <i class="ph-bold ph-books text-base text-muted"></i> Библиотека
                             </a>
                             {% endif %}
@@ -126,12 +127,12 @@
                         <div>
                             <div class="dock-mega-group-title">Управление</div>
                             {% if has_permission(current_user, 'groups.view') %}
-                            <a href="{{ url_for('groups.groups_list') }}" class="dock-mega-link">
+                            <a {{ spa_main_nav_attrs(url_for('groups.groups_list'), 'groups') }} class="dock-mega-link">
                                 <i class="ph-bold ph-users text-base text-muted"></i> Группы
                             </a>
                             {% endif %}
                             {% if has_permission(current_user, 'billing.manage') %}
-                            <a href="{{ url_for('billing.billing_plans') }}" class="dock-mega-link">
+                            <a {{ spa_main_nav_attrs(url_for('billing.billing_plans'), 'billing') }} class="dock-mega-link">
                                 <i class="ph-bold ph-credit-card text-base text-muted"></i> Тарифы
                             </a>
                             {% endif %}
@@ -174,11 +175,11 @@
                         {% endif %}
                     </button>
                     <div class="profile-dropdown-content" data-profile-menu>
-                        <a href="{{ url_for('auth.user_profile') }}" class="profile-item">
+                        <a {{ spa_main_nav_attrs(url_for('auth.user_profile'), 'profile') }} class="profile-item">
                             <i class="ph-bold ph-user text-base text-muted"></i>
                             <span>Профиль</span>
                         </a>
-                        <a href="{{ url_for('notifications.notifications_list') }}" class="profile-item">
+                        <a {{ spa_main_nav_attrs(url_for('notifications.notifications_list'), 'notifications') }} class="profile-item">
                             <i class="ph-bold ph-bell text-base text-muted"></i>
                             <span>Уведомления</span>
                         </a>

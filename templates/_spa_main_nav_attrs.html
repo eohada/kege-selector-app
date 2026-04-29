@@ -1,0 +1,15 @@
+{% macro spa_main_nav_attrs(url, nav_key='', preload=true) -%}
+href="{{ url }}"
+{%- if url and url != '#' %}
+ data-spa-nav
+{%- if nav_key %} data-nav-key="{{ nav_key }}"{% endif %}
+ hx-get="{{ url }}"
+ hx-target="main.app-main"
+ hx-select="main.app-main"
+ hx-swap="outerHTML show:window:top transition:true"
+ hx-push-url="true"
+{%- if preload %} preload="mouseover"{% endif %}
+{%- elif nav_key %}
+ data-nav-key="{{ nav_key }}"
+{%- endif %}
+{%- endmacro %}
