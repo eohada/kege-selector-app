@@ -239,6 +239,42 @@ def _resolve_answer_time_spent_sec(submission, answered_at, previous_answered_at
         return None
 
 
+def _coerce_int_score(raw, default: int = 0) -> int:
+    """Безопасно привести балл из JSON/формы к int (пустая строка / мусор → default)."""
+    if raw is None:
+        return default
+    if isinstance(raw, str) and not raw.strip():
+        return default
+    try:
+        return int(float(raw))
+    except (TypeError, ValueError):
+        return default
+
+
+def _answer_has_meaningful_student_work(answer) -> bool:
+    """Есть ли реальная работа ученика по заданию (не пустая карточка без ответа)."""
+    if not answer:
+        return False
+    val = getattr(answer, "value", None)
+    if val is not None and str(val).strip() != "":
+        return True
+    code = getattr(answer, "student_code", None)
+    if code is not None and str(code).strip() != "":
+        return True
+    files = getattr(answer, "files", None)
+    if isinstance(files, (list, tuple)) and len(files) > 0:
+        return True
+    if isinstance(files, dict) and len(files) > 0:
+        return True
+    if isinstance(files, str):
+        fs = files.strip()
+        if fs and fs not in ("[]", "null", "{}"):
+            return True
+    if getattr(answer, "submitted_separately_at", None) is not None:
+        return True
+    return False
+
+
 def _legacy_submission_comment_bucket_task_id(assignment) -> int | None:
     """
     Старые записи SubmissionComment без assignment_task_id.
@@ -3932,7 +3968,8 @@ def submission_grade_save(submission_id):
                     pass
                 answers_by_task_id[assignment_task_id] = answer
 
-            answer.score = min(max(0, score), assignment_task.max_score)  # Ограничиваем максимумом
+            sc_num = _coerce_int_score(score)
+            answer.score = min(max(0, sc_num), assignment_task.max_score)  # Ограничиваем максимумом
             # Для ручной проверки считаем задание выполненным корректно, если преподаватель выставил >= 1 балла.
             answer.is_correct = bool((answer.score or 0) >= 1)
             answer.teacher_comment = comment
@@ -3941,14 +3978,15 @@ def submission_grade_save(submission_id):
             raw_mmr = score_data.get('mmr_delta')
             if raw_mmr is not None and str(raw_mmr).strip() != '':
                 try:
-                    mv = float(raw_mmr)
-                    score_for_mmr = min(max(0, int(score) if score is not None else 0), assignment_task.max_score)
+                    mv = float(str(raw_mmr).replace(",", "."))
+                except (TypeError, ValueError):
+                    mv = None
+                if mv is not None:
+                    score_for_mmr = min(max(0, sc_num), assignment_task.max_score)
                     if mv > 0 and score_for_mmr < 1:
                         pass  # игнор: при 0 баллов ручной «плюс» к MMR недопустим
                     else:
                         mmr_override_by_task_id[assignment_task_id] = mv
-                except (TypeError, ValueError):
-                    pass
             rc_an = str(score_data.get('rating_comment') or '').strip()
             if rc_an:
                 rating_comment_override_by_task_id[assignment_task_id] = rc_an[:4000]
@@ -4088,13 +4126,17 @@ def submission_grade_save(submission_id):
                     at = task_by_at_id.get(answer.assignment_task_id)
                     if not at or not at.task:
                         continue
+                    manual_delta = mmr_override_by_task_id.get(int(answer.assignment_task_id))
+                    has_work = _answer_has_meaningful_student_work(answer)
+                    awarded = (answer.score or 0) >= 1
+                    if not awarded and not has_work and manual_delta is None:
+                        continue
                     is_correct = bool(answer.is_correct) if answer.is_correct is not None else bool((answer.score or 0) >= 1)
                     try:
                         answer_time_spent_sec = _resolve_answer_time_spent_sec(
                             submission,
                             answer.submitted_separately_at or anchor_for_time,
                         )
-                        manual_delta = mmr_override_by_task_id.get(int(answer.assignment_task_id))
                         r_comment = rating_comment_override_by_task_id.get(int(answer.assignment_task_id))
                         AnalyticsEngine.process_submission(
                             user_id=user_id,
