@@ -4111,6 +4111,8 @@ def submission_grade_save(submission_id):
                         )
                     except Exception as anal_err:
                         logger.warning("Analytics process_submission (grade_save) failed: %s", anal_err)
+            except Exception as anal_batch_err:
+                logger.warning("submission_grade_save: analytics batch failed: %s", anal_batch_err)
         elif submission.student and not submission.student.user_id:
             logger.warning(
                 "submission_grade_save: skip MMR — student %s has no user_id (submission %s)",
