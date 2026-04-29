@@ -1027,6 +1027,7 @@ def api_analytics_history():
                 'urls': urls,
                 'rating_comment': flags.get('rating_comment'),
                 'teacher_adjusted': bool(flags.get('teacher_adjusted')),
+                'mmr_rating_source': 'manual' if flags.get('teacher_adjusted') else 'auto',
             })
         return jsonify({'success': True, 'history': history})
     except Exception as e:

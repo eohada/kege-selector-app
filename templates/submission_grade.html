@@ -596,6 +596,11 @@
                             {% if task_item.rating_meta.mmr_delta is not none %}
                             <span style="font-size:.78rem; font-weight:800; color:{% if task_item.rating_meta.mmr_delta >= 0 %}#047857{% else %}#b91c1c{% endif %}; background:{% if task_item.rating_meta.mmr_delta >= 0 %}#ecfdf5{% else %}#fef2f2{% endif %}; border:1px solid {% if task_item.rating_meta.mmr_delta >= 0 %}#a7f3d0{% else %}#fecaca{% endif %}; border-radius:999px; padding:.2rem .55rem;">ΔMMR {% if task_item.rating_meta.mmr_delta >= 0 %}+{% endif %}{{ task_item.rating_meta.mmr_delta|round|int }}</span>
                             {% endif %}
+                            {% if task_item.rating_meta.mmr_rating_source == 'manual' %}
+                            <span style="font-size:.65rem; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#92400e; background:#fffbeb; border:1px solid #fde68a; border-radius:999px; padding:.18rem .45rem;">вручную</span>
+                            {% elif task_item.rating_meta.mmr_rating_source == 'auto' %}
+                            <span style="font-size:.65rem; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#475569; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:999px; padding:.18rem .45rem;">авто</span>
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
@@ -702,16 +707,14 @@
                         <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.5rem 0;">Ученик увидит этот комментарий при выполнении. Можно сохранить кнопкой «Сохранить комментарии» без завершения проверки.</p>
                         <textarea class="comment-input" name="comment_{{ g.assignment_task.assignment_task_id }}" placeholder="Например: обратите внимание на единицы измерения; подсказка к заданию...">{{ g.answer.teacher_comment if g.answer and g.answer.teacher_comment else '' }}</textarea>
                     </div>
-                    {% if g.assignment_task.requires_manual_grading %}
                     <div style="margin-top: 1rem; padding: 1rem; border: 1px dashed var(--stroke-1); border-radius: var(--radius-md); background: rgba(123, 92, 255, 0.06);">
-                        <div style="font-weight: 800; margin-bottom: 0.35rem;">Корректировка рейтинга (MMR)</div>
-                        <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.75rem 0;">Необязательно. Если указать Δ&nbsp;MMR, вместо автоматической формулы будет применено это изменение; комментарий попадёт в историю аналитики.</p>
-                        <label style="font-weight: 600; display: block; margin-bottom: 0.35rem;">Δ MMR</label>
+                        <div style="font-weight: 800; margin-bottom: 0.35rem;">Корректировка рейтинга (MMR / Elo)</div>
+                        <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.75rem 0;">Для любого задания, где вы вручную выставляете балл: можно задать изменение рейтинга самостоятельно (например, −N при 0 баллах и +M при засчитанном задании после разбора на уроке). Оставьте пустым — сработает авторасчёт по формуле. Комментарий ниже попадёт в историю аналитики и будет помечен как «вручную».</p>
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.35rem;">Δ MMR (необязательно)</label>
                         <input type="number" step="any" name="mmr_delta_{{ g.assignment_task.assignment_task_id }}" class="neo-input" placeholder="Авто" style="max-width: 14rem; box-sizing: border-box;">
                         <label style="font-weight: 600; display: block; margin: 0.75rem 0 0.35rem;">Комментарий к изменению рейтинга</label>
-                        <textarea name="rating_comment_{{ g.assignment_task.assignment_task_id }}" class="comment-input" rows="2" placeholder="Для журнала аналитики (не обязателен)"></textarea>
+                        <textarea name="rating_comment_{{ g.assignment_task.assignment_task_id }}" class="comment-input" rows="2" placeholder="Для журнала аналитики (необязателен, если не меняете Δ вручную)"></textarea>
                     </div>
-                    {% endif %}
                 </div>
                 {% endfor %}
                 </div>

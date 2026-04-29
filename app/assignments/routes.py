@@ -2711,6 +2711,7 @@ def submission_view(submission_id):
                     'attempt_coeff': flags.get('attempt_coeff'),
                     'time_spent_sec': ev.time_spent_sec,
                     'time_band': flags.get('time_band'),
+                    'mmr_rating_source': 'manual' if flags.get('teacher_adjusted') else 'auto',
                 }
             tasks_data.append({
                 'assignment_task': assignment_task,
@@ -3660,6 +3661,7 @@ def submission_grade_view(submission_id):
                 'attempt_coeff': flags.get('attempt_coeff'),
                 'time_spent_sec': ev.time_spent_sec,
                 'time_band': flags.get('time_band'),
+                'mmr_rating_source': 'manual' if flags.get('teacher_adjusted') else 'auto',
             }
         tasks_data.append({
             'assignment_task': assignment_task,
