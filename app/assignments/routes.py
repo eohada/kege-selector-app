@@ -473,7 +473,7 @@ def _assignment_type_label_long(value: str | None) -> str:
 
 
 def _now_naive_msk() -> datetime:
-    """Текущий момент в UTC (для сравнения с дедлайнами и created_at в БД)."""
+    """Текущий момент в UTC (aware), для сравнения с дедлайнами в БД после перехода на timestamptz."""
     return utc_now()
 
 
@@ -1560,11 +1560,9 @@ def assignments_list():
         tasks_count = _safe_int(getattr(row, 'tasks_count', 0))
         pending = assigned + in_progress + returned
 
-        deadline_naive = None
-        if assignment.deadline:
-            deadline_naive = assignment.deadline.replace(tzinfo=None) if assignment.deadline.tzinfo else assignment.deadline
-        
-        is_overdue = bool(deadline_naive and deadline_naive < now and pending > 0)
+        dl_utc = _to_utc(assignment.deadline) if assignment.deadline else None
+        now_utc = _to_utc(now)
+        is_overdue = bool(dl_utc and now_utc and dl_utc < now_utc and pending > 0)
         is_completed = bool(total_students > 0 and pending == 0 and to_grade == 0)
 
         assignments_data.append({
