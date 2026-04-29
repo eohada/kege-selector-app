@@ -60,6 +60,45 @@
         });
     }
 
+    function applyPageMotion(root) {
+        var main = root && root.matches && root.matches('main.app-main')
+            ? root
+            : document.querySelector('main.app-main');
+        if (!main) return;
+
+        var selector = [
+            '.app-content > *',
+            '.glass-panel',
+            '.card',
+            '.form-section',
+            '.theory-card',
+            '.theory-bookmark-card',
+            '.selection-card',
+            '.task-card',
+            '.sub-card',
+            '.locked-card',
+            '.submission-comments',
+            '.inspector-card',
+            '.empty-state'
+        ].join(',');
+
+        var seen = [];
+        Array.prototype.slice.call(main.querySelectorAll(selector)).forEach(function(item) {
+            if (seen.indexOf(item) === -1) seen.push(item);
+        });
+
+        seen.slice(0, 64).forEach(function(item, index) {
+            item.classList.remove('bs-motion-item');
+            item.style.setProperty('--motion-index', index);
+            item.classList.add('bs-motion-item');
+        });
+
+        main.classList.remove('bs-motion-page-enter');
+        // Restart the entrance animation after htmx swaps the main shell.
+        void main.offsetWidth;
+        main.classList.add('bs-motion-page-enter');
+    }
+
     function closeMobileMenus() {
         Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-root]')).forEach(function(root) {
             var toggle = root.querySelector('[data-mobile-menu-toggle]');
@@ -96,15 +135,20 @@
             configureHtmxWhenReady(20);
             protectLocalHtmxControls();
             syncActiveNav();
+            applyPageMotion();
         });
     } else {
         protectLocalHtmxControls();
         syncActiveNav();
+        applyPageMotion();
     }
 
     document.body.addEventListener('htmx:afterSettle', function(evt) {
         protectLocalHtmxControls();
         syncActiveNav();
-        if (isMainSwap(evt)) closeMobileMenus();
+        if (isMainSwap(evt)) {
+            closeMobileMenus();
+            applyPageMotion(evt.target);
+        }
     });
 })();
