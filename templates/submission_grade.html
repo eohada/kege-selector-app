@@ -1223,12 +1223,20 @@
             return out;
         }
 
+        function normalizeSignedNumberForParse(raw) {
+            if (raw == null) return '';
+            return String(raw).trim().replace(/\u2212/g, '-').replace(/−/g, '-').replace(/,/g, '.');
+        }
+
         function appendManualMmrToScorePayload(entry, assignmentTaskId) {
             const mmrEl = document.querySelector('input[name="mmr_delta_' + assignmentTaskId + '"]');
             const rcEl = document.querySelector('textarea[name="rating_comment_' + assignmentTaskId + '"]');
-            if (mmrEl && String(mmrEl.value).trim() !== '') {
-                const v = parseFloat(String(mmrEl.value).replace(',', '.'));
-                if (!Number.isNaN(v)) entry.mmr_delta = v;
+            if (mmrEl) {
+                const s = normalizeSignedNumberForParse(mmrEl.value);
+                if (s !== '') {
+                    const v = parseFloat(s);
+                    if (!Number.isNaN(v)) entry.mmr_delta = v;
+                }
             }
             if (rcEl && rcEl.value.trim()) entry.rating_comment = rcEl.value.trim();
         }

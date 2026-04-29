@@ -4131,6 +4131,9 @@ def submission_grade_save(submission_id):
 
         user_id = submission.student.user_id if submission.student else None
         if user_id:
+            # Иначе у новых Answer в этой же транзакции ещё нет answer_id — в AnalyticsEvent уходит NULL,
+            # и карточка проверки не находит событие по answer_id (плашка ΔMMR / «вручную» пустые).
+            db.session.flush()
             anchor_for_time = utc_now() if scores_only else (submission.graded_at or utc_now())
             try:
                 from app.analytics import AnalyticsEngine
