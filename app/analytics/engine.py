@@ -372,10 +372,11 @@ class AnalyticsEngine:
                 behavior["rating_comment"] = str(rating_comment)[:4000]
             if grader_user_id is not None:
                 behavior["grader_user_id"] = int(grader_user_id)
-        if node is not None:
+        # node_id в БД nullable: без узла графа раньше событие не писалось — в истории пусто при проверке ДЗ.
+        if node is not None or mode == cls.TEACHER_GRADE_MODE:
             event = AnalyticsEvent(
                 user_id=user_id,
-                node_id=node.id,
+                node_id=node.id if node else None,
                 task_id=task.task_id,
                 submission_id=submission_id,
                 answer_id=answer_id,

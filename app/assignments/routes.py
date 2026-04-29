@@ -243,12 +243,28 @@ def _coerce_int_score(raw, default: int = 0) -> int:
     """Безопасно привести балл из JSON/формы к int (пустая строка / мусор → default)."""
     if raw is None:
         return default
-    if isinstance(raw, str) and not raw.strip():
-        return default
+    if isinstance(raw, str):
+        t = raw.strip().replace("\u2212", "-").replace("−", "-")
+        if not t:
+            return default
+        raw = t
     try:
         return int(float(raw))
     except (TypeError, ValueError):
         return default
+
+
+def _parse_teacher_mmr_override(raw) -> float | None:
+    """Разбор ручного ΔMMR (Unicode-минус, запятая как десятичный разделитель)."""
+    if raw is None:
+        return None
+    s = str(raw).strip().replace(",", ".").replace("\u2212", "-").replace("−", "-")
+    if not s:
+        return None
+    try:
+        return float(s)
+    except (TypeError, ValueError):
+        return None
 
 
 def _answer_has_meaningful_student_work(answer) -> bool:
@@ -271,6 +287,8 @@ def _answer_has_meaningful_student_work(answer) -> bool:
         if fs and fs not in ("[]", "null", "{}"):
             return True
     if getattr(answer, "submitted_separately_at", None) is not None:
+        return True
+    if (getattr(answer, "attempts_used", None) or 0) > 0:
         return True
     return False
 
@@ -3977,10 +3995,7 @@ def submission_grade_save(submission_id):
 
             raw_mmr = score_data.get('mmr_delta')
             if raw_mmr is not None and str(raw_mmr).strip() != '':
-                try:
-                    mv = float(str(raw_mmr).replace(",", "."))
-                except (TypeError, ValueError):
-                    mv = None
+                mv = _parse_teacher_mmr_override(raw_mmr)
                 if mv is not None:
                     score_for_mmr = min(max(0, sc_num), assignment_task.max_score)
                     if mv > 0 and score_for_mmr < 1:
