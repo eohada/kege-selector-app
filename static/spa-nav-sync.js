@@ -28,7 +28,7 @@
 
     function configureHtmx() {
         if (!window.htmx || !window.htmx.config) return false;
-        window.htmx.config.globalViewTransitions = true;
+        window.htmx.config.globalViewTransitions = false;
         return true;
     }
 
@@ -56,12 +56,7 @@
     }
 
     function setTransitionMode(mode) {
-        if (!mode) return;
-        document.documentElement.setAttribute('data-bs-transition', mode);
-        if (resetTransitionTimer) clearTimeout(resetTransitionTimer);
-        resetTransitionTimer = setTimeout(function() {
-            document.documentElement.removeAttribute('data-bs-transition');
-        }, 900);
+        return;
     }
 
     function isInternalNavigableLink(link) {
@@ -163,55 +158,7 @@
     }
 
     function applyPageMotion(root) {
-        var main = root && root.matches && root.matches('main.app-main')
-            ? root
-            : document.querySelector('main.app-main');
-        if (!main) return;
-
-        var selector = [
-            '.app-content > *',
-            '.glass-panel',
-            '.tactile-card',
-            '.bento-card',
-            '.student-card',
-            '.stat-card',
-            '.filters-panel',
-            '.filters-card',
-            '.template-card',
-            '.profile-card',
-            '.generator-mode',
-            '.card',
-            '.form-section',
-            '.theory-card',
-            '.theory-bookmark-card',
-            '.selection-card',
-            '.task-card',
-            '.sub-card',
-            '.locked-card',
-            '.submission-comments',
-            '.inspector-card',
-            '.workspace-file-card',
-            '.lesson-card',
-            '.empty-state'
-        ].join(',');
-
-        var seen = [];
-        Array.prototype.slice.call(main.querySelectorAll(selector)).forEach(function(item) {
-            if (seen.indexOf(item) === -1) seen.push(item);
-        });
-
-        seen.slice(0, 64).forEach(function(item, index) {
-            var group = Math.min(Math.floor(index / 5), 2);
-            item.classList.remove('bs-motion-item');
-            item.style.setProperty('--motion-group', group);
-            item.style.setProperty('--motion-index', index);
-            item.classList.add('bs-motion-item');
-        });
-
-        main.classList.remove('bs-motion-page-enter');
-        // Restart the entrance animation after htmx swaps the main shell.
-        void main.offsetWidth;
-        main.classList.add('bs-motion-page-enter');
+        return;
     }
 
     function switchLocalView(targetView, mode) {
@@ -352,13 +299,6 @@
         return evt && evt.target && evt.target.matches && evt.target.matches('main.app-main');
     }
 
-    document.addEventListener('click', function(evt) {
-        var link = evt.target && evt.target.closest ? evt.target.closest('a[href]') : null;
-        if (!isInternalNavigableLink(link)) return;
-        lastClickedLink = link;
-        setTransitionMode(inferTransitionMode(link));
-    }, true);
-
     window.addEventListener('resize', function() {
         var main = document.querySelector('main.app-main');
         if (!main) return;
@@ -376,13 +316,11 @@
             configureHtmxWhenReady(20);
             protectLocalHtmxControls();
             syncActiveNav();
-            applyPageMotion();
             initTheoryShell();
         });
     } else {
         protectLocalHtmxControls();
         syncActiveNav();
-        applyPageMotion();
         initTheoryShell();
     }
 
@@ -397,7 +335,6 @@
         syncActiveNav();
         if (isMainSwap(evt)) {
             closeMobileMenus();
-            applyPageMotion(evt.target);
             initTheoryShell(evt.target);
         }
         if (evt && evt.target && evt.target.id === 'articleContainer') {

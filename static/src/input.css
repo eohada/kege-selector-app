@@ -11,7 +11,7 @@
 
 /* ── CSS Custom Properties (light = default) ── */
 :root {
-  --color-bg-app: #E5E9F0;
+  --color-bg-app: #FFFFFF;
   --color-bg-surface: #FFFFFF;
   --color-bg-surface-alt: #F1F5F9;
   --color-bg-sidebar: #FFFFFF;
@@ -26,10 +26,10 @@
   color-scheme: light;
 
   /* Legacy aliases for 65 templates with inline <style> */
-  --page-bg: var(--color-bg-app);
+  --page-bg: #FFFFFF;
   --surface-1: var(--color-bg-surface);
   --surface-2: var(--color-bg-surface-alt);
-  --surface-3: var(--color-bg-app);
+  --surface-3: #FFFFFF;
   --surface-card: var(--color-bg-surface);
   --surface-card-hover: var(--color-bg-surface);
   --text-primary: var(--color-text-primary);

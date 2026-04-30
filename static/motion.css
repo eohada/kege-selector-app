@@ -1,5 +1,5 @@
 @view-transition {
-  navigation: auto;
+  navigation: none;
 }
 
 :root {
@@ -12,7 +12,7 @@
 }
 
 main.app-main {
-  view-transition-name: app-main;
+  view-transition-name: none;
   transform-origin: 50% 44px;
 }
 
@@ -284,4 +284,19 @@ main.app-main.htmx-request {
   :where(.glass-panel, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .sub-card, .locked-card, .submission-comments, .inspector-card, .workspace-file-card, .lesson-card):hover {
     transform: none;
   }
+}
+
+/* Stability mode: no global page/content animations while navigation is full page. */
+::view-transition-old(app-main),
+::view-transition-new(app-main) {
+  animation: none !important;
+}
+
+.bs-motion-page-enter .bs-motion-item {
+  opacity: 1 !important;
+  animation: none !important;
+}
+
+:where(.glass-panel, .tactile-card, .bento-card, .student-card, .stat-card, .filters-panel, .filters-card, .template-card, .profile-card, .generator-mode, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .task-card, .sub-card, .locked-card, .submission-comments, .inspector-card, .empty-state, .workspace-file-card, .lesson-card):hover {
+  transform: none !important;
 }
