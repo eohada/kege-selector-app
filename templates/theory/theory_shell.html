@@ -7,9 +7,6 @@
 {% block head_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}">
 <style>
-  .view-section { display: none; opacity: 0; transition: opacity 0.3s ease-in-out; }
-  .view-section.active { display: flex; opacity: 1; animation: fadeIn 0.4s ease-out forwards; }
-  @keyframes fadeIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
   .prose-article h2 { font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-top: 2rem; margin-bottom: 1rem; }
   .prose-article h3 { font-size: 1.25rem; font-weight: 700; color: var(--color-text-secondary); margin-top: 1.5rem; margin-bottom: 0.75rem; }
   .prose-article p { margin-bottom: 1rem; line-height: 1.7; color: var(--color-text-secondary); }

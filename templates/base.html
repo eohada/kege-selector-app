@@ -9,9 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="icon" href="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}">
     {% include '_boo_select_head.html' %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.5">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.6">
     <link rel="stylesheet" href="{{ url_for('static', filename='mobile-overrides.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='motion.css') }}?v=20260430-1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='motion.css') }}?v=20260430-2">
     <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     {% block head_css %}{% endblock %}
@@ -81,7 +81,7 @@
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='spa-nav-sync.js') }}?v=2"></script>
+    <script defer src="{{ url_for('static', filename='spa-nav-sync.js') }}?v=3"></script>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}

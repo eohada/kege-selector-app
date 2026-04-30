@@ -119,6 +119,32 @@ html[data-bs-transition="drill-out"] ::view-transition-new(app-main) {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.view-section {
+  display: none;
+  flex-direction: column;
+  gap: 2rem;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.view-section.active {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+  animation: bs-fade-up 400ms var(--bs-motion-curve) forwards;
+}
+
+.view-section.swipe-in-right { animation: bs-swipe-in-right 400ms var(--bs-motion-curve) forwards; }
+.view-section.swipe-out-left { animation: bs-swipe-out-left 400ms var(--bs-motion-curve) forwards; }
+.view-section.swipe-in-left { animation: bs-swipe-in-left 400ms var(--bs-motion-curve) forwards; }
+.view-section.swipe-out-right { animation: bs-swipe-out-right 400ms var(--bs-motion-curve) forwards; }
+.view-section.drill-in-enter { animation: bs-drill-in-enter 500ms var(--bs-motion-curve) forwards; }
+.view-section.drill-in-leave { animation: bs-drill-in-leave 500ms var(--bs-motion-curve) forwards; }
+.view-section.drill-out-enter { animation: bs-drill-out-enter 500ms var(--bs-motion-curve) forwards; }
+.view-section.drill-out-leave { animation: bs-drill-out-leave 500ms var(--bs-motion-curve) forwards; }
+
 .dock {
   isolation: isolate;
 }
@@ -192,24 +218,28 @@ html[data-bs-transition="drill-out"] ::view-transition-new(app-main) {
   transform: translateY(-1px);
 }
 
-:where(.glass-panel, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .task-card, .sub-card, .locked-card, .submission-comments, .inspector-card, .empty-state, .workspace-file-card, .lesson-card) {
+:where(.glass-panel, .tactile-card, .bento-card, .student-card, .stat-card, .filters-panel, .filters-card, .template-card, .profile-card, .generator-mode, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .task-card, .sub-card, .locked-card, .submission-comments, .inspector-card, .empty-state, .workspace-file-card, .lesson-card) {
   transition-property: transform, box-shadow, border-color, background-color, opacity, filter;
   transition-duration: var(--bs-motion-fast);
   transition-timing-function: var(--bs-motion-curve);
   transform-origin: 50% 36px;
 }
 
-:where(.glass-panel, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .sub-card, .locked-card, .submission-comments, .inspector-card, .workspace-file-card, .lesson-card):hover {
+:where(.glass-panel, .tactile-card, .bento-card, .student-card, .stat-card, .filters-card, .template-card, .profile-card, .generator-mode, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .sub-card, .locked-card, .submission-comments, .inspector-card, .workspace-file-card, .lesson-card):hover {
   transform: translateY(-4px);
   box-shadow: var(--bs-motion-shadow);
 }
 
-:where(.glass-panel, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .sub-card, .locked-card, .submission-comments, .inspector-card):hover :where(.ph-arrow-right, .ph-arrow-up-right, .ph-play, .ph-plus, .ph-user-plus) {
+:where(.glass-panel, .tactile-card, .bento-card, .student-card, .stat-card, .filters-card, .template-card, .profile-card, .generator-mode, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .sub-card, .locked-card, .submission-comments, .inspector-card):hover :where(.ph-arrow-right, .ph-arrow-up-right, .ph-play, .ph-plus, .ph-user-plus) {
   transform: translateX(2px);
 }
 
-:where(.glass-panel, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .sub-card, .locked-card, .submission-comments, .inspector-card) :where(.ph-arrow-right, .ph-arrow-up-right, .ph-play, .ph-plus, .ph-user-plus) {
+:where(.glass-panel, .tactile-card, .bento-card, .student-card, .stat-card, .filters-card, .template-card, .profile-card, .generator-mode, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .sub-card, .locked-card, .submission-comments, .inspector-card) :where(.ph-arrow-right, .ph-arrow-up-right, .ph-play, .ph-plus, .ph-user-plus) {
   transition: transform var(--bs-motion-fast) var(--bs-motion-curve);
+}
+
+:where(.neo-button, button, a)[class*="border-b-"]:active {
+  transform: translateY(2px);
 }
 
 .task-card.task-panel-active {
@@ -219,14 +249,6 @@ html[data-bs-transition="drill-out"] ::view-transition-new(app-main) {
 .htmx-request main.app-main,
 main.app-main.htmx-request {
   cursor: progress;
-}
-
-.htmx-request main.app-main .app-content,
-main.app-main.htmx-request .app-content {
-  opacity: .82;
-  transform: translateY(2px) scale(.998);
-  filter: saturate(.96);
-  transition: opacity 180ms var(--bs-motion-curve), transform 180ms var(--bs-motion-curve), filter 180ms var(--bs-motion-curve);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -250,7 +272,7 @@ main.app-main.htmx-request .app-content {
   .mobile-menu .nav-link,
   .task-nav-btn,
   .dock-nav-highlight,
-  :where(.glass-panel, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .task-card, .sub-card, .locked-card, .submission-comments, .inspector-card, .empty-state, .workspace-file-card, .lesson-card) {
+    :where(.glass-panel, .tactile-card, .bento-card, .student-card, .stat-card, .filters-panel, .filters-card, .template-card, .profile-card, .generator-mode, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .task-card, .sub-card, .locked-card, .submission-comments, .inspector-card, .empty-state, .workspace-file-card, .lesson-card) {
     transition-duration: 1ms;
   }
 

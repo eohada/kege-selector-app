@@ -2289,6 +2289,33 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   box-shadow: var(--shadow-hover) !important;
 }
 
+/* HTMX swaps only `main.app-main`, so per-page head CSS is not guaranteed to arrive. */
+.view-section {
+  display: none;
+  flex-direction: column;
+  gap: 2rem;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.view-section.active {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+  animation: bs-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.view-section.swipe-in-right { animation: bs-swipe-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.view-section.swipe-out-left { animation: bs-swipe-out-left 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.view-section.swipe-in-left { animation: bs-swipe-in-left 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.view-section.swipe-out-right { animation: bs-swipe-out-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.view-section.drill-in-enter { animation: bs-drill-in-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.view-section.drill-in-leave { animation: bs-drill-in-leave 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.view-section.drill-out-enter { animation: bs-drill-out-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.view-section.drill-out-leave { animation: bs-drill-out-leave 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
 /*
  * Tom Select: стили ВНЕ @layer — иначе не-слоевой tom-select.css с CDN выигрывает каскад
  * над всеми правилами из @layer components (квадратные углы, серая обводка после init).

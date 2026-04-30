@@ -171,6 +171,15 @@
         var selector = [
             '.app-content > *',
             '.glass-panel',
+            '.tactile-card',
+            '.bento-card',
+            '.student-card',
+            '.stat-card',
+            '.filters-panel',
+            '.filters-card',
+            '.template-card',
+            '.profile-card',
+            '.generator-mode',
             '.card',
             '.form-section',
             '.theory-card',
@@ -203,6 +212,115 @@
         // Restart the entrance animation after htmx swaps the main shell.
         void main.offsetWidth;
         main.classList.add('bs-motion-page-enter');
+    }
+
+    function switchLocalView(targetView, mode) {
+        if (!targetView) return;
+        var container = targetView.parentElement || document;
+        var currentView = container.querySelector('.view-section.active');
+        if (!currentView || currentView === targetView) {
+            targetView.classList.add('active');
+            return;
+        }
+
+        var leaveClass = mode === 'drill-out' ? 'drill-out-leave' : 'drill-in-leave';
+        var enterClass = mode === 'drill-out' ? 'drill-out-enter' : 'drill-in-enter';
+
+        currentView.classList.remove('swipe-in-right', 'swipe-in-left', 'drill-in-enter', 'drill-out-enter');
+        targetView.classList.remove('swipe-out-left', 'swipe-out-right', 'drill-in-leave', 'drill-out-leave');
+        currentView.classList.add(leaveClass);
+
+        setTimeout(function() {
+            currentView.classList.remove('active', leaveClass);
+            targetView.classList.add('active', enterClass);
+            setTimeout(function() {
+                targetView.classList.remove(enterClass);
+            }, 520);
+        }, mode === 'drill-out' ? 400 : 400);
+    }
+
+    function initTheoryShell(root) {
+        var scope = root && root.querySelector ? root : document;
+        var main = scope.matches && scope.matches('main.app-main') ? scope : document.querySelector('main.app-main');
+        if (!main || !main.querySelector('#view-groups, #view-topics, #view-article')) return;
+
+        var viewGroups = main.querySelector('#view-groups');
+        var viewTopics = main.querySelector('#view-topics');
+        var viewArticle = main.querySelector('#view-article');
+        var grid = main.querySelector('#theoryGrid');
+        var bookmarkedGrid = main.querySelector('#bookmarkedGrid');
+        var search = main.querySelector('#theorySearch');
+        var filterBtns = Array.prototype.slice.call(main.querySelectorAll('.theory-filter'));
+
+        if (![viewGroups, viewTopics, viewArticle].some(function(view) { return view && view.classList.contains('active'); })) {
+            if (viewGroups) viewGroups.classList.add('active');
+        }
+
+        window.__theoryOpenIndex = function() {
+            if (viewGroups) switchLocalView(viewGroups, 'drill-out');
+        };
+
+        function setFilter(filter) {
+            filterBtns.forEach(function(btn) {
+                var active = btn.getAttribute('data-filter') === filter;
+                btn.classList.toggle('bg-surface', active);
+                btn.classList.toggle('text-primary', active);
+                btn.classList.toggle('shadow-sm', active);
+                btn.classList.toggle('dark:bg-white/10', active);
+                btn.classList.toggle('dark:text-white', active);
+                btn.classList.toggle('text-muted', !active);
+                btn.classList.toggle('dark:text-dark-muted', !active);
+            });
+
+            if (grid) grid.classList.toggle('hidden', filter === 'bookmarked');
+            if (bookmarkedGrid) bookmarkedGrid.classList.toggle('hidden', filter !== 'bookmarked');
+
+            var cards = Array.prototype.slice.call((filter === 'bookmarked' ? bookmarkedGrid : grid || document.createElement('div')).querySelectorAll('[data-title]'));
+            cards.forEach(function(card) {
+                var count = Number(card.getAttribute('data-count') || '1');
+                var bookmarkedCount = Number(card.getAttribute('data-bookmarked-count') || '0');
+                var visible = true;
+                if (filter === 'nonempty') visible = count > 0;
+                if (filter === 'bookmarked') visible = bookmarkedCount > 0 || card.classList.contains('theory-bookmark-card');
+                card.classList.toggle('hidden', !visible);
+            });
+        }
+
+        function applySearch() {
+            var query = ((search && search.value) || '').trim().toLowerCase();
+            [grid, bookmarkedGrid].forEach(function(list) {
+                if (!list) return;
+                Array.prototype.slice.call(list.querySelectorAll('[data-title]')).forEach(function(card) {
+                    var title = card.getAttribute('data-title') || '';
+                    card.classList.toggle('hidden', query && title.indexOf(query) === -1);
+                });
+            });
+        }
+
+        filterBtns.forEach(function(btn) {
+            if (btn.dataset.bsTheoryBound === '1') return;
+            btn.dataset.bsTheoryBound = '1';
+            btn.addEventListener('click', function() {
+                setFilter(btn.getAttribute('data-filter') || 'all');
+                applySearch();
+            });
+        });
+
+        if (search && search.dataset.bsTheoryBound !== '1') {
+            search.dataset.bsTheoryBound = '1';
+            search.addEventListener('input', applySearch);
+        }
+
+        Array.prototype.slice.call(main.querySelectorAll('a[hx-target="#articleContainer"]')).forEach(function(link) {
+            if (link.dataset.bsTheoryArticleBound === '1') return;
+            link.dataset.bsTheoryArticleBound = '1';
+            link.addEventListener('click', function() {
+                if (viewArticle) setTransitionMode('drill-in');
+            });
+        });
+
+        setFilter('all');
+        applySearch();
     }
 
     function closeMobileMenus() {
@@ -259,11 +377,13 @@
             protectLocalHtmxControls();
             syncActiveNav();
             applyPageMotion();
+            initTheoryShell();
         });
     } else {
         protectLocalHtmxControls();
         syncActiveNav();
         applyPageMotion();
+        initTheoryShell();
     }
 
     document.body.addEventListener('htmx:beforeRequest', function(evt) {
@@ -278,6 +398,11 @@
         if (isMainSwap(evt)) {
             closeMobileMenus();
             applyPageMotion(evt.target);
+            initTheoryShell(evt.target);
+        }
+        if (evt && evt.target && evt.target.id === 'articleContainer') {
+            var articleView = document.querySelector('#view-article');
+            if (articleView) switchLocalView(articleView, 'drill-in');
         }
         lastClickedLink = null;
     });
