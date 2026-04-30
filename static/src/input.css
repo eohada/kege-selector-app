@@ -679,7 +679,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     font-size: 16px;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    scroll-behavior: smooth;
+    scroll-behavior: auto;
   }
   body {
     @apply font-sans;
@@ -2304,17 +2304,19 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   opacity: 1;
   pointer-events: auto;
   visibility: visible;
-  animation: bs-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: none !important;
 }
 
-.view-section.swipe-in-right { animation: bs-swipe-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.view-section.swipe-out-left { animation: bs-swipe-out-left 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.view-section.swipe-in-left { animation: bs-swipe-in-left 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.view-section.swipe-out-right { animation: bs-swipe-out-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.view-section.drill-in-enter { animation: bs-drill-in-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.view-section.drill-in-leave { animation: bs-drill-in-leave 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.view-section.drill-out-enter { animation: bs-drill-out-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.view-section.drill-out-leave { animation: bs-drill-out-leave 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.view-section.swipe-in-right,
+.view-section.swipe-out-left,
+.view-section.swipe-in-left,
+.view-section.swipe-out-right,
+.view-section.drill-in-enter,
+.view-section.drill-in-leave,
+.view-section.drill-out-enter,
+.view-section.drill-out-leave {
+  animation: none !important;
+}
 
 /*
  * Tom Select: стили ВНЕ @layer — иначе не-слоевой tom-select.css с CDN выигрывает каскад

@@ -2,6 +2,17 @@
   navigation: none;
 }
 
+html {
+  scroll-behavior: auto !important;
+}
+
+*,
+*::before,
+*::after {
+  animation: none !important;
+  transition: none !important;
+}
+
 :root {
   --bs-motion-curve: cubic-bezier(.16, 1, .3, 1);
   --bs-motion-fast: 300ms;
@@ -133,17 +144,19 @@ html[data-bs-transition="drill-out"] ::view-transition-new(app-main) {
   opacity: 1;
   pointer-events: auto;
   visibility: visible;
-  animation: bs-fade-up 400ms var(--bs-motion-curve) forwards;
+  animation: none !important;
 }
 
-.view-section.swipe-in-right { animation: bs-swipe-in-right 400ms var(--bs-motion-curve) forwards; }
-.view-section.swipe-out-left { animation: bs-swipe-out-left 400ms var(--bs-motion-curve) forwards; }
-.view-section.swipe-in-left { animation: bs-swipe-in-left 400ms var(--bs-motion-curve) forwards; }
-.view-section.swipe-out-right { animation: bs-swipe-out-right 400ms var(--bs-motion-curve) forwards; }
-.view-section.drill-in-enter { animation: bs-drill-in-enter 500ms var(--bs-motion-curve) forwards; }
-.view-section.drill-in-leave { animation: bs-drill-in-leave 500ms var(--bs-motion-curve) forwards; }
-.view-section.drill-out-enter { animation: bs-drill-out-enter 500ms var(--bs-motion-curve) forwards; }
-.view-section.drill-out-leave { animation: bs-drill-out-leave 500ms var(--bs-motion-curve) forwards; }
+.view-section.swipe-in-right,
+.view-section.swipe-out-left,
+.view-section.swipe-in-left,
+.view-section.swipe-out-right,
+.view-section.drill-in-enter,
+.view-section.drill-in-leave,
+.view-section.drill-out-enter,
+.view-section.drill-out-leave {
+  animation: none !important;
+}
 
 .dock {
   isolation: isolate;

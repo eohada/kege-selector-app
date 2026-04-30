@@ -169,21 +169,9 @@
             targetView.classList.add('active');
             return;
         }
-
-        var leaveClass = mode === 'drill-out' ? 'drill-out-leave' : 'drill-in-leave';
-        var enterClass = mode === 'drill-out' ? 'drill-out-enter' : 'drill-in-enter';
-
-        currentView.classList.remove('swipe-in-right', 'swipe-in-left', 'drill-in-enter', 'drill-out-enter');
-        targetView.classList.remove('swipe-out-left', 'swipe-out-right', 'drill-in-leave', 'drill-out-leave');
-        currentView.classList.add(leaveClass);
-
-        setTimeout(function() {
-            currentView.classList.remove('active', leaveClass);
-            targetView.classList.add('active', enterClass);
-            setTimeout(function() {
-                targetView.classList.remove(enterClass);
-            }, 520);
-        }, mode === 'drill-out' ? 400 : 400);
+        currentView.classList.remove('active', 'swipe-in-right', 'swipe-in-left', 'drill-in-enter', 'drill-out-enter', 'swipe-out-left', 'swipe-out-right', 'drill-in-leave', 'drill-out-leave');
+        targetView.classList.remove('swipe-in-right', 'swipe-in-left', 'drill-in-enter', 'drill-out-enter', 'swipe-out-left', 'swipe-out-right', 'drill-in-leave', 'drill-out-leave');
+        targetView.classList.add('active');
     }
 
     function initTheoryShell(root) {

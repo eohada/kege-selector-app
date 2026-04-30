@@ -10,7 +10,7 @@
     .gen-premium-shell { align-items: flex-start; width: 100%; }
     .gen-deck-wrap { position: relative; min-width: 0; width: 100%; }
     .gen-task-card {
-        transition: transform 240ms ease, opacity 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+        transition: none;
     }
     .gen-task-card.is-entering { transform: translateY(10px); opacity: 0; }
     .gen-task-card.is-leaving { transform: translateY(-10px); opacity: 0; }
@@ -88,16 +88,12 @@
     .gen-layout-tab-panel {
         display: none !important;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: none;
     }
     .gen-layout-tab-panel.is-active {
         display: flex !important;
         opacity: 1;
-        animation: genRefFadeIn 0.4s ease forwards;
-    }
-    @keyframes genRefFadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        animation: none;
     }
     .gen-ref-hide-scroll {
         -ms-overflow-style: none;
@@ -1163,7 +1159,7 @@
 
         document.getElementById('genBankScrollBtn')?.addEventListener('click', () => {
             if (typeof window.switchGenTab === 'function') window.switchGenTab('bank');
-            document.getElementById('gen-panel-bank')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.getElementById('gen-panel-bank')?.scrollIntoView({ behavior: 'auto', block: 'start' });
         });
 
         function markBankCardAsAdded(taskId) {
