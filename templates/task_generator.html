@@ -255,7 +255,7 @@
                     <p class="text-sm font-medium text-slate-500 m-0">Выбирай предмет и номер задания. Выдача пойдёт бесконечным потоком.</p>
                 </div>
                 {% if generator_recipient_ids %}
-                <button type="button" id="genCreateWorkBtnTop" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm shadow-md border-b-[3px] border-b-purple-800 border border-transparent hover:bg-boo-primaryHover active:translate-y-[1px] active:border-b-0 transition-all">{{ ui_icon('action.check', 'sm', decorative=true) }}<span id="genCreateWorkBtnTopText">Завершить и создать</span></button>
+                <button type="button" id="genCreateWorkBtnTop" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 border border-transparent hover:bg-boo-primaryHover active:translate-y-[2px] active:border-b-0 active:shadow-none transition-all">{{ ui_icon('action.check', 'sm', decorative=true) }}<span id="genCreateWorkBtnTopText">Завершить и создать</span></button>
                 {% endif %}
             </div>
             {% if generator_recipient_ids %}
@@ -293,7 +293,7 @@
                 </label>
 
                 <div class="grid grid-cols-2 gap-3 mb-4">
-                    <button type="button" class="w-full min-h-[3.25rem] py-3.5 px-4 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-base border border-transparent" id="genStartBtn">
+                    <button type="button" class="w-full min-h-[3.25rem] py-3.5 px-4 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-base border border-transparent" id="genStartBtn">
                         <i class="ph-fill ph-play text-lg" aria-hidden="true"></i> Старт
                     </button>
                     <button type="button" class="w-full min-h-[3.25rem] py-3.5 px-4 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-all flex justify-center items-center gap-2 shadow-sm text-base disabled:opacity-45 disabled:pointer-events-none" id="genStopBtn" disabled>
@@ -397,7 +397,7 @@
                 <div class="gen-answer" id="genAnswer"></div>
 
                 <div class="p-6 bg-slate-50/30 border-t border-slate-100 rounded-b-[32px] flex flex-col sm:flex-row gap-3">
-                    <button type="button" class="group flex-1 py-4 min-h-[52px] bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm border border-transparent disabled:opacity-45 disabled:pointer-events-none" id="genAcceptBtn" disabled>
+                    <button type="button" class="group flex-1 py-4 min-h-[52px] bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm border border-transparent disabled:opacity-45 disabled:pointer-events-none" id="genAcceptBtn" disabled>
                         <i class="ph-bold ph-check text-lg" aria-hidden="true"></i> Принять
                         <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-purple-400 border border-purple-300 rounded text-[10px] font-black text-white shadow-[0_2px_0_rgba(107,76,229,1)] ml-1 opacity-70 group-hover:opacity-100">A</kbd>
                     </button>
@@ -405,7 +405,7 @@
                         <i class="ph-bold ph-minus text-lg text-slate-500" aria-hidden="true"></i> Пропустить
                         <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded text-[10px] font-black text-slate-600 gen-ref-kbd ml-1 opacity-70 group-hover:opacity-100">S</kbd>
                     </button>
-                    <button type="button" class="group flex-1 py-4 min-h-[52px] bg-boo-coral text-white rounded-xl font-bold hover:bg-red-500 transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-red-700 active:translate-y-[2px] active:border-b-0 text-sm border border-transparent disabled:opacity-45 disabled:pointer-events-none" id="genBlacklistBtn" disabled>
+                    <button type="button" class="group flex-1 py-4 min-h-[52px] bg-boo-coral text-white rounded-xl font-bold hover:bg-red-500 transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(251,113,133,0.28)] border-b-[3px] border-b-red-700 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm border border-transparent disabled:opacity-45 disabled:pointer-events-none" id="genBlacklistBtn" disabled>
                         <i class="ph-bold ph-trash text-lg" aria-hidden="true"></i> Blacklist
                         <kbd class="hidden xl:inline-flex items-center justify-center px-1.5 py-0.5 bg-red-400 border border-red-300 rounded text-[10px] font-black text-white shadow-[0_2px_0_rgba(185,28,28,1)] ml-1 opacity-70 group-hover:opacity-100">B</kbd>
                     </button>
@@ -534,7 +534,7 @@
                 </div>
 
                 <div class="pt-2 flex flex-wrap items-center gap-4">
-                    <button type="button" id="bankCreateBtn" class="px-8 py-4 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm border border-transparent">
+                    <button type="button" id="bankCreateBtn" class="px-8 py-4 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm border border-transparent">
                         <i class="ph-bold ph-floppy-disk text-lg" aria-hidden="true"></i> Сохранить в банк
                     </button>
                     <span class="text-xs font-medium text-slate-400">Появится в базе после сохранения.</span>

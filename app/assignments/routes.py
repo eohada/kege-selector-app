@@ -436,8 +436,12 @@ def _submission_revision_task_ids(submission: Submission) -> set[int]:
 
 def _can_student_edit_submission_task(submission: Submission, assignment_task_id: int | None) -> bool:
     status = normalize_legacy_status(getattr(submission, 'status', None))
-    if status != 'RETURNED':
+    if status in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW', 'GRADED', 'REVOKED'}:
+        return False
+    if status in {'ASSIGNED', 'IN_PROGRESS'}:
         return True
+    if status != 'RETURNED':
+        return False
     try:
         atid = int(assignment_task_id or 0)
     except Exception:
@@ -2738,6 +2742,9 @@ def submission_view(submission_id):
         else:
             is_deadline_passed = False
         can_submit = not (is_deadline_passed and assignment.hard_deadline)
+        normalized_submission_status = normalize_legacy_status(submission.status)
+        if normalized_submission_status in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW', 'GRADED', 'REVOKED'}:
+            can_submit = False
         
         all_attempts = submission.attempts or []
         attempts_used = sum(1 for a in all_attempts if getattr(a, 'status', '') == 'SUBMITTED')
@@ -2749,7 +2756,7 @@ def submission_view(submission_id):
         attempts_per_task = getattr(assignment, 'attempts_per_task', False)
         timer_expired = False
         if assignment.time_limit_strict and assignment.time_limit_minutes and submission.started_at:
-            if submission.status != 'RETURNED':
+            if normalized_submission_status != 'RETURNED':
                 started_utc = _started_at_to_utc(submission.started_at)
                 now_utc = now.astimezone(timezone.utc)
                 limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
@@ -3248,7 +3255,7 @@ def submission_submit_task(submission_id):
         assignment = submission.assignment
         if not assignment.allow_separate_submission or not getattr(assignment, 'attempts_per_task', False):
             return jsonify({'success': False, 'error': 'Сдача по одному заданию не разрешена для этой работы'}), 400
-        if getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None):
+        if normalize_legacy_status(submission.status) != 'RETURNED' and getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None):
             now = utc_now()
             started_utc = _started_at_to_utc(submission.started_at)
             now_utc = now.astimezone(timezone.utc)
@@ -3302,15 +3309,21 @@ def submission_submit_task(submission_id):
             answer.submitted_separately_at,
             previous_answered_at=previous_answered_at,
         )
-        # Анти-абуз: клиентское время используем только как диагностику, доверяем серверному окну.
-        time_spent_sec = max(0, int(server_time_spent_sec or 0))
-        if client_time_spent_sec is not None and abs(int(client_time_spent_sec) - time_spent_sec) > 30:
+        # Для режима "одно задание на экране" серверное окно может быть общим для всей работы,
+        # поэтому для активного задания используем клиентский таймер с верхней отсечкой.
+        if client_time_spent_sec is not None:
+            time_spent_sec = min(max(0, int(client_time_spent_sec)), 24 * 3600)
+        elif normalize_legacy_status(submission.status) == 'RETURNED':
+            time_spent_sec = None
+        else:
+            time_spent_sec = max(0, int(server_time_spent_sec or 0))
+        if client_time_spent_sec is not None and server_time_spent_sec is not None and abs(int(client_time_spent_sec) - int(server_time_spent_sec or 0)) > 30:
             logger.info(
                 "submit_task time_spent mismatch: submission_id=%s assignment_task_id=%s client=%s server=%s",
                 submission_id,
                 assignment_task_id,
                 client_time_spent_sec,
-                time_spent_sec,
+                server_time_spent_sec,
             )
         is_correct, score = auto_grade_answer(answer, assignment_task)
         if is_correct is not None:
@@ -3376,6 +3389,17 @@ def submission_submit(submission_id):
             return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
         
         assignment = submission.assignment
+        data = request.get_json(silent=True) or {}
+        raw_task_times = data.get('task_times') if isinstance(data, dict) else {}
+        task_times_by_assignment_task_id: dict[int, int] = {}
+        if isinstance(raw_task_times, dict):
+            for key, value in raw_task_times.items():
+                try:
+                    atid = int(key)
+                    seconds = min(max(0, int(float(value))), 24 * 3600)
+                except (TypeError, ValueError):
+                    continue
+                task_times_by_assignment_task_id[atid] = seconds
         now = utc_now()
         deadline = _ensure_aware_datetime(assignment.deadline)
         
@@ -3391,7 +3415,7 @@ def submission_submit(submission_id):
             return jsonify({'success': False, 'error': 'Дедлайн истек, сдача невозможна'}), 403
         
         is_overtime = False
-        if assignment.time_limit_minutes and submission.started_at:
+        if normalize_legacy_status(submission.status) != 'RETURNED' and assignment.time_limit_minutes and submission.started_at:
             started_utc = _started_at_to_utc(submission.started_at)
             now_utc = now.astimezone(timezone.utc)
             limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
@@ -3448,11 +3472,13 @@ def submission_submit(submission_id):
                         # На финальной сдаче не дублируем начисление.
                         if not was_submitted_separately:
                             from app.analytics import AnalyticsEngine
-                            answer_time_spent_sec = _resolve_answer_time_spent_sec(
-                                submission,
-                                answer.submitted_separately_at or now,
-                                previous_answered_at=previous_answered_at,
-                            )
+                            answer_time_spent_sec = task_times_by_assignment_task_id.get(int(assignment_task.assignment_task_id))
+                            if answer_time_spent_sec is None:
+                                answer_time_spent_sec = _resolve_answer_time_spent_sec(
+                                    submission,
+                                    answer.submitted_separately_at or now,
+                                    previous_answered_at=previous_answered_at,
+                                )
                             AnalyticsEngine.process_submission(
                                 user_id=current_user.id,
                                 task_id=assignment_task.task.task_id,

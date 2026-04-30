@@ -7,6 +7,7 @@
 {# Должно быть вне block content: иначе scripts_extra не видит переменные (Jinja scope по блокам) и не вешается обработчик «Начать выполнение». #}
 {% set awaiting_work_start = submission.status == 'ASSIGNED' and not submission.started_at %}
 {% set should_hide_tasks = assignment.hide_before_start and awaiting_work_start %}
+{% set submission_is_graded_readonly = submission.status == 'GRADED' %}
 {% block body_attrs %}data-cinema-scene="submission-work"{% if tasks_view %} data-canvas-task-id="{{ tasks_view[0].task.task_id }}" data-canvas-context-type="submission" data-canvas-context-id="{{ submission.submission_id }}"{% endif %}{% endblock %}
 {% block body_class %}min-h-screen{% endblock %}
 
@@ -231,6 +232,44 @@
             outline: none;
             border-color: #8b5cf6;
             box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+        }
+        .graded-readonly-note {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+            padding: 0.85rem 1rem;
+            border: 1px solid rgba(16, 185, 129, 0.28);
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(139, 92, 246, 0.08));
+            color: var(--color-text-primary);
+            font-weight: 800;
+        }
+        .readonly-answer-card {
+            padding: 0.9rem 1rem;
+            background: linear-gradient(135deg, var(--color-bg-surface-alt), rgba(139, 92, 246, 0.06));
+            border: 1px solid var(--color-stroke);
+            border-radius: 16px;
+            white-space: pre-wrap;
+            color: var(--color-text-primary);
+            font-weight: 700;
+            min-height: 3.25rem;
+        }
+        .readonly-code-wrap {
+            border: 1px solid rgba(139, 92, 246, 0.20);
+            border-radius: 22px;
+            padding: 1rem;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.07), rgba(15, 23, 42, 0.02));
+        }
+        .readonly-code-wrap > div:first-child {
+            color: var(--color-text-secondary);
+        }
+        .answer-input:disabled {
+            cursor: default;
+            opacity: 1;
+            background: linear-gradient(135deg, var(--color-bg-surface-alt), rgba(139, 92, 246, 0.05));
+            border-color: rgba(139, 92, 246, 0.18);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
         }
         
         .submit-section {
@@ -591,7 +630,9 @@
                         {% if task_item.task and task_item.task.is_manual_bank_task %}
                         <span class="submission-type-chip" style="background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;">Создано вручную</span>
                         {% endif %}
+                        {% if submission.status not in ['RETURNED', 'GRADED'] %}
                         <span class="submission-type-chip task-debug-timer" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="background:#ecfeff; color:#0f766e; border:1px solid #99f6e4; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:900;">⏱ 0с • PAUSE</span>
+                        {% endif %}
                     </div>
                     <div style="color:#94a3b8;"><i class="ph-bold ph-warning-circle"></i></div>
                 </div>
@@ -664,6 +705,12 @@
                 
                 {% set task_can_edit = task_item.task_can_edit if task_item.task_can_edit is defined else true %}
                 <div class="task-input bg-surface border border-slate-200 rounded-[20px] p-2 transition-all shadow-sm dark:shadow-none dark:shadow-none">
+                    {% if submission_is_graded_readonly %}
+                    <div class="graded-readonly-note">
+                        <i class="ph-bold ph-lock-key"></i>
+                        <span>Работа проверена. Ответы и код доступны только для просмотра.</span>
+                    </div>
+                    {% endif %}
                     {% set is_manual_review_assignment = assignment.assignment_type == 'manual_review' %}
                     {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task and task_item.answer %}
                     <div style="margin-bottom: 0.5rem; padding: 0.5rem 0; font-weight: 600;">
@@ -725,7 +772,7 @@
                         class="answer-input{% if loop.first and current_user.is_demo_user %} demo-first-answer{% endif %}"
                         name="answer"
                         data-task-id="{{ task_item.assignment_task.assignment_task_id }}"
-                        {% if awaiting_work_start or submission.status == 'SUBMITTED' or not can_submit or not task_can_edit %}disabled{% endif %}
+                        {% if awaiting_work_start or submission.status in ['SUBMITTED', 'GRADED', 'NEEDS_MANUAL_REVIEW'] or not can_submit or not task_can_edit %}disabled{% endif %}
                         {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
                     {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
@@ -738,7 +785,7 @@
                             class="answer-input"
                             name="answer"
                             data-task-id="{{ sub_item.assignment_task.assignment_task_id }}"
-                            {% if awaiting_work_start or submission.status == 'SUBMITTED' or not can_submit or not sub_task_can_edit %}disabled{% endif %}
+                            {% if awaiting_work_start or submission.status in ['SUBMITTED', 'GRADED', 'NEEDS_MANUAL_REVIEW'] or not can_submit or not sub_task_can_edit %}disabled{% endif %}
                             {% if attempts_per_task and sub_item.task_attempts_used >= sub_item.max_attempts_for_task %}disabled{% endif %}
                         >{{ sub_item.answer.value if sub_item.answer else '' }}</textarea>
                     </div>
@@ -765,7 +812,7 @@
                         {% endif %}
                     </div>
                     {% endif %}
-                    {% if task_can_edit and (submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) %}
+                    {% if task_can_edit and submission.status in ['IN_PROGRESS', 'RETURNED'] %}
                     <div class="code-editor-wrap border border-stroke rounded-[24px] overflow-hidden" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 0.75rem;">
                         <button type="button" class="code-editor-toggle w-full px-6 py-4 bg-surface-alt hover:bg-surface-alt flex items-center justify-between transition-colors font-bold text-secondary">
                             <span class="flex items-center gap-2"><i class="ph-bold ph-code text-boo-primary text-lg"></i> Редактор кода</span>
@@ -816,10 +863,10 @@
             </div>
             {% endfor %}
             
-            {% if (submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) and can_submit %}
+            {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] and can_submit %}
             <div class="submit-section{% if current_user.is_demo_user %} demo-submit-section{% endif %}" id="{% if current_user.is_demo_user %}demo-submit-section{% endif %}" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                    {% if assignment.time_limit_minutes and submission.started_at %}
+                    {% if assignment.time_limit_minutes and submission.started_at and submission.status != 'RETURNED' %}
                     <div id="timer-container" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; min-height: 2.75rem; box-sizing: border-box; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
                         <span>{{ ui_icon('action.clock', 'sm') }}</span>
                         <div>
@@ -827,7 +874,7 @@
                             <div id="timer" style="font-size: 1.35em; font-weight: 800; color: var(--accent-1); font-family: 'Monaco', 'Menlo', monospace;">{{ '%02d:%02d:%02d' % (assignment.time_limit_minutes // 60, assignment.time_limit_minutes % 60, 0) }}</div>
                         </div>
                     </div>
-                    {% elif assignment.time_limit_minutes and not submission.started_at %}
+                    {% elif assignment.time_limit_minutes and not submission.started_at and submission.status != 'RETURNED' %}
                     <div id="timer-container" style="display: flex; align-items: center; min-height: 2.75rem; padding: 0.5rem 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1); color: var(--text-muted); font-style: italic;">
                         Таймер будет запущен после начала выполнения.
                     </div>
@@ -840,7 +887,7 @@
                     <div id="timer-blocked-msg" style="{% if timer_expired and time_limit_strict %}display: block;{% else %}display: none;{% endif %} padding: 0.75rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: var(--radius-md); color: #ef4444; font-weight: 700; font-size: 0.95em;">
                         {{ ui_icon('action.warning', 'sm') }} Сдача заблокирована. Время на выполнение истекло.
                     </div>
-                    <button type="button" id="submit-btn" class="px-8 py-3.5 bg-boo-primary text-white rounded-xl font-black hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-base {% if timer_expired and time_limit_strict %}submit-btn-overdue{% endif %}" data-prevent-double-submit="true" {% if timer_expired and time_limit_strict or awaiting_work_start %}disabled{% endif %}>
+                    <button type="button" id="submit-btn" class="px-8 py-3.5 bg-boo-primary text-white rounded-xl font-black hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-base {% if timer_expired and time_limit_strict %}submit-btn-overdue{% endif %}" data-prevent-double-submit="true" {% if timer_expired and time_limit_strict or awaiting_work_start %}disabled{% endif %}>
                         <i class="ph-bold ph-check-circle text-xl"></i> <span id="submit-btn-label">{% if submission.status in ['RETURNED', 'GRADED'] %}Сдать повторно{% else %}Сдать работу{% endif %}</span>
                     </button>
                 </div>
@@ -936,7 +983,7 @@
             {% endfor %}
             {% endif %}
 
-            <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
+            <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border: 1px solid var(--color-stroke); border-radius: 20px;">
                 {% if task_item.answer %}
                 <div style="margin-bottom: 0.75rem; font-weight: 600;">
                     {% if assignment.assignment_type == 'manual_review' and task_item.answer.is_correct is none %}
@@ -967,12 +1014,12 @@
                 </div>
                 {% endif %}
                 <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш ответ:</div>
-                <div style="white-space: pre-wrap;">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
+                <div class="readonly-answer-card">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
                 {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
                 {% for sub_item in task_item.triplet_items %}
                 <div style="margin-top: 0.65rem;">
                     <div style="font-weight: 600; margin-bottom: 0.35rem;">Ответ {{ sub_item.task.task_number }}:</div>
-                    <div style="white-space: pre-wrap;">{{ sub_item.answer.value if sub_item.answer and sub_item.answer.value else '(нет ответа)' }}</div>
+                    <div class="readonly-answer-card">{{ sub_item.answer.value if sub_item.answer and sub_item.answer.value else '(нет ответа)' }}</div>
                 </div>
                 {% endfor %}
                 {% endif %}
@@ -1082,7 +1129,7 @@
             
             <form id="comment-form" class="flex gap-3">
                 <input type="text" id="comment-input" placeholder="Написать сообщение..." required class="flex-1 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 font-medium text-secondary dark:text-white/90 text-sm focus:outline-none focus:border-boo-primary dark:focus:border-purple-400/50 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/20 transition-all placeholder:text-muted dark:placeholder:text-dark-muted">
-                <button type="submit" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-md text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 shrink-0">Отправить</button>
+                <button type="submit" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] text-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none shrink-0">Отправить</button>
             </form>
         </section>
         </div>
@@ -1423,7 +1470,8 @@
         const SUBMISSION_AUTOSAVE_URL = `{{ url_for('assignments.submission_autosave', submission_id=submission.submission_id) }}`;
         const SUBMISSION_SAVE_CODE_URL = `{{ url_for('assignments.submission_save_code', submission_id=submission.submission_id) }}`;
         const SUBMISSION_DRAFT_KEY = 'kege_submission_draft_{{ submission.submission_id }}';
-        const SUBMISSION_CAN_EDIT = {{ 'true' if (submission.status in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) else 'false' }};
+        const SUBMISSION_CAN_EDIT = {{ 'true' if submission.status in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED'] else 'false' }};
+        const SUBMISSION_TASK_TIMERS_ENABLED = {{ 'true' if submission.status not in ['RETURNED', 'GRADED', 'SUBMITTED', 'NEEDS_MANUAL_REVIEW'] else 'false' }};
         
         function collectAnswers() {
             const answers = [];
@@ -1650,7 +1698,7 @@
             });
         })();
         
-        {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0) %}
+        {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}
         // Автосохранение и сдача (назначено с уже начатым временем, в процессе, на доработку или повторная попытка)
         document.querySelectorAll('.answer-input').forEach(input => {
             input.addEventListener('input', function() {
@@ -1678,6 +1726,14 @@
         function ensureTaskTimer(taskId) {
             if (!Number.isFinite(taskId)) return;
             if (!taskTimers[taskId]) taskTimers[taskId] = { elapsedMs: 0, runningSinceMs: null };
+        }
+        function pauseAllTaskTimers() {
+            activeTaskId = null;
+            Object.keys(taskTimers).forEach(function(k) {
+                const taskId = parseInt(k, 10);
+                if (Number.isFinite(taskId)) syncTaskTimer(taskId);
+            });
+            persistTaskTimers(true);
         }
         function persistTaskTimers(force) {
             const now = nowMs();
@@ -1726,7 +1782,7 @@
             } catch (e) { /* ignore */ }
         }
         function isAppActive() {
-            return true;
+            return SUBMISSION_TASK_TIMERS_ENABLED && windowFocused && document.visibilityState === 'visible';
         }
         function isTaskRunning(taskId) {
             ensureTaskTimer(taskId);
@@ -1786,6 +1842,10 @@
             updateTaskDebugTimer(taskId);
         });
         function syncActiveTaskFromDom() {
+            if (!SUBMISSION_TASK_TIMERS_ENABLED) {
+                pauseAllTaskTimers();
+                return;
+            }
             const activeCard = document.querySelector('.task-card.task-panel-active[data-task-id]');
             const nextId = activeCard ? parseInt(activeCard.dataset.taskId, 10) : null;
             activeTaskId = Number.isFinite(nextId) ? nextId : null;
@@ -1797,6 +1857,16 @@
         window.addEventListener('beforeunload', function() { syncAllTaskTimers(); persistTaskTimers(true); });
         setInterval(syncAllTaskTimers, 1000);
         window.__syncActiveTaskTimer__ = syncActiveTaskFromDom;
+        window.__collectSubmissionTaskTimes__ = function() {
+            const out = {};
+            syncAllTaskTimers();
+            Object.keys(taskTimers).forEach(function(k) {
+                const taskId = parseInt(k, 10);
+                if (!Number.isFinite(taskId)) return;
+                out[String(taskId)] = getTaskElapsedSec(taskId);
+            });
+            return out;
+        };
         function applySubmitTaskVisualState(wrap, data) {
             if (!wrap || !data) return;
             var tri = data.triplet_nav;
@@ -1837,7 +1907,7 @@
                 const textarea = document.getElementById('answer-' + assignmentTaskId);
                 const value = textarea ? textarea.value : '';
                 syncTaskTimer(assignmentTaskId);
-                const taskElapsedSec = getTaskElapsedSec(assignmentTaskId);
+                const taskElapsedSec = SUBMISSION_TASK_TIMERS_ENABLED ? getTaskElapsedSec(assignmentTaskId) : null;
                 const wrap = btn.closest('.submit-task-wrap');
                 if (!wrap) return;
                 btn.disabled = true;
@@ -2038,12 +2108,16 @@
                     const originalText = submitBtn.textContent;
                     submitBtn.textContent = '⏳ Сохранение...';
                     
+                    const taskTimes = (SUBMISSION_TASK_TIMERS_ENABLED && typeof window.__collectSubmissionTaskTimes__ === 'function')
+                        ? window.__collectSubmissionTaskTimes__()
+                        : {};
                     fetch(`{{ url_for('assignments.submission_submit', submission_id=submission.submission_id) }}`, {
                         method: 'POST',
                         headers: {
                             'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
                             'Content-Type': 'application/json'
-                        }
+                        },
+                        body: JSON.stringify({ task_times: taskTimes })
                     })
                     .then(response => {
                         return response.json().catch(() => ({})).then(data => {

@@ -175,7 +175,7 @@
 
         <div class="bg-surface rounded-[20px] p-4 border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none flex flex-col sm:flex-row sm:items-center justify-between gap-4 student-context">
             <div class="flex items-center gap-3">
-                <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name or student.student_id|string)|urlencode }}&backgroundColor=F3F0FF" alt="" class="w-10 h-10 rounded-lg bg-surface-alt border border-slate-200 shrink-0" width="40" height="40">
+                <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name or student.student_id|string)|urlencode }}&backgroundColor=F3F0FF" alt="" class="w-10 h-10 rounded-2xl bg-surface-alt border border-slate-200 shrink-0" width="40" height="40">
                 <div>
                     <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest leading-tight">Урок для ученика</div>
                     <div class="font-bold text-primary text-sm">{{ student.name }}</div>

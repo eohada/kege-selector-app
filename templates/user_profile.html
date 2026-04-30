@@ -146,7 +146,7 @@
                 </div>
                 <div class="flex flex-wrap gap-2 shrink-0">
                     {% if linked_student %}
-                    <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline inline-flex items-center gap-2">
+                    <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline inline-flex items-center gap-2">
                         <i class="ph-bold ph-door-open text-lg"></i> Комната
                     </a>
                     <a href="{{ url_for('assignments.submissions_list') }}" class="px-4 py-2.5 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt text-sm no-underline inline-flex items-center gap-2">
@@ -196,7 +196,7 @@
                         {% endif %}
                         <div class="flex flex-wrap gap-2 mt-4">
                             {% for role_name in current_user.get_roles_display() %}
-                            <span class="px-3 py-1.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-[10px] font-extrabold rounded-xl shadow-md border border-slate-700 uppercase tracking-wider">{{ role_name }}</span>
+                            <span class="px-3 py-1.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-[10px] font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 uppercase tracking-wider">{{ role_name }}</span>
                             {% endfor %}
                         </div>
                     </div>
@@ -205,7 +205,7 @@
                     </button>
                 </div>
                 <div class="mt-8 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <a href="{{ url_for('schedule.schedule') }}" class="px-4 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
+                    <a href="{{ url_for('schedule.schedule') }}" class="px-4 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
                         <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
                     </a>
                     <a href="{{ url_for('students.students_list') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline">

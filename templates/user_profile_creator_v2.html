@@ -42,7 +42,7 @@
                         {% else %}
                         <span class="w-full h-full flex items-center justify-center text-white text-4xl font-black" style="position:relative;z-index:2;">{{ current_user.username[0].upper() }}</span>
                         {% endif %}
-                        <div class="absolute bottom-2 right-2 w-8 h-8 bg-green-500 rounded-full border-[4px] border-white shadow-md flex items-center justify-center">
+                        <div class="absolute bottom-2 right-2 w-8 h-8 bg-green-500 rounded-full border-[4px] border-white shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] flex items-center justify-center">
                             <div class="w-2.5 h-2.5 bg-surface rounded-full animate-pulse"></div>
                         </div>
                     </div>
@@ -52,7 +52,7 @@
                     </div>
                     <p class="text-muted font-medium text-lg italic">"{{ current_user.custom_status or 'слеп, но не глуп' }}"</p>
                     <div class="flex flex-wrap items-center gap-2">
-                        <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-md border border-slate-700 flex items-center gap-1.5 uppercase tracking-wider">
+                        <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 flex items-center gap-1.5 uppercase tracking-wider">
                             <i class="ph-fill ph-crown text-boo-accent text-base"></i> Создатель
                         </span>
                         <span class="px-4 py-2 bg-purple-50 text-purple-700 text-xs font-extrabold rounded-xl border border-purple-200 shadow-sm dark:shadow-none dark:shadow-none uppercase tracking-wide">
@@ -113,7 +113,7 @@
                                 onclick="toggleTechnoMagic()" aria-pressed="false" aria-label="Фиксированная активность «Творит техно-магию для вас»">
                             <span id="technoMagicLabel" class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 w-7 text-right leading-none">Выкл</span>
                             <span id="technoMagicTrack" class="relative h-7 w-[2.75rem] shrink-0 rounded-full bg-slate-300 shadow-inner ring-1 ring-slate-900/5">
-                                <span id="technoMagicKnob" class="pointer-events-none absolute top-1/2 left-[3px] h-[18px] w-[18px] -translate-y-1/2 rounded-full bg-white shadow-md ring-1 ring-slate-900/10 transition-[left] duration-200 ease-out"></span>
+                                <span id="technoMagicKnob" class="pointer-events-none absolute top-1/2 left-[3px] h-[18px] w-[18px] -translate-y-1/2 rounded-full bg-white shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] ring-1 ring-slate-900/10 transition-[left] duration-200 ease-out"></span>
                             </span>
                         </button>
                     </div>
@@ -134,7 +134,7 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 mb-8">
-                    <a href="{{ url_for('schedule.schedule') }}" class="py-4 px-4 bg-boo-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 text-sm no-underline"><i class="ph-bold ph-calendar-blank text-xl"></i> Расписание</a>
+                    <a href="{{ url_for('schedule.schedule') }}" class="py-4 px-4 bg-boo-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline"><i class="ph-bold ph-calendar-blank text-xl"></i> Расписание</a>
                     <a href="{{ url_for('students.students_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-users text-xl"></i> Ученики</a>
                     <a href="{{ url_for('assignments.assignments_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-files text-xl"></i> Работы</a>
                     <a href="{{ url_for('lessons.review_queue') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-check-square-offset text-xl"></i> Проверка</a>
@@ -153,7 +153,7 @@
                 </div>
 
                 <div class="space-y-3 pt-6 border-t border-slate-100">
-                    <button type="button" class="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold flex justify-center items-center gap-2 shadow-md transition-all text-sm border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0">
+                    <button type="button" class="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.22)] transition-all text-sm border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0 active:shadow-none">
                         <i class="ph-bold ph-calendar-plus text-xl text-boo-cyan"></i> Синхронизация календаря
                     </button>
 

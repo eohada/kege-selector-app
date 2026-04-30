@@ -18,8 +18,8 @@
             </div>
             {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
             <a href="{{ url_for('students.student_new') }}"
-               class="mt-8 w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md flex items-center justify-center gap-2 active:translate-y-1">
-                <i class="ph-bold ph-user-plus text-lg"></i> Новый ученик
+               class="mt-8 w-full py-4 bg-boo-primary text-white rounded-2xl font-bold hover:bg-boo-primaryHover transition-all shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 flex items-center justify-center gap-2 active:translate-y-[2px] active:border-b-0 active:shadow-none group">
+                <i class="ph-bold ph-user-plus text-lg group-hover:rotate-12 transition-transform"></i> Новый ученик
             </a>
             {% endif %}
         </div>
@@ -28,15 +28,16 @@
 
             {# Очередь ревью — как в макете #}
             <a href="{{ url_for('lessons.review_queue') }}"
-               class="bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-[28px] p-6 border border-purple-400/50 border-b-[4px] border-b-purple-600 shadow-tactile text-white flex flex-col justify-between group cursor-pointer hover:shadow-tactile-hover transition-all">
-                <div class="flex justify-between items-start">
-                    <div class="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-                        <span class="w-2 h-2 bg-boo-accent rounded-full animate-pulse"></span>
-                        <span class="text-xs font-bold tracking-wide uppercase">Очередь ревью</span>
+               class="bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-[32px] p-8 border border-purple-400/50 border-b-[4px] border-b-purple-800 shadow-[0_15px_30px_-10px_rgba(139,92,246,0.4)] text-white flex flex-col justify-between group cursor-pointer hover:shadow-tactile-hover transition-all relative overflow-hidden">
+                <div class="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
+                <div class="relative z-10 flex justify-between items-start">
+                    <div class="flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 shadow-sm">
+                        <span class="w-2 h-2 bg-orange-300 rounded-full animate-pulse"></span>
+                        <span class="text-[10px] font-extrabold tracking-widest uppercase">Очередь ревью</span>
                     </div>
                     <i class="ph-fill ph-files text-2xl text-purple-200 group-hover:text-white transition-colors"></i>
                 </div>
-                <div class="mt-6">
+                <div class="relative z-10 mt-6">
                     <div class="flex items-baseline gap-2 mb-3">
                         <span class="text-5xl font-black tracking-tight">{{ (review_lesson_tasks_count|default(0)) + (review_submissions_count|default(0)) }}</span>
                         <span class="text-sm font-semibold text-purple-200">работ ждут проверки</span>
@@ -45,7 +46,9 @@
                         <div class="text-xs font-bold text-purple-200">
                             {{ review_lesson_tasks_count|default(0) }} классных · {{ review_submissions_count|default(0) }} самостоятельных
                         </div>
-                        <i class="ph-bold ph-arrow-right text-xl group-hover:translate-x-1 transition-transform"></i>
+                        <div class="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-white group-hover:bg-white/20 transition-colors">
+                            <i class="ph-bold ph-arrow-right text-xl group-hover:translate-x-1 transition-transform"></i>
+                        </div>
                     </div>
                 </div>
             </a>
@@ -75,7 +78,9 @@
             {# KPI: Активные ученики (как отдельная карточка) #}
             <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between">
                 <div class="flex items-start justify-between">
-                    <i class="ph-fill ph-users-three text-2xl text-boo-cyan"></i>
+                    <div class="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-center">
+                        <i class="ph-fill ph-users-three text-2xl text-boo-cyan"></i>
+                    </div>
                     {% if students_delta_7d is defined %}
                     <span class="text-xs font-bold text-muted bg-surface-alt px-2.5 py-1 rounded-lg">+{{ students_delta_7d }}</span>
                     {% endif %}
@@ -89,7 +94,9 @@
             {# KPI: Проведено уроков (как отдельная карточка) #}
             <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between">
                 <div class="flex items-start justify-between">
-                    <i class="ph-fill ph-lightning text-2xl text-boo-accent"></i>
+                    <div class="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center">
+                        <i class="ph-fill ph-lightning text-2xl text-boo-accent"></i>
+                    </div>
                     {% if completed_lessons_delta_7d is defined %}
                     <span class="text-xs font-bold text-muted bg-surface-alt px-2.5 py-1 rounded-lg">+{{ completed_lessons_delta_7d }}</span>
                     {% endif %}
@@ -204,7 +211,7 @@
 
                     <div class="relative">
                         <button type="button"
-                                class="w-9 h-9 bg-surface border border-slate-200 text-muted rounded-lg hover:text-primary hover:bg-surface-alt transition-colors flex justify-center items-center shadow-sm dark:shadow-none dark:shadow-none"
+                                class="w-9 h-9 bg-surface border border-slate-200 text-muted rounded-full hover:text-primary hover:bg-surface-alt transition-colors flex justify-center items-center shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none"
                                 @click.prevent.stop="open = !open"
                                 aria-label="Действия">
                             <i class="ph-bold ph-dots-three text-xl"></i>

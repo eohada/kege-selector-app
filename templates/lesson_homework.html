@@ -725,7 +725,7 @@
                 </div>
                 <div class="lesson-header__actions">
                     {% if not is_student_view and not is_parent_view %}
-                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
+                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
                         <i class="ph-bold ph-house-line text-lg"></i> Создать ДЗ
                     </a>
                     <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="px-5 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">

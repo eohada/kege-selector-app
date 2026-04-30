@@ -3,12 +3,12 @@
 {% set _qa_has_impersonator = (session.get('impersonator_id') is not none) %}
 
 <div id="qaDock" class="fixed z-50" style="position:fixed;bottom:24px;right:24px;z-index:2147483647;pointer-events:auto;">
-    <button id="qaFab" type="button" onclick="toggleQAWidget()" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-lg border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0 flex items-center justify-center hover:bg-indigo-700 transition-colors cursor-move" style="pointer-events:auto;">
+    <button id="qaFab" type="button" onclick="toggleQAWidget()" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-[0_8px_24px_-4px_rgba(79,70,229,0.28)] border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0 active:shadow-none flex items-center justify-center hover:bg-indigo-700 transition-colors cursor-move" style="pointer-events:auto;">
         <i class="ph-bold ph-shield-check text-2xl"></i>
     </button>
 
     <div id="qaWidget" class="absolute bottom-20 right-0 hidden relative w-[360px] max-w-[92vw] max-h-[78vh] min-w-[320px] min-h-[260px]" style="z-index:2147483646;pointer-events:auto;height:min(78vh,560px);">
-    <div class="bg-surface rounded-2xl border border-slate-200 border-b-[4px] border-b-slate-300 shadow-2xl overflow-hidden flex flex-col min-h-[240px] h-full">
+    <div class="bg-surface rounded-2xl border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile overflow-hidden flex flex-col min-h-[240px] h-full">
         <div id="qaWidgetDragHandle" class="px-4 py-3 bg-surface-alt border-b border-slate-200 flex items-center justify-between select-none">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center">
@@ -140,7 +140,7 @@
 </div>
 
 <div id="qaBugModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 px-4" style="z-index:2147483647;">
-    <div class="w-full max-w-xl rounded-2xl border border-slate-200 bg-surface p-5 shadow-2xl">
+    <div class="w-full max-w-xl rounded-2xl border border-slate-200 border-b-[4px] border-b-slate-300 bg-surface p-5 shadow-tactile">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-xl font-black text-primary">Новый баг-репорт</h3>
             <button type="button" class="text-muted hover:text-primary" onclick="closeQABugModal()"><i class="ph-bold ph-x text-xl"></i></button>

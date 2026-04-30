@@ -212,7 +212,7 @@
           </div>
           <div class="mt-4 flex justify-end gap-2">
             <button type="button" class="stat-reset-btn px-4 py-2.5 bg-surface dark:bg-dark-inner text-secondary dark:text-white/90 border border-slate-200 dark:border-white/10 rounded-xl font-bold hover:bg-surface-alt dark:hover:bg-white/10 transition-all shadow-sm dark:shadow-none text-sm" data-task-number="{{ item.task_number }}">Сбросить</button>
-            <button type="button" class="stat-save-btn px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-sm dark:shadow-none dark:shadow-none border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" data-task-number="{{ item.task_number }}">Сохранить</button>
+            <button type="button" class="stat-save-btn px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] dark:shadow-none border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm" data-task-number="{{ item.task_number }}">Сохранить</button>
           </div>
         </div>
         {% endfor %}
@@ -233,7 +233,7 @@
             <div class="font-extrabold text-primary dark:text-white truncate">{{ topic.name }}</div>
             <div class="text-sm font-bold text-muted mt-1">Средний результат: {{ topic.avg_score }}%</div>
           </div>
-          <a href="{{ url_for('task_generator.task_generator') }}?student_id={{ student.student_id }}" class="px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
+          <a href="{{ url_for('task_generator.task_generator') }}?student_id={{ student.student_id }}" class="px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] dark:shadow-none border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
             Создать отработку
           </a>
         </div>
@@ -276,7 +276,7 @@
           </span>
 
           <div class="flex items-center justify-center gap-4 mb-4">
-            <h2 class="text-8xl md:text-9xl font-black tracking-tighter drop-shadow-md" id="analyticsPredictedPrimary">—</h2>
+            <h2 class="text-8xl md:text-9xl font-black tracking-tighter drop-shadow-[0_8px_24px_rgba(15,23,42,0.12)]" id="analyticsPredictedPrimary">—</h2>
             <div class="text-left">
               <span class="text-3xl md:text-4xl font-bold text-purple-200 block">/ <span id="analyticsPredictedPrimaryMax">—</span></span>
               <span class="text-sm md:text-base font-semibold text-purple-200 uppercase tracking-widest">первичных</span>

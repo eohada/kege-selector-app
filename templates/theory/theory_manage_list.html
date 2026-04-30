@@ -226,7 +226,7 @@
               <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Заполнение базы: <span class="text-primary font-black">{{ completion_percent }}%</span></span>
             </div>
             
-            <div class="w-full h-2.5 bg-surface-alt rounded-full overflow-hidden mb-6 shadow-inner border border-slate-200/50">
+            <div class="w-full h-1.5 bg-surface-alt rounded-full overflow-hidden mb-6 shadow-inner border border-slate-200/50">
               <div id="navProgressBar" class="h-full bg-boo-primary rounded-full transition-all duration-500 w-0"></div>
             </div>
             <script>document.getElementById('navProgressBar').style.width = "{{ completion_percent|default(0) }}%";</script>
@@ -239,7 +239,7 @@
                 {% set is_active = (selected_block and selected_block.id == block_id) %}
                 
                 {% if is_active %}
-                  <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=block_id) }}" class="w-12 h-12 shrink-0 rounded-2xl bg-boo-primary text-white font-black text-xl flex items-center justify-center ring-[3px] ring-purple-200 ring-offset-2 border-b-[3px] border-purple-800 transition-all no-underline shadow-sm dark:shadow-none dark:shadow-none">
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=block_id) }}" class="w-12 h-12 shrink-0 rounded-2xl bg-boo-primary text-white font-black text-xl flex items-center justify-center ring-[3px] ring-purple-200 ring-offset-2 border-b-[3px] border-purple-800 transition-all no-underline shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] dark:shadow-none active:translate-y-[2px] active:border-b-0 active:shadow-none">
                     {{ num }}
                   </a>
                 {% elif st == 'published' %}
@@ -270,12 +270,12 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="create_block">
             <input type="hidden" name="group_id" value="{{ selected_group.id }}">
-            <button type="submit" class="py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm shadow-md border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0">
+            <button type="submit" class="py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm shadow-[0_8px_24px_-4px_rgba(15,23,42,0.22)] border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0 active:shadow-none">
               <i class="ph-bold ph-plus text-lg"></i> Новый
             </button>
           </form>
           {% else %}
-          <a href="{{ url_for('theory.manage_new', course_id=course_id) }}" class="py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm no-underline shadow-md border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0">
+          <a href="{{ url_for('theory.manage_new', course_id=course_id) }}" class="py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm no-underline shadow-[0_8px_24px_-4px_rgba(15,23,42,0.22)] border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0 active:shadow-none">
             <i class="ph-bold ph-plus text-lg"></i> Новый
           </a>
           {% endif %}
@@ -299,7 +299,7 @@
           
           <!-- Левая сторона: Номер и Статус -->
           <div class="flex items-center gap-3 min-w-0 flex-1">
-            <div class="w-14 h-14 rounded-2xl bg-boo-primary text-white font-black text-2xl flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none">
+            <div class="w-14 h-14 rounded-2xl bg-boo-primary text-white font-black text-2xl flex items-center justify-center shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] dark:shadow-none">
                 {{ selected_display_number or '—' }}
             </div>
             {% set is_published = (selected_block_status == 'published') %}
@@ -336,7 +336,7 @@
             </button>
             {% endif %}
 
-            <button id="publishBtn" type="submit" class="px-4 lg:px-6 xl:px-8 h-11 lg:h-12 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center justify-center shadow-md ml-1 gap-2 max-w-[180px]">
+            <button id="publishBtn" type="submit" class="px-4 lg:px-6 xl:px-8 h-11 lg:h-12 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center justify-center shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none ml-1 gap-2 max-w-[180px]">
               <i class="ph-bold ph-paper-plane-right text-xl"></i>
               <span class="hidden sm:inline">Опубликовать</span>
             </button>

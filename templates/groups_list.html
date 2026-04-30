@@ -34,7 +34,7 @@
         </div>
         <div class="relative z-10 flex flex-col sm:flex-row items-center gap-3 shrink-0">
             {% if has_permission and has_permission(current_user, 'groups.manage') %}
-            <a href="{{ url_for('groups.group_new') }}" class="w-full sm:w-auto px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
+            <a href="{{ url_for('groups.group_new') }}" class="w-full sm:w-auto px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
                 <i class="ph-bold ph-plus text-lg"></i> Создать группу
             </a>
             {% endif %}
@@ -110,9 +110,9 @@
                     {% for gs in g.students[:5] %}
                     {% set st = gs.student %}
                     {% if st and st.user and st.user.avatar_url %}
-                    <img class="inline-block h-8 w-8 rounded-full ring-2 ring-white bg-purple-100 object-cover" src="{{ st.user.avatar_url }}" alt="">
+                    <img class="inline-block h-8 w-8 rounded-2xl ring-2 ring-white bg-purple-100 object-cover" src="{{ st.user.avatar_url }}" alt="">
                     {% elif st %}
-                    <img class="inline-block h-8 w-8 rounded-full ring-2 ring-white bg-purple-100" src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ st.student_id }}" alt="">
+                    <img class="inline-block h-8 w-8 rounded-2xl ring-2 ring-white bg-purple-100" src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ st.student_id }}" alt="">
                     {% endif %}
                     {% endfor %}
                     {% if g.students|length > 5 %}
@@ -162,7 +162,7 @@
             Создайте свою первую группу, чтобы быстро назначать домашние задания целому классу.
         </p>
         {% if has_permission and has_permission(current_user, 'groups.manage') %}
-        <a href="{{ url_for('groups.group_new') }}" class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
+        <a href="{{ url_for('groups.group_new') }}" class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
             <i class="ph-bold ph-plus text-lg"></i> Создать первую группу
         </a>
         {% endif %}

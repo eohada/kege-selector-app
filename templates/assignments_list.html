@@ -24,7 +24,7 @@
             </p>
             <div class="flex flex-wrap items-center gap-4 mb-8">
                 {% if can_create %}
-                <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
+                <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
                     <i class="ph-bold ph-plus text-lg"></i> Создать работу
                 </a>
                 {% endif %}
@@ -110,7 +110,7 @@
             </div>
             <input type="hidden" name="status" value="{{ filters.status if filters else 'all' }}">
             <div class="w-full lg:w-auto flex gap-2">
-                <button type="submit" class="flex-1 lg:flex-none px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm hover:bg-boo-primaryHover transition-all shadow-sm dark:shadow-none dark:shadow-none">Применить</button>
+                <button type="submit" class="flex-1 lg:flex-none px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm hover:bg-boo-primaryHover transition-all shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none dark:shadow-none">Применить</button>
                 <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 py-2.5 bg-surface text-muted border border-slate-200 rounded-xl font-bold text-sm hover:bg-surface-alt transition-all shadow-sm dark:shadow-none dark:shadow-none text-center no-underline">Сброс</a>
             </div>
         </form>
@@ -167,7 +167,7 @@
             {% endif %}
             <div class="flex gap-2 mb-6 mt-auto">
                 {% if item.to_grade and item.to_grade > 0 %}
-                <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="bg-boo-primary text-white text-sm font-bold px-4 py-2.5 rounded-xl flex-1 shadow-sm dark:shadow-none dark:shadow-none hover:bg-boo-primaryHover transition-colors text-center border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 no-underline">Проверить ({{ item.to_grade }})</a>
+                <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="bg-boo-primary text-white text-sm font-bold px-4 py-2.5 rounded-xl flex-1 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] dark:shadow-none hover:bg-boo-primaryHover transition-colors text-center border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none no-underline">Проверить ({{ item.to_grade }})</a>
                 {% endif %}
                 <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="bg-surface text-boo-primary border border-purple-200 text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-purple-50 transition-colors shadow-sm dark:shadow-none dark:shadow-none text-center no-underline {% if not item.to_grade %}flex-1{% endif %}">Открыть</a>
             </div>
@@ -235,7 +235,7 @@
         </div>
         <div class="flex gap-3 justify-center flex-wrap">
             {% if can_create %}
-            <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline"><i class="ph-bold ph-plus text-lg"></i> Создать работу</a>
+            <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline"><i class="ph-bold ph-plus text-lg"></i> Создать работу</a>
             {% endif %}
             <a href="{{ url_for('task_generator.task_generator') }}" class="px-6 py-3.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center gap-2 text-sm no-underline"><i class="ph-fill ph-magic-wand text-lg"></i> Открыть генератор</a>
             <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="px-5 py-3.5 text-muted font-bold border border-slate-200 rounded-xl hover:bg-surface-alt flex items-center gap-2 text-sm no-underline"><i class="ph-bold ph-check text-lg"></i> Очередь проверки</a>

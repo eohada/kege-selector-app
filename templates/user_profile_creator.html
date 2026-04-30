@@ -43,7 +43,7 @@
                     {% endif %}
                     <div class="flex flex-wrap items-center gap-2 mt-6">
                         {% for role_name in current_user.get_roles_display()[:3] %}
-                        <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-md border border-slate-700 uppercase tracking-wider">{{ role_name }}</span>
+                        <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 uppercase tracking-wider">{{ role_name }}</span>
                         {% endfor %}
                     </div>
                 </div>
@@ -53,7 +53,7 @@
             </div>
 
             <div class="mt-8 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <a href="{{ url_for('schedule.schedule') }}" class="px-4 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline"><i class="ph-bold ph-calendar-blank text-lg"></i> Расписание</a>
+                <a href="{{ url_for('schedule.schedule') }}" class="px-4 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline"><i class="ph-bold ph-calendar-blank text-lg"></i> Расписание</a>
                 <a href="{{ url_for('students.students_list') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-users-three text-lg text-boo-primary"></i> Ученики</a>
                 <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-tray text-lg text-boo-primary"></i> Работы</a>
                 <a href="{{ url_for('library.materials_library') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline"><i class="ph-bold ph-books text-lg text-boo-primary"></i> Библиотека</a>
@@ -105,7 +105,7 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3 mb-8">
-                <a href="{{ url_for('schedule.schedule') }}" class="py-4 px-4 bg-boo-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md border-b-[3px] border-b-purple-800 text-sm no-underline"><i class="ph-bold ph-calendar-blank text-xl"></i> Расписание</a>
+                <a href="{{ url_for('schedule.schedule') }}" class="py-4 px-4 bg-boo-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline"><i class="ph-bold ph-calendar-blank text-xl"></i> Расписание</a>
                 <a href="{{ url_for('students.students_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-users text-xl"></i> Ученики</a>
                 <a href="{{ url_for('assignments.assignments_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-files text-xl"></i> Работы</a>
                 <a href="{{ url_for('lessons.review_queue') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt text-secondary rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm no-underline"><i class="ph-bold ph-check-square-offset text-xl"></i> Проверка</a>

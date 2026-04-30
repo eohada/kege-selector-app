@@ -21,7 +21,7 @@
                 <p class="text-muted font-medium text-lg">Сводка по багам, тестам и стабильности платформы за последние 24 часа.</p>
             </div>
 
-            <button type="button" onclick="openBugModal()" class="relative z-10 shrink-0 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0">
+            <button type="button" onclick="openBugModal()" class="relative z-10 shrink-0 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(79,70,229,0.28)] border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0 active:shadow-none">
                 <i class="ph-bold ph-bug text-xl"></i> Зарепортить баг
             </button>
         </div>
@@ -33,7 +33,7 @@
                 </h3>
                 <div class="space-y-3 flex-1 h-64 overflow-y-auto pr-2 hide-scroll">
                     <button onclick="runPreset('/qa/manipulate/generate_debtor')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
+                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
                             <i class="ph-bold ph-user-plus text-lg"></i>
                         </div>
                         <div>
@@ -43,7 +43,7 @@
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/overwhelm_reviews')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
+                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
                             <i class="ph-bold ph-tray-arrow-down text-lg"></i>
                         </div>
                         <div>
@@ -53,7 +53,7 @@
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/break_schedule')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
+                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
                             <i class="ph-bold ph-calendar-x text-lg"></i>
                         </div>
                         <div>
@@ -63,7 +63,7 @@
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/god_mode_30d')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-accent">
+                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-accent">
                             <i class="ph-bold ph-crown text-lg"></i>
                         </div>
                         <div>
@@ -73,7 +73,7 @@
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/tabula_rasa')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-red-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-lg bg-surface shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
+                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
                             <i class="ph-bold ph-trash text-lg"></i>
                         </div>
                         <div>
@@ -123,7 +123,7 @@
             <div class="space-y-3">
                 {% for e in activity[:8] %}
                 <div class="flex items-center gap-4 p-4 rounded-2xl bg-surface-alt border border-slate-100 hover:border-slate-300 transition-colors">
-                    <div class="w-10 h-10 rounded-lg bg-red-100 text-boo-coral flex items-center justify-center shrink-0">
+                    <div class="w-10 h-10 rounded-2xl bg-red-100 text-boo-coral flex items-center justify-center shrink-0">
                         <i class="ph-bold ph-bug text-lg"></i>
                     </div>
                     <div class="flex-1 min-w-0">
@@ -309,7 +309,7 @@
 </div>
 
 <div id="ctBugModal" class="fixed inset-0 z-[110] hidden items-center justify-center bg-slate-900/50 px-4">
-    <div class="w-full max-w-xl rounded-2xl border border-slate-200 bg-surface p-5 shadow-2xl">
+    <div class="w-full max-w-xl rounded-2xl border border-slate-200 border-b-[4px] border-b-slate-300 bg-surface p-5 shadow-tactile">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-xl font-black text-primary">Новый баг-репорт</h3>
             <button type="button" class="text-muted hover:text-primary" onclick="closeBugModal()"><i class="ph-bold ph-x text-xl"></i></button>
@@ -391,7 +391,7 @@
                     <input id="ctImpersonateQ" type="text" placeholder="Смотреть как..." class="w-36 bg-transparent outline-none text-xs font-bold text-muted" autocomplete="off">
                 </form>
                 <button type="button" class="text-muted text-xs" onclick="searchImpersonation()">Поиск</button>
-                <div id="ctImpersonateResults" class="hidden absolute top-11 right-0 w-[340px] max-h-80 overflow-auto rounded-xl border border-slate-200 bg-surface shadow-lg p-2 z-20"></div>
+                <div id="ctImpersonateResults" class="hidden absolute top-11 right-0 w-[340px] max-h-80 overflow-auto rounded-xl border border-slate-200 border-b-[4px] border-b-slate-300 bg-surface shadow-tactile p-2 z-20"></div>
             </div>
 
             {% if session.get('impersonator_id') %}
