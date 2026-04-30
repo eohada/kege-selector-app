@@ -14,6 +14,7 @@
         {# ── Nav Pills (Desktop) ── #}
         {% if current_user and current_user.is_authenticated %}
         <nav class="dock-nav">
+            <div class="dock-nav-highlight" data-nav-highlight aria-hidden="true"></div>
 
             {# === PARENT role === #}
             {% if current_user.is_parent() %}
