@@ -321,6 +321,7 @@ def sanitize_html(html):
     """
     if not html:
         return ''
+    html = _strip_known_authors_raw(str(html))
     try:
         import bleach
         from markupsafe import Markup
@@ -586,6 +587,17 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
         return str(soup)
     except Exception:
         return text_first
+
+
+def _strip_known_authors_raw(html_text: str) -> str:
+    if not html_text:
+        return html_text
+    out = str(html_text)
+    out = _FORCE_REMOVE_AUTHOR_RE.sub('', out)
+    out = _FORCE_REMOVE_AUTHOR_SIMPLE_RE.sub('', out)
+    out = _FORCE_REMOVE_KARPACHEV_RE.sub('', out)
+    out = _FORCE_REMOVE_AUTHOR_NAMES_RE.sub('', out)
+    return out
 
 
 def prepare_task_content_html(raw_content: Optional[str]) -> str:
