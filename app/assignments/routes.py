@@ -14,7 +14,7 @@ from app.limiter import limiter
 from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
     Student, User, Tasks, Lesson, LessonTask, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate,
-    TaskTemplate, TemplateTask, CourseTaskTemplate, GroupStudent, AnalyticsEvent
+    TaskTemplate, TemplateTask, CourseTaskTemplate, GroupStudent, AnalyticsEvent, Course
 )
 from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment, SubmissionCommentThreadRead, MOSCOW_TZ
@@ -1006,6 +1006,36 @@ def _get_triplet_task_ids(task: Tasks | None):
         return None
 
 
+def _pick_probnik_tasks_one_per_exam_number(course_id: int) -> list[Tasks]:
+    """
+    Быстрый пробник: по одному активному заданию на каждый номер 1–27 в рамках курса.
+    Тройка 19–21 учитывается один раз (первое встретившееся из 19/20/21 по порядку номеров).
+    """
+    out: list[Tasks] = []
+    seen_triplet_groups: set[str] = set()
+    cid = int(course_id)
+    for n in range(1, 28):
+        t = (
+            Tasks.query.filter(
+                Tasks.course_id == cid,
+                Tasks.task_number == n,
+                Tasks.is_active.is_(True),
+            )
+            .order_by(Tasks.task_id.asc())
+            .first()
+        )
+        if not t:
+            continue
+        gid = (str(getattr(t, 'task_group_id', None) or '')).strip()
+        trip = _get_triplet_task_ids(t)
+        if trip and gid:
+            if gid in seen_triplet_groups:
+                continue
+            seen_triplet_groups.add(gid)
+        out.append(t)
+    return out
+
+
 def _expand_task_ids_for_triplets(task_ids: list[int]) -> list[int]:
     """
     Расширяет список task_id: тройка 19–21 по одному task_group_id добавляется целиком (19, 20, 21).
@@ -1895,9 +1925,10 @@ def assignment_create():
     - source=accepted: из буфера принятых (UsageHistory)
     - source=template: из шаблона (TaskTemplate)
     - source=manual: вручную (вставить task_id)
+    - source=probnik: быстрый набор по одному заданию на номер 1–27 (курс)
     """
     source = (request.args.get('source') or 'manual').strip().lower()
-    if source not in {'accepted', 'template', 'manual', 'lesson', 'generator'}:
+    if source not in {'accepted', 'template', 'manual', 'lesson', 'generator', 'probnik'}:
         source = 'manual'
 
     assignment_type = _normalize_assignment_type(request.args.get('assignment_type')) or 'homework'
@@ -1926,6 +1957,35 @@ def assignment_create():
     # "Новая работа" = нет явно переданных task_ids/template/lesson.
     if not task_ids_param and not template_id and not lesson_id and source in {'accepted', 'manual', 'generator'}:
         source = 'manual'
+
+    probnik_mode = False
+    if source == 'probnik':
+        probnik_mode = True
+        assignment_type = _normalize_assignment_type(request.args.get('assignment_type')) or 'exam'
+        exam_course_id_pb = request.args.get('exam_course_id', type=int)
+        if not exam_course_id_pb:
+            try:
+                dc = Course.query.filter_by(is_active=True).order_by(Course.id.asc()).first()
+                exam_course_id_pb = int(dc.id) if dc else None
+            except Exception:
+                exam_course_id_pb = None
+        picked_pb: list[Tasks] = []
+        if exam_course_id_pb:
+            try:
+                picked_pb = _pick_probnik_tasks_one_per_exam_number(int(exam_course_id_pb))
+            except Exception:
+                picked_pb = []
+        tasks = picked_pb
+        source_label = 'Быстрый пробник'
+        source_meta = {'probnik': True, 'exam_course_id': exam_course_id_pb}
+        if exam_course_id_pb and not picked_pb:
+            flash('Для выбранного курса не найдено активных заданий 1–27. Проверьте банк или другой курс.', 'warning')
+        elif exam_course_id_pb and len(picked_pb) < 20:
+            flash(
+                f'Пробник собран частично: найдено {len(picked_pb)} заданий. Добавьте недостающие номера вручную или смените курс.',
+                'warning',
+            )
+        source = 'generator'
 
     if source == 'generator' and task_ids_param:
         try:
@@ -2078,6 +2138,33 @@ def assignment_create():
     except Exception:
         pass
 
+    group_members_map: dict[str, list[int]] = {}
+    try:
+        for _g in available_groups or []:
+            _gid = getattr(_g, 'group_id', None)
+            if _gid is None:
+                continue
+            _gidi = int(_gid)
+            rows = GroupStudent.query.filter_by(group_id=_gidi).all()
+            group_members_map[str(_gidi)] = [int(r.student_id) for r in rows if getattr(r, 'student_id', None)]
+    except Exception:
+        group_members_map = {}
+
+    courses_for_probnik: list[Course] = []
+    try:
+        courses_for_probnik = (
+            Course.query.filter_by(is_active=True).order_by(Course.title.asc(), Course.id.asc()).limit(100).all()
+        )
+    except Exception:
+        courses_for_probnik = []
+
+    default_probnik_course_id = None
+    try:
+        if isinstance(source_meta, dict):
+            default_probnik_course_id = source_meta.get('exam_course_id')
+    except Exception:
+        default_probnik_course_id = None
+
     return render_template(
         'assignment_create.html',
         active_page='assignments',
@@ -2095,6 +2182,10 @@ def assignment_create():
         default_recipient_ids=default_recipient_ids,
         already_sent_task_ids=already_sent_task_ids,
         available_groups=available_groups,
+        group_members_map=group_members_map,
+        courses_for_probnik=courses_for_probnik,
+        probnik_mode=probnik_mode,
+        default_probnik_course_id=default_probnik_course_id,
     )
 
 

@@ -199,6 +199,22 @@
         </div>
     </div>
 
+    {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
+    <div class="mb-6 flex flex-wrap items-center gap-3 rounded-[24px] border border-emerald-200 bg-emerald-50/80 px-5 py-4 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/30">
+        <div class="flex items-center gap-2 min-w-0">
+            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-200"><i class="ph-bold ph-scroll text-xl" aria-hidden="true"></i></span>
+            <div class="min-w-0">
+                <div class="text-sm font-black text-primary leading-tight">Быстрый пробник</div>
+                <div class="text-xs font-medium text-muted mt-0.5">Собрать работу: по одному заданию на номер 1–27 для текущего курса, затем правки в мастере.</div>
+            </div>
+        </div>
+        <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam', exam_course_id=exam_course_id) if exam_course_id else url_for('assignments.assignment_create', source='probnik', assignment_type='exam') }}"
+           class="ml-auto shrink-0 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-black hover:bg-emerald-700 no-underline border-b-[3px] border-b-emerald-900 active:translate-y-[1px] active:border-b-0 shadow-sm">
+            Собрать 1–27
+        </a>
+    </div>
+    {% endif %}
+
     <div id="gen-panel-stream" class="gen-layout-tab-panel w-full flex flex-col lg:flex-row gap-6{% if initial_gen_tab == 'stream' %} is-active{% endif %}" role="tabpanel" aria-labelledby="gen-tab-stream">
     <div class="w-full lg:w-[35%] flex flex-col gap-6 min-w-0">
         {% if lesson and student %}

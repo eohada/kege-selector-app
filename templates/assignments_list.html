@@ -27,6 +27,9 @@
                 <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
                     <i class="ph-bold ph-plus text-lg"></i> Создать работу
                 </a>
+                <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam') }}" class="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(16,185,129,0.25)] border-b-[3px] border-b-emerald-900 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
+                    <i class="ph-bold ph-scroll text-lg"></i> Быстрый пробник
+                </a>
                 {% endif %}
                 <a href="{{ url_for('task_generator.task_generator') }}" class="px-6 py-3 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
                     <i class="ph-fill ph-magic-wand text-lg"></i> Открыть генератор
@@ -236,6 +239,7 @@
         <div class="flex gap-3 justify-center flex-wrap">
             {% if can_create %}
             <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline"><i class="ph-bold ph-plus text-lg"></i> Создать работу</a>
+            <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam') }}" class="px-6 py-3.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-[0_8px_24px_-4px_rgba(16,185,129,0.25)] border-b-[3px] border-b-emerald-900 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline"><i class="ph-bold ph-scroll text-lg"></i> Быстрый пробник</a>
             {% endif %}
             <a href="{{ url_for('task_generator.task_generator') }}" class="px-6 py-3.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center gap-2 text-sm no-underline"><i class="ph-fill ph-magic-wand text-lg"></i> Открыть генератор</a>
             <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="px-5 py-3.5 text-muted font-bold border border-slate-200 rounded-xl hover:bg-surface-alt flex items-center gap-2 text-sm no-underline"><i class="ph-bold ph-check text-lg"></i> Очередь проверки</a>

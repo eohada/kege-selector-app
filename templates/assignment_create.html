@@ -3,9 +3,9 @@
 
 {% block head_css %}
 <style>
-    .wizard-container { max-width: 900px; margin: 0 auto; padding: 0 1rem 2rem; }
-    .step-card { display: none; opacity: 0; transform: translateY(10px); }
-    .step-card.active { display: block; animation: slideUp .4s ease forwards; }
+    #assignmentCreateWizard.wizard-container { max-width: 1400px; margin: 0 auto; padding: 0 1rem 2rem; }
+    #assignmentCreateWizard .ac-step { display: none; opacity: 0; transform: translateY(10px); }
+    #assignmentCreateWizard .ac-step.ac-step-active { display: block; animation: slideUp .4s ease forwards; }
     @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
     .student-list::-webkit-scrollbar { width: 6px; }
     .student-list::-webkit-scrollbar-track { background: #f8fafc; border-radius: 8px; }
@@ -14,6 +14,7 @@
     .source-card.active-manual { border-color: #7b5cff; background: rgba(123,92,255,.06); box-shadow: inset 0 0 0 3px rgba(123,92,255,.12); }
     .source-card.active-generator { border-color: #06b6d4; background: rgba(6,182,212,.06); box-shadow: inset 0 0 0 3px rgba(6,182,212,.12); }
     .source-card.active-template { border-color: #fb923c; background: rgba(251,146,60,.06); box-shadow: inset 0 0 0 3px rgba(251,146,60,.12); }
+    .source-card.active-probnik { border-color: #10b981; background: rgba(16,185,129,.06); box-shadow: inset 0 0 0 3px rgba(16,185,129,.12); }
     .task-mini-body { display: none; }
     .task-mini-body.active { display: block; }
     .status-pill {
@@ -82,8 +83,9 @@
 {% set active_page = 'assignments' %}
 
 {% block content %}
-<main class="flex-1 overflow-y-auto pt-6 pb-16 px-6 lg:px-8">
-  <div class="wizard-container">
+<div class="flex-1 overflow-y-auto pt-6 pb-16 px-6 lg:px-8 w-full max-w-[1600px] mx-auto">
+  <div id="assignmentCreateWizard" class="wizard-container w-full">
+    <script type="application/json" id="group-members-json">{{ (group_members_map or {})|tojson }}</script>
     <div class="flex flex-col items-center mb-8">
       <div class="flex items-center bg-white/80 backdrop-blur-md rounded-[20px] border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none p-1.5 mb-6">
         <button type="button" onclick="goToStep(1)" id="stepIndicator1" class="flex items-center gap-2.5 px-4 py-2 rounded-xl font-bold text-sm transition-all">
@@ -108,7 +110,7 @@
       </div>
     </div>
 
-    <div id="stepContent1" class="step-card">
+    <div id="stepContent1" class="ac-step ac-step-active">
       <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
         <h2 class="text-3xl md:text-4xl font-black text-primary mb-2 tracking-tight">1. Кому выдаем?</h2>
         <p class="text-muted font-medium text-base mb-6">Выберите учеников из списка, назначьте группе или выберите всех сразу.</p>
@@ -153,6 +155,10 @@
                 </div>
                 <div class="recipient-selection-ring"></div>
               </label>
+            {% else %}
+              <div class="text-center py-10 px-4 text-muted font-medium text-sm">
+                Список учеников пуст. Добавьте учеников в кабинете или проверьте права доступа — без привязанных учеников работу не назначить.
+              </div>
             {% endfor %}
           </div>
         </div>
@@ -169,18 +175,18 @@
       </section>
     </div>
 
-    <div id="stepContent2" class="step-card">
+    <div id="stepContent2" class="ac-step">
       <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
         <h2 class="text-3xl md:text-4xl font-black text-primary mb-2 tracking-tight">2. Откуда берем задания?</h2>
         <p class="text-muted font-medium text-base mb-8">Выберите наиболее удобный способ формирования пула задач.</p>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
           <button type="button" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left {% if source == 'manual' %}active-manual{% endif %}" onclick="setSource('manual')">
             <div class="w-12 h-12 rounded-xl bg-purple-100 text-boo-primary flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-keyboard"></i></div>
             <h3 class="text-lg font-black text-primary mb-1">Ввести ID вручную</h3>
             <p class="text-xs font-medium text-muted">Если номера задач уже известны.</p>
           </button>
-          <a id="generatorLink" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left no-underline {% if source == 'generator' %}active-generator{% endif %}" href="#">
+          <a id="generatorLink" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left no-underline {% if source == 'generator' and not probnik_mode %}active-generator{% endif %}" href="#">
             <div class="w-12 h-12 rounded-xl bg-cyan-100 text-cyan-600 flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-magic-wand"></i></div>
             <h3 class="text-lg font-black text-primary mb-1">Генератор</h3>
             <p class="text-xs font-medium text-muted">Подобрать новые задачи (анти-повтор включен).</p>
@@ -190,6 +196,22 @@
             <h3 class="text-lg font-black text-primary mb-1">Из шаблона</h3>
             <p class="text-xs font-medium text-muted">Готовые варианты или тематические наборы.</p>
           </button>
+          <div class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left flex flex-col {% if probnik_mode %}active-probnik{% endif %}">
+            <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-scroll"></i></div>
+            <h3 class="text-lg font-black text-primary mb-1">Быстрый пробник</h3>
+            <p class="text-xs font-medium text-muted mb-3">По одному активному заданию на каждый номер 1–27 выбранного курса (тройка 19–21 — один текст).</p>
+            {% if courses_for_probnik and courses_for_probnik|length > 0 %}
+            <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-1 block">Курс / экзамен</label>
+            <select id="probnikCourseSelect" class="w-full bg-surface border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-secondary text-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 mb-3">
+              {% for c in courses_for_probnik %}
+              <option value="{{ c.id }}" {% if default_probnik_course_id and c.id == default_probnik_course_id %}selected{% endif %}>{{ c.title }}</option>
+              {% endfor %}
+            </select>
+            {% endif %}
+            <button type="button" class="mt-auto w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors border-b-[3px] border-b-emerald-900 active:translate-y-[1px] active:border-b-0" onclick="startProbnikBuild()">
+              Собрать пробник
+            </button>
+          </div>
         </div>
 
         <div id="sourceOptions" class="bg-slate-50/80 border border-slate-200 rounded-[24px] p-6 lg:p-8 mb-8 shadow-inner-soft">
@@ -218,7 +240,7 @@
       </section>
     </div>
 
-    <div id="stepContent3" class="step-card">
+    <div id="stepContent3" class="ac-step">
       <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
         <h2 class="text-3xl md:text-4xl font-black text-primary mb-2 tracking-tight">3. Финальные настройки</h2>
         <p class="text-muted font-medium text-base mb-8">Проверьте список задач и установите срок сдачи.</p>
@@ -235,8 +257,20 @@
                   <i class="ph-bold ph-caret-down text-muted"></i>
                 </div>
               </div>
-              <div class="task-mini-body px-4 py-3 border-t border-slate-200 text-sm text-secondary bg-surface">
-                {{ (t.content_html or 'Текст отсутствует') | normalize_task_content_urls | sanitize_html }}
+              <div class="task-mini-body px-4 py-3 border-t border-slate-200 text-sm text-secondary bg-surface space-y-3">
+                <div class="flex flex-wrap gap-2 text-[11px] font-bold">
+                  {% if t.difficulty_level == 1 %}<span class="px-2 py-0.5 rounded-lg bg-green-50 text-green-800 border border-green-100">Сложность: лёгкая</span>
+                  {% elif t.difficulty_level == 3 %}<span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-800 border border-rose-100">Сложность: высокая</span>
+                  {% else %}<span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">Сложность: {% if t.difficulty_level == 2 %}средняя{% else %}не указана{% endif %}</span>{% endif %}
+                  {% if t.kege_tier_label_ru %}<span class="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-100">КЕГЭ: {{ t.kege_tier_label_ru }}</span>{% endif %}
+                  {% if t.bank_origin %}<span class="px-2 py-0.5 rounded-lg bg-surface border border-slate-200 text-muted uppercase tracking-wider">Происхождение: {{ t.bank_origin }}</span>{% endif %}
+                  {% if t.source_prototype %}<span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-100 font-mono text-[10px] truncate max-w-[220px]" title="{{ t.source_prototype }}">Прототип: {{ t.source_prototype }}</span>{% endif %}
+                </div>
+                {% if t.attached_files %}
+                <div class="text-[11px] font-bold text-muted uppercase tracking-wider">Вложения</div>
+                <pre class="text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg p-2 overflow-x-auto max-h-28 whitespace-pre-wrap">{{ t.attached_files }}</pre>
+                {% endif %}
+                <div class="text-secondary leading-relaxed">{{ (t.content_html or 'Текст отсутствует') | normalize_task_content_urls | sanitize_html }}</div>
               </div>
             </div>
             {% endfor %}
@@ -297,7 +331,7 @@
       </section>
     </div>
   </div>
-</main>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -305,6 +339,7 @@
     <script>
         let currentStep = 1;
         const CSRF_TOKEN = "{{ csrf_token() }}";
+        const PROBNIK_MODE = {{ (probnik_mode or false)|tojson }};
         function syncRecipientSelectFromCards() {
             const sel = document.getElementById('ca_recipients');
             if (!sel) return;
@@ -324,8 +359,8 @@
         function updateUI() {
             syncRecipientSelectFromCards();
             syncRecipientCardState();
-            document.querySelectorAll('.step-card').forEach((el, i) => {
-                el.classList.toggle('active', (i + 1) === currentStep);
+            document.querySelectorAll('#assignmentCreateWizard .ac-step').forEach((el, i) => {
+                el.classList.toggle('ac-step-active', (i + 1) === currentStep);
             });
             for (let i = 1; i <= 3; i++) {
                 const btn = document.getElementById(`stepIndicator${i}`);
@@ -349,11 +384,13 @@
             const sel = document.getElementById('ca_recipients');
             if (sel) {
                 const count = Array.from(sel.selectedOptions).length;
-                document.getElementById('statusRecipients').textContent = count;
+                const sr = document.getElementById('statusRecipients');
+                if (sr) sr.textContent = count;
             }
 
             const tasks = getTaskIds();
-            document.getElementById('statusTasks').textContent = tasks.length;
+            const st = document.getElementById('statusTasks');
+            if (st) st.textContent = tasks.length;
 
             const genLink = document.getElementById('generatorLink');
             if (genLink && sel) {
@@ -393,14 +430,37 @@
 
         function handleGroupSelect(value) {
             const sel = document.getElementById('ca_recipients');
+            if (!sel) return;
             if (value === 'all') {
                 Array.from(sel.options).forEach(o => o.selected = true);
                 document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = true; });
             } else if (value === '') {
                 Array.from(sel.options).forEach(o => o.selected = false);
                 document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = false; });
+            } else {
+                let map = {};
+                try {
+                    const el = document.getElementById('group-members-json');
+                    map = JSON.parse(el ? (el.textContent || '{}') : '{}');
+                } catch (e) { map = {}; }
+                const memberIds = new Set((map[value] || []).map((x) => String(x)));
+                Array.from(sel.options).forEach((o) => { o.selected = memberIds.has(String(o.value)); });
+                document.querySelectorAll('.recipient-check').forEach((ch) => {
+                    ch.checked = memberIds.has(String(ch.value));
+                });
             }
             updateUI();
+        }
+
+        function startProbnikBuild() {
+            const sel = document.getElementById('ca_recipients');
+            const ids = sel ? Array.from(sel.selectedOptions).map((o) => o.value).join(',') : '';
+            const cSel = document.getElementById('probnikCourseSelect');
+            const cid = cSel && cSel.value ? String(cSel.value) : '';
+            let url = '/assignments/create?source=probnik&assignment_type=exam';
+            if (ids) url += '&recipient_ids=' + encodeURIComponent(ids);
+            if (cid) url += '&exam_course_id=' + encodeURIComponent(cid);
+            window.location.href = url;
         }
 
         function setSource(src) {
@@ -500,11 +560,17 @@
             });
             const url = new URLSearchParams(location.search);
             const hasRecs = !!url.get('recipient_ids');
-            const initialTasks = JSON.parse(document.getElementById('task-ids-json').textContent || '[]');
+            let initialTasks = [];
+            try {
+                const tj = document.getElementById('task-ids-json');
+                initialTasks = JSON.parse(tj && tj.textContent ? tj.textContent : '[]');
+            } catch (e) { initialTasks = []; }
             const hasTasks = initialTasks.length > 0;
 
             if (!hasRecs) {
                 currentStep = 1;
+            } else if (hasTasks && PROBNIK_MODE) {
+                currentStep = 2;
             } else if (hasTasks) {
                 currentStep = 3;
             } else {
@@ -516,12 +582,20 @@
             d.setHours(23, 59, 0, 0);
             const pad = n => String(n).padStart(2, '0');
             const str = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T23:59`;
-            document.getElementById('ca_deadline').value = str;
-            document.getElementById('ca_title').value = 'Новая работа';
+            const dl = document.getElementById('ca_deadline');
+            if (dl) dl.value = str;
+            const ttl = document.getElementById('ca_title');
+            if (ttl) ttl.value = PROBNIK_MODE ? 'Пробник ЕГЭ' : 'Новая работа';
+            const tp = document.getElementById('ca_type');
+            if (tp && PROBNIK_MODE) tp.value = 'exam';
 
-            document.getElementById('ca_attempts_per_task').addEventListener('change', function() {
-                document.getElementById('ca_separate_submission').checked = this.checked;
-            });
+            const apt = document.getElementById('ca_attempts_per_task');
+            const sep = document.getElementById('ca_separate_submission');
+            if (apt && sep) {
+                apt.addEventListener('change', function() {
+                    sep.checked = this.checked;
+                });
+            }
 
             updateUI();
         });
