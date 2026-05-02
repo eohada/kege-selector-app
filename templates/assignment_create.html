@@ -274,9 +274,9 @@
                   <span class="task-idx text-xs font-black text-muted w-7 shrink-0">{{ loop.index }}.</span>
                   <span class="text-[11px] font-bold text-muted shrink-0">ID</span>
                   <input type="number" min="1" step="1" class="task-id-editor w-[96px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-sm font-bold text-primary text-center" value="{{ t.task_id }}" data-initial="{{ t.task_id }}" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">
-                  <span class="text-[11px] font-bold text-muted shrink-0">№{{ t.task_number }}</span>
+                  <span class="text-[11px] font-bold text-muted shrink-0" data-role="task-number">№{{ t.task_number }}</span>
                   {% if t.source_url %}
-                  <a class="text-[10px] font-bold text-muted uppercase tracking-widest hover:text-boo-primary no-underline" href="{{ t.source_url }}" target="_blank" onclick="event.stopPropagation()">Источник</a>
+                  <a class="text-[10px] font-bold text-muted uppercase tracking-widest hover:text-boo-primary no-underline" data-role="source-link" href="{{ t.source_url }}" target="_blank" onclick="event.stopPropagation()">Источник</a>
                   {% endif %}
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -297,7 +297,7 @@
                 </div>
               </div>
               <div class="task-mini-body px-4 py-3 border-t border-slate-200 text-sm text-secondary bg-surface space-y-3">
-                <div class="flex flex-wrap gap-2 text-[11px] font-bold">
+                <div class="flex flex-wrap gap-2 text-[11px] font-bold" data-role="badges">
                   {% if t.difficulty_level == 1 %}<span class="px-2 py-0.5 rounded-lg bg-green-50 text-green-800 border border-green-100">Сложность: лёгкая</span>
                   {% elif t.difficulty_level == 3 %}<span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-800 border border-rose-100">Сложность: высокая</span>
                   {% else %}<span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">Сложность: {% if t.difficulty_level == 2 %}средняя{% else %}не указана{% endif %}</span>{% endif %}
@@ -307,9 +307,9 @@
                 </div>
                 {% set _files = (t.attached_files|from_json if t.attached_files else []) %}
                 {% if _files and _files|length > 0 %}
-                <div class="space-y-2">
+                <div class="space-y-2" data-role="attachments-block">
                   <div class="text-[11px] font-bold text-muted uppercase tracking-wider">Вложения</div>
-                  <div class="flex flex-wrap gap-2">
+                  <div class="flex flex-wrap gap-2" data-role="attachments">
                     {% for f in _files %}
                     {% set _url = (f.url or f.path or '') %}
                     {% if _url %}
@@ -321,8 +321,13 @@
                     {% endfor %}
                   </div>
                 </div>
+                {% else %}
+                <div class="space-y-2 hidden" data-role="attachments-block">
+                  <div class="text-[11px] font-bold text-muted uppercase tracking-wider">Вложения</div>
+                  <div class="flex flex-wrap gap-2" data-role="attachments"></div>
+                </div>
                 {% endif %}
-                <div class="text-secondary leading-relaxed">{{ (t.content_html or 'Текст отсутствует') | normalize_task_content_urls | sanitize_html }}</div>
+                <div class="text-secondary leading-relaxed" data-role="content-html">{{ (t.content_html or 'Текст отсутствует') | normalize_task_content_urls | sanitize_html }}</div>
               </div>
             </div>
             {% endfor %}
@@ -642,6 +647,95 @@
             window.location.href = url;
         }
 
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderBadgesHtml(task) {
+            const out = [];
+            if (task.difficulty_level === 1) {
+                out.push('<span class="px-2 py-0.5 rounded-lg bg-green-50 text-green-800 border border-green-100">Сложность: лёгкая</span>');
+            } else if (task.difficulty_level === 3) {
+                out.push('<span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-800 border border-rose-100">Сложность: высокая</span>');
+            } else if (task.difficulty_level === 2) {
+                out.push('<span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">Сложность: средняя</span>');
+            } else {
+                out.push('<span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">Сложность: не указана</span>');
+            }
+            if (task.kege_tier_label_ru) {
+                out.push('<span class="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-100">КЕГЭ: ' + escapeHtml(task.kege_tier_label_ru) + '</span>');
+            }
+            if (task.bank_origin) {
+                out.push('<span class="px-2 py-0.5 rounded-lg bg-surface border border-slate-200 text-muted uppercase tracking-wider">Происхождение: ' + escapeHtml(task.bank_origin) + '</span>');
+            }
+            if (task.source_prototype) {
+                out.push('<span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-100 font-mono text-[10px] truncate max-w-[220px]" title="' + escapeHtml(task.source_prototype) + '">Прототип: ' + escapeHtml(task.source_prototype) + '</span>');
+            }
+            return out.join('');
+        }
+
+        function renderAttachmentsHtml(files) {
+            const rows = [];
+            for (const f of (files || [])) {
+                const url = (f && (f.url || f.path)) ? String(f.url || f.path) : '';
+                if (!url) continue;
+                const name = (f && f.name) ? String(f.name) : url.split('/').pop();
+                rows.push(
+                    '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 no-underline text-primary text-xs font-bold">' +
+                    '<i class="ph-bold ph-paperclip"></i>' +
+                    '<span>' + escapeHtml(name) + '</span>' +
+                    '</a>'
+                );
+            }
+            return rows.join('');
+        }
+
+        function updateTaskRowPreview(row, task) {
+            const numberEl = row.querySelector('[data-role="task-number"]');
+            if (numberEl) numberEl.textContent = '№' + String(task.task_number || '—');
+
+            const sourceEl = row.querySelector('[data-role="source-link"]');
+            if (sourceEl) {
+                if (task.source_url) {
+                    sourceEl.href = task.source_url;
+                    sourceEl.classList.remove('hidden');
+                } else {
+                    sourceEl.classList.add('hidden');
+                }
+            }
+
+            const badges = row.querySelector('[data-role="badges"]');
+            if (badges) badges.innerHTML = renderBadgesHtml(task);
+
+            const attBlock = row.querySelector('[data-role="attachments-block"]');
+            const attList = row.querySelector('[data-role="attachments"]');
+            if (attBlock && attList) {
+                const html = renderAttachmentsHtml(task.attached_files || []);
+                attList.innerHTML = html;
+                attBlock.classList.toggle('hidden', html.length === 0);
+            }
+
+            const content = row.querySelector('[data-role="content-html"]');
+            if (content) content.innerHTML = task.content_html || 'Текст отсутствует';
+        }
+
+        async function fetchTaskPreview(taskId) {
+            const r = await fetch('/assignments/api/task-preview?task_id=' + encodeURIComponent(String(taskId)), {
+                headers: { Accept: 'application/json' },
+            });
+            let data = {};
+            try { data = await r.json(); } catch (e) { data = {}; }
+            if (!r.ok || !data.success || !data.task) {
+                throw new Error(data.error || 'Не удалось загрузить условие');
+            }
+            return data.task;
+        }
+
         async function cycleTaskVariant(btn, direction) {
             const row = btn && btn.closest ? btn.closest('.task-order-row') : null;
             const inp = row ? row.querySelector('input.task-id-editor') : null;
@@ -668,7 +762,10 @@
                 if (!r.ok || !data.success) {
                     throw new Error(data.error || 'Не удалось подобрать задачу');
                 }
-                inp.value = String(data.task_id);
+                const nextTaskId = Number(data.task_id);
+                inp.value = String(nextTaskId);
+                const preview = await fetchTaskPreview(nextTaskId);
+                updateTaskRowPreview(row, preview);
                 syncTaskIdsFromEditor();
                 const labels = {
                     easier: 'Подобран вариант проще (или следующий в списке)',

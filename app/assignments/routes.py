@@ -1326,6 +1326,47 @@ def cycle_task_variant():
     )
 
 
+@assignments_bp.route('/assignments/api/task-preview', methods=['GET'])
+@login_required
+@check_access('assignment.create')
+def assignment_task_preview():
+    """Вернуть данные карточки задания для моментального обновления UI в мастере."""
+    task_id = request.args.get('task_id', type=int)
+    if not task_id:
+        return jsonify({'success': False, 'error': 'task_id обязателен'}), 400
+    task = Tasks.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
+
+    files = []
+    try:
+        raw = (getattr(task, 'attached_files', None) or '').strip()
+        if raw:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                files = parsed
+    except Exception:
+        files = []
+
+    return jsonify(
+        {
+            'success': True,
+            'task': {
+                'task_id': int(task.task_id),
+                'task_number': int(task.task_number),
+                'course_id': int(task.course_id) if getattr(task, 'course_id', None) else None,
+                'source_url': getattr(task, 'source_url', None),
+                'difficulty_level': getattr(task, 'difficulty_level', None),
+                'kege_tier_label_ru': getattr(task, 'kege_tier_label_ru', None),
+                'bank_origin': getattr(task, 'bank_origin', None),
+                'source_prototype': getattr(task, 'source_prototype', None),
+                'content_html': getattr(task, 'content_html', '') or '',
+                'attached_files': files,
+            },
+        }
+    )
+
+
 @assignments_bp.route('/assignments/distribute', methods=['POST'])
 @login_required
 @check_access('assignment.create')
