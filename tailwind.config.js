@@ -23,7 +23,7 @@ module.exports = {
           muted:  '#A1A1AA',
         },
         boo: {
-          bg:           '#E5E9F0',
+          bg:           '#FFFFFF',
           surface:      '#FFFFFF',
           primary:      '#8B5CF6',
           primaryHover: '#6A4CE5',

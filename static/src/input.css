@@ -749,6 +749,14 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   .layout-teacher .app-content {
     @apply max-w-[1600px] mx-auto p-0;
   }
+  .layout-teacher .app-content > [class~="max-w-[1000px]"],
+  .layout-teacher .app-content > [class~="max-w-[1200px]"],
+  .layout-teacher .app-content > [class~="max-w-[1280px]"],
+  .layout-teacher .app-content > [class~="max-w-[1300px]"],
+  .layout-teacher .app-content > [class~="max-w-[1400px]"],
+  .layout-teacher .app-content > [class~="max-w-7xl"] {
+    max-width: 1600px;
+  }
 
   /* ═══════════════ CHIEF TESTER LAYOUT (standalone command center) ═══════════════ */
   .layout-chief-tester .dock-wrapper {
