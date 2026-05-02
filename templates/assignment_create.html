@@ -261,46 +261,38 @@
         <div class="mb-8">
           <div class="flex flex-wrap items-end justify-between gap-3 mb-3 ml-1">
             <h3 class="text-[10px] font-extrabold text-muted uppercase tracking-widest m-0">Состав работы</h3>
-            <p class="text-xs text-muted font-medium m-0 max-w-xl">Меняйте ID в полях, стрелками подбирайте другую задачу того же номера билета (проще / сложнее / тот же уровень). «Обновить по ID» вверху перезагрузит страницу и подтянет из банка тексты по текущему списку.</p>
+            <p class="text-xs text-muted font-medium m-0 max-w-xl">Всё в одном месте: прочитали условие → стрелками подобрали вариант → при необходимости сменили ID, перешли в базу или удалили карточку.</p>
           </div>
-          <div id="taskOrderEditor" class="space-y-2 max-h-[min(52vh,520px)] overflow-y-auto pr-1 mb-4">
+          <div id="taskOrderEditor" class="space-y-3 max-h-[min(56vh,620px)] overflow-y-auto pr-1 mb-4">
             {% if not tasks %}
             <div class="text-sm text-muted font-medium px-2 py-4 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>
             {% endif %}
             {% for t in tasks %}
-            <div class="task-order-row flex flex-wrap items-center gap-2 p-3 rounded-xl bg-surface-alt border border-slate-200">
-              <span class="task-idx text-xs font-black text-muted w-7 shrink-0">{{ loop.index }}.</span>
-              <label class="sr-only">task id</label>
-              <input type="number" min="1" step="1" class="task-id-editor w-[100px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-2 font-mono text-sm font-bold text-primary text-center" value="{{ t.task_id }}" data-initial="{{ t.task_id }}" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">
-              <span class="text-[11px] font-bold text-muted shrink-0">№{{ t.task_number }}</span>
-              {% if t.course_id %}
-              <div class="task-cycle-btns inline-flex rounded-lg border border-slate-200 bg-surface overflow-hidden shrink-0" role="group" aria-label="Вариант по сложности">
-                <button type="button" class="w-8 h-9 inline-flex items-center justify-center text-muted hover:text-boo-primary hover:bg-purple-50 border-0 border-r border-slate-200 bg-transparent" title="Проще: ниже уровень сложности, иначе следующая задача этого номера" onclick="cycleTaskVariant(this, 'easier')"><i class="ph-bold ph-caret-down text-lg leading-none" aria-hidden="true"></i><span class="sr-only">Проще</span></button>
-                <button type="button" class="w-8 h-9 inline-flex items-center justify-center text-muted hover:text-boo-primary hover:bg-purple-50 border-0 border-r border-slate-200 bg-transparent" title="Сложнее: выше уровень сложности, иначе следующая задача этого номера" onclick="cycleTaskVariant(this, 'harder')"><i class="ph-bold ph-caret-up text-lg leading-none" aria-hidden="true"></i><span class="sr-only">Сложнее</span></button>
-                <button type="button" class="w-8 h-9 inline-flex items-center justify-center text-muted hover:text-boo-primary hover:bg-purple-50 border-0 bg-transparent" title="Тот же уровень сложности: следующая задача среди вариантов этого уровня" onclick="cycleTaskVariant(this, 'same')"><i class="ph-bold ph-caret-right text-lg leading-none" aria-hidden="true"></i><span class="sr-only">Тот же уровень, другая</span></button>
-              </div>
-              {% endif %}
-              <div class="flex flex-wrap items-center gap-2 ml-auto">
-                {% if bank_course_id_for_links %}
-                <a class="text-[10px] font-black text-boo-primary uppercase tracking-wider no-underline hover:underline" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1, exam_course_id=bank_course_id_for_links) }}">База</a>
-                {% else %}
-                <a class="text-[10px] font-black text-boo-primary uppercase tracking-wider no-underline hover:underline" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1) }}">База</a>
-                {% endif %}
-                <button type="button" class="text-[10px] font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="removeTaskRow(this)">Удалить</button>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-          <button type="button" class="mb-4 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-bold text-muted hover:text-boo-primary hover:border-boo-primary hover:bg-purple-50/50 transition-colors w-full sm:w-auto" onclick="addEmptyTaskRow()">+ Добавить задание (ID)</button>
-
-          <h3 class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-3 ml-1">Предпросмотр (по текущим данным с сервера)</h3>
-          <div class="space-y-2 max-h-[280px] overflow-y-auto pr-1">
-            {% for t in tasks %}
-            <div class="task-mini-item bg-surface-alt border border-slate-200 rounded-xl">
-              <div class="task-mini-header flex justify-between items-center px-4 py-3 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('active')">
-                <div class="font-bold text-primary text-sm"><span class="text-muted font-mono">#{{ t.task_id }}</span> <span class="mx-1">•</span> Задание №{{ t.task_number }}</div>
-                <div class="flex items-center gap-2">
-                  {% if t.source_url %}<a class="text-[10px] font-bold text-muted uppercase tracking-widest hover:text-boo-primary no-underline" href="{{ t.source_url }}" target="_blank" onclick="event.stopPropagation()">Источник</a>{% endif %}
+            <div class="task-order-row task-mini-item bg-surface-alt border border-slate-200 rounded-xl">
+              <div class="task-mini-header flex flex-wrap justify-between items-center gap-2 px-4 py-3 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('active')">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="task-idx text-xs font-black text-muted w-7 shrink-0">{{ loop.index }}.</span>
+                  <span class="text-[11px] font-bold text-muted shrink-0">ID</span>
+                  <input type="number" min="1" step="1" class="task-id-editor w-[96px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-sm font-bold text-primary text-center" value="{{ t.task_id }}" data-initial="{{ t.task_id }}" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">
+                  <span class="text-[11px] font-bold text-muted shrink-0">№{{ t.task_number }}</span>
+                  {% if t.source_url %}
+                  <a class="text-[10px] font-bold text-muted uppercase tracking-widest hover:text-boo-primary no-underline" href="{{ t.source_url }}" target="_blank" onclick="event.stopPropagation()">Источник</a>
+                  {% endif %}
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  {% if t.course_id %}
+                  <div class="task-cycle-btns inline-flex rounded-lg border border-slate-200 bg-surface overflow-hidden shrink-0" role="group" aria-label="Вариант по сложности">
+                    <button type="button" class="w-8 h-9 inline-flex items-center justify-center text-muted hover:text-boo-primary hover:bg-purple-50 border-0 border-r border-slate-200 bg-transparent" title="Проще: ниже уровень сложности, иначе следующая задача этого номера" onclick="cycleTaskVariant(this, 'easier')"><i class="ph-bold ph-caret-down text-lg leading-none" aria-hidden="true"></i><span class="sr-only">Проще</span></button>
+                    <button type="button" class="w-8 h-9 inline-flex items-center justify-center text-muted hover:text-boo-primary hover:bg-purple-50 border-0 border-r border-slate-200 bg-transparent" title="Сложнее: выше уровень сложности, иначе следующая задача этого номера" onclick="cycleTaskVariant(this, 'harder')"><i class="ph-bold ph-caret-up text-lg leading-none" aria-hidden="true"></i><span class="sr-only">Сложнее</span></button>
+                    <button type="button" class="w-8 h-9 inline-flex items-center justify-center text-muted hover:text-boo-primary hover:bg-purple-50 border-0 bg-transparent" title="Тот же уровень сложности: следующая задача среди вариантов этого уровня" onclick="cycleTaskVariant(this, 'same')"><i class="ph-bold ph-caret-right text-lg leading-none" aria-hidden="true"></i><span class="sr-only">Тот же уровень, другая</span></button>
+                  </div>
+                  {% endif %}
+                  {% if bank_course_id_for_links %}
+                  <a class="text-[10px] font-black text-boo-primary uppercase tracking-wider no-underline hover:underline px-2 py-1 rounded-lg border border-purple-100 bg-purple-50" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1, exam_course_id=bank_course_id_for_links) }}" onclick="event.stopPropagation()">База</a>
+                  {% else %}
+                  <a class="text-[10px] font-black text-boo-primary uppercase tracking-wider no-underline hover:underline px-2 py-1 rounded-lg border border-purple-100 bg-purple-50" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1) }}" onclick="event.stopPropagation()">База</a>
+                  {% endif %}
+                  <button type="button" class="text-[10px] font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="event.stopPropagation(); removeTaskRow(this)">Удалить</button>
                   <i class="ph-bold ph-caret-down text-muted"></i>
                 </div>
               </div>
@@ -313,15 +305,29 @@
                   {% if t.bank_origin %}<span class="px-2 py-0.5 rounded-lg bg-surface border border-slate-200 text-muted uppercase tracking-wider">Происхождение: {{ t.bank_origin }}</span>{% endif %}
                   {% if t.source_prototype %}<span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-100 font-mono text-[10px] truncate max-w-[220px]" title="{{ t.source_prototype }}">Прототип: {{ t.source_prototype }}</span>{% endif %}
                 </div>
-                {% if t.attached_files %}
-                <div class="text-[11px] font-bold text-muted uppercase tracking-wider">Вложения</div>
-                <pre class="text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg p-2 overflow-x-auto max-h-28 whitespace-pre-wrap">{{ t.attached_files }}</pre>
+                {% set _files = (t.attached_files|from_json if t.attached_files else []) %}
+                {% if _files and _files|length > 0 %}
+                <div class="space-y-2">
+                  <div class="text-[11px] font-bold text-muted uppercase tracking-wider">Вложения</div>
+                  <div class="flex flex-wrap gap-2">
+                    {% for f in _files %}
+                    {% set _url = (f.url or f.path or '') %}
+                    {% if _url %}
+                    <a href="{{ _url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 no-underline text-primary text-xs font-bold">
+                      <i class="ph-bold ph-paperclip"></i>
+                      <span>{{ f.name or _url.split('/')[-1] }}</span>
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+                  </div>
+                </div>
                 {% endif %}
                 <div class="text-secondary leading-relaxed">{{ (t.content_html or 'Текст отсутствует') | normalize_task_content_urls | sanitize_html }}</div>
               </div>
             </div>
             {% endfor %}
           </div>
+          <button type="button" class="mb-4 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-bold text-muted hover:text-boo-primary hover:border-boo-primary hover:bg-purple-50/50 transition-colors w-full sm:w-auto" onclick="addEmptyTaskRow()">+ Добавить задание (ID)</button>
         </div>
 
         <form id="ca_form">
@@ -604,14 +610,22 @@
             if (placeholder && placeholder.textContent.indexOf('Нет заданий') !== -1) placeholder.remove();
             const n = box.querySelectorAll('.task-order-row').length + 1;
             const wrap = document.createElement('div');
-            wrap.className = 'task-order-row flex flex-wrap items-center gap-2 p-3 rounded-xl bg-surface-alt border border-slate-200';
-            wrap.innerHTML = '<span class="task-idx text-xs font-black text-muted w-7 shrink-0">' + n + '.</span>' +
-                '<input type="number" min="1" step="1" class="task-id-editor w-[100px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-2 font-mono text-sm font-bold text-primary text-center" value="" placeholder="id" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">' +
-                '<span class="text-[11px] font-bold text-muted shrink-0">—</span>' +
-                '<div class="flex flex-wrap items-center gap-2 ml-auto">' +
-                '<button type="button" class="text-[10px] font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="removeTaskRow(this)">Удалить</button></div>';
+            wrap.className = 'task-order-row task-mini-item bg-surface-alt border border-slate-200 rounded-xl';
+            wrap.innerHTML =
+                '<div class="task-mini-header flex flex-wrap justify-between items-center gap-2 px-4 py-3">' +
+                '<div class="flex flex-wrap items-center gap-2">' +
+                '<span class="task-idx text-xs font-black text-muted w-7 shrink-0">' + n + '.</span>' +
+                '<span class="text-[11px] font-bold text-muted shrink-0">ID</span>' +
+                '<input type="number" min="1" step="1" class="task-id-editor w-[96px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-sm font-bold text-primary text-center" value="" placeholder="id" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">' +
+                '<span class="text-[11px] font-bold text-muted shrink-0">№—</span>' +
+                '</div>' +
+                '<div class="flex flex-wrap items-center gap-2">' +
+                '<button type="button" class="text-[10px] font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="removeTaskRow(this)">Удалить</button>' +
+                '</div></div>' +
+                '<div class="task-mini-body active px-4 py-3 border-t border-slate-200 text-sm text-muted bg-surface">После ввода ID нажмите «Обновить по ID», чтобы подтянуть условие и метаданные.</div>';
             box.appendChild(wrap);
             renumberTaskRows();
+            syncTaskIdsFromEditor();
         }
 
         function reloadWithCurrentTaskIds() {
