@@ -1,9 +1,7 @@
 {% macro spa_main_nav_attrs(url, nav_key='', preload=true) -%}
 href="{{ url }}"
 {%- if url and url != '#' %}
- data-spa-nav
 {%- if nav_key %} data-nav-key="{{ nav_key }}"{% endif %}
-{%- if preload %} preload="mouseover"{% endif %}
 {%- elif nav_key %}
  data-nav-key="{{ nav_key }}"
 {%- endif %}

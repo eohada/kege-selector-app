@@ -157,6 +157,29 @@
         });
     }
 
+    function stripNavHtmxAttrs(root) {
+        var scope = root && root.querySelectorAll ? root : document;
+        Array.prototype.slice.call(scope.querySelectorAll('.dock a[href], .mobile-menu a[href], .profile-dropdown-content a[href]')).forEach(function(link) {
+            ['hx-get', 'hx-target', 'hx-select', 'hx-swap', 'hx-push-url', 'hx-boost', 'preload', 'data-spa-nav'].forEach(function(attr) {
+                link.removeAttribute(attr);
+            });
+        });
+    }
+
+    function forceFullNavigation(evt) {
+        var link = evt.target && evt.target.closest ? evt.target.closest('.dock a[href], .mobile-menu a[href], .profile-dropdown-content a[href]') : null;
+        if (!isInternalNavigableLink(link)) return;
+        if (evt.defaultPrevented) return;
+        if (evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey || evt.button !== 0) return;
+
+        var href = link.getAttribute('href');
+        if (!href || href.charAt(0) === '#') return;
+
+        evt.preventDefault();
+        evt.stopImmediatePropagation();
+        window.location.assign(link.href);
+    }
+
     function applyPageMotion(root) {
         return;
     }
@@ -297,16 +320,20 @@
         updateNavHighlight(activePage, megaPages);
     });
 
+    document.addEventListener('click', forceFullNavigation, true);
+
     configureHtmxWhenReady(20);
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             configureHtmxWhenReady(20);
+            stripNavHtmxAttrs();
             protectLocalHtmxControls();
             syncActiveNav();
             initTheoryShell();
         });
     } else {
+        stripNavHtmxAttrs();
         protectLocalHtmxControls();
         syncActiveNav();
         initTheoryShell();
@@ -320,6 +347,7 @@
 
     document.body.addEventListener('htmx:afterSettle', function(evt) {
         protectLocalHtmxControls();
+        stripNavHtmxAttrs(evt && evt.target ? evt.target : document);
         syncActiveNav();
         if (isMainSwap(evt)) {
             closeMobileMenus();

@@ -16,7 +16,6 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     {% block head_css %}{% endblock %}
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
-    <script src="https://unpkg.com/htmx.org/dist/ext/preload.js" defer></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
     <script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}?v=svg-fix-2026"></script>
     <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.js') }}?v=svg-fix-2026"></script>
@@ -53,7 +52,7 @@
     {% include '_active_lesson_banner.html' %}
     {% endif %}
 
-    <div class="app-layout" hx-ext="preload">
+    <div class="app-layout">
         {% set active_page = active_page | default('') %}
         {% set mega_active_pages = ['assignments','templates','theory_manage','reminders','groups','generator','library','billing'] %}
 
@@ -76,7 +75,7 @@
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
-    <script defer src="{{ url_for('static', filename='spa-nav-sync.js') }}?v=5"></script>
+    <script defer src="{{ url_for('static', filename='spa-nav-sync.js') }}?v=6"></script>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
