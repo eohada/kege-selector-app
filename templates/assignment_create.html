@@ -261,7 +261,7 @@
         <div class="mb-8">
           <div class="flex flex-wrap items-end justify-between gap-3 mb-3 ml-1">
             <h3 class="text-[10px] font-extrabold text-muted uppercase tracking-widest m-0">Состав работы</h3>
-            <p class="text-xs text-muted font-medium m-0 max-w-xl">Меняйте ID в полях, удаляйте строки или добавляйте новые. «Обновить по ID» вверху перезагрузит страницу и подтянет из банка тексты по текущему списку.</p>
+            <p class="text-xs text-muted font-medium m-0 max-w-xl">Меняйте ID в полях, стрелками подбирайте другую задачу того же номера билета (проще / сложнее / тот же уровень). «Обновить по ID» вверху перезагрузит страницу и подтянет из банка тексты по текущему списку.</p>
           </div>
           <div id="taskOrderEditor" class="space-y-2 max-h-[min(52vh,520px)] overflow-y-auto pr-1 mb-4">
             {% if not tasks %}
@@ -273,6 +273,13 @@
               <label class="sr-only">task id</label>
               <input type="number" min="1" step="1" class="task-id-editor w-[100px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-2 font-mono text-sm font-bold text-primary text-center" value="{{ t.task_id }}" data-initial="{{ t.task_id }}" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">
               <span class="text-[11px] font-bold text-muted shrink-0">№{{ t.task_number }}</span>
+              {% if t.course_id %}
+              <div class="task-cycle-btns inline-flex rounded-lg border border-slate-200 bg-surface overflow-hidden shrink-0" role="group" aria-label="Вариант по сложности">
+                <button type="button" class="w-8 h-9 inline-flex items-center justify-center text-muted hover:text-boo-primary hover:bg-purple-50 border-0 border-r border-slate-200 bg-transparent" title="Проще: ниже уровень сложности, иначе следующая задача этого номера" onclick="cycleTaskVariant(this, 'easier')"><i class="ph-bold ph-caret-down text-lg leading-none" aria-hidden="true"></i><span class="sr-only">Проще</span></button>
+                <button type="button" class="w-8 h-9 inline-flex items-center justify-center text-muted hover:text-boo-primary hover:bg-purple-50 border-0 border-r border-slate-200 bg-transparent" title="Сложнее: выше уровень сложности, иначе следующая задача этого номера" onclick="cycleTaskVariant(this, 'harder')"><i class="ph-bold ph-caret-up text-lg leading-none" aria-hidden="true"></i><span class="sr-only">Сложнее</span></button>
+                <button type="button" class="w-8 h-9 inline-flex items-center justify-center text-muted hover:text-boo-primary hover:bg-purple-50 border-0 bg-transparent" title="Тот же уровень сложности: следующая задача среди вариантов этого уровня" onclick="cycleTaskVariant(this, 'same')"><i class="ph-bold ph-caret-right text-lg leading-none" aria-hidden="true"></i><span class="sr-only">Тот же уровень, другая</span></button>
+              </div>
+              {% endif %}
               <div class="flex flex-wrap items-center gap-2 ml-auto">
                 {% if bank_course_id_for_links %}
                 <a class="text-[10px] font-black text-boo-primary uppercase tracking-wider no-underline hover:underline" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1, exam_course_id=bank_course_id_for_links) }}">База</a>
@@ -619,6 +626,49 @@
             let url = '/assignments/create?source=generator&task_ids=' + encodeURIComponent(ids.join(','));
             if (rec) url += '&recipient_ids=' + encodeURIComponent(rec);
             window.location.href = url;
+        }
+
+        async function cycleTaskVariant(btn, direction) {
+            const row = btn && btn.closest ? btn.closest('.task-order-row') : null;
+            const inp = row ? row.querySelector('input.task-id-editor') : null;
+            if (!inp) return;
+            const tid = parseInt(String(inp.value || '').trim(), 10);
+            if (!tid || isNaN(tid)) {
+                window.toast?.error?.('Укажите корректный ID задания');
+                return;
+            }
+            const prev = btn.disabled;
+            btn.disabled = true;
+            try {
+                const r = await fetch(
+                    '/assignments/api/cycle-task-variant?task_id=' + encodeURIComponent(String(tid)) +
+                    '&direction=' + encodeURIComponent(direction),
+                    { headers: { Accept: 'application/json' } },
+                );
+                let data = {};
+                try {
+                    data = await r.json();
+                } catch (e) {
+                    data = {};
+                }
+                if (!r.ok || !data.success) {
+                    throw new Error(data.error || 'Не удалось подобрать задачу');
+                }
+                inp.value = String(data.task_id);
+                syncTaskIdsFromEditor();
+                const labels = {
+                    easier: 'Подобран вариант проще (или следующий в списке)',
+                    harder: 'Подобран вариант сложнее (или следующий в списке)',
+                    same: 'Другая задача того же уровня сложности',
+                };
+                if (window.toast && typeof window.toast.success === 'function') {
+                    window.toast.success(labels[direction] || 'Готово');
+                }
+            } catch (e) {
+                window.toast?.error?.(e.message || String(e));
+            } finally {
+                btn.disabled = prev;
+            }
         }
 
         function getTaskIds() {

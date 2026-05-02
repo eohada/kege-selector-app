@@ -1047,6 +1047,87 @@ def _pick_probnik_tasks_one_per_exam_number(course_id: int) -> list[Tasks]:
     return out
 
 
+def _task_difficulty_rank_for_cycle(task: Tasks | None) -> int:
+    """1 = легче, 2 = средне / не задано, 3 = сложнее — внутри одного номера билета."""
+    if not task:
+        return 2
+    v = getattr(task, 'difficulty_level', None)
+    if v == 1:
+        return 1
+    if v == 3:
+        return 3
+    return 2
+
+
+def _pick_task_cycle_variant(current: Tasks, direction: str) -> Tasks | None:
+    """
+    Подбор другой задачи с тем же course_id и task_number (активные).
+    easier / harder / same — см. мастер создания работы (стрелки у пробника).
+    """
+    cid = getattr(current, 'course_id', None)
+    tn = getattr(current, 'task_number', None)
+    if cid is None or tn is None:
+        return None
+    candidates = (
+        Tasks.query.filter(
+            Tasks.course_id == int(cid),
+            Tasks.task_number == int(tn),
+            Tasks.is_active.is_(True),
+        )
+        .order_by(Tasks.task_id.asc())
+        .all()
+    )
+    if not candidates:
+        return None
+    by_tid: dict[int, Tasks] = {int(t.task_id): t for t in candidates if getattr(t, 'task_id', None) is not None}
+    ids_sorted = sorted(by_tid.keys())
+    cur_id = int(current.task_id)
+    if cur_id not in by_tid:
+        return by_tid[ids_sorted[0]]
+    cur_rank = _task_difficulty_rank_for_cycle(current)
+
+    def cyclic_next_full() -> Tasks:
+        idx = ids_sorted.index(cur_id)
+        nxt = ids_sorted[(idx + 1) % len(ids_sorted)]
+        return by_tid[nxt]
+
+    if direction == 'easier':
+        easier = [
+            tid
+            for tid in ids_sorted
+            if tid != cur_id and _task_difficulty_rank_for_cycle(by_tid[tid]) < cur_rank
+        ]
+        if easier:
+            easier.sort(key=lambda tid: (_task_difficulty_rank_for_cycle(by_tid[tid]), tid))
+            return by_tid[easier[0]]
+        return cyclic_next_full()
+
+    if direction == 'harder':
+        harder = [
+            tid
+            for tid in ids_sorted
+            if tid != cur_id and _task_difficulty_rank_for_cycle(by_tid[tid]) > cur_rank
+        ]
+        if harder:
+            harder.sort(key=lambda tid: (_task_difficulty_rank_for_cycle(by_tid[tid]), tid))
+            return by_tid[harder[0]]
+        return cyclic_next_full()
+
+    if direction == 'same':
+        same_ids = sorted(
+            tid for tid in ids_sorted if _task_difficulty_rank_for_cycle(by_tid[tid]) == cur_rank
+        )
+        if len(same_ids) <= 1:
+            return cyclic_next_full()
+        if cur_id not in same_ids:
+            return by_tid[same_ids[0]]
+        j = same_ids.index(cur_id)
+        nxt = same_ids[(j + 1) % len(same_ids)]
+        return by_tid[nxt]
+
+    return None
+
+
 def _expand_task_ids_for_triplets(task_ids: list[int]) -> list[int]:
     """
     Расширяет список task_id: тройка 19–21 по одному task_group_id добавляется целиком (19, 20, 21).
@@ -1213,6 +1294,36 @@ def _expand_tasks_data_for_triplets(tasks_data: list) -> list:
     for i, row in enumerate(flat):
         row['order'] = i
     return flat
+
+
+@assignments_bp.route('/assignments/api/cycle-task-variant', methods=['GET'])
+@login_required
+@check_access('assignment.create')
+def cycle_task_variant():
+    """
+    JSON: подобрать другую задачу с тем же номером билета и курсом (для быстрых стрелок в мастере).
+    direction=easier | harder | same
+    """
+    task_id = request.args.get('task_id', type=int)
+    direction = (request.args.get('direction') or '').strip().lower()
+    if not task_id or direction not in {'easier', 'harder', 'same'}:
+        return jsonify({'success': False, 'error': 'Нужны task_id и direction (easier|harder|same)'}), 400
+    task = Tasks.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
+    picked = _pick_task_cycle_variant(task, direction)
+    if not picked or getattr(picked, 'task_id', None) is None:
+        return jsonify({'success': False, 'error': 'Нет других вариантов для этого номера'}), 404
+    if int(picked.task_id) == int(task.task_id):
+        return jsonify({'success': False, 'error': 'В банке только этот вариант для данного номера'}), 404
+    return jsonify(
+        {
+            'success': True,
+            'task_id': int(picked.task_id),
+            'task_number': int(getattr(picked, 'task_number', 0) or 0),
+            'difficulty_level': getattr(picked, 'difficulty_level', None),
+        }
+    )
 
 
 @assignments_bp.route('/assignments/distribute', methods=['POST'])
