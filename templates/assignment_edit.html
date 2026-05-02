@@ -3,129 +3,140 @@
 
 {% block head_css %}
 <style>
-    .edit-panel { background: var(--color-bg-surface); border-radius: var(--radius-card); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-card); }
-    .edit-panel h2 { margin: 0 0 1rem 0; font-weight: 900; font-size: 1.25rem; }
     .task-edit-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
-    .task-edit-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.6rem 1rem; background: var(--color-bg-surface-alt); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
-    .task-edit-item .task-info { font-weight: 700; color: var(--color-text-primary); }
-    .task-edit-item .task-meta { font-size: 0.85rem; color: var(--color-text-muted); }
-    .task-edit-item .remove-btn { flex-shrink: 0; padding: 0.35rem 0.6rem; font-size: 0.85rem; }
-    .task-edit-extra { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--color-stroke); display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-start; }
-    .task-edit-extra .answer-override-wrap { flex: 1; min-width: 200px; }
-    .task-edit-extra .answer-override-wrap label { display: block; font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 0.25rem; }
-    .task-edit-extra .answer-override-input { width: 100%; padding: 0.4rem 0.6rem; font-size: 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--color-stroke); background: var(--color-bg-surface); color: var(--color-text-primary); }
-    .task-drag-handle {
-        flex-shrink: 0;
-        width: 2rem;
-        min-height: 2.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: grab;
-        color: var(--color-text-muted);
-        font-size: 1.1rem;
-        line-height: 1;
-        user-select: none;
-        border-radius: var(--radius-sm);
-        border: 1px dashed var(--color-stroke);
-        background: var(--color-bg-surface);
-        touch-action: none;
-    }
+    .task-drag-handle { cursor: grab; user-select: none; touch-action: none; }
     .task-drag-handle:active { cursor: grabbing; }
-    .task-edit-item.dragging { opacity: 0.55; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12); }
+    .task-edit-item.dragging { opacity: 0.55; box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.1); }
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 </style>
 {% endblock %}
 
 {% set active_page = 'assignments' %}
 
 {% block content %}
-            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button outline" style="text-decoration: none; margin-bottom: 1rem;">← К работе</a>
-            <h1 style="font-size: 1.75rem; font-weight: 900; margin: 0 0 1.5rem 0;">Редактировать работу</h1>
+<div class="w-full max-w-[1000px] mx-auto flex flex-col gap-6 pb-28">
+            <div>
+                <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors px-2 py-1 rounded-lg hover:bg-slate-100 mb-2 no-underline">
+                    <i class="ph-bold ph-arrow-left text-lg"></i> К работе
+                </a>
+                <h1 class="text-4xl font-black text-slate-900 tracking-tight">Редактировать работу</h1>
+            </div>
 
-            <form id="editForm" class="edit-panel">
-                <h2>Основные настройки</h2>
-                <div class="neo-field">
-                    <label class="neo-label" for="edit_title">Название *</label>
-                    <input id="edit_title" class="neo-input" required value="{{ assignment.title }}" name="title">
+            <form id="editForm" class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:p-10 flex flex-col gap-6 relative overflow-hidden">
+                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+                    <i class="ph-fill ph-gear text-boo-primary"></i> Основные настройки
+                </h2>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="edit_title">Название <span class="text-boo-coral">*</span></label>
+                    <input id="edit_title" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" required value="{{ assignment.title }}" name="title">
                 </div>
-                <div class="neo-field" style="margin-top: 1rem;">
-                    <label class="neo-label" for="edit_description">Описание</label>
-                    <textarea id="edit_description" class="neo-input" name="description" rows="3">{{ assignment.description or '' }}</textarea>
+
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="edit_description">Описание / Комментарий для ученика</label>
+                    <textarea id="edit_description" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input resize-y" name="description" rows="3" placeholder="Ученик увидит этот текст перед началом выполнения...">{{ assignment.description or '' }}</textarea>
                 </div>
-                <div class="neo-field" style="margin-top: 1rem;">
-                    <label class="neo-label" for="edit_deadline">Дедлайн *</label>
-                    <input id="edit_deadline" class="neo-input" type="datetime-local" required name="deadline"
-                        value="{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') if assignment.deadline else '' }}">
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                    <div class="neo-field">
-                        <label class="neo-label" for="edit_time_limit">Время (мин)</label>
-                        <input id="edit_time_limit" class="neo-input" type="number" name="time_limit_minutes" placeholder="Нет" min="0" max="480" value="{{ assignment.time_limit_minutes or '' }}">
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="edit_deadline">Дедлайн <span class="text-boo-coral">*</span></label>
+                        <input id="edit_deadline" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input cursor-pointer" type="datetime-local" required name="deadline" value="{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') if assignment.deadline else '' }}">
                     </div>
-                    <div class="neo-field">
-                        <label class="neo-label" for="edit_max_attempts">Попыток</label>
-                        <input id="edit_max_attempts" class="neo-input" type="number" name="max_attempts_default" value="{{ assignment.max_attempts_default or 1 }}" min="1" max="20">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="edit_time_limit">Время (Мин)</label>
+                        <input id="edit_time_limit" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" type="number" name="time_limit_minutes" placeholder="Нет" min="0" max="480" value="{{ assignment.time_limit_minutes or '' }}">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="edit_max_attempts">Попыток</label>
+                        <input id="edit_max_attempts" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" type="number" name="max_attempts_default" value="{{ assignment.max_attempts_default or 1 }}" min="1" max="20">
                     </div>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.2rem;">
-                    <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                        <input type="checkbox" id="edit_hard_deadline" name="hard_deadline" {% if assignment.hard_deadline %}checked{% endif %}>
-                        <span>Запретить сдачу после дедлайна</span>
+
+                <div class="bg-slate-50 border border-slate-200 rounded-[20px] p-5 space-y-4 shadow-inner-soft mt-2">
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="checkbox" id="edit_hard_deadline" name="hard_deadline" class="w-5 h-5 rounded border-slate-300 text-boo-primary focus:ring-boo-primary" {% if assignment.hard_deadline %}checked{% endif %}>
+                        <span class="text-sm font-bold text-slate-700">Запретить сдачу после дедлайна</span>
                     </label>
-                    <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                        <input type="checkbox" id="edit_attempts_per_task" name="attempts_per_task" {% if assignment.attempts_per_task %}checked{% endif %}>
-                        <span>Попытки на каждое задание</span>
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="checkbox" id="edit_attempts_per_task" name="attempts_per_task" class="w-5 h-5 rounded border-slate-300 text-boo-primary focus:ring-boo-primary" {% if assignment.attempts_per_task %}checked{% endif %}>
+                        <span class="text-sm font-bold text-slate-700">Попытки на каждое задание</span>
                     </label>
-                    <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                        <input type="checkbox" id="edit_separate_submission" name="allow_separate_submission" {% if assignment.allow_separate_submission %}checked{% endif %}>
-                        <span>Разрешить сдавать по одному заданию</span>
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="checkbox" id="edit_separate_submission" name="allow_separate_submission" class="w-5 h-5 rounded border-slate-300 text-boo-primary focus:ring-boo-primary" {% if assignment.allow_separate_submission %}checked{% endif %}>
+                        <span class="text-sm font-bold text-slate-700">Разрешить сдавать по одному заданию</span>
                     </label>
-                    <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
-                        <input type="checkbox" id="edit_time_limit_strict" name="time_limit_strict" {% if assignment.time_limit_strict %}checked{% endif %}>
-                        <span>Блокировать сдачу после истечения таймера</span>
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="checkbox" id="edit_time_limit_strict" name="time_limit_strict" class="w-5 h-5 rounded border-slate-300 text-boo-primary focus:ring-boo-primary" {% if assignment.time_limit_strict %}checked{% endif %}>
+                        <span class="text-sm font-bold text-slate-700">Блокировать сдачу после истечения таймера</span>
                     </label>
                 </div>
             </form>
 
-            <div class="edit-panel">
-                <h2>Задания в работе</h2>
-                <p style="color: var(--color-text-muted); font-size: 0.9rem; margin: 0 0 1rem 0;">Порядок можно менять перетаскиванием. Удаление уберёт задание из работы (ответы учеников по нему сохранятся в истории).</p>
-                <p style="color: var(--color-text-muted); font-size: 0.85rem; margin: 0 0 0.5rem 0;">Ссылка «Открыть источник» и поле «Эталонный ответ» видны только преподавателям; ученики их не видят. Если ответ пустой — впишите его после просмотра источника (с ним будет сравниваться ответ ученика).</p>
-                <ul class="task-edit-list" id="taskList">
+            <div class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:p-10 flex flex-col gap-6">
+                <div>
+                    <h2 class="text-xl font-black text-slate-900 flex items-center gap-2 mb-2">
+                        <i class="ph-fill ph-list-checks text-boo-primary"></i> Задания в работе
+                    </h2>
+                    <p class="text-sm font-medium text-slate-500 leading-relaxed">
+                        Порядок можно менять перетаскиванием. Ссылка «Открыть источник» и поле «Эталонный ответ» видны только преподавателям. Если ответ пустой — впишите его после просмотра источника.
+                    </p>
+                </div>
+
+                <ul class="task-edit-list flex flex-col gap-3" id="taskList">
                     {% for at in assignment_tasks %}
-                    <li class="task-edit-item" data-assignment-task-id="{{ at.assignment_task_id }}" data-task-id="{{ at.task_id }}" data-order="{{ at.order_index }}" data-max-score="{{ at.max_score }}">
-                        <div class="task-drag-handle" draggable="true" title="Перетащить" aria-label="Изменить порядок задания">⋮⋮</div>
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
-                                <span class="task-info">Задание {{ at.task.task_number }}</span>
-                                <span class="task-meta"> · #{{ at.task_id }} · {{ at.max_score }} балл(ов)</span>
-                            </div>
-                            <div class="task-edit-extra">
+                    <li class="task-edit-item bg-slate-50 border border-slate-200 rounded-[20px] p-2 flex gap-3 hover:border-purple-200 transition-colors shadow-sm group" data-assignment-task-id="{{ at.assignment_task_id }}" data-task-id="{{ at.task_id }}" data-order="{{ at.order_index }}" data-max-score="{{ at.max_score }}">
+                        <div class="task-drag-handle w-10 flex flex-col items-center justify-center text-slate-300 hover:text-slate-500 cursor-move rounded-lg hover:bg-slate-100 transition-colors shrink-0" draggable="true" title="Перетащить" aria-label="Изменить порядок задания">
+                            <i class="ph-bold ph-dots-six-vertical text-xl"></i>
+                        </div>
+                        <div class="flex-1 flex flex-col justify-center py-2 pr-2 min-w-0">
+                            <div class="flex justify-between items-center gap-3 mb-3">
+                                <h4 class="font-black text-slate-900 text-sm truncate">Задание {{ at.task.task_number }} <span class="font-mono text-xs text-slate-400 font-bold ml-2">#{{ at.task_id }}</span></h4>
                                 {% if at.task.source_url %}
-                                <a href="{{ at.task.source_url }}" target="_blank" rel="noopener noreferrer" class="neo-button ghost sm" style="text-decoration: none;">Открыть источник</a>
+                                <a href="{{ at.task.source_url }}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-boo-primary hover:underline flex items-center gap-1 shrink-0 no-underline"><i class="ph-bold ph-link"></i> Открыть источник</a>
                                 {% endif %}
-                                <div class="answer-override-wrap">
-                                    <label for="answer_override_{{ at.assignment_task_id }}">Эталонный ответ (для сравнения с ответом ученика)</label>
-                                    <input type="text" id="answer_override_{{ at.assignment_task_id }}" class="answer-override-input" placeholder="Из задания или впишите вручную" value="{{ at.answer_override or at.task.answer or '' }}" data-task-id="{{ at.task_id }}">
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <div class="w-full sm:w-20 space-y-1">
+                                    <label for="max_score_{{ at.assignment_task_id }}" class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Балл</label>
+                                    <input type="number" min="1" max="100" id="max_score_{{ at.assignment_task_id }}" class="max-score-input w-full bg-white border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary shadow-inner-soft text-center" value="{{ at.max_score }}">
+                                </div>
+                                <div class="flex-1 space-y-1">
+                                    <label for="answer_override_{{ at.assignment_task_id }}" class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest">Эталонный ответ (для сравнения)</label>
+                                    <input type="text" id="answer_override_{{ at.assignment_task_id }}" class="answer-override-input w-full bg-white border border-slate-200 rounded-lg px-4 py-2 font-mono font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary shadow-inner-soft" placeholder="Из задания или впишите вручную" value="{{ at.answer_override or at.task.answer or '' }}" data-task-id="{{ at.task_id }}">
                                 </div>
                             </div>
                         </div>
-                        <button type="button" class="neo-button danger ghost sm remove-btn" data-task-id="{{ at.task_id }}" title="Убрать из работы">✕</button>
+                        <div class="flex items-center justify-center pr-2">
+                            <button type="button" class="w-10 h-10 rounded-xl bg-red-50 text-boo-coral border border-red-100 hover:bg-boo-coral hover:text-white transition-colors flex items-center justify-center shadow-sm remove-btn" data-task-id="{{ at.task_id }}" title="Удалить задание">
+                                <i class="ph-bold ph-x text-lg"></i>
+                            </button>
+                        </div>
                     </li>
                     {% endfor %}
                 </ul>
                 {% if not assignment_tasks %}
-                <p style="color: var(--color-text-muted); margin: 0;">Заданий пока нет.</p>
+                <p class="text-sm font-bold text-slate-500 bg-slate-50 border border-slate-100 rounded-2xl p-4">Заданий пока нет.</p>
                 {% endif %}
-                <div style="margin-top: 1rem;">
-                    <a href="{{ url_for('task_generator.task_generator') }}?return_edit={{ assignment.assignment_id }}" class="neo-button outline" style="text-decoration: none;">➕ Добавить задания из генератора</a>
+                <div class="pt-4 border-t border-slate-100">
+                    <a href="{{ url_for('task_generator.task_generator') }}?return_edit={{ assignment.assignment_id }}" class="px-5 py-3 bg-purple-50 text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-100 transition-colors inline-flex items-center gap-2 shadow-sm text-sm no-underline">
+                        <i class="ph-bold ph-plus text-lg"></i> Добавить задания из генератора
+                    </a>
                 </div>
             </div>
 
-            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
-                <button type="button" class="neo-button accent" id="saveBtn">Сохранить изменения</button>
-                <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="text-decoration: none;">Отмена</a>
+            <div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[1000px] px-4 z-40 pointer-events-none">
+                <div class="bg-white/90 backdrop-blur-xl border border-slate-200 shadow-[0_-10px_40px_rgba(15,23,42,0.08)] rounded-2xl p-3 flex items-center justify-between pointer-events-auto">
+                    <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="px-5 py-2.5 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl font-bold text-sm transition-colors border border-transparent hover:border-slate-200 no-underline">
+                        Отмена
+                    </a>
+                    <button type="button" class="px-8 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-md border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" id="saveBtn">
+                        <i class="ph-bold ph-floppy-disk text-lg"></i> Сохранить изменения
+                    </button>
+                </div>
             </div>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -139,11 +150,13 @@
                 return Array.from(items).map((el, idx) => {
                     const taskId = parseInt(el.getAttribute('data-task-id'), 10);
                     const inp = el.querySelector('.answer-override-input');
+                    const scoreInput = el.querySelector('.max-score-input');
                     const answerOverride = inp ? (inp.value || '').trim() : '';
+                    const maxScore = scoreInput ? parseInt(scoreInput.value || '1', 10) : parseInt(el.getAttribute('data-max-score') || '1', 10);
                     return {
                         task_id: taskId,
                         order: idx,
-                        max_score: parseInt(el.getAttribute('data-max-score') || '1', 10),
+                        max_score: Math.max(1, maxScore || 1),
                         answer_override: answerOverride || undefined
                     };
                 });

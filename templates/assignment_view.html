@@ -7,163 +7,10 @@
 
 {% block head_css %}
 <style>
-        .page-hero {
-            background: radial-gradient(900px 420px at 14% 10%, rgba(0, 255, 213, 0.10), transparent 60%),
-                        radial-gradient(900px 420px at 85% 20%, rgba(31, 123, 255, 0.10), transparent 55%);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
-        .hero-top {
-            display:flex;
-            justify-content: space-between;
-            gap: 1rem;
-            flex-wrap: wrap;
-            align-items: flex-start;
-        }
-        .hero-title {
-            font-size: 2.05rem;
-            font-weight: 900;
-            margin: 0.35rem 0 0 0;
-            letter-spacing: -0.01em;
-            line-height: 1.15;
-        }
-        .hero-meta {
-            margin-top: 0.8rem;
-            display: flex;
-            gap: 0.6rem;
-            flex-wrap: wrap;
-            align-items: center;
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            border-radius: 999px;
-            padding: 0.25rem 0.55rem;
-            border: 1px solid var(--stroke-1);
-            background: rgba(255,255,255,0.02);
-            font-weight: 900;
-            font-size: 0.82rem;
-            color: var(--text-primary);
-        }
-        .pill--danger { border-color: rgba(255, 77, 107, 0.55); background: rgba(255, 77, 107, 0.10); }
-        .pill--success { border-color: rgba(45, 212, 191, 0.55); background: rgba(45, 212, 191, 0.10); }
-        .pill--warning { border-color: rgba(255, 179, 71, 0.55); background: rgba(255, 179, 71, 0.10); }
-        .pill--accent { border-color: rgba(0, 255, 213, 0.55); background: rgba(0, 255, 213, 0.10); }
-        .meta-strong { color: var(--text-primary); font-weight: 900; }
-
-        .kpi-grid {
-            margin-top: 1.1rem;
-            display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
-            gap: 0.75rem;
-        }
-        @media (max-width: 980px) {
-            .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-        .kpi {
-            border: 1px solid var(--stroke-1);
-            background: rgba(255,255,255,0.02);
-            border-radius: var(--radius-lg);
-            padding: 0.9rem 1rem;
-        }
-        .kpi-label { color: var(--text-muted); font-weight: 800; font-size: 0.9rem; }
-        .kpi-value { margin-top: 0.35rem; font-size: 1.35rem; font-weight: 900; }
-
-        .layout {
-            display: grid;
-            grid-template-columns: 1.05fr 0.95fr;
-            gap: 1rem;
-            align-items: start;
-        }
-        @media (max-width: 980px) {
-            .layout { grid-template-columns: 1fr; }
-        }
-
-        .card {
-            border: 1px solid var(--stroke-1);
-            background: var(--surface-1);
-            border-radius: var(--radius-lg);
-            padding: 1rem;
-        }
-        .card-title {
-            font-size: 1.2rem;
-            font-weight: 900;
-            margin: 0;
-        }
-        .card-sub {
-            color: var(--text-muted);
-            margin-top: 0.4rem;
-            line-height: 1.5;
-        }
-
-        .filters {
-            margin-top: 0.9rem;
-            display: grid;
-            grid-template-columns: 1fr 1.1fr auto;
-            gap: 0.75rem;
-            align-items: end;
-        }
-        @media (max-width: 980px) {
-            .filters { grid-template-columns: 1fr; }
-        }
-        .filter-label { color: var(--text-muted); font-weight: 800; font-size: 0.9rem; margin-bottom: 0.35rem; display:block; }
-
-        .submissions {
-            margin-top: 0.9rem;
-            display: grid;
-            gap: 0.75rem;
-        }
-        .sub-card {
-            border: 1px solid var(--stroke-1);
-            background: rgba(255,255,255,0.02);
-            border-radius: var(--radius-lg);
-            padding: 0.9rem 1rem;
-        }
-        .sub-head {
-            display:flex;
-            justify-content: space-between;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            align-items: flex-start;
-        }
-        .sub-name { font-weight: 900; }
-        .sub-meta { margin-top: 0.35rem; color: var(--text-muted); font-size: 0.92rem; display:flex; gap: .65rem; flex-wrap: wrap; align-items: center; }
-        .status-badge { border-radius: 999px; padding: 0.25rem 0.55rem; font-weight: 900; font-size: 0.82rem; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); }
-        .status-assigned { border-color: rgba(255,255,255,0.18); }
-        .status-in_progress { border-color: rgba(31,123,255,0.45); background: rgba(31,123,255,0.12); }
-        .status-submitted { border-color: rgba(0,255,213,0.55); background: rgba(0,255,213,0.10); }
-        .status-late { border-color: rgba(255,179,71,0.55); background: rgba(255,179,71,0.10); }
-        .status-graded { border-color: rgba(45,212,191,0.55); background: rgba(45,212,191,0.10); }
-        .status-returned { border-color: rgba(255,179,71,0.55); background: rgba(255,179,71,0.10); }
-
-        .task-list { margin-top: 0.9rem; display: grid; gap: 0.75rem; }
-        .task {
-            border: 1px solid var(--stroke-1);
-            background: rgba(255,255,255,0.02);
-            border-radius: var(--radius-lg);
-            padding: 0.9rem 1rem;
-        }
-        .task-head { display:flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; align-items: flex-start; }
-        .task-title { font-weight: 900; color: var(--text-primary); }
-        .task-sub { color: var(--text-muted); font-size: 0.92rem; margin-top: 0.3rem; }
-        .task-body { margin-top: 0.75rem; line-height: 1.8; }
-        .task-body .task-content p { white-space: pre-line; }
-        .task-body .task-content .task-text { white-space: pre-line; }
-        details.task-details > summary {
-            list-style: none;
-            cursor: pointer;
-            display:flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: .6rem;
-        }
+        details.task-details > summary { list-style: none; cursor: pointer; }
         details.task-details > summary::-webkit-details-marker { display:none; }
-        .summary-hint { color: var(--text-muted); font-weight: 800; }
+        .task-body .task-content p,
+        .task-body .task-content .task-text { white-space: pre-line; }
     </style>
 {% endblock %}
 
@@ -172,110 +19,134 @@
 {% endblock %}
 
 {% block content %}
+{% set total_students = counts.total if counts is defined else (submissions|length) %}
+{% set progress_done = ((counts.submitted if counts is defined else 0) + (counts.graded if counts is defined else 0) + (counts.returned if counts is defined else 0)) %}
+{% set progress_percent = ((progress_done * 100 / total_students)|round(1)) if total_students else 0 %}
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
-            <section class="page-hero">
-                <div class="hero-top">
-                    <div style="min-width: 0;">
-                        <a href="{{ url_for('assignments.assignments_list') }}" class="neo-button outline" style="text-decoration:none;">
-                            ← Назад к списку
-                        </a>
-                        <h1 class="hero-title">{{ assignment.title }}</h1>
-                        <div class="hero-meta">
-                            <span class="pill">Тип: <span class="meta-strong">
+            <a href="{{ url_for('assignments.assignments_list') }}" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors px-2 py-1 rounded-lg hover:bg-slate-100 no-underline">
+                <i class="ph-bold ph-arrow-left text-lg"></i> Назад к списку
+            </a>
+
+            <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:p-10 flex flex-col relative overflow-hidden">
+                <div class="absolute -right-20 -top-20 w-80 h-80 bg-gradient-to-br from-cyan-50 to-purple-50 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="relative z-10 flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+                    <div class="min-w-0">
+                        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-4">{{ assignment.title }}</h1>
+                        <div class="flex flex-wrap items-center gap-3 text-sm font-bold text-slate-600">
+                            <span class="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">Тип:
                                 {% if assignment.assignment_type == 'homework' %}ДЗ
                                 {% elif assignment.assignment_type == 'classwork' %}КР
                                 {% elif assignment.assignment_type == 'exam' %}Проверочная
                                 {% elif assignment.assignment_type == 'test' %}Тест
                                 {% elif assignment.assignment_type == 'manual_review' %}Без ответов
                                 {% else %}{{ assignment.assignment_type }}{% endif %}
-                            </span></span>
-                            <span class="pill" style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('action.clock', 'sm') }} Дедлайн: <span class="meta-strong">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span></span>
-                            <span class="pill" style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('nav.assignments', 'sm') }} Задач: <span class="meta-strong">{{ assignment.tasks|length }}</span></span>
-                            <span class="pill" style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('action.refresh', 'sm') }} Попыток: <span class="meta-strong">{{ assignment.max_attempts_default or 1 }}</span></span>
-                            <span class="pill" style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('nav.students', 'sm') }} Учеников: <span class="meta-strong">{{ counts.total if counts is defined else (submissions|length) }}</span></span>
+                            </span>
+                            <span class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><i class="ph-fill ph-clock text-boo-coral"></i> Дедлайн: {{ assignment.deadline.strftime('%d.%m.%Y %H:%M') if assignment.deadline else 'без дедлайна' }}</span>
+                            <span class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><i class="ph-bold ph-list-numbers text-boo-primary"></i> Задач: {{ assignment.tasks|length }}</span>
+                            <span class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><i class="ph-bold ph-arrows-clockwise text-boo-primary"></i> Попыток: {{ assignment.max_attempts_default or 1 }}</span>
+                            <span class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><i class="ph-fill ph-users text-boo-primary"></i> Учеников: {{ total_students }}</span>
                         </div>
                     </div>
 
-                    <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center; justify-content:flex-end;">
+                    <div class="flex flex-wrap items-center gap-3 shrink-0">
                         {% if can_manage %}
-                        <a href="{{ url_for('assignments.assignment_edit', assignment_id=assignment.assignment_id) }}" class="neo-button accent" style="display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none;">
-                            {{ ui_icon('action.edit', 'sm') }} Редактировать
+                        <a href="{{ url_for('assignments.assignment_edit', assignment_id=assignment.assignment_id) }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
+                            <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
                         </a>
-                        <button type="button" class="neo-button outline" onclick="duplicateAssignment({{ assignment.assignment_id }})" style="display: inline-flex; align-items: center; gap: 0.4rem;">
-                            {{ ui_icon('action.copy', 'sm') }} Дублировать
+                        <button type="button" class="px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2 text-sm" onclick="duplicateAssignment({{ assignment.assignment_id }})">
+                            <i class="ph-bold ph-copy text-lg"></i> Дублировать
                         </button>
                         {% if assignment.is_active %}
-                        <button type="button" class="neo-button ghost" onclick="archiveAssignment({{ assignment.assignment_id }})" style="color: var(--danger); display: inline-flex; align-items: center; gap: 0.4rem;">
-                            {{ ui_icon('nav.archive', 'sm') }} В архив
+                        <button type="button" class="px-5 py-2.5 bg-red-50 text-boo-coral border border-red-100 rounded-xl font-bold hover:bg-red-100 transition-colors shadow-sm flex items-center gap-2 text-sm" onclick="archiveAssignment({{ assignment.assignment_id }})">
+                            <i class="ph-bold ph-archive text-lg"></i> В архив
                         </button>
                         {% endif %}
                         {% endif %}
-                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted', assignment_type=assignment.assignment_type, assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.4rem;">
-                            {{ ui_icon('action.check', 'sm') }} Очередь проверки
+                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted', assignment_type=assignment.assignment_type, assignment_id=assignment.assignment_id) }}" class="px-5 py-2.5 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2 text-sm no-underline">
+                            <i class="ph-bold ph-check-circle text-lg"></i> Очередь проверки
                         </a>
                     </div>
                 </div>
 
-                <div class="kpi-grid">
-                    <div class="kpi">
-                        <div class="kpi-label">Нужно проверить</div>
-                        <div class="kpi-value">{{ (counts.needs_grading if counts is defined else 0) }}</div>
+                <div class="relative z-10 mt-8 pt-6 border-t border-slate-100">
+                    <div class="flex justify-between items-end gap-4 mb-2">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Прогресс выполнения (сдано {{ progress_done }} из {{ total_students }})</span>
+                        <span class="font-black text-slate-900">{{ progress_percent }}%</span>
                     </div>
-                    <div class="kpi">
-                        <div class="kpi-label">Сдано</div>
-                        <div class="kpi-value">{{ (counts.submitted if counts is defined else 0) }}</div>
+                    <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-boo-primary rounded-full" style="width: {{ progress_percent }}%"></div>
                     </div>
-                    <div class="kpi">
-                        <div class="kpi-label">На доработке</div>
-                        <div class="kpi-value">{{ (counts.returned if counts is defined else 0) }}</div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 relative z-10 mt-6">
+                    <div class="bg-white border-2 border-cyan-200 rounded-2xl p-4 shadow-[0_4px_15px_rgba(6,182,212,0.1)] flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-600 uppercase tracking-widest mb-1">Нужно проверить</div>
+                        <div class="text-3xl font-black text-slate-900">{{ (counts.needs_grading if counts is defined else 0) }}</div>
                     </div>
-                    <div class="kpi">
-                        <div class="kpi-label">В процессе</div>
-                        <div class="kpi-value">{{ (counts.in_progress if counts is defined else 0) }}</div>
+                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">Сдано</div>
+                        <div class="text-3xl font-black text-slate-900">{{ (counts.submitted if counts is defined else 0) }}</div>
                     </div>
-                    <div class="kpi">
-                        <div class="kpi-label">Назначено</div>
-                        <div class="kpi-value">{{ (counts.assigned if counts is defined else 0) }}</div>
+                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">На доработке</div>
+                        <div class="text-3xl font-black text-slate-900">{{ (counts.returned if counts is defined else 0) }}</div>
                     </div>
-                    <div class="kpi">
-                        <div class="kpi-label">Проверено</div>
-                        <div class="kpi-value">{{ (counts.graded if counts is defined else 0) }}</div>
+                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">В процессе</div>
+                        <div class="text-3xl font-black text-slate-900">{{ (counts.in_progress if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">Назначено</div>
+                        <div class="text-3xl font-black text-slate-900">{{ (counts.assigned if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">Проверено</div>
+                        <div class="text-3xl font-black text-slate-900">{{ (counts.graded if counts is defined else 0) }}</div>
                     </div>
                 </div>
             </section>
 
-            <div class="layout">
-                <section class="card">
-                    <h2 class="card-title">Сдачи</h2>
-                    <div class="card-sub">Фильтруй по статусу и переходи в проверку конкретной сдачи.</div>
+            <div class="flex flex-col lg:flex-row gap-6 items-start">
+                <section class="w-full lg:w-3/5 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-black text-slate-900 mb-1">Сдачи</h2>
+                        <p class="text-sm font-medium text-slate-500">Фильтруй по статусу и переходи к проверке конкретной сдачи.</p>
+                    </div>
 
-                    <form method="GET" class="filters">
-                        <div>
-                            <label class="filter-label" for="status">Статус</label>
-                            <select class="neo-select" id="status" name="status">
+                    <form method="GET" class="flex flex-col sm:flex-row items-end gap-3 mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div class="w-full sm:w-1/3 space-y-1.5">
+                            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="status">Статус</label>
+                            <div class="relative">
+                            <select class="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 font-bold text-slate-700 text-sm focus:outline-none shadow-sm appearance-none cursor-pointer" id="status" name="status">
                                 <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Все</option>
                                 <option value="needs_grading" {% if status_filter == 'needs_grading' %}selected{% endif %}>Нужно проверить</option>
                                 <option value="returned" {% if status_filter == 'returned' %}selected{% endif %}>На доработке</option>
                                 <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Не сдано</option>
                                 <option value="graded" {% if status_filter == 'graded' %}selected{% endif %}>Проверено</option>
                             </select>
+                            <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            </div>
                         </div>
-                        <div>
-                            <label class="filter-label" for="student">Ученик</label>
-                            <input class="neo-input" id="student" name="student" value="{{ student_query }}" placeholder="Поиск по имени…">
+                        <div class="flex-1 w-full space-y-1.5">
+                            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="student">Ученик</label>
+                            <div class="relative">
+                                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                <input class="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 font-medium text-slate-700 text-sm focus:outline-none shadow-sm" id="student" name="student" value="{{ student_query }}" placeholder="Поиск по имени...">
+                            </div>
                         </div>
-                        <div style="display:flex; gap:.6rem; justify-content:flex-end; flex-wrap:wrap;">
-                            <button type="submit" class="neo-button accent">
+                        <div class="flex gap-2 w-full sm:w-auto">
+                            <button type="submit" class="flex-1 sm:flex-none px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-boo-primaryHover transition-colors flex items-center justify-center gap-2">
                                 <i class="ph-bold ph-funnel text-base"></i> Применить
                             </button>
-                            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button outline" style="text-decoration:none;">
-                                <i class="ph-bold ph-arrow-counter-clockwise text-base"></i> Сброс
+                            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="px-3 py-2.5 bg-white text-slate-500 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm no-underline" title="Сброс">
+                                <i class="ph-bold ph-arrow-counter-clockwise text-lg"></i>
                             </a>
                         </div>
                     </form>
 
                     {% if can_manage and status_filter in ['all', 'needs_grading'] and (counts.needs_grading if counts is defined else 0) > 0 %}
-                    <div style="margin-top: 0.9rem; display:flex; gap:.6rem; flex-wrap:wrap; align-items:center;">
+                    <div class="mb-6 -mt-2 flex flex-col sm:flex-row gap-3 sm:items-center bg-orange-50 border border-orange-100 rounded-2xl p-4">
                         <form method="POST" action="{{ url_for('assignments.assignment_review_bulk_update', assignment_id=assignment.assignment_id) }}">
                             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                             <input type="hidden" name="action" value="mark_returned">
@@ -283,26 +154,32 @@
                             <input type="hidden" name="source" value="assignments">
                             <input type="hidden" name="assignment_type" value="{{ assignment.assignment_type }}">
                             <input type="hidden" name="student" value="">
-                            <button type="submit" class="neo-button ghost" style="color: var(--warning);">
+                            <button type="submit" class="px-4 py-2.5 bg-white text-orange-600 border border-orange-100 rounded-xl font-bold hover:bg-orange-100 transition-colors shadow-sm flex items-center gap-2 text-sm">
                                 <i class="ph-bold ph-arrow-u-up-left text-base"></i> Вернуть все сданные на доработку
                             </button>
                         </form>
-                        <div style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.45;">
+                        <div class="text-sm font-semibold text-orange-700/75 leading-relaxed">
                             Массовое действие применяется только к сдачам со статусом «Сдано».
                         </div>
                     </div>
                     {% endif %}
 
-                    <div class="submissions">
+                    <div class="space-y-4">
                         {% if submissions and submissions|length > 0 %}
                             {% for submission in submissions %}
                             {% set st = (submission.status or '')|lower %}
-                            <div class="sub-card">
-                                <div class="sub-head">
-                                    <div style="min-width: 0;">
-                                        <div class="sub-name">{{ submission.student.name if submission.student else '—' }}</div>
-                                        <div class="sub-meta">
-                                            <span class="status-badge status-{{ st }}{% if submission_display_status and submission_display_status.get(submission.submission_id) %} status-overdue-timer{% endif %}">
+                            <div class="bg-white border border-slate-200 rounded-[20px] p-5 hover:border-purple-200 hover:shadow-tactile transition-all group">
+                                <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        {% if submission.student and submission.student.user and submission.student.user.avatar_url %}
+                                        <img src="{{ submission.student.user.avatar_url }}" class="w-10 h-10 rounded-xl bg-purple-50 border border-slate-200 object-cover shrink-0" alt="">
+                                        {% else %}
+                                        <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (submission.student.name if submission.student else 'student')|urlencode }}&backgroundColor=F3F0FF" class="w-10 h-10 rounded-xl bg-purple-50 border border-slate-200 shrink-0" alt="">
+                                        {% endif %}
+                                        <div class="min-w-0">
+                                            <div class="font-black text-slate-900 text-base truncate">{{ submission.student.name if submission.student else '—' }}</div>
+                                            <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                            <span class="{% if submission.status == 'GRADED' %}bg-green-50 text-green-600 border-green-200{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] %}bg-cyan-50 text-cyan-700 border-cyan-200{% elif submission.status == 'RETURNED' %}bg-orange-50 text-orange-600 border-orange-200{% elif submission.status == 'IN_PROGRESS' %}bg-purple-50 text-boo-primary border-purple-200{% else %}bg-slate-50 text-slate-500 border-slate-200{% endif %} border px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider">
                                                 {% if submission_display_status and submission_display_status.get(submission.submission_id) %}{{ submission_display_status.get(submission.submission_id) }}
                                                 {% elif submission.status == 'ASSIGNED' %}Назначено
                                                 {% elif submission.status == 'IN_PROGRESS' %}В процессе
@@ -313,25 +190,25 @@
                                                 {% else %}{{ submission.status }}{% endif %}
                                             </span>
                                             {% if submission.submitted_at %}
-                                            <span>🕒 {{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                                            <span class="text-xs font-bold text-slate-400 flex items-center gap-1"><i class="ph-fill ph-clock"></i> {{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</span>
                                             {% endif %}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:flex-end;">
-                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="neo-button outline sm" style="text-decoration:none;">
+                                    <div class="flex gap-2 w-full sm:w-auto">
+                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="flex-1 sm:flex-none px-5 py-2 bg-purple-50 text-boo-primary border border-purple-100 rounded-xl font-bold text-sm hover:bg-purple-100 transition-colors shadow-sm text-center no-underline">
                                             Открыть
                                         </a>
                                         {% if submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] %}
-                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="neo-button accent sm" style="text-decoration:none;">
+                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="flex-1 sm:flex-none px-5 py-2 bg-boo-primary text-white rounded-xl font-bold text-sm hover:bg-boo-primaryHover transition-colors shadow-sm text-center no-underline">
                                             Проверить
                                         </a>
                                         {% endif %}
                                         {% if can_manage %}
                                         <button
                                             type="button"
-                                            class="neo-button ghost sm"
-                                            style="color: var(--warning);"
+                                            class="flex-1 sm:flex-none px-4 py-2 bg-orange-50 text-orange-600 border border-orange-100 rounded-xl font-bold text-sm hover:bg-orange-100 transition-colors shadow-sm"
                                             onclick='revokeSubmission({{ submission.submission_id }}, {{ (submission.student.name if submission.student else "Ученик")|tojson }})'
                                         >
                                             Отозвать
@@ -341,12 +218,11 @@
                                 </div>
 
                                 {% if submission.status == 'GRADED' and submission.total_score is not none and submission.max_score is not none %}
-                                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--stroke-1); display:flex; justify-content: space-between; gap: .75rem; flex-wrap: wrap; align-items:center;">
-                                    <div style="color: var(--text-muted);">
-                                        Итог:
-                                        <span class="meta-strong">{{ submission.total_score }}/{{ submission.max_score }}</span>
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center justify-between gap-3">
+                                    <div class="text-sm font-bold text-slate-700">
+                                        Итог: <span class="text-slate-900 font-black">{{ submission.total_score }}/{{ submission.max_score }}</span>
                                     </div>
-                                    <span class="pill pill--success">
+                                    <span class="bg-boo-cyan text-white px-2 py-0.5 rounded text-[10px] font-black shadow-sm">
                                         {{ "%.1f"|format(submission.percentage or 0) }}%
                                     </span>
                                 </div>
@@ -354,36 +230,38 @@
                             </div>
                             {% endfor %}
                         {% else %}
-                            <div style="margin-top: 0.9rem; color: var(--text-muted);">
+                            <div class="mt-3 text-sm font-bold text-slate-500 bg-slate-50 border border-slate-100 rounded-2xl p-4">
                                 По текущим фильтрам сдач нет.
                             </div>
                         {% endif %}
                     </div>
                 </section>
 
-                <section class="card">
-                    <h2 class="card-title">Задачи</h2>
-                    <div class="card-sub">Состав работы. Для быстроты разверни нужное задание.</div>
+                <section class="w-full lg:w-2/5 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-black text-slate-900 mb-1">Задачи</h2>
+                        <p class="text-sm font-medium text-slate-500">Состав работы. Для быстрого просмотра.</p>
+                    </div>
 
-                    <div class="task-list">
+                    <div class="space-y-3">
                         {% for task in assignment.tasks|sort(attribute='order_index') %}
-                        <div class="task">
+                        <div class="bg-slate-50 border border-slate-200 rounded-[16px] p-4 hover:border-purple-200 transition-colors">
                             <details class="task-details">
-                                <summary>
-                                    <div style="min-width: 0;">
-                                        <div class="task-title">Задание №{{ task.task.task_number }}</div>
-                                        <div class="task-sub">Максимальный балл: <span class="meta-strong">{{ task.max_score }}</span></div>
+                                <summary class="flex items-center justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <h4 class="font-black text-slate-900 text-sm">Задание №{{ task.task.task_number }}</h4>
+                                        <div class="text-xs font-medium text-slate-500 mt-0.5">Максимальный балл: <b class="text-slate-700">{{ task.max_score }}</b></div>
                                     </div>
-                                    <div style="display:flex; gap:.4rem; flex-wrap: wrap; align-items:center; justify-content:flex-end;">
+                                    <div class="flex items-center gap-2 shrink-0">
                                         {% if task.requires_manual_grading %}
-                                        <span class="pill pill--warning">Ручная</span>
+                                        <span class="bg-white border border-slate-200 text-slate-500 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase shadow-sm">Ручная</span>
                                         {% else %}
-                                        <span class="pill pill--success">Авто</span>
+                                        <span class="bg-white border border-slate-200 text-slate-500 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase shadow-sm">Авто</span>
                                         {% endif %}
-                                        <span class="summary-hint">Открыть</span>
+                                        <span class="text-sm font-bold text-boo-primary hover:underline">Открыть</span>
                                     </div>
                                 </summary>
-                                <div class="task-body">
+                                <div class="task-body mt-4 pt-4 border-t border-slate-200 text-sm leading-7 text-slate-700">
                                     {{ render_task_content(task.task, true, 'task-content') }}
                                 </div>
                             </details>
@@ -393,77 +271,75 @@
                 </section>
             </div>
 
-    <div id="duplicate-modal" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(2,6,23,.55); backdrop-filter:blur(3px);">
-        <div style="max-width:760px; width:calc(100% - 2rem); margin:3rem auto; background:var(--surface-1); border:1px solid var(--stroke-1); border-radius:24px; box-shadow:var(--shadow-1); padding:1.25rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:.75rem; margin-bottom:1rem;">
-                <h3 style="margin:0; font-size:1.2rem; font-weight:900;">Дублировать работу</h3>
-                <button type="button" class="neo-button ghost sm" id="duplicate-modal-close">Закрыть</button>
+    <div id="duplicate-modal" class="fixed inset-0 z-[1000] bg-slate-950/55 backdrop-blur-sm" style="display:none;">
+        <div class="max-w-[760px] w-[calc(100%_-_2rem)] mx-auto my-12 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8">
+            <div class="flex items-center justify-between gap-4 mb-6">
+                <h3 class="text-2xl font-black text-slate-900">Дублировать работу</h3>
+                <button type="button" class="px-4 py-2 bg-white text-slate-500 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm text-sm" id="duplicate-modal-close">Закрыть</button>
             </div>
-            <div style="display:grid; gap:.85rem;">
-                <div>
-                    <label style="display:block; font-weight:700; margin-bottom:.35rem;">Название копии</label>
-                    <input id="dup-title" class="neo-input" style="width:100%;" placeholder="Название работы">
+            <div class="grid gap-4">
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Название копии</label>
+                    <input id="dup-title" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" placeholder="Название работы">
                 </div>
-                <div>
-                    <label style="display:block; font-weight:700; margin-bottom:.35rem;">Тип работы</label>
-                    <select id="dup-type" class="neo-input" style="width:100%;">
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Тип работы</label>
+                    <select id="dup-type" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
                         <option value="homework">Домашняя работа</option>
                         <option value="classwork">Классная работа</option>
                         <option value="exam">Проверочная / Тест</option>
                         <option value="manual_review">Без правильных ответов (ручная проверка)</option>
                     </select>
                 </div>
-                <div>
-                    <label style="display:block; font-weight:700; margin-bottom:.35rem;">Описание / Комментарий</label>
-                    <textarea id="dup-description" rows="3" class="neo-input" style="width:100%; resize:vertical;" placeholder="Комментарий для ученика"></textarea>
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Описание / Комментарий</label>
+                    <textarea id="dup-description" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input resize-y" placeholder="Комментарий для ученика"></textarea>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
-                    <div>
-                        <label style="display:block; font-weight:700; margin-bottom:.35rem;">Дедлайн</label>
-                        <input id="dup-deadline" type="datetime-local" class="neo-input" style="width:100%;">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Дедлайн</label>
+                        <input id="dup-deadline" type="datetime-local" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
                     </div>
-                    <div>
-                        <label style="display:block; font-weight:700; margin-bottom:.35rem;">Попытки</label>
-                        <input id="dup-max-attempts" type="number" min="1" class="neo-input" style="width:100%;">
-                    </div>
-                </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
-                    <div>
-                        <label style="display:block; font-weight:700; margin-bottom:.35rem;">Лимит времени (мин)</label>
-                        <input id="dup-time-limit-minutes" type="number" min="1" class="neo-input" style="width:100%;" placeholder="Нет лимита">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Попытки</label>
+                        <input id="dup-max-attempts" type="number" min="1" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
                     </div>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem;">
-                    <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-hard-deadline" type="checkbox"> Жесткий дедлайн</label>
-                    <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-hide-before-start" type="checkbox"> Скрывать до старта</label>
-                    <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-time-limit-strict" type="checkbox"> Блок по таймеру</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Лимит времени (мин)</label>
+                        <input id="dup-time-limit-minutes" type="number" min="1" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" placeholder="Нет лимита">
+                    </div>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem;">
-                    <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-attempts-per-task" type="checkbox"> Попытки на каждое задание</label>
-                    <label style="display:flex; align-items:center; gap:.45rem; font-weight:700;"><input id="dup-allow-separate-submission" type="checkbox"> Разрешить сдавать по одной</label>
+                <div class="bg-slate-50 border border-slate-200 rounded-[20px] p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="flex items-center gap-3 cursor-pointer text-sm font-bold text-slate-700"><input id="dup-hard-deadline" type="checkbox" class="w-5 h-5 rounded border-slate-300 text-boo-primary focus:ring-boo-primary"> Жесткий дедлайн</label>
+                    <label class="flex items-center gap-3 cursor-pointer text-sm font-bold text-slate-700"><input id="dup-hide-before-start" type="checkbox" class="w-5 h-5 rounded border-slate-300 text-boo-primary focus:ring-boo-primary"> Скрывать до старта</label>
+                    <label class="flex items-center gap-3 cursor-pointer text-sm font-bold text-slate-700"><input id="dup-time-limit-strict" type="checkbox" class="w-5 h-5 rounded border-slate-300 text-boo-primary focus:ring-boo-primary"> Блок по таймеру</label>
+                    <label class="flex items-center gap-3 cursor-pointer text-sm font-bold text-slate-700"><input id="dup-attempts-per-task" type="checkbox" class="w-5 h-5 rounded border-slate-300 text-boo-primary focus:ring-boo-primary"> Попытки на каждое задание</label>
+                    <label class="flex items-center gap-3 cursor-pointer text-sm font-bold text-slate-700 sm:col-span-2"><input id="dup-allow-separate-submission" type="checkbox" class="w-5 h-5 rounded border-slate-300 text-boo-primary focus:ring-boo-primary"> Разрешить сдавать по одной</label>
                 </div>
-                <div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.35rem;">
-                        <label style="font-weight:700;">Получатели</label>
-                        <span id="dup-selected-count" style="font-size:.85rem; color:var(--text-muted); font-weight:700;">Выбрано: 0</span>
-                        <div style="display:flex; gap:.45rem;">
-                            <button type="button" class="neo-button ghost sm" id="dup-select-all">Все</button>
-                            <button type="button" class="neo-button ghost sm" id="dup-select-default">Текущие</button>
+                <div class="space-y-2">
+                    <div class="flex flex-wrap justify-between items-center gap-2">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Получатели</label>
+                        <span id="dup-selected-count" class="text-xs text-slate-500 font-bold">Выбрано: 0</span>
+                        <div class="flex gap-2">
+                            <button type="button" class="px-3 py-1.5 bg-white text-slate-600 border border-slate-200 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm text-xs" id="dup-select-all">Все</button>
+                            <button type="button" class="px-3 py-1.5 bg-white text-slate-600 border border-slate-200 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm text-xs" id="dup-select-default">Текущие</button>
                         </div>
                     </div>
-                    <input id="dup-recipient-search" class="neo-input" style="width:100%; margin-bottom:.45rem;" placeholder="Поиск ученика...">
-                    <div id="dup-recipient-list" style="max-height:240px; overflow:auto; border:1px solid var(--stroke-1); border-radius:14px; padding:.5rem;">
+                    <input id="dup-recipient-search" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" placeholder="Поиск ученика...">
+                    <div id="dup-recipient-list" class="max-h-[240px] overflow-auto border border-slate-200 rounded-2xl p-2 bg-slate-50">
                         {% for opt in (duplicate_recipient_options or []) %}
-                        <label class="dup-rec-item" data-student-id="{{ opt.student_id }}" style="display:flex; align-items:center; gap:.5rem; padding:.35rem .45rem; border-radius:10px; cursor:pointer;">
-                            <input type="checkbox" value="{{ opt.student_id }}">
+                        <label class="dup-rec-item flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer hover:bg-white font-bold text-sm text-slate-700" data-student-id="{{ opt.student_id }}">
+                            <input type="checkbox" value="{{ opt.student_id }}" class="w-4 h-4 rounded border-slate-300 text-boo-primary focus:ring-boo-primary">
                             <span>{{ opt.name }}</span>
                         </label>
                         {% endfor %}
                     </div>
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:.6rem; margin-top:.5rem;">
-                    <button type="button" class="neo-button ghost" id="dup-cancel-btn">Отмена</button>
-                    <button type="button" class="neo-button accent" id="dup-submit-btn">Создать копию</button>
+                <div class="flex justify-end gap-3 mt-2">
+                    <button type="button" class="px-5 py-2.5 bg-white text-slate-500 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm text-sm" id="dup-cancel-btn">Отмена</button>
+                    <button type="button" class="px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" id="dup-submit-btn">Создать копию</button>
                 </div>
             </div>
         </div>

@@ -2500,7 +2500,7 @@ def assignment_view(assignment_id):
     try:
         assignment = Assignment.query.options(
             joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
-            joinedload(Assignment.submissions).joinedload(Submission.student),
+            joinedload(Assignment.submissions).joinedload(Submission.student).joinedload(Student.user),
             joinedload(Assignment.created_by)
         ).get_or_404(assignment_id)
     except Exception as e:

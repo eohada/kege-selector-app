@@ -647,7 +647,6 @@
             }, 400);
         }
 
-        // Функция возврата (Drill-up: Профиль -> Список)
         function drillUpToDashboard() {
             const currentView = document.querySelector('.spa-view.active');
             const targetView = document.getElementById('view-dashboard');
@@ -658,7 +657,6 @@
                 currentView.classList.remove('active', 'drill-out-leave');
                 targetView.className = 'spa-view active drill-out-enter';
                 
-                // Возвращаем ползунок к пункту "Ученики"
                 const dashboardBtn = document.querySelector('[data-target="dashboard"]');
                 document.getElementById('nav-highlight').style.opacity = '1';
                 updateNavHighlight(dashboardBtn);
