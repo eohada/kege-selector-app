@@ -4,9 +4,18 @@
 {% block head_css %}
 <style>
     #assignmentCreateWizard.wizard-container { max-width: 1400px; margin: 0 auto; padding: 0 1rem 2rem; }
-    #assignmentCreateWizard .ac-step { display: none; opacity: 0; transform: translateY(10px); }
-    #assignmentCreateWizard .ac-step.ac-step-active { display: block; animation: slideUp .4s ease forwards; }
-    @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+    /* Только display — не opacity: иначе при конфликте с глобальными стилями шаги остаются невидимыми */
+    #assignmentCreateWizard .ac-step { display: none; }
+    #assignmentCreateWizard .ac-step.ac-step-active {
+        display: block;
+        opacity: 1;
+        transform: none;
+        animation: acStepIn .35s ease-out;
+    }
+    @keyframes acStepIn {
+        from { opacity: 0.6; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
     .student-list::-webkit-scrollbar { width: 6px; }
     .student-list::-webkit-scrollbar-track { background: #f8fafc; border-radius: 8px; }
     .student-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 8px; }
@@ -101,11 +110,15 @@
         </button>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3 justify-center">
         <div class="status-pill">Учеников: <span id="statusRecipients">0</span></div>
-        <div class="status-pill">Заданий: <span id="statusTasks">{{ (task_ids|length) if task_ids else 0 }}</span></div>
+        <div class="status-pill">Карточек: <span id="statusTasks">{{ (task_ids|length) if task_ids else 0 }}</span></div>
+        {% if task_exam_number_slots and task_card_count and task_exam_number_slots != task_card_count %}
+        <div class="status-pill" title="В билете ЕГЭ часть номеров — общий текст (например 19–21), в работе это несколько карточек.">Номеров в билете: <span>{{ task_exam_number_slots }}</span></div>
+        {% endif %}
         {% if task_ids and task_ids|length > 0 %}
         <button type="button" class="bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors shadow-sm dark:shadow-none dark:shadow-none active:scale-95" onclick="clearTasks()">Сбросить</button>
+        <button type="button" class="bg-surface-alt text-boo-primary border border-purple-200 hover:bg-purple-50 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors shadow-sm dark:shadow-none dark:shadow-none active:scale-95" onclick="reloadWithCurrentTaskIds()" title="Подтянуть тексты и метаданные из банка по текущим ID">Обновить по ID</button>
         {% endif %}
       </div>
     </div>
@@ -197,18 +210,18 @@
             <p class="text-xs font-medium text-muted">Готовые варианты или тематические наборы.</p>
           </button>
           <div class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left flex flex-col {% if probnik_mode %}active-probnik{% endif %}">
-            <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-scroll"></i></div>
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-4 border" style="background-color:#d1fae5;color:#047857;border-color:#6ee7b7;"><i class="ph-bold ph-scroll"></i></div>
             <h3 class="text-lg font-black text-primary mb-1">Быстрый пробник</h3>
             <p class="text-xs font-medium text-muted mb-3">По одному активному заданию на каждый номер 1–27 выбранного курса (тройка 19–21 — один текст).</p>
             {% if courses_for_probnik and courses_for_probnik|length > 0 %}
             <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-1 block">Курс / экзамен</label>
-            <select id="probnikCourseSelect" class="w-full bg-surface border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-secondary text-xs focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 mb-3">
+            <select id="probnikCourseSelect" class="w-full bg-surface border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-secondary text-xs focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 mb-3">
               {% for c in courses_for_probnik %}
               <option value="{{ c.id }}" {% if default_probnik_course_id and c.id == default_probnik_course_id %}selected{% endif %}>{{ c.title }}</option>
               {% endfor %}
             </select>
             {% endif %}
-            <button type="button" class="mt-auto w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-colors border-b-[3px] border-b-emerald-900 active:translate-y-[1px] active:border-b-0" onclick="startProbnikBuild()">
+            <button type="button" class="mt-auto w-full px-4 py-3 rounded-xl font-bold text-sm transition-opacity hover:opacity-95 border-b-[3px] active:translate-y-[1px] active:border-b-0" style="background-color:#059669;color:#fff;border-bottom-color:#047857;" onclick="startProbnikBuild()">
               Собрать пробник
             </button>
           </div>
@@ -246,8 +259,35 @@
         <p class="text-muted font-medium text-base mb-8">Проверьте список задач и установите срок сдачи.</p>
 
         <div class="mb-8">
-          <h3 class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-3 ml-1">Список задач ({{ tasks|length }})</h3>
-          <div class="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+          <div class="flex flex-wrap items-end justify-between gap-3 mb-3 ml-1">
+            <h3 class="text-[10px] font-extrabold text-muted uppercase tracking-widest m-0">Состав работы</h3>
+            <p class="text-xs text-muted font-medium m-0 max-w-xl">Меняйте ID в полях, удаляйте строки или добавляйте новые. «Обновить по ID» вверху перезагрузит страницу и подтянет из банка тексты по текущему списку.</p>
+          </div>
+          <div id="taskOrderEditor" class="space-y-2 max-h-[min(52vh,520px)] overflow-y-auto pr-1 mb-4">
+            {% if not tasks %}
+            <div class="text-sm text-muted font-medium px-2 py-4 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>
+            {% endif %}
+            {% for t in tasks %}
+            <div class="task-order-row flex flex-wrap items-center gap-2 p-3 rounded-xl bg-surface-alt border border-slate-200">
+              <span class="task-idx text-xs font-black text-muted w-7 shrink-0">{{ loop.index }}.</span>
+              <label class="sr-only">task id</label>
+              <input type="number" min="1" step="1" class="task-id-editor w-[100px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-2 font-mono text-sm font-bold text-primary text-center" value="{{ t.task_id }}" data-initial="{{ t.task_id }}" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">
+              <span class="text-[11px] font-bold text-muted shrink-0">№{{ t.task_number }}</span>
+              <div class="flex flex-wrap items-center gap-2 ml-auto">
+                {% if bank_course_id_for_links %}
+                <a class="text-[10px] font-black text-boo-primary uppercase tracking-wider no-underline hover:underline" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1, exam_course_id=bank_course_id_for_links) }}">База</a>
+                {% else %}
+                <a class="text-[10px] font-black text-boo-primary uppercase tracking-wider no-underline hover:underline" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1) }}">База</a>
+                {% endif %}
+                <button type="button" class="text-[10px] font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="removeTaskRow(this)">Удалить</button>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" class="mb-4 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-bold text-muted hover:text-boo-primary hover:border-boo-primary hover:bg-purple-50/50 transition-colors w-full sm:w-auto" onclick="addEmptyTaskRow()">+ Добавить задание (ID)</button>
+
+          <h3 class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-3 ml-1">Предпросмотр (по текущим данным с сервера)</h3>
+          <div class="space-y-2 max-h-[280px] overflow-y-auto pr-1">
             {% for t in tasks %}
             <div class="task-mini-item bg-surface-alt border border-slate-200 rounded-xl">
               <div class="task-mini-header flex justify-between items-center px-4 py-3 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('active')">
@@ -409,13 +449,16 @@
                 }
             }
             if (s === 3) {
-                if (getTaskIds().length === 0) {
+                if (getTaskIdsLeavingStep2().length === 0) {
                     window.toast?.error?.('Список задач пуст');
                     return;
                 }
             }
             currentStep = s;
             updateUI();
+            if (s === 3) {
+                syncTaskIdsFromEditor();
+            }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -483,18 +526,116 @@
             location.href = `/assignments/create?source=manual&recipient_ids=${ids}`;
         }
 
+        function isTaskEditorStepActive() {
+            const el = document.getElementById('stepContent3');
+            return !!(el && el.classList.contains('ac-step-active'));
+        }
+
+        function readTaskIdsFromEditor() {
+            if (!isTaskEditorStepActive()) return null;
+            const box = document.getElementById('taskOrderEditor');
+            if (!box) return null;
+            const inputs = Array.from(box.querySelectorAll('input.task-id-editor'));
+            if (!inputs.length) return null;
+            const out = [];
+            for (const inp of inputs) {
+                const v = parseInt(String(inp.value || '').trim(), 10);
+                if (!isNaN(v) && v > 0) out.push(v);
+            }
+            return out.length ? out : [];
+        }
+
+        function getTaskIdsLeavingStep2() {
+            try {
+                const ta = document.getElementById('manualTaskIds');
+                if (ta && ta.value.trim().length > 0) {
+                    return (ta.value || '').split(/[^0-9]+/).map((x) => parseInt(x, 10)).filter((x) => !isNaN(x));
+                }
+                const jsonEl = document.getElementById('task-ids-json');
+                return JSON.parse(jsonEl && jsonEl.textContent ? jsonEl.textContent : '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function renumberTaskRows() {
+            document.querySelectorAll('#taskOrderEditor .task-order-row').forEach((row, i) => {
+                const pill = row.querySelector('.task-idx');
+                if (pill) pill.textContent = `${i + 1}.`;
+            });
+        }
+
+        function syncTaskIdsFromEditor() {
+            if (!isTaskEditorStepActive()) return;
+            const ids = readTaskIdsFromEditor();
+            const jsonEl = document.getElementById('task-ids-json');
+            if (!jsonEl) return;
+            if (!ids || ids.length === 0) {
+                jsonEl.textContent = '[]';
+            } else {
+                jsonEl.textContent = JSON.stringify(ids);
+            }
+            const st = document.getElementById('statusTasks');
+            if (st) st.textContent = String((ids && ids.length) || 0);
+        }
+
+        function removeTaskRow(btn) {
+            const row = btn && btn.closest ? btn.closest('.task-order-row') : null;
+            if (row) row.remove();
+            const box = document.getElementById('taskOrderEditor');
+            if (box && !box.querySelector('.task-order-row')) {
+                box.innerHTML = '<div class="text-sm text-muted font-medium px-2 py-4 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>';
+            }
+            renumberTaskRows();
+            syncTaskIdsFromEditor();
+        }
+
+        function addEmptyTaskRow() {
+            const box = document.getElementById('taskOrderEditor');
+            if (!box) return;
+            const placeholder = box.querySelector('.border-dashed');
+            if (placeholder && placeholder.textContent.indexOf('Нет заданий') !== -1) placeholder.remove();
+            const n = box.querySelectorAll('.task-order-row').length + 1;
+            const wrap = document.createElement('div');
+            wrap.className = 'task-order-row flex flex-wrap items-center gap-2 p-3 rounded-xl bg-surface-alt border border-slate-200';
+            wrap.innerHTML = '<span class="task-idx text-xs font-black text-muted w-7 shrink-0">' + n + '.</span>' +
+                '<input type="number" min="1" step="1" class="task-id-editor w-[100px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-2 font-mono text-sm font-bold text-primary text-center" value="" placeholder="id" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">' +
+                '<span class="text-[11px] font-bold text-muted shrink-0">—</span>' +
+                '<div class="flex flex-wrap items-center gap-2 ml-auto">' +
+                '<button type="button" class="text-[10px] font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="removeTaskRow(this)">Удалить</button></div>';
+            box.appendChild(wrap);
+            renumberTaskRows();
+        }
+
+        function reloadWithCurrentTaskIds() {
+            syncTaskIdsFromEditor();
+            const ids = getTaskIds();
+            if (!ids.length) {
+                window.toast?.warning?.('Сначала укажите хотя бы один ID задания');
+                return;
+            }
+            const sel = document.getElementById('ca_recipients');
+            const rec = sel ? Array.from(sel.selectedOptions).map((o) => o.value).filter(Boolean).join(',') : '';
+            let url = '/assignments/create?source=generator&task_ids=' + encodeURIComponent(ids.join(','));
+            if (rec) url += '&recipient_ids=' + encodeURIComponent(rec);
+            window.location.href = url;
+        }
+
         function getTaskIds() {
             try {
+                const ed = readTaskIdsFromEditor();
+                if (ed && ed.length > 0) return ed;
                 const ta = document.getElementById('manualTaskIds');
                 if (ta && ta.value.trim().length > 0) {
                     return (ta.value || '').split(/[^0-9]+/).map(x => parseInt(x)).filter(x => !isNaN(x));
                 }
                 const jsonEl = document.getElementById('task-ids-json');
-                return JSON.parse(jsonEl ? jsonEl.textContent : '[]');
+                return JSON.parse(jsonEl && jsonEl.textContent ? jsonEl.textContent : '[]');
             } catch(e) { return []; }
         }
 
         async function submitWork() {
+            syncTaskIdsFromEditor();
             const btn = document.getElementById('submitBtn');
             const title = document.getElementById('ca_title').value.trim();
             const deadline = document.getElementById('ca_deadline').value;

@@ -1008,13 +1008,17 @@ def _get_triplet_task_ids(task: Tasks | None):
 
 def _pick_probnik_tasks_one_per_exam_number(course_id: int) -> list[Tasks]:
     """
-    Быстрый пробник: по одному активному заданию на каждый номер 1–27 в рамках курса.
-    Тройка 19–21 учитывается один раз (первое встретившееся из 19/20/21 по порядку номеров).
+    Быстрый пробник: по одному активному заданию на каждый «слот» номера 1–27 в рамках курса.
+    Любая тройка с общим task_group_id (часто 19–21, иногда другие номера) берётся один раз:
+    все номера заданий из этой тройки помечаются занятыми, чтобы не подобрать дубликат группы.
     """
     out: list[Tasks] = []
     seen_triplet_groups: set[str] = set()
+    consumed_task_numbers: set[int] = set()
     cid = int(course_id)
     for n in range(1, 28):
+        if n in consumed_task_numbers:
+            continue
         t = (
             Tasks.query.filter(
                 Tasks.course_id == cid,
@@ -1026,12 +1030,19 @@ def _pick_probnik_tasks_one_per_exam_number(course_id: int) -> list[Tasks]:
         )
         if not t:
             continue
-        gid = (str(getattr(t, 'task_group_id', None) or '')).strip()
+        gid = (str(getattr(t, 'task_group_id', None) or '').strip())
         trip = _get_triplet_task_ids(t)
         if trip and gid:
             if gid in seen_triplet_groups:
                 continue
             seen_triplet_groups.add(gid)
+            try:
+                for tr in Tasks.query.filter(Tasks.task_id.in_(trip)).all():
+                    tn = getattr(tr, 'task_number', None)
+                    if tn is not None:
+                        consumed_task_numbers.add(int(tn))
+            except Exception:
+                pass
         out.append(t)
     return out
 
@@ -2117,7 +2128,8 @@ def assignment_create():
 
     task_ids = []
     try:
-        task_ids = [int(t.task_id) for t in (tasks or []) if getattr(t, 'task_id', None)]
+        _raw_ids = [int(t.task_id) for t in (tasks or []) if getattr(t, 'task_id', None)]
+        task_ids = list(dict.fromkeys(_raw_ids))
     except Exception:
         task_ids = []
 
@@ -2165,6 +2177,24 @@ def assignment_create():
     except Exception:
         default_probnik_course_id = None
 
+    task_card_count = len(tasks or [])
+    task_exam_number_slots = 0
+    try:
+        task_exam_number_slots = len(
+            {int(t.task_number) for t in (tasks or []) if getattr(t, 'task_number', None) is not None}
+        )
+    except Exception:
+        task_exam_number_slots = task_card_count
+
+    bank_course_id_for_links = None
+    try:
+        if isinstance(source_meta, dict):
+            bank_course_id_for_links = source_meta.get('exam_course_id')
+    except Exception:
+        bank_course_id_for_links = None
+    if bank_course_id_for_links is None:
+        bank_course_id_for_links = default_probnik_course_id
+
     return render_template(
         'assignment_create.html',
         active_page='assignments',
@@ -2186,6 +2216,9 @@ def assignment_create():
         courses_for_probnik=courses_for_probnik,
         probnik_mode=probnik_mode,
         default_probnik_course_id=default_probnik_course_id,
+        task_card_count=task_card_count,
+        task_exam_number_slots=task_exam_number_slots,
+        bank_course_id_for_links=bank_course_id_for_links,
     )
 
 
