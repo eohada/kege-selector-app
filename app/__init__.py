@@ -6,6 +6,7 @@ import logging
 import threading
 import time
 import uuid
+import json
 from flask import Flask
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
@@ -265,6 +266,24 @@ def create_app(config_name=None):
         incoming = (request.headers.get('X-Request-ID') or '').strip()
         g.request_id = incoming or uuid.uuid4().hex
 
+    def _agent_debug_log(hypothesis_id: str, message: str, data: dict | None = None, run_id: str = 'run1') -> None:
+        # region agent log
+        try:
+            payload = {
+                'sessionId': '14a550',
+                'runId': run_id,
+                'hypothesisId': hypothesis_id,
+                'location': 'app/__init__.py',
+                'message': message,
+                'data': data or {},
+                'timestamp': int(time.time() * 1000),
+            }
+            with open('debug-14a550.log', 'a', encoding='utf-8') as f:
+                f.write(json.dumps(payload, ensure_ascii=False) + '\n')
+        except Exception:
+            pass
+        # endregion
+
     @app.after_request
     def _log_request(response):
         from flask import g, request
@@ -288,6 +307,18 @@ def create_app(config_name=None):
                 'trace_id': request_id,
             }
         )
+        if response.status_code >= 400:
+            _agent_debug_log(
+                'H6',
+                'http_error_response',
+                {
+                    'status': response.status_code,
+                    'method': request.method,
+                    'path': request.path,
+                    'duration_ms': duration_ms,
+                    'request_id': request_id,
+                }
+            )
         return response
     
     from app.auth import auth_bp
@@ -646,6 +677,11 @@ def create_app(config_name=None):
 
     @app.errorhandler(429)
     def too_many_requests(error):
+        _agent_debug_log(
+            'H7',
+            'rate_limit_triggered',
+            {'error_type': type(error).__name__}
+        )
         return _render_error(
             429,
             'СЛИШКОМ ЧАСТО',
@@ -688,6 +724,11 @@ def create_app(config_name=None):
 
         @app.errorhandler(CSRFError)
         def handle_csrf_error(e: CSRFError):
+            _agent_debug_log(
+                'H8',
+                'csrf_error',
+                {'error_type': type(e).__name__, 'description': str(e)[:200]}
+            )
             return _render_error(
                 403,
                 'ТЕБЕ СЮДА НЕЛЬЗЯ',

@@ -112,6 +112,9 @@
             const now = Date.now();
             const lastSent = lastAuditSentAt[action] || 0;
             if (now - lastSent < throttleMs) {
+                // #region agent log
+                fetch('http://127.0.0.1:7561/ingest/639ac7e3-eba5-47c7-b168-58496eafd4f9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14a550'},body:JSON.stringify({sessionId:'14a550',runId:'run1',hypothesisId:'H3',location:'static/audit-tracker.js:sendAuditEventThrottled',message:'audit_event_throttled',data:{action:action,throttleMs:throttleMs},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
                 return;
             }
             lastAuditSentAt[action] = now;
@@ -134,9 +137,15 @@
         if (!telemetryQueue.length) return;
         const batch = telemetryQueue.splice(0, telemetryQueue.length);
         const body = JSON.stringify({ events: batch });
+        // #region agent log
+        fetch('http://127.0.0.1:7561/ingest/639ac7e3-eba5-47c7-b168-58496eafd4f9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14a550'},body:JSON.stringify({sessionId:'14a550',runId:'run1',hypothesisId:'H4',location:'static/audit-tracker.js:flushTelemetry',message:'telemetry_flush_attempt',data:{useBeacon:!!useBeacon,batchSize:batch.length,hasBeacon:!!navigator.sendBeacon},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         if (useBeacon && navigator.sendBeacon) {
             try {
                 navigator.sendBeacon('/api/telemetry/batch', new Blob([body], { type: 'application/json' }));
+                // #region agent log
+                fetch('http://127.0.0.1:7561/ingest/639ac7e3-eba5-47c7-b168-58496eafd4f9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14a550'},body:JSON.stringify({sessionId:'14a550',runId:'run1',hypothesisId:'H4',location:'static/audit-tracker.js:flushTelemetry',message:'telemetry_beacon_sent',data:{batchSize:batch.length},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
                 return;
             } catch (e) {}
         }

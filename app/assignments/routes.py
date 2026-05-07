@@ -48,6 +48,23 @@ logger = logging.getLogger(__name__)
 _THREAD_READ_SCHEMA_ENSURED = False
 
 
+def _agent_debug_log(hypothesis_id: str, message: str, data: dict | None = None, run_id: str = 'run1') -> None:
+    try:
+        payload = {
+            'sessionId': '14a550',
+            'runId': run_id,
+            'hypothesisId': hypothesis_id,
+            'location': 'app/assignments/routes.py',
+            'message': message,
+            'data': data or {},
+            'timestamp': int(time.time() * 1000),
+        }
+        with open('debug-14a550.log', 'a', encoding='utf-8') as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + '\n')
+    except Exception:
+        pass
+
+
 def _ensure_submission_comment_thread_reads_schema() -> bool:
     """Создать таблицу SubmissionCommentThreadReads при отсутствии (без отдельного Alembic)."""
     global _THREAD_READ_SCHEMA_ENSURED
@@ -3195,14 +3212,31 @@ def submission_start(submission_id):
         
         if normalize_legacy_status(submission.status) != 'ASSIGNED':
             logger.warning(f"Invalid status for submission {submission_id}: {submission.status}")
+            _agent_debug_log(
+                'H1',
+                'submission_start_rejected_by_status',
+                {'normalized_status': normalize_legacy_status(submission.status)}
+            )
             return jsonify({'success': False, 'error': 'Работа уже начата или сдана'}), 400
         
         now = utc_now()
         deadline = _ensure_aware_datetime(submission.assignment.deadline)
         logger.info(f"Current time: {now}, deadline: {deadline}, hard_deadline: {submission.assignment.hard_deadline}")
+        _agent_debug_log(
+            'H2',
+            'submission_start_deadline_check',
+            {
+                'has_deadline': bool(deadline),
+                'hard_deadline': bool(submission.assignment.hard_deadline),
+                'now_iso': now.isoformat() if now else None,
+                'deadline_iso': deadline.isoformat() if deadline else None,
+                'deadline_passed': bool(deadline and now > deadline),
+            }
+        )
         
         if deadline and now > deadline and submission.assignment.hard_deadline:
             logger.warning(f"Deadline passed for submission {submission_id}")
+            _agent_debug_log('H2', 'submission_start_rejected_deadline')
             return jsonify({'success': False, 'error': 'Дедлайн истек'}), 400
         
         transition_submission_status(submission, 'IN_PROGRESS')
