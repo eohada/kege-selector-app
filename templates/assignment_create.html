@@ -221,10 +221,13 @@
               {% endfor %}
             </select>
             {% endif %}
-            <label class="flex items-center justify-between gap-2 text-xs font-bold text-secondary mb-3 px-2 py-2 rounded-lg border border-slate-200 bg-slate-50">
-              <span>Собрать случайно</span>
-              <input id="probnikRandomToggle" type="checkbox" class="h-4 w-4 accent-emerald-600" {% if probnik_random_mode %}checked{% endif %}>
-            </label>
+            <div class="flex items-center justify-between gap-2 text-xs font-bold text-secondary mb-3 px-2 py-2 rounded-lg border border-slate-200 bg-slate-50">
+              <span>Собирать случайно</span>
+              <button id="probnikRandomToggleBtn" type="button" aria-pressed="false" onclick="toggleProbnikRandom()" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors">
+                <span class="inline-block w-2 h-2 rounded-full" id="probnikRandomDot"></span>
+                <span id="probnikRandomText">ВЫКЛ</span>
+              </button>
+            </div>
             <button type="button" class="mt-auto w-full px-4 py-3 rounded-xl font-bold text-sm transition-opacity hover:opacity-95 border-b-[3px] active:translate-y-[1px] active:border-b-0" style="background-color:#059669;color:#fff;border-bottom-color:#047857;" onclick="startProbnikBuild()">
               Собрать пробник
             </button>
@@ -267,10 +270,13 @@
             <h3 class="text-[10px] font-extrabold text-muted uppercase tracking-widest m-0">Состав работы</h3>
             <p class="text-xs text-muted font-medium m-0 max-w-xl">Всё в одном месте: прочитали условие → стрелками подобрали вариант → при необходимости сменили ID, перешли в базу или удалили карточку.</p>
           </div>
-          <label class="inline-flex items-center gap-2 text-xs font-bold text-secondary mb-3 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50">
-            <input id="variantRandomToggle" type="checkbox" class="h-4 w-4 accent-boo-primary">
+          <div class="inline-flex items-center gap-3 text-xs font-bold text-secondary mb-3 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50">
             <span>Стрелки в случайном режиме</span>
-          </label>
+            <button id="variantRandomToggleBtn" type="button" aria-pressed="false" onclick="toggleVariantRandom()" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors">
+              <span class="inline-block w-2 h-2 rounded-full" id="variantRandomDot"></span>
+              <span id="variantRandomText">ВЫКЛ</span>
+            </button>
+          </div>
           <div id="taskOrderEditor" class="space-y-3 max-h-[min(56vh,620px)] overflow-y-auto pr-1 mb-4">
             {% if not tasks %}
             <div class="text-sm text-muted font-medium px-2 py-4 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>
@@ -407,6 +413,36 @@
         const CSRF_TOKEN = "{{ csrf_token() }}";
         const PROBNIK_MODE = {{ (probnik_mode or false)|tojson }};
         const PROBNIK_RANDOM_MODE = {{ (probnik_random_mode or false)|tojson }};
+        let probnikRandomEnabled = !!PROBNIK_RANDOM_MODE;
+        let variantRandomEnabled = !!PROBNIK_RANDOM_MODE;
+        function renderRandomToggleButton(btnId, dotId, textId, enabled) {
+            const btn = document.getElementById(btnId);
+            const dot = document.getElementById(dotId);
+            const txt = document.getElementById(textId);
+            if (!btn || !dot || !txt) return;
+            btn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+            if (enabled) {
+                btn.className = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors bg-emerald-50 text-emerald-700 border-emerald-300';
+                dot.className = 'inline-block w-2 h-2 rounded-full bg-emerald-500';
+                txt.textContent = 'ВКЛ';
+            } else {
+                btn.className = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors bg-slate-100 text-slate-600 border-slate-300';
+                dot.className = 'inline-block w-2 h-2 rounded-full bg-slate-400';
+                txt.textContent = 'ВЫКЛ';
+            }
+        }
+        function renderRandomToggles() {
+            renderRandomToggleButton('probnikRandomToggleBtn', 'probnikRandomDot', 'probnikRandomText', probnikRandomEnabled);
+            renderRandomToggleButton('variantRandomToggleBtn', 'variantRandomDot', 'variantRandomText', variantRandomEnabled);
+        }
+        function toggleProbnikRandom() {
+            probnikRandomEnabled = !probnikRandomEnabled;
+            renderRandomToggles();
+        }
+        function toggleVariantRandom() {
+            variantRandomEnabled = !variantRandomEnabled;
+            renderRandomToggles();
+        }
         function syncRecipientSelectFromCards() {
             const sel = document.getElementById('ca_recipients');
             if (!sel) return;
@@ -527,8 +563,7 @@
             const ids = sel ? Array.from(sel.selectedOptions).map((o) => o.value).join(',') : '';
             const cSel = document.getElementById('probnikCourseSelect');
             const cid = cSel && cSel.value ? String(cSel.value) : '';
-            const rnd = document.getElementById('probnikRandomToggle');
-            const randomMode = !!(rnd && rnd.checked);
+            const randomMode = !!probnikRandomEnabled;
             let url = '/assignments/create?source=probnik&assignment_type=exam';
             if (ids) url += '&recipient_ids=' + encodeURIComponent(ids);
             if (cid) url += '&exam_course_id=' + encodeURIComponent(cid);
@@ -752,8 +787,7 @@
             const row = btn && btn.closest ? btn.closest('.task-order-row') : null;
             const inp = row ? row.querySelector('input.task-id-editor') : null;
             if (!inp) return;
-            const vr = document.getElementById('variantRandomToggle');
-            const randomMode = !!(vr && vr.checked);
+            const randomMode = !!variantRandomEnabled;
             const tid = parseInt(String(inp.value || '').trim(), 10);
             if (!tid || isNaN(tid)) {
                 window.toast?.error?.('Укажите корректный ID задания');
@@ -905,8 +939,9 @@
             if (ttl) ttl.value = PROBNIK_MODE ? 'Пробник ЕГЭ' : 'Новая работа';
             const tp = document.getElementById('ca_type');
             if (tp && PROBNIK_MODE) tp.value = 'exam';
-            const vr = document.getElementById('variantRandomToggle');
-            if (vr) vr.checked = PROBNIK_RANDOM_MODE;
+            probnikRandomEnabled = !!PROBNIK_RANDOM_MODE;
+            variantRandomEnabled = !!PROBNIK_RANDOM_MODE;
+            renderRandomToggles();
 
             const apt = document.getElementById('ca_attempts_per_task');
             const sep = document.getElementById('ca_separate_submission');
