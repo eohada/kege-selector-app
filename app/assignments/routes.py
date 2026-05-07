@@ -63,12 +63,13 @@ def _ensure_submission_comment_thread_reads_schema() -> bool:
 
 
 def _ensure_aware_datetime(dt):
-    """Конвертирует naive datetime в aware (Moscow timezone)"""
+    """Нормализует datetime к aware UTC для корректных сравнений дедлайнов."""
     if dt is None:
         return None
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=MOSCOW_TZ)
-    return dt
+        # В БД дедлайны могут храниться как UTC-naive; трактуем как UTC, чтобы избежать ложной просрочки.
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _to_utc(dt: datetime | None) -> datetime | None:

@@ -1426,6 +1426,16 @@
                     var hint = wrap && wrap.querySelector('.code-editor-saved-hint');
                     if (!taskId) return;
                     var code = getCodeFromEditor(wrap);
+                    if (lastSavedCodeByTask.get(String(taskId)) === code) {
+                        if (hint) { hint.textContent = 'Без изменений'; hint.style.display = ''; }
+                        return;
+                    }
+                    if (saveCodeInFlight.has(String(taskId))) {
+                        queueSaveCodeTask(taskId);
+                        if (typeof showToast === 'function') showToast('Сохранение уже идет, запрос объединен.', 'info');
+                        return;
+                    }
+                    saveCodeInFlight.add(String(taskId));
                     btn.disabled = true;
                     fetch(saveCodeUrl, {
                         method: 'POST',
@@ -1448,6 +1458,7 @@
                     })
                     .then(function(data) {
                         if (data.success) {
+                            lastSavedCodeByTask.set(String(taskId), code);
                             if (typeof showToast === 'function') showToast('Код сохранён. Преподаватель сможет его просмотреть.', 'success');
                             if (hint) { hint.textContent = 'Сохранено только что'; hint.style.display = ''; }
                         } else {
@@ -1457,7 +1468,11 @@
                     .catch(function(e) {
                         if (typeof showToast === 'function') showToast('Ошибка сети', 'error');
                     })
-                    .then(function() { btn.disabled = false; });
+                    .then(function() {
+                        saveCodeInFlight.delete(String(taskId));
+                        if (pendingSaveCodeTaskIds.has(String(taskId))) runQueuedSaveCodeTask(taskId);
+                        btn.disabled = false;
+                    });
                 });
             });
         });
@@ -1465,6 +1480,12 @@
         // Автосохранение (не вызывать, если работа уже сдана)
         let autosaveTimer = null;
         let draftPersistTimer = null;
+        let autosaveInFlight = false;
+        let autosavePending = false;
+        let lastAutosaveSignature = '';
+        const saveCodeInFlight = new Set();
+        const pendingSaveCodeTaskIds = new Set();
+        const lastSavedCodeByTask = new Map();
         const autosaveDelay = 2000; // 2 секунды после последнего изменения
         const AUTOSAVE_INTERVAL_MS = 60000; // дополнительно — раз в минуту, даже без новых нажатий
         const SUBMISSION_AUTOSAVE_URL = `{{ url_for('assignments.submission_autosave', submission_id=submission.submission_id) }}`;
@@ -1492,6 +1513,52 @@
             if (!textarea) return '';
             if (textarea.cmInstance) return textarea.cmInstance.getValue();
             return textarea.value || '';
+        }
+
+        function getAnswersSignature(answers) {
+            return JSON.stringify(
+                (answers || []).map((item) => ({
+                    assignment_task_id: parseInt(item.assignment_task_id, 10),
+                    value: String(item.value || '')
+                }))
+            );
+        }
+
+        function queueSaveCodeTask(taskId) {
+            if (!taskId) return;
+            pendingSaveCodeTaskIds.add(String(taskId));
+        }
+
+        function runQueuedSaveCodeTask(taskId) {
+            pendingSaveCodeTaskIds.delete(String(taskId));
+            const wrap = document.querySelector('.code-editor-wrap[data-assignment-task-id="' + String(taskId) + '"]');
+            if (!wrap || wrap.classList.contains('readonly-code-wrap')) return;
+            const code = getCodeFromEditorWrap(wrap);
+            if (!code || !String(code).trim()) return;
+            const tid = String(taskId);
+            if (lastSavedCodeByTask.get(tid) === code) return;
+            saveCodeInFlight.add(tid);
+            const tokenEl = document.querySelector('meta[name="csrf-token"]');
+            const token = tokenEl ? tokenEl.content : '';
+            fetch(SUBMISSION_SAVE_CODE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': token
+                },
+                body: JSON.stringify({ assignment_task_id: parseInt(tid, 10), code: code })
+            })
+            .then(function(r) { return r.json().catch(function() { return {}; }).then(function(data) { return { status: r.status, data: data }; }); })
+            .then(function(result) {
+                if (result.status < 400 && result.data && result.data.success) {
+                    lastSavedCodeByTask.set(tid, code);
+                }
+            })
+            .catch(function() { /* сеть недоступна — ок */ })
+            .then(function() {
+                saveCodeInFlight.delete(tid);
+                if (pendingSaveCodeTaskIds.has(tid)) runQueuedSaveCodeTask(tid);
+            });
         }
 
         function persistLocalDraft() {
@@ -1550,21 +1617,17 @@
 
         function saveCodeDraftsSilent() {
             if (!SUBMISSION_CAN_EDIT) return;
-            const tokenEl = document.querySelector('meta[name="csrf-token"]');
-            const token = tokenEl ? tokenEl.content : '';
             document.querySelectorAll('.code-editor-wrap:not(.readonly-code-wrap)').forEach((wrap) => {
                 const tid = wrap.getAttribute('data-assignment-task-id');
                 if (!tid) return;
                 const code = getCodeFromEditorWrap(wrap);
                 if (!code || !String(code).trim()) return;
-                fetch(SUBMISSION_SAVE_CODE_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': token
-                    },
-                    body: JSON.stringify({ assignment_task_id: parseInt(tid, 10), code: code })
-                }).catch(function () { /* сеть недоступна — ок */ });
+                if (lastSavedCodeByTask.get(String(tid)) === code) return;
+                if (saveCodeInFlight.has(String(tid))) {
+                    queueSaveCodeTask(tid);
+                    return;
+                }
+                runQueuedSaveCodeTask(tid);
             });
         }
 
@@ -1590,7 +1653,13 @@
             if (!SUBMISSION_CAN_EDIT) return;
             const answers = collectAnswers();
             if (answers.length === 0) return;
-            
+            const signature = getAnswersSignature(answers);
+            if (signature === lastAutosaveSignature) return;
+            if (autosaveInFlight) {
+                autosavePending = true;
+                return;
+            }
+            autosaveInFlight = true;
             fetch(SUBMISSION_AUTOSAVE_URL, {
                 method: 'PUT',
                 headers: {
@@ -1606,11 +1675,19 @@
                     return;
                 }
                 if (data.success) {
+                    lastAutosaveSignature = signature;
                     persistLocalDraft();
                 }
             })
             .catch(error => {
                 console.error('Ошибка автосохранения:', error);
+            })
+            .then(function() {
+                autosaveInFlight = false;
+                if (autosavePending) {
+                    autosavePending = false;
+                    autosave();
+                }
             });
         }
 

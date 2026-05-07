@@ -10,6 +10,7 @@ from flask_login import login_required
 from sqlalchemy import or_, func
 
 from app.api import api_bp
+from app import csrf
 from app.models import Student, Lesson, Tasks, db, User, Enrollment, UserProfile, Course
 from app.notifications.service import notify_student_and_parents
 from app.students.forms import normalize_school_class
@@ -46,6 +47,7 @@ def api_audit_log():
 
 
 @api_bp.route('/api/telemetry/batch', methods=['POST'])
+@csrf.exempt
 @login_required
 def api_telemetry_batch():
     """Batch telemetry intake for hidden tracking."""

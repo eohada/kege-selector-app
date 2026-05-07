@@ -100,6 +100,25 @@
         });
     }
 
+    const AUDIT_THROTTLE_MS = {
+        click: 1000,
+        ajax_request: 800,
+    };
+    const lastAuditSentAt = Object.create(null);
+
+    function sendAuditEventThrottled(action, entity, entityId, status, metadata, durationMs) {
+        const throttleMs = AUDIT_THROTTLE_MS[action] || 0;
+        if (throttleMs > 0) {
+            const now = Date.now();
+            const lastSent = lastAuditSentAt[action] || 0;
+            if (now - lastSent < throttleMs) {
+                return;
+            }
+            lastAuditSentAt[action] = now;
+        }
+        sendAuditEvent(action, entity, entityId, status, metadata, durationMs);
+    }
+
     const telemetryQueue = [];
     let lastActivityAt = Date.now();
 
@@ -164,7 +183,7 @@
                 }
             }
 
-            sendAuditEvent(  
+            sendAuditEventThrottled(  
                 action,  
                 'Button',  
                 null,  
@@ -263,7 +282,7 @@
             const durationMs = Date.now() - startTime;
             const status = response.ok ? 'success' : 'error';
 
-            sendAuditEvent(  
+            sendAuditEventThrottled(  
                 'ajax_request',  
                 'API',  
                 null,  

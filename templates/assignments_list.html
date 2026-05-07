@@ -27,9 +27,12 @@
                 <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
                     <i class="ph-bold ph-plus text-lg"></i> Создать работу
                 </a>
-                <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam') }}" class="px-6 py-3 rounded-xl font-bold transition-all flex justify-center items-center gap-2 text-sm no-underline border-b-[3px] active:translate-y-[2px] active:border-b-0" style="background-color:#059669;color:#fff;box-shadow:0 8px 24px -4px rgba(5,150,105,0.35);border-bottom-color:#047857;">
+                <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam') }}" data-quick-probnik-link="1" class="px-6 py-3 rounded-xl font-bold transition-all flex justify-center items-center gap-2 text-sm no-underline border-b-[3px] active:translate-y-[2px] active:border-b-0" style="background-color:#059669;color:#fff;box-shadow:0 8px 24px -4px rgba(5,150,105,0.35);border-bottom-color:#047857;">
                     <i class="ph-bold ph-scroll text-lg"></i> Быстрый пробник
                 </a>
+                <button type="button" data-quick-probnik-random-toggle="1" class="px-4 py-3 rounded-xl border text-xs font-black text-slate-700 bg-white/90 border-slate-300 hover:bg-white transition-colors">
+                    Рандом: ВЫКЛ
+                </button>
                 {% endif %}
                 <a href="{{ url_for('task_generator.task_generator') }}" class="px-6 py-3 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
                     <i class="ph-fill ph-magic-wand text-lg"></i> Открыть генератор
@@ -239,7 +242,8 @@
         <div class="flex gap-3 justify-center flex-wrap">
             {% if can_create %}
             <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline"><i class="ph-bold ph-plus text-lg"></i> Создать работу</a>
-            <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam') }}" class="px-6 py-3.5 rounded-xl font-bold transition-all flex items-center gap-2 text-sm no-underline border-b-[3px] active:translate-y-[2px] active:border-b-0" style="background-color:#059669;color:#fff;box-shadow:0 8px 24px -4px rgba(5,150,105,0.35);border-bottom-color:#047857;"><i class="ph-bold ph-scroll text-lg"></i> Быстрый пробник</a>
+            <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam') }}" data-quick-probnik-link="1" class="px-6 py-3.5 rounded-xl font-bold transition-all flex items-center gap-2 text-sm no-underline border-b-[3px] active:translate-y-[2px] active:border-b-0" style="background-color:#059669;color:#fff;box-shadow:0 8px 24px -4px rgba(5,150,105,0.35);border-bottom-color:#047857;"><i class="ph-bold ph-scroll text-lg"></i> Быстрый пробник</a>
+            <button type="button" data-quick-probnik-random-toggle="1" class="px-4 py-3.5 rounded-xl border text-xs font-black text-slate-700 bg-white border-slate-300 hover:bg-slate-50 transition-colors">Рандом: ВЫКЛ</button>
             {% endif %}
             <a href="{{ url_for('task_generator.task_generator') }}" class="px-6 py-3.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center gap-2 text-sm no-underline"><i class="ph-fill ph-magic-wand text-lg"></i> Открыть генератор</a>
             <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="px-5 py-3.5 text-muted font-bold border border-slate-200 rounded-xl hover:bg-surface-alt flex items-center gap-2 text-sm no-underline"><i class="ph-bold ph-check text-lg"></i> Очередь проверки</a>
@@ -328,7 +332,47 @@
 <script>
 (function () {
     'use strict';
+    const QUICK_PROBNIK_RANDOM_KEY = 'assignments.quickProbnikRandom';
     const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') || { getAttribute: () => null }).getAttribute('content') || '';
+    function quickProbnikRandomEnabled() {
+        try { return localStorage.getItem(QUICK_PROBNIK_RANDOM_KEY) === '1'; } catch (e) { return false; }
+    }
+    function setQuickProbnikRandomEnabled(v) {
+        try { localStorage.setItem(QUICK_PROBNIK_RANDOM_KEY, v ? '1' : '0'); } catch (e) {}
+    }
+    function applyQuickProbnikRandom() {
+        const enabled = quickProbnikRandomEnabled();
+        document.querySelectorAll('[data-quick-probnik-link="1"]').forEach(function (a) {
+            const raw = a.getAttribute('href') || '';
+            if (!raw) return;
+            try {
+                const u = new URL(raw, window.location.origin);
+                if (enabled) u.searchParams.set('probnik_random', '1');
+                else u.searchParams.delete('probnik_random');
+                a.setAttribute('href', u.pathname + u.search + u.hash);
+            } catch (e) {}
+        });
+        document.querySelectorAll('[data-quick-probnik-random-toggle="1"]').forEach(function (btn) {
+            btn.textContent = enabled ? 'Рандом: ВКЛ' : 'Рандом: ВЫКЛ';
+            if (enabled) {
+                btn.classList.remove('text-slate-700', 'border-slate-300', 'bg-white', 'bg-white/90');
+                btn.classList.add('text-emerald-700', 'border-emerald-300', 'bg-emerald-50');
+            } else {
+                btn.classList.remove('text-emerald-700', 'border-emerald-300', 'bg-emerald-50');
+                btn.classList.add('text-slate-700', 'border-slate-300');
+            }
+        });
+    }
+    function bindQuickProbnikRandom() {
+        document.querySelectorAll('[data-quick-probnik-random-toggle="1"]').forEach(function (btn) {
+            if (btn.dataset.qpBound === '1') return;
+            btn.dataset.qpBound = '1';
+            btn.addEventListener('click', function () {
+                setQuickProbnikRandomEnabled(!quickProbnikRandomEnabled());
+                applyQuickProbnikRandom();
+            });
+        });
+    }
     function toastAny(type, msg) {
         try {
             const t = (window.toast || (typeof toast !== 'undefined' ? toast : null));
@@ -490,6 +534,8 @@
         const form = document.getElementById('assignmentsFilterForm');
         if (archivedToggle && form) archivedToggle.addEventListener('change', function () { form.submit(); });
     } catch (e) {}
+    bindQuickProbnikRandom();
+    applyQuickProbnikRandom();
 })();
 </script>
 {% endblock %}

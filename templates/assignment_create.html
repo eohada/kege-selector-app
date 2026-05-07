@@ -221,13 +221,6 @@
               {% endfor %}
             </select>
             {% endif %}
-            <div class="flex items-center justify-between gap-2 text-xs font-bold text-secondary mb-3 px-2 py-2 rounded-lg border border-slate-200 bg-slate-50">
-              <span>Собирать случайно</span>
-              <button id="probnikRandomToggleBtn" type="button" aria-pressed="false" onclick="toggleProbnikRandom()" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors">
-                <span class="inline-block w-2 h-2 rounded-full" id="probnikRandomDot"></span>
-                <span id="probnikRandomText">ВЫКЛ</span>
-              </button>
-            </div>
             <button type="button" class="mt-auto w-full px-4 py-3 rounded-xl font-bold text-sm transition-opacity hover:opacity-95 border-b-[3px] active:translate-y-[1px] active:border-b-0" style="background-color:#059669;color:#fff;border-bottom-color:#047857;" onclick="startProbnikBuild()">
               Собрать пробник
             </button>
@@ -413,7 +406,6 @@
         const CSRF_TOKEN = "{{ csrf_token() }}";
         const PROBNIK_MODE = {{ (probnik_mode or false)|tojson }};
         const PROBNIK_RANDOM_MODE = {{ (probnik_random_mode or false)|tojson }};
-        let probnikRandomEnabled = !!PROBNIK_RANDOM_MODE;
         let variantRandomEnabled = !!PROBNIK_RANDOM_MODE;
         function renderRandomToggleButton(btnId, dotId, textId, enabled) {
             const btn = document.getElementById(btnId);
@@ -432,12 +424,7 @@
             }
         }
         function renderRandomToggles() {
-            renderRandomToggleButton('probnikRandomToggleBtn', 'probnikRandomDot', 'probnikRandomText', probnikRandomEnabled);
             renderRandomToggleButton('variantRandomToggleBtn', 'variantRandomDot', 'variantRandomText', variantRandomEnabled);
-        }
-        function toggleProbnikRandom() {
-            probnikRandomEnabled = !probnikRandomEnabled;
-            renderRandomToggles();
         }
         function toggleVariantRandom() {
             variantRandomEnabled = !variantRandomEnabled;
@@ -563,7 +550,7 @@
             const ids = sel ? Array.from(sel.selectedOptions).map((o) => o.value).join(',') : '';
             const cSel = document.getElementById('probnikCourseSelect');
             const cid = cSel && cSel.value ? String(cSel.value) : '';
-            const randomMode = !!probnikRandomEnabled;
+            const randomMode = !!PROBNIK_RANDOM_MODE;
             let url = '/assignments/create?source=probnik&assignment_type=exam';
             if (ids) url += '&recipient_ids=' + encodeURIComponent(ids);
             if (cid) url += '&exam_course_id=' + encodeURIComponent(cid);
@@ -939,7 +926,6 @@
             if (ttl) ttl.value = PROBNIK_MODE ? 'Пробник ЕГЭ' : 'Новая работа';
             const tp = document.getElementById('ca_type');
             if (tp && PROBNIK_MODE) tp.value = 'exam';
-            probnikRandomEnabled = !!PROBNIK_RANDOM_MODE;
             variantRandomEnabled = !!PROBNIK_RANDOM_MODE;
             renderRandomToggles();
 
