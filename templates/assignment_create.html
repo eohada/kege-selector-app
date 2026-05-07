@@ -221,6 +221,10 @@
               {% endfor %}
             </select>
             {% endif %}
+            <label class="flex items-center justify-between gap-2 text-xs font-bold text-secondary mb-3 px-2 py-2 rounded-lg border border-slate-200 bg-slate-50">
+              <span>Собрать случайно</span>
+              <input id="probnikRandomToggle" type="checkbox" class="h-4 w-4 accent-emerald-600" {% if probnik_random_mode %}checked{% endif %}>
+            </label>
             <button type="button" class="mt-auto w-full px-4 py-3 rounded-xl font-bold text-sm transition-opacity hover:opacity-95 border-b-[3px] active:translate-y-[1px] active:border-b-0" style="background-color:#059669;color:#fff;border-bottom-color:#047857;" onclick="startProbnikBuild()">
               Собрать пробник
             </button>
@@ -263,6 +267,10 @@
             <h3 class="text-[10px] font-extrabold text-muted uppercase tracking-widest m-0">Состав работы</h3>
             <p class="text-xs text-muted font-medium m-0 max-w-xl">Всё в одном месте: прочитали условие → стрелками подобрали вариант → при необходимости сменили ID, перешли в базу или удалили карточку.</p>
           </div>
+          <label class="inline-flex items-center gap-2 text-xs font-bold text-secondary mb-3 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50">
+            <input id="variantRandomToggle" type="checkbox" class="h-4 w-4 accent-boo-primary">
+            <span>Стрелки в случайном режиме</span>
+          </label>
           <div id="taskOrderEditor" class="space-y-3 max-h-[min(56vh,620px)] overflow-y-auto pr-1 mb-4">
             {% if not tasks %}
             <div class="text-sm text-muted font-medium px-2 py-4 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>
@@ -398,6 +406,7 @@
         let currentStep = 1;
         const CSRF_TOKEN = "{{ csrf_token() }}";
         const PROBNIK_MODE = {{ (probnik_mode or false)|tojson }};
+        const PROBNIK_RANDOM_MODE = {{ (probnik_random_mode or false)|tojson }};
         function syncRecipientSelectFromCards() {
             const sel = document.getElementById('ca_recipients');
             if (!sel) return;
@@ -518,9 +527,12 @@
             const ids = sel ? Array.from(sel.selectedOptions).map((o) => o.value).join(',') : '';
             const cSel = document.getElementById('probnikCourseSelect');
             const cid = cSel && cSel.value ? String(cSel.value) : '';
+            const rnd = document.getElementById('probnikRandomToggle');
+            const randomMode = !!(rnd && rnd.checked);
             let url = '/assignments/create?source=probnik&assignment_type=exam';
             if (ids) url += '&recipient_ids=' + encodeURIComponent(ids);
             if (cid) url += '&exam_course_id=' + encodeURIComponent(cid);
+            if (randomMode) url += '&probnik_random=1';
             window.location.href = url;
         }
 
@@ -740,6 +752,8 @@
             const row = btn && btn.closest ? btn.closest('.task-order-row') : null;
             const inp = row ? row.querySelector('input.task-id-editor') : null;
             if (!inp) return;
+            const vr = document.getElementById('variantRandomToggle');
+            const randomMode = !!(vr && vr.checked);
             const tid = parseInt(String(inp.value || '').trim(), 10);
             if (!tid || isNaN(tid)) {
                 window.toast?.error?.('Укажите корректный ID задания');
@@ -750,7 +764,7 @@
             try {
                 const r = await fetch(
                     '/assignments/api/cycle-task-variant?task_id=' + encodeURIComponent(String(tid)) +
-                    '&direction=' + encodeURIComponent(direction),
+                    '&direction=' + encodeURIComponent(direction) + (randomMode ? '&random=1' : ''),
                     { headers: { Accept: 'application/json' } },
                 );
                 let data = {};
@@ -773,7 +787,8 @@
                     same: 'Другая задача того же уровня сложности',
                 };
                 if (window.toast && typeof window.toast.success === 'function') {
-                    window.toast.success(labels[direction] || 'Готово');
+                    const suffix = randomMode ? ' [рандом]' : '';
+                    window.toast.success((labels[direction] || 'Готово') + suffix);
                 }
             } catch (e) {
                 window.toast?.error?.(e.message || String(e));
@@ -890,6 +905,8 @@
             if (ttl) ttl.value = PROBNIK_MODE ? 'Пробник ЕГЭ' : 'Новая работа';
             const tp = document.getElementById('ca_type');
             if (tp && PROBNIK_MODE) tp.value = 'exam';
+            const vr = document.getElementById('variantRandomToggle');
+            if (vr) vr.checked = PROBNIK_RANDOM_MODE;
 
             const apt = document.getElementById('ca_attempts_per_task');
             const sep = document.getElementById('ca_separate_submission');

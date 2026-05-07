@@ -39,6 +39,7 @@ import subprocess
 import sys
 import os
 import time
+import random
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -1006,7 +1007,7 @@ def _get_triplet_task_ids(task: Tasks | None):
         return None
 
 
-def _pick_probnik_tasks_one_per_exam_number(course_id: int) -> list[Tasks]:
+def _pick_probnik_tasks_one_per_exam_number(course_id: int, *, random_mode: bool = False) -> list[Tasks]:
     """
     Быстрый пробник: по одному активному заданию на каждый «слот» номера 1–27 в рамках курса.
     Любая тройка с общим task_group_id (часто 19–21, иногда другие номера) берётся один раз:
@@ -1019,15 +1020,12 @@ def _pick_probnik_tasks_one_per_exam_number(course_id: int) -> list[Tasks]:
     for n in range(1, 28):
         if n in consumed_task_numbers:
             continue
-        t = (
-            Tasks.query.filter(
-                Tasks.course_id == cid,
-                Tasks.task_number == n,
-                Tasks.is_active.is_(True),
-            )
-            .order_by(Tasks.task_id.asc())
-            .first()
+        q = Tasks.query.filter(
+            Tasks.course_id == cid,
+            Tasks.task_number == n,
+            Tasks.is_active.is_(True),
         )
+        t = (q.order_by(func.random()).first() if random_mode else q.order_by(Tasks.task_id.asc()).first())
         if not t:
             continue
         gid = (str(getattr(t, 'task_group_id', None) or '').strip())
@@ -1059,7 +1057,7 @@ def _task_difficulty_rank_for_cycle(task: Tasks | None) -> int:
     return 2
 
 
-def _pick_task_cycle_variant(current: Tasks, direction: str) -> Tasks | None:
+def _pick_task_cycle_variant(current: Tasks, direction: str, *, random_mode: bool = False) -> Tasks | None:
     """
     Подбор другой задачи с тем же course_id и task_number (активные).
     easier / harder / same — см. мастер создания работы (стрелки у пробника).
@@ -1091,6 +1089,11 @@ def _pick_task_cycle_variant(current: Tasks, direction: str) -> Tasks | None:
         nxt = ids_sorted[(idx + 1) % len(ids_sorted)]
         return by_tid[nxt]
 
+    def random_pick(ids: list[int]) -> Tasks | None:
+        if not ids:
+            return None
+        return by_tid[random.choice(ids)]
+
     if direction == 'easier':
         easier = [
             tid
@@ -1098,8 +1101,17 @@ def _pick_task_cycle_variant(current: Tasks, direction: str) -> Tasks | None:
             if tid != cur_id and _task_difficulty_rank_for_cycle(by_tid[tid]) < cur_rank
         ]
         if easier:
+            if random_mode:
+                picked = random_pick(easier)
+                if picked:
+                    return picked
             easier.sort(key=lambda tid: (_task_difficulty_rank_for_cycle(by_tid[tid]), tid))
             return by_tid[easier[0]]
+        if random_mode:
+            pool = [tid for tid in ids_sorted if tid != cur_id]
+            picked = random_pick(pool)
+            if picked:
+                return picked
         return cyclic_next_full()
 
     if direction == 'harder':
@@ -1109,14 +1121,32 @@ def _pick_task_cycle_variant(current: Tasks, direction: str) -> Tasks | None:
             if tid != cur_id and _task_difficulty_rank_for_cycle(by_tid[tid]) > cur_rank
         ]
         if harder:
+            if random_mode:
+                picked = random_pick(harder)
+                if picked:
+                    return picked
             harder.sort(key=lambda tid: (_task_difficulty_rank_for_cycle(by_tid[tid]), tid))
             return by_tid[harder[0]]
+        if random_mode:
+            pool = [tid for tid in ids_sorted if tid != cur_id]
+            picked = random_pick(pool)
+            if picked:
+                return picked
         return cyclic_next_full()
 
     if direction == 'same':
         same_ids = sorted(
             tid for tid in ids_sorted if _task_difficulty_rank_for_cycle(by_tid[tid]) == cur_rank
         )
+        if random_mode:
+            pool_same = [tid for tid in same_ids if tid != cur_id]
+            picked = random_pick(pool_same)
+            if picked:
+                return picked
+            pool = [tid for tid in ids_sorted if tid != cur_id]
+            picked = random_pick(pool)
+            if picked:
+                return picked
         if len(same_ids) <= 1:
             return cyclic_next_full()
         if cur_id not in same_ids:
@@ -1306,12 +1336,13 @@ def cycle_task_variant():
     """
     task_id = request.args.get('task_id', type=int)
     direction = (request.args.get('direction') or '').strip().lower()
+    random_mode = request.args.get('random', type=int) == 1
     if not task_id or direction not in {'easier', 'harder', 'same'}:
         return jsonify({'success': False, 'error': 'Нужны task_id и direction (easier|harder|same)'}), 400
     task = Tasks.query.get(task_id)
     if not task:
         return jsonify({'success': False, 'error': 'Задача не найдена'}), 404
-    picked = _pick_task_cycle_variant(task, direction)
+    picked = _pick_task_cycle_variant(task, direction, random_mode=random_mode)
     if not picked or getattr(picked, 'task_id', None) is None:
         return jsonify({'success': False, 'error': 'Нет других вариантов для этого номера'}), 404
     if int(picked.task_id) == int(task.task_id):
@@ -2125,6 +2156,7 @@ def assignment_create():
     if source == 'probnik':
         probnik_mode = True
         assignment_type = _normalize_assignment_type(request.args.get('assignment_type')) or 'exam'
+        probnik_random_mode = request.args.get('probnik_random', type=int) == 1
         exam_course_id_pb = request.args.get('exam_course_id', type=int)
         if not exam_course_id_pb:
             try:
@@ -2135,12 +2167,12 @@ def assignment_create():
         picked_pb: list[Tasks] = []
         if exam_course_id_pb:
             try:
-                picked_pb = _pick_probnik_tasks_one_per_exam_number(int(exam_course_id_pb))
+                picked_pb = _pick_probnik_tasks_one_per_exam_number(int(exam_course_id_pb), random_mode=probnik_random_mode)
             except Exception:
                 picked_pb = []
         tasks = picked_pb
         source_label = 'Быстрый пробник'
-        source_meta = {'probnik': True, 'exam_course_id': exam_course_id_pb}
+        source_meta = {'probnik': True, 'exam_course_id': exam_course_id_pb, 'probnik_random': bool(probnik_random_mode)}
         if exam_course_id_pb and not picked_pb:
             flash('Для выбранного курса не найдено активных заданий 1–27. Проверьте банк или другой курс.', 'warning')
         elif exam_course_id_pb and len(picked_pb) < 20:
@@ -2323,11 +2355,14 @@ def assignment_create():
         courses_for_probnik = []
 
     default_probnik_course_id = None
+    probnik_random_mode = False
     try:
         if isinstance(source_meta, dict):
             default_probnik_course_id = source_meta.get('exam_course_id')
+            probnik_random_mode = bool(source_meta.get('probnik_random'))
     except Exception:
         default_probnik_course_id = None
+        probnik_random_mode = False
 
     task_card_count = len(tasks or [])
     task_exam_number_slots = 0
@@ -2368,6 +2403,7 @@ def assignment_create():
         courses_for_probnik=courses_for_probnik,
         probnik_mode=probnik_mode,
         default_probnik_course_id=default_probnik_course_id,
+        probnik_random_mode=probnik_random_mode,
         task_card_count=task_card_count,
         task_exam_number_slots=task_exam_number_slots,
         bank_course_id_for_links=bank_course_id_for_links,
