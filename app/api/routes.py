@@ -57,23 +57,26 @@ def api_telemetry_batch():
         if not isinstance(events, list):
             return jsonify({'success': False, 'error': 'events must be array'}), 400
         accepted = 0
+        event_types = []
         for ev in events[:500]:
             if not isinstance(ev, dict):
                 continue
-            payload = ev.get('payload') if isinstance(ev.get('payload'), dict) else {}
+            accepted += 1
+            et = ev.get('event_type')
+            if et and len(event_types) < 20:
+                event_types.append(str(et))
+        if accepted:
             audit_logger.log(
                 action='telemetry_event',
                 entity='Telemetry',
                 entity_id=None,
                 status='success',
                 metadata={
-                    'event_type': ev.get('event_type'),
-                    'payload': payload,
-                    'ts': ev.get('ts'),
+                    'accepted': accepted,
+                    'event_types': event_types,
                     'page': request.path,
                 },
             )
-            accepted += 1
         return jsonify({'success': True, 'accepted': accepted})
     except Exception as e:
         logger.error(f'Error processing telemetry batch: {e}', exc_info=True)

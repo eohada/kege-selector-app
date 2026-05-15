@@ -28,6 +28,12 @@ def _is_asset_request() -> bool:
     return False
 
 
+def _is_lightweight_api_request() -> bool:
+    """Частые служебные API — без тяжёлых периодических хуков (уроки, подписки)."""
+    path = request.path or ''
+    return path.startswith('/api/audit-log') or path.startswith('/api/telemetry') or path.startswith('/api/presence/')
+
+
 _schema_initialized = False
 
 _last_lesson_check = None
@@ -138,7 +144,7 @@ def register_hooks(app):
         """Автоматически обновляет статус запланированных уроков на 'completed' после их окончания"""
         global _last_lesson_check
         
-        if _is_asset_request():
+        if _is_asset_request() or _is_lightweight_api_request():
             return
         
         try:
@@ -244,7 +250,7 @@ def register_hooks(app):
         """Автоматически помечает просроченные подписки как expired (раз в 10 мин)."""
         global _last_subscription_check
 
-        if _is_asset_request():
+        if _is_asset_request() or _is_lightweight_api_request():
             return
 
         try:
@@ -303,7 +309,7 @@ def register_hooks(app):
         environment = os.environ.get('ENVIRONMENT', 'local')
         is_sandbox = environment == 'sandbox'
         
-        if request.endpoint == 'static' or request.path.startswith('/static/'):
+        if _is_asset_request() or _is_lightweight_api_request():
             return None
         
         if is_sandbox:

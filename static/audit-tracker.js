@@ -103,7 +103,18 @@
     const AUDIT_THROTTLE_MS = {
         click: 1000,
         ajax_request: 800,
+        ajax_error: 30000,
     };
+
+    function shouldSkipFetchAudit(urlStr) {
+        if (!urlStr) return true;
+        if (urlStr.indexOf('/api/audit-log') !== -1) return true;
+        if (urlStr.indexOf('/api/telemetry') !== -1) return true;
+        if (urlStr.indexOf('/api/presence') !== -1) return true;
+        if (urlStr.indexOf('/static/') !== -1) return true;
+        if (urlStr.indexOf('127.0.0.1:7561') !== -1 || urlStr.indexOf('localhost:7561') !== -1) return true;
+        return false;
+    }
     const lastAuditSentAt = Object.create(null);
 
     function sendAuditEventThrottled(action, entity, entityId, status, metadata, durationMs) {
@@ -231,12 +242,8 @@
         const options = args[1] || {};  
         const method = options.method || 'GET';  
         const urlStr = typeof url === 'string' ? url : (url && typeof url.url === 'string' ? url.url : '');
-        if (urlStr.indexOf('127.0.0.1:7561') !== -1 || urlStr.indexOf('localhost:7561') !== -1) {
+        if (shouldSkipFetchAudit(urlStr)) {
             return originalFetch.apply(this, args);
-        }
-
-        if (typeof url === 'string' && url.includes('/api/audit-log')) {  
-            return originalFetch.apply(this, args);  
         }
 
         let headersObj = {};
@@ -284,36 +291,36 @@
                 }
             } catch (e) {}
             const durationMs = Date.now() - startTime;
-            const status = response.ok ? 'success' : 'error';
+            if (!response.ok && response.status < 500) {
+                sendAuditEventThrottled(
+                    'ajax_request',
+                    'API',
+                    null,
+                    'error',
+                    {
+                        url: urlStr || String(url),
+                        method: method,
+                        status_code: response.status
+                    },
+                    durationMs
+                );
+            }
 
-            sendAuditEventThrottled(  
-                'ajax_request',  
-                'API',  
-                null,  
-                status,  
-                {  
-                    url: typeof url === 'string' ? url : url.toString(),  
-                    method: method,  
-                    status_code: response.status  
-                },
-                durationMs  
-            );
-            
             return response;  
         }).catch(error => {  
             const durationMs = Date.now() - startTime;  
 
-            sendAuditEvent(  
-                'ajax_error',  
-                'API',  
-                null,  
-                'error',  
-                {  
-                    url: typeof url === 'string' ? url : url.toString(),  
-                    method: method,  
-                    error: error.message  
+            sendAuditEventThrottled(
+                'ajax_error',
+                'API',
+                null,
+                'error',
+                {
+                    url: urlStr || String(url),
+                    method: method,
+                    error: error.message
                 },
-                durationMs  
+                durationMs
             );
             
             throw error;  
