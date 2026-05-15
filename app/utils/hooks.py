@@ -5,7 +5,7 @@ import logging
 import base64
 import urllib.parse
 from datetime import timedelta
-from flask import request, redirect, url_for, current_app, g
+from flask import request, redirect, url_for, current_app, g, Response
 from flask_login import current_user
 from sqlalchemy import text
 from datetime import datetime
@@ -15,6 +15,18 @@ from app.utils.db_migrations import ensure_schema_columns, is_auto_db_schema_syn
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
+
+
+def _is_asset_request() -> bool:
+    """Статика и favicon — без тяжёлых хуков (endpoint реального favicon: main.favicon)."""
+    ep = request.endpoint or ''
+    path = request.path or ''
+    if path.startswith('/static/') or path.startswith('/font/'):
+        return True
+    if ep in ('static', 'main.favicon') or path == '/favicon.ico':
+        return True
+    return False
+
 
 _schema_initialized = False
 
@@ -55,6 +67,34 @@ def register_hooks(app):
     """
     Регистрирует все before_request хуки для приложения
     """
+
+    @app.before_request
+    def block_scanner_probes():
+        """Минимальный ответ 404 для типовых путей ботов (меньше нагрузки, чем полный цикл приложения)."""
+        path_raw = request.path or ''
+        if not path_raw.startswith('/'):
+            return None
+        pl = path_raw.lower()
+        if pl.startswith('/.well-known/acme-challenge'):
+            return None
+        if (
+            pl.startswith('/.env')
+            or pl.startswith('/.git')
+            or pl.startswith('/.svn')
+            or pl.startswith('/.hg')
+            or pl.startswith('/.aws')
+        ):
+            return Response(status=404)
+        if pl.startswith('/wp-') or '/wp-content' in pl or '/wp-includes' in pl or pl == '/xmlrpc.php':
+            return Response(status=404)
+        _extra_scanner_paths = frozenset({
+            '/api/.env', '/app/.env', '/app/.env.local', '/backend/.env',
+            '/secrets.json', '/credentials.json', '/firebase-service-account.json',
+            '/google-service-account.json', '/serviceaccountkey.json', '/service-account.json',
+        })
+        if pl in _extra_scanner_paths:
+            return Response(status=404)
+        return None
 
     @app.after_request
     def commit_presence_after_request(response):
@@ -98,7 +138,7 @@ def register_hooks(app):
         """Автоматически обновляет статус запланированных уроков на 'completed' после их окончания"""
         global _last_lesson_check
         
-        if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
+        if _is_asset_request():
             return
         
         try:
@@ -204,7 +244,7 @@ def register_hooks(app):
         """Автоматически помечает просроченные подписки как expired (раз в 10 мин)."""
         global _last_subscription_check
 
-        if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
+        if _is_asset_request():
             return
 
         try:
@@ -382,9 +422,9 @@ def register_hooks(app):
         try:
             if not getattr(current_user, 'is_authenticated', False):
                 return None
-            if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
+            if _is_asset_request():
                 return None
-            if request.path.startswith('/font/') or request.path.startswith('/avatars/') or request.path.startswith('/covers/'):
+            if request.path.startswith('/avatars/') or request.path.startswith('/covers/'):
                 return None
             if request.path.startswith('/api/internal/') or request.path.startswith('/internal/'):
                 return None
@@ -442,8 +482,8 @@ def register_hooks(app):
         if is_demo and request.path in ('/demo', '/demo/start'):
             return
 
-        excluded_endpoints = ('auth.login', 'auth.logout', 'static', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.landing', 'main.index', 'main.legal_offer', 'main.legal_privacy', 'main.faq', 'billing.billing_plans_public')
-        excluded_paths = ('/', '/landing', '/index', '/home', '/legal/offer', '/legal/privacy', '/faq', '/billing/plans/public')
+        excluded_endpoints = ('auth.login', 'auth.logout', 'static', 'main.favicon', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.landing', 'main.index', 'main.legal_offer', 'main.legal_privacy', 'main.faq', 'billing.billing_plans_public')
+        excluded_paths = ('/', '/landing', '/index', '/home', '/legal/offer', '/legal/privacy', '/faq', '/billing/plans/public', '/favicon.ico')
         
         if (request.endpoint in excluded_endpoints or 
             request.path in excluded_paths or 
@@ -611,7 +651,7 @@ def register_hooks(app):
     def identify_tester():
         """Идентификация тестировщика (только для неавторизованных пользователей)"""
         try:
-            if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
+            if _is_asset_request():
                 return
 
             if current_user.is_authenticated:

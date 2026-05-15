@@ -1657,15 +1657,9 @@
             if (signature === lastAutosaveSignature) return;
             if (autosaveInFlight) {
                 autosavePending = true;
-                // #region agent log
-                fetch('http://127.0.0.1:7561/ingest/639ac7e3-eba5-47c7-b168-58496eafd4f9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14a550'},body:JSON.stringify({sessionId:'14a550',runId:'run1',hypothesisId:'H5',location:'templates/submission_view.html:autosave',message:'autosave_deferred_inflight',data:{answersCount:answers.length},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
                 return;
             }
             autosaveInFlight = true;
-            // #region agent log
-            fetch('http://127.0.0.1:7561/ingest/639ac7e3-eba5-47c7-b168-58496eafd4f9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14a550'},body:JSON.stringify({sessionId:'14a550',runId:'run1',hypothesisId:'H5',location:'templates/submission_view.html:autosave',message:'autosave_request_sent',data:{answersCount:answers.length},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             fetch(SUBMISSION_AUTOSAVE_URL, {
                 method: 'PUT',
                 headers: {
@@ -1676,9 +1670,6 @@
             })
             .then(response => response.json().catch(() => ({})).then(data => ({ status: response.status, data: data })))
             .then(({ status, data }) => {
-                // #region agent log
-                fetch('http://127.0.0.1:7561/ingest/639ac7e3-eba5-47c7-b168-58496eafd4f9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14a550'},body:JSON.stringify({sessionId:'14a550',runId:'run1',hypothesisId:'H5',location:'templates/submission_view.html:autosave',message:'autosave_response',data:{status:status,success:!!(data&&data.success),error:data&&data.error?String(data.error):null},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
                 if (status === 400 && data.error && (String(data.error).indexOf('уже сдана') !== -1 || String(data.error).indexOf('Нельзя сохранять') !== -1)) {
                     autosaveTimer = null;
                     return;
@@ -1740,9 +1731,6 @@
                         }
                     })
                     .then(function(response) {
-                        // #region agent log
-                        fetch('http://127.0.0.1:7561/ingest/639ac7e3-eba5-47c7-b168-58496eafd4f9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'14a550'},body:JSON.stringify({sessionId:'14a550',runId:'run1',hypothesisId:'H1',location:'templates/submission_view.html:startHandler',message:'start_response_received',data:{status:response.status,ok:response.ok},timestamp:Date.now()})}).catch(()=>{});
-                        // #endregion
                         if (!response.ok) {
                             return response.text().then(function(text) {
                                 console.error('Server error response:', response.status, text);
