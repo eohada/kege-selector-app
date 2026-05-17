@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
+from flask import g, has_request_context
+from sqlalchemy.orm import joinedload
+
 from app.models import TariffPlan, UserSubscription, db
 
 
@@ -49,13 +52,12 @@ def _compute_label(allow_lessons: Optional[bool], allow_trainer: Optional[bool])
     return "Не задано / без ограничений"
 
 
-def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
-    """
-    Returns best-effort effective access for a user based on latest active subscription.
-    """
+def _load_effective_access_for_user(user_id: int) -> EffectiveAccess:
+    """Load subscription access (no request-level cache)."""
     now = _now_utc_naive()
     sub = (
-        UserSubscription.query.filter_by(user_id=user_id, status="active")
+        UserSubscription.query.options(joinedload(UserSubscription.plan))
+        .filter_by(user_id=user_id, status="active")
         .order_by(UserSubscription.ends_at.desc().nullslast(), UserSubscription.subscription_id.desc())
         .first()
     )
@@ -81,7 +83,7 @@ def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
     if time_expired or lessons_expired:
         return EffectiveAccess(
             subscription=sub,
-            plan=TariffPlan.query.get(sub.plan_id) if sub.plan_id else None,
+            plan=sub.plan if sub.plan_id else None,
             allow_lessons=None,
             allow_trainer=None,
             status="expired",
@@ -91,7 +93,7 @@ def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
             label="Уроки закончились" if lessons_expired else "Подписка истекла",
         )
 
-    plan = TariffPlan.query.get(sub.plan_id) if sub.plan_id else None
+    plan = sub.plan if sub.plan_id else None
     allow_lessons = None
     allow_trainer = None
     if plan:
@@ -113,6 +115,25 @@ def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
         lessons_remaining=lessons_remaining,
         label=_compute_label(allow_lessons, allow_trainer),
     )
+
+
+def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
+    """
+    Returns best-effort effective access for a user based on latest active subscription.
+    Cached for the lifetime of the current HTTP request (hooks + context_processor).
+    """
+    if has_request_context():
+        cache = getattr(g, '_effective_access_by_user', None)
+        if cache is None:
+            cache = {}
+            g._effective_access_by_user = cache
+        cached = cache.get(user_id)
+        if cached is not None:
+            return cached
+        eff = _load_effective_access_for_user(user_id)
+        cache[user_id] = eff
+        return eff
+    return _load_effective_access_for_user(user_id)
 
 
 def mark_subscription_expired_if_needed(sub: UserSubscription) -> None:

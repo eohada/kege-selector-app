@@ -93,6 +93,23 @@ def _get_user_task_mmr(user_id: int | None, task_number: int | None) -> float | 
     return float(row.mmr) if row and row.mmr is not None else None
 
 
+def _mmr_by_task_number(user_id: int | None, task_numbers: list[int]) -> dict[int, float]:
+    if not user_id or not task_numbers:
+        return {}
+    nums = sorted({int(n) for n in task_numbers if n is not None})
+    if not nums:
+        return {}
+    rows = UserTaskMMR.query.filter(
+        UserTaskMMR.user_id == user_id,
+        UserTaskMMR.task_type.in_(nums),
+    ).all()
+    out: dict[int, float] = {}
+    for row in rows:
+        if row.task_type is not None and row.mmr is not None:
+            out[int(row.task_type)] = float(row.mmr)
+    return out
+
+
 def _task_generator_page_url(
     *,
     lesson_id=None,
@@ -480,13 +497,17 @@ def task_generator(lesson_id=None):
 
     course_task_numbers = {}
     try:
-        for c in all_courses:
-            # Строковые ключи — в JS объект из JSON всегда с строковыми ключами; так lookup надёжен.
-            course_task_numbers[str(c.id)] = [
-                t.task_number
-                for t in CourseTaskTemplate.query.filter_by(course_id=c.id)
-                .order_by(CourseTaskTemplate.task_number).all()
-            ]
+        if all_courses:
+            course_ids = [c.id for c in all_courses]
+            rows = (
+                CourseTaskTemplate.query.filter(CourseTaskTemplate.course_id.in_(course_ids))
+                .order_by(CourseTaskTemplate.course_id, CourseTaskTemplate.task_number)
+                .with_entities(CourseTaskTemplate.course_id, CourseTaskTemplate.task_number)
+                .all()
+            )
+            for cid, tnum in rows:
+                key = str(cid)
+                course_task_numbers.setdefault(key, []).append(tnum)
     except Exception as e:
         logger.warning(f'course_task_numbers for generator: {e}')
         course_task_numbers = {}
@@ -532,90 +553,94 @@ def task_generator(lesson_id=None):
         except Exception as ex:
             logger.warning(f'assignment target enrichment failed: {ex}')
             assignment_task_ids = set()
-    try:
-        bq = Tasks.query.options(
-            joinedload(Tasks.course),
-            joinedload(Tasks.task_solution),
-        )
-        # Поиск по внутреннему ID — однозначен: не сужаем программой/номером (иначе «нет записей» при несовпадении курса).
-        if bank_filter_task_id:
-            bq = bq.filter(Tasks.task_id == bank_filter_task_id)
-        else:
-            if bank_filter_course_id:
-                bq = bq.filter(Tasks.course_id == bank_filter_course_id)
-            if bank_filter_task_number:
-                bq = bq.filter(Tasks.task_number == bank_filter_task_number)
-            if bank_filter_difficulty is not None:
-                bq = bq.filter(Tasks.difficulty_level == int(bank_filter_difficulty))
-            if bank_origin_filter == 'author':
-                bq = bq.filter(Tasks.kege_source_tag == 'Авторские')
-            elif bank_origin_filter == 'manual':
-                bq = bq.filter(Tasks.bank_origin == 'manual')
-            elif bank_origin_filter == 'other':
-                bq = bq.filter(
-                    or_(Tasks.bank_origin.is_(None), Tasks.bank_origin != 'manual'),
-                    or_(Tasks.kege_source_tag.is_(None), Tasks.kege_source_tag != 'Авторские'),
-                )
-        if bank_only_manual and not bank_filter_task_id:
-            bq = bq.filter(Tasks.bank_origin == 'manual')
-        if not bank_filter_task_id and not bank_show_inactive:
-            bq = bq.filter(Tasks.is_active.is_(True))
-        bq = bq.order_by(Tasks.task_id.desc())
-        bank_total = bq.count()
-        bank_tasks = bq.offset((bank_page - 1) * bank_per_page).limit(bank_per_page).all()
-        for t in bank_tasks:
-            t.bank_target_already_added = None
-            t.difficulty_label_ru = _difficulty_label_ru(t)
-            t.student_task_mmr = _get_user_task_mmr(target_user_id, t.task_number)
-            if return_edit:
-                t.bank_target_already_added = int(t.task_id) in assignment_task_ids
-            elif recipient_ids:
-                # For "current work" mode, preserve added badge from selected task_ids in URL/session.
-                t.bank_target_already_added = int(t.task_id) in selected_task_ids
-        if lesson_id or template_id:
-            try:
-                _le_ids, _tpl_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
-                for t in bank_tasks:
-                    t.bank_target_already_added = _picker_fully_added(
-                        t.task_id,
-                        lesson_id,
-                        template_id,
-                        assignment_type,
-                        _le_ids,
-                        _tpl_ids,
+    if bank_panel_open:
+        try:
+            bq = Tasks.query.options(
+                joinedload(Tasks.course),
+                joinedload(Tasks.task_solution),
+            )
+            # Поиск по внутреннему ID — однозначен: не сужаем программой/номером (иначе «нет записей» при несовпадении курса).
+            if bank_filter_task_id:
+                bq = bq.filter(Tasks.task_id == bank_filter_task_id)
+            else:
+                if bank_filter_course_id:
+                    bq = bq.filter(Tasks.course_id == bank_filter_course_id)
+                if bank_filter_task_number:
+                    bq = bq.filter(Tasks.task_number == bank_filter_task_number)
+                if bank_filter_difficulty is not None:
+                    bq = bq.filter(Tasks.difficulty_level == int(bank_filter_difficulty))
+                if bank_origin_filter == 'author':
+                    bq = bq.filter(Tasks.kege_source_tag == 'Авторские')
+                elif bank_origin_filter == 'manual':
+                    bq = bq.filter(Tasks.bank_origin == 'manual')
+                elif bank_origin_filter == 'other':
+                    bq = bq.filter(
+                        or_(Tasks.bank_origin.is_(None), Tasks.bank_origin != 'manual'),
+                        or_(Tasks.kege_source_tag.is_(None), Tasks.kege_source_tag != 'Авторские'),
                     )
-            except Exception as ex:
-                logger.warning(f'bank_target status enrichment failed: {ex}')
-        bank_pages_total = max(1, (bank_total + bank_per_page - 1) // bank_per_page)
-        for p in range(1, bank_pages_total + 1):
-            bank_pagination.append({
-                'page': p,
-                'url': _task_generator_page_url(
-                    lesson_id=lesson_id,
-                    assignment_type=assignment_type,
-                    template_id=template_id,
-                    exam_course_id=exam_course_id,
-                    recipient_ids=recipient_ids,
-                    task_ids=current_task_ids,
-                    bank_page=p,
-                    bank_per_page=bank_per_page,
-                    bank_course_id=bank_filter_course_id,
-                    bank_task_number=bank_filter_task_number,
-                    bank_task_id=bank_filter_task_id,
-                    bank_origin_filter=bank_origin_filter or None,
-                    bank_difficulty=bank_filter_difficulty,
-                    bank_only_manual=bank_only_manual,
-                    bank_open=True,
-                    bank_show_inactive=bank_show_inactive,
-                    return_edit=return_edit,
-                ),
-                'current': p == bank_page,
-            })
-    except Exception as e:
-        logger.warning(f'bank panel query failed (schema?): {e}')
-        bank_tasks = []
-        bank_total = 0
-        bank_pagination = []
+            if bank_only_manual and not bank_filter_task_id:
+                bq = bq.filter(Tasks.bank_origin == 'manual')
+            if not bank_filter_task_id and not bank_show_inactive:
+                bq = bq.filter(Tasks.is_active.is_(True))
+            bq = bq.order_by(Tasks.task_id.desc())
+            bank_total = bq.count()
+            bank_tasks = bq.offset((bank_page - 1) * bank_per_page).limit(bank_per_page).all()
+            mmr_map = _mmr_by_task_number(
+                target_user_id,
+                [t.task_number for t in bank_tasks if t.task_number is not None],
+            )
+            for t in bank_tasks:
+                t.bank_target_already_added = None
+                t.difficulty_label_ru = _difficulty_label_ru(t)
+                t.student_task_mmr = mmr_map.get(int(t.task_number)) if t.task_number is not None else None
+                if return_edit:
+                    t.bank_target_already_added = int(t.task_id) in assignment_task_ids
+                elif recipient_ids:
+                    t.bank_target_already_added = int(t.task_id) in selected_task_ids
+            if lesson_id or template_id:
+                try:
+                    _le_ids, _tpl_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
+                    for t in bank_tasks:
+                        t.bank_target_already_added = _picker_fully_added(
+                            t.task_id,
+                            lesson_id,
+                            template_id,
+                            assignment_type,
+                            _le_ids,
+                            _tpl_ids,
+                        )
+                except Exception as ex:
+                    logger.warning(f'bank_target status enrichment failed: {ex}')
+            bank_pages_total = max(1, (bank_total + bank_per_page - 1) // bank_per_page)
+            for p in range(1, bank_pages_total + 1):
+                bank_pagination.append({
+                    'page': p,
+                    'url': _task_generator_page_url(
+                        lesson_id=lesson_id,
+                        assignment_type=assignment_type,
+                        template_id=template_id,
+                        exam_course_id=exam_course_id,
+                        recipient_ids=recipient_ids,
+                        task_ids=current_task_ids,
+                        bank_page=p,
+                        bank_per_page=bank_per_page,
+                        bank_course_id=bank_filter_course_id,
+                        bank_task_number=bank_filter_task_number,
+                        bank_task_id=bank_filter_task_id,
+                        bank_origin_filter=bank_origin_filter or None,
+                        bank_difficulty=bank_filter_difficulty,
+                        bank_only_manual=bank_only_manual,
+                        bank_open=True,
+                        bank_show_inactive=bank_show_inactive,
+                        return_edit=return_edit,
+                    ),
+                    'current': p == bank_page,
+                })
+        except Exception as e:
+            logger.warning(f'bank panel query failed (schema?): {e}')
+            bank_tasks = []
+            bank_total = 0
+            bank_pagination = []
 
     return render_template('task_generator.html',
                            selection_form=selection_form,

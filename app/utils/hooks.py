@@ -36,10 +36,20 @@ def _is_lightweight_api_request() -> bool:
     return path.startswith('/api/audit-log') or path.startswith('/api/telemetry') or path.startswith('/api/presence/')
 
 
+def _skip_periodic_db_maintenance() -> bool:
+    """Не запускать массовые фоновые UPDATE на статике, health и тяжёлых страницах."""
+    if _is_asset_request() or _is_lightweight_api_request():
+        return True
+    ep = request.endpoint or ''
+    if ep.startswith('task_generator.'):
+        return True
+    return False
+
+
 _schema_initialized = False
 
 _last_lesson_check = None
-_lesson_check_interval = timedelta(minutes=5)
+_lesson_check_interval = timedelta(minutes=15)
 
 _last_subscription_check = None
 _subscription_check_interval = timedelta(minutes=10)
@@ -146,7 +156,7 @@ def register_hooks(app):
         """Автоматически обновляет статус запланированных уроков на 'completed' после их окончания"""
         global _last_lesson_check
         
-        if _is_asset_request() or _is_lightweight_api_request():
+        if _skip_periodic_db_maintenance():
             return
         
         try:
@@ -252,7 +262,7 @@ def register_hooks(app):
         """Автоматически помечает просроченные подписки как expired (раз в 10 мин)."""
         global _last_subscription_check
 
-        if _is_asset_request() or _is_lightweight_api_request():
+        if _skip_periodic_db_maintenance():
             return
 
         try:
@@ -416,10 +426,16 @@ def register_hooks(app):
                         maintenance_enabled = _cached_maintenance_enabled
                         maintenance_message = _cached_maintenance_message
             
-            logger.info(f"Maintenance mode check: enabled={maintenance_enabled}, endpoint={request.endpoint}, path={request.path}")
+            logger.debug(
+                "Maintenance mode check: enabled=%s, endpoint=%s, path=%s",
+                maintenance_enabled, request.endpoint, request.path,
+            )
             
             if maintenance_enabled:
-                logger.info(f"Maintenance mode enabled in sandbox, redirecting from {request.path} to maintenance page with message: {maintenance_message[:50]}")
+                logger.info(
+                    "Maintenance mode enabled, redirecting from %s: %s",
+                    request.path, maintenance_message[:50],
+                )
                 return redirect(url_for('admin.maintenance_page', message=maintenance_message))
         
         return None
