@@ -29,8 +29,10 @@ def _is_asset_request() -> bool:
 
 
 def _is_lightweight_api_request() -> bool:
-    """Частые служебные API — без тяжёлых периодических хуков (уроки, подписки)."""
+    """Частые служебные API и health — без тяжёлых периодических хуков (уроки, подписки)."""
     path = request.path or ''
+    if path == '/health' or path.startswith('/health/'):
+        return True
     return path.startswith('/api/audit-log') or path.startswith('/api/telemetry') or path.startswith('/api/presence/')
 
 

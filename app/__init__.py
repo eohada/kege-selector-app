@@ -82,6 +82,11 @@ def create_app(config_name=None):
         database_url_source = 'sqlite'
     
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    if selected_database_url and ('postgresql' in selected_database_url or 'postgres' in selected_database_url):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,
+            'pool_recycle': int(os.environ.get('SQLALCHEMY_POOL_RECYCLE', '280')),
+        }
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     secret_key = os.environ.get('SECRET_KEY')
     if not secret_key:

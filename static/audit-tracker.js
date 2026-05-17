@@ -308,7 +308,12 @@
 
             return response;  
         }).catch(error => {  
-            const durationMs = Date.now() - startTime;  
+            const durationMs = Date.now() - startTime;
+            const errName = error && error.name ? String(error.name) : '';
+            const errMsg = error && error.message ? String(error.message) : '';
+            if (errName === 'AbortError' || errMsg.indexOf('aborted') !== -1) {
+                throw error;
+            }
 
             sendAuditEventThrottled(
                 'ajax_error',

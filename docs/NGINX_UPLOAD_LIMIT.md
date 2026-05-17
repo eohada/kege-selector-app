@@ -51,4 +51,33 @@ location /user/profile/update {
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+## Ошибка 502 Bad Gateway
+
+502 обычно значит, что nginx не дождался ответа от gunicorn или не может к нему подключиться.
+
+В `location`, который проксирует на приложение, выровняйте таймауты с gunicorn (`--timeout 120` в `Procfile`):
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8000;  # порт вашего web_prod
+    proxy_connect_timeout 10s;
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Проверка на сервере:
+
+```bash
+curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/health
+docker compose ps
+docker compose logs web_prod --tail 80
+sudo tail -30 /var/log/nginx/error.log
+```
+
 В приложении уже задан лимит 10 MB (`MAX_CONTENT_LENGTH`); аватарка в интерфейсе ограничена 5 MB. Лимит в nginx должен быть не меньше (рекомендуется **10M**).
