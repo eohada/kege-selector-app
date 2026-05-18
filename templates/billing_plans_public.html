@@ -51,6 +51,13 @@
     .btn-back { background: none; border: none; color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; cursor: pointer; padding: 10px 20px; display: flex; align-items: center; gap: 8px; transition: var(--transition); }
     .btn-back:hover { color: var(--text-primary); }
     .btn-back svg { width: 16px; height: 16px; }
+    .selection-card.selection-card--maintenance { cursor: not-allowed; pointer-events: none; text-align: left; opacity: 0.88; border-color: rgba(255, 193, 94, 0.28); background: linear-gradient(145deg, #141210 0%, var(--surface-color) 45%, #121218 100%); box-shadow: inset 0 0 0 1px rgba(255, 193, 94, 0.06); }
+    .selection-card.selection-card--maintenance::before { opacity: 0; }
+    .selection-card.selection-card--maintenance:hover { transform: none; box-shadow: inset 0 0 0 1px rgba(255, 193, 94, 0.06); border-color: rgba(255, 193, 94, 0.32); }
+    .maintenance-badge { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #1a1208; background: linear-gradient(90deg, #ffc24d, #ff9f3c); padding: 8px 14px; border-radius: 999px; margin-bottom: 0.75rem; box-shadow: 0 4px 20px rgba(255, 159, 60, 0.25); }
+    .billing-public-footer { width: 100%; max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem 3rem; box-sizing: border-box; text-align: center; font-size: 0.95rem; font-weight: 500; line-height: 1.55; color: var(--text-secondary); border-top: 1px solid var(--border-color); }
+    .billing-public-footer a { color: var(--accent-color); text-decoration: none; font-weight: 600; }
+    .billing-public-footer a:hover { text-decoration: underline; }
 </style>
 {% endblock %}
 
@@ -78,11 +85,12 @@
     <div id="step-1" class="wizard-step active">
         <div class="step-title">Выбери свою цель</div>
         <div class="cards-grid grid-2">
-            <button class="selection-card" data-step="1" data-val="oge" data-label="ОГЭ">
+            <div class="selection-card selection-card--maintenance" aria-disabled="true">
+                <span class="maintenance-badge">Тех работы</span>
                 <div class="card-title">ОГЭ</div>
-                <div class="card-desc">9 класс. Закладываем прочную базу для будущего.</div>
-            </button>
-            <button class="selection-card" data-step="1" data-val="ege" data-label="ЕГЭ">
+                <div class="card-desc">Раздел временно закрыт. Скоро вернёмся — следите за обновлениями или напишите в Telegram.</div>
+            </div>
+            <button type="button" class="selection-card" data-step="1" data-val="ege" data-label="ЕГЭ">
                 <div class="card-title">ЕГЭ</div>
                 <div class="card-desc">11 класс. Уверенное поступление в вуз мечты.</div>
             </button>
@@ -92,22 +100,23 @@
     <div id="step-2" class="wizard-step">
         <div class="step-title">Выбери формат подготовки</div>
         <div class="cards-grid grid-3">
-            <button class="selection-card" data-step="2" data-val="solo" data-label="Solo">
+            <div class="selection-card selection-card--maintenance" aria-disabled="true">
+                <span class="maintenance-badge">Тех работы</span>
                 <div class="card-title">Solo (Инди-трек)</div>
                 <div class="card-desc">Самостоятельная подготовка в тренажёре с поддержкой материалов.</div>
                 <div class="card-price">5 000 ₽ <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary)">/ мес</span></div>
-            </button>
-            <button class="selection-card" data-step="2" data-val="mentor" data-label="Mentor">
+            </div>
+            <button type="button" class="selection-card" data-step="2" data-val="mentor" data-label="Mentor">
                 <div class="card-title">Mentor (Классика)</div>
                 <div class="card-desc">Только живая работа с преподавателем. Без тренажёра.</div>
-                <div class="card-price">от 1 750 ₽ <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary)">/ урок</span></div>
+                <div class="card-price">от 1 600 ₽ <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary)">/ урок</span></div>
             </button>
-            <button class="selection-card" data-step="2" data-val="godmode" data-label="God Mode">
-                <div class="card-badge hit">Премиум</div>
+            <div class="selection-card selection-card--maintenance" aria-disabled="true">
+                <span class="maintenance-badge">Тех работы</span>
                 <div class="card-title">God Mode</div>
                 <div class="card-desc">Ментор + Solo. Уроки с преподавателем и безлимитный тренажёр.</div>
                 <div class="card-price">от 1 600 ₽ <span style="font-size:0.8rem;font-weight:500;color:var(--text-secondary)">/ урок</span></div>
-            </button>
+            </div>
         </div>
         <div class="wizard-controls"><button class="btn-back" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Назад</button></div>
     </div>
@@ -116,33 +125,33 @@
         <div class="step-title" id="step-3-title">Выбери объём</div>
         
         <div id="panel-solo" class="cards-grid grid-3" style="display:none;">
-            <button class="selection-card" data-step="3" data-price="5000" data-label="Sprint"><div class="card-title">Sprint</div><div class="card-desc">1 месяц доступа к тренажёру. Быстрый старт.</div><div class="card-price">5 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="14000" data-label="Season Pass"><div class="card-badge">Выгодно</div><div class="card-title">Season Pass</div><div class="card-desc">3 месяца доступа. Идеально для рывка.</div><div class="card-price">14 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="35000" data-label="Career Mode"><div class="card-badge hit">Весь год</div><div class="card-title">Career Mode</div><div class="card-desc">9 месяцев. Максимальная выгода и спокойствие.</div><div class="card-price">35 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="5000" data-label="Sprint"><div class="card-title">Sprint</div><div class="card-desc">1 месяц доступа к тренажёру. Быстрый старт.</div><div class="card-price">5 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="14000" data-label="Season Pass"><div class="card-badge">Выгодно</div><div class="card-title">Season Pass</div><div class="card-desc">3 месяца доступа. Идеально для рывка.</div><div class="card-price">14 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="35000" data-label="Career Mode"><div class="card-badge hit">Весь год</div><div class="card-title">Career Mode</div><div class="card-desc">9 месяцев. Максимальная выгода и спокойствие.</div><div class="card-price">35 000 ₽</div></button>
         </div>
         <div id="panel-mentor-oge" class="cards-grid grid-4" style="display:none;">
-            <button class="selection-card" data-step="3" data-price="14000" data-label="Junior (8 уроков)"><div class="card-title">Junior</div><div class="card-desc">8 уроков • 1 месяц</div><div class="card-price">14 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="27000" data-label="Middle (16 уроков)"><div class="card-title">Middle</div><div class="card-desc">16 уроков • 2 месяца</div><div class="card-price">27 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="39000" data-label="Advanced (24 урока)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced</div><div class="card-desc">24 урока • 3 месяца</div><div class="card-price">39 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="52000" data-label="Senior (32 урока)"><div class="card-title">Senior</div><div class="card-desc">32 урока • 4 месяца</div><div class="card-price">52 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="15000" data-label="Junior (8 уроков)"><div class="card-title">Junior</div><div class="card-desc">8 уроков • 1 месяц</div><div class="card-price">15 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="28000" data-label="Middle (16 уроков)"><div class="card-title">Middle</div><div class="card-desc">16 уроков • 2 месяца</div><div class="card-price">28 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="40000" data-label="Advanced (24 урока)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced</div><div class="card-desc">24 урока • 3 месяца</div><div class="card-price">40 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="50000" data-label="Senior (32 урока)"><div class="card-title">Senior</div><div class="card-desc">32 урока • 4 месяца</div><div class="card-price">50 000 ₽</div></button>
         </div>
         <div id="panel-mentor-ege" class="cards-grid grid-4" style="display:none;">
-            <button class="selection-card" data-step="3" data-price="16000" data-label="Junior (8 уроков)"><div class="card-title">Junior</div><div class="card-desc">8 уроков • 1 месяц</div><div class="card-price">16 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="31000" data-label="Middle (16 уроков)"><div class="card-title">Middle</div><div class="card-desc">16 уроков • 2 месяца</div><div class="card-price">31 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="45000" data-label="Advanced (24 урока)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced</div><div class="card-desc">24 урока • 3 месяца</div><div class="card-price">45 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="55000" data-label="Senior (32 урока)"><div class="card-title">Senior</div><div class="card-desc">32 урока • 4 месяца</div><div class="card-price">55 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="15000" data-label="Junior (8 уроков)"><div class="card-title">Junior</div><div class="card-desc">8 уроков • 1 месяц</div><div class="card-price">15 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="28000" data-label="Middle (16 уроков)"><div class="card-title">Middle</div><div class="card-desc">16 уроков • 2 месяца</div><div class="card-price">28 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="40000" data-label="Advanced (24 урока)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced</div><div class="card-desc">24 урока • 3 месяца</div><div class="card-price">40 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="50000" data-label="Senior (32 урока)"><div class="card-title">Senior</div><div class="card-desc">32 урока • 4 месяца</div><div class="card-price">50 000 ₽</div></button>
         </div>
         <div id="panel-godmode-oge" class="cards-grid grid-4" style="display:none;">
-            <button class="selection-card" data-step="3" data-price="17500" data-label="Junior+ (8 ур + 1 мес)"><div class="card-title">Junior+</div><div class="card-desc">8 ур. + 1 мес. тренажёра</div><div class="card-price">17 500 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="34000" data-label="Middle+ (16 ур + 2 мес)"><div class="card-title">Middle+</div><div class="card-desc">16 ур. + 2 мес. тренажёра</div><div class="card-price">34 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="48000" data-label="Advanced+ (24 ур + 3 мес)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced+</div><div class="card-desc">24 ур. + 3 мес. тренажёра</div><div class="card-price">48 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="64000" data-label="Senior+ (32 ур + 4 мес)"><div class="card-title">Senior+</div><div class="card-desc">32 ур. + 4 мес. тренажёра</div><div class="card-price">64 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="17500" data-label="Junior+ (8 ур + 1 мес)"><div class="card-title">Junior+</div><div class="card-desc">8 ур. + 1 мес. тренажёра</div><div class="card-price">17 500 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="34000" data-label="Middle+ (16 ур + 2 мес)"><div class="card-title">Middle+</div><div class="card-desc">16 ур. + 2 мес. тренажёра</div><div class="card-price">34 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="48000" data-label="Advanced+ (24 ур + 3 мес)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced+</div><div class="card-desc">24 ур. + 3 мес. тренажёра</div><div class="card-price">48 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="64000" data-label="Senior+ (32 ур + 4 мес)"><div class="card-title">Senior+</div><div class="card-desc">32 ур. + 4 мес. тренажёра</div><div class="card-price">64 000 ₽</div></button>
         </div>
         <div id="panel-godmode-ege" class="cards-grid grid-4" style="display:none;">
-            <button class="selection-card" data-step="3" data-price="19000" data-label="Junior+ (8 ур + 1 мес)"><div class="card-title">Junior+</div><div class="card-desc">8 ур. + 1 мес. тренажёра</div><div class="card-price">19 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="37000" data-label="Middle+ (16 ур + 2 мес)"><div class="card-title">Middle+</div><div class="card-desc">16 ур. + 2 мес. тренажёра</div><div class="card-price">37 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="52000" data-label="Advanced+ (24 ур + 3 мес)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced+</div><div class="card-desc">24 ур. + 3 мес. тренажёра</div><div class="card-price">52 000 ₽</div></button>
-            <button class="selection-card" data-step="3" data-price="70000" data-label="Senior+ (32 ур + 4 мес)"><div class="card-title">Senior+</div><div class="card-desc">32 ур. + 4 мес. тренажёра</div><div class="card-price">70 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="19000" data-label="Junior+ (8 ур + 1 мес)"><div class="card-title">Junior+</div><div class="card-desc">8 ур. + 1 мес. тренажёра</div><div class="card-price">19 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="37000" data-label="Middle+ (16 ур + 2 мес)"><div class="card-title">Middle+</div><div class="card-desc">16 ур. + 2 мес. тренажёра</div><div class="card-price">37 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="52000" data-label="Advanced+ (24 ур + 3 мес)"><div class="card-badge hit">Хит</div><div class="card-title">Advanced+</div><div class="card-desc">24 ур. + 3 мес. тренажёра</div><div class="card-price">52 000 ₽</div></button>
+            <button type="button" class="selection-card" data-step="3" data-price="70000" data-label="Senior+ (32 ур + 4 мес)"><div class="card-title">Senior+</div><div class="card-desc">32 ур. + 4 мес. тренажёра</div><div class="card-price">70 000 ₽</div></button>
         </div>
         
         <div class="wizard-controls"><button class="btn-back" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Назад</button></div>
@@ -151,14 +160,18 @@
     <div id="step-4" class="wizard-step">
         <div class="step-title">Программа готова</div>
         <div class="summary-box">
-            <div class="summary-breadcrumbs" id="summary-path">ОГЭ / God Mode / Advanced+</div>
-            <div class="summary-total" id="summary-price">48 000 ₽</div>
+            <div class="summary-breadcrumbs" id="summary-path">ЕГЭ / Mentor / Junior</div>
+            <div class="summary-total" id="summary-price">15 000 ₽</div>
             <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.95rem;">Отправь выбранный тариф нам в Telegram для оформления доступа.</p>
             <a href="#" target="_blank" rel="noopener noreferrer" class="btn-primary" id="tg-pay-link">Перейти к оплате</a>
         </div>
         <div class="wizard-controls"><button class="btn-back" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Изменить выбор</button></div>
     </div>
 </main>
+
+<footer class="billing-public-footer">
+    индивидуальные тарифные планы, не схожие с указанными на странице обсуждаются индивидуально. tg - <a href="https://t.me/eohada" target="_blank" rel="noopener noreferrer">@eohada</a>
+</footer>
 {% endblock %}
 
 {% block scripts_extra %}
