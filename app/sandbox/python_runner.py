@@ -221,13 +221,10 @@ def normalize_leading_tabs_to_spaces(code: str, tab_width: int = 4) -> str:
 
 
 def _sandbox_timeout_seconds(code: str, explicit: int | None) -> int:
-    """Turtle + xvfb + tk: первый запуск и отрисовка часто > 5 с."""
+    """Лимит выполнения кода из редактора в работах (по умолчанию 30 с)."""
     if explicit is not None:
         return explicit
-    c = (code or '').lower()
-    if 'turtle' in c:
-        return 30
-    return 5
+    return 30
 
 
 # Файл PostScript пишет раннер (tk canvas) в cwd песочницы.
