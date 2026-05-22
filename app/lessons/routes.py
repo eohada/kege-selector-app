@@ -1442,6 +1442,8 @@ def lesson_classwork_student_submit(lesson_id):  # comment
         flash('Нет доступных заданий для сдачи.', 'warning')
         return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))
     db.session.commit()  # comment
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+    emit_lesson_tasks_updated(lesson_id, 'classwork')
     flash('Работа сдана', 'success')  # comment
     return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
 
@@ -1526,6 +1528,8 @@ def lesson_task_student_submit(lesson_id, lesson_task_id):
         lesson.homework_status = 'assigned_done'
 
     db.session.commit()
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+    emit_lesson_tasks_updated(lesson_id, assignment_type)
     flash('Задание сдано', 'success')
     return redirect(url_for(back_route, lesson_id=lesson_id) + f"#task-{lesson_task_id}")
 
@@ -1659,6 +1663,8 @@ def lesson_classwork_save(lesson_id):  # comment
     _apply_attempts_settings_from_form(lesson, tasks, 'classwork')
     try:  # comment
         db.session.commit()  # comment
+        from app.lessons.lesson_socket import emit_lesson_tasks_updated
+        emit_lesson_tasks_updated(lesson_id, 'classwork')
     except Exception:  # comment
         db.session.rollback()  # comment
         raise  # comment
@@ -1736,6 +1742,8 @@ def lesson_task_set_status(lesson_id, lesson_task_id):
     
     try:
         db.session.commit()
+        from app.lessons.lesson_socket import emit_lesson_tasks_updated
+        emit_lesson_tasks_updated(lesson_id, lesson_task.assignment_type or 'classwork')
         
         audit_logger.log(
             action='set_task_status',
@@ -1796,6 +1804,8 @@ def lesson_task_teacher_feedback_save(lesson_id, lesson_task_id):  # comment
             lesson_task.difficulty_level = int(v)
     try:  # comment
         db.session.commit()  # comment
+        from app.lessons.lesson_socket import emit_lesson_tasks_updated
+        emit_lesson_tasks_updated(lesson_id, lesson_task.assignment_type or 'classwork')
     except Exception as e:  # comment
         db.session.rollback()  # comment
         logger.error(f"Failed to save teacher feedback: {e}", exc_info=True)  # comment
