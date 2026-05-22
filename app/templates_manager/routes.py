@@ -493,7 +493,12 @@ def template_apply(template_id):
             }
         )
         
+        if applied_count > 0:
+            from app.lessons.lesson_socket import emit_lesson_tasks_updated
+            emit_lesson_tasks_updated(lesson.lesson_id, assignment_type or 'homework')
+
         message = f'Шаблон применен: добавлено {applied_count} заданий'
+
         if skipped_count > 0:
             message += f', пропущено {skipped_count} (уже были в уроке)'
         

@@ -387,9 +387,12 @@ def create_app(config_name=None):
     # Real-time комната урока (WebSocket)
     try:
         from flask_socketio import SocketIO
+        import sys
+        eventlet_patched = 'eventlet' in sys.modules
+        async_mode = 'eventlet' if eventlet_patched else 'threading'
         socketio = SocketIO(
             app,
-            async_mode='threading',
+            async_mode=async_mode,
             cors_allowed_origins='*',
             logger=False,
             engineio_logger=False,

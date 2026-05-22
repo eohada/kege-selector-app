@@ -52,31 +52,30 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--tw-colors-boo-primary, #7B5CFF), var(--tw-colors-boo-cyan, #06B6D4));
+            height: 4px;
+            background: linear-gradient(90deg, #7B5CFF, #06B6D4, #7B5CFF);
+            background-size: 200% 100%;
             z-index: 9999;
             pointer-events: none;
         }
-        .htmx-request .htmx-indicator {
-            opacity: 1;
-            animation: htmx-loading 2s infinite ease-in-out;
-        }
+        .htmx-request .htmx-indicator,
         .htmx-request.htmx-indicator {
             opacity: 1;
-            animation: htmx-loading 2s infinite ease-in-out;
+            animation: htmx-loading-bar 1.5s infinite linear;
         }
-        @keyframes htmx-loading {
-            0% { transform: translateX(-100%); width: 50%; }
-            100% { transform: translateX(200%); width: 50%; }
+        @keyframes htmx-loading-bar {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 200% 0%; }
         }
     </style>
     {% block head_extra %}{% endblock %}
 </head>
-<div class="htmx-indicator"></div>
 <body class="{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student{% endif %} {% block body_class %}{% endblock %}" 
       hx-boost="true" 
       hx-indicator=".htmx-indicator"
       {% block body_attrs %}{% endblock %}>
+    <div class="htmx-indicator"></div>
+
     {% block body %}
     {% if active_lesson is defined and active_lesson %}
     {% include '_active_lesson_banner.html' %}
@@ -273,7 +272,7 @@
     })();
     </script>
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     {% block scripts_extra %}{% endblock %}
 
     <script>

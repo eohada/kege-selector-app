@@ -1622,6 +1622,8 @@ def lesson_homework_save(lesson_id):
     )
     
     flash('Данные по ДЗ сохранены!', 'success')
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+    emit_lesson_tasks_updated(lesson_id, 'homework')
     return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))
 
 
@@ -1714,6 +1716,8 @@ def lesson_exam_save(lesson_id):  # comment
         db.session.rollback()  # comment
         raise  # comment
     flash('Данные сохранены!', 'success')  # comment
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+    emit_lesson_tasks_updated(lesson_id, 'exam')
     return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
 
 
@@ -2319,6 +2323,9 @@ def lesson_homework_delete_task(lesson_id, lesson_task_id):
     
     flash('Задание удалено', 'success')
 
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+    emit_lesson_tasks_updated(lesson_id, assignment_type or 'homework')
+
     if assignment_type == 'classwork':
         return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))
     return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))
@@ -2342,6 +2349,8 @@ def lesson_homework_not_assigned(lesson_id):
     except Exception as e:
         db.session.rollback()
         raise
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+    emit_lesson_tasks_updated(lesson_id, 'homework')
     flash('Домашнее задание отмечено как «не задано».', 'info')
     return redirect(url_for('students.student_profile', student_id=lesson.student_id))
 
@@ -2495,6 +2504,10 @@ def lesson_manual_create(lesson_id):
                 }
             )
             
+            if count > 0:
+                from app.lessons.lesson_socket import emit_lesson_tasks_updated
+                emit_lesson_tasks_updated(lesson.lesson_id, assignment_type or 'homework')
+
             return jsonify({'success': True, 'count': count})
         except Exception as e:
             db.session.rollback()

@@ -1,9 +1,16 @@
+try:
+    import eventlet
+    eventlet.monkey_patch()
+except ImportError:
+    pass
+
 """
 Точка входа: фабрика приложений из app/__init__.py.
 Для real-time (комната урока) нужен flask-socketio.
 """
 import os
 import logging
+
 
 try:
     from dotenv import load_dotenv

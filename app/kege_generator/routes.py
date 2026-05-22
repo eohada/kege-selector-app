@@ -197,6 +197,10 @@ def kege_generator(lesson_id=None):
                             )
 
                         db.session.commit()
+
+                        if added_to_lesson:
+                            from app.lessons.lesson_socket import emit_lesson_tasks_updated
+                            emit_lesson_tasks_updated(lesson.lesson_id, assignment_type or 'homework')
                     except Exception as e:
                         db.session.rollback()
                         logger.error(f"Ошибка при добавлении задания по ID: {e}", exc_info=True)

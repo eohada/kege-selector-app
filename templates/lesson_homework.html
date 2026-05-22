@@ -1674,6 +1674,37 @@
                         try { window.location.reload(); } catch (e1) {}
                         return;
                     }
+
+                    // Save input values and focus state to prevent disruption during real-time updates
+                    var savedInputs = {};
+                    var activeElementSelector = null;
+                    var selectionStart = null;
+                    var selectionEnd = null;
+
+                    var activeElt = document.activeElement;
+                    if (activeElt && container.contains(activeElt)) {
+                        if (activeElt.id) {
+                            activeElementSelector = '#' + activeElt.id;
+                        } else if (activeElt.name) {
+                            activeElementSelector = '[name="' + activeElt.name + '"]';
+                        }
+                        if (typeof activeElt.selectionStart === 'number') {
+                            selectionStart = activeElt.selectionStart;
+                            selectionEnd = activeElt.selectionEnd;
+                        }
+                    }
+
+                    container.querySelectorAll('input, textarea, select').forEach(function(el) {
+                        var key = el.id || el.name;
+                        if (key) {
+                            if (el.type === 'checkbox' || el.type === 'radio') {
+                                savedInputs[key] = el.checked;
+                            } else {
+                                savedInputs[key] = el.value;
+                            }
+                        }
+                    });
+
                     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
                         .then(function(r) { return r.text(); })
                         .then(function(html) {
@@ -1684,6 +1715,31 @@
                                 var inner = tasks.querySelector('.tasks-container');
                                 if (inner) {
                                     container.innerHTML = inner.innerHTML;
+
+                                    // Restore input values
+                                    container.querySelectorAll('input, textarea, select').forEach(function(el) {
+                                        var key = el.id || el.name;
+                                        if (key && savedInputs[key] !== undefined) {
+                                            if (el.type === 'checkbox' || el.type === 'radio') {
+                                                el.checked = savedInputs[key];
+                                            } else {
+                                                el.value = savedInputs[key];
+                                            }
+                                        }
+                                    });
+
+                                    // Restore focus
+                                    if (activeElementSelector) {
+                                        var newActive = container.querySelector(activeElementSelector);
+                                        if (newActive) {
+                                            newActive.focus();
+                                            if (selectionStart !== null && typeof newActive.selectionStart === 'number') {
+                                                newActive.selectionStart = selectionStart;
+                                                newActive.selectionEnd = selectionEnd;
+                                            }
+                                        }
+                                    }
+
                                     if (typeof window.boostudyRenderTaskMath === 'function') {
                                         window.boostudyRenderTaskMath(container, 40);
                                     } else if (typeof renderMathInElement !== 'undefined') {

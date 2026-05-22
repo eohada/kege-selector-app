@@ -1,5 +1,12 @@
+try:
+    import eventlet
+    eventlet.monkey_patch()
+except ImportError:
+    pass
+
 """
 Запуск приложения локально для разработки (в т.ч. страница тарифов без деплоя).
+
 
 Перед первым запуском: pip install -r requirements.txt (или активируй свой venv).
 
