@@ -581,7 +581,84 @@
             console.error('Error syncing meta tags', e);
         }
     }
-
+ 
+    function syncHeadStyles(responseDoc) {
+        try {
+            var newStyles = responseDoc.querySelectorAll('head style, head link[rel="stylesheet"]');
+            var currentHead = document.head;
+            
+            var existingHrefs = [];
+            var existingTexts = [];
+            
+            Array.prototype.slice.call(currentHead.querySelectorAll('link[rel="stylesheet"]')).forEach(function(link) {
+                if (link.href) existingHrefs.push(link.href);
+            });
+            Array.prototype.slice.call(currentHead.querySelectorAll('style')).forEach(function(style) {
+                existingTexts.push(style.textContent);
+            });
+ 
+            Array.prototype.slice.call(newStyles).forEach(function(el) {
+                if (el.tagName.toLowerCase() === 'link') {
+                    var href = el.href;
+                    if (href && existingHrefs.indexOf(href) === -1) {
+                        var newLink = document.createElement('link');
+                        newLink.rel = 'stylesheet';
+                        newLink.href = el.getAttribute('href');
+                        currentHead.appendChild(newLink);
+                    }
+                } else if (el.tagName.toLowerCase() === 'style') {
+                    var text = el.textContent;
+                    if (existingTexts.indexOf(text) === -1) {
+                        var newStyle = document.createElement('style');
+                        newStyle.textContent = text;
+                        currentHead.appendChild(newStyle);
+                    }
+                }
+            });
+        } catch (e) {
+            console.error('Error syncing head styles', e);
+        }
+    }
+ 
+    function syncHeadScripts(responseDoc) {
+        try {
+            var newScripts = responseDoc.querySelectorAll('head script');
+            var currentHead = document.head;
+            
+            var existingSrcs = [];
+            Array.prototype.slice.call(document.querySelectorAll('script')).forEach(function(script) {
+                var src = script.getAttribute('src');
+                if (src) {
+                    var tempLink = document.createElement('a');
+                    tempLink.href = src;
+                    existingSrcs.push(tempLink.href);
+                }
+            });
+ 
+            Array.prototype.slice.call(newScripts).forEach(function(script) {
+                var src = script.getAttribute('src');
+                if (src) {
+                    var tempLink = document.createElement('a');
+                    tempLink.href = src;
+                    if (existingSrcs.indexOf(tempLink.href) === -1) {
+                        var newScript = document.createElement('script');
+                        for (var i = 0; i < script.attributes.length; i++) {
+                            var attr = script.attributes[i];
+                            newScript.setAttribute(attr.name, attr.value);
+                        }
+                        currentHead.appendChild(newScript);
+                    }
+                } else {
+                    var newScript = document.createElement('script');
+                    newScript.textContent = script.textContent;
+                    currentHead.appendChild(newScript);
+                }
+            });
+        } catch (e) {
+            console.error('Error syncing head scripts', e);
+        }
+    }
+ 
     function syncPageMetadataAndAttributes(htmlString) {
         if (!htmlString) return;
         try {
@@ -589,11 +666,13 @@
             var doc = parser.parseFromString(htmlString, 'text/html');
             
             syncMetaTags(doc);
-
+            syncHeadStyles(doc);
+            syncHeadScripts(doc);
+ 
             var newBody = doc.querySelector('body');
             if (newBody) {
                 document.body.className = newBody.className;
-
+ 
                 var preservedAttrs = ['hx-boost', 'hx-indicator', 'id', 'style'];
                 var attrsToRemove = [];
                 for (var i = 0; i < document.body.attributes.length; i++) {
@@ -605,7 +684,7 @@
                 attrsToRemove.forEach(function(attrName) {
                     document.body.removeAttribute(attrName);
                 });
-
+ 
                 for (var i = 0; i < newBody.attributes.length; i++) {
                     var attr = newBody.attributes[i];
                     if (preservedAttrs.indexOf(attr.name) === -1 && attr.name !== 'class') {
