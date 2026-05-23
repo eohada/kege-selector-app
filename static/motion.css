@@ -2,6 +2,16 @@
   navigation: none;
 }
 
+/* Disable default root transition to keep navigation header and sidebar stationary */
+::view-transition-group(root) {
+  animation: none !important;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}
+
 html {
   scroll-behavior: auto !important;
 }
@@ -27,25 +37,39 @@ main.app-main {
   transform-origin: 50% 44px;
 }
 
+/* Duration overrides for View Transition groups to support delays */
+::view-transition-group(app-main) {
+  animation-duration: 550ms !important;
+}
+
+html[data-bs-transition="drill-in"] ::view-transition-group(app-main),
+html[data-bs-transition="drill-out"] ::view-transition-group(app-main) {
+  animation-duration: 650ms !important;
+}
+
+/* Default view transition animations */
 ::view-transition-old(app-main),
 ::view-transition-new(app-main) {
-  animation-duration: var(--bs-motion-page);
-  animation-timing-function: var(--bs-motion-curve);
   animation-fill-mode: both;
 }
 
+/* Swipe animations timings (sequential/delays) */
 ::view-transition-old(app-main) {
-  animation-name: bs-swipe-out-left;
+  animation-duration: 200ms;
+  animation-delay: 0ms;
+  animation-timing-function: ease-in;
 }
 
 ::view-transition-new(app-main) {
-  animation-name: bs-swipe-in-right;
+  animation-duration: 350ms;
+  animation-delay: 150ms;
+  animation-timing-function: var(--bs-motion-curve);
 }
 
+/* Specific Swipe transitions (Left/Right) */
 html[data-bs-transition="swipe-right"] ::view-transition-old(app-main) {
   animation-name: bs-swipe-out-left;
 }
-
 html[data-bs-transition="swipe-right"] ::view-transition-new(app-main) {
   animation-name: bs-swipe-in-right;
 }
@@ -53,28 +77,36 @@ html[data-bs-transition="swipe-right"] ::view-transition-new(app-main) {
 html[data-bs-transition="swipe-left"] ::view-transition-old(app-main) {
   animation-name: bs-swipe-out-right;
 }
-
 html[data-bs-transition="swipe-left"] ::view-transition-new(app-main) {
   animation-name: bs-swipe-in-left;
 }
 
+/* Drill timings and animations (sequential/delays) */
 html[data-bs-transition="drill-in"] ::view-transition-old(app-main) {
-  animation-duration: var(--bs-motion-drill);
+  animation-duration: 250ms;
+  animation-delay: 0ms;
+  animation-timing-function: ease-in;
   animation-name: bs-drill-in-leave;
 }
 
 html[data-bs-transition="drill-in"] ::view-transition-new(app-main) {
-  animation-duration: var(--bs-motion-drill);
+  animation-duration: 400ms;
+  animation-delay: 200ms;
+  animation-timing-function: var(--bs-motion-curve);
   animation-name: bs-drill-in-enter;
 }
 
 html[data-bs-transition="drill-out"] ::view-transition-old(app-main) {
-  animation-duration: var(--bs-motion-drill);
+  animation-duration: 250ms;
+  animation-delay: 0ms;
+  animation-timing-function: ease-in;
   animation-name: bs-drill-out-leave;
 }
 
 html[data-bs-transition="drill-out"] ::view-transition-new(app-main) {
-  animation-duration: var(--bs-motion-drill);
+  animation-duration: 400ms;
+  animation-delay: 200ms;
+  animation-timing-function: var(--bs-motion-curve);
   animation-name: bs-drill-out-enter;
 }
 
@@ -116,6 +148,11 @@ html[data-bs-transition="drill-out"] ::view-transition-new(app-main) {
 @keyframes bs-drill-out-leave {
   from { opacity: 1; transform: scale(1); filter: blur(0); }
   to { opacity: 0; transform: scale(1.05); filter: blur(4px); }
+}
+
+/* Prevent flash: hide items before the page enter animation starts */
+main.app-main:not(.bs-motion-page-enter) .bs-motion-item {
+  opacity: 0;
 }
 
 .bs-motion-page-enter .bs-motion-item {
