@@ -58,9 +58,10 @@
         });
     }
 
-    function initFormHandlers() {
-
-        const forms = document.querySelectorAll('form[method="POST"]:not([data-no-ajax])');
+    function initFormHandlers(scope) {
+        const root = scope || document;
+        if (!root || typeof root.querySelectorAll !== 'function') return;
+        const forms = root.querySelectorAll('form[method="POST"]:not([data-no-ajax])');
         
         forms.forEach(form => {
 
@@ -209,10 +210,11 @@
         });
     }
 
-    function initPostButtons() {
-
-        const postButtons = document.querySelectorAll('button[type="submit"], input[type="submit"], form[method="POST"] button, a[data-method="POST"]');
-        const postForms = document.querySelectorAll('form[method="POST"]');
+    function initPostButtons(scope) {
+        const root = scope || document;
+        if (!root || typeof root.querySelectorAll !== 'function') return;
+        const postButtons = root.querySelectorAll('button[type="submit"], input[type="submit"], form[method="POST"] button, a[data-method="POST"]');
+        const postForms = root.querySelectorAll('form[method="POST"]');
 
         postForms.forEach(form => {
             const buttons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
@@ -313,13 +315,16 @@
         });
     }
 
+    window.initFormToastHandlers = function(scope) {
+        initFormHandlers(scope || document);
+        initPostButtons(scope || document);
+    };
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            initFormHandlers();
-            initPostButtons();
+            window.initFormToastHandlers(document);
         });
     } else {
-        initFormHandlers();
-        initPostButtons();
+        window.initFormToastHandlers(document);
     }
 })();

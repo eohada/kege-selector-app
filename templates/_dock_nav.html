@@ -213,33 +213,41 @@
     </header>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    var dropdowns = Array.prototype.slice.call(document.querySelectorAll('[data-profile-dropdown]'));
-    dropdowns.forEach(function(dropdown) {
-        var trigger = dropdown.querySelector('[data-profile-trigger]');
-        var menu = dropdown.querySelector('[data-profile-menu]');
-        if (!trigger || !menu) return;
-
-        function closeMenu() {
-            dropdown.classList.remove('is-open');
-            trigger.setAttribute('aria-expanded', 'false');
-        }
-
-        function openMenu() {
-            dropdown.classList.add('is-open');
-            trigger.setAttribute('aria-expanded', 'true');
-        }
-
-        trigger.addEventListener('click', function(e) {
+(function() {
+    if (window.__profileDropdownInitialized) return;
+    window.__profileDropdownInitialized = true;
+    
+    document.addEventListener('click', function(e) {
+        var trigger = e.target.closest('[data-profile-trigger]');
+        if (trigger) {
             e.preventDefault();
             e.stopPropagation();
-            if (dropdown.classList.contains('is-open')) closeMenu();
-            else openMenu();
-        });
-
-        document.addEventListener('click', function(e) {
-            if (!dropdown.contains(e.target)) closeMenu();
+            var dropdown = trigger.closest('[data-profile-dropdown]');
+            if (dropdown) {
+                var isOpen = dropdown.classList.contains('is-open');
+                
+                // Close all profile dropdowns first
+                document.querySelectorAll('[data-profile-dropdown].is-open').forEach(function(d) {
+                    d.classList.remove('is-open');
+                    d.querySelector('[data-profile-trigger]')?.setAttribute('aria-expanded', 'false');
+                });
+                
+                if (!isOpen) {
+                    dropdown.classList.add('is-open');
+                    trigger.setAttribute('aria-expanded', 'true');
+                }
+            }
+            return;
+        }
+        
+        // Close if click outside
+        var openDropdowns = document.querySelectorAll('[data-profile-dropdown].is-open');
+        openDropdowns.forEach(function(dropdown) {
+            if (!dropdown.contains(e.target)) {
+                dropdown.classList.remove('is-open');
+                dropdown.querySelector('[data-profile-trigger]')?.setAttribute('aria-expanded', 'false');
+            }
         });
     });
-});
+})();
 </script>

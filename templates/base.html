@@ -43,6 +43,31 @@
                 else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
             } catch(e) {}
         })();
+
+        // HTMX SPA DOMContentLoaded & load shim
+        (function() {
+            var docAL = document.addEventListener;
+            document.addEventListener = function(type, listener, options) {
+                if (type === 'DOMContentLoaded' && (document.readyState === 'complete' || document.readyState === 'interactive')) {
+                    setTimeout(function() {
+                        try { listener.call(document, new Event('DOMContentLoaded')); } catch (e) { console.error(e); }
+                    }, 1);
+                    return;
+                }
+                return docAL.apply(document, arguments);
+            };
+            
+            var winAL = window.addEventListener;
+            window.addEventListener = function(type, listener, options) {
+                if (type === 'load' && document.readyState === 'complete') {
+                    setTimeout(function() {
+                        try { listener.call(window, new Event('load')); } catch (e) { console.error(e); }
+                    }, 1);
+                    return;
+                }
+                return winAL.apply(window, arguments);
+            };
+        })();
     </script>
     <style>
         .htmx-indicator {

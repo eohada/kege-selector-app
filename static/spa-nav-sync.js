@@ -420,7 +420,13 @@
     }
 
     function isMainSwap(evt) {
-        return evt && evt.target && evt.target.matches && evt.target.matches('main.app-main');
+        if (!evt || !evt.target) return false;
+        var target = evt.target;
+        return (typeof target.matches === 'function' && (
+            target.matches('main.app-main') || 
+            target.matches('body') || 
+            target.matches('html')
+        )) || (typeof target.querySelector === 'function' && target.querySelector('main.app-main') !== null);
     }
 
     window.addEventListener('resize', function() {
@@ -494,6 +500,39 @@
             }
             applyPageMotion(evt.target);
             updateHistoryStack();
+
+            // Re-run global initializers for the swapped DOM scope
+            var scope = evt.target;
+            if (window.initCsrfHelper) {
+                window.initCsrfHelper(scope);
+            }
+            if (window.initConfirmModals) {
+                window.initConfirmModals(scope);
+            }
+            if (window.initFormToastHandlers) {
+                window.initFormToastHandlers(scope);
+            }
+            if (window.initFilterStorage) {
+                window.initFilterStorage(scope);
+            }
+            if (window.initFilterStateManager) {
+                window.initFilterStateManager();
+            }
+            if (window.initScrollToTop) {
+                window.initScrollToTop();
+            }
+            if (window.BooCanvasOverlay && typeof window.BooCanvasOverlay.init === 'function') {
+                window.BooCanvasOverlay.init();
+            }
+            if (window.initMobileMenu) {
+                window.initMobileMenu();
+            }
+            if (typeof window.initStudentForms === 'function') {
+                window.initStudentForms();
+            }
+            if (typeof window.initStudentCards === 'function') {
+                window.initStudentCards();
+            }
         }
         if (evt && evt.target && evt.target.id === 'articleContainer') {
             var articleView = document.querySelector('#view-article');

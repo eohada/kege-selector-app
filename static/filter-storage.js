@@ -45,11 +45,12 @@ class FilterStorage {
         }
     }
 
-    restoreForm(formSelector) {
+    restoreForm(formSelector, scope) {
         const saved = this.load();
         if (!saved) return;
 
-        const form = document.querySelector(formSelector);
+        const root = scope || document;
+        const form = root.querySelector(formSelector);
         if (!form) return;
 
         Object.keys(saved).forEach(key => {
@@ -66,8 +67,9 @@ class FilterStorage {
         });
     }
 
-    saveForm(formSelector) {
-        const form = document.querySelector(formSelector);
+    saveForm(formSelector, scope) {
+        const root = scope || document;
+        const form = root.querySelector(formSelector);
         if (!form) return;
 
         const formData = new FormData(form);
@@ -88,20 +90,22 @@ class FilterStorage {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+window.initFilterStorage = function(root) {
+    const scope = root || document;
+    if (!scope || typeof scope.querySelector !== 'function') return;
+
     const filterStorage = new FilterStorage('dashboard_filters');
-    const form = document.querySelector('.filters-panel form');
+    const form = scope.querySelector('.filters-panel form');
     
     if (form) {
-
-        filterStorage.restoreForm('.filters-panel form');
+        filterStorage.restoreForm('.filters-panel form', scope);
 
         form.addEventListener('change', () => {
-            filterStorage.saveForm('.filters-panel form');
+            filterStorage.saveForm('.filters-panel form', scope);
         });
 
         form.addEventListener('submit', () => {
-            filterStorage.saveForm('.filters-panel form');
+            filterStorage.saveForm('.filters-panel form', scope);
         });
 
         const searchInput = form.querySelector('input[name="search"]');
@@ -110,17 +114,21 @@ document.addEventListener('DOMContentLoaded', () => {
             searchInput.addEventListener('input', () => {
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
-                    filterStorage.saveForm('.filters-panel form');
+                    filterStorage.saveForm('.filters-panel form', scope);
                 }, 500);
             });
         }
     }
 
-    const resetBtn = document.querySelector('a[href*="dashboard"][href*="show_archive"]');
+    const resetBtn = scope.querySelector('a[href*="dashboard"][href*="show_archive"]');
     if (resetBtn && resetBtn.textContent.includes('Сбросить')) {
         resetBtn.addEventListener('click', () => {
             filterStorage.clear();
         });
     }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.initFilterStorage(document);
 });
 

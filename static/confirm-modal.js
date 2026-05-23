@@ -115,9 +115,11 @@ function confirmFormSubmit(form, options) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+window.initConfirmModals = function(root) {
+    const scope = root || document;
+    if (!scope || typeof scope.querySelectorAll !== 'function') return;
 
-    const studentDeleteForms = document.querySelectorAll('form[action*="/student/"][action*="/delete"]');
+    const studentDeleteForms = scope.querySelectorAll('form[action*="/student/"][action*="/delete"]');
     studentDeleteForms.forEach(form => {
         confirmFormSubmit(form, {
             title: 'Удалить ученика?',
@@ -128,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const lessonDeleteForms = document.querySelectorAll('form[action*="/lesson/"][action*="/delete"]');
+    const lessonDeleteForms = scope.querySelectorAll('form[action*="/lesson/"][action*="/delete"]');
     lessonDeleteForms.forEach(form => {
         confirmFormSubmit(form, {
             title: 'Удалить урок?',
@@ -139,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const taskDeleteForms = document.querySelectorAll('form[id^="delete-form-"]');
+    const taskDeleteForms = scope.querySelectorAll('form[id^="delete-form-"]');
     taskDeleteForms.forEach(form => {
         confirmFormSubmit(form, {
             title: 'Удалить задание?',
@@ -150,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const resetForms = document.querySelectorAll('form[action*="reset"]');
+    const resetForms = scope.querySelectorAll('form[action*="reset"]');
     resetForms.forEach(form => {
         const resetType = form.querySelector('[name="reset_type"]')?.value || 'unknown';
         const taskType = form.querySelector('[name="task_type_reset"]')?.value || 'all';
@@ -175,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const archiveForms = document.querySelectorAll('form[action*="/archive"]');
+    const archiveForms = scope.querySelectorAll('form[action*="/archive"]');
     archiveForms.forEach(form => {
         confirmFormSubmit(form, {
             title: 'Архивировать ученика?',
@@ -186,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const confirmDeleteForms = document.querySelectorAll('form.confirm-delete-form');
+    const confirmDeleteForms = scope.querySelectorAll('form.confirm-delete-form');
     confirmDeleteForms.forEach(form => {
 
         if (form.hasAttribute('data-no-confirm')) {
@@ -226,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const bulkActionForms = document.querySelectorAll('form[data-bulk-action]');
+    const bulkActionForms = scope.querySelectorAll('form[data-bulk-action]');
     bulkActionForms.forEach(form => {
         const actionType = form.getAttribute('data-bulk-action');
         let title = 'Подтверждение массового действия';
@@ -258,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const deleteButtons = document.querySelectorAll('button.action-delete-btn');
+    const deleteButtons = scope.querySelectorAll('button.action-delete-btn');
     deleteButtons.forEach((btn) => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -279,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const confirmButtons = document.querySelectorAll('button.action-confirm-btn');
+    const confirmButtons = scope.querySelectorAll('button.action-confirm-btn');
     confirmButtons.forEach((btn) => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -288,4 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
             submitPostRequest(url);
         });
     });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.initConfirmModals(document);
 });

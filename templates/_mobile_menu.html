@@ -168,11 +168,14 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+window.initMobileMenu = function() {
     var roots = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-root]'));
     if (!roots.length) return;
 
     roots.forEach(function(root) {
+        if (root.dataset.mobileMenuInited === 'true') return;
+        root.dataset.mobileMenuInited = 'true';
+
         var toggle = root.querySelector('[data-mobile-menu-toggle]');
         var menu = root.querySelector('[data-mobile-menu]');
         var overlay = root.querySelector('[data-mobile-menu-overlay]');
@@ -246,5 +249,11 @@ document.addEventListener('DOMContentLoaded', function() {
             link.addEventListener('click', function() { setTimeout(closeMenu, 120); });
         });
     });
-});
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { window.initMobileMenu(); });
+} else {
+    window.initMobileMenu();
+}
 </script>

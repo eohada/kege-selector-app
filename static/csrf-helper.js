@@ -44,7 +44,16 @@ class CsrfFormHelper {
     } 
 } 
 
+window.initCsrfHelper = function(root) {
+    const helper = new CsrfFormHelper();
+    if (root && typeof root.querySelectorAll === 'function') {
+        const forms = root.querySelectorAll('form');
+        forms.forEach(form => helper.ensureFormToken(form));
+    } else {
+        helper.processAllForms();
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function() { 
-    const helper = new CsrfFormHelper(); 
-    helper.processAllForms(); 
+    window.initCsrfHelper();
 }); 

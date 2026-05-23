@@ -73,7 +73,11 @@ class FilterStateManager {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+window.initFilterStateManager = function() {
     new FilterStateManager();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.initFilterStateManager();
 });
 

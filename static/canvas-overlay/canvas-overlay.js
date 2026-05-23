@@ -78,11 +78,28 @@
   }
 
   function init() {
-    if (overlay) return;
+    if (overlay && document.body.contains(overlay)) return;
+
+    if (overlay && !document.body.contains(overlay)) {
+      try {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        if (toolbar.parentNode) toolbar.parentNode.removeChild(toolbar);
+        if (fab.parentNode) fab.parentNode.removeChild(fab);
+      } catch (e) {}
+      overlay = null;
+      canvas = null;
+      ctx = null;
+      toolbar = null;
+      fab = null;
+      fabBadge = null;
+    }
+
     createFab();
     createOverlay();
     createToolbar();
 
+    window.removeEventListener('resize', resizeCanvas);
+    document.removeEventListener('keydown', onKeyDown);
     window.addEventListener('resize', resizeCanvas);
     document.addEventListener('keydown', onKeyDown);
   }
@@ -668,12 +685,16 @@
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => { init(); autoDetectContext(); });
-  } else {
+  window.initCanvasOverlay = function() {
     init();
     autoDetectContext();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { window.initCanvasOverlay(); });
+  } else {
+    window.initCanvasOverlay();
   }
 
-  window.BooCanvasOverlay = { open, close, toggle, setContext };
+  window.BooCanvasOverlay = { open, close, toggle, setContext, init: window.initCanvasOverlay };
 })();
