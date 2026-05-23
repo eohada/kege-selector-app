@@ -30,6 +30,7 @@ html {
   --bs-motion-drill: 500ms;
   --bs-motion-glow: 0 0 20px rgba(139, 92, 246, .30);
   --bs-motion-shadow: 0 20px 40px -8px rgba(139, 92, 246, .15);
+  --bs-page-enter-delay: 0ms;
 }
 
 main.app-main {
@@ -37,14 +38,25 @@ main.app-main {
   transform-origin: 50% 44px;
 }
 
-/* Duration overrides for View Transition groups to support delays */
+/* Transition state overrides for stagger delay variables */
+html[data-bs-transition="swipe-right"],
+html[data-bs-transition="swipe-left"] {
+  --bs-page-enter-delay: 300ms;
+}
+
+html[data-bs-transition="drill-in"],
+html[data-bs-transition="drill-out"] {
+  --bs-page-enter-delay: 400ms;
+}
+
+/* Duration overrides for View Transition groups to support delays matching the reference */
 ::view-transition-group(app-main) {
-  animation-duration: 550ms !important;
+  animation-duration: 700ms !important;
 }
 
 html[data-bs-transition="drill-in"] ::view-transition-group(app-main),
 html[data-bs-transition="drill-out"] ::view-transition-group(app-main) {
-  animation-duration: 650ms !important;
+  animation-duration: 900ms !important;
 }
 
 /* Default view transition animations */
@@ -53,16 +65,16 @@ html[data-bs-transition="drill-out"] ::view-transition-group(app-main) {
   animation-fill-mode: both;
 }
 
-/* Swipe animations timings (sequential/delays) */
+/* Swipe / Default animations timings (sequential/delays matching reference) */
 ::view-transition-old(app-main) {
-  animation-duration: 200ms;
+  animation-duration: 400ms;
   animation-delay: 0ms;
-  animation-timing-function: ease-in;
+  animation-timing-function: var(--bs-motion-curve);
 }
 
 ::view-transition-new(app-main) {
-  animation-duration: 350ms;
-  animation-delay: 150ms;
+  animation-duration: 400ms;
+  animation-delay: 300ms;
   animation-timing-function: var(--bs-motion-curve);
 }
 
@@ -81,31 +93,31 @@ html[data-bs-transition="swipe-left"] ::view-transition-new(app-main) {
   animation-name: bs-swipe-in-left;
 }
 
-/* Drill timings and animations (sequential/delays) */
+/* Drill timings and animations (sequential/delays matching reference) */
 html[data-bs-transition="drill-in"] ::view-transition-old(app-main) {
-  animation-duration: 250ms;
+  animation-duration: 500ms;
   animation-delay: 0ms;
-  animation-timing-function: ease-in;
+  animation-timing-function: var(--bs-motion-curve);
   animation-name: bs-drill-in-leave;
 }
 
 html[data-bs-transition="drill-in"] ::view-transition-new(app-main) {
-  animation-duration: 400ms;
-  animation-delay: 200ms;
+  animation-duration: 500ms;
+  animation-delay: 400ms;
   animation-timing-function: var(--bs-motion-curve);
   animation-name: bs-drill-in-enter;
 }
 
 html[data-bs-transition="drill-out"] ::view-transition-old(app-main) {
-  animation-duration: 250ms;
+  animation-duration: 500ms;
   animation-delay: 0ms;
-  animation-timing-function: ease-in;
+  animation-timing-function: var(--bs-motion-curve);
   animation-name: bs-drill-out-leave;
 }
 
 html[data-bs-transition="drill-out"] ::view-transition-new(app-main) {
-  animation-duration: 400ms;
-  animation-delay: 200ms;
+  animation-duration: 500ms;
+  animation-delay: 400ms;
   animation-timing-function: var(--bs-motion-curve);
   animation-name: bs-drill-out-enter;
 }
@@ -158,7 +170,7 @@ main.app-main:not(.bs-motion-page-enter) .bs-motion-item {
 .bs-motion-page-enter .bs-motion-item {
   opacity: 0;
   animation: bs-fade-up 500ms var(--bs-motion-curve) forwards !important;
-  animation-delay: calc(100ms + min(var(--motion-group, 0), 2) * 100ms + min(var(--motion-index, 0), 10) * 18ms);
+  animation-delay: calc(var(--bs-page-enter-delay, 0ms) + 100ms + min(var(--motion-group, 0), 2) * 100ms + min(var(--motion-index, 0), 10) * 18ms);
   will-change: opacity, transform;
 }
 

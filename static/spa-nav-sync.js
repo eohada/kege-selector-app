@@ -330,7 +330,12 @@
         updateNavHighlight(activePage, megaPages);
     });
 
-    document.addEventListener('click', forceFullNavigation, true);
+    document.addEventListener('click', function(evt) {
+        var link = evt.target && evt.target.closest ? evt.target.closest('a[href]') : null;
+        if (link) {
+            lastClickedLink = link;
+        }
+    }, true);
 
     configureHtmxWhenReady(20);
 
@@ -370,6 +375,12 @@
             var articleView = document.querySelector('#view-article');
             if (articleView) switchLocalView(articleView, 'drill-in');
         }
+        
+        if (resetTransitionTimer) clearTimeout(resetTransitionTimer);
+        resetTransitionTimer = setTimeout(function() {
+            document.documentElement.removeAttribute('data-bs-transition');
+        }, 1000);
+        
         lastClickedLink = null;
     });
 })();
