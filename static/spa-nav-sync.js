@@ -77,6 +77,37 @@
 
         var currentPage = getCurrentActivePage();
         var targetPage = link.getAttribute('data-nav-key') || '';
+        
+        // Guess target page from URL if data-nav-key is missing
+        if (!targetPage) {
+            var href = link.getAttribute('href') || '';
+            if (href === '/' || href.indexOf('/dashboard') !== -1) {
+                targetPage = 'dashboard';
+            } else if (href.indexOf('/review') !== -1) {
+                targetPage = 'review_queue';
+            } else if (href.indexOf('/trainer') !== -1) {
+                targetPage = 'trainer';
+            } else if (href.indexOf('/theory') !== -1) {
+                targetPage = 'theory';
+            } else if (href.indexOf('/profile') !== -1) {
+                targetPage = 'profile';
+            } else if (href.indexOf('/schedule') !== -1) {
+                targetPage = 'schedule';
+            } else if (href.indexOf('/assignments') !== -1) {
+                targetPage = 'assignments';
+            } else if (href.indexOf('/templates') !== -1) {
+                targetPage = 'templates';
+            } else if (href.indexOf('/generator') !== -1) {
+                targetPage = 'generator';
+            } else if (href.indexOf('/library') !== -1) {
+                targetPage = 'library';
+            } else if (href.indexOf('/groups') !== -1) {
+                targetPage = 'groups';
+            } else if (href.indexOf('/billing') !== -1) {
+                targetPage = 'billing';
+            }
+        }
+
         if (targetPage) {
             var currentOrder = getNavOrder(currentPage);
             var targetOrder = getNavOrder(targetPage);
