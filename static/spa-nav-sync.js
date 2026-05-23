@@ -461,7 +461,7 @@
             
             var metas = {};
             var pageSpecific = ['page-endpoint', 'user-timezone-effective', 'user-timezone-mode', 'user-timezone-iana', 'cinema-demo-ids'];
-            document.querySelectorAll('head meta').forEach(function(meta) {
+            Array.prototype.slice.call(document.querySelectorAll('head meta')).forEach(function(meta) {
                 var key = meta.getAttribute('name') || meta.getAttribute('property');
                 if (key && pageSpecific.indexOf(key) !== -1) {
                     metas[key] = meta.getAttribute('content');
@@ -546,7 +546,7 @@
             var currentHead = document.head;
             
             var newMetaMap = {};
-            newMetas.forEach(function(meta) {
+            Array.prototype.slice.call(newMetas).forEach(function(meta) {
                 var key = meta.getAttribute('name') || meta.getAttribute('property');
                 if (key) {
                     newMetaMap[key] = meta.getAttribute('content');
@@ -554,7 +554,7 @@
             });
 
             var currentMetas = currentHead.querySelectorAll('meta');
-            currentMetas.forEach(function(meta) {
+            Array.prototype.slice.call(currentMetas).forEach(function(meta) {
                 var key = meta.getAttribute('name') || meta.getAttribute('property');
                 if (key) {
                     if (Object.prototype.hasOwnProperty.call(newMetaMap, key)) {
