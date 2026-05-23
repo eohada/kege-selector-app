@@ -1,6 +1,9 @@
-(() => {
+window.initPremiumSchedule = () => {
   const qs = (sel, root = document) => root.querySelector(sel);
   const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  const scheduleRoot = qs('[data-schedule-root]');
+  if (!scheduleRoot) return;
 
   const csrf = () =>
     document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
@@ -22,9 +25,6 @@
     }
     return data;
   };
-
-  const scheduleRoot = qs('[data-schedule-root]');
-  if (!scheduleRoot) return;
 
   const slotMinutes = parseInt(scheduleRoot.dataset.slotMinutes || '30', 10);
   const startHour = parseInt(scheduleRoot.dataset.startHour || '0', 10);
@@ -429,6 +429,10 @@
   };
 
   qsa('.day-col').forEach((dayCol) => {
+    const body = dayCol.querySelector('.day-col__body');
+    if (body) {
+      qsa('.lesson-chip', body).forEach(chip => chip.remove());
+    }
     const eventsJson = dayCol.dataset.events;
     if (!eventsJson) return;
     try {
@@ -600,10 +604,21 @@
   };
 
   if (canManage) {
-    document.addEventListener('pointerdown', onPointerDown, true);
-    document.addEventListener('pointermove', onPointerMove, true);
-    document.addEventListener('pointerup', onPointerUp, true);
-    document.addEventListener('pointercancel', onPointerCancel, true);
+    if (window.__onPointerDown) {
+      document.removeEventListener('pointerdown', window.__onPointerDown, true);
+      document.removeEventListener('pointermove', window.__onPointerMove, true);
+      document.removeEventListener('pointerup', window.__onPointerUp, true);
+      document.removeEventListener('pointercancel', window.__onPointerCancel, true);
+    }
+    window.__onPointerDown = onPointerDown;
+    window.__onPointerMove = onPointerMove;
+    window.__onPointerUp = onPointerUp;
+    window.__onPointerCancel = onPointerCancel;
+
+    document.addEventListener('pointerdown', window.__onPointerDown, true);
+    document.addEventListener('pointermove', window.__onPointerMove, true);
+    document.addEventListener('pointerup', window.__onPointerUp, true);
+    document.addEventListener('pointercancel', window.__onPointerCancel, true);
   }
 
   const tzName = tz === 'tomsk' ? 'Asia/Tomsk' : 'Europe/Moscow';
@@ -663,6 +678,14 @@
   };
 
   placeNowLine();
-  setInterval(placeNowLine, 30_000);
-})();
+
+  if (window.__nowLineInterval) clearInterval(window.__nowLineInterval);
+  window.__nowLineInterval = setInterval(placeNowLine, 30_000);
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => window.initPremiumSchedule());
+} else {
+  window.initPremiumSchedule();
+}
 

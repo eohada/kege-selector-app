@@ -449,6 +449,9 @@
             protectLocalHtmxControls();
             syncActiveNav();
             initTheoryShell();
+            if (window.initPremiumSchedule) {
+                window.initPremiumSchedule();
+            }
             applyPageMotion();
             updateHistoryStack();
         });
@@ -457,11 +460,18 @@
         protectLocalHtmxControls();
         syncActiveNav();
         initTheoryShell();
+        if (window.initPremiumSchedule) {
+            window.initPremiumSchedule();
+        }
         applyPageMotion();
         updateHistoryStack();
     }
 
     document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        if (resetTransitionTimer) {
+            clearTimeout(resetTransitionTimer);
+            resetTransitionTimer = null;
+        }
         var elt = evt.detail && evt.detail.elt;
         var link = elt && elt.closest ? elt.closest('a[href]') : lastClickedLink;
         var path = evt.detail && evt.detail.path;
@@ -479,6 +489,9 @@
         if (isMainSwap(evt)) {
             closeMobileMenus();
             initTheoryShell(evt.target);
+            if (window.initPremiumSchedule) {
+                window.initPremiumSchedule();
+            }
             applyPageMotion(evt.target);
             updateHistoryStack();
         }
