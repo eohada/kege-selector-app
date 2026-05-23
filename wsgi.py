@@ -16,9 +16,12 @@ def should_use_eventlet():
 
 if should_use_eventlet():
     try:
+        import os
+        # Disable eventlet's custom greendns resolver which can cause DNS timeouts/hangs in Docker containers
+        os.environ['EVENTLET_NO_GREENDNS'] = 'yes'
         import eventlet
         eventlet.monkey_patch()
-        print("[OK] Eventlet monkey patching applied for production")
+        print("[OK] Eventlet monkey patching applied for production (greendns disabled)")
     except ImportError:
         print("[WARN] Eventlet not installed, skipping monkey patching")
 
