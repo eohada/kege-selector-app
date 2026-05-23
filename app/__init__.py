@@ -386,9 +386,30 @@ def create_app(config_name=None):
 
     try:
         from flask_socketio import SocketIO
+        
+        # Select async mode dynamically: 'eventlet' in production (if available), 'threading' in local dev
+        async_mode = 'threading'
+        use_eventlet = False
+        env = os.environ.get('ENVIRONMENT', 'local').lower()
+        if env not in ('local', 'dev', 'development'):
+            use_eventlet = True
+        elif 'gunicorn' in os.environ.get('SERVER_SOFTWARE', '').lower():
+            use_eventlet = True
+        else:
+            db_url = os.environ.get('DATABASE_URL', '') or os.environ.get('DATABASE_EXTERNAL_URL', '') or os.environ.get('POSTGRES_URL', '')
+            if db_url and ('postgres' in db_url.lower() or 'postgresql' in db_url.lower()):
+                use_eventlet = True
+
+        if use_eventlet:
+            try:
+                import eventlet
+                async_mode = 'eventlet'
+            except ImportError:
+                pass
+
         socketio = SocketIO(
             app,
-            async_mode='threading',
+            async_mode=async_mode,
             cors_allowed_origins='*',
             logger=False,
             engineio_logger=False,

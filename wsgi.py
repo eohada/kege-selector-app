@@ -1,11 +1,26 @@
-
-"""
-Точка входа: фабрика приложений из app/__init__.py.
-Для real-time (комната урока) нужен flask-socketio.
-"""
 import os
-import logging
 
+# Apply eventlet monkey patch as early as possible in production before any other imports
+def should_use_eventlet():
+    env = os.environ.get('ENVIRONMENT', 'local').lower()
+    if env in ('local', 'dev', 'development'):
+        return False
+    if env in ('prod', 'production', 'stage', 'staging'):
+        return True
+    if 'gunicorn' in os.environ.get('SERVER_SOFTWARE', '').lower():
+        return True
+    db_url = os.environ.get('DATABASE_URL', '') or os.environ.get('DATABASE_EXTERNAL_URL', '') or os.environ.get('POSTGRES_URL', '')
+    if db_url and ('postgres' in db_url.lower() or 'postgresql' in db_url.lower()):
+        return True
+    return False
+
+if should_use_eventlet():
+    try:
+        import eventlet
+        eventlet.monkey_patch()
+        print("[OK] Eventlet monkey patching applied for production")
+    except ImportError:
+        print("[WARN] Eventlet not installed, skipping monkey patching")
 
 try:
     from dotenv import load_dotenv
@@ -18,6 +33,7 @@ except ImportError:
 
 from app import create_app
 
+import logging
 logger = logging.getLogger(__name__)
 
 app = create_app()
