@@ -31,7 +31,7 @@
 
     function configureHtmx() {
         if (!window.htmx || !window.htmx.config) return false;
-        window.htmx.config.globalViewTransitions = false;
+        window.htmx.config.globalViewTransitions = true;
         return true;
     }
 
@@ -59,7 +59,8 @@
     }
 
     function setTransitionMode(mode) {
-        return;
+        if (!mode) return;
+        document.documentElement.setAttribute('data-bs-transition', mode);
     }
 
     function isInternalNavigableLink(link) {
@@ -169,7 +170,28 @@
     }
 
     function applyPageMotion(root) {
-        return;
+        var scope = root && root.classList ? root : document.querySelector('main.app-main');
+        if (!scope) return;
+
+        var cardSelectors = [
+            '.glass-panel', '.tactile-card', '.bento-card', '.student-card', 
+            '.stat-card', '.filters-panel', '.filters-card', '.template-card', 
+            '.profile-card', '.generator-mode', '.card', '.form-section', 
+            '.theory-card', '.theory-bookmark-card', '.selection-card', 
+            '.task-card', '.sub-card', '.locked-card', '.submission-comments', 
+            '.inspector-card', '.empty-state', '.workspace-file-card', '.lesson-card'
+        ].join(', ');
+
+        var items = scope.querySelectorAll(cardSelectors);
+        items.forEach(function(item, index) {
+            item.classList.add('bs-motion-item');
+            item.style.setProperty('--motion-index', index);
+            item.style.setProperty('--motion-group', Math.floor(index / 4));
+        });
+
+        scope.classList.remove('bs-motion-page-enter');
+        scope.offsetWidth; // trigger reflow
+        scope.classList.add('bs-motion-page-enter');
     }
 
     function switchLocalView(targetView, mode) {
@@ -319,12 +341,14 @@
             protectLocalHtmxControls();
             syncActiveNav();
             initTheoryShell();
+            applyPageMotion();
         });
     } else {
         stripNavHtmxAttrs();
         protectLocalHtmxControls();
         syncActiveNav();
         initTheoryShell();
+        applyPageMotion();
     }
 
     document.body.addEventListener('htmx:beforeRequest', function(evt) {
@@ -340,6 +364,7 @@
         if (isMainSwap(evt)) {
             closeMobileMenus();
             initTheoryShell(evt.target);
+            applyPageMotion(evt.target);
         }
         if (evt && evt.target && evt.target.id === 'articleContainer') {
             var articleView = document.querySelector('#view-article');

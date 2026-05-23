@@ -386,6 +386,24 @@ def check_and_fix_rbac_schema(app):
                         db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN custom_permissions JSON'))
                     db.session.commit()
                     logger.info("custom_permissions column added.")
+                
+                db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                columns_to_add = [
+                    ('timezone_mode', "VARCHAR(16) DEFAULT 'auto'"),
+                    ('timezone_iana', "VARCHAR(64)"),
+                    ('is_qa_pool', "BOOLEAN DEFAULT FALSE" if ('postgresql' in db_url or 'postgres' in db_url) else "INTEGER DEFAULT 0"),
+                    ('is_demo_user', "BOOLEAN DEFAULT FALSE" if ('postgresql' in db_url or 'postgres' in db_url) else "INTEGER DEFAULT 0"),
+                    ('schedule_ics_token', "VARCHAR(120)"),
+                ]
+                for col_name, col_def in columns_to_add:
+                    if col_name not in cols:
+                        logger.info(f"Adding {col_name} column to Users...")
+                        if 'postgresql' in db_url or 'postgres' in db_url:
+                            db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN {col_name} {col_def}'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN {col_name} {col_def}'))
+                        db.session.commit()
+                        logger.info(f"{col_name} column added.")
 
     except Exception as e:
         logger.error(f"Error in check_and_fix_rbac_schema: {e}")
