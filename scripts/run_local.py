@@ -1,8 +1,3 @@
-try:
-    import eventlet
-    eventlet.monkey_patch()
-except ImportError:
-    pass
 
 """
 Запуск приложения локально для разработки (в т.ч. страница тарифов без деплоя).

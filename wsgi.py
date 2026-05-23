@@ -1,8 +1,3 @@
-try:
-    import eventlet
-    eventlet.monkey_patch()
-except ImportError:
-    pass
 
 """
 Точка входа: фабрика приложений из app/__init__.py.
