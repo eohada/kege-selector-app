@@ -1880,16 +1880,44 @@
 
         // Tabs Logic (с сохранением выбранной вкладки)
         function switchTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.remove('active');
-                b.setAttribute('aria-selected', 'false');
-            });
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            var doSwitch = function() {
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                });
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
 
-            var btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
-            var pane = document.getElementById('tab-' + tabName);
-            if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); }
-            if (pane) pane.classList.add('active');
+                var btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+                var pane = document.getElementById('tab-' + tabName);
+                if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); }
+                if (pane) pane.classList.add('active');
+            };
+
+            if (document.startViewTransition) {
+                document.documentElement.setAttribute('data-bs-transition', 'tab-switch');
+                
+                var currentActiveBtn = document.querySelector('.tab-btn.active');
+                var targetBtn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+                if (currentActiveBtn && targetBtn) {
+                    var btns = Array.prototype.slice.call(document.querySelectorAll('.tab-btn'));
+                    var currentIdx = btns.indexOf(currentActiveBtn);
+                    var targetIdx = btns.indexOf(targetBtn);
+                    if (targetIdx > currentIdx) {
+                        document.documentElement.setAttribute('data-bs-transition-dir', 'forward');
+                    } else if (targetIdx < currentIdx) {
+                        document.documentElement.setAttribute('data-bs-transition-dir', 'backward');
+                    }
+                }
+                
+                document.startViewTransition(function() {
+                    doSwitch();
+                }).finished.finally(function() {
+                    document.documentElement.removeAttribute('data-bs-transition');
+                    document.documentElement.removeAttribute('data-bs-transition-dir');
+                });
+            } else {
+                doSwitch();
+            }
 
             try {
                 localStorage.setItem('lesson_' + LESSON_ID + '_active_tab', tabName);

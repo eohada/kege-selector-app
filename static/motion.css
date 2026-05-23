@@ -362,3 +362,27 @@ main.app-main.htmx-request {
 :where(.glass-panel, .tactile-card, .bento-card, .student-card, .stat-card, .filters-panel, .filters-card, .template-card, .profile-card, .generator-mode, .card, .form-section, .theory-card, .theory-bookmark-card, .selection-card, .task-card, .sub-card, .locked-card, .submission-comments, .inspector-card, .empty-state, .workspace-file-card, .lesson-card):hover {
   transform: none !important;
 } */
+
+/* Lesson room tab transition styling */
+.tab-pane.active {
+  view-transition-name: lesson-tab-pane;
+}
+
+::view-transition-group(lesson-tab-pane) {
+  animation-duration: 450ms;
+  animation-timing-function: var(--bs-motion-curve, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+html[data-bs-transition="tab-switch"][data-bs-transition-dir="forward"]::view-transition-old(lesson-tab-pane) {
+  animation-name: bs-swipe-out-left;
+}
+html[data-bs-transition="tab-switch"][data-bs-transition-dir="forward"]::view-transition-new(lesson-tab-pane) {
+  animation-name: bs-swipe-in-right;
+}
+
+html[data-bs-transition="tab-switch"][data-bs-transition-dir="backward"]::view-transition-old(lesson-tab-pane) {
+  animation-name: bs-swipe-out-right;
+}
+html[data-bs-transition="tab-switch"][data-bs-transition-dir="backward"]::view-transition-new(lesson-tab-pane) {
+  animation-name: bs-swipe-in-left;
+}
