@@ -1808,7 +1808,7 @@
                 });
             } catch (e) { console.warn('Lesson socket init:', e); }
 
-            document.addEventListener('DOMContentLoaded', function() {
+            (function() {
                 var origSwitchTab = window.switchTab;
                 if (origSwitchTab) {
                     window.switchTab = function(tabName) {
@@ -1818,7 +1818,7 @@
                         }
                     };
                 }
-            });
+            })();
         })();
 
         // ----- Учёт времени по заданиям (ученик) -----
@@ -1860,7 +1860,7 @@
                 });
             }
 
-            document.addEventListener('DOMContentLoaded', function() {
+            function initTimeTracking() {
                 document.querySelectorAll('input[id^="time_spent_"]').forEach(function(inp) {
                     const taskId = inp.id.replace('time_spent_', '');
                     const v = parseInt(inp.value, 10) || 0;
@@ -1875,7 +1875,12 @@
                 if (form) {
                     form.addEventListener('submit', function() { writeToHiddenInputs(); });
                 }
-            });
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initTimeTracking);
+            } else {
+                initTimeTracking();
+            }
         })();
 
         // Tabs Logic (с сохранением выбранной вкладки)
@@ -1930,10 +1935,11 @@
         }
 
         // Initialize Editors
-        document.addEventListener('DOMContentLoaded', function() {
+        window.initLessonPage = function() {
             // Клики по табам (делегирование — надёжно работает у препода и ученика)
             var tabsContainer = document.querySelector('.lesson-tabs');
-            if (tabsContainer) {
+            if (tabsContainer && !tabsContainer.dataset.tabsInited) {
+                tabsContainer.dataset.tabsInited = 'true';
                 tabsContainer.addEventListener('click', function(e) {
                     var btn = e.target && (e.target.closest && e.target.closest('.tab-btn') || (e.target.classList && e.target.classList.contains('tab-btn') ? e.target : null));
                     if (btn && btn.getAttribute('data-tab')) {
@@ -1967,19 +1973,22 @@
                 {% if not is_student_view and not is_parent_view %}
                 var theoryEl = document.getElementById('theory-editor');
                 if (theoryEl) {
-                    window.theoryEditor = new EasyMDE({
-                        element: theoryEl,
-                        spellChecker: false,
-                        autosave: { enabled: true, uniqueId: 'lesson_' + LESSON_ID + '_theory' },
-                        toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "|", "preview", "side-by-side", "fullscreen"]
-                    });
-                    window.__lessonBlocks = Array.isArray(INITIAL_BLOCKS) ? INITIAL_BLOCKS : [];
-                    renderBlocks();
-                    try {
-                        var modeSaved = localStorage.getItem('lesson_' + LESSON_ID + '_theory_mode');
-                        if (modeSaved === 'blocks') setTheoryMode('blocks');
-                        else setTheoryMode('markdown');
-                    } catch (e2) { setTheoryMode('markdown'); }
+                    var needsInit = !window.theoryEditor || !document.body.contains(window.theoryEditor.element);
+                    if (needsInit) {
+                        window.theoryEditor = new EasyMDE({
+                            element: theoryEl,
+                            spellChecker: false,
+                            autosave: { enabled: true, uniqueId: 'lesson_' + LESSON_ID + '_theory' },
+                            toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "|", "preview", "side-by-side", "fullscreen"]
+                        });
+                        window.__lessonBlocks = Array.isArray(INITIAL_BLOCKS) ? INITIAL_BLOCKS : [];
+                        renderBlocks();
+                        try {
+                            var modeSaved = localStorage.getItem('lesson_' + LESSON_ID + '_theory_mode');
+                            if (modeSaved === 'blocks') setTheoryMode('blocks');
+                            else setTheoryMode('markdown');
+                        } catch (e2) { setTheoryMode('markdown'); }
+                    }
                 }
                 {% else %}
                 var contentDiv = document.getElementById('theory-content');
@@ -1994,17 +2003,26 @@
             try {
                 var notesEl = document.getElementById('notes-editor');
                 if (notesEl) {
-                    window.notesEditor = new EasyMDE({
-                        element: notesEl,
-                        spellChecker: false,
-                        autosave: { enabled: true, uniqueId: 'lesson_' + LESSON_ID + '_notes' },
-                        toolbar: ["bold", "italic", "heading", "|", "unordered-list", "|", "link", "preview"]
-                    });
+                    var needsInit = !window.notesEditor || !document.body.contains(window.notesEditor.element);
+                    if (needsInit) {
+                        window.notesEditor = new EasyMDE({
+                            element: notesEl,
+                            spellChecker: false,
+                            autosave: { enabled: true, uniqueId: 'lesson_' + LESSON_ID + '_notes' },
+                            toolbar: ["bold", "italic", "heading", "|", "unordered-list", "|", "link", "preview"]
+                        });
+                    }
                 }
             } catch (e) {
                 console.error('Notes editor init:', e);
             }
-        });
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', window.initLessonPage);
+        } else {
+            window.initLessonPage();
+        }
 
         // Save Functions
         async function saveContent() {
@@ -2401,9 +2419,14 @@
         }
 
         // Подгружаем чат при первом входе в комнату
-        document.addEventListener('DOMContentLoaded', () => {
+        function initLessonChatLoad() {
             try { reloadLessonChat(); } catch (e) {}
-        });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initLessonChatLoad);
+        } else {
+            initLessonChatLoad();
+        }
 
         // Helper for setting task status via AJAX (Teacher only)
         async function setTaskStatus(lessonId, taskId, status) {
@@ -2848,11 +2871,16 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function initCommentSelects() {
             // Декорируем все select с комментариями под таймзону устройства
             document.querySelectorAll('select[id^="teacher-comments-select-"]').forEach(decorateCommentSelect);
             document.querySelectorAll('select[id^="teacher-comments-select-teacher-"]').forEach(decorateCommentSelect);
-        });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCommentSelects);
+        } else {
+            initCommentSelects();
+        }
 
         async function addTeacherComment(taskId) {
             const input = document.getElementById(`teacher_comment_new_${taskId}`);
@@ -3682,7 +3710,7 @@
         }
         
         // Инициализация при переключении на вкладку "Доска"
-        document.addEventListener('DOMContentLoaded', function() {
+        function initWhiteboardTabLoader() {
             const tabs = document.querySelectorAll('.tab-btn');
             tabs.forEach(tab => {
                 tab.addEventListener('click', function() {
@@ -3701,10 +3729,15 @@
                     loadWhiteboardTab();
                 }
             }, 100);
-        });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initWhiteboardTabLoader);
+        } else {
+            initWhiteboardTabLoader();
+        }
 
         // Initialize KaTeX
-        document.addEventListener('DOMContentLoaded', function() {
+        function initKatexRendering() {
             if (typeof window.boostudyRenderTaskMath === 'function') {
                 window.boostudyRenderTaskMath(document.body, 45);
             } else if (typeof renderMathInElement !== 'undefined') {
@@ -3720,7 +3753,12 @@
                     ignoredClasses: ['katex']
                 });
             }
-        });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initKatexRendering);
+        } else {
+            initKatexRendering();
+        }
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
     {% include '_partials/file_viewer_modal.html' %}

@@ -807,6 +807,9 @@
             if (typeof window.initStudentCards === 'function') {
                 window.initStudentCards();
             }
+            if (typeof window.initLessonPage === 'function') {
+                window.initLessonPage();
+            }
         }
         if (evt && evt.target && evt.target.id === 'articleContainer') {
             var articleView = document.querySelector('#view-article');
