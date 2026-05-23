@@ -402,7 +402,6 @@ def create_app(config_name=None):
 
         if use_eventlet:
             try:
-                import os
                 os.environ['EVENTLET_NO_GREENDNS'] = 'yes'
                 import eventlet
                 async_mode = 'eventlet'
