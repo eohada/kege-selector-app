@@ -446,6 +446,178 @@
         }
     }, true);
 
+    function saveCurrentBodyState() {
+        try {
+            var url = window.location.pathname + window.location.search;
+            var states = JSON.parse(sessionStorage.getItem('bs-body-states') || '{}');
+            
+            var attrs = {};
+            for (var i = 0; i < document.body.attributes.length; i++) {
+                var attr = document.body.attributes[i];
+                if (attr.name !== 'class' && attr.name !== 'style' && attr.name !== 'id') {
+                    attrs[attr.name] = attr.value;
+                }
+            }
+            
+            var metas = {};
+            var pageSpecific = ['page-endpoint', 'user-timezone-effective', 'user-timezone-mode', 'user-timezone-iana', 'cinema-demo-ids'];
+            document.querySelectorAll('head meta').forEach(function(meta) {
+                var key = meta.getAttribute('name') || meta.getAttribute('property');
+                if (key && pageSpecific.indexOf(key) !== -1) {
+                    metas[key] = meta.getAttribute('content');
+                }
+            });
+
+            states[url] = {
+                className: document.body.className,
+                attributes: attrs,
+                metas: metas
+            };
+            sessionStorage.setItem('bs-body-states', JSON.stringify(states));
+        } catch (e) {
+            console.error('Error saving body state', e);
+        }
+    }
+
+    function restoreBodyState(targetUrl) {
+        try {
+            var states = JSON.parse(sessionStorage.getItem('bs-body-states') || '{}');
+            var state = states[targetUrl];
+            if (state) {
+                document.body.className = state.className || '';
+                
+                var preservedAttrs = ['hx-boost', 'hx-indicator', 'id', 'style'];
+                var attrsToRemove = [];
+                for (var i = 0; i < document.body.attributes.length; i++) {
+                    var attrName = document.body.attributes[i].name;
+                    if (preservedAttrs.indexOf(attrName) === -1 && attrName !== 'class') {
+                        attrsToRemove.push(attrName);
+                    }
+                }
+                attrsToRemove.forEach(function(attrName) {
+                    document.body.removeAttribute(attrName);
+                });
+
+                if (state.attributes) {
+                    for (var key in state.attributes) {
+                        if (Object.prototype.hasOwnProperty.call(state.attributes, key)) {
+                            document.body.setAttribute(key, state.attributes[key]);
+                        }
+                    }
+                }
+
+                if (state.metas) {
+                    var currentHead = document.head;
+                    for (var key in state.metas) {
+                        if (Object.prototype.hasOwnProperty.call(state.metas, key)) {
+                            var meta = currentHead.querySelector('meta[name="' + key + '"]') || currentHead.querySelector('meta[property="' + key + '"]');
+                            if (meta) {
+                                meta.setAttribute('content', state.metas[key]);
+                            } else {
+                                var newMeta = document.createElement('meta');
+                                newMeta.setAttribute(key.indexOf('og:') === 0 || key.indexOf('twitter:') === 0 ? 'property' : 'name', key);
+                                newMeta.setAttribute('content', state.metas[key]);
+                                currentHead.appendChild(newMeta);
+                            }
+                        }
+                    }
+                    
+                    var pageSpecific = ['page-endpoint', 'user-timezone-effective', 'user-timezone-mode', 'user-timezone-iana', 'cinema-demo-ids'];
+                    pageSpecific.forEach(function(key) {
+                        if (!Object.prototype.hasOwnProperty.call(state.metas, key)) {
+                            var meta = currentHead.querySelector('meta[name="' + key + '"]') || currentHead.querySelector('meta[property="' + key + '"]');
+                            if (meta) {
+                                meta.remove();
+                            }
+                        }
+                    });
+                }
+                return true;
+            }
+        } catch (e) {
+            console.error('Error restoring body state', e);
+        }
+        return false;
+    }
+
+    function syncMetaTags(responseDoc) {
+        try {
+            var newMetas = responseDoc.querySelectorAll('head meta');
+            var currentHead = document.head;
+            
+            var newMetaMap = {};
+            newMetas.forEach(function(meta) {
+                var key = meta.getAttribute('name') || meta.getAttribute('property');
+                if (key) {
+                    newMetaMap[key] = meta.getAttribute('content');
+                }
+            });
+
+            var currentMetas = currentHead.querySelectorAll('meta');
+            currentMetas.forEach(function(meta) {
+                var key = meta.getAttribute('name') || meta.getAttribute('property');
+                if (key) {
+                    if (Object.prototype.hasOwnProperty.call(newMetaMap, key)) {
+                        meta.setAttribute('content', newMetaMap[key]);
+                        delete newMetaMap[key];
+                    } else {
+                        var pageSpecific = ['page-endpoint', 'user-timezone-effective', 'user-timezone-mode', 'user-timezone-iana', 'cinema-demo-ids'];
+                        if (pageSpecific.indexOf(key) !== -1) {
+                            meta.remove();
+                        }
+                    }
+                }
+            });
+
+            for (var key in newMetaMap) {
+                if (Object.prototype.hasOwnProperty.call(newMetaMap, key)) {
+                    var newMeta = document.createElement('meta');
+                    newMeta.setAttribute(key.indexOf('og:') === 0 || key.indexOf('twitter:') === 0 ? 'property' : 'name', key);
+                    newMeta.setAttribute('content', newMetaMap[key]);
+                    currentHead.appendChild(newMeta);
+                }
+            }
+        } catch (e) {
+            console.error('Error syncing meta tags', e);
+        }
+    }
+
+    function syncPageMetadataAndAttributes(htmlString) {
+        if (!htmlString) return;
+        try {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(htmlString, 'text/html');
+            
+            syncMetaTags(doc);
+
+            var newBody = doc.querySelector('body');
+            if (newBody) {
+                document.body.className = newBody.className;
+
+                var preservedAttrs = ['hx-boost', 'hx-indicator', 'id', 'style'];
+                var attrsToRemove = [];
+                for (var i = 0; i < document.body.attributes.length; i++) {
+                    var attrName = document.body.attributes[i].name;
+                    if (preservedAttrs.indexOf(attrName) === -1 && attrName !== 'class') {
+                        attrsToRemove.push(attrName);
+                    }
+                }
+                attrsToRemove.forEach(function(attrName) {
+                    document.body.removeAttribute(attrName);
+                });
+
+                for (var i = 0; i < newBody.attributes.length; i++) {
+                    var attr = newBody.attributes[i];
+                    if (preservedAttrs.indexOf(attr.name) === -1 && attr.name !== 'class') {
+                        document.body.setAttribute(attr.name, attr.value);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error syncing page metadata and body attributes', e);
+        }
+    }
+
     configureHtmxWhenReady(20);
 
     if (document.readyState === 'loading') {
@@ -460,6 +632,7 @@
             }
             applyPageMotion();
             updateHistoryStack();
+            saveCurrentBodyState();
         });
     } else {
         stripNavHtmxAttrs();
@@ -471,6 +644,7 @@
         }
         applyPageMotion();
         updateHistoryStack();
+        saveCurrentBodyState();
     }
 
     document.body.addEventListener('htmx:beforeRequest', function(evt) {
@@ -488,6 +662,26 @@
         setTransitionMode(inferTransitionMode(finalLink, path));
     });
 
+    document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (isMainSwap(evt) && evt.detail.xhr && evt.detail.xhr.responseText) {
+            syncPageMetadataAndAttributes(evt.detail.xhr.responseText);
+        }
+    });
+
+    document.body.addEventListener('htmx:historyRestore', function(evt) {
+        if (evt.detail && evt.detail.path) {
+            restoreBodyState(evt.detail.path);
+        } else {
+            var targetUrl = window.location.pathname + window.location.search;
+            restoreBodyState(targetUrl);
+        }
+    });
+
+    window.addEventListener('popstate', function() {
+        var targetUrl = window.location.pathname + window.location.search;
+        restoreBodyState(targetUrl);
+    });
+
     document.body.addEventListener('htmx:afterSettle', function(evt) {
         protectLocalHtmxControls();
         stripNavHtmxAttrs(evt && evt.target ? evt.target : document);
@@ -500,6 +694,7 @@
             }
             applyPageMotion(evt.target);
             updateHistoryStack();
+            saveCurrentBodyState();
 
             // Re-run global initializers for the swapped DOM scope
             var scope = evt.target;
