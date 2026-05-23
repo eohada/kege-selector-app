@@ -29,6 +29,76 @@
     var lastClickedLink = null;
     var resetTransitionTimer = null;
 
+    var MAIN_TABS = {
+        parent_dashboard: true,
+        student_dashboard: true,
+        dashboard: true,
+        schedule: true,
+        assignments: true,
+        review_queue: true,
+        trainer: true,
+        theory: true,
+        student_analytics: true,
+        chief_tester_dashboard: true
+    };
+
+    function guessPageNameFromPath(path) {
+        if (!path) return '';
+        if (path === '/' || path.indexOf('/dashboard') !== -1) {
+            return 'dashboard';
+        } else if (path.indexOf('/review') !== -1) {
+            return 'review_queue';
+        } else if (path.indexOf('/trainer') !== -1) {
+            return 'trainer';
+        } else if (path.indexOf('/theory') !== -1) {
+            return 'theory';
+        } else if (path.indexOf('/profile') !== -1) {
+            return 'profile';
+        } else if (path.indexOf('/schedule') !== -1) {
+            return 'schedule';
+        } else if (path.indexOf('/assignments') !== -1) {
+            return 'assignments';
+        } else if (path.indexOf('/templates') !== -1) {
+            return 'templates';
+        } else if (path.indexOf('/generator') !== -1) {
+            return 'generator';
+        } else if (path.indexOf('/library') !== -1) {
+            return 'library';
+        } else if (path.indexOf('/groups') !== -1) {
+            return 'groups';
+        } else if (path.indexOf('/billing') !== -1) {
+            return 'billing';
+        }
+        return '';
+    }
+
+    function updateHistoryStack() {
+        try {
+            var currentUrl = window.location.pathname + window.location.search;
+            var stack = JSON.parse(sessionStorage.getItem('bs-history-stack') || '[]');
+            var idx = stack.indexOf(currentUrl);
+            if (idx !== -1) {
+                stack = stack.slice(0, idx + 1);
+            } else {
+                stack.push(currentUrl);
+            }
+            sessionStorage.setItem('bs-history-stack', JSON.stringify(stack));
+        } catch (e) {
+            console.error('History stack error', e);
+        }
+    }
+
+    function isGoingBackInHistory(targetUrl) {
+        try {
+            var stack = JSON.parse(sessionStorage.getItem('bs-history-stack') || '[]');
+            if (stack.length < 2) return false;
+            var prevUrl = stack[stack.length - 2];
+            return prevUrl && prevUrl === targetUrl;
+        } catch (e) {
+            return false;
+        }
+    }
+
     function configureHtmx() {
         if (!window.htmx || !window.htmx.config) return false;
         window.htmx.config.globalViewTransitions = true;
@@ -72,59 +142,61 @@
         return true;
     }
 
-    function inferTransitionMode(link) {
-        if (!isInternalNavigableLink(link)) return '';
-
+    function inferTransitionMode(link, targetUrl) {
         var currentPage = getCurrentActivePage();
-        var targetPage = link.getAttribute('data-nav-key') || '';
+        var targetPage = '';
+
+        if (link) {
+            if (!isInternalNavigableLink(link)) return '';
+            targetPage = link.getAttribute('data-nav-key') || '';
+        }
         
-        // Guess target page from URL if data-nav-key is missing
-        if (!targetPage) {
+        if (!targetPage && targetUrl) {
+            targetPage = guessPageNameFromPath(targetUrl);
+        } else if (link && !targetPage) {
             var href = link.getAttribute('href') || '';
-            if (href === '/' || href.indexOf('/dashboard') !== -1) {
-                targetPage = 'dashboard';
-            } else if (href.indexOf('/review') !== -1) {
-                targetPage = 'review_queue';
-            } else if (href.indexOf('/trainer') !== -1) {
-                targetPage = 'trainer';
-            } else if (href.indexOf('/theory') !== -1) {
-                targetPage = 'theory';
-            } else if (href.indexOf('/profile') !== -1) {
-                targetPage = 'profile';
-            } else if (href.indexOf('/schedule') !== -1) {
-                targetPage = 'schedule';
-            } else if (href.indexOf('/assignments') !== -1) {
-                targetPage = 'assignments';
-            } else if (href.indexOf('/templates') !== -1) {
-                targetPage = 'templates';
-            } else if (href.indexOf('/generator') !== -1) {
-                targetPage = 'generator';
-            } else if (href.indexOf('/library') !== -1) {
-                targetPage = 'library';
-            } else if (href.indexOf('/groups') !== -1) {
-                targetPage = 'groups';
-            } else if (href.indexOf('/billing') !== -1) {
-                targetPage = 'billing';
+            targetPage = guessPageNameFromPath(href);
+        }
+
+        // If no link, it is a history popstate navigation
+        var isHistory = !link;
+        var goingBack = isHistory && targetUrl ? isGoingBackInHistory(targetUrl) : false;
+
+        if (targetPage && currentPage) {
+            var currentOrder = getNavOrder(currentPage);
+            var targetOrder = getNavOrder(targetPage);
+
+            // Tab navigation: both pages are main tabs
+            if (MAIN_TABS[currentPage] && MAIN_TABS[targetPage]) {
+                if (targetOrder === currentOrder) return 'drill-in';
+                if (isHistory) {
+                    return goingBack ? (targetOrder < currentOrder ? 'swipe-left' : 'swipe-right') : (targetOrder > currentOrder ? 'swipe-right' : 'swipe-left');
+                }
+                return targetOrder > currentOrder ? 'swipe-right' : 'swipe-left';
+            }
+
+            // Drill navigation: at least one is a subpage
+            if (isHistory) {
+                return goingBack ? 'drill-out' : 'drill-in';
+            }
+            
+            // If clicking a main tab to go back from a subpage
+            if (MAIN_TABS[targetPage] && !MAIN_TABS[currentPage]) {
+                return 'drill-out';
             }
         }
 
-        if (targetPage) {
-            var currentOrder = getNavOrder(currentPage);
-            var targetOrder = getNavOrder(targetPage);
-            if (targetOrder === currentOrder) return 'drill-in';
-            return targetOrder > currentOrder ? 'swipe-right' : 'swipe-left';
-        }
-
-        if (link.closest('main.app-main')) {
+        // Content area links: drill-in/out
+        if (link && link.closest('main.app-main')) {
             var text = (link.textContent || '').trim().toLowerCase();
             var href = link.getAttribute('href') || '';
-            if (/назад|к списку|вернуться|back/.test(text) || /[?&](back|return)=/.test(href)) {
+            if (/←|назад|вернуться|back|к списку|к ученикам|к задачам|к пользователям|к тестировщикам/.test(text) || /[?&](back|return)=/.test(href)) {
                 return 'drill-out';
             }
             return 'drill-in';
         }
 
-        return 'swipe-right';
+        return isHistory && goingBack ? 'drill-out' : 'drill-in';
     }
 
     function syncActiveNav() {
@@ -378,6 +450,7 @@
             syncActiveNav();
             initTheoryShell();
             applyPageMotion();
+            updateHistoryStack();
         });
     } else {
         stripNavHtmxAttrs();
@@ -385,12 +458,18 @@
         syncActiveNav();
         initTheoryShell();
         applyPageMotion();
+        updateHistoryStack();
     }
 
     document.body.addEventListener('htmx:beforeRequest', function(evt) {
         var elt = evt.detail && evt.detail.elt;
         var link = elt && elt.closest ? elt.closest('a[href]') : lastClickedLink;
-        setTransitionMode(inferTransitionMode(link));
+        var path = evt.detail && evt.detail.path;
+        
+        var isHistory = !elt || elt === document.body || elt === document.documentElement;
+        var finalLink = isHistory ? null : link;
+        
+        setTransitionMode(inferTransitionMode(finalLink, path));
     });
 
     document.body.addEventListener('htmx:afterSettle', function(evt) {
@@ -401,6 +480,7 @@
             closeMobileMenus();
             initTheoryShell(evt.target);
             applyPageMotion(evt.target);
+            updateHistoryStack();
         }
         if (evt && evt.target && evt.target.id === 'articleContainer') {
             var articleView = document.querySelector('#view-article');

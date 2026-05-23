@@ -54,8 +54,8 @@ html[data-bs-transition="drill-out"] {
   animation-duration: 700ms !important;
 }
 
-html[data-bs-transition="drill-in"] ::view-transition-group(app-main),
-html[data-bs-transition="drill-out"] ::view-transition-group(app-main) {
+html[data-bs-transition="drill-in"]::view-transition-group(app-main),
+html[data-bs-transition="drill-out"]::view-transition-group(app-main) {
   animation-duration: 900ms !important;
 }
 
@@ -79,43 +79,43 @@ html[data-bs-transition="drill-out"] ::view-transition-group(app-main) {
 }
 
 /* Specific Swipe transitions (Left/Right) */
-html[data-bs-transition="swipe-right"] ::view-transition-old(app-main) {
+html[data-bs-transition="swipe-right"]::view-transition-old(app-main) {
   animation-name: bs-swipe-out-left;
 }
-html[data-bs-transition="swipe-right"] ::view-transition-new(app-main) {
+html[data-bs-transition="swipe-right"]::view-transition-new(app-main) {
   animation-name: bs-swipe-in-right;
 }
 
-html[data-bs-transition="swipe-left"] ::view-transition-old(app-main) {
+html[data-bs-transition="swipe-left"]::view-transition-old(app-main) {
   animation-name: bs-swipe-out-right;
 }
-html[data-bs-transition="swipe-left"] ::view-transition-new(app-main) {
+html[data-bs-transition="swipe-left"]::view-transition-new(app-main) {
   animation-name: bs-swipe-in-left;
 }
 
 /* Drill timings and animations (sequential/delays matching reference) */
-html[data-bs-transition="drill-in"] ::view-transition-old(app-main) {
+html[data-bs-transition="drill-in"]::view-transition-old(app-main) {
   animation-duration: 500ms;
   animation-delay: 0ms;
   animation-timing-function: var(--bs-motion-curve);
   animation-name: bs-drill-in-leave;
 }
 
-html[data-bs-transition="drill-in"] ::view-transition-new(app-main) {
+html[data-bs-transition="drill-in"]::view-transition-new(app-main) {
   animation-duration: 500ms;
   animation-delay: 400ms;
   animation-timing-function: var(--bs-motion-curve);
   animation-name: bs-drill-in-enter;
 }
 
-html[data-bs-transition="drill-out"] ::view-transition-old(app-main) {
+html[data-bs-transition="drill-out"]::view-transition-old(app-main) {
   animation-duration: 500ms;
   animation-delay: 0ms;
   animation-timing-function: var(--bs-motion-curve);
   animation-name: bs-drill-out-leave;
 }
 
-html[data-bs-transition="drill-out"] ::view-transition-new(app-main) {
+html[data-bs-transition="drill-out"]::view-transition-new(app-main) {
   animation-duration: 500ms;
   animation-delay: 400ms;
   animation-timing-function: var(--bs-motion-curve);
