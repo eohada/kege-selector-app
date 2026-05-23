@@ -368,14 +368,29 @@ main.app-main.htmx-request {
   view-transition-name: lesson-tab-pane;
 }
 
-/* Disable global/app-main transitions during tab switches to keep header/nav static */
-html[data-bs-transition="tab-switch"]::view-transition-old(root),
-html[data-bs-transition="tab-switch"]::view-transition-new(root),
+/* Disable app-main transition group during tab switches so it doesn't scale/stretch/animate */
+html[data-bs-transition="tab-switch"] main.app-main {
+  view-transition-name: none !important;
+}
+
+/* Disable root and app-main transition animations during tab switches to keep header/nav static */
+html[data-bs-transition="tab-switch"]::view-transition-group(root) {
+  animation: none !important;
+}
+html[data-bs-transition="tab-switch"]::view-transition-old(root) {
+  opacity: 0 !important;
+  animation: none !important;
+}
+html[data-bs-transition="tab-switch"]::view-transition-new(root) {
+  opacity: 1 !important;
+  animation: none !important;
+}
 html[data-bs-transition="tab-switch"]::view-transition-old(app-main),
 html[data-bs-transition="tab-switch"]::view-transition-new(app-main) {
   animation: none !important;
   mix-blend-mode: normal !important;
 }
+
 
 ::view-transition-group(lesson-tab-pane) {
   animation-duration: 450ms;
