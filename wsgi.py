@@ -2,17 +2,10 @@ import os
 
 # Apply eventlet monkey patch as early as possible in production before any other imports
 def should_use_eventlet():
-    env = os.environ.get('ENVIRONMENT', 'local').lower()
-    if env in ('local', 'dev', 'development'):
-        return False
-    if env in ('prod', 'production', 'stage', 'staging'):
-        return True
-    if 'gunicorn' in os.environ.get('SERVER_SOFTWARE', '').lower():
-        return True
-    db_url = os.environ.get('DATABASE_URL', '') or os.environ.get('DATABASE_EXTERNAL_URL', '') or os.environ.get('POSTGRES_URL', '')
-    if db_url and ('postgres' in db_url.lower() or 'postgresql' in db_url.lower()):
-        return True
-    return False
+    # Only use eventlet if explicitly requested via env variable.
+    # If Gunicorn is running with eventlet worker, Gunicorn itself applies monkey patching before loading this file.
+    # Therefore, we do not need to apply it here unless explicitly forced.
+    return os.environ.get('USE_EVENTLET', '').lower() == 'true'
 
 if should_use_eventlet():
     try:
@@ -21,7 +14,7 @@ if should_use_eventlet():
         os.environ['EVENTLET_NO_GREENDNS'] = 'yes'
         import eventlet
         eventlet.monkey_patch()
-        print("[OK] Eventlet monkey patching applied for production (greendns disabled)")
+        print("[OK] Eventlet monkey patching applied (greendns disabled)")
     except ImportError:
         print("[WARN] Eventlet not installed, skipping monkey patching")
 
