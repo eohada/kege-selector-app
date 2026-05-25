@@ -571,7 +571,7 @@
     window.__GEN_SELECTED_TASK_META__ = {{ bank_selected_task_meta | tojson if bank_selected_task_meta is defined else '[]' }};
 </script>
 <script>
-    (function() {
+    window.initTaskGenerator = function() {
         const tabButtons = document.querySelectorAll('.gen-layout-tab-btn[data-gen-tab]');
         const tabPanels = {
             stream: document.getElementById('gen-panel-stream'),
@@ -647,7 +647,9 @@
         } else {
             scheduleGenBankMathRefresh();
         }
-        window.addEventListener('load', scheduleGenBankMathRefresh);
+        if (document.readyState !== 'complete') {
+            window.addEventListener('load', scheduleGenBankMathRefresh);
+        }
 
         const deck = document.getElementById('genDeck');
         const empty = document.getElementById('genEmpty');
@@ -1051,7 +1053,10 @@
             act('blacklist', {reason});
         });
 
-        document.addEventListener('keydown', (e) => {
+        if (window.__taskGenKeydownHandler) {
+            document.removeEventListener('keydown', window.__taskGenKeydownHandler);
+        }
+        window.__taskGenKeydownHandler = (e) => {
             if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
             if (!currentTask) return;
             if (isBusy) return;
@@ -1067,7 +1072,8 @@
             } else if (e.key === 'Escape') {
                 stopBtn?.click();
             }
-        });
+        };
+        document.addEventListener('keydown', window.__taskGenKeydownHandler);
 
         const bankManualCourse = document.getElementById('bankManualCourse');
         const bankManualTaskNumber = document.getElementById('bankManualTaskNumber');
@@ -1457,6 +1463,10 @@
             syncSessionTaskIdsState();
             syncBankBadgesFromSession();
         } catch (_) {}
-    })();
+    };
+
+    if (!window.__htmxSwapping) {
+        window.initTaskGenerator();
+    }
 </script>
 {% endblock %}

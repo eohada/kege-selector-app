@@ -727,6 +727,7 @@
     }
 
     document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        window.__htmxSwapping = true;
         if (resetTransitionTimer) {
             clearTimeout(resetTransitionTimer);
             resetTransitionTimer = null;
@@ -759,6 +760,13 @@
     window.addEventListener('popstate', function() {
         var targetUrl = window.location.pathname + window.location.search;
         restoreBodyState(targetUrl);
+    });
+
+    document.body.addEventListener('htmx:requestError', function() {
+        window.__htmxSwapping = false;
+    });
+    document.body.addEventListener('htmx:sendError', function() {
+        window.__htmxSwapping = false;
     });
 
     document.body.addEventListener('htmx:afterSettle', function(evt) {
@@ -810,6 +818,15 @@
             if (typeof window.initLessonPage === 'function') {
                 window.initLessonPage();
             }
+            if (typeof window.initAssignmentCreate === 'function') {
+                window.initAssignmentCreate();
+            }
+            if (typeof window.initTaskGenerator === 'function') {
+                window.initTaskGenerator();
+            }
+            if (typeof window.initKegeGenerator === 'function') {
+                window.initKegeGenerator();
+            }
         }
         if (evt && evt.target && evt.target.id === 'articleContainer') {
             var articleView = document.querySelector('#view-article');
@@ -822,5 +839,6 @@
         }, 1000);
         
         lastClickedLink = null;
+        window.__htmxSwapping = false;
     });
 })();

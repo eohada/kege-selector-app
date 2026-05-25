@@ -402,497 +402,516 @@
 {% block scripts_extra %}
     <script type="application/json" id="task-ids-json">{{ (task_ids or [])|tojson }}</script>
     <script>
-        let currentStep = 1;
-        const CSRF_TOKEN = "{{ csrf_token() }}";
-        const PROBNIK_MODE = {{ (probnik_mode or false)|tojson }};
-        const PROBNIK_RANDOM_MODE = {{ (probnik_random_mode or false)|tojson }};
-        let variantRandomEnabled = !!PROBNIK_RANDOM_MODE;
-        function renderRandomToggleButton(btnId, dotId, textId, enabled) {
-            const btn = document.getElementById(btnId);
-            const dot = document.getElementById(dotId);
-            const txt = document.getElementById(textId);
-            if (!btn || !dot || !txt) return;
-            btn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-            if (enabled) {
-                btn.className = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors bg-emerald-50 text-emerald-700 border-emerald-300';
-                dot.className = 'inline-block w-2 h-2 rounded-full bg-emerald-500';
-                txt.textContent = 'ВКЛ';
-            } else {
-                btn.className = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors bg-slate-100 text-slate-600 border-slate-300';
-                dot.className = 'inline-block w-2 h-2 rounded-full bg-slate-400';
-                txt.textContent = 'ВЫКЛ';
-            }
-        }
-        function renderRandomToggles() {
-            renderRandomToggleButton('variantRandomToggleBtn', 'variantRandomDot', 'variantRandomText', variantRandomEnabled);
-        }
-        function toggleVariantRandom() {
-            variantRandomEnabled = !variantRandomEnabled;
-            renderRandomToggles();
-        }
-        function syncRecipientSelectFromCards() {
-            const sel = document.getElementById('ca_recipients');
-            if (!sel) return;
-            const checkedIds = new Set(
-                Array.from(document.querySelectorAll('.recipient-check:checked')).map((x) => String(x.value))
-            );
-            Array.from(sel.options).forEach((o) => { o.selected = checkedIds.has(String(o.value)); });
-        }
-        function syncRecipientCardState() {
-            document.querySelectorAll('.recipient-card').forEach((card) => {
-                const checkbox = card.querySelector('.recipient-check');
-                if (!checkbox) return;
-                card.classList.toggle('is-selected', !!checkbox.checked);
-            });
-        }
-
-        function updateUI() {
-            syncRecipientSelectFromCards();
-            syncRecipientCardState();
-            document.querySelectorAll('#assignmentCreateWizard .ac-step').forEach((el, i) => {
-                el.classList.toggle('ac-step-active', (i + 1) === currentStep);
-            });
-            for (let i = 1; i <= 3; i++) {
-                const btn = document.getElementById(`stepIndicator${i}`);
-                const badge = document.getElementById(`stepBadge${i}`);
-                if (!btn || !badge) continue;
-                if (i === currentStep) {
-                    btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl bg-purple-50 text-boo-primary font-bold text-sm transition-all';
-                    badge.className = 'w-6 h-6 rounded-full bg-boo-primary text-white flex items-center justify-center text-xs';
-                    badge.textContent = String(i);
-                } else if (i < currentStep) {
-                    btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-secondary hover:bg-surface-alt font-bold text-sm transition-all';
-                    badge.className = 'w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs';
-                    badge.innerHTML = '<i class="ph-bold ph-check"></i>';
+        window.initAssignmentCreate = function() {
+            let currentStep = 1;
+            const CSRF_TOKEN = "{{ csrf_token() }}";
+            const PROBNIK_MODE = {{ (probnik_mode or false)|tojson }};
+            const PROBNIK_RANDOM_MODE = {{ (probnik_random_mode or false)|tojson }};
+            let variantRandomEnabled = !!PROBNIK_RANDOM_MODE;
+            function renderRandomToggleButton(btnId, dotId, textId, enabled) {
+                const btn = document.getElementById(btnId);
+                const dot = document.getElementById(dotId);
+                const txt = document.getElementById(textId);
+                if (!btn || !dot || !txt) return;
+                btn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+                if (enabled) {
+                    btn.className = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors bg-emerald-50 text-emerald-700 border-emerald-300';
+                    dot.className = 'inline-block w-2 h-2 rounded-full bg-emerald-500';
+                    txt.textContent = 'ВКЛ';
                 } else {
-                    btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-muted hover:bg-surface-alt font-bold text-sm transition-all';
-                    badge.className = 'w-6 h-6 rounded-full bg-surface-alt text-muted flex items-center justify-center text-xs';
-                    badge.textContent = String(i);
+                    btn.className = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors bg-slate-100 text-slate-600 border-slate-300';
+                    dot.className = 'inline-block w-2 h-2 rounded-full bg-slate-400';
+                    txt.textContent = 'ВЫКЛ';
                 }
             }
-
-            const sel = document.getElementById('ca_recipients');
-            if (sel) {
-                const count = Array.from(sel.selectedOptions).length;
-                const sr = document.getElementById('statusRecipients');
-                if (sr) sr.textContent = count;
+            function renderRandomToggles() {
+                renderRandomToggleButton('variantRandomToggleBtn', 'variantRandomDot', 'variantRandomText', variantRandomEnabled);
             }
-
-            const tasks = getTaskIds();
-            const st = document.getElementById('statusTasks');
-            if (st) st.textContent = tasks.length;
-
-            const genLink = document.getElementById('generatorLink');
-            if (genLink && sel) {
-                const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
-                genLink.href = `/task-generator?recipient_ids=${ids}`;
+            function toggleVariantRandom() {
+                variantRandomEnabled = !variantRandomEnabled;
+                renderRandomToggles();
             }
-        }
-
-        function goToStep(s) {
-            if (s === 2) {
+            function syncRecipientSelectFromCards() {
                 const sel = document.getElementById('ca_recipients');
-                const count = sel ? Array.from(sel.selectedOptions).length : 0;
-                if (count === 0) {
-                    window.toast?.error?.('Сначала выберите хотя бы одного ученика');
-                    return;
-                }
+                if (!sel) return;
+                const checkedIds = new Set(
+                    Array.from(document.querySelectorAll('.recipient-check:checked')).map((x) => String(x.value))
+                );
+                Array.from(sel.options).forEach((o) => { o.selected = checkedIds.has(String(o.value)); });
             }
-            if (s === 3) {
-                if (getTaskIdsLeavingStep2().length === 0) {
-                    window.toast?.error?.('Список задач пуст');
-                    return;
-                }
-            }
-            currentStep = s;
-            updateUI();
-            if (s === 3) {
-                syncTaskIdsFromEditor();
-            }
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function selectAll(val) {
-            const sel = document.getElementById('ca_recipients');
-            Array.from(sel.options).forEach(o => o.selected = val);
-            document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = val; });
-            const gs = document.getElementById('ca_group_select');
-            if (gs) gs.value = val ? 'all' : '';
-            updateUI();
-        }
-
-        function handleGroupSelect(value) {
-            const sel = document.getElementById('ca_recipients');
-            if (!sel) return;
-            if (value === 'all') {
-                Array.from(sel.options).forEach(o => o.selected = true);
-                document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = true; });
-            } else if (value === '') {
-                Array.from(sel.options).forEach(o => o.selected = false);
-                document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = false; });
-            } else {
-                let map = {};
-                try {
-                    const el = document.getElementById('group-members-json');
-                    map = JSON.parse(el ? (el.textContent || '{}') : '{}');
-                } catch (e) { map = {}; }
-                const memberIds = new Set((map[value] || []).map((x) => String(x)));
-                Array.from(sel.options).forEach((o) => { o.selected = memberIds.has(String(o.value)); });
-                document.querySelectorAll('.recipient-check').forEach((ch) => {
-                    ch.checked = memberIds.has(String(ch.value));
+            function syncRecipientCardState() {
+                document.querySelectorAll('.recipient-card').forEach((card) => {
+                    const checkbox = card.querySelector('.recipient-check');
+                    if (!checkbox) return;
+                    card.classList.toggle('is-selected', !!checkbox.checked);
                 });
             }
-            updateUI();
-        }
 
-        function startProbnikBuild() {
-            const sel = document.getElementById('ca_recipients');
-            const ids = sel ? Array.from(sel.selectedOptions).map((o) => o.value).join(',') : '';
-            const cSel = document.getElementById('probnikCourseSelect');
-            const cid = cSel && cSel.value ? String(cSel.value) : '';
-            const randomMode = !!PROBNIK_RANDOM_MODE;
-            let url = '/assignments/create?source=probnik&assignment_type=exam';
-            if (ids) url += '&recipient_ids=' + encodeURIComponent(ids);
-            if (cid) url += '&exam_course_id=' + encodeURIComponent(cid);
-            if (randomMode) url += '&probnik_random=1';
-            window.location.href = url;
-        }
-
-        function setSource(src) {
-            const sel = document.getElementById('ca_recipients');
-            const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
-            location.href = `/assignments/create?source=${src}&recipient_ids=${ids}`;
-        }
-
-        function pickTemplate(id) {
-            if (!id) return;
-            const sel = document.getElementById('ca_recipients');
-            const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
-            location.href = `/assignments/create?source=template&template_id=${id}&recipient_ids=${ids}`;
-        }
-
-        function clearTasks() {
-            if (!confirm('Очистить список задач?')) return;
-            const sel = document.getElementById('ca_recipients');
-            const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
-            location.href = `/assignments/create?source=manual&recipient_ids=${ids}`;
-        }
-
-        function isTaskEditorStepActive() {
-            const el = document.getElementById('stepContent3');
-            return !!(el && el.classList.contains('ac-step-active'));
-        }
-
-        function readTaskIdsFromEditor() {
-            if (!isTaskEditorStepActive()) return null;
-            const box = document.getElementById('taskOrderEditor');
-            if (!box) return null;
-            const inputs = Array.from(box.querySelectorAll('input.task-id-editor'));
-            if (!inputs.length) return null;
-            const out = [];
-            for (const inp of inputs) {
-                const v = parseInt(String(inp.value || '').trim(), 10);
-                if (!isNaN(v) && v > 0) out.push(v);
-            }
-            return out.length ? out : [];
-        }
-
-        function getTaskIdsLeavingStep2() {
-            try {
-                const ta = document.getElementById('manualTaskIds');
-                if (ta && ta.value.trim().length > 0) {
-                    return (ta.value || '').split(/[^0-9]+/).map((x) => parseInt(x, 10)).filter((x) => !isNaN(x));
+            function updateUI() {
+                syncRecipientSelectFromCards();
+                syncRecipientCardState();
+                document.querySelectorAll('#assignmentCreateWizard .ac-step').forEach((el, i) => {
+                    el.classList.toggle('ac-step-active', (i + 1) === currentStep);
+                });
+                for (let i = 1; i <= 3; i++) {
+                    const btn = document.getElementById(`stepIndicator${i}`);
+                    const badge = document.getElementById(`stepBadge${i}`);
+                    if (!btn || !badge) continue;
+                    if (i === currentStep) {
+                        btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl bg-purple-50 text-boo-primary font-bold text-sm transition-all';
+                        badge.className = 'w-6 h-6 rounded-full bg-boo-primary text-white flex items-center justify-center text-xs';
+                        badge.textContent = String(i);
+                    } else if (i < currentStep) {
+                        btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-secondary hover:bg-surface-alt font-bold text-sm transition-all';
+                        badge.className = 'w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs';
+                        badge.innerHTML = '<i class="ph-bold ph-check"></i>';
+                    } else {
+                        btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-muted hover:bg-surface-alt font-bold text-sm transition-all';
+                        badge.className = 'w-6 h-6 rounded-full bg-surface-alt text-muted flex items-center justify-center text-xs';
+                        badge.textContent = String(i);
+                    }
                 }
-                const jsonEl = document.getElementById('task-ids-json');
-                return JSON.parse(jsonEl && jsonEl.textContent ? jsonEl.textContent : '[]');
-            } catch (e) {
-                return [];
+
+                const sel = document.getElementById('ca_recipients');
+                if (sel) {
+                    const count = Array.from(sel.selectedOptions).length;
+                    const sr = document.getElementById('statusRecipients');
+                    if (sr) sr.textContent = count;
+                }
+
+                const tasks = getTaskIds();
+                const st = document.getElementById('statusTasks');
+                if (st) st.textContent = tasks.length;
+
+                const genLink = document.getElementById('generatorLink');
+                if (genLink && sel) {
+                    const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
+                    genLink.href = `/task-generator?recipient_ids=${ids}`;
+                }
             }
-        }
 
-        function renumberTaskRows() {
-            document.querySelectorAll('#taskOrderEditor .task-order-row').forEach((row, i) => {
-                const pill = row.querySelector('.task-idx');
-                if (pill) pill.textContent = `${i + 1}.`;
-            });
-        }
-
-        function syncTaskIdsFromEditor() {
-            if (!isTaskEditorStepActive()) return;
-            const ids = readTaskIdsFromEditor();
-            const jsonEl = document.getElementById('task-ids-json');
-            if (!jsonEl) return;
-            if (!ids || ids.length === 0) {
-                jsonEl.textContent = '[]';
-            } else {
-                jsonEl.textContent = JSON.stringify(ids);
+            function goToStep(s) {
+                if (s === 2) {
+                    const sel = document.getElementById('ca_recipients');
+                    const count = sel ? Array.from(sel.selectedOptions).length : 0;
+                    if (count === 0) {
+                        window.toast?.error?.('Сначала выберите хотя бы одного ученика');
+                        return;
+                    }
+                }
+                if (s === 3) {
+                    if (getTaskIdsLeavingStep2().length === 0) {
+                        window.toast?.error?.('Список задач пуст');
+                        return;
+                    }
+                }
+                currentStep = s;
+                updateUI();
+                if (s === 3) {
+                    syncTaskIdsFromEditor();
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
-            const st = document.getElementById('statusTasks');
-            if (st) st.textContent = String((ids && ids.length) || 0);
-        }
 
-        function removeTaskRow(btn) {
-            const row = btn && btn.closest ? btn.closest('.task-order-row') : null;
-            if (row) row.remove();
-            const box = document.getElementById('taskOrderEditor');
-            if (box && !box.querySelector('.task-order-row')) {
-                box.innerHTML = '<div class="text-sm text-muted font-medium px-2 py-4 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>';
+            function selectAll(val) {
+                const sel = document.getElementById('ca_recipients');
+                Array.from(sel.options).forEach(o => o.selected = val);
+                document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = val; });
+                const gs = document.getElementById('ca_group_select');
+                if (gs) gs.value = val ? 'all' : '';
+                updateUI();
             }
-            renumberTaskRows();
-            syncTaskIdsFromEditor();
-        }
 
-        function addEmptyTaskRow() {
-            const box = document.getElementById('taskOrderEditor');
-            if (!box) return;
-            const placeholder = box.querySelector('.border-dashed');
-            if (placeholder && placeholder.textContent.indexOf('Нет заданий') !== -1) placeholder.remove();
-            const n = box.querySelectorAll('.task-order-row').length + 1;
-            const wrap = document.createElement('div');
-            wrap.className = 'task-order-row task-mini-item bg-surface-alt border border-slate-200 rounded-xl';
-            wrap.innerHTML =
-                '<div class="task-mini-header flex flex-wrap justify-between items-center gap-2 px-4 py-3">' +
-                '<div class="flex flex-wrap items-center gap-2">' +
-                '<span class="task-idx text-xs font-black text-muted w-7 shrink-0">' + n + '.</span>' +
-                '<span class="text-[11px] font-bold text-muted shrink-0">ID</span>' +
-                '<input type="number" min="1" step="1" class="task-id-editor w-[96px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-sm font-bold text-primary text-center" value="" placeholder="id" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">' +
-                '<span class="text-[11px] font-bold text-muted shrink-0">№—</span>' +
-                '</div>' +
-                '<div class="flex flex-wrap items-center gap-2">' +
-                '<button type="button" class="text-[10px] font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="removeTaskRow(this)">Удалить</button>' +
-                '</div></div>' +
-                '<div class="task-mini-body active px-4 py-3 border-t border-slate-200 text-sm text-muted bg-surface">После ввода ID нажмите «Обновить по ID», чтобы подтянуть условие и метаданные.</div>';
-            box.appendChild(wrap);
-            renumberTaskRows();
-            syncTaskIdsFromEditor();
-        }
-
-        function reloadWithCurrentTaskIds() {
-            syncTaskIdsFromEditor();
-            const ids = getTaskIds();
-            if (!ids.length) {
-                window.toast?.warning?.('Сначала укажите хотя бы один ID задания');
-                return;
-            }
-            const sel = document.getElementById('ca_recipients');
-            const rec = sel ? Array.from(sel.selectedOptions).map((o) => o.value).filter(Boolean).join(',') : '';
-            let url = '/assignments/create?source=generator&task_ids=' + encodeURIComponent(ids.join(','));
-            if (rec) url += '&recipient_ids=' + encodeURIComponent(rec);
-            window.location.href = url;
-        }
-
-        function escapeHtml(s) {
-            return String(s == null ? '' : s)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        function renderBadgesHtml(task) {
-            const out = [];
-            if (task.difficulty_level === 1) {
-                out.push('<span class="px-2 py-0.5 rounded-lg bg-green-50 text-green-800 border border-green-100">Сложность: лёгкая</span>');
-            } else if (task.difficulty_level === 3) {
-                out.push('<span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-800 border border-rose-100">Сложность: высокая</span>');
-            } else if (task.difficulty_level === 2) {
-                out.push('<span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">Сложность: средняя</span>');
-            } else {
-                out.push('<span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">Сложность: не указана</span>');
-            }
-            if (task.kege_tier_label_ru) {
-                out.push('<span class="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-100">КЕГЭ: ' + escapeHtml(task.kege_tier_label_ru) + '</span>');
-            }
-            if (task.bank_origin) {
-                out.push('<span class="px-2 py-0.5 rounded-lg bg-surface border border-slate-200 text-muted uppercase tracking-wider">Происхождение: ' + escapeHtml(task.bank_origin) + '</span>');
-            }
-            if (task.source_prototype) {
-                out.push('<span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-100 font-mono text-[10px] truncate max-w-[220px]" title="' + escapeHtml(task.source_prototype) + '">Прототип: ' + escapeHtml(task.source_prototype) + '</span>');
-            }
-            return out.join('');
-        }
-
-        function renderAttachmentsHtml(files) {
-            const rows = [];
-            for (const f of (files || [])) {
-                const url = (f && (f.url || f.path)) ? String(f.url || f.path) : '';
-                if (!url) continue;
-                const name = (f && f.name) ? String(f.name) : url.split('/').pop();
-                rows.push(
-                    '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 no-underline text-primary text-xs font-bold">' +
-                    '<i class="ph-bold ph-paperclip"></i>' +
-                    '<span>' + escapeHtml(name) + '</span>' +
-                    '</a>'
-                );
-            }
-            return rows.join('');
-        }
-
-        function updateTaskRowPreview(row, task) {
-            const numberEl = row.querySelector('[data-role="task-number"]');
-            if (numberEl) numberEl.textContent = '№' + String(task.task_number || '—');
-
-            const sourceEl = row.querySelector('[data-role="source-link"]');
-            if (sourceEl) {
-                if (task.source_url) {
-                    sourceEl.href = task.source_url;
-                    sourceEl.classList.remove('hidden');
+            function handleGroupSelect(value) {
+                const sel = document.getElementById('ca_recipients');
+                if (!sel) return;
+                if (value === 'all') {
+                    Array.from(sel.options).forEach(o => o.selected = true);
+                    document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = true; });
+                } else if (value === '') {
+                    Array.from(sel.options).forEach(o => o.selected = false);
+                    document.querySelectorAll('.recipient-check').forEach((ch) => { ch.checked = false; });
                 } else {
-                    sourceEl.classList.add('hidden');
+                    let map = {};
+                    try {
+                        const el = document.getElementById('group-members-json');
+                        map = JSON.parse(el ? (el.textContent || '{}') : '{}');
+                    } catch (e) { map = {}; }
+                    const memberIds = new Set((map[value] || []).map((x) => String(x)));
+                    Array.from(sel.options).forEach((o) => { o.selected = memberIds.has(String(o.value)); });
+                    document.querySelectorAll('.recipient-check').forEach((ch) => {
+                        ch.checked = memberIds.has(String(ch.value));
+                    });
                 }
+                updateUI();
             }
 
-            const badges = row.querySelector('[data-role="badges"]');
-            if (badges) badges.innerHTML = renderBadgesHtml(task);
-
-            const attBlock = row.querySelector('[data-role="attachments-block"]');
-            const attList = row.querySelector('[data-role="attachments"]');
-            if (attBlock && attList) {
-                const html = renderAttachmentsHtml(task.attached_files || []);
-                attList.innerHTML = html;
-                attBlock.classList.toggle('hidden', html.length === 0);
+            function startProbnikBuild() {
+                const sel = document.getElementById('ca_recipients');
+                const ids = sel ? Array.from(sel.selectedOptions).map((o) => o.value).join(',') : '';
+                const cSel = document.getElementById('probnikCourseSelect');
+                const cid = cSel && cSel.value ? String(cSel.value) : '';
+                const randomMode = !!PROBNIK_RANDOM_MODE;
+                let url = '/assignments/create?source=probnik&assignment_type=exam';
+                if (ids) url += '&recipient_ids=' + encodeURIComponent(ids);
+                if (cid) url += '&exam_course_id=' + encodeURIComponent(cid);
+                if (randomMode) url += '&probnik_random=1';
+                window.location.href = url;
             }
 
-            const content = row.querySelector('[data-role="content-html"]');
-            if (content) content.innerHTML = task.content_html || 'Текст отсутствует';
-        }
-
-        async function fetchTaskPreview(taskId) {
-            const r = await fetch('/assignments/api/task-preview?task_id=' + encodeURIComponent(String(taskId)), {
-                headers: { Accept: 'application/json' },
-            });
-            let data = {};
-            try { data = await r.json(); } catch (e) { data = {}; }
-            if (!r.ok || !data.success || !data.task) {
-                throw new Error(data.error || 'Не удалось загрузить условие');
+            function setSource(src) {
+                const sel = document.getElementById('ca_recipients');
+                const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
+                location.href = `/assignments/create?source=${src}&recipient_ids=${ids}`;
             }
-            return data.task;
-        }
 
-        async function cycleTaskVariant(btn, direction) {
-            const row = btn && btn.closest ? btn.closest('.task-order-row') : null;
-            const inp = row ? row.querySelector('input.task-id-editor') : null;
-            if (!inp) return;
-            const randomMode = !!variantRandomEnabled;
-            const tid = parseInt(String(inp.value || '').trim(), 10);
-            if (!tid || isNaN(tid)) {
-                window.toast?.error?.('Укажите корректный ID задания');
-                return;
+            function pickTemplate(id) {
+                if (!id) return;
+                const sel = document.getElementById('ca_recipients');
+                const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
+                location.href = `/assignments/create?source=template&template_id=${id}&recipient_ids=${ids}`;
             }
-            const prev = btn.disabled;
-            btn.disabled = true;
-            try {
-                const r = await fetch(
-                    '/assignments/api/cycle-task-variant?task_id=' + encodeURIComponent(String(tid)) +
-                    '&direction=' + encodeURIComponent(direction) + (randomMode ? '&random=1' : ''),
-                    { headers: { Accept: 'application/json' } },
-                );
-                let data = {};
+
+            // Expose pickTemplate globally
+            window.pickTemplate = pickTemplate;
+
+            function clearTasks() {
+                if (!confirm('Очистить список задач?')) return;
+                const sel = document.getElementById('ca_recipients');
+                const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
+                location.href = `/assignments/create?source=manual&recipient_ids=${ids}`;
+            }
+
+            function isTaskEditorStepActive() {
+                const el = document.getElementById('stepContent3');
+                return !!(el && el.classList.contains('ac-step-active'));
+            }
+
+            function readTaskIdsFromEditor() {
+                if (!isTaskEditorStepActive()) return null;
+                const box = document.getElementById('taskOrderEditor');
+                if (!box) return null;
+                const inputs = Array.from(box.querySelectorAll('input.task-id-editor'));
+                if (!inputs.length) return null;
+                const out = [];
+                for (const inp of inputs) {
+                    const v = parseInt(String(inp.value || '').trim(), 10);
+                    if (!isNaN(v) && v > 0) out.push(v);
+                }
+                return out.length ? out : [];
+            }
+
+            function getTaskIdsLeavingStep2() {
                 try {
-                    data = await r.json();
+                    const ta = document.getElementById('manualTaskIds');
+                    if (ta && ta.value.trim().length > 0) {
+                        return (ta.value || '').split(/[^0-9]+/).map((x) => parseInt(x, 10)).filter((x) => !isNaN(x));
+                    }
+                    const jsonEl = document.getElementById('task-ids-json');
+                    return JSON.parse(jsonEl && jsonEl.textContent ? jsonEl.textContent : '[]');
                 } catch (e) {
-                    data = {};
+                    return [];
                 }
-                if (!r.ok || !data.success) {
-                    throw new Error(data.error || 'Не удалось подобрать задачу');
-                }
-                const nextTaskId = Number(data.task_id);
-                inp.value = String(nextTaskId);
-                const preview = await fetchTaskPreview(nextTaskId);
-                updateTaskRowPreview(row, preview);
-                syncTaskIdsFromEditor();
-                const labels = {
-                    easier: 'Подобран вариант проще (или следующий в списке)',
-                    harder: 'Подобран вариант сложнее (или следующий в списке)',
-                    same: 'Другая задача того же уровня сложности',
-                };
-                if (window.toast && typeof window.toast.success === 'function') {
-                    const suffix = randomMode ? ' [рандом]' : '';
-                    window.toast.success((labels[direction] || 'Готово') + suffix);
-                }
-            } catch (e) {
-                window.toast?.error?.(e.message || String(e));
-            } finally {
-                btn.disabled = prev;
-            }
-        }
-
-        function getTaskIds() {
-            try {
-                const ed = readTaskIdsFromEditor();
-                if (ed && ed.length > 0) return ed;
-                const ta = document.getElementById('manualTaskIds');
-                if (ta && ta.value.trim().length > 0) {
-                    return (ta.value || '').split(/[^0-9]+/).map(x => parseInt(x)).filter(x => !isNaN(x));
-                }
-                const jsonEl = document.getElementById('task-ids-json');
-                return JSON.parse(jsonEl && jsonEl.textContent ? jsonEl.textContent : '[]');
-            } catch(e) { return []; }
-        }
-
-        async function submitWork() {
-            syncTaskIdsFromEditor();
-            const btn = document.getElementById('submitBtn');
-            const title = document.getElementById('ca_title').value.trim();
-            const deadline = document.getElementById('ca_deadline').value;
-            const type = document.getElementById('ca_type').value;
-            const groupSelect = document.getElementById('ca_group_select');
-            const selectedGroup = groupSelect ? groupSelect.value : '';
-            const recipients = Array.from(document.getElementById('ca_recipients').selectedOptions).map(o => parseInt(o.value));
-            const taskIds = getTaskIds();
-            const timeLimit = parseInt(document.getElementById('ca_time_limit').value) || null;
-            const maxAttempts = parseInt(document.getElementById('ca_max_attempts').value) || 1;
-            const hardDeadline = document.getElementById('ca_hard_deadline').checked;
-            const hideBeforeStart = document.getElementById('ca_hide_before_start').checked;
-            const attemptsPerTask = document.getElementById('ca_attempts_per_task').checked;
-            const allowSeparate = attemptsPerTask || document.getElementById('ca_separate_submission').checked;
-            const timeLimitStrict = document.getElementById('ca_time_limit_strict').checked;
-            const description = (document.getElementById('ca_description') && document.getElementById('ca_description').value.trim()) || '';
-
-            if (!title || !deadline || (!recipients.length && !selectedGroup) || !taskIds.length) {
-                window.toast?.error?.('Заполните все обязательные поля');
-                return;
             }
 
-            btn.disabled = true;
-            btn.textContent = 'Отправляем...';
-
-            try {
-                const resp = await fetch('/assignments/distribute', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-                    body: JSON.stringify({
-                        title, type,
-                        description,
-                        deadline: new Date(deadline).toISOString(),
-                        time_limit_minutes: timeLimit,
-                        time_limit_strict: timeLimitStrict,
-                        max_attempts_default: maxAttempts,
-                        hard_deadline: hardDeadline,
-                        hide_before_start: hideBeforeStart,
-                        attempts_per_task: attemptsPerTask,
-                        allow_separate_submission: allowSeparate,
-                        groupId: selectedGroup || null,
-                        recipientIds: recipients,
-                        tasks: taskIds.map((id, i) => ({ task_id: id, order: i, max_score: 1 }))
-                    })
+            function renumberTaskRows() {
+                document.querySelectorAll('#taskOrderEditor .task-order-row').forEach((row, i) => {
+                    const pill = row.querySelector('.task-idx');
+                    if (pill) pill.textContent = `${i + 1}.`;
                 });
-                const res = await resp.json();
-                if (res.success) {
-                    window.toast?.success?.('Работа успешно создана!');
-                    setTimeout(() => location.href = '/assignments', 1000);
-                } else {
-                    throw new Error(res.error || 'Ошибка при создании');
-                }
-            } catch(e) {
-                window.toast?.error?.(e.message);
-                btn.disabled = false;
-                btn.textContent = 'Создать работу';
             }
-        }
 
-        document.addEventListener('DOMContentLoaded', () => {
+            function syncTaskIdsFromEditor() {
+                if (!isTaskEditorStepActive()) return;
+                const ids = readTaskIdsFromEditor();
+                const jsonEl = document.getElementById('task-ids-json');
+                if (!jsonEl) return;
+                if (!ids || ids.length === 0) {
+                    jsonEl.textContent = '[]';
+                } else {
+                    jsonEl.textContent = JSON.stringify(ids);
+                }
+                const st = document.getElementById('statusTasks');
+                if (st) st.textContent = String((ids && ids.length) || 0);
+            }
+
+            function removeTaskRow(btn) {
+                const row = btn && btn.closest ? btn.closest('.task-order-row') : null;
+                if (row) row.remove();
+                const box = document.getElementById('taskOrderEditor');
+                if (box && !box.querySelector('.task-order-row')) {
+                    box.innerHTML = '<div class="text-sm text-muted font-medium px-2 py-4 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>';
+                }
+                renumberTaskRows();
+                syncTaskIdsFromEditor();
+            }
+
+            function addEmptyTaskRow() {
+                const box = document.getElementById('taskOrderEditor');
+                if (!box) return;
+                const placeholder = box.querySelector('.border-dashed');
+                if (placeholder && placeholder.textContent.indexOf('Нет заданий') !== -1) placeholder.remove();
+                const n = box.querySelectorAll('.task-order-row').length + 1;
+                const wrap = document.createElement('div');
+                wrap.className = 'task-order-row task-mini-item bg-surface-alt border border-slate-200 rounded-xl';
+                wrap.innerHTML =
+                    '<div class="task-mini-header flex flex-wrap justify-between items-center gap-2 px-4 py-3">' +
+                    '<div class="flex flex-wrap items-center gap-2">' +
+                    '<span class="task-idx text-xs font-black text-muted w-7 shrink-0">' + n + '.</span>' +
+                    '<span class="text-[11px] font-bold text-muted shrink-0">ID</span>' +
+                    '<input type="number" min="1" step="1" class="task-id-editor w-[96px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-sm font-bold text-primary text-center" value="" placeholder="id" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">' +
+                    '<span class="text-[11px] font-bold text-muted shrink-0">№—</span>' +
+                    '</div>' +
+                    '<div class="flex flex-wrap items-center gap-2">' +
+                    '<button type="button" class="text-[10px] font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="removeTaskRow(this)">Удалить</button>' +
+                    '</div></div>' +
+                    '<div class="task-mini-body active px-4 py-3 border-t border-slate-200 text-sm text-muted bg-surface">После ввода ID нажмите «Обновить по ID», чтобы подтянуть условие и метаданные.</div>';
+                box.appendChild(wrap);
+                renumberTaskRows();
+                syncTaskIdsFromEditor();
+            }
+
+            function reloadWithCurrentTaskIds() {
+                syncTaskIdsFromEditor();
+                const ids = getTaskIds();
+                if (!ids.length) {
+                    window.toast?.warning?.('Сначала укажите хотя бы один ID задания');
+                    return;
+                }
+                const sel = document.getElementById('ca_recipients');
+                const rec = sel ? Array.from(sel.selectedOptions).map((o) => o.value).filter(Boolean).join(',') : '';
+                let url = '/assignments/create?source=generator&task_ids=' + encodeURIComponent(ids.join(','));
+                if (rec) url += '&recipient_ids=' + encodeURIComponent(rec);
+                window.location.href = url;
+            }
+
+            function escapeHtml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function renderBadgesHtml(task) {
+                const out = [];
+                if (task.difficulty_level === 1) {
+                    out.push('<span class="px-2 py-0.5 rounded-lg bg-green-50 text-green-800 border border-green-100">Сложность: лёгкая</span>');
+                } else if (task.difficulty_level === 3) {
+                    out.push('<span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-800 border border-rose-100">Сложность: высокая</span>');
+                } else if (task.difficulty_level === 2) {
+                    out.push('<span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">Сложность: средняя</span>');
+                } else {
+                    out.push('<span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">Сложность: не указана</span>');
+                }
+                if (task.kege_tier_label_ru) {
+                    out.push('<span class="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-100">КЕГЭ: ' + escapeHtml(task.kege_tier_label_ru) + '</span>');
+                }
+                if (task.bank_origin) {
+                    out.push('<span class="px-2 py-0.5 rounded-lg bg-surface border border-slate-200 text-muted uppercase tracking-wider">Происхождение: ' + escapeHtml(task.bank_origin) + '</span>');
+                }
+                if (task.source_prototype) {
+                    out.push('<span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-100 font-mono text-[10px] truncate max-w-[220px]" title="' + escapeHtml(task.source_prototype) + '">Прототип: ' + escapeHtml(task.source_prototype) + '</span>');
+                }
+                return out.join('');
+            }
+
+            function renderAttachmentsHtml(files) {
+                const rows = [];
+                for (const f of (files || [])) {
+                    const url = (f && (f.url || f.path)) ? String(f.url || f.path) : '';
+                    if (!url) continue;
+                    const name = (f && f.name) ? String(f.name) : url.split('/').pop();
+                    rows.push(
+                        '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 no-underline text-primary text-xs font-bold">' +
+                        '<i class="ph-bold ph-paperclip"></i>' +
+                        '<span>' + escapeHtml(name) + '</span>' +
+                        '</a>'
+                    );
+                }
+                return rows.join('');
+            }
+
+            function updateTaskRowPreview(row, task) {
+                const numberEl = row.querySelector('[data-role="task-number"]');
+                if (numberEl) numberEl.textContent = '№' + String(task.task_number || '—');
+
+                const sourceEl = row.querySelector('[data-role="source-link"]');
+                if (sourceEl) {
+                    if (task.source_url) {
+                        sourceEl.href = task.source_url;
+                        sourceEl.classList.remove('hidden');
+                    } else {
+                        sourceEl.classList.add('hidden');
+                    }
+                }
+
+                const badges = row.querySelector('[data-role="badges"]');
+                if (badges) badges.innerHTML = renderBadgesHtml(task);
+
+                const attBlock = row.querySelector('[data-role="attachments-block"]');
+                const attList = row.querySelector('[data-role="attachments"]');
+                if (attBlock && attList) {
+                    const html = renderAttachmentsHtml(task.attached_files || []);
+                    attList.innerHTML = html;
+                    attBlock.classList.toggle('hidden', html.length === 0);
+                }
+
+                const content = row.querySelector('[data-role="content-html"]');
+                if (content) content.innerHTML = task.content_html || 'Текст отсутствует';
+            }
+
+            async function fetchTaskPreview(taskId) {
+                const r = await fetch('/assignments/api/task-preview?task_id=' + encodeURIComponent(String(taskId)), {
+                    headers: { Accept: 'application/json' },
+                });
+                let data = {};
+                try { data = await r.json(); } catch (e) { data = {}; }
+                if (!r.ok || !data.success || !data.task) {
+                    throw new Error(data.error || 'Не удалось загрузить условие');
+                }
+                return data.task;
+            }
+
+            async function cycleTaskVariant(btn, direction) {
+                const row = btn && btn.closest ? btn.closest('.task-order-row') : null;
+                const inp = row ? row.querySelector('input.task-id-editor') : null;
+                if (!inp) return;
+                const randomMode = !!variantRandomEnabled;
+                const tid = parseInt(String(inp.value || '').trim(), 10);
+                if (!tid || isNaN(tid)) {
+                    window.toast?.error?.('Укажите корректный ID задания');
+                    return;
+                }
+                const prev = btn.disabled;
+                btn.disabled = true;
+                try {
+                    const r = await fetch(
+                        '/assignments/api/cycle-task-variant?task_id=' + encodeURIComponent(String(tid)) +
+                        '&direction=' + encodeURIComponent(direction) + (randomMode ? '&random=1' : ''),
+                        { headers: { Accept: 'application/json' } },
+                    );
+                    let data = {};
+                    try {
+                        data = await r.json();
+                    } catch (e) {
+                        data = {};
+                    }
+                    if (!r.ok || !data.success) {
+                        throw new Error(data.error || 'Не удалось подобрать задачу');
+                    }
+                    const nextTaskId = Number(data.task_id);
+                    inp.value = String(nextTaskId);
+                    const preview = await fetchTaskPreview(nextTaskId);
+                    updateTaskRowPreview(row, preview);
+                    syncTaskIdsFromEditor();
+                    const labels = {
+                        easier: 'Подобран вариант проще (или следующий в списке)',
+                        harder: 'Подобран вариант сложнее (или следующий в списке)',
+                        same: 'Другая задача того же уровня сложности',
+                    };
+                    if (window.toast && typeof window.toast.success === 'function') {
+                        const suffix = randomMode ? ' [рандом]' : '';
+                        window.toast.success((labels[direction] || 'Готово') + suffix);
+                    }
+                } catch (e) {
+                    window.toast?.error?.(e.message || String(e));
+                } finally {
+                    btn.disabled = prev;
+                }
+            }
+
+            function getTaskIds() {
+                try {
+                    const ed = readTaskIdsFromEditor();
+                    if (ed && ed.length > 0) return ed;
+                    const ta = document.getElementById('manualTaskIds');
+                    if (ta && ta.value.trim().length > 0) {
+                        return (ta.value || '').split(/[^0-9]+/).map(x => parseInt(x)).filter(x => !isNaN(x));
+                    }
+                    const jsonEl = document.getElementById('task-ids-json');
+                    return JSON.parse(jsonEl && jsonEl.textContent ? jsonEl.textContent : '[]');
+                } catch(e) { return []; }
+            }
+
+            async function submitWork() {
+                syncTaskIdsFromEditor();
+                const btn = document.getElementById('submitBtn');
+                const title = document.getElementById('ca_title').value.trim();
+                const deadline = document.getElementById('ca_deadline').value;
+                const type = document.getElementById('ca_type').value;
+                const groupSelect = document.getElementById('ca_group_select');
+                const selectedGroup = groupSelect ? groupSelect.value : '';
+                const recipients = Array.from(document.getElementById('ca_recipients').selectedOptions).map(o => parseInt(o.value));
+                const taskIds = getTaskIds();
+                const timeLimit = parseInt(document.getElementById('ca_time_limit').value) || null;
+                const maxAttempts = parseInt(document.getElementById('ca_max_attempts').value) || 1;
+                const hardDeadline = document.getElementById('ca_hard_deadline').checked;
+                const hideBeforeStart = document.getElementById('ca_hide_before_start').checked;
+                const attemptsPerTask = document.getElementById('ca_attempts_per_task').checked;
+                const allowSeparate = attemptsPerTask || document.getElementById('ca_separate_submission').checked;
+                const timeLimitStrict = document.getElementById('ca_time_limit_strict').checked;
+                const description = (document.getElementById('ca_description') && document.getElementById('ca_description').value.trim()) || '';
+
+                if (!title || !deadline || (!recipients.length && !selectedGroup) || !taskIds.length) {
+                    window.toast?.error?.('Заполните все обязательные поля');
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.textContent = 'Отправляем...';
+
+                try {
+                    const resp = await fetch('/assignments/distribute', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                        body: JSON.stringify({
+                            title, type,
+                            description,
+                            deadline: new Date(deadline).toISOString(),
+                            time_limit_minutes: timeLimit,
+                            time_limit_strict: timeLimitStrict,
+                            max_attempts_default: maxAttempts,
+                            hard_deadline: hardDeadline,
+                            hide_before_start: hideBeforeStart,
+                            attempts_per_task: attemptsPerTask,
+                            allow_separate_submission: allowSeparate,
+                            groupId: selectedGroup || null,
+                            recipientIds: recipients,
+                            tasks: taskIds.map((id, i) => ({ task_id: id, order: i, max_score: 1 }))
+                        })
+                    });
+                    const res = await resp.json();
+                    if (res.success) {
+                        window.toast?.success?.('Работа успешно создана!');
+                        setTimeout(() => location.href = '/assignments', 1000);
+                    } else {
+                        throw new Error(res.error || 'Ошибка при создании');
+                    }
+                } catch(e) {
+                    window.toast?.error?.(e.message);
+                    btn.disabled = false;
+                    btn.textContent = 'Создать работу';
+                }
+            }
+
+            // Expose the necessary functions globally for onclick inline attributes
+            window.goToStep = goToStep;
+            window.toggleVariantRandom = toggleVariantRandom;
+            window.selectAll = selectAll;
+            window.handleGroupSelect = handleGroupSelect;
+            window.startProbnikBuild = startProbnikBuild;
+            window.setSource = setSource;
+            window.clearTasks = clearTasks;
+            window.removeTaskRow = removeTaskRow;
+            window.addEmptyTaskRow = addEmptyTaskRow;
+            window.reloadWithCurrentTaskIds = reloadWithCurrentTaskIds;
+            window.cycleTaskVariant = cycleTaskVariant;
+            window.submitWork = submitWork;
+            window.syncTaskIdsFromEditor = syncTaskIdsFromEditor;
+
+            // Setup listeners and initial values
             document.querySelectorAll('.recipient-check').forEach((ch) => {
                 ch.addEventListener('change', () => updateUI());
             });
@@ -938,6 +957,10 @@
             }
 
             updateUI();
-        });
+        };
+
+        if (!window.__htmxSwapping) {
+            window.initAssignmentCreate();
+        }
     </script>
 {% endblock %}

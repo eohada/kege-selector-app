@@ -311,7 +311,7 @@
     window.__GEN_SEED_TASK__ = {{ seed_task_payload | tojson if seed_task_payload else 'null' }};
 </script>
 <script>
-    (function() {
+    window.initKegeGenerator = function() {
         const deck = document.getElementById('genDeck');
         const empty = document.getElementById('genEmpty');
         const card = document.getElementById('genTaskCard');
@@ -624,7 +624,10 @@
             act('blacklist', {reason});
         });
 
-        document.addEventListener('keydown', (e) => {
+        if (window.__kegeGenKeydownHandler) {
+            document.removeEventListener('keydown', window.__kegeGenKeydownHandler);
+        }
+        window.__kegeGenKeydownHandler = (e) => {
             if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
             if (!currentTask) return;
             if (isBusy) return;
@@ -640,7 +643,8 @@
             } else if (e.key === 'Escape') {
                 stopBtn?.click();
             }
-        });
+        };
+        document.addEventListener('keydown', window.__kegeGenKeydownHandler);
 
         if (window.__GEN_SEED_TASK__) {
             try {
@@ -650,6 +654,10 @@
                 setTimeout(() => card.classList.remove('is-entering'), 30);
             } catch (_) {}
         }
-    })();
+    };
+
+    if (!window.__htmxSwapping) {
+        window.initKegeGenerator();
+    }
 </script>
 {% endblock %}
