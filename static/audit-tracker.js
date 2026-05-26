@@ -12,7 +12,12 @@
         if (isUserAuthenticated()) {
             return null;
         }
-        let testerUUID = localStorage.getItem('tester_uuid');
+        let testerUUID = null;
+        try {
+            testerUUID = localStorage.getItem('tester_uuid');
+        } catch (e) {
+            // ignore
+        }
         if (!testerUUID) {
 
             testerUUID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -20,7 +25,11 @@
                 const v = c == 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
-            localStorage.setItem('tester_uuid', testerUUID);
+            try {
+                localStorage.setItem('tester_uuid', testerUUID);
+            } catch (e) {
+                // ignore
+            }
         }
         return testerUUID;
     }

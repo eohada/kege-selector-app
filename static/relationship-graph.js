@@ -663,7 +663,12 @@
 
     _applyStoredPositionsOrLayout() {
       const nodes = (this.data && this.data.nodes) || [];
-      const stored = safeJsonParse(localStorage.getItem(this._storageKey()) || '', null);
+      let stored = null;
+      try {
+        stored = safeJsonParse(localStorage.getItem(this._storageKey()) || '', null);
+      } catch (e) {
+        // ignore
+      }
       if (stored && stored.nodes && typeof stored.nodes === 'object') {
         for (const n of nodes) {
           const pos = stored.nodes[String(n.id)];
