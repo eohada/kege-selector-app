@@ -38,6 +38,7 @@
     root.setAttribute('data-theme-mode', mode);
     try {
       window.dispatchEvent(new CustomEvent('boo:theme-changed', { detail: { mode: mode } }));
+      document.dispatchEvent(new CustomEvent('boo:theme-changed', { detail: { mode: mode } }));
     } catch (e) {}
   }
 
@@ -53,18 +54,23 @@
   }
 
   function initToggles() {
-    document.querySelectorAll('[data-theme-toggle]').forEach((toggle) => {
-      toggle.querySelectorAll('[data-theme-value]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const v = btn.getAttribute('data-theme-value') || 'auto';
-          const mode = THEMES.includes(v) ? v : 'auto';
-          setStoredTheme(mode);
-          applyTheme(mode);
-          updateToggles(mode);
-        });
-      });
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-theme-value]');
+      if (!btn) return;
+      const toggle = btn.closest('[data-theme-toggle]');
+      if (!toggle) return;
+      
+      const v = btn.getAttribute('data-theme-value') || 'auto';
+      const mode = THEMES.includes(v) ? v : 'auto';
+      setStoredTheme(mode);
+      applyTheme(mode);
+      updateToggles(mode);
     });
   }
+
+  window.updateThemeToggles = function() {
+    updateToggles(getStoredTheme());
+  };
 
   function boot() {
     const mode = getStoredTheme();

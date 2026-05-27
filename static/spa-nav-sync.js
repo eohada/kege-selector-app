@@ -668,11 +668,34 @@
             syncMetaTags(doc);
             syncHeadStyles(doc);
             syncHeadScripts(doc);
- 
+
+            // Sync html attributes (such as data-student-theory="1", etc.)
+            var newHtml = doc.documentElement;
+            if (newHtml) {
+                var preservedHtmlAttrs = ['data-theme', 'data-theme-mode', 'lang'];
+                var htmlAttrsToRemove = [];
+                for (var i = 0; i < document.documentElement.attributes.length; i++) {
+                    var attrName = document.documentElement.attributes[i].name;
+                    if (preservedHtmlAttrs.indexOf(attrName) === -1) {
+                        htmlAttrsToRemove.push(attrName);
+                    }
+                }
+                htmlAttrsToRemove.forEach(function(attrName) {
+                    document.documentElement.removeAttribute(attrName);
+                });
+
+                for (var i = 0; i < newHtml.attributes.length; i++) {
+                    var attr = newHtml.attributes[i];
+                    if (preservedHtmlAttrs.indexOf(attr.name) === -1) {
+                        document.documentElement.setAttribute(attr.name, attr.value);
+                    }
+                }
+            }
+
             var newBody = doc.querySelector('body');
             if (newBody) {
                 document.body.className = newBody.className;
- 
+
                 var preservedAttrs = ['hx-boost', 'hx-indicator', 'id', 'style'];
                 var attrsToRemove = [];
                 for (var i = 0; i < document.body.attributes.length; i++) {
@@ -684,7 +707,7 @@
                 attrsToRemove.forEach(function(attrName) {
                     document.body.removeAttribute(attrName);
                 });
- 
+
                 for (var i = 0; i < newBody.attributes.length; i++) {
                     var attr = newBody.attributes[i];
                     if (preservedAttrs.indexOf(attr.name) === -1 && attr.name !== 'class') {
@@ -770,6 +793,9 @@
     });
 
     document.body.addEventListener('htmx:afterSettle', function(evt) {
+        if (window.updateThemeToggles) {
+            try { window.updateThemeToggles(); } catch (e) {}
+        }
         protectLocalHtmxControls();
         stripNavHtmxAttrs(evt && evt.target ? evt.target : document);
         syncActiveNav();

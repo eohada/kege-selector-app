@@ -407,15 +407,20 @@
     }
     if (!window.__theoryCmThemeBound) {
       window.__theoryCmThemeBound = true;
-      document.addEventListener('boo:theme-changed', function () {
+      window.addEventListener('boo:theme-changed', function () {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        (window.__theoryCmEditors || []).forEach(function (entry) {
-          try {
-            if (entry.view && entry.themeComp) {
-              entry.view.dispatch({ effects: entry.themeComp.reconfigure(makeTheoryCmTheme(isDark)) });
-            }
-          } catch (e) {}
-        });
+        if (window.__theoryCmEditors) {
+          window.__theoryCmEditors = window.__theoryCmEditors.filter(function (entry) {
+            return entry.view && entry.view.dom && document.body.contains(entry.view.dom);
+          });
+          window.__theoryCmEditors.forEach(function (entry) {
+            try {
+              if (entry.view && entry.themeComp) {
+                entry.view.dispatch({ effects: entry.themeComp.reconfigure(makeTheoryCmTheme(isDark)) });
+              }
+            } catch (e) {}
+          });
+        }
       });
     }
     blocks.forEach((card) => {

@@ -1350,7 +1350,16 @@
                     initCodeMirrorIfNeeded(wrap, true);
                 });
             };
-            if (typeof CodeMirror !== 'undefined') { window._initReadonlyEditors(); }
+             if (typeof CodeMirror !== 'undefined') { window._initReadonlyEditors(); }
+
+             window.addEventListener('boo:theme-changed', function() {
+                 var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                 document.querySelectorAll('.code-editor-text').forEach(function(textarea) {
+                     if (textarea.cmInstance) {
+                         textarea.cmInstance.setOption('theme', isDark ? 'dracula' : 'default');
+                     }
+                 });
+             });
 
             var submissionId = {{ submission.submission_id }};
             var runCodeUrl = '{{ url_for("assignments.submission_run_code", submission_id=submission.submission_id) }}';
