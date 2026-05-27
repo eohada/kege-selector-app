@@ -1,259 +1,281 @@
-{# Mobile hamburger + slide-in menu — matches Tactile Dock style #}
+{# Mobile bottom navigation dock + bottom sheet slide-up menu - Tactile Premium Style #}
 {% from '_spa_main_nav_attrs.html' import spa_main_nav_attrs %}
-<style>
-[data-mobile-menu-root] .mobile-menu-overlay {
-    position: fixed;
-    inset: 0;
-    display: none;
-    background: rgba(15, 23, 42, 0.42);
-    z-index: var(--z-mobile-overlay, 140);
-}
-[data-mobile-menu-root] .mobile-menu-overlay.active {
-    display: block;
-}
-[data-mobile-menu-root] .mobile-menu {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: min(86vw, 320px);
-    background: var(--color-bg-surface);
-    border-left: 1px solid var(--color-stroke);
-    padding: 1rem;
-    overflow-y: auto;
-    transform: translateX(100%);
-    transition: transform 0.25s ease;
-    z-index: var(--z-mobile-menu, 150);
-}
-[data-mobile-menu-root] .mobile-menu.active {
-    transform: translateX(0);
-}
-[data-mobile-menu-root] .mobile-menu-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-bottom: 0.75rem;
-    margin-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-stroke);
-}
-[data-mobile-menu-root] .mobile-nav-links {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-@media (min-width: 768px) {
-    [data-mobile-menu-root] .mobile-menu-toggle,
-    [data-mobile-menu-root] .mobile-menu-overlay,
-    [data-mobile-menu-root] .mobile-menu {
-        display: none !important;
-    }
-}
-</style>
-<div data-mobile-menu-root>
-    <button class="mobile-menu-toggle md:hidden" data-mobile-menu-toggle aria-label="Открыть меню" type="button">
-        <span></span>
-        <span></span>
-        <span></span>
-    </button>
 
-    <div class="mobile-menu-overlay" data-mobile-menu-overlay></div>
+{% if current_user and current_user.is_authenticated %}
+<div class="mobile-bottom-dock md:hidden" data-mobile-dock>
+    {# === PARENT role === #}
+    {% if current_user.is_parent() %}
+        <a {{ spa_main_nav_attrs(url_for('parents.parent_dashboard'), 'parent_dashboard') }} class="mobile-tab {% if active_page == 'parent_dashboard' %}active{% endif %}">
+            <i class="ph-bold ph-baby"></i>
+            <span>Дети</span>
+        </a>
+        <a {{ spa_main_nav_attrs(url_for('schedule.schedule'), 'schedule') }} class="mobile-tab {% if active_page == 'schedule' %}active{% endif %}">
+            <i class="ph-bold ph-calendar-blank"></i>
+            <span>График</span>
+        </a>
+        <a {{ spa_main_nav_attrs(url_for('main.faq'), 'faq') }} class="mobile-tab {% if active_page == 'faq' %}active{% endif %}">
+            <i class="ph-bold ph-question"></i>
+            <span>FAQ</span>
+        </a>
+        <button class="mobile-tab" type="button" data-sheet-trigger>
+            <i class="ph-bold ph-squares-four"></i>
+            <span>Ещё</span>
+        </button>
 
-    <nav class="mobile-menu" data-mobile-menu>
-        <div class="mobile-menu-header">
-            <a {{ spa_main_nav_attrs(url_for('main.index'), '', false) }} class="dock-brand" style="gap:0.5rem;">
-                <div class="dock-brand-icon" style="width:32px;height:32px;border-radius:10px;">
-                    <i class="ph-fill ph-ghost text-lg"></i>
-                </div>
-                <span class="font-extrabold text-base">BooStudy</span>
+    {# === STUDENT role === #}
+    {% elif current_user.is_student() %}
+        {% if current_student %}
+            <a {{ spa_main_nav_attrs(url_for('main.student_dashboard'), 'student_dashboard') }} class="mobile-tab {% if active_page in ['student_dashboard','dashboard'] %}active{% endif %}">
+                <i class="ph-bold ph-house"></i>
+                <span>Главная</span>
             </a>
-            <button class="mobile-menu-close" data-mobile-menu-close aria-label="Закрыть" type="button">
-                <i class="ph-bold ph-x text-xl"></i>
-            </button>
-        </div>
-
-        <div class="mobile-nav-links">
-        {% if current_user and current_user.is_authenticated %}
-            {# Parent #}
-            {% if current_user.is_parent() %}
-            <a {{ spa_main_nav_attrs(url_for('parents.parent_dashboard'), 'parent_dashboard') }} class="nav-link {% if active_page == 'parent_dashboard' %}active{% endif %}">
-                <i class="ph-bold ph-baby text-lg"></i> Мои дети
+            <a {{ spa_main_nav_attrs(url_for('students.student_profile', student_id=current_student.student_id), 'student_profile') }} class="mobile-tab {% if active_page == 'student_profile' %}active{% endif %}">
+                <i class="ph-bold ph-house-line"></i>
+                <span>Комната</span>
             </a>
-            <a {{ spa_main_nav_attrs(url_for('schedule.schedule'), 'schedule') }} class="nav-link {% if active_page == 'schedule' %}active{% endif %}">
-                <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
+            <a {{ spa_main_nav_attrs(url_for('assignments.submissions_list'), 'assignments') }} class="mobile-tab {% if active_page == 'assignments' %}active{% endif %}">
+                <i class="ph-bold ph-tray"></i>
+                <span>Задания</span>
             </a>
-            <a {{ spa_main_nav_attrs(url_for('main.faq'), 'faq') }} class="nav-link {% if active_page == 'faq' %}active{% endif %}">
-                <i class="ph-bold ph-question text-lg"></i> FAQ
-            </a>
-
-            {# Student #}
-            {% elif current_user.is_student() %}
-            {% if current_student %}
-            <a {{ spa_main_nav_attrs(url_for('students.student_profile', student_id=current_student.student_id), 'student_profile') }} class="nav-link {% if active_page == 'student_profile' %}active{% endif %}">
-                <i class="ph-bold ph-house text-lg"></i> Комната
-            </a>
-            <a {{ spa_main_nav_attrs(url_for('assignments.submissions_list'), 'assignments') }} class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
-                <i class="ph-bold ph-tray text-lg"></i> Задания
-            </a>
-            {% if has_permission(current_user, 'trainer.use') %}
-            <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
-                <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
-            </a>
-            {% endif %}
             {% if has_permission(current_user, 'theory.view') %}
-            <a {{ spa_main_nav_attrs(url_for('theory.theory_index'), 'theory') }} class="nav-link {% if active_page == 'theory' %}active{% endif %}">
-                <i class="ph-bold ph-book-open text-lg"></i> Теория
+            <a {{ spa_main_nav_attrs(url_for('theory.theory_index'), 'theory') }} class="mobile-tab {% if active_page == 'theory' %}active{% endif %}">
+                <i class="ph-bold ph-book-open"></i>
+                <span>Теория</span>
             </a>
             {% endif %}
+            <button class="mobile-tab" type="button" data-sheet-trigger>
+                <i class="ph-bold ph-squares-four"></i>
+                <span>Ещё</span>
+            </button>
+        {% endif %}
+
+    {# === TEACHER / ADMIN / CREATOR role === #}
+    {% else %}
+        <a {{ spa_main_nav_attrs(url_for('main.dashboard'), 'dashboard') }} class="mobile-tab {% if active_page == 'dashboard' %}active{% endif %}">
+            <i class="ph-bold ph-users-three"></i>
+            <span>Ученики</span>
+        </a>
+        <a {{ spa_main_nav_attrs(url_for('schedule.schedule'), 'schedule') }} class="mobile-tab {% if active_page == 'schedule' %}active{% endif %}">
+            <i class="ph-bold ph-calendar-blank"></i>
+            <span>График</span>
+        </a>
+        {% if has_permission(current_user, 'assignment.grade') %}
+        <a {{ spa_main_nav_attrs(url_for('lessons.review_queue'), 'review_queue') }} class="mobile-tab {% if active_page == 'review_queue' %}active{% endif %}">
+            <i class="ph-bold ph-tray"></i>
+            <span>Проверка</span>
+        </a>
+        {% endif %}
+        {% if has_permission(current_user, 'trainer.use') %}
+        <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="mobile-tab {% if active_page == 'trainer' %}active{% endif %}">
+            <i class="ph-bold ph-game-controller"></i>
+            <span>Тренажёр</span>
+        </a>
+        {% endif %}
+        <button class="mobile-tab" type="button" data-sheet-trigger>
+            <i class="ph-bold ph-squares-four"></i>
+            <span>Ещё</span>
+        </button>
+    {% endif %}
+</div>
+
+<!-- Bottom Sheet Slide-up Panel -->
+<div class="bottom-sheet-overlay" data-sheet-overlay></div>
+<div class="bottom-sheet-panel md:hidden" data-sheet-panel>
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+        <span class="bottom-sheet-title">BooStudy Меню</span>
+        <button class="bottom-sheet-close" type="button" data-sheet-close aria-label="Закрыть">
+            <i class="ph-bold ph-x text-xl"></i>
+        </button>
+    </div>
+
+    <!-- Дополнительные разделы в зависимости от роли -->
+    <div class="bottom-sheet-section-title">Разделы системы</div>
+    <div class="bottom-sheet-grid">
+        {# === STUDENT tools === #}
+        {% if current_user.is_student() %}
+            {% if has_permission(current_user, 'trainer.use') %}
+            <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="bottom-sheet-item">
+                <i class="ph-bold ph-game-controller"></i>
+                <span>Тренажёр</span>
+            </a>
+            {% endif %}
+            {% if current_student %}
+            <a {{ spa_main_nav_attrs(url_for('students.student_analytics', student_id=current_student.student_id), 'student_analytics') }} class="bottom-sheet-item">
+                <i class="ph-bold ph-chart-line-up"></i>
+                <span>Статистика</span>
+            </a>
             {% endif %}
 
-            {# Teacher / Admin #}
-            {% else %}
-            <a {{ spa_main_nav_attrs(url_for('main.dashboard'), 'dashboard') }} class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
-                <i class="ph-bold ph-users-three text-lg"></i> Ученики
-            </a>
-            <a {{ spa_main_nav_attrs(url_for('schedule.schedule'), 'schedule') }} class="nav-link {% if active_page == 'schedule' %}active{% endif %}">
-                <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
-            </a>
-            {% if has_permission(current_user, 'assignment.grade') %}
-            <a {{ spa_main_nav_attrs(url_for('lessons.review_queue'), 'review_queue') }} class="nav-link {% if active_page == 'review_queue' %}active{% endif %}">
-                <i class="ph-bold ph-tray text-lg"></i> Проверка
-            </a>
-            {% endif %}
-            <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
-                <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
-            </a>
-
-            <div style="height:1px;background:var(--color-stroke);margin:0.75rem 0;"></div>
-            <div class="app-sidebar-group-title">Инструменты</div>
+        {# === TEACHER / ADMIN tools === #}
+        {% elif not current_user.is_parent() and not current_user.is_student() %}
             {% if has_permission(current_user, 'assignment.view') %}
-            <a {{ spa_main_nav_attrs(url_for('assignments.assignments_list'), 'assignments') }} class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
-                <i class="ph-bold ph-file-text text-lg text-muted"></i> Работы
+            <a {{ spa_main_nav_attrs(url_for('assignments.assignments_list'), 'assignments') }} class="bottom-sheet-item">
+                <i class="ph-bold ph-file-text"></i>
+                <span>Работы</span>
             </a>
             {% endif %}
-            <a {{ spa_main_nav_attrs(url_for('task_generator.task_generator'), 'generator') }} class="nav-link {% if active_page == 'generator' %}active{% endif %}">
-                <i class="ph-bold ph-magic-wand text-lg text-muted"></i> Генератор
+            <a {{ spa_main_nav_attrs(url_for('task_generator.task_generator'), 'generator') }} class="bottom-sheet-item">
+                <i class="ph-bold ph-magic-wand"></i>
+                <span>Генератор</span>
             </a>
             {% if has_permission(current_user, 'task.manage') %}
-            <a {{ spa_main_nav_attrs(url_for('templates.templates_list'), 'templates') }} class="nav-link {% if active_page == 'templates' %}active{% endif %}">
-                <i class="ph-bold ph-file-dashed text-lg text-muted"></i> Шаблоны
+            <a {{ spa_main_nav_attrs(url_for('templates.templates_list'), 'templates') }} class="bottom-sheet-item">
+                <i class="ph-bold ph-file-dashed"></i>
+                <span>Шаблоны</span>
             </a>
             {% endif %}
             {% if has_permission(current_user, 'groups.view') %}
-            <a {{ spa_main_nav_attrs(url_for('groups.groups_list'), 'groups') }} class="nav-link {% if active_page == 'groups' %}active{% endif %}">
-                <i class="ph-bold ph-users text-lg text-muted"></i> Группы
+            <a {{ spa_main_nav_attrs(url_for('groups.groups_list'), 'groups') }} class="bottom-sheet-item">
+                <i class="ph-bold ph-users"></i>
+                <span>Группы</span>
             </a>
             {% endif %}
             {% if has_permission(current_user, 'theory.manage') %}
-            <a {{ spa_main_nav_attrs(url_for('theory.manage_list'), 'theory_manage') }} class="nav-link {% if active_page == 'theory_manage' %}active{% endif %}">
-                <i class="ph-bold ph-book-open text-lg text-muted"></i> Теория
+            <a {{ spa_main_nav_attrs(url_for('theory.manage_list'), 'theory_manage') }} class="bottom-sheet-item">
+                <i class="ph-bold ph-book-open"></i>
+                <span>Теория</span>
             </a>
             {% endif %}
+            {% if has_permission(current_user, 'lesson.edit') %}
+            <a {{ spa_main_nav_attrs(url_for('library.materials_library'), 'library') }} class="bottom-sheet-item">
+                <i class="ph-bold ph-books"></i>
+                <span>Библиотека</span>
+            </a>
             {% endif %}
-
-            <div style="height:1px;background:var(--color-stroke);margin:0.75rem 0;"></div>
-            <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления" style="margin:0.5rem 0;">
-                <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
-                <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
-                <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
-            </div>
-            <a {{ spa_main_nav_attrs(url_for('auth.user_profile'), 'profile') }} class="nav-link">
-                <i class="ph-bold ph-user text-lg text-muted"></i> Профиль
+            {% if current_user.is_creator() or current_user.is_chief_tester() or current_user.is_tester() %}
+            <a {{ spa_main_nav_attrs(url_for('chief_tester.dashboard'), 'chief_tester_dashboard') }} class="bottom-sheet-item">
+                <i class="ph-bold ph-radar"></i>
+                <span>QA Отдел</span>
             </a>
-            <a href="{{ url_for('auth.logout') }}" class="nav-link" style="color:#EF4444;">
-                <i class="ph-bold ph-sign-out text-lg"></i> Выход
+            {% endif %}
+            {% if has_permission(current_user, 'billing.manage') %}
+            <a {{ spa_main_nav_attrs(url_for('billing.billing_plans'), 'billing') }} class="bottom-sheet-item">
+                <i class="ph-bold ph-credit-card"></i>
+                <span>Тарифы</span>
             </a>
+            {% endif %}
         {% endif %}
+    </div>
+
+    <!-- Раздел аккаунта -->
+    <div class="bottom-sheet-section-title">Кабинет и Настройки</div>
+    <div class="bottom-sheet-list">
+        <div style="padding: 0.25rem 0.85rem 0.75rem;">
+            <div style="font-size:0.75rem;font-weight:900;text-transform:uppercase;color:#94A3B8;letter-spacing:0.05em;margin-bottom:8px;">Тема оформления</div>
+            <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления" style="display:flex;width:100%;">
+                <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false" style="flex:1;">Auto</button>
+                <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false" style="flex:1;">Dark</button>
+                <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false" style="flex:1;">Light</button>
+            </div>
         </div>
-    </nav>
+        
+        <a {{ spa_main_nav_attrs(url_for('auth.user_profile'), 'profile') }} class="bottom-sheet-list-item">
+            <i class="ph-bold ph-user"></i>
+            <span>Мой профиль</span>
+        </a>
+        <a {{ spa_main_nav_attrs(url_for('notifications.notifications_list'), 'notifications') }} class="bottom-sheet-list-item">
+            <i class="ph-bold ph-bell"></i>
+            <span>Уведомления</span>
+        </a>
+        <a href="{{ url_for('auth.logout') }}" class="bottom-sheet-list-item" style="color: #EF4444;">
+            <i class="ph-bold ph-sign-out" style="color: #EF4444;"></i>
+            <span>Выйти из аккаунта</span>
+        </a>
+    </div>
 </div>
+{% endif %}
 
 <script>
-window.initMobileMenu = function() {
-    var roots = Array.prototype.slice.call(document.querySelectorAll('[data-mobile-menu-root]'));
-    if (!roots.length) return;
+(function() {
+  if (window.__mobileMenuInitialized) return;
+  window.__mobileMenuInitialized = true;
 
-    roots.forEach(function(root) {
-        if (root.dataset.mobileMenuInited === 'true') return;
-        root.dataset.mobileMenuInited = 'true';
+  var scrollY = 0;
 
-        var toggle = root.querySelector('[data-mobile-menu-toggle]');
-        var menu = root.querySelector('[data-mobile-menu]');
-        var overlay = root.querySelector('[data-mobile-menu-overlay]');
-        var close = root.querySelector('[data-mobile-menu-close]');
-        if (!menu || !overlay || !close) return;
-        var scrollY = 0;
+  function openSheet(sheet, overlay, trigger) {
+      sheet.classList.add('active');
+      overlay.classList.add('active');
+      if (trigger) trigger.classList.add('active');
 
-        function applyClosedState() {
-            overlay.style.display = 'none';
-            overlay.style.position = 'fixed';
-            overlay.style.inset = '0';
-            overlay.style.background = 'rgba(15, 23, 42, 0.42)';
-            overlay.style.zIndex = '140';
+      scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      document.body.style.position = 'fixed';
+      document.body.style.top = '-' + scrollY + 'px';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+  }
 
-            menu.style.position = 'fixed';
-            menu.style.top = '0';
-            menu.style.right = '0';
-            menu.style.bottom = '0';
-            menu.style.width = 'min(86vw, 320px)';
-            menu.style.maxWidth = '320px';
-            menu.style.height = '100dvh';
-            menu.style.background = 'var(--color-bg-surface)';
-            menu.style.borderLeft = '1px solid var(--color-stroke)';
-            menu.style.overflowY = 'auto';
-            menu.style.zIndex = '150';
-            menu.style.transform = 'translateX(100%)';
-            menu.style.transition = 'transform 0.25s ease';
-        }
+  function closeSheet(sheet, overlay, trigger) {
+      sheet.classList.remove('active');
+      overlay.classList.remove('active');
+      if (trigger) trigger.classList.remove('active');
 
-        applyClosedState();
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, scrollY);
+  }
 
-        function openMenu() {
-            if (toggle) toggle.classList.add('active');
-            menu.classList.add('active');
-            overlay.classList.add('active');
-            overlay.style.display = 'block';
-            menu.style.transform = 'translateX(0)';
-            scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-            document.body.style.position = 'fixed';
-            document.body.style.top = '-' + scrollY + 'px';
-            document.body.style.left = '0';
-            document.body.style.right = '0';
-            document.body.style.width = '100%';
-            document.body.style.overflow = 'hidden';
-        }
+  document.addEventListener('click', function(e) {
+      // 1. More / Ещё button click
+      var trigger = e.target.closest('[data-sheet-trigger]');
+      if (trigger) {
+          e.preventDefault();
+          e.stopPropagation();
+          var sheet = document.querySelector('[data-sheet-panel]');
+          var overlay = document.querySelector('[data-sheet-overlay]');
+          if (sheet && overlay) {
+              if (sheet.classList.contains('active')) {
+                  closeSheet(sheet, overlay, trigger);
+              } else {
+                  openSheet(sheet, overlay, trigger);
+              }
+          }
+          return;
+      }
 
-        function closeMenu() {
-            if (toggle) toggle.classList.remove('active');
-            menu.classList.remove('active');
-            overlay.classList.remove('active');
-            menu.style.transform = 'translateX(100%)';
-            overlay.style.display = 'none';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.left = '';
-            document.body.style.right = '';
-            document.body.style.width = '';
-            document.body.style.overflow = '';
-            window.scrollTo(0, scrollY);
-        }
+      // 2. Close button click
+      var closeBtn = e.target.closest('[data-sheet-close]');
+      if (closeBtn) {
+          e.preventDefault();
+          var sheet = document.querySelector('[data-sheet-panel]');
+          var overlay = document.querySelector('[data-sheet-overlay]');
+          var trig = document.querySelector('[data-sheet-trigger]');
+          if (sheet && overlay) closeSheet(sheet, overlay, trig);
+          return;
+      }
 
-        if (toggle) {
-            toggle.addEventListener('click', function(e) {
-                e.preventDefault();
-                openMenu();
-            });
-        }
-        close.addEventListener('click', closeMenu);
-        overlay.addEventListener('click', closeMenu);
-        Array.prototype.slice.call(menu.querySelectorAll('.nav-link')).forEach(function(link) {
-            link.addEventListener('click', function() { setTimeout(closeMenu, 120); });
-        });
-    });
-};
+      // 3. Overlay click
+      var overlay = e.target.closest('[data-sheet-overlay]');
+      if (overlay) {
+          e.preventDefault();
+          var sheet = document.querySelector('[data-sheet-panel]');
+          var trig = document.querySelector('[data-sheet-trigger]');
+          if (sheet) closeSheet(sheet, overlay, trig);
+          return;
+      }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { window.initMobileMenu(); });
-} else {
-    window.initMobileMenu();
-}
+      // 4. Close sheet on clicking any link inside the bottom sheet
+      var link = e.target.closest('[data-sheet-panel] a');
+      if (link) {
+          var sheet = document.querySelector('[data-sheet-panel]');
+          var overlay = document.querySelector('[data-sheet-overlay]');
+          var trig = document.querySelector('[data-sheet-trigger]');
+          if (sheet && overlay) {
+              setTimeout(function() {
+                  closeSheet(sheet, overlay, trig);
+              }, 120);
+          }
+      }
+  });
+
+  window.initMobileMenu = function() {
+      // Menu initialized globally via document-level event delegation
+  };
+})();
 </script>
