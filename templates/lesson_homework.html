@@ -42,7 +42,8 @@
         filter: blur(48px);
         pointer-events: none;
     }
-    [data-theme="dark"] .lesson-header__glow { opacity: 0.25; }
+    [data-theme="dark"] .lesson-header__glow { opacity: 0.06; }
+
     .lesson-header__inner {
         position: relative;
         z-index: 10;
@@ -114,6 +115,58 @@
         gap: 0.75rem;
         flex-shrink: 0;
     }
+    /* Бенто-кластер кнопок шапки */
+    .lesson-action-cluster {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem;
+        background: rgba(0,0,0,0.04);
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,0.06);
+    }
+    [data-theme="dark"] .lesson-action-cluster {
+        background: rgba(255,255,255,0.05);
+        border-color: rgba(255,255,255,0.08);
+    }
+    .lesson-icon-btn {
+        width: 36px;
+        height: 36px;
+        padding: 0 !important;
+        border-radius: 10px !important;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--text-muted, #94a3b8);
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+        text-decoration: none;
+    }
+    .lesson-icon-btn:hover {
+        background: rgba(0,0,0,0.06);
+        color: var(--text-primary, #0f172a);
+        border-color: rgba(0,0,0,0.08);
+    }
+    .lesson-icon-btn.danger:hover {
+        background: rgba(251,113,133,0.12) !important;
+        color: #E11D48 !important;
+        border-color: rgba(251,113,133,0.3) !important;
+    }
+    [data-theme="dark"] .lesson-icon-btn:hover {
+        background: rgba(255,255,255,0.08);
+        color: var(--text-primary, #f1f5f9);
+        border-color: rgba(255,255,255,0.1);
+    }
+    [data-theme="dark"] .lesson-icon-btn.danger:hover {
+        background: rgba(251,113,133,0.15) !important;
+        color: #FDA4AF !important;
+        border-color: rgba(251,113,133,0.3) !important;
+    }
+
 
     .lesson-tabs {
         display: flex;
@@ -439,31 +492,33 @@
         box-shadow: 0 16px 34px -22px rgba(15, 23, 42, 0.35) !important;
     }
     [data-theme="dark"] .teacher-mode .task-card.teacher-task-card {
-        background: var(--surface-1, #131722);
-        border-color: var(--stroke-1, rgba(255,255,255,0.12));
-        box-shadow: 0 14px 32px -20px rgba(0, 0, 0, 0.45);
+        background: #111827 !important;
+        border-color: rgba(255,255,255,0.08) !important;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
     }
     [data-theme="dark"] .teacher-mode .task-card.teacher-task-card .task-header {
-        border-bottom-color: var(--stroke-1, rgba(255,255,255,0.12));
+        border-bottom-color: rgba(255,255,255,0.08) !important;
     }
     [data-theme="dark"] .teacher-mode .task-card.teacher-task-card .task-content {
         color: var(--text-primary, #e2e8f0);
     }
     [data-theme="dark"] .teacher-mode .task-card.teacher-task-card .answer-section {
-        background: rgba(148, 163, 184, 0.08);
-        border-color: var(--stroke-1, rgba(255,255,255,0.14));
+        background: rgba(255,255,255,0.04);
+        border-color: rgba(255,255,255,0.08) !important;
     }
     [data-theme="dark"] .teacher-mode .task-card.teacher-task-card .answer-section .neo-input {
-        background: rgba(15, 23, 42, 0.55) !important;
-        border-color: rgba(148, 163, 184, 0.35) !important;
+        background: rgba(0, 0, 0, 0.4) !important;
+        border-color: rgba(255,255,255,0.12) !important;
     }
     [data-theme="dark"] .teacher-mode .teacher-review-panel,
     [data-theme="dark"] .teacher-mode .teacher-review-cta,
     [data-theme="dark"] .teacher-mode .homework-actions.teacher-actions-bar,
     [data-theme="dark"] .teacher-mode .task-nav-bar.teacher-task-nav {
-        background: rgba(15, 23, 42, 0.78) !important;
-        border-color: var(--stroke-1, rgba(255,255,255,0.14)) !important;
+        background: #111827 !important;
+        border-color: rgba(255,255,255,0.09) !important;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.35) !important;
     }
+
 
     .task-header {
         display: flex;
@@ -725,22 +780,25 @@
                 </div>
                 <div class="lesson-header__actions">
                     {% if not is_student_view and not is_parent_view %}
-                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
-                        <i class="ph-bold ph-house-line text-lg"></i> Создать ДЗ
+                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent sm" style="text-decoration:none;">
+                        <i class="ph-bold ph-house-line"></i> Создать ДЗ
                     </a>
-                    <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="px-5 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
-                        <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
-                    </a>
-                    <button type="button" class="w-10 h-10 bg-red-50 text-[#FF6B6B] border border-red-100 rounded-xl font-bold hover:bg-red-100 hover:border-red-200 transition-colors flex justify-center items-center shadow-sm dark:shadow-none dark:shadow-none shrink-0" title="Удалить урок" onclick="deleteLesson({{ lesson.lesson_id }}, {{ student.student_id }})" aria-label="Удалить урок">
-                        <i class="ph-bold ph-trash text-lg"></i>
-                    </button>
+                    <div class="lesson-action-cluster">
+                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="lesson-icon-btn" title="Редактировать" style="text-decoration:none;">
+                            <i class="ph-bold ph-pencil-simple"></i>
+                        </a>
+                        <button type="button" class="lesson-icon-btn danger" title="Удалить урок" onclick="deleteLesson({{ lesson.lesson_id }}, {{ student.student_id }})" aria-label="Удалить урок">
+                            <i class="ph-bold ph-trash"></i>
+                        </button>
+                    </div>
                     {% endif %}
                     {% if is_student_view %}
-                    <a href="{{ url_for('assignments.submissions_list') }}" class="px-5 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
-                        <i class="ph-bold ph-check-square-offset text-lg"></i> К заданиям
+                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button outline sm" style="text-decoration:none;">
+                        <i class="ph-bold ph-check-square-offset"></i> К заданиям
                     </a>
                     {% endif %}
                 </div>
+
             </div>
         </header>
 
@@ -926,19 +984,13 @@
                             {% endif %}
                         </div>
                         {% if not is_student_view and not is_parent_view %}
-                        <div class="lesson-panel-actions" style="display:flex; gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end;">
-                            <button type="button" class="neo-button outline sm" onclick="saveLessonReviewSummary()">
-                                <i class="fas fa-save"></i> Сохранить итог
-                            </button>
-                            <button type="submit" class="neo-button outline sm" form="homework-form">
-                                <i class="fas fa-layer-group"></i> Сохранить настройки заданий
-                            </button>
-                        </div>
+                        <!-- Кнопки перенесены в нижнюю панель действий -->
                         {% endif %}
+
                     </div>
 
                     {% if not is_student_view and not is_parent_view %}
-                    <div style="margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--stroke-1); display:grid; grid-template-columns: 220px 220px 1fr 180px; gap: 0.75rem; align-items: end;" class="profile-grid-responsive">
+                    <div style="margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--stroke-1); display:grid; grid-template-columns: 220px 220px 1fr; gap: 0.75rem; align-items: end;" class="profile-grid-responsive">
                         <div>
                             <label class="neo-label">Попытки по умолчанию</label>
                             <input class="neo-input" type="number" min="1" max="20" name="max_attempts_default" id="max_attempts_default" value="{{ attempts_default or 1 }}">
@@ -964,13 +1016,9 @@
                                 </button>
                             </div>
                         </div>
-                        <div>
-                            <button type="submit" class="neo-button accent" form="homework-form">
-                                <i class="fas fa-save"></i> Сохранить
-                            </button>
-                        </div>
                     </div>
                     {% endif %}
+
 
                     {% if review_summary and review_summary.get('notes') %}
                     <div style="margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--stroke-1); color: var(--text-primary); white-space: pre-wrap; line-height: 1.6;">
@@ -1021,7 +1069,17 @@
                             <input class="neo-input" id="lesson-review-weight" type="number" min="1" max="10" value="{{ review_summary.get('weight') if review_summary and review_summary.get('weight') else '' }}" placeholder="1">
                         </div>
                     </div>
+                    <!-- Единая нижняя панель действий -->
+                    <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--stroke-1); display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap;">
+                        <button type="submit" class="neo-button ghost sm" form="homework-form">
+                            <i class="fas fa-layer-group"></i> Настройки заданий
+                        </button>
+                        <button type="button" class="neo-button accent sm" onclick="saveLessonReviewSummary()">
+                            <i class="fas fa-save"></i> Сохранить итог
+                        </button>
+                    </div>
                     {% endif %}
+
                 </div>
                 {% endif %}
 
@@ -1913,21 +1971,24 @@
             }
         })();
 
+        // Глобальное делегирование кликов по вкладкам (100% совместимо с HTMX SPA)
+        if (!window.__lessonTabsDelegated) {
+            window.__lessonTabsDelegated = true;
+            document.addEventListener('click', function(e) {
+                var btn = e.target && (e.target.closest && e.target.closest('.tab-btn') || (e.target.classList && e.target.classList.contains('tab-btn') ? e.target : null));
+                if (btn && btn.getAttribute('data-tab')) {
+                    if (btn.closest('.lesson-tabs')) {
+                        e.preventDefault();
+                        if (typeof window.switchLessonTab === 'function') {
+                            window.switchLessonTab(btn.getAttribute('data-tab'));
+                        }
+                    }
+                }
+            });
+        }
+
         // Initialize Editors
         window.initLessonPage = function() {
-            // Клики по табам (делегирование — надёжно работает у препода и ученика)
-            var tabsContainer = document.querySelector('.lesson-tabs');
-            if (tabsContainer && !tabsContainer.dataset.tabsInited) {
-                tabsContainer.dataset.tabsInited = 'true';
-                tabsContainer.addEventListener('click', function(e) {
-                    var btn = e.target && (e.target.closest && e.target.closest('.tab-btn') || (e.target.classList && e.target.classList.contains('tab-btn') ? e.target : null));
-                    if (btn && btn.getAttribute('data-tab')) {
-                        e.preventDefault();
-                        switchLessonTab(btn.getAttribute('data-tab'));
-                    }
-                });
-            }
-
             try {
                 // restore tab from hash/localStorage
                 var hash = (location.hash || '').trim();
@@ -2001,6 +2062,16 @@
             document.addEventListener('DOMContentLoaded', window.initLessonPage);
         } else {
             window.initLessonPage();
+        }
+
+        // При HTMX SPA переходах инициализируем страницу после обновления DOM
+        if (!window.__lessonInitBound) {
+            window.__lessonInitBound = true;
+            document.body.addEventListener('htmx:afterSwap', function(evt) {
+                if (typeof window.initLessonPage === 'function') {
+                    window.initLessonPage();
+                }
+            });
         }
 
         // Save Functions
@@ -3739,6 +3810,34 @@
         } else {
             initKatexRendering();
         }
+
+        // Экспортируем все важные функции на объект window для совместимости с HTMX SPA и inline onclick
+        window.deleteLesson = typeof deleteLesson !== 'undefined' ? deleteLesson : undefined;
+        window.setTheoryMode = typeof setTheoryMode !== 'undefined' ? setTheoryMode : undefined;
+        window.openCreateLessonTemplateModal = typeof openCreateLessonTemplateModal !== 'undefined' ? openCreateLessonTemplateModal : undefined;
+        window.saveContent = typeof saveContent !== 'undefined' ? saveContent : undefined;
+        window.saveBlocks = typeof saveBlocks !== 'undefined' ? saveBlocks : undefined;
+        window.addBlock = typeof addBlock !== 'undefined' ? addBlock : undefined;
+        window.closeCreateLessonTemplateModal = typeof closeCreateLessonTemplateModal !== 'undefined' ? closeCreateLessonTemplateModal : undefined;
+        window.createLessonTemplate = typeof createLessonTemplate !== 'undefined' ? createLessonTemplate : undefined;
+        window.applyBulkDifficultyLevel = typeof applyBulkDifficultyLevel !== 'undefined' ? applyBulkDifficultyLevel : undefined;
+        window.saveLessonReviewSummary = typeof saveLessonReviewSummary !== 'undefined' ? saveLessonReviewSummary : undefined;
+        window.handleDeleteTask = typeof handleDeleteTask !== 'undefined' ? handleDeleteTask : undefined;
+        window.toggleTaskAnswer = typeof toggleTaskAnswer !== 'undefined' ? toggleTaskAnswer : undefined;
+        window.openLibraryAttachModal = typeof openLibraryAttachModal !== 'undefined' ? openLibraryAttachModal : undefined;
+        window.deleteMaterial = typeof deleteMaterial !== 'undefined' ? deleteMaterial : undefined;
+        window.detachLibraryMaterial = typeof detachLibraryMaterial !== 'undefined' ? detachLibraryMaterial : undefined;
+        window.closeLibraryAttachModal = typeof closeLibraryAttachModal !== 'undefined' ? closeLibraryAttachModal : undefined;
+        window.loadLibraryAssets = typeof loadLibraryAssets !== 'undefined' ? loadLibraryAssets : undefined;
+        window.saveNotes = typeof saveNotes !== 'undefined' ? saveNotes : undefined;
+        window.reloadLessonChat = typeof reloadLessonChat !== 'undefined' ? reloadLessonChat : undefined;
+        window.sendLessonChatMessage = typeof sendLessonChatMessage !== 'undefined' ? sendLessonChatMessage : undefined;
+        window.fetchWhiteboardInfo = typeof fetchWhiteboardInfo !== 'undefined' ? fetchWhiteboardInfo : undefined;
+        window.createWhiteboard = typeof createWhiteboard !== 'undefined' ? createWhiteboard : undefined;
+        window.toggleWhiteboardFullscreen = typeof toggleWhiteboardFullscreen !== 'undefined' ? toggleWhiteboardFullscreen : undefined;
+        window.inviteStudentToWhiteboard = typeof inviteStudentToWhiteboard !== 'undefined' ? inviteStudentToWhiteboard : undefined;
+        window.deleteWhiteboard = typeof deleteWhiteboard !== 'undefined' ? deleteWhiteboard : undefined;
+        window.startVideoCall = typeof startVideoCall !== 'undefined' ? startVideoCall : undefined;
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
     {% include '_partials/file_viewer_modal.html' %}

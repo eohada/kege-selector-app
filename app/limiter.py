@@ -15,9 +15,10 @@ def _key_func():
     except Exception:
         return get_remote_address()
 
+import os
 
 limiter = Limiter(
     key_func=_key_func,
-    default_limits=["200 per minute"],
+    default_limits=[os.environ.get('RATELIMIT_DEFAULT', '200 per minute')],
     storage_uri="memory://",
 )

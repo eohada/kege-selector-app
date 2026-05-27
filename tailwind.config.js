@@ -38,6 +38,9 @@ module.exports = {
         'bg-app':         'var(--color-bg-app)',
         'bg-surface':     'var(--color-bg-surface)',
         'bg-surface-alt': 'var(--color-bg-surface-alt)',
+        'app':            'var(--color-bg-app)',
+        'surface':        'var(--color-bg-surface)',
+        'surface-alt':    'var(--color-bg-surface-alt)',
         accent: {
           DEFAULT: '#8B5CF6',
           strong:  '#6A4CE5',
@@ -53,6 +56,9 @@ module.exports = {
         'text-primary':   'var(--color-text-primary)',
         'text-secondary': 'var(--color-text-secondary)',
         'text-muted':     'var(--color-text-muted)',
+        'primary':        'var(--color-text-primary)',
+        'secondary':      'var(--color-text-secondary)',
+        'muted':          'var(--color-text-muted)',
         'text-inverse':   '#FFFFFF',
         stroke: {
           DEFAULT: 'var(--color-stroke)',
