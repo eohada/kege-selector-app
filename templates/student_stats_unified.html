@@ -47,10 +47,10 @@
     </div>
 
     <div class="relative z-10 bg-slate-100/80 dark:bg-dark-inner/60 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50 dark:border-white/[0.08]">
-      <button id="btn-skills" data-tab="skills" onclick="switchTab('skills', this)" class="stats-tab px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 dark:bg-white/10 dark:text-white dark:border-white/[0.08] flex items-center gap-2 whitespace-nowrap transition-all">
+      <button id="btn-skills" data-tab="skills" onclick="switchStatsTab('skills', this)" class="stats-tab px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 dark:bg-white/10 dark:text-white dark:border-white/[0.08] flex items-center gap-2 whitespace-nowrap transition-all">
         Навыки и Темы
       </button>
-      <button id="btn-exam" data-tab="exam" onclick="switchTab('exam', this)" class="stats-tab px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2">
+      <button id="btn-exam" data-tab="exam" onclick="switchStatsTab('exam', this)" class="stats-tab px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2">
         Аналитика ЕГЭ <span class="bg-purple-100 text-boo-primary dark:bg-purple-500/15 dark:text-purple-300 px-2 py-0.5 rounded-md text-[10px] uppercase tracking-widest border border-purple-200/50 dark:border-purple-500/25">Прогноз</span>
       </button>
     </div>
@@ -383,7 +383,7 @@
 
         const statsTabsDarkActive = ['dark:bg-white/10', 'dark:text-white', 'dark:border-white/[0.08]'];
 
-        function switchTab(tabName, btn) {
+        function switchStatsTab(tabName, btn) {
             document.querySelectorAll('.stats-tab-content').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.stats-tab').forEach(t => {
                 t.classList.remove('active');

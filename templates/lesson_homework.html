@@ -1809,14 +1809,15 @@
             } catch (e) { console.warn('Lesson socket init:', e); }
 
             (function() {
-                var origSwitchTab = window.switchTab;
+                var origSwitchTab = window.switchLessonTab || window.switchTab;
                 if (origSwitchTab) {
-                    window.switchTab = function(tabName) {
+                    window.switchLessonTab = function(tabName) {
                         origSwitchTab(tabName);
                         if (window.lessonSocket && window.lessonSocket.connected) {
                             window.lessonSocket.emit('tab_changed', { lesson_id: LESSON_ID, tab: tabName });
                         }
                     };
+                    window.switchTab = window.switchLessonTab;
                 }
             })();
         })();
@@ -1884,7 +1885,7 @@
         })();
 
         // Tabs Logic (с сохранением выбранной вкладки)
-        function switchTab(tabName) {
+        function switchLessonTab(tabName) {
             var doSwitch = function() {
                 document.querySelectorAll('.tab-btn').forEach(b => {
                     b.classList.remove('active');
@@ -1949,6 +1950,8 @@
             if (tabName === 'theory' && window.theoryEditor) window.theoryEditor.codemirror.refresh();
             if (tabName === 'notes' && window.notesEditor) window.notesEditor.codemirror.refresh();
         }
+        window.switchLessonTab = switchLessonTab;
+        window.switchTab = switchLessonTab;
 
         // Initialize Editors
         window.initLessonPage = function() {
@@ -1960,7 +1963,7 @@
                     var btn = e.target && (e.target.closest && e.target.closest('.tab-btn') || (e.target.classList && e.target.classList.contains('tab-btn') ? e.target : null));
                     if (btn && btn.getAttribute('data-tab')) {
                         e.preventDefault();
-                        switchTab(btn.getAttribute('data-tab'));
+                        switchLessonTab(btn.getAttribute('data-tab'));
                     }
                 });
             }
@@ -1973,7 +1976,7 @@
                 var fromStore = localStorage.getItem('lesson_' + LESSON_ID + '_active_tab');
                 var tab = fromHash || fromStore;
                 if (tab && document.getElementById('tab-' + tab)) {
-                    switchTab(tab);
+                    switchLessonTab(tab);
                 }
             } catch (e) {}
 
@@ -3540,13 +3543,13 @@
         
         function expandPipToTab() {
             // Переключаемся на вкладку звонка
-            switchTab('videocall');
+            switchLessonTab('videocall');
             hidePipMode();
         }
         
-        // Переопределяем switchTab для поддержки PiP
-        const originalSwitchTab = switchTab;
-        switchTab = function(tabName) {
+        // Переопределяем switchLessonTab для поддержки PiP
+        const originalSwitchTab = window.switchLessonTab || switchLessonTab;
+        window.switchLessonTab = function(tabName) {
             originalSwitchTab(tabName);
             
             // Если звонок активен и переключаемся НЕ на вкладку звонка — показываем PiP
@@ -3556,6 +3559,7 @@
                 hidePipMode();
             }
         };
+        window.switchTab = window.switchLessonTab;
         
         function toggleVideoCallFullscreen() {
             const container = document.getElementById('videocall-container');
