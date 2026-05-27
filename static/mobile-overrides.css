@@ -564,113 +564,227 @@
 }
 
 /* ═══════════════ УЛУЧШЕННЫЙ ДИЗАЙН КНОПОК (TACTILE PREMIUM) ═══════════════ */
+
+/* Базовые стили для всех типов кнопок действий */
 .neo-button,
-.px-6.py-3.bg-boo-primary,
-a[class*="bg-boo-primary"],
-button[class*="bg-boo-primary"] {
+.lesson-back-link,
+.lesson-header__actions a,
+.lesson-header__actions button,
+.stat-reset-btn,
+.stat-save-btn,
+#resetAllStats,
+#bulkApplyBtn,
+.lesson-panel-actions button,
+.lesson-panel-actions a,
+[class*="bg-boo-primary"],
+a[class*="bg-surface"][class*="border-purple-200"],
+button[class*="bg-surface"][class*="border-purple-200"] {
   border-radius: 14px !important;
   font-family: var(--font-base) !important;
   font-weight: 800 !important;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-  box-shadow: 0 4px 0 var(--color-shadow-bottom) !important;
-  border: 1px solid var(--color-stroke) !important;
-  position: relative;
+  transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
-.neo-button:hover,
-.px-6.py-3.bg-boo-primary:hover,
-a[class*="bg-boo-primary"]:hover,
-button[class*="bg-boo-primary"]:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08), 0 6px 0 var(--color-shadow-bottom) !important;
-}
-
-.neo-button:active,
-.px-6.py-3.bg-boo-primary:active,
-a[class*="bg-boo-primary"]:active,
-button[class*="bg-boo-primary"]:active {
-  transform: translateY(2px) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
-}
-
-/* Кнопки Accent (фиолетовые) */
+/* 1. Кнопки Accent (Фиолетовые solid) */
 .neo-button.accent,
-.px-6.py-3.bg-boo-primary,
-a[class*="bg-boo-primary"],
-button[class*="bg-boo-primary"] {
+.stat-save-btn,
+[class*="bg-boo-primary"],
+.lesson-panel-actions button:not(.outline) {
   background: linear-gradient(135deg, #8E70FF, #7B5CFF) !important;
   color: #ffffff !important;
   border: 1px solid #7B5CFF !important;
   border-bottom: 4px solid #5B21B6 !important;
-  box-shadow: 0 4px 14px rgba(123, 92, 255, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(123, 92, 255, 0.15) !important;
 }
 
 .neo-button.accent:hover,
-.px-6.py-3.bg-boo-primary:hover,
-a[class*="bg-boo-primary"]:hover,
-button[class*="bg-boo-primary"]:hover {
+.stat-save-btn:hover,
+[class*="bg-boo-primary"]:hover,
+.lesson-panel-actions button:not(.outline):hover {
   background: linear-gradient(135deg, #9C82FF, #8769FF) !important;
-  box-shadow: 0 6px 20px rgba(123, 92, 255, 0.35), 0 6px 0 #5B21B6 !important;
+  box-shadow: 0 6px 16px rgba(123, 92, 255, 0.25), 0 5px 0 #5B21B6 !important;
+  transform: translateY(-2px) !important;
 }
 
 .neo-button.accent:active,
-.px-6.py-3.bg-boo-primary:active,
-a[class*="bg-boo-primary"]:active,
-button[class*="bg-boo-primary"]:active {
-  border-bottom-width: 1px !important;
+.stat-save-btn:active,
+[class*="bg-boo-primary"]:active,
+.lesson-panel-actions button:not(.outline):active {
   transform: translateY(3px) !important;
+  border-bottom-width: 1px !important;
   box-shadow: none !important;
 }
 
-/* Кнопки Outline */
-.neo-button.outline {
-  background: transparent !important;
-  color: var(--color-accent) !important;
-  border: 1.5px solid var(--color-accent) !important;
-  border-bottom: 4px solid var(--color-accent-strong) !important;
-  box-shadow: none !important;
+/* 2. Кнопки Outline (Фиолетовый контур) */
+.neo-button.outline,
+.lesson-panel-actions button.outline,
+a[class*="bg-surface"][class*="border-purple-200"],
+button[class*="bg-surface"][class*="border-purple-200"],
+.lesson-header__actions a[class*="bg-surface"],
+.lesson-header__actions a[href*="edit"],
+.lesson-header__actions a[href*="submissions"] {
+  background: #ffffff !important;
+  color: #7B5CFF !important;
+  border: 1.5px solid #C4B5FD !important;
+  border-bottom: 4px solid #7B5CFF !important;
 }
 
-.neo-button.outline:hover {
-  background: rgba(123, 92, 255, 0.05) !important;
-  box-shadow: 0 6px 0 var(--color-accent-strong) !important;
+.neo-button.outline:hover,
+.lesson-panel-actions button.outline:hover,
+a[class*="bg-surface"][class*="border-purple-200"]:hover,
+button[class*="bg-surface"][class*="border-purple-200"]:hover,
+.lesson-header__actions a[class*="bg-surface"]:hover,
+.lesson-header__actions a[href*="edit"]:hover,
+.lesson-header__actions a[href*="submissions"]:hover {
+  background: #F5F3FF !important;
+  transform: translateY(-2px) !important;
+  border-bottom-width: 5px !important;
 }
 
-.neo-button.outline:active {
+.neo-button.outline:active,
+.lesson-panel-actions button.outline:active,
+a[class*="bg-surface"][class*="border-purple-200"]:active,
+button[class*="bg-surface"][class*="border-purple-200"]:active,
+.lesson-header__actions a[class*="bg-surface"]:active,
+.lesson-header__actions a[href*="edit"]:active,
+.lesson-header__actions a[href*="submissions"]:active {
+  transform: translateY(3px) !important;
   border-bottom-width: 1.5px !important;
-  transform: translateY(2px) !important;
-  box-shadow: none !important;
 }
 
-/* Ghost кнопки */
+/* 3. Кнопки Neutral/Gray (Серые/белые) */
+.lesson-back-link,
+.stat-reset-btn,
+#bulkApplyBtn,
+.neo-button:not(.accent):not(.outline):not(.ghost):not(.danger) {
+  background: #ffffff !important;
+  color: var(--color-text-secondary, #475569) !important;
+  border: 1px solid var(--color-stroke, #E2E8F0) !important;
+  border-bottom: 4px solid var(--color-stroke-strong, #CBD5E1) !important;
+}
+
+.lesson-back-link:hover,
+.stat-reset-btn:hover,
+#bulkApplyBtn:hover,
+.neo-button:not(.accent):not(.outline):not(.ghost):not(.danger):hover {
+  background: var(--color-bg-surface-alt, #F1F5F9) !important;
+  transform: translateY(-2px) !important;
+  border-bottom-width: 5px !important;
+}
+
+.lesson-back-link:active,
+.stat-reset-btn:active,
+#bulkApplyBtn:active,
+.neo-button:not(.accent):not(.outline):not(.ghost):not(.danger):active {
+  transform: translateY(3px) !important;
+  border-bottom-width: 1px !important;
+}
+
+/* 4. Кнопки Slate (Темно-серые) */
+#resetAllStats {
+  background: #0F172A !important;
+  color: #ffffff !important;
+  border: 1px solid #0F172A !important;
+  border-bottom: 4px solid #020617 !important;
+}
+
+#resetAllStats:hover {
+  background: #1E293B !important;
+  transform: translateY(-2px) !important;
+  border-bottom-width: 5px !important;
+}
+
+#resetAllStats:active {
+  transform: translateY(3px) !important;
+  border-bottom-width: 1px !important;
+}
+
+/* 5. Кнопки Danger (Красные/Удаление) */
+.lesson-header__actions button[class*="bg-red"],
+.neo-button.danger {
+  background: #FFF1F2 !important;
+  color: #E11D48 !important;
+  border: 1px solid #FDA4AF !important;
+  border-bottom: 4px solid #E11D48 !important;
+}
+
+.lesson-header__actions button[class*="bg-red"]:hover,
+.neo-button.danger:hover {
+  background: #FFE4E6 !important;
+  transform: translateY(-2px) !important;
+  border-bottom-width: 5px !important;
+}
+
+.lesson-header__actions button[class*="bg-red"]:active,
+.neo-button.danger:active {
+  transform: translateY(3px) !important;
+  border-bottom-width: 1px !important;
+}
+
+/* 6. Кнопки Ghost (Прозрачные) */
 .neo-button.ghost {
+  background: transparent !important;
   box-shadow: none !important;
   border: none !important;
   border-bottom: none !important;
 }
+
 .neo-button.ghost:hover {
-  background: var(--color-bg-surface-alt) !important;
+  background: rgba(0, 0, 0, 0.04) !important;
   transform: none !important;
   box-shadow: none !important;
 }
 
-/* Улучшенные кнопки в темной теме */
-[data-theme="dark"] .neo-button {
-  background: var(--color-bg-surface-alt) !important;
-  border-color: var(--color-stroke) !important;
-  border-bottom: 3px solid rgba(0, 0, 0, 0.4) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+/* Размеры для маленьких кнопок (.sm) */
+.neo-button.sm,
+.lesson-panel-actions button.sm,
+.stat-reset-btn,
+.stat-save-btn,
+.lesson-header__actions button,
+.lesson-header__actions a,
+.lesson-back-link {
+  padding: 0.35rem 0.75rem !important;
+  font-size: 0.8rem !important;
+  border-radius: 10px !important;
+  border-bottom-width: 3px !important;
 }
 
-[data-theme="dark"] .neo-button:hover {
-  background: var(--color-bg-surface) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), 0 6px 0 rgba(0, 0, 0, 0.4) !important;
+.neo-button.sm:hover,
+.lesson-panel-actions button.sm:hover,
+.stat-reset-btn:hover,
+.stat-save-btn:hover,
+.lesson-header__actions button:hover,
+.lesson-header__actions a:hover,
+.lesson-back-link:hover {
+  border-bottom-width: 4px !important;
 }
+
+.neo-button.sm:active,
+.lesson-panel-actions button.sm:active,
+.stat-reset-btn:active,
+.stat-save-btn:active,
+.lesson-header__actions button:active,
+.lesson-header__actions a:active,
+.lesson-back-link:active {
+  transform: translateY(2px) !important;
+  border-bottom-width: 1px !important;
+}
+
+/* ═══════════════ УЛУЧШЕНИЯ КНОПОК В ТЕМНОЙ ТЕМЕ ═══════════════ */
 
 [data-theme="dark"] .neo-button.accent,
-[data-theme="dark"] .px-6.py-3.bg-boo-primary,
-[data-theme="dark"] a[class*="bg-boo-primary"],
-[data-theme="dark"] button[class*="bg-boo-primary"] {
+[data-theme="dark"] .stat-save-btn,
+[data-theme="dark"] [class*="bg-boo-primary"],
+[data-theme="dark"] .lesson-panel-actions button:not(.outline) {
   background: linear-gradient(135deg, #9F85FF, #8B5CF6) !important;
   border-color: #8B5CF6 !important;
   border-bottom: 4px solid #5B21B6 !important;
@@ -678,20 +792,130 @@ button[class*="bg-boo-primary"]:active {
 }
 
 [data-theme="dark"] .neo-button.accent:hover,
-[data-theme="dark"] .px-6.py-3.bg-boo-primary:hover,
-[data-theme="dark"] a[class*="bg-boo-primary"]:hover,
-[data-theme="dark"] button[class*="bg-boo-primary"]:hover {
+[data-theme="dark"] .stat-save-btn:hover,
+[data-theme="dark"] [class*="bg-boo-primary"]:hover,
+[data-theme="dark"] .lesson-panel-actions button:not(.outline):hover {
   background: linear-gradient(135deg, #AD96FF, #9B73FF) !important;
-  box-shadow: 0 6px 22px rgba(139, 92, 246, 0.4), 0 6px 0 #5B21B6 !important;
+  box-shadow: 0 6px 22px rgba(139, 92, 246, 0.4), 0 5px 0 #5B21B6 !important;
 }
 
-[data-theme="dark"] .neo-button.outline {
-  border-color: #C4B5FD !important;
+[data-theme="dark"] .neo-button.outline,
+[data-theme="dark"] .lesson-panel-actions button.outline,
+[data-theme="dark"] a[class*="bg-surface"][class*="border-purple-200"],
+[data-theme="dark"] button[class*="bg-surface"][class*="border-purple-200"],
+[data-theme="dark"] .lesson-header__actions a[class*="bg-surface"],
+[data-theme="dark"] .lesson-header__actions a[href*="edit"],
+[data-theme="dark"] .lesson-header__actions a[href*="submissions"] {
+  background: var(--color-bg-surface-alt, #18181B) !important;
+  border-color: rgba(196, 181, 253, 0.35) !important;
   border-bottom: 4px solid #8B5CF6 !important;
   color: #C4B5FD !important;
 }
 
-[data-theme="dark"] .neo-button.outline:hover {
-  background: rgba(139, 92, 246, 0.1) !important;
-  box-shadow: 0 6px 0 #8B5CF6 !important;
+[data-theme="dark"] .neo-button.outline:hover,
+[data-theme="dark"] .lesson-panel-actions button.outline:hover,
+[data-theme="dark"] a[class*="bg-surface"][class*="border-purple-200"]:hover,
+[data-theme="dark"] button[class*="bg-surface"][class*="border-purple-200"]:hover,
+[data-theme="dark"] .lesson-header__actions a[class*="bg-surface"]:hover,
+[data-theme="dark"] .lesson-header__actions a[href*="edit"]:hover,
+[data-theme="dark"] .lesson-header__actions a[href*="submissions"]:hover {
+  background: rgba(139, 92, 246, 0.12) !important;
 }
+
+[data-theme="dark"] .lesson-back-link,
+[data-theme="dark"] .stat-reset-btn,
+[data-theme="dark"] #bulkApplyBtn,
+[data-theme="dark"] .neo-button:not(.accent):not(.outline):not(.ghost):not(.danger) {
+  background: var(--color-bg-surface-alt, #18181B) !important;
+  border-color: var(--color-stroke, #27272A) !important;
+  border-bottom: 4px solid #09090B !important;
+  color: var(--color-text-primary, #FAFAFA) !important;
+}
+
+[data-theme="dark"] .lesson-back-link:hover,
+[data-theme="dark"] .stat-reset-btn:hover,
+[data-theme="dark"] #bulkApplyBtn:hover,
+[data-theme="dark"] .neo-button:not(.accent):not(.outline):not(.ghost):not(.danger):hover {
+  background: var(--color-bg-surface, #131316) !important;
+}
+
+[data-theme="dark"] #resetAllStats {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  border-bottom: 4px solid #0F172A !important;
+}
+
+[data-theme="dark"] #resetAllStats:hover {
+  background: #334155 !important;
+}
+
+[data-theme="dark"] .lesson-header__actions button[class*="bg-red"],
+[data-theme="dark"] .neo-button.danger {
+  background: rgba(244, 63, 94, 0.15) !important;
+  border-color: rgba(244, 63, 94, 0.4) !important;
+  border-bottom: 4px solid #BE123C !important;
+  color: #FDA4AF !important;
+}
+
+[data-theme="dark"] .lesson-header__actions button[class*="bg-red"]:hover,
+[data-theme="dark"] .neo-button.danger:hover {
+  background: rgba(244, 63, 94, 0.25) !important;
+}
+
+[data-theme="dark"] .neo-button.ghost:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ═══════════════ ДОРАБОТКА ПОЛЕЙ ВВОДА В ТЕМНОЙ ТЕМЕ ═══════════════ */
+
+[data-theme="dark"] .neo-input,
+[data-theme="dark"] .neo-select,
+[data-theme="dark"] .neo-textarea {
+  background: #18181B !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15) !important;
+  color: #FAFAFA !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="dark"] .neo-input:focus,
+[data-theme="dark"] .neo-select:focus,
+[data-theme="dark"] .neo-textarea:focus {
+  border-color: #8B5CF6 !important;
+  border-bottom-color: #7C3AED !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(139, 92, 246, 0.25) !important;
+  outline: none !important;
+}
+
+[data-theme="dark"] input[type="checkbox"] {
+  accent-color: #8B5CF6 !important;
+}
+
+/* ═══════════════ СТРАНИЦА СОЗДАНИЯ РАБОТЫ (WIZARD CREATE ASSIGNMENT) ═══════════════ */
+
+[data-theme="dark"] .recipient-card.is-selected {
+  background: rgba(139, 92, 246, 0.12) !important;
+  border-color: #8B5CF6 !important;
+}
+
+[data-theme="dark"] .status-pill {
+  background: #18181B !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #A1A1AA !important;
+}
+
+[data-theme="dark"] .status-pill span {
+  color: #FAFAFA !important;
+}
+
+[data-theme="dark"] .recipient-checkbox {
+  background: #131316 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-theme="dark"] .recipient-card.is-selected .recipient-checkbox {
+  background: #8B5CF6 !important;
+  border-color: #8B5CF6 !important;
+}
+
