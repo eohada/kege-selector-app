@@ -377,4 +377,135 @@
     background: rgba(255, 255, 255, 0.05);
     color: #FAFAFA;
   }
+
+  /* ═══════════════ АДАПТИВНЫЕ СЕТКИ И КНОПКИ НА МОБИЛЬНЫХ ═══════════════ */
+  .profile-grid-responsive {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .lesson-panel-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 1rem !important;
+  }
+
+  .lesson-panel-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    gap: 0.65rem !important;
+  }
+
+  .lesson-panel-actions .neo-button,
+  .lesson-panel-actions button,
+  .lesson-panel-actions a {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .teacher-review-panel .lesson-panel-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  /* Сброс инлайновых отступов и размеров форм у преподавателя */
+  .profile-grid-responsive select,
+  .profile-grid-responsive input,
+  .profile-grid-responsive textarea {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
+
+/* ═══════════════ ГЛОБАЛЬНЫЕ СТИЛИ И ИСПРАВЛЕНИЯ ТЕМ ═══════════════ */
+
+/* Анимация прокрутки для мобильных таблиц */
+@keyframes swipeHint {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(5px); }
+}
+.animate-swipe {
+  display: inline-block;
+  animation: swipeHint 1.2s ease-in-out infinite;
+}
+
+/* Глобальное исправление инпутов в темной теме */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  color: var(--color-text-primary) !important;
+}
+
+/* Исправление темной темы у преподавателя в уроке */
+[data-theme="dark"] .teacher-mode .task-card.teacher-task-card .answer-section .neo-input {
+  color: #ffffff !important;
+  background: rgba(15, 23, 42, 0.6) !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+}
+[data-theme="dark"] .teacher-mode .task-card.teacher-task-card .auto-check-result {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #34d399 !important;
+}
+
+/* Переопределение инлайновых светлых фонов в темной теме */
+[data-theme="dark"] [style*="background:#eef2ff"],
+[data-theme="dark"] [style*="background: #eef2ff"],
+[data-theme="dark"] [style*="background:#EEF2FF"],
+[data-theme="dark"] [style*="background: #EEF2FF"],
+[data-theme="dark"] [style*="background-color:#eef2ff"],
+[data-theme="dark"] [style*="background-color: #eef2ff"] {
+  background-color: rgba(123, 92, 255, 0.15) !important;
+  color: #c4b5fd !important;
+  border-color: rgba(123, 92, 255, 0.25) !important;
+}
+
+[data-theme="dark"] [style*="background:#f8fafc"],
+[data-theme="dark"] [style*="background: #f8fafc"],
+[data-theme="dark"] [style*="background:#f1f5f9"],
+[data-theme="dark"] [style*="background: #f1f5f9"] {
+  background-color: var(--color-bg-surface-alt) !important;
+  color: var(--color-text-primary) !important;
+}
+
+[data-theme="dark"] [style*="background:#ffffff"],
+[data-theme="dark"] [style*="background: #ffffff"],
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"] {
+  background-color: var(--color-bg-surface) !important;
+  color: var(--color-text-primary) !important;
+}
+
+[data-theme="dark"] [style*="background:#fffbeb"],
+[data-theme="dark"] [style*="background: #fffbeb"] {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+[data-theme="dark"] [style*="background:#ecfdf5"],
+[data-theme="dark"] [style*="background: #ecfdf5"] {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+[data-theme="dark"] [style*="background:#fef2f2"],
+[data-theme="dark"] [style*="background: #fef2f2"] {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Переопределение жестких светлых градиентов из Tailwind в темной теме */
+[data-theme="dark"] .bg-gradient-to-br.from-\[\#EEF2FF\].to-\[\#F5F3FF\],
+[data-theme="dark"] .bg-gradient-to-br[class*="from-[#EEF2FF]"],
+[data-theme="dark"] .bg-gradient-to-br[class*="to-[#F5F3FF]"] {
+  background-image: linear-gradient(to bottom right, rgba(30, 27, 75, 0.4), rgba(49, 46, 129, 0.4)) !important;
+  border-color: rgba(99, 102, 241, 0.15) !important;
+  color: #FAFAFA !important;
 }

@@ -911,7 +911,7 @@
 
                 {% if not is_parent_view %}
                 <div class="glass-panel" style="margin-bottom: 1.25rem;">
-                    <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                    <div class="lesson-panel-header" style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
                         <div style="min-width: 0;">
                             <div class="hero-eyebrow">итог по проверке</div>
                             <div style="font-weight: 900; font-size: 1.15rem; margin-top: 0.25rem;">
@@ -926,7 +926,7 @@
                             {% endif %}
                         </div>
                         {% if not is_student_view and not is_parent_view %}
-                        <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end;">
+                        <div class="lesson-panel-actions" style="display:flex; gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end;">
                             <button type="button" class="neo-button outline sm" onclick="saveLessonReviewSummary()">
                                 <i class="fas fa-save"></i> Сохранить итог
                             </button>
@@ -1034,7 +1034,7 @@
                 {% set cnt_graded = homework_tasks|selectattr('status', 'equalto', 'graded')|list|length %}
 
                 <div class="glass-panel teacher-review-panel" style="margin-bottom: 1.5rem;">
-                    <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                    <div class="lesson-panel-header" style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
                         <div>
                             <div class="hero-eyebrow">панель проверки</div>
                             <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
@@ -1044,7 +1044,7 @@
                                 <span class="status-badge status-success" data-tooltip="Проверено">{{ cnt_graded }} · Проверено</span>
                             </div>
                         </div>
-                        <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end;">
+                        <div class="lesson-panel-actions" style="display:flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end;">
                             <a class="neo-button accent sm" href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='submitted') }}" style="text-decoration:none;">
                                 <i class="fas fa-check ui-icon ui-icon--sm"></i> Открыть проверку по уроку
                             </a>
@@ -1899,27 +1899,43 @@
             };
 
             if (document.startViewTransition) {
-                document.documentElement.setAttribute('data-bs-transition', 'tab-switch');
-                
-                var currentActiveBtn = document.querySelector('.tab-btn.active');
-                var targetBtn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
-                if (currentActiveBtn && targetBtn) {
-                    var btns = Array.prototype.slice.call(document.querySelectorAll('.tab-btn'));
-                    var currentIdx = btns.indexOf(currentActiveBtn);
-                    var targetIdx = btns.indexOf(targetBtn);
-                    if (targetIdx > currentIdx) {
-                        document.documentElement.setAttribute('data-bs-transition-dir', 'forward');
-                    } else if (targetIdx < currentIdx) {
-                        document.documentElement.setAttribute('data-bs-transition-dir', 'backward');
+                try {
+                    document.documentElement.setAttribute('data-bs-transition', 'tab-switch');
+                    
+                    var currentActiveBtn = document.querySelector('.tab-btn.active');
+                    var targetBtn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+                    if (currentActiveBtn && targetBtn) {
+                        var btns = Array.prototype.slice.call(document.querySelectorAll('.tab-btn'));
+                        var currentIdx = btns.indexOf(currentActiveBtn);
+                        var targetIdx = btns.indexOf(targetBtn);
+                        if (targetIdx > currentIdx) {
+                            document.documentElement.setAttribute('data-bs-transition-dir', 'forward');
+                        } else if (targetIdx < currentIdx) {
+                            document.documentElement.setAttribute('data-bs-transition-dir', 'backward');
+                        }
                     }
-                }
-                
-                document.startViewTransition(function() {
-                    doSwitch();
-                }).finished.finally(function() {
+                    
+                    var transition = document.startViewTransition(function() {
+                        doSwitch();
+                    });
+                    
+                    if (transition && transition.finished) {
+                        transition.finished.catch(function(err) {
+                            console.warn("Tab view transition skipped/failed:", err);
+                        }).finally(function() {
+                            document.documentElement.removeAttribute('data-bs-transition');
+                            document.documentElement.removeAttribute('data-bs-transition-dir');
+                        });
+                    } else {
+                        document.documentElement.removeAttribute('data-bs-transition');
+                        document.documentElement.removeAttribute('data-bs-transition-dir');
+                    }
+                } catch (e) {
+                    console.warn("View transition start failed, falling back:", e);
                     document.documentElement.removeAttribute('data-bs-transition');
                     document.documentElement.removeAttribute('data-bs-transition-dir');
-                });
+                    doSwitch();
+                }
             } else {
                 doSwitch();
             }

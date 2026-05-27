@@ -791,80 +791,83 @@
     document.body.addEventListener('htmx:sendError', function() {
         window.__htmxSwapping = false;
     });
-
     document.body.addEventListener('htmx:afterSettle', function(evt) {
-        if (window.updateThemeToggles) {
-            try { window.updateThemeToggles(); } catch (e) {}
-        }
-        protectLocalHtmxControls();
-        stripNavHtmxAttrs(evt && evt.target ? evt.target : document);
-        syncActiveNav();
-        if (isMainSwap(evt)) {
-            closeMobileMenus();
-            initTheoryShell(evt.target);
-            if (window.initPremiumSchedule) {
-                window.initPremiumSchedule();
+        try {
+            if (window.updateThemeToggles) {
+                try { window.updateThemeToggles(); } catch (e) {}
             }
-            applyPageMotion(evt.target);
-            updateHistoryStack();
-            saveCurrentBodyState();
+            protectLocalHtmxControls();
+            stripNavHtmxAttrs(evt && evt.target ? evt.target : document);
+            syncActiveNav();
+            if (isMainSwap(evt)) {
+                closeMobileMenus();
+                initTheoryShell(evt.target);
+                if (window.initPremiumSchedule) {
+                    window.initPremiumSchedule();
+                }
+                applyPageMotion(evt.target);
+                updateHistoryStack();
+                saveCurrentBodyState();
 
-            // Re-run global initializers for the swapped DOM scope
-            var scope = evt.target;
-            if (window.initCsrfHelper) {
-                window.initCsrfHelper(scope);
+                // Re-run global initializers for the swapped DOM scope
+                var scope = evt.target;
+                if (window.initCsrfHelper) {
+                    window.initCsrfHelper(scope);
+                }
+                if (window.initConfirmModals) {
+                    window.initConfirmModals(scope);
+                }
+                if (window.initFormToastHandlers) {
+                    window.initFormToastHandlers(scope);
+                }
+                if (window.initFilterStorage) {
+                    window.initFilterStorage(scope);
+                }
+                if (window.initFilterStateManager) {
+                    window.initFilterStateManager();
+                }
+                if (window.initScrollToTop) {
+                    window.initScrollToTop();
+                }
+                if (window.BooCanvasOverlay && typeof window.BooCanvasOverlay.init === 'function') {
+                    window.BooCanvasOverlay.init();
+                }
+                if (window.initMobileMenu) {
+                    window.initMobileMenu();
+                }
+                if (typeof window.initStudentForms === 'function') {
+                    window.initStudentForms();
+                }
+                if (typeof window.initStudentCards === 'function') {
+                    window.initStudentCards();
+                }
+                if (typeof window.initLessonPage === 'function') {
+                    window.initLessonPage();
+                }
+                if (typeof window.initAssignmentCreate === 'function') {
+                    window.initAssignmentCreate();
+                }
+                if (typeof window.initTaskGenerator === 'function') {
+                    window.initTaskGenerator();
+                }
+                if (typeof window.initKegeGenerator === 'function') {
+                    window.initKegeGenerator();
+                }
             }
-            if (window.initConfirmModals) {
-                window.initConfirmModals(scope);
+            if (evt && evt.target && evt.target.id === 'articleContainer') {
+                var articleView = document.querySelector('#view-article');
+                if (articleView) switchLocalView(articleView, 'drill-in');
             }
-            if (window.initFormToastHandlers) {
-                window.initFormToastHandlers(scope);
-            }
-            if (window.initFilterStorage) {
-                window.initFilterStorage(scope);
-            }
-            if (window.initFilterStateManager) {
-                window.initFilterStateManager();
-            }
-            if (window.initScrollToTop) {
-                window.initScrollToTop();
-            }
-            if (window.BooCanvasOverlay && typeof window.BooCanvasOverlay.init === 'function') {
-                window.BooCanvasOverlay.init();
-            }
-            if (window.initMobileMenu) {
-                window.initMobileMenu();
-            }
-            if (typeof window.initStudentForms === 'function') {
-                window.initStudentForms();
-            }
-            if (typeof window.initStudentCards === 'function') {
-                window.initStudentCards();
-            }
-            if (typeof window.initLessonPage === 'function') {
-                window.initLessonPage();
-            }
-            if (typeof window.initAssignmentCreate === 'function') {
-                window.initAssignmentCreate();
-            }
-            if (typeof window.initTaskGenerator === 'function') {
-                window.initTaskGenerator();
-            }
-            if (typeof window.initKegeGenerator === 'function') {
-                window.initKegeGenerator();
-            }
+        } catch (e) {
+            console.error('Error in htmx:afterSettle:', e);
+        } finally {
+            if (resetTransitionTimer) clearTimeout(resetTransitionTimer);
+            resetTransitionTimer = setTimeout(function() {
+                document.documentElement.removeAttribute('data-bs-transition');
+            }, 1000);
+            
+            lastClickedLink = null;
+            window.__htmxSwapping = false;
         }
-        if (evt && evt.target && evt.target.id === 'articleContainer') {
-            var articleView = document.querySelector('#view-article');
-            if (articleView) switchLocalView(articleView, 'drill-in');
-        }
-        
-        if (resetTransitionTimer) clearTimeout(resetTransitionTimer);
-        resetTransitionTimer = setTimeout(function() {
-            document.documentElement.removeAttribute('data-bs-transition');
-        }, 1000);
-        
-        lastClickedLink = null;
-        window.__htmxSwapping = false;
     });
 })();

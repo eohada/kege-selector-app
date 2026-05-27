@@ -304,6 +304,12 @@
             <p class="text-sm font-medium text-muted">ELO-рейтинг по темам (800–2500, старт 1000).</p>
           </div>
 
+          <!-- Подсказка для мобильных о горизонтальной прокрутке -->
+          <div class="md:hidden flex items-center gap-2 text-xs font-bold text-accent dark:text-[#C4B5FD] bg-[#EEF2FF]/60 dark:bg-purple-950/20 border border-slate-200/50 dark:border-purple-800/10 rounded-2xl px-4 py-2.5 mb-4 w-full">
+            <i class="fas fa-hand-pointer animate-swipe"></i>
+            <span>Листайте таблицу вправо, чтобы увидеть все колонки</span>
+          </div>
+
           <div class="overflow-x-auto pb-2">
             <div class="min-w-[800px]">
               <div class="grid grid-cols-12 gap-4 px-6 py-3 border-b border-slate-200 dark:border-white/10 text-xs font-extrabold text-muted uppercase tracking-widest">
@@ -337,6 +343,13 @@
           <h3 class="text-2xl font-black text-primary dark:text-white mb-1">История изменения рейтинга</h3>
           <p class="text-sm font-medium text-muted" id="analyticsHistoryDescription">Сложность, время, коэффициенты и дельта MMR по каждому действию.</p>
         </div>
+
+        <!-- Подсказка для мобильных о горизонтальной прокрутке -->
+        <div class="md:hidden flex items-center gap-2 text-xs font-bold text-accent dark:text-[#C4B5FD] bg-[#EEF2FF]/60 dark:bg-purple-950/20 border border-slate-200/50 dark:border-purple-800/10 rounded-2xl px-4 py-2.5 mb-4 w-full">
+          <i class="fas fa-hand-pointer animate-swipe"></i>
+          <span>Листайте таблицу вправо, чтобы увидеть все колонки</span>
+        </div>
+
         <div class="overflow-x-auto pb-2">
           <table class="w-full min-w-[980px]">
             <thead>
