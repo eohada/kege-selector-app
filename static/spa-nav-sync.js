@@ -101,7 +101,7 @@
 
     function configureHtmx() {
         if (!window.htmx || !window.htmx.config) return false;
-        window.htmx.config.globalViewTransitions = true;
+        window.htmx.config.globalViewTransitions = false;
         return true;
     }
 

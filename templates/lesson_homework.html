@@ -1808,18 +1808,7 @@
                 });
             } catch (e) { console.warn('Lesson socket init:', e); }
 
-            (function() {
-                var origSwitchTab = window.switchLessonTab || window.switchTab;
-                if (origSwitchTab) {
-                    window.switchLessonTab = function(tabName) {
-                        origSwitchTab(tabName);
-                        if (window.lessonSocket && window.lessonSocket.connected) {
-                            window.lessonSocket.emit('tab_changed', { lesson_id: LESSON_ID, tab: tabName });
-                        }
-                    };
-                    window.switchTab = window.switchLessonTab;
-                }
-            })();
+            // Socket presence tab sync will be wrapped after switchLessonTab is initialized below.
         })();
 
         // ----- Учёт времени по заданиям (ученик) -----
@@ -1886,60 +1875,17 @@
 
         // Tabs Logic (с сохранением выбранной вкладки)
         function switchLessonTab(tabName) {
-            var doSwitch = function() {
-                document.querySelectorAll('.tab-btn').forEach(b => {
-                    b.classList.remove('active');
-                    b.setAttribute('aria-selected', 'false');
-                });
-                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            // Мгновенное и надежное переключение без тяжелого View Transitions на элементах с iframe/canvas
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('active');
+                b.setAttribute('aria-selected', 'false');
+            });
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
 
-                var btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
-                var pane = document.getElementById('tab-' + tabName);
-                if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); }
-                if (pane) pane.classList.add('active');
-            };
-
-            if (document.startViewTransition) {
-                try {
-                    document.documentElement.setAttribute('data-bs-transition', 'tab-switch');
-                    
-                    var currentActiveBtn = document.querySelector('.tab-btn.active');
-                    var targetBtn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
-                    if (currentActiveBtn && targetBtn) {
-                        var btns = Array.prototype.slice.call(document.querySelectorAll('.tab-btn'));
-                        var currentIdx = btns.indexOf(currentActiveBtn);
-                        var targetIdx = btns.indexOf(targetBtn);
-                        if (targetIdx > currentIdx) {
-                            document.documentElement.setAttribute('data-bs-transition-dir', 'forward');
-                        } else if (targetIdx < currentIdx) {
-                            document.documentElement.setAttribute('data-bs-transition-dir', 'backward');
-                        }
-                    }
-                    
-                    var transition = document.startViewTransition(function() {
-                        doSwitch();
-                    });
-                    
-                    if (transition && transition.finished) {
-                        transition.finished.catch(function(err) {
-                            console.warn("Tab view transition skipped/failed:", err);
-                        }).finally(function() {
-                            document.documentElement.removeAttribute('data-bs-transition');
-                            document.documentElement.removeAttribute('data-bs-transition-dir');
-                        });
-                    } else {
-                        document.documentElement.removeAttribute('data-bs-transition');
-                        document.documentElement.removeAttribute('data-bs-transition-dir');
-                    }
-                } catch (e) {
-                    console.warn("View transition start failed, falling back:", e);
-                    document.documentElement.removeAttribute('data-bs-transition');
-                    document.documentElement.removeAttribute('data-bs-transition-dir');
-                    doSwitch();
-                }
-            } else {
-                doSwitch();
-            }
+            var btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+            var pane = document.getElementById('tab-' + tabName);
+            if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); }
+            if (pane) pane.classList.add('active');
 
             try {
                 localStorage.setItem('lesson_' + LESSON_ID + '_active_tab', tabName);
@@ -1952,6 +1898,20 @@
         }
         window.switchLessonTab = switchLessonTab;
         window.switchTab = switchLessonTab;
+
+        // Обертываем switchLessonTab для WebSocket-синхронизации присутствия
+        (function() {
+            var origSwitchTab = window.switchLessonTab;
+            if (origSwitchTab) {
+                window.switchLessonTab = function(tabName) {
+                    origSwitchTab(tabName);
+                    if (window.lessonSocket && window.lessonSocket.connected) {
+                        window.lessonSocket.emit('tab_changed', { lesson_id: LESSON_ID, tab: tabName });
+                    }
+                };
+                window.switchTab = window.switchLessonTab;
+            }
+        })();
 
         // Initialize Editors
         window.initLessonPage = function() {
