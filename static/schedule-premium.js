@@ -466,7 +466,7 @@ window.initPremiumSchedule = () => {
     const modeSel = qs('#modalLessonMode', form);
     const repeatGroup = qs('#repeatCountGroup', form);
 
-    const defaultDate = (weekDaysIso && weekDaysIso.length ? weekDaysIso[0] : '');
+    const defaultDate = (window.weekDaysIso && window.weekDaysIso.length ? window.weekDaysIso[0] : '');
     if (dateInput) dateInput.value = dayIso || defaultDate;
     if (timeInput) timeInput.value = timeStr || '18:00';
 

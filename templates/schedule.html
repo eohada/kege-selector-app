@@ -899,7 +899,7 @@
 {% block scripts_extra %}
     <script>
         const currentTimezone = '{{ timezone }}';
-        const weekDaysIso = [{% for d in week_days %}"{{ d.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}];
+        window.weekDaysIso = [{% for d in week_days %}"{{ d.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}];
 
         function openNewLessonModal() {
             if (typeof window.openCreateLessonInInspector === 'function') {
