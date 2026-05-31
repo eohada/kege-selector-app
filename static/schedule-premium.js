@@ -123,7 +123,7 @@ window.initPremiumSchedule = () => {
     if (!canManage) {
       const lt = meta.lesson_type || 'regular';
       inspectorBody.innerHTML = `
-        <div class="space-y-4">
+        <div class="space-y-2.5">
           <div>
             <div class="inspector-label">Время</div>
             <div class="inspector-input">${meta.start_time || ''}</div>
@@ -141,13 +141,13 @@ window.initPremiumSchedule = () => {
             <div class="inspector-input">${lt}</div>
           </div>
           ${meta.topic ? `<div><div class="inspector-label">Тема</div><div class="inspector-input">${String(meta.topic)}</div></div>` : ''}
-          <div class="flex gap-3">
+          <div class="flex gap-2.5 mt-2">
             ${meta.profile_url
-              ? `<a class="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>`
-              : `<button class="flex-1 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
+              ? `<a class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>`
+              : `<button class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
             ${meta.lesson_url
-              ? `<a class="flex-1 py-3 bg-purple-50 border border-purple-100 text-boo-primary rounded-xl font-bold hover:bg-purple-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.lesson_url}">Урок</a>`
-              : `<button class="flex-1 py-3 bg-purple-50 border border-purple-100 text-boo-primary rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Урок</button>`}
+              ? `<a class="flex-1 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.lesson_url}">Урок</a>`
+              : `<button class="flex-1 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Урок</button>`}
           </div>
         </div>
       `;
@@ -156,7 +156,7 @@ window.initPremiumSchedule = () => {
     }
 
     inspectorBody.innerHTML = `
-      <div class="space-y-4">
+      <div class="space-y-2.5">
         <div class="inspector-grid-two">
           <div>
             <label class="inspector-label">Дата</label>
@@ -196,17 +196,17 @@ window.initPremiumSchedule = () => {
             <option value="introductory" ${lt === 'introductory' ? 'selected' : ''}>Вводный</option>
           </select>
         </div>
-        <div class="inspector-actions-sticky space-y-3">
-          <button class="w-full py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex justify-center items-center gap-2 active:translate-y-1 active:border-b-0 text-sm" type="button" id="inspectorSave">
+        <div class="inspector-actions-sticky space-y-2">
+          <button class="w-full py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex justify-center items-center gap-2 active:translate-y-1 active:border-b-0 text-sm" type="button" id="inspectorSave">
             Сохранить изменения
           </button>
-          <div class="flex gap-3">
+          <div class="flex gap-2.5">
             ${meta.profile_url
-              ? `<a class="flex-1 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>`
-              : `<button class="flex-1 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
-            <button class="flex-1 py-3 bg-red-50 border border-red-100 text-boo-coral rounded-xl font-bold hover:bg-red-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorDelete">Удалить</button>
+              ? `<a class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>`
+              : `<button class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
+            <button class="flex-1 py-2 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-boo-coral hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorDelete">Удалить</button>
           </div>
-          <button class="w-full py-3 bg-purple-50 border border-purple-100 text-boo-primary rounded-xl font-bold hover:bg-purple-100 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorMakeRecurring">
+          <button class="w-full py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorMakeRecurring">
             Сделать еженедельным
           </button>
         </div>
