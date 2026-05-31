@@ -761,61 +761,70 @@
         </main>
 
     {% if can_manage_schedule %}
-    <div class="modal" id="createLessonModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">Создать урок</div>
-                <button class="modal-close" type="button" data-modal-close="create">&times;</button>
+    <template id="createLessonFormTemplate">
+        <form id="createLessonForm" method="POST" action="{{ url_for('schedule.schedule_create_lesson') }}" class="space-y-3">
+            <input type="hidden" name="week_offset" value="{{ week_offset }}">
+            <input type="hidden" name="status_filter" value="{{ status_filter }}">
+            <input type="hidden" name="category_filter" value="{{ category_filter }}">
+            <input type="hidden" name="timezone" value="{{ timezone }}">
+            
+            <div class="inspector-grid-two">
+                <div>
+                    <label class="inspector-label" for="modalLessonDate">Дата *</label>
+                    <input class="inspector-input" type="date" name="lesson_date" id="modalLessonDate" required>
+                </div>
+                <div>
+                    <label class="inspector-label" for="modalLessonTime">Время *</label>
+                    <input class="inspector-input" type="time" name="lesson_time" id="modalLessonTime" required>
+                </div>
             </div>
-            <form id="createLessonForm" method="POST" action="{{ url_for('schedule.schedule_create_lesson') }}">
-                <input type="hidden" name="week_offset" value="{{ week_offset }}">
-                <input type="hidden" name="status_filter" value="{{ status_filter }}">
-                <input type="hidden" name="category_filter" value="{{ category_filter }}">
-                <input type="hidden" name="timezone" value="{{ timezone }}">
-                <input type="hidden" name="lesson_date" id="modalLessonDate">
-                <input type="hidden" name="lesson_time" id="modalLessonTime">
-                <div class="form-group">
-                    <label for="modalStudent">Ученик *</label>
-                    <select name="student_id" id="modalStudent" required>
-                        <option value="">Выберите ученика</option>
-                        {% for student in students %}
-                        <option value="{{ student.student_id }}">{{ student.name }}{% if student.platform_id %} (ID: {{ student.platform_id }}){% endif %}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="modalDuration">Длительность (минуты)</label>
-                    <input type="number" name="duration" id="modalDuration" value="60" min="30" step="30" required>
-                </div>
-                <div class="form-group">
-                    <label for="modalLessonType">Тип урока</label>
-                    <select name="lesson_type" id="modalLessonType">
-                        <option value="regular">Обычный урок</option>
-                        <option value="exam">Проверочный урок</option>
-                        <option value="introductory">Вводный урок</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="modalLessonMode">Режим создания</label>
-                    <select name="lesson_mode" id="modalLessonMode" onchange="toggleRepeatCount()">
-                        <option value="single">Одноразовый урок</option>
-                        <option value="recurring">Набор уроков</option>
-                    </select>
-                </div>
-                <div class="form-group" id="repeatCountGroup" style="display: none;">
-                    <label for="modalRepeatCount">Количество уроков</label>
-                    <input type="number" name="repeat_count" id="modalRepeatCount" value="3" min="2" max="52" placeholder="Например, 3">
-                    <small style="display: block; color: var(--text-muted); margin-top: 0.5em;">
-                        Уроки будут созданы на выбранный слот, через неделю, через две недели и т.д.
-                    </small>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="neo-button ghost" data-modal-close="create">Отмена</button>
-                    <button type="submit" class="neo-button accent">Создать</button>
-                </div>
-            </form>
-        </div>
-    </div>
+            
+            <div>
+                <label class="inspector-label" for="modalStudent">Ученик *</label>
+                <select class="inspector-input" name="student_id" id="modalStudent" required>
+                    <option value="">Выберите ученика</option>
+                    {% for student in students %}
+                    <option value="{{ student.student_id }}">{{ student.name }}{% if student.platform_id %} (ID: {{ student.platform_id }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="inspector-label" for="modalDuration">Длительность (минуты)</label>
+                <input class="inspector-input" type="number" name="duration" id="modalDuration" value="60" min="30" step="30" required>
+            </div>
+            
+            <div>
+                <label class="inspector-label" for="modalLessonType">Тип урока</label>
+                <select class="inspector-input" name="lesson_type" id="modalLessonType">
+                    <option value="regular">Обычный урок</option>
+                    <option value="exam">Проверочный урок</option>
+                    <option value="introductory">Вводный урок</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="inspector-label" for="modalLessonMode">Режим создания</label>
+                <select class="inspector-input" name="lesson_mode" id="modalLessonMode">
+                    <option value="single">Одноразовый урок</option>
+                    <option value="recurring">Набор уроков</option>
+                </select>
+            </div>
+            
+            <div id="repeatCountGroup" style="display: none;">
+                <label class="inspector-label" for="modalRepeatCount">Количество уроков</label>
+                <input class="inspector-input" type="number" name="repeat_count" id="modalRepeatCount" value="3" min="2" max="52" placeholder="Например, 3">
+                <small style="display: block; color: var(--color-text-muted); margin-top: 0.5em; font-size: 11px;">
+                    Уроки будут созданы на выбранный слот, через неделю, через две недели и т.д.
+                </small>
+            </div>
+            
+            <div class="inspector-actions-sticky space-y-2 pt-2">
+                <button type="submit" class="w-full py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex justify-center items-center gap-2 active:translate-y-1 active:border-b-0 text-sm">Создать</button>
+                <button type="button" class="w-full py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" id="createLessonCancel">Отмена</button>
+            </div>
+        </form>
+    </template>
     {% endif %}
 
     {% if can_manage_schedule %}
@@ -893,13 +902,9 @@
         const weekDaysIso = [{% for d in week_days %}"{{ d.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}];
 
         function openNewLessonModal() {
-            const modal = document.getElementById('createLessonModal');
-            const dateEl = document.getElementById('modalLessonDate');
-            const timeEl = document.getElementById('modalLessonTime');
-            if (!modal || !dateEl || !timeEl) return;
-            dateEl.value = (weekDaysIso && weekDaysIso.length ? weekDaysIso[0] : '');
-            timeEl.value = '18:00';
-            modal.classList.add('active');
+            if (typeof window.openCreateLessonInInspector === 'function') {
+                window.openCreateLessonInInspector();
+            }
         }
 
         function applyFilters() {

@@ -564,17 +564,17 @@
 }
 
 
-/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 BENTO BUTTON OVERRIDES \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-/* \u041e\u0432\u0435\u0440\u0440\u0430\u0439\u0434\u044b \u0434\u043b\u044f inline-styled \u043a\u043d\u043e\u043f\u043e\u043a (\u043a\u043e\u0442\u043e\u0440\u044b\u0435 \u0432 HTML \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u044e\u0442 Tailwind \u043a\u043b\u0430\u0441\u0441\u044b) */
+/* ═══════════════ BENTO BUTTON OVERRIDES ═══════════════ */
+/* Оверрайды для inline-styled кнопок (которые в HTML используют Tailwind классы) */
 
-/* \u0427\u0438\u0441\u0442\u0438\u043c \u043d\u0430\u0441\u043b\u0435\u0434\u0438\u0435 3D-\u0444\u0438\u0437\u0438\u043a\u0438 \u0441\u043e \u0432\u0441\u0435\u0445 \u043a\u043d\u043e\u043f\u043e\u043a */
+/* Чистим наследие 3D-физики со всех кнопок */
 .neo-button,
 .lesson-back-link,
 .lesson-header__actions a,
 .lesson-header__actions button,
 .lesson-panel-actions button,
 .lesson-panel-actions a,
-[class*="bg-boo-primary"],
+[class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]),
 a[class*="bg-surface"][class*="border-purple"],
 button[class*="bg-surface"][class*="border-purple"],
 .stat-reset-btn,
@@ -586,8 +586,8 @@ button[class*="bg-surface"][class*="border-purple"],
   transition: background 0.14s ease, color 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease, opacity 0.14s ease !important;
 }
 
-/* \u041a\u043d\u043e\u043f\u043a\u0438 \u0432 \u0448\u0430\u043f\u043a\u0435 \u0443\u0440\u043e\u043a\u0430 \u2014 \u0438\u043d\u043b\u0430\u0439\u043d \u0441\u0442\u0438\u043b\u0438 \u0447\u0435\u0440\u0435\u0437 Tailwind */
-[class*="bg-boo-primary"] {
+/* Кнопки в шапке урока — инлайн стили через Tailwind */
+[class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]) {
   background: var(--color-accent, #8B5CF6) !important;
   color: #FFFFFF !important;
   border: 1px solid rgba(139, 92, 246, 0.6) !important;
@@ -596,19 +596,19 @@ button[class*="bg-surface"][class*="border-purple"],
   font-weight: 700 !important;
   text-decoration: none !important;
 }
-[class*="bg-boo-primary"]:hover {
+[class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]):hover {
   background: #7A4DE8 !important;
   box-shadow: 0 4px 16px rgba(139, 92, 246, 0.34) !important;
   border-color: rgba(139, 92, 246, 0.8) !important;
   transform: none !important;
 }
-[class*="bg-boo-primary"]:active {
+[class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]):active {
   background: #6A3ED8 !important;
   opacity: 0.9 !important;
   box-shadow: 0 1px 4px rgba(139, 92, 246, 0.2) !important;
 }
 
-/* \u041a\u043d\u043e\u043f\u043a\u0438 \u0448\u0430\u043f\u043a\u0438 \u0443\u0440\u043e\u043a\u0430: outline/ghost (\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c, \u041d\u0430\u0437\u0430\u0434 \u0432 \u043f\u0440\u043e\u0444\u0438\u043b\u044c) */
+/* Кнопки шапки урока: outline/ghost (Редактировать, Назад в профиль) */
 a[class*="bg-surface"][class*="border-purple"],
 button[class*="bg-surface"][class*="border-purple"],
 .lesson-back-link {
@@ -629,7 +629,7 @@ button[class*="bg-surface"][class*="border-purple"]:hover,
   transform: none !important;
 }
 
-/* \u041a\u043d\u043e\u043f\u043a\u0430 \u0443\u0434\u0430\u043b\u0435\u043d\u0438\u044f (\u043a\u0440\u0430\u0441\u043d\u0430\u044f \u043a\u043d\u043e\u043f\u043a\u0430) */
+/* Кнопка удаления (красная кнопка) */
 button[class*="bg-red"],
 .lesson-header__actions button[class*="bg-red"] {
   background: rgba(251, 113, 133, 0.08) !important;
@@ -645,7 +645,7 @@ button[class*="bg-red"]:hover,
   transform: none !important;
 }
 
-/* \u041f\u0430\u043d\u0435\u043b\u044c \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0439 (\u043a\u043d\u043e\u043f\u043a\u0438 \u0432 panel) */
+/* Панель действий (кнопки в panel) */
 .stat-save-btn {
   background: var(--color-accent, #8B5CF6) !important;
   color: #FFFFFF !important;
@@ -680,14 +680,14 @@ button[class*="bg-red"]:hover,
   transform: none !important;
 }
 
-/* \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 \u0422\u0401\u041c\u041d\u0410\u042f \u0422\u0415\u041c\u0410 \u2014 BENTO OVERRIDES \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+/* ═══════════════ ТЁМНАЯ ТЕМА — BENTO OVERRIDES ═══════════════ */
 
-[data-theme="dark"] [class*="bg-boo-primary"] {
+[data-theme="dark"] [class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]) {
   background: var(--color-accent, #8B5CF6) !important;
   border-color: rgba(139, 92, 246, 0.55) !important;
   box-shadow: 0 2px 12px rgba(139, 92, 246, 0.28) !important;
 }
-[data-theme="dark"] [class*="bg-boo-primary"]:hover {
+[data-theme="dark"] [class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]):hover {
   background: #7A4DE8 !important;
   box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4) !important;
 }

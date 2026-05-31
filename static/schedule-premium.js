@@ -442,22 +442,46 @@ window.initPremiumSchedule = () => {
     } catch (_) {}
   });
 
-  const createModal = qs('#createLessonModal');
-  const createForm = qs('#createLessonForm');
-  const modalDate = qs('#modalLessonDate');
-  const modalTime = qs('#modalLessonTime');
+  window.openCreateLessonInInspector = (dayIso, timeStr) => {
+    if (!inspector || !inspectorBody || !inspectorTitle) return;
 
-  const openCreateModal = (dayIso, timeStr) => {
-    if (modalDate) modalDate.value = dayIso;
-    if (modalTime) modalTime.value = timeStr;
-    createModal?.classList.add('active');
+    inspectorTitle.textContent = 'Новый урок';
+    if (inspectorSubtitle) {
+      inspectorSubtitle.innerHTML = '<span class="text-muted font-bold text-xs">Создание нового занятия</span>';
+    }
+    if (inspectorIcon) {
+      inspectorIcon.innerHTML = `<i class="ph-bold ph-plus text-xl"></i>`;
+    }
+
+    const template = document.getElementById('createLessonFormTemplate');
+    if (!template) return;
+
+    inspectorBody.innerHTML = '';
+    inspectorBody.appendChild(template.content.cloneNode(true));
+
+    const form = qs('#createLessonForm', inspectorBody);
+    const dateInput = qs('#modalLessonDate', form);
+    const timeInput = qs('#modalLessonTime', form);
+    const cancelBtn = qs('#createLessonCancel', form);
+    const modeSel = qs('#modalLessonMode', form);
+    const repeatGroup = qs('#repeatCountGroup', form);
+
+    const defaultDate = (weekDaysIso && weekDaysIso.length ? weekDaysIso[0] : '');
+    if (dateInput) dateInput.value = dayIso || defaultDate;
+    if (timeInput) timeInput.value = timeStr || '18:00';
+
+    cancelBtn?.addEventListener('click', () => {
+      closeInspector();
+    });
+
+    modeSel?.addEventListener('change', () => {
+      if (repeatGroup) {
+        repeatGroup.style.display = (modeSel.value === 'recurring') ? 'block' : 'none';
+      }
+    });
+
+    inspector.classList.add('is-open');
   };
-
-  const closeCreateModal = () => createModal?.classList.remove('active');
-  qsa('[data-modal-close="create"]').forEach((b) => b.addEventListener('click', closeCreateModal));
-  createModal?.addEventListener('click', (e) => {
-    if (e.target === createModal) closeCreateModal();
-  });
 
   if (canManage) {
     qsa('.day-col__body').forEach((bodyEl) => {
@@ -468,58 +492,66 @@ window.initPremiumSchedule = () => {
         const rect = bodyEl.getBoundingClientRect();
         const y = e.clientY - rect.top;
         const mins = yToMinutes(Math.max(0, y));
-        openCreateModal(dayCol.dataset.day, formatMinutes(mins));
+        window.openCreateLessonInInspector(dayCol.dataset.day, formatMinutes(mins));
       });
     });
   }
 
-  if (canManage) createForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(createForm);
-    const headers = { 'X-Requested-With': 'XMLHttpRequest' };
-    const token = fd.get('csrf_token') || csrf();
-    if (!fd.get('csrf_token') && token) fd.append('csrf_token', token);
+  if (canManage) {
+    document.addEventListener('submit', async (e) => {
+      const form = e.target.closest('#createLessonForm');
+      if (!form) return;
 
-    const btn = createForm.querySelector('button[type="submit"]');
-    let originalText = 'Создать';
-    let safetyTimeout;
-    if (btn) {
-      if (btn.disabled) return;
-      originalText = btn.textContent || 'Создать';
-      btn.disabled = true;
-      btn.textContent = 'Создание...';
-      safetyTimeout = setTimeout(() => {
-        btn.disabled = false;
-        btn.textContent = originalText;
-      }, 8000);
-    }
+      e.preventDefault();
+      const fd = new FormData(form);
+      const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+      const token = fd.get('csrf_token') || csrf();
+      if (!fd.get('csrf_token') && token) fd.append('csrf_token', token);
 
-    try {
-      const resp = await fetch(createForm.action, { method: 'POST', body: fd, headers });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok || data?.success === false) throw new Error(data?.error || `HTTP ${resp.status}`);
-
-      closeCreateModal();
-      if (window.toast) window.toast.success(data.message || 'Урок создан');
-
-      const created = Array.isArray(data.created_lessons) ? data.created_lessons : [];
-      created.forEach((ev) => {
-        const dayIso = fd.get('lesson_date');
-        const dayCol = qs(`.day-col[data-day="${dayIso}"]`);
-        if (dayCol) renderLessonChip(dayCol, ev);
-      });
-
-      createForm.reset();
-    } catch (err) {
-      if (window.toast) window.toast.error(err.message || 'Ошибка создания урока');
-    } finally {
+      const btn = form.querySelector('button[type="submit"]');
+      let originalText = 'Создать';
+      let safetyTimeout;
       if (btn) {
-        clearTimeout(safetyTimeout);
-        btn.disabled = false;
-        btn.textContent = originalText;
+        if (btn.disabled) return;
+        originalText = btn.textContent || 'Создать';
+        btn.disabled = true;
+        btn.textContent = 'Создание...';
+        safetyTimeout = setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }, 8000);
       }
-    }
-  });
+
+      try {
+        const resp = await fetch(form.action, { method: 'POST', body: fd, headers });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || data?.success === false) throw new Error(data?.error || `HTTP ${resp.status}`);
+
+        closeInspector();
+        if (window.toast) window.toast.success(data.message || 'Урок создан');
+
+        const mode = fd.get('lesson_mode');
+        if (mode === 'recurring') {
+          setTimeout(() => window.location.reload(), 250);
+        } else {
+          const created = Array.isArray(data.created_lessons) ? data.created_lessons : [];
+          created.forEach((ev) => {
+            const dayIso = fd.get('lesson_date');
+            const dayCol = qs(`.day-col[data-day="${dayIso}"]`);
+            if (dayCol) renderLessonChip(dayCol, ev);
+          });
+        }
+      } catch (err) {
+        if (window.toast) window.toast.error(err.message || 'Ошибка создания урока');
+      } finally {
+        if (btn) {
+          clearTimeout(safetyTimeout);
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      }
+    });
+  }
 
   let drag = null;
 
