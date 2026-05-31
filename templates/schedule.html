@@ -2,7 +2,8 @@
 {% block title %}Расписание · URep{% endblock %}
 {% block body_attrs %}data-csrf-token="{{ csrf_token() if csrf_token else '' }}" data-cinema-scene="schedule"{% endblock %}
 {% block body_class %}layout-teacher{% endblock %}
-{% block head_css %}
+{% set active_page = 'schedule' %}
+{% block content %}
 <style>
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
@@ -294,11 +295,11 @@
             top: 0;
             right: 0;
             bottom: 0;
-            width: 420px;
+            width: 390px;
             max-width: 92%;
             background: var(--color-bg-surface);
             border-left: 1px solid var(--color-stroke);
-            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.15);
+            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.25);
             z-index: 110;
             transform: translateX(100%);
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -313,7 +314,7 @@
 
         .schedule-inspector__body {
             overflow-y: auto;
-            padding-right: 0.4rem;
+            padding: 1.25rem;
             color: var(--color-text-secondary);
         }
         .inspector-input {
@@ -321,7 +322,7 @@
             background: var(--color-bg-surface-alt);
             border: 1px solid var(--color-stroke);
             border-radius: 12px;
-            padding: 10px 14px;
+            padding: 8px 12px;
             font-weight: 700;
             font-size: 13px;
             color: var(--color-text-primary);
@@ -334,7 +335,7 @@
         .inspector-grid-two {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 14px;
+            gap: 12px;
         }
         .inspector-status-badge {
             display: inline-flex;
@@ -349,7 +350,7 @@
             font-weight: 700;
             color: var(--color-text-muted);
             margin-left: 4px;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             display: block;
         }
         .inspector-actions-sticky {
@@ -376,7 +377,7 @@
             color: var(--color-text-primary);
         }
         .schedule-top-chip {
-            padding: 10px 14px;
+            padding: 8px 12px;
             border-radius: 12px;
             border: 1px solid var(--color-stroke);
             font-weight: 700;
@@ -398,7 +399,7 @@
             color: var(--color-accent);
         }
         .inspector-card-head {
-            padding: 24px;
+            padding: 20px;
             border-bottom: 1px solid var(--color-stroke);
             background: var(--color-bg-surface-alt);
         }
@@ -465,9 +466,6 @@
             #scheduleGrid { min-width: 760px; }
         }
 </style>
-{% endblock %}
-{% set active_page = 'schedule' %}
-{% block content %}
         <div class="drawer-backdrop" id="drawerBackdrop"></div>
         <main class="flex-1 pt-0 pb-8 flex justify-center h-full">
             <div class="w-full max-w-[1600px] flex flex-col lg:flex-row gap-6 h-full items-start">
@@ -557,7 +555,7 @@
                                 {% if status_filter == 'planned' %}Запланирован{% elif status_filter == 'in_progress' %}Идет сейчас{% elif status_filter == 'completed' %}Проведен{% elif status_filter == 'cancelled' %}Отменен{% else %}Все статусы{% endif %}
                             </span>
                             <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
-                            <select id="statusFilter" class="schedule-filter-native" onchange="applyFilters()">
+                            <select id="statusFilter" class="schedule-filter-native no-tomselect" onchange="applyFilters()">
                                 <option value="">Все статусы</option>
                                 {% for status in statuses %}
                                 <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
@@ -572,7 +570,7 @@
                             <i class="ph-bold ph-books"></i>
                             <span class="truncate">{{ category_filter or 'Все категории' }}</span>
                             <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
-                            <select id="categoryFilter" class="schedule-filter-native" onchange="applyFilters()">
+                            <select id="categoryFilter" class="schedule-filter-native no-tomselect" onchange="applyFilters()">
                                 <option value="">Все категории</option>
                                 {% for category in categories %}
                                 <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
@@ -586,7 +584,7 @@
                             <i class="ph-bold ph-user"></i>
                             <span class="truncate">{% if student_filter %}{% for s in students %}{% if s.student_id == student_filter %}{{ s.name }}{% endif %}{% endfor %}{% else %}Все ученики{% endif %}</span>
                             <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
-                            <select id="studentFilter" class="schedule-filter-native" onchange="applyFilters()">
+                            <select id="studentFilter" class="schedule-filter-native no-tomselect" onchange="applyFilters()">
                                 <option value="">Все ученики</option>
                                 {% for s in students %}
                                 <option value="{{ s.student_id }}" {% if student_filter and student_filter == s.student_id %}selected{% endif %}>{{ s.name }}</option>
