@@ -82,18 +82,44 @@ window.initPremiumSchedule = () => {
     return (rel / slotMinutes) * pxPerSlot;
   };
 
+  const closeInspector = () => inspector?.classList.remove('is-open');
+  inspectorClose?.addEventListener('click', closeInspector);
+
+  const animateInspectorChange = (callback) => {
+    const isOpen = inspector?.classList.contains('is-open');
+    if (!isOpen) {
+      callback();
+      return;
+    }
+
+    const headerTitle = qs('#lessonInspectorHeaderTitle');
+    const icon = qs('#lessonInspectorIcon');
+    const title = qs('#lessonInspectorTitle');
+    const subtitle = qs('#lessonInspectorSubtitle');
+    const body = qs('#lessonInspectorBody');
+
+    const els = [headerTitle, icon, title, subtitle, body].filter(Boolean);
+
+    els.forEach(el => {
+      el.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(6px)';
+    });
+
+    setTimeout(() => {
+      callback();
+      els.forEach(el => {
+        el.offsetHeight; // force repaint
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      });
+    }, 120);
+  };
+
   const openInspector = (lessonEl) => {
     if (!inspector || !inspectorBody || !inspectorTitle) return;
 
     const meta = JSON.parse(lessonEl.dataset.meta || '{}');
-    inspectorTitle.textContent = meta.student || 'Урок';
-    if (inspectorIcon) {
-      const iconClass = (meta.lesson_type === 'exam')
-        ? 'ph-bold ph-file-text text-2xl'
-        : (meta.lesson_type === 'introductory' ? 'ph-bold ph-student text-2xl' : 'ph-bold ph-calendar-check text-2xl');
-      inspectorIcon.innerHTML = `<i class="${iconClass}"></i>`;
-    }
-
     const dayCol = lessonEl.closest('.day-col');
     const dayIso = dayCol?.dataset.day || '';
 
@@ -113,232 +139,241 @@ window.initPremiumSchedule = () => {
       completed: 'bg-emerald-500',
       cancelled: 'bg-rose-500',
     };
-    if (inspectorSubtitle) {
-      const st = statusMap[meta.status_code] || meta.status_code || '';
-      const dotCls = statusDotClass[meta.status_code] || 'bg-slate-400';
-      inspectorSubtitle.innerHTML = `<span class="inspector-status-badge"><span class="w-2 h-2 rounded-full ${dotCls}"></span>${st}</span>`;
-    }
-
     const lt = meta.lesson_type || 'regular';
-    if (!canManage) {
-      const lt = meta.lesson_type || 'regular';
+
+    animateInspectorChange(() => {
+      const headerTitle = qs('#lessonInspectorHeaderTitle');
+      if (headerTitle) headerTitle.textContent = 'Инспектор урока';
+
+      inspectorTitle.textContent = meta.student || 'Урок';
+      if (inspectorIcon) {
+        const iconClass = (meta.lesson_type === 'exam')
+          ? 'ph-bold ph-file-text text-2xl'
+          : (meta.lesson_type === 'introductory' ? 'ph-bold ph-student text-2xl' : 'ph-bold ph-calendar-check text-2xl');
+        inspectorIcon.innerHTML = `<i class="${iconClass}"></i>`;
+      }
+
+      if (inspectorSubtitle) {
+        const st = statusMap[meta.status_code] || meta.status_code || '';
+        const dotCls = statusDotClass[meta.status_code] || 'bg-slate-400';
+        inspectorSubtitle.innerHTML = `<span class="inspector-status-badge"><span class="w-2 h-2 rounded-full ${dotCls}"></span>${st}</span>`;
+      }
+
+      if (!canManage) {
+        inspectorBody.innerHTML = `
+          <div class="space-y-2.5">
+            <div>
+              <div class="inspector-label">Время</div>
+              <div class="inspector-input">${meta.start_time || ''}</div>
+            </div>
+            <div>
+              <div class="inspector-label">Статус</div>
+              <div class="inspector-input">${statusMap[meta.status_code] || meta.status_code || ''}</div>
+            </div>
+            <div>
+              <div class="inspector-label">Длительность</div>
+              <div class="inspector-input">${meta.duration_minutes || 60} мин</div>
+            </div>
+            <div>
+              <div class="inspector-label">Тип занятия</div>
+              <div class="inspector-input">${lt}</div>
+            </div>
+            \${meta.topic ? `<div><div class="inspector-label">Тема</div><div class="inspector-input">\${String(meta.topic)}</div></div>` : ''}
+            <div class="flex gap-2.5 mt-2">
+              \${meta.profile_url
+                ? `<a class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="\${meta.profile_url}">Профиль</a>`
+                : `<button class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
+              \${meta.lesson_url
+                ? `<a class="flex-1 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="\${meta.lesson_url}">Урок</a>`
+                : `<button class="flex-1 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Урок</button>`}
+            </div>
+          </div>
+        `;
+        return;
+      }
+
       inspectorBody.innerHTML = `
         <div class="space-y-2.5">
-          <div>
-            <div class="inspector-label">Время</div>
-            <div class="inspector-input">${meta.start_time || ''}</div>
+          <div class="inspector-grid-two">
+            <div>
+              <label class="inspector-label">Дата</label>
+              <input class="inspector-input" id="inspectorDate" type="date" value="${dateValue}">
+            </div>
+            <div>
+              <label class="inspector-label">Время</label>
+              <input class="inspector-input" id="inspectorTime" type="time" value="${timeValue}">
+            </div>
           </div>
           <div>
-            <div class="inspector-label">Статус</div>
-            <div class="inspector-input">${statusMap[meta.status_code] || meta.status_code || ''}</div>
+            <label class="inspector-label">Статус</label>
+            <select class="inspector-input" id="inspectorStatus">
+              <option value="planned" ${meta.status_code === 'planned' ? 'selected' : ''}>Запланирован</option>
+              <option value="in_progress" ${meta.status_code === 'in_progress' ? 'selected' : ''}>Идёт сейчас</option>
+              <option value="completed" ${meta.status_code === 'completed' ? 'selected' : ''}>Проведён</option>
+              <option value="cancelled" ${meta.status_code === 'cancelled' ? 'selected' : ''}>Отменён</option>
+            </select>
           </div>
           <div>
-            <div class="inspector-label">Длительность</div>
-            <div class="inspector-input">${meta.duration_minutes || 60} мин</div>
+            <label class="inspector-label">Длительность (мин)</label>
+            <input class="inspector-input" id="inspectorDuration" type="number" min="30" max="240" step="30" value="${meta.duration_minutes || 60}">
           </div>
           <div>
-            <div class="inspector-label">Тип занятия</div>
-            <div class="inspector-input">${lt}</div>
+            <label class="inspector-label">Ученик</label>
+            <div class="inspector-input">${meta.student || ''}</div>
           </div>
-          ${meta.topic ? `<div><div class="inspector-label">Тема</div><div class="inspector-input">${String(meta.topic)}</div></div>` : ''}
-          <div class="flex gap-2.5 mt-2">
-            ${meta.profile_url
-              ? `<a class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>`
-              : `<button class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
-            ${meta.lesson_url
-              ? `<a class="flex-1 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.lesson_url}">Урок</a>`
-              : `<button class="flex-1 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Урок</button>`}
+          <div>
+            <label class="inspector-label">Тема урока</label>
+            <input class="inspector-input" id="inspectorTopic" type="text" value="${meta.topic ? String(meta.topic).replace(/"/g, '&quot;') : ''}" placeholder="Введите тему (опционально)">
+          </div>
+          <div>
+            <label class="inspector-label">Тип занятия</label>
+            <select class="inspector-input" id="inspectorLessonType">
+              <option value="regular" ${lt === 'regular' ? 'selected' : ''}>Обычный</option>
+              <option value="exam" ${lt === 'exam' ? 'selected' : ''}>Проверочный</option>
+              <option value="introductory" ${lt === 'introductory' ? 'selected' : ''}>Вводный</option>
+            </select>
+          </div>
+          <div class="inspector-actions-sticky space-y-2">
+            <button class="w-full py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex justify-center items-center gap-2 active:translate-y-1 active:border-b-0 text-sm" type="button" id="inspectorSave">
+              Сохранить изменения
+            </button>
+            <div class="flex gap-2.5">
+              \${meta.profile_url
+                ? `<a class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="\${meta.profile_url}">Профиль</a>`
+                : `<button class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
+              <button class="flex-1 py-2 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-boo-coral hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorDelete">Удалить</button>
+            </div>
+            <button class="w-full py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorMakeRecurring">
+              Сделать еженедельным
+            </button>
           </div>
         </div>
       `;
-      inspector.classList.add('is-open');
-      return;
-    }
 
-    inspectorBody.innerHTML = `
-      <div class="space-y-2.5">
-        <div class="inspector-grid-two">
-          <div>
-            <label class="inspector-label">Дата</label>
-            <input class="inspector-input" id="inspectorDate" type="date" value="${dateValue}">
-          </div>
-          <div>
-            <label class="inspector-label">Время</label>
-            <input class="inspector-input" id="inspectorTime" type="time" value="${timeValue}">
-          </div>
-        </div>
-        <div>
-          <label class="inspector-label">Статус</label>
-          <select class="inspector-input" id="inspectorStatus">
-            <option value="planned" ${meta.status_code === 'planned' ? 'selected' : ''}>Запланирован</option>
-            <option value="in_progress" ${meta.status_code === 'in_progress' ? 'selected' : ''}>Идёт сейчас</option>
-            <option value="completed" ${meta.status_code === 'completed' ? 'selected' : ''}>Проведён</option>
-            <option value="cancelled" ${meta.status_code === 'cancelled' ? 'selected' : ''}>Отменён</option>
-          </select>
-        </div>
-        <div>
-          <label class="inspector-label">Длительность (мин)</label>
-          <input class="inspector-input" id="inspectorDuration" type="number" min="30" max="240" step="30" value="${meta.duration_minutes || 60}">
-        </div>
-        <div>
-          <label class="inspector-label">Ученик</label>
-          <div class="inspector-input">${meta.student || ''}</div>
-        </div>
-        <div>
-          <label class="inspector-label">Тема урока</label>
-          <input class="inspector-input" id="inspectorTopic" type="text" value="${meta.topic ? String(meta.topic).replace(/"/g, '&quot;') : ''}" placeholder="Введите тему (опционально)">
-        </div>
-        <div>
-          <label class="inspector-label">Тип занятия</label>
-          <select class="inspector-input" id="inspectorLessonType">
-            <option value="regular" ${lt === 'regular' ? 'selected' : ''}>Обычный</option>
-            <option value="exam" ${lt === 'exam' ? 'selected' : ''}>Проверочный</option>
-            <option value="introductory" ${lt === 'introductory' ? 'selected' : ''}>Вводный</option>
-          </select>
-        </div>
-        <div class="inspector-actions-sticky space-y-2">
-          <button class="w-full py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-md border-b-[3px] border-b-purple-800 flex justify-center items-center gap-2 active:translate-y-1 active:border-b-0 text-sm" type="button" id="inspectorSave">
-            Сохранить изменения
-          </button>
-          <div class="flex gap-2.5">
-            ${meta.profile_url
-              ? `<a class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>`
-              : `<button class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
-            <button class="flex-1 py-2 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-boo-coral hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorDelete">Удалить</button>
-          </div>
-          <button class="w-full py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorMakeRecurring">
-            Сделать еженедельным
-          </button>
-        </div>
-      </div>
-    `;
+      if (typeof window.initBooSelects === 'function') {
+        try {
+          window.initBooSelects(inspectorBody);
+        } catch (e) { /* noop */ }
+      }
 
-    if (typeof window.initBooSelects === 'function') {
-      try {
-        window.initBooSelects(inspectorBody);
-      } catch (e) { /* noop */ }
-    }
+      const dateInput = qs('#inspectorDate', inspectorBody);
+      const timeInput = qs('#inspectorTime', inspectorBody);
+      const statusSel = qs('#inspectorStatus', inspectorBody);
+      const durationInput = qs('#inspectorDuration', inspectorBody);
+      const lessonTypeSel = qs('#inspectorLessonType', inspectorBody);
+      const topicInput = qs('#inspectorTopic', inspectorBody);
+      const saveBtn = qs('#inspectorSave', inspectorBody);
+      const deleteBtn = qs('#inspectorDelete', inspectorBody);
+      const recurringBtn = qs('#inspectorMakeRecurring', inspectorBody);
 
-    const dateInput = qs('#inspectorDate', inspectorBody);
-    const timeInput = qs('#inspectorTime', inspectorBody);
-    const statusSel = qs('#inspectorStatus', inspectorBody);
-    const durationInput = qs('#inspectorDuration', inspectorBody);
-    const lessonTypeSel = qs('#inspectorLessonType', inspectorBody);
-    const topicInput = qs('#inspectorTopic', inspectorBody);
-    const saveBtn = qs('#inspectorSave', inspectorBody);
-    const deleteBtn = qs('#inspectorDelete', inspectorBody);
-    const recurringBtn = qs('#inspectorMakeRecurring', inspectorBody);
+      const currentDayCol = dayCol;
 
-    const currentDayCol = dayCol;
+      saveBtn?.addEventListener('click', async () => {
+        const nextStatus = statusSel?.value || meta.status_code;
+        const nextDuration = durationInput?.value ? parseInt(durationInput.value, 10) : meta.duration_minutes;
+        const nextType = lessonTypeSel?.value || meta.lesson_type || 'regular';
+        const nextTopic = topicInput?.value ?? '';
+        const nextDate = dateInput?.value || '';
+        const nextTime = timeInput?.value || '';
+        const currentTz = scheduleRoot.dataset.timezone || 'moscow';
 
-    saveBtn?.addEventListener('click', async () => {
-      const nextStatus = statusSel?.value || meta.status_code;
-      const nextDuration = durationInput?.value ? parseInt(durationInput.value, 10) : meta.duration_minutes;
-      const nextType = lessonTypeSel?.value || meta.lesson_type || 'regular';
-      const nextTopic = topicInput?.value ?? '';
-      const nextDate = dateInput?.value || '';
-      const nextTime = timeInput?.value || '';
-      const currentTz = scheduleRoot.dataset.timezone || 'moscow';
-
-      try {
-
-        if (nextStatus && nextStatus !== meta.status_code) {
-          const url = setStatusUrlTpl.replace('0', String(meta.lesson_id));
-          await postJSON(url, { status: nextStatus });
-          meta.status_code = nextStatus;
-          lessonEl.classList.remove('status-planned', 'status-in_progress', 'status-completed', 'status-cancelled');
-          lessonEl.classList.add(`status-${nextStatus}`);
-        }
-
-        let resp = null;
-        if (updateUrlTpl) {
-          const url = updateUrlTpl.replace('0', String(meta.lesson_id));
-          const payload = {
-            duration: nextDuration,
-            lesson_type: nextType,
-            topic: nextTopic,
-          };
-
-          if (nextDate && nextTime) {
-            payload.lesson_date = nextDate;
-            payload.lesson_time = nextTime;
-            payload.timezone = currentTz;
+        try {
+          if (nextStatus && nextStatus !== meta.status_code) {
+            const url = setStatusUrlTpl.replace('0', String(meta.lesson_id));
+            await postJSON(url, { status: nextStatus });
+            meta.status_code = nextStatus;
+            lessonEl.classList.remove('status-planned', 'status-in_progress', 'status-completed', 'status-cancelled');
+            lessonEl.classList.add(`status-\${nextStatus}`);
           }
-          
-          resp = await postJSON(url, payload);
-          meta.duration_minutes = resp?.lesson?.duration_minutes ?? nextDuration;
-          meta.lesson_type = resp?.lesson?.lesson_type ?? nextType;
-          meta.topic = resp?.lesson?.topic ?? nextTopic;
+
+          let resp = null;
+          if (updateUrlTpl) {
+            const url = updateUrlTpl.replace('0', String(meta.lesson_id));
+            const payload = {
+              duration: nextDuration,
+              lesson_type: nextType,
+              topic: nextTopic,
+            };
+
+            if (nextDate && nextTime) {
+              payload.lesson_date = nextDate;
+              payload.lesson_time = nextTime;
+              payload.timezone = currentTz;
+            }
+
+            resp = await postJSON(url, payload);
+            meta.duration_minutes = resp?.lesson?.duration_minutes ?? nextDuration;
+            meta.lesson_type = resp?.lesson?.lesson_type ?? nextType;
+            meta.topic = resp?.lesson?.topic ?? nextTopic;
+
+            if (nextDate && nextTime) {
+              meta.start_date = nextDate;
+              meta.start_time = nextTime;
+            }
+          } else {
+            meta.duration_minutes = nextDuration;
+            meta.lesson_type = nextType;
+            meta.topic = nextTopic;
+            if (nextDate && nextTime) {
+              meta.start_date = nextDate;
+              meta.start_time = nextTime;
+            }
+          }
+
+          const height = Math.max((parseInt(meta.duration_minutes || '60', 10) / slotMinutes) * pxPerSlot - 4, pxPerSlot * 0.9);
+          lessonEl.style.height = `${height}px`;
 
           if (nextDate && nextTime) {
-            meta.start_date = nextDate;
+            const timeEl = lessonEl.querySelector('[data-role="time"]');
+            if (timeEl) timeEl.textContent = nextTime;
+
+            const [hours, minutes] = nextTime.split(':').map(Number);
+            const newStartTotal = hours * 60 + minutes;
+
+            meta.start_total = newStartTotal;
             meta.start_time = nextTime;
+
+            const newDayCol = qs(`.day-col[data-day="\${nextDate}"]`);
+            if (newDayCol && newDayCol !== currentDayCol) {
+              const newTop = minutesToY(newStartTotal);
+              lessonEl.style.top = `${newTop}px`;
+              newDayCol.appendChild(lessonEl);
+            } else if (currentDayCol) {
+              const newTop = minutesToY(newStartTotal);
+              lessonEl.style.top = `${newTop}px`;
+            }
           }
-        } else {
-          meta.duration_minutes = nextDuration;
-          meta.lesson_type = nextType;
-          meta.topic = nextTopic;
-          if (nextDate && nextTime) {
-            meta.start_date = nextDate;
-            meta.start_time = nextTime;
-          }
+
+          if (window.toast) window.toast.success('Сохранено');
+        } catch (e) {
+          if (window.toast) window.toast.error(e.message || 'Ошибка сохранения');
         }
+      });
 
-        const height = Math.max((parseInt(meta.duration_minutes || '60', 10) / slotMinutes) * pxPerSlot - 4, pxPerSlot * 0.9);
-        lessonEl.style.height = `${height}px`;
+      deleteBtn?.addEventListener('click', async () => {
+        if (!confirm('Удалить урок? Это действие нельзя отменить.')) return;
+        try {
+          if (!deleteUrlTpl) throw new Error('delete url not configured');
+          const url = deleteUrlTpl.replace('0', String(meta.lesson_id));
+          await postJSON(url, {});
 
-        if (nextDate && nextTime) {
-          const timeEl = lessonEl.querySelector('[data-role="time"]');
-          if (timeEl) timeEl.textContent = nextTime;
-
-          const [hours, minutes] = nextTime.split(':').map(Number);
-          const newStartTotal = hours * 60 + minutes;
-          
-          meta.start_total = newStartTotal;
-          meta.start_time = nextTime;
-
-          const newDayCol = qs(`.day-col[data-day="${nextDate}"]`);
-          if (newDayCol && newDayCol !== currentDayCol) {
-
-            const newTop = minutesToY(newStartTotal);
-            lessonEl.style.top = `${newTop}px`;
-            newDayCol.appendChild(lessonEl);
-          } else if (currentDayCol) {
-
-            const newTop = minutesToY(newStartTotal);
-            lessonEl.style.top = `${newTop}px`;
-          }
+          lessonEl.remove();
+          closeInspector();
+          if (window.toast) window.toast.success('Урок удалён');
+        } catch (e) {
+          if (window.toast) window.toast.error(e.message || 'Ошибка удаления');
         }
+      });
 
-        if (window.toast) window.toast.success('Сохранено');
-      } catch (e) {
-        if (window.toast) window.toast.error(e.message || 'Ошибка сохранения');
-      }
-    });
-
-    deleteBtn?.addEventListener('click', async () => {
-      if (!confirm('Удалить урок? Это действие нельзя отменить.')) return;
-      try {
-        if (!deleteUrlTpl) throw new Error('delete url not configured');
-        const url = deleteUrlTpl.replace('0', String(meta.lesson_id));
-        await postJSON(url, {});
-
-        lessonEl.remove();
-        closeInspector();
-        if (window.toast) window.toast.success('Урок удалён');
-      } catch (e) {
-        if (window.toast) window.toast.error(e.message || 'Ошибка удаления');
-      }
-    });
-
-    recurringBtn?.addEventListener('click', async () => {
-      try {
-        const url = `/schedule/templates/api/from-lesson/${meta.lesson_id}`;
-        await postJSON(url, { timezone: tz });
-        if (window.toast) window.toast.success('Добавлено в автоплан');
-      } catch (e) {
-        if (window.toast) window.toast.error(e.message || 'Ошибка');
-      }
+      recurringBtn?.addEventListener('click', async () => {
+        try {
+          const url = `/schedule/templates/api/from-lesson/\${meta.lesson_id}`;
+          await postJSON(url, { timezone: tz });
+          if (window.toast) window.toast.success('Добавлено в автоплан');
+        } catch (e) {
+          if (window.toast) window.toast.error(e.message || 'Ошибка');
+        }
+      });
     });
 
     inspector.classList.add('is-open');
@@ -445,39 +480,44 @@ window.initPremiumSchedule = () => {
   window.openCreateLessonInInspector = (dayIso, timeStr) => {
     if (!inspector || !inspectorBody || !inspectorTitle) return;
 
-    inspectorTitle.textContent = 'Новый урок';
-    if (inspectorSubtitle) {
-      inspectorSubtitle.innerHTML = '<span class="text-muted font-bold text-xs">Создание нового занятия</span>';
-    }
-    if (inspectorIcon) {
-      inspectorIcon.innerHTML = `<i class="ph-bold ph-plus text-xl"></i>`;
-    }
+    animateInspectorChange(() => {
+      const headerTitle = qs('#lessonInspectorHeaderTitle');
+      if (headerTitle) headerTitle.textContent = 'Создание урока';
 
-    const template = document.getElementById('createLessonFormTemplate');
-    if (!template) return;
-
-    inspectorBody.innerHTML = '';
-    inspectorBody.appendChild(template.content.cloneNode(true));
-
-    const form = qs('#createLessonForm', inspectorBody);
-    const dateInput = qs('#modalLessonDate', form);
-    const timeInput = qs('#modalLessonTime', form);
-    const cancelBtn = qs('#createLessonCancel', form);
-    const modeSel = qs('#modalLessonMode', form);
-    const repeatGroup = qs('#repeatCountGroup', form);
-
-    const defaultDate = (window.weekDaysIso && window.weekDaysIso.length ? window.weekDaysIso[0] : '');
-    if (dateInput) dateInput.value = dayIso || defaultDate;
-    if (timeInput) timeInput.value = timeStr || '18:00';
-
-    cancelBtn?.addEventListener('click', () => {
-      closeInspector();
-    });
-
-    modeSel?.addEventListener('change', () => {
-      if (repeatGroup) {
-        repeatGroup.style.display = (modeSel.value === 'recurring') ? 'block' : 'none';
+      inspectorTitle.textContent = 'Новый урок';
+      if (inspectorSubtitle) {
+        inspectorSubtitle.innerHTML = '<span class="text-muted font-bold text-xs">Создание нового занятия</span>';
       }
+      if (inspectorIcon) {
+        inspectorIcon.innerHTML = `<i class="ph-bold ph-plus text-xl"></i>`;
+      }
+
+      const template = document.getElementById('createLessonFormTemplate');
+      if (!template) return;
+
+      inspectorBody.innerHTML = '';
+      inspectorBody.appendChild(template.content.cloneNode(true));
+
+      const form = qs('#createLessonForm', inspectorBody);
+      const dateInput = qs('#modalLessonDate', form);
+      const timeInput = qs('#modalLessonTime', form);
+      const cancelBtn = qs('#createLessonCancel', form);
+      const modeSel = qs('#modalLessonMode', form);
+      const repeatGroup = qs('#repeatCountGroup', form);
+
+      const defaultDate = (window.weekDaysIso && window.weekDaysIso.length ? window.weekDaysIso[0] : '');
+      if (dateInput) dateInput.value = dayIso || defaultDate;
+      if (timeInput) timeInput.value = timeStr || '18:00';
+
+      cancelBtn?.addEventListener('click', () => {
+        closeInspector();
+      });
+
+      modeSel?.addEventListener('change', () => {
+        if (repeatGroup) {
+          repeatGroup.style.display = (modeSel.value === 'recurring') ? 'block' : 'none';
+        }
+      });
     });
 
     inspector.classList.add('is-open');
