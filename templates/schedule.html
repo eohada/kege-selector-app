@@ -26,17 +26,18 @@
         #scheduleGrid {
             display: grid;
             grid-template-columns: 84px repeat(7, minmax(0, 1fr));
+            height: calc(100vh - 180px);
             max-height: 78vh;
             overflow-y: auto;
             overflow-x: hidden;
         }
 
         .time-col {
-            background: #ffffff;
+            background: var(--color-bg-surface);
             position: sticky;
             left: 0;
             z-index: 6;
-            border-right: 1px solid #f1f5f9;
+            border-right: 1px solid var(--color-stroke);
         }
 
         .time-label {
@@ -45,15 +46,15 @@
             align-items: center;
             justify-content: flex-end;
             padding-right: 0.6rem;
-            color: #94a3b8;
+            color: var(--color-text-muted);
             font-size: 0.85rem;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid var(--color-stroke);
             box-sizing: border-box;
         }
 
         .day-col {
             position: relative;
-            border-left: 1px solid #f1f5f9;
+            border-left: 1px solid var(--color-stroke);
         }
 
         .day-col__body {
@@ -64,8 +65,8 @@
                 to bottom,
                 transparent 0,
                 transparent calc(48px - 1px),
-                #f1f5f9 calc(48px - 1px),
-                #f1f5f9 48px
+                var(--color-stroke) calc(48px - 1px),
+                var(--color-stroke) 48px
             );
             cursor: pointer;
         }
@@ -73,15 +74,15 @@
         .lesson-chip {
             position: absolute;
             border-radius: 16px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid var(--color-stroke);
             padding: 8px 9px;
             cursor: grab;
             user-select: none;
             overflow: hidden;
             box-shadow: 0 4px 12px rgba(123, 92, 255, 0.15);
             transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
-            color: #0f172a;
-            background: #ffffff;
+            color: var(--color-text-primary);
+            background: var(--color-bg-surface);
         }
 
         .lesson-chip::before {
@@ -122,7 +123,7 @@
         .lesson-chip__duration {
             font-size: 10px;
             font-weight: 600;
-            color: #cbd5e1;
+            color: var(--color-text-muted);
             line-height: 1;
         }
 
@@ -166,6 +167,7 @@
             font-size: 8px;
             line-height: 1;
             flex: 0 0 auto;
+            color: #701a75;
         }
         .btn-disabled {
             opacity: 0.55;
@@ -191,9 +193,10 @@
             background: #ffffff;
             outline: 2px solid #e9d5ff;
             outline-offset: 1px;
+            color: #0f172a;
         }
-        .lesson-chip.status-in_progress .lesson-chip__duration { color: #94a3b8; }
-        .lesson-chip.status-in_progress .lesson-chip__meta { color: #64748b; }
+        .lesson-chip.status-in_progress .lesson-chip__duration { color: #64748b; }
+        .lesson-chip.status-in_progress .lesson-chip__meta { color: #475569; }
         .lesson-chip.status-in_progress .lesson-chip__student { color: #0f172a; }
 
         .lesson-chip.status-completed {
@@ -207,6 +210,34 @@
             background: #fef2f2;
             color: #b91c1c;
         }
+
+        /* Dark overrides for chips */
+        [data-theme="dark"] .lesson-chip.status-in_progress {
+            background: rgba(139, 92, 246, 0.15);
+            border-color: #8b5cf6;
+            border-bottom-color: #6a4ce5;
+            outline-color: rgba(139, 92, 246, 0.3);
+            color: #fafafa;
+        }
+        [data-theme="dark"] .lesson-chip.status-in_progress .lesson-chip__student { color: #fafafa; }
+        [data-theme="dark"] .lesson-chip.status-in_progress .lesson-chip__meta { color: #a1a1aa; }
+        [data-theme="dark"] .lesson-chip.status-in_progress .lesson-chip__duration { color: #a1a1aa; }
+
+        [data-theme="dark"] .lesson-chip.status-completed {
+            border-color: var(--color-stroke);
+            background: rgba(39, 39, 42, 0.4);
+            color: #a1a1aa;
+        }
+        [data-theme="dark"] .lesson-chip.status-completed .lesson-chip__student { color: #e4e4e7; }
+        [data-theme="dark"] .lesson-chip.status-completed .lesson-chip__duration { color: #71717a; }
+
+        [data-theme="dark"] .lesson-chip.status-cancelled {
+            border-color: rgba(251, 113, 133, 0.2);
+            background: rgba(251, 113, 133, 0.08);
+            color: #fb7185;
+        }
+        [data-theme="dark"] .lesson-chip.status-cancelled .lesson-chip__student { color: #fecdd3; }
+        [data-theme="dark"] .lesson-chip.status-cancelled .lesson-chip__duration { color: #fda4af; }
 
         .lesson-chip.is-conflict {
             box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.35);
@@ -245,37 +276,60 @@
             padding: 1px 8px;
         }
 
-        .schedule-inspector {
-            position: sticky;
-            top: 1rem;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: calc(78vh + 94px);
+        /* Drawer Backdrop Overlay */
+        .drawer-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(9, 9, 11, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s ease;
         }
 
-        .schedule-inspector .panel-head {
-            display:flex;
-            align-items:center;
-            justify-content: space-between;
-            gap: 0.75rem;
-            margin-bottom: 0.75rem;
+        /* Drawer Panel (replaces permanent inspector) */
+        #lessonInspector {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 420px;
+            max-width: 92%;
+            background: var(--color-bg-surface);
+            border-left: 1px solid var(--color-stroke);
+            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.15);
+            z-index: 110;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #lessonInspector.is-open {
+            transform: translateX(0);
         }
 
         .schedule-inspector__body {
-            overflow: auto;
+            overflow-y: auto;
             padding-right: 0.4rem;
-            color: #64748b;
+            color: var(--color-text-secondary);
         }
         .inspector-input {
             width: 100%;
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
+            background: var(--color-bg-surface-alt);
+            border: 1px solid var(--color-stroke);
             border-radius: 12px;
             padding: 10px 14px;
             font-weight: 700;
             font-size: 13px;
-            color: #0f172a;
+            color: var(--color-text-primary);
+            transition: border-color 0.15s ease;
+        }
+        .inspector-input:focus {
+            outline: none;
+            border-color: var(--color-accent);
         }
         .inspector-grid-two {
             display: grid;
@@ -286,14 +340,14 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            color: #64748b;
+            color: var(--color-text-secondary);
             font-weight: 700;
             font-size: 13px;
         }
         .inspector-label {
             font-size: 11px;
             font-weight: 700;
-            color: #64748b;
+            color: var(--color-text-muted);
             margin-left: 4px;
             margin-bottom: 6px;
             display: block;
@@ -301,9 +355,9 @@
         .inspector-actions-sticky {
             position: sticky;
             bottom: 0;
-            background: #ffffff;
+            background: var(--color-bg-surface);
             padding-top: 10px;
-            border-top: 1px solid #f1f5f9;
+            border-top: 1px solid var(--color-stroke);
             margin-top: 6px;
         }
         .schedule-filter-shell {
@@ -317,27 +371,36 @@
             width: 100%;
             height: 100%;
         }
+        .schedule-filter-native option {
+            background: var(--color-bg-surface);
+            color: var(--color-text-primary);
+        }
         .schedule-top-chip {
-            padding: 8px 14px;
+            padding: 10px 14px;
             border-radius: 12px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--color-stroke);
             font-weight: 700;
             font-size: 13px;
             display: flex;
             align-items: center;
-            gap: 6px;
-            background: #f8fafc;
-            color: #475569;
+            gap: 8px;
+            background: var(--color-bg-surface-alt);
+            color: var(--color-text-secondary);
+            transition: all 0.15s ease;
+        }
+        .schedule-top-chip:hover {
+            border-color: var(--color-accent);
+            color: var(--color-text-primary);
         }
         .schedule-top-chip-purple {
-            background: #faf5ff;
-            border-color: #e9d5ff;
-            color: #7b5cff;
+            background: var(--color-accent-soft);
+            border-color: var(--color-stroke);
+            color: var(--color-accent);
         }
         .inspector-card-head {
             padding: 24px;
-            border-bottom: 1px solid #f1f5f9;
-            background: rgba(248, 250, 252, 0.6);
+            border-bottom: 1px solid var(--color-stroke);
+            background: var(--color-bg-surface-alt);
         }
 
         .modal {
@@ -399,108 +462,150 @@
         .form-actions { display:flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
 
         @media (max-width: 1024px) {
-            .schedule-layout { grid-template-columns: 1fr; }
-            .schedule-inspector { position: static; height: auto; }
             #scheduleGrid { min-width: 760px; }
         }
-        @media (max-width: 768px) {
-            .schedule-grid-head .day-head .dd { font-size: 0.9rem; }
-            .schedule-inspector { margin-top: 0.75rem; }
-        }
-    </style>
+</style>
 {% endblock %}
 {% set active_page = 'schedule' %}
 {% block content %}
+        <div class="drawer-backdrop" id="drawerBackdrop"></div>
         <main class="flex-1 pt-0 pb-8 flex justify-center h-full">
-            <div class="w-full max-w-[1600px] flex flex-col xl:flex-row gap-4 xl:gap-6 h-full">
-                <div class="w-full xl:flex-1 flex flex-col min-w-0 h-full">
-                    <div class="flex justify-between items-end mb-6">
-                        <div>
-                            <h1 class="text-3xl font-black text-primary tracking-tight mb-1">Твой календарь успеха</h1>
-                            <p class="text-muted font-medium text-sm flex items-center gap-2">
-                                <i class="ph-fill ph-check-circle text-boo-cyan"></i>
-                                На этой неделе запланировано {{ agenda|length if agenda else 0 }} уроков
-                            </p>
-                        </div>
-                        {% if can_manage_schedule %}
+            <div class="w-full max-w-[1600px] flex flex-col lg:flex-row gap-6 h-full items-start">
+                
+                <!-- LEFT SIDEBAR: Controls & Filters -->
+                <aside class="w-full lg:w-80 flex flex-col gap-6 shrink-0 bg-surface rounded-[24px] border border-stroke p-5 shadow-tactile">
+                    <div>
+                        <h1 class="text-2xl font-black text-primary tracking-tight mb-1">Расписание</h1>
+                        <p class="text-muted font-medium text-xs flex items-center gap-1.5">
+                            <i class="ph-fill ph-check-circle text-boo-cyan"></i>
+                            {{ agenda|length if agenda else 0 }} уроков запланировано
+                        </p>
+                    </div>
+
+                    {% if can_manage_schedule %}
+                    <div class="flex flex-col gap-2">
                         <button type="button" onclick="openNewLessonModal()"
-                                class="px-6 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 flex items-center gap-2 active:translate-y-[2px] active:border-b-0 active:shadow-none">
+                                class="w-full py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 flex items-center justify-center gap-2 active:translate-y-[2px] active:border-b-0 active:shadow-none">
                             <i class="ph-bold ph-plus text-lg"></i> Новый урок
                         </button>
+                        
+                        <div class="grid grid-cols-2 gap-2 mt-1">
+                            <button type="button" onclick="openTemplatesModal()"
+                                    class="py-2.5 bg-surface-alt text-secondary border border-stroke rounded-xl font-bold text-xs hover:bg-surface hover:text-boo-primary transition-all flex items-center justify-center gap-1.5">
+                                <i class="ph-bold ph-clock"></i> Шаблоны
+                            </button>
+                            <button type="button" onclick="applyTemplates()"
+                                    class="py-2.5 bg-surface-alt text-secondary border border-stroke rounded-xl font-bold text-xs hover:bg-surface hover:text-boo-primary transition-all flex items-center justify-center gap-1.5">
+                                <i class="ph-bold ph-magic-wand"></i> Автоплан
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <hr class="border-stroke">
+
+                    <!-- Period Navigator -->
+                    <div class="flex flex-col gap-2">
+                        <div class="text-[10px] font-bold text-muted uppercase tracking-widest">Период</div>
+                        <div class="flex items-center justify-between gap-2 bg-surface-alt p-1 rounded-xl border border-stroke">
+                            <button class="w-8 h-8 rounded-lg bg-surface border border-stroke flex items-center justify-center text-muted hover:text-boo-primary transition-all" data-week-offset="{{ week_offset - 1 }}" onclick="navigatePeriod(this.dataset.weekOffset)">
+                                <i class="ph-bold ph-caret-left"></i>
+                            </button>
+                            <span class="text-xs font-extrabold text-primary text-center truncate flex-1 px-1">{{ week_label }}</span>
+                            <button class="w-8 h-8 rounded-lg bg-surface border border-stroke flex items-center justify-center text-muted hover:text-boo-primary transition-all" data-week-offset="{{ week_offset + 1 }}" onclick="navigatePeriod(this.dataset.weekOffset)">
+                                <i class="ph-bold ph-caret-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- View Switcher -->
+                    <div class="flex flex-col gap-2">
+                        <div class="text-[10px] font-bold text-muted uppercase tracking-widest">Вид</div>
+                        <div class="flex flex-col gap-1.5 bg-surface-alt p-1.5 rounded-xl border border-stroke">
+                            <button class="w-full py-2 px-3 flex items-center gap-2.5 text-left font-bold text-xs rounded-lg transition-colors {% if view_mode == 'day' %}bg-surface text-primary shadow-sm border border-stroke{% else %}text-muted hover:text-primary{% endif %}" onclick="switchView('day')">
+                                <i class="ph-bold ph-calendar"></i> День
+                            </button>
+                            <button class="w-full py-2 px-3 flex items-center gap-2.5 text-left font-bold text-xs rounded-lg transition-colors {% if view_mode == 'week' %}bg-surface text-primary shadow-sm border border-stroke{% else %}text-muted hover:text-primary{% endif %}" onclick="switchView('week')">
+                                <i class="ph-bold ph-calendar-blank"></i> Неделя
+                            </button>
+                            <button class="w-full py-2 px-3 flex items-center gap-2.5 text-left font-bold text-xs rounded-lg transition-colors {% if view_mode == 'month' %}bg-surface text-primary shadow-sm border border-stroke{% else %}text-muted hover:text-primary{% endif %}" onclick="switchView('month')">
+                                <i class="ph-bold ph-calendar-plus"></i> Месяц
+                            </button>
+                            <button class="w-full py-2 px-3 flex items-center gap-2.5 text-left font-bold text-xs rounded-lg transition-colors {% if view_mode == 'agenda' %}bg-surface text-primary shadow-sm border border-stroke{% else %}text-muted hover:text-primary{% endif %}" onclick="switchView('agenda')">
+                                <i class="ph-bold ph-list-bullets"></i> Список
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Timezone Switcher -->
+                    <div class="flex flex-col gap-2">
+                        <div class="text-[10px] font-bold text-muted uppercase tracking-widest">Часовой пояс</div>
+                        <div class="bg-surface-alt p-1 rounded-xl flex items-center border border-stroke">
+                            <button class="flex-1 py-1.5 {% if timezone == 'moscow' %}bg-surface text-primary shadow-sm border border-stroke{% else %}text-muted hover:text-primary{% endif %} font-bold text-xs rounded-lg transition-colors" onclick="switchTimezone('moscow')">МСК</button>
+                            <button class="flex-1 py-1.5 {% if timezone == 'tomsk' %}bg-surface text-primary shadow-sm border border-stroke{% else %}text-muted hover:text-primary{% endif %} font-bold text-xs rounded-lg transition-colors" onclick="switchTimezone('tomsk')">Томск</button>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="flex flex-col gap-3">
+                        <div class="text-[10px] font-bold text-muted uppercase tracking-widest">Фильтры</div>
+                        
+                        <!-- Status Filter -->
+                        <div class="schedule-filter-shell schedule-top-chip w-full">
+                            <i class="ph-bold ph-funnel"></i>
+                            <span class="truncate">
+                                {% if status_filter == 'planned' %}Запланирован{% elif status_filter == 'in_progress' %}Идет сейчас{% elif status_filter == 'completed' %}Проведен{% elif status_filter == 'cancelled' %}Отменен{% else %}Все статусы{% endif %}
+                            </span>
+                            <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
+                            <select id="statusFilter" class="schedule-filter-native" onchange="applyFilters()">
+                                <option value="">Все статусы</option>
+                                {% for status in statuses %}
+                                <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
+                                    {% if status == 'planned' %}Запланирован{% elif status == 'in_progress' %}Идет сейчас{% elif status == 'completed' %}Проведен{% elif status == 'cancelled' %}Отменен{% else %}{{ status }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Category Filter -->
+                        <div class="schedule-filter-shell schedule-top-chip w-full">
+                            <i class="ph-bold ph-books"></i>
+                            <span class="truncate">{{ category_filter or 'Все категории' }}</span>
+                            <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
+                            <select id="categoryFilter" class="schedule-filter-native" onchange="applyFilters()">
+                                <option value="">Все категории</option>
+                                {% for category in categories %}
+                                <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Student Filter -->
+                        {% if students and students|length > 1 %}
+                        <div class="schedule-filter-shell schedule-top-chip w-full">
+                            <i class="ph-bold ph-user"></i>
+                            <span class="truncate">{% if student_filter %}{% for s in students %}{% if s.student_id == student_filter %}{{ s.name }}{% endif %}{% endfor %}{% else %}Все ученики{% endif %}</span>
+                            <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
+                            <select id="studentFilter" class="schedule-filter-native" onchange="applyFilters()">
+                                <option value="">Все ученики</option>
+                                {% for s in students %}
+                                <option value="{{ s.student_id }}" {% if student_filter and student_filter == s.student_id %}selected{% endif %}>{{ s.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                         {% endif %}
                     </div>
+                </aside>
 
-                    <div class="bg-surface rounded-2xl p-2 border border-slate-200 border-b-[3px] border-b-slate-300 shadow-tactile mb-6 flex flex-wrap gap-3 items-center justify-between">
-                        <div class="bg-surface-alt p-1 rounded-xl flex items-center border border-slate-200/50">
-                            <button class="px-5 py-1.5 {% if view_mode == 'day' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('day')">День</button>
-                            <button class="px-5 py-1.5 {% if view_mode == 'week' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('week')">Неделя</button>
-                            <button class="px-5 py-1.5 {% if view_mode == 'month' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('month')">Месяц</button>
-                            <button class="px-5 py-1.5 {% if view_mode == 'agenda' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchView('agenda')">Список</button>
-                        </div>
-
-                        <div class="flex items-center gap-4">
-                            <button class="w-8 h-8 rounded-lg bg-surface-alt border border-slate-200 flex items-center justify-center text-muted hover:bg-surface-alt hover:text-boo-primary transition-all" data-week-offset="{{ week_offset - 1 }}" onclick="navigatePeriod(this.dataset.weekOffset)"><i class="ph-bold ph-caret-left"></i></button>
-                            <h2 class="text-lg font-extrabold text-primary tracking-tight w-72 text-center">{{ week_label }}</h2>
-                            <button class="w-8 h-8 rounded-lg bg-surface-alt border border-slate-200 flex items-center justify-center text-muted hover:bg-surface-alt hover:text-boo-primary transition-all" data-week-offset="{{ week_offset + 1 }}" onclick="navigatePeriod(this.dataset.weekOffset)"><i class="ph-bold ph-caret-right"></i></button>
-                        </div>
-
-                        <div class="flex items-center gap-2 pr-2 flex-wrap">
-                            <div class="bg-surface-alt p-1 rounded-xl flex items-center border border-slate-200/50">
-                                <button class="px-4 py-1.5 {% if timezone == 'moscow' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('moscow')">МСК</button>
-                                <button class="px-4 py-1.5 {% if timezone == 'tomsk' %}bg-surface text-primary shadow-sm dark:shadow-none dark:shadow-none border border-slate-200/50{% else %}text-muted hover:text-primary{% endif %} font-bold text-sm rounded-lg transition-colors" onclick="switchTimezone('tomsk')">Томск</button>
-                            </div>
-                            <div class="schedule-filter-shell schedule-top-chip" style="min-width: 170px;">
-                                <i class="ph-bold ph-funnel"></i>
-                                <span>
-                                    {% if status_filter == 'planned' %}Запланирован{% elif status_filter == 'in_progress' %}Идет сейчас{% elif status_filter == 'completed' %}Проведен{% elif status_filter == 'cancelled' %}Отменен{% else %}Все статусы{% endif %}
-                                </span>
-                                <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
-                                <select id="statusFilter" class="schedule-filter-native" onchange="applyFilters()">
-                                    <option value="">Все статусы</option>
-                                    {% for status in statuses %}
-                                    <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
-                                        {% if status == 'planned' %}Запланирован{% elif status == 'in_progress' %}Идет сейчас{% elif status == 'completed' %}Проведен{% elif status == 'cancelled' %}Отменен{% else %}{{ status }}{% endif %}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="schedule-filter-shell schedule-top-chip" style="min-width: 170px;">
-                                <i class="ph-bold ph-books"></i>
-                                <span>{{ category_filter or 'Все категории' }}</span>
-                                <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
-                                <select id="categoryFilter" class="schedule-filter-native" onchange="applyFilters()">
-                                    <option value="">Все категории</option>
-                                    {% for category in categories %}
-                                    <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            {% if students and students|length > 1 %}
-                            <div class="schedule-filter-shell schedule-top-chip" style="min-width: 220px;">
-                                <i class="ph-bold ph-user"></i>
-                                <span>{% if student_filter %}{% for s in students %}{% if s.student_id == student_filter %}{{ s.name }}{% endif %}{% endfor %}{% else %}Все ученики{% endif %}</span>
-                                <i class="ph-bold ph-caret-down text-muted text-xs ml-auto"></i>
-                                <select id="studentFilter" class="schedule-filter-native" onchange="applyFilters()">
-                                    <option value="">Все ученики</option>
-                                    {% for s in students %}
-                                    <option value="{{ s.student_id }}" {% if student_filter and student_filter == s.student_id %}selected{% endif %}>{{ s.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            {% endif %}
-                            <div class="schedule-top-chip schedule-top-chip-purple">
-                                <i class="ph-bold ph-globe"></i> Время: {{ 'МСК' if timezone == 'moscow' else 'Томск' }}
-                            </div>
-                        </div>
-                    </div>
-
+                <!-- RIGHT MAIN CONTENT: Schedule Grid / Agenda / Month -->
+                <div class="flex-1 w-full min-w-0 flex flex-col h-full">
                     {% if view_mode == 'agenda' %}
-                        <div class="bg-surface rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
+                        <div class="bg-surface rounded-[24px] border border-stroke p-6">
                             <div class="text-[10px] font-bold text-muted uppercase tracking-widest">список</div>
                             <div class="text-xl font-extrabold text-primary tracking-tight mt-1">Уроки недели</div>
                             <div class="mt-4 space-y-3">
                                 {% for a in agenda %}
-                                    <div class="p-4 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                                    <div class="p-4 rounded-2xl border border-stroke flex flex-wrap items-center justify-between gap-3 bg-surface-alt/45">
                                         <div class="min-w-0">
                                             <div class="font-extrabold text-primary">{{ a.date_human }} · {{ a.time }}</div>
                                             <div class="text-muted font-medium text-sm mt-1">
@@ -508,8 +613,8 @@
                                             </div>
                                         </div>
                                         <div class="flex gap-2 flex-wrap">
-                                            <a class="px-4 py-2 bg-surface-alt border border-slate-200 text-secondary rounded-xl font-bold text-sm hover:bg-surface-alt transition-colors" href="{{ a.lesson_url }}">Открыть урок</a>
-                                            <a class="px-4 py-2 bg-surface border border-slate-200 text-muted rounded-xl font-bold text-sm hover:text-boo-primary hover:border-purple-200 transition-colors" href="{{ a.profile_url }}">Профиль</a>
+                                            <a class="px-4 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold text-sm hover:bg-surface transition-colors" href="{{ a.lesson_url }}">Открыть урок</a>
+                                            <a class="px-4 py-2 bg-surface border border-stroke text-muted rounded-xl font-bold text-sm hover:text-boo-primary hover:border-purple-200 transition-colors" href="{{ a.profile_url }}">Профиль</a>
                                         </div>
                                     </div>
                                 {% else %}
@@ -518,26 +623,26 @@
                             </div>
                         </div>
                     {% elif view_mode == 'month' %}
-                        <div class="bg-surface rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-4">
-                            <div class="grid grid-cols-7 border border-slate-200 rounded-2xl overflow-hidden">
+                        <div class="bg-surface rounded-[24px] border border-stroke p-4 shadow-tactile">
+                            <div class="grid grid-cols-7 border border-stroke rounded-2xl overflow-hidden">
                                 {% for dn in day_names %}
-                                <div class="py-2 text-center text-xs font-black uppercase tracking-wider text-muted bg-surface-alt border-b border-slate-200">{{ dn }}</div>
+                                <div class="py-2 text-center text-xs font-black uppercase tracking-wider text-muted bg-surface-alt border-b border-stroke">{{ dn }}</div>
                                 {% endfor %}
                                 {% for week in month_weeks %}
                                     {% for cell in week %}
-                                    <div class="min-h-[140px] p-2 border-b border-r border-slate-100 {% if not cell.in_month %}bg-slate-50/50{% endif %} {% if cell.is_today %}ring-1 ring-boo-primary ring-inset{% endif %}">
+                                    <div class="min-h-[140px] p-2 border-b border-r border-stroke {% if not cell.in_month %}bg-surface-alt/20{% endif %} {% if cell.is_today %}ring-1 ring-boo-primary ring-inset{% endif %}">
                                         <div class="flex justify-between items-center mb-1">
                                             <a href="{{ url_for('schedule.schedule', timezone=timezone, view='day', week=(cell.date - today_display_date).days) }}" class="text-sm font-extrabold {% if cell.is_today %}text-boo-primary{% else %}text-secondary{% endif %} no-underline">
                                                 {{ cell.date.day }}
                                             </a>
                                             {% if cell.events_count %}
-                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-boo-primary font-bold">{{ cell.events_count }}</span>
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/40 text-boo-primary dark:text-purple-300 font-bold">{{ cell.events_count }}</span>
                                             {% endif %}
                                         </div>
                                         <div class="space-y-1">
                                             {% for ev in cell.events %}
                                             <a href="{{ ev.lesson_url }}" class="block no-underline">
-                                                <div class="px-2 py-1 rounded-lg bg-surface-alt border border-slate-200 text-[11px] text-secondary truncate">
+                                                <div class="px-2 py-1 rounded-lg bg-surface-alt border border-stroke text-[11px] text-secondary truncate hover:border-boo-primary/50 transition-colors">
                                                     <span class="font-bold">{{ ev.time }}</span> {{ ev.student_name }}
                                                 </div>
                                             </a>
@@ -549,7 +654,7 @@
                             </div>
                         </div>
                     {% else %}
-                        <div class="flex-1 bg-surface rounded-3xl border border-slate-200 shadow-tactile flex flex-col overflow-hidden relative"
+                        <div class="flex-1 bg-surface rounded-3xl border border-stroke shadow-tactile flex flex-col overflow-hidden relative"
                              data-schedule-root
                              data-slot-minutes="{{ slot_minutes }}"
                              data-start-hour="{{ day_start_hour }}"
@@ -567,14 +672,14 @@
                              data-icon-exam="{{ url_for('static', filename='icons/sprite.svg') }}#nav-stats"
                              data-icon-intro="{{ url_for('static', filename='icons/sprite.svg') }}#nav-help">
 
-                            <div class="schedule-grid-head grid grid-cols-8 border-b border-slate-100 bg-slate-50/50" style="grid-template-columns: 84px repeat({{ day_columns_count }}, minmax(0, 1fr));">
-                                <div class="p-4 border-r border-slate-100/50 text-center flex flex-col justify-center">
-                                    <i class="ph-fill ph-clock text-slate-300 text-xl"></i>
+                            <div class="schedule-grid-head grid grid-cols-8 border-b border-stroke bg-surface-alt" style="grid-template-columns: 84px repeat({{ day_columns_count }}, minmax(0, 1fr));">
+                                <div class="p-4 border-r border-stroke text-center flex flex-col justify-center">
+                                    <i class="ph-fill ph-clock text-slate-300 dark:text-zinc-700 text-xl"></i>
                                 </div>
                                 {% for day in week_days %}
                                 {% set is_today = today_display_date and (day == today_display_date) %}
                                 {% set is_weekend = day.weekday() >= 5 %}
-                                <div class="p-4 {% if not loop.last %}border-r border-slate-100/50{% endif %} text-center {% if is_today %}bg-purple-50/50 relative overflow-hidden{% elif is_weekend %}opacity-70{% endif %}">
+                                <div class="p-4 {% if not loop.last %}border-r border-stroke{% endif %} text-center {% if is_today %}bg-boo-primary/5 relative overflow-hidden{% elif is_weekend %}opacity-65{% endif %}">
                                     {% if is_today %}
                                     <div class="absolute top-0 left-0 w-full h-1 bg-boo-primary"></div>
                                     {% endif %}
@@ -586,15 +691,15 @@
 
                             <div class="flex-1 overflow-y-auto hide-scroll relative">
                                 <div id="scheduleGrid" class="grid grid-cols-8 relative" style="grid-template-columns: 84px repeat({{ day_columns_count }}, minmax(0, 1fr));">
-                                    <div class="border-r border-slate-100/50 relative bg-surface z-10 time-col">
+                                    <div class="border-r border-stroke relative bg-surface z-10 time-col">
                                         {% for label in time_labels %}
-                                        <div class="h-24 border-b border-slate-100 flex justify-center pt-2 time-label"><span class="text-xs font-bold text-muted">{{ label }}</span></div>
+                                        <div class="h-24 border-b border-stroke flex justify-center pt-2 time-label"><span class="text-xs font-bold text-muted">{{ label }}</span></div>
                                         {% endfor %}
                                     </div>
                                     {% for day_index in range(day_columns_count) %}
                                     {% set day = week_days[day_index] %}
                                     {% set is_weekend_col = day.weekday() >= 5 %}
-                                    <div class="{% if not loop.last %}border-r border-slate-100/50{% endif %} relative {% if is_weekend_col %}bg-slate-50/30{% else %}bg-surface{% endif %} day-col"
+                                    <div class="{% if not loop.last %}border-r border-stroke{% endif %} relative {% if is_weekend_col %}bg-surface-alt/25{% else %}bg-surface{% endif %} day-col"
                                          data-day="{{ day.isoformat() }}" data-day-index="{{ day_index }}" data-events='{{ day_events[day_index]|tojson }}'>
                                         <div class="day-col__body"></div>
                                     </div>
@@ -605,51 +710,50 @@
                     {% endif %}
                 </div>
 
-                <div class="w-full xl:w-96 flex flex-col h-full shrink-0">
-                    <aside class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full relative overflow-hidden schedule-inspector" id="lessonInspector">
-                        <div class="inspector-card-head">
-                            <div class="flex justify-between items-start mb-4">
-                                <h2 class="text-[10px] font-bold text-muted uppercase tracking-widest">Инспектор урока</h2>
-                                <button class="w-8 h-8 bg-surface border border-slate-200 rounded-full flex items-center justify-center text-muted hover:text-primary hover:shadow-sm dark:shadow-none dark:shadow-none transition-all" type="button" id="lessonInspectorClose"><i class="ph-bold ph-x"></i></button>
+                <!-- SLIDE-OUT DRAWER: Lesson Inspector -->
+                <aside class="bg-surface border-l border-stroke shadow-tactile flex flex-col h-full overflow-hidden" id="lessonInspector">
+                    <div class="inspector-card-head">
+                        <div class="flex justify-between items-start mb-4">
+                            <h2 class="text-[10px] font-bold text-muted uppercase tracking-widest">Инспектор урока</h2>
+                            <button class="w-8 h-8 bg-surface border border-stroke rounded-full flex items-center justify-center text-muted hover:text-primary hover:shadow-sm transition-all" type="button" id="lessonInspectorClose"><i class="ph-bold ph-x"></i></button>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-950/40 text-boo-primary flex items-center justify-center border border-purple-200 dark:border-purple-900/50 shadow-sm" id="lessonInspectorIcon">
+                                <i class="ph-bold ph-calendar-check text-2xl"></i>
                             </div>
-                            <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 rounded-2xl bg-purple-100 text-boo-primary flex items-center justify-center border border-purple-200 shadow-sm dark:shadow-none dark:shadow-none" id="lessonInspectorIcon">
-                                    <i class="ph-bold ph-calendar-check text-2xl"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-2xl font-black text-primary tracking-tight" id="lessonInspectorTitle">Выбери урок</h3>
-                                    <div class="text-muted font-bold text-sm mt-1" id="lessonInspectorSubtitle">
-                                        {% if can_manage_schedule %}Клик по уроку — редактирование.{% else %}Клик по уроку — детали.{% endif %}
-                                    </div>
+                            <div>
+                                <h3 class="text-2xl font-black text-primary tracking-tight" id="lessonInspectorTitle">Выбери урок</h3>
+                                <div class="text-muted font-bold text-sm mt-1" id="lessonInspectorSubtitle">
+                                    {% if can_manage_schedule %}Клик по уроку — редактирование.{% else %}Клик по уроку — детали.{% endif %}
                                 </div>
                             </div>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-6 space-y-5 hide-scroll schedule-inspector__body" id="lessonInspectorBody">
-                            <div class="text-muted font-medium">
-                                {% if can_manage_schedule %}
-                                    Кликни по уроку, чтобы увидеть детали и быстрые действия. Перетаскивание работает прямо на сетке.
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-6 space-y-5 hide-scroll schedule-inspector__body" id="lessonInspectorBody">
+                        <div class="text-muted font-medium">
+                            {% if can_manage_schedule %}
+                                Кликни по уроку, чтобы увидеть детали и быстрые действия. Перетаскивание работает прямо на сетке.
+                            {% else %}
+                                Кликни по уроку, чтобы увидеть детали.
+                            {% endif %}
+                        </div>
+                        <div class="border-t border-stroke pt-5">
+                            <div class="text-[10px] font-bold text-muted uppercase tracking-widest">на этой неделе</div>
+                            <div class="mt-3 space-y-2">
+                                {% for a in (agenda_week_sidebar if agenda_week_sidebar is defined else agenda) %}
+                                    <a href="{{ a.lesson_url }}" class="block no-underline">
+                                        <div class="p-3 rounded-2xl border border-stroke hover:border-purple-200 dark:hover:border-purple-800 hover:bg-purple-50/30 dark:hover:bg-purple-950/10 transition-colors">
+                                            <div class="font-extrabold text-primary text-sm">{{ a.date_human }} · {{ a.time }}</div>
+                                            <div class="text-muted font-medium text-sm mt-1">{{ a.student_name }}{% if a.topic %} · {{ a.topic }}{% endif %}</div>
+                                        </div>
+                                    </a>
                                 {% else %}
-                                    Кликни по уроку, чтобы увидеть детали.
-                                {% endif %}
-                            </div>
-                            <div class="border-t border-slate-200 pt-5">
-                                <div class="text-[10px] font-bold text-muted uppercase tracking-widest">на этой неделе</div>
-                                <div class="mt-3 space-y-2">
-                                    {% for a in (agenda_week_sidebar if agenda_week_sidebar is defined else agenda) %}
-                                        <a href="{{ a.lesson_url }}" class="block no-underline">
-                                            <div class="p-3 rounded-2xl border border-slate-200 hover:border-purple-200 hover:bg-purple-50/30 transition-colors">
-                                                <div class="font-extrabold text-primary text-sm">{{ a.date_human }} · {{ a.time }}</div>
-                                                <div class="text-muted font-medium text-sm mt-1">{{ a.student_name }}{% if a.topic %} · {{ a.topic }}{% endif %}</div>
-                                            </div>
-                                        </a>
-                                    {% else %}
-                                        <div class="text-muted font-medium">Нет уроков.</div>
-                                    {% endfor %}
-                                </div>
+                                    <div class="text-muted font-medium">Нет уроков.</div>
+                                {% endfor %}
                             </div>
                         </div>
-                    </aside>
-                </div>
+                    </div>
+                </aside>
             </div>
         </main>
 
@@ -964,9 +1068,31 @@
                 setTimeout(() => window.location.reload(), 250);
             } catch (e) {
                 if (window.toast) window.toast.error(e.message || 'Ошибка');
-            }
-        }
         {% endif %}
+
+        // Setup MutationObserver to watch class changes on lessonInspector and sync it with drawerBackdrop
+        document.addEventListener('DOMContentLoaded', () => {
+            const inspectorEl = document.getElementById('lessonInspector');
+            const backdropEl = document.getElementById('drawerBackdrop');
+            if (inspectorEl && backdropEl) {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.attributeName === 'class') {
+                            if (inspectorEl.classList.contains('is-open')) {
+                                backdropEl.classList.add('active');
+                            } else {
+                                backdropEl.classList.remove('active');
+                            }
+                        }
+                    });
+                });
+                observer.observe(inspectorEl, { attributes: true });
+
+                backdropEl.addEventListener('click', () => {
+                    inspectorEl.classList.remove('is-open');
+                });
+            }
+        });
     </script>
 
     <script src="{{ url_for('static', filename='schedule-premium.js') }}"></script>
