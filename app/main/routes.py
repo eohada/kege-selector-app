@@ -547,10 +547,10 @@ def dashboard():
         lessons_with_homework = 0
 
     # ── Deltas for dashboard KPIs (match mock “+N”) ──
-    students_delta_7d = 0
+    students_delta_30d = 0
     completed_lessons_delta_7d = 0
     try:
-        # Students growth: created in last 7 days minus previous 7 days.
+        # Students growth: created in last 30 days minus previous 30 days.
         qs_students = Student.query
         if base_is_active is not None:
             qs_students = qs_students.filter(Student.is_active == base_is_active)
@@ -559,12 +559,14 @@ def dashboard():
         elif not scope.get('can_see_all'):
             qs_students = qs_students.filter(False)
 
-        students_last_7 = qs_students.filter(Student.created_at >= week_ago, Student.created_at <= now).count()
-        students_prev_7 = qs_students.filter(Student.created_at >= prev_week_start, Student.created_at < week_ago).count()
-        students_delta_7d = max(0, int(students_last_7) - int(students_prev_7))
+        month_ago = now - timedelta(days=30)
+        prev_month_start = now - timedelta(days=60)
+        students_last_30 = qs_students.filter(Student.created_at >= month_ago, Student.created_at <= now).count()
+        students_prev_30 = qs_students.filter(Student.created_at >= prev_month_start, Student.created_at < month_ago).count()
+        students_delta_30d = max(0, int(students_last_30) - int(students_prev_30))
     except Exception as e:
         logger.warning(f"Error building students delta: {e}")
-        students_delta_7d = 0
+        students_delta_30d = 0
 
     try:
         # Completed lessons growth: completed in last 7 days minus previous 7 days.
@@ -638,7 +640,7 @@ def dashboard():
                          show_archive=show_archive,
                          my_tutors=my_tutors,
                          total_students=total_students,
-                         students_delta_7d=students_delta_7d,
+                         students_delta_30d=students_delta_30d,
                          total_lessons=total_lessons,
                          completed_lessons=completed_lessons,
                          completed_lessons_delta_7d=completed_lessons_delta_7d,
