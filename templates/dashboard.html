@@ -166,7 +166,17 @@
             {% if category_filter %}<input type="hidden" name="category" value="{{ category_filter }}">{% endif %}
             <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-muted"></i>
             <input type="text" name="search" value="{{ search_query }}" placeholder="Поиск ученика (Ctrl+F)"
-                   class="w-full bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.08] rounded-xl pl-11 pr-12 py-2.5 text-sm font-medium text-primary dark:text-white focus:outline-none focus:border-boo-primary focus:ring-1 focus:ring-boo-primary/20 transition-all shadow-sm dark:shadow        {% for student in students %}
+                   class="w-full bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.08] rounded-xl pl-11 pr-12 py-2.5 text-sm font-medium text-primary dark:text-white focus:outline-none focus:border-boo-primary focus:ring-1 focus:ring-boo-primary/20 transition-all shadow-sm dark:shadow-glass-dark">
+            <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-boo-primary transition-colors p-1 bg-transparent border-none cursor-pointer" title="Фильтры">
+                <i class="ph-bold ph-faders text-lg"></i>
+            </button>
+        </form>
+    </div>
+
+    {# ── STUDENTS GRID ── #}
+    {% if students %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {% for student in students %}
         <div class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %} {% if student.has_overdue_hw is defined and student.has_overdue_hw %}student-card--alert{% endif %}"
              data-student-id="{{ student.student_id }}"
              x-data="{ open: false }"
