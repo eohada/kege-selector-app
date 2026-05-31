@@ -277,43 +277,43 @@
             padding: 1px 8px;
         }
 
-        /* Drawer Backdrop Overlay */
-        .drawer-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(9, 9, 11, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 100;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.24s ease;
-        }
-        .drawer-backdrop.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        /* Drawer Panel (replaces permanent inspector) */
+        /* Drawer Panel (in-flow panel that pushes layout on desktop) */
         #lessonInspector {
-            position: fixed;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            width: 390px;
-            max-width: 92%;
-            background: var(--color-bg-surface);
-            border-left: 1px solid var(--color-stroke);
-            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.25);
-            z-index: 110;
-            transform: translateX(100%);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 100%;
+            height: 0;
+            opacity: 0;
+            overflow: hidden;
+            pointer-events: none;
+            transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, margin 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-width 0.3s ease;
+            border: 0 solid var(--color-stroke);
+            margin-top: 0;
             display: flex;
             flex-direction: column;
-            height: 100vh;
         }
 
         #lessonInspector.is-open {
-            transform: translateX(0) !important;
+            height: 480px;
+            opacity: 1;
+            pointer-events: auto;
+            border-width: 1px;
+            border-style: solid;
+            margin-top: 1.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            #lessonInspector {
+                width: 0;
+                height: 100%;
+                margin-left: -1.5rem;
+                margin-top: 0;
+                transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, margin 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-width 0.3s ease;
+            }
+            #lessonInspector.is-open {
+                width: 390px;
+                height: 100%;
+                margin-left: 0;
+                margin-top: 0;
+            }
         }
 
         .schedule-inspector__body {
@@ -470,52 +470,7 @@
             #scheduleGrid { min-width: 760px; }
         }
 </style>
-        <div class="drawer-backdrop" id="drawerBackdrop"></div>
 
-        <!-- SLIDE-OUT DRAWER: Lesson Inspector -->
-        <aside class="fixed top-0 right-0 bottom-0 z-[110] w-[390px] max-w-[92%] bg-surface border-l border-stroke shadow-tactile flex flex-col h-full overflow-hidden transition-transform duration-300 ease-out translate-x-full" id="lessonInspector">
-            <div class="inspector-card-head">
-                <div class="flex justify-between items-start mb-3">
-                    <h2 class="text-[10px] font-bold text-muted uppercase tracking-widest">Инспектор урока</h2>
-                    <button class="w-8 h-8 bg-surface border border-stroke rounded-full flex items-center justify-center text-muted hover:text-primary hover:shadow-sm transition-all" type="button" id="lessonInspectorClose"><i class="ph-bold ph-x"></i></button>
-                </div>
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/40 text-boo-primary flex items-center justify-center border border-purple-200 dark:border-purple-900/50 shadow-sm" id="lessonInspectorIcon">
-                        <i class="ph-bold ph-calendar-check text-xl"></i>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <h3 class="text-lg font-extrabold text-primary tracking-tight truncate" id="lessonInspectorTitle">Выбери урок</h3>
-                        <div class="text-muted font-bold text-xs mt-0.5" id="lessonInspectorSubtitle">
-                            {% if can_manage_schedule %}Клик по уроку — редактирование.{% else %}Клик по уроку — детали.{% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="flex-1 overflow-y-auto p-4 space-y-4 hide-scroll schedule-inspector__body" id="lessonInspectorBody">
-                <div class="text-muted font-medium text-xs">
-                    {% if can_manage_schedule %}
-                        Кликни по уроку, чтобы увидеть детали и быстрые действия. Перетаскивание работает прямо на сетке.
-                    {% else %}
-                        Кликни по уроку, чтобы увидеть детали.
-                    {% endif %}
-                </div>
-                <div class="border-t border-stroke pt-4">
-                    <div class="text-[10px] font-bold text-muted uppercase tracking-widest">на этой неделе</div>
-                    <div class="mt-2.5 space-y-2">
-                        {% for a in (agenda_week_sidebar if agenda_week_sidebar is defined else agenda) %}
-                            <a href="{{ a.lesson_url }}" class="block no-underline">
-                                <div class="p-3 rounded-2xl border border-stroke hover:border-purple-200 dark:hover:border-purple-800 hover:bg-purple-50/30 dark:hover:bg-purple-950/10 transition-colors">
-                                    <div class="font-extrabold text-primary text-xs">{{ a.date_human }} · {{ a.time }}</div>
-                                    <div class="text-muted font-medium text-xs mt-1">{{ a.student_name }}{% if a.topic %} · {{ a.topic }}{% endif %}</div>
-                                </div>
-                            </a>
-                        {% else %}
-                            <div class="text-muted font-medium text-xs">Нет уроков.</div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </aside>
 
         <main class="flex-1 pt-0 pb-8 flex justify-center h-full">
             <div class="w-full max-w-[1600px] flex flex-col lg:flex-row gap-6 h-full items-start">
@@ -646,7 +601,7 @@
                 </aside>
 
                 <!-- RIGHT MAIN CONTENT: Schedule Grid / Agenda / Month -->
-                <div class="flex-1 w-full min-w-0 flex flex-col h-full">
+                <div class="flex-1 w-full min-w-0 flex flex-col h-full self-stretch">
                     {% if view_mode == 'agenda' %}
                         <div class="bg-surface rounded-[24px] border border-stroke p-6">
                             <div class="text-[10px] font-bold text-muted uppercase tracking-widest">список</div>
@@ -757,6 +712,51 @@
                         </div>
                     {% endif %}
                 </div>
+
+                <!-- SLIDE-OUT PANEL: Lesson Inspector -->
+                <aside class="bg-surface border-stroke shadow-tactile flex flex-col overflow-hidden self-stretch shrink-0 rounded-[24px]" id="lessonInspector">
+                    <div class="inspector-card-head">
+                        <div class="flex justify-between items-start mb-3">
+                            <h2 class="text-[10px] font-bold text-muted uppercase tracking-widest">Инспектор урока</h2>
+                            <button class="w-8 h-8 bg-surface border border-stroke rounded-full flex items-center justify-center text-muted hover:text-primary hover:shadow-sm transition-all" type="button" id="lessonInspectorClose"><i class="ph-bold ph-x"></i></button>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/40 text-boo-primary flex items-center justify-center border border-purple-200 dark:border-purple-900/50 shadow-sm" id="lessonInspectorIcon">
+                                <i class="ph-bold ph-calendar-check text-xl"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-lg font-extrabold text-primary tracking-tight truncate" id="lessonInspectorTitle">Выбери урок</h3>
+                                <div class="text-muted font-bold text-xs mt-0.5" id="lessonInspectorSubtitle">
+                                    {% if can_manage_schedule %}Клик по уроку — редактирование.{% else %}Клик по уроку — детали.{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-4 space-y-4 hide-scroll schedule-inspector__body" id="lessonInspectorBody">
+                        <div class="text-muted font-medium text-xs">
+                            {% if can_manage_schedule %}
+                                Кликни по уроку, чтобы увидеть детали и быстрые действия. Перетаскивание работает прямо на сетке.
+                            {% else %}
+                                Кликни по уроку, чтобы увидеть детали.
+                            {% endif %}
+                        </div>
+                        <div class="border-t border-stroke pt-4">
+                            <div class="text-[10px] font-bold text-muted uppercase tracking-widest">на этой неделе</div>
+                            <div class="mt-2.5 space-y-2">
+                                {% for a in (agenda_week_sidebar if agenda_week_sidebar is defined else agenda) %}
+                                    <a href="{{ a.lesson_url }}" class="block no-underline">
+                                        <div class="p-3 rounded-2xl border border-stroke hover:border-purple-200 dark:hover:border-purple-800 hover:bg-purple-50/30 dark:hover:bg-purple-950/10 transition-colors">
+                                            <div class="font-extrabold text-primary text-xs">{{ a.date_human }} · {{ a.time }}</div>
+                                            <div class="text-muted font-medium text-xs mt-1">{{ a.student_name }}{% if a.topic %} · {{ a.topic }}{% endif %}</div>
+                                        </div>
+                                    </a>
+                                {% else %}
+                                    <div class="text-muted font-medium text-xs">Нет уроков.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </aside>
             </div>
         </main>
 
@@ -1073,29 +1073,6 @@
                 if (window.toast) window.toast.error(e.message || 'Ошибка');
         {% endif %}
 
-        // Setup MutationObserver to watch class changes on lessonInspector and sync it with drawerBackdrop
-        document.addEventListener('DOMContentLoaded', () => {
-            const inspectorEl = document.getElementById('lessonInspector');
-            const backdropEl = document.getElementById('drawerBackdrop');
-            if (inspectorEl && backdropEl) {
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.attributeName === 'class') {
-                            if (inspectorEl.classList.contains('is-open')) {
-                                backdropEl.classList.add('active');
-                            } else {
-                                backdropEl.classList.remove('active');
-                            }
-                        }
-                    });
-                });
-                observer.observe(inspectorEl, { attributes: true });
-
-                backdropEl.addEventListener('click', () => {
-                    inspectorEl.classList.remove('is-open');
-                });
-            }
-        });
     </script>
 
     <script src="{{ url_for('static', filename='schedule-premium.js') }}"></script>
