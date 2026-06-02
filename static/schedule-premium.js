@@ -379,9 +379,6 @@ window.initPremiumSchedule = () => {
     inspector.classList.add('is-open');
   };
 
-  const closeInspector = () => inspector?.classList.remove('is-open');
-  inspectorClose?.addEventListener('click', closeInspector);
-
   const iconForLessonType = (lt) => {
     if (lt === 'exam') return iconExam;
     if (lt === 'introductory') return iconIntro;

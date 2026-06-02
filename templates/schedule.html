@@ -1076,6 +1076,8 @@
                 setTimeout(() => window.location.reload(), 250);
             } catch (e) {
                 if (window.toast) window.toast.error(e.message || 'Ошибка');
+            }
+        }
         {% endif %}
 
     </script>
