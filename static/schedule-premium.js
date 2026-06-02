@@ -178,13 +178,13 @@ window.initPremiumSchedule = () => {
               <div class="inspector-label">Тип занятия</div>
               <div class="inspector-input">${lt}</div>
             </div>
-            \${meta.topic ? `<div><div class="inspector-label">Тема</div><div class="inspector-input">\${String(meta.topic)}</div></div>` : ''}
+            ${meta.topic ? `<div><div class="inspector-label">Тема</div><div class="inspector-input">${String(meta.topic)}</div></div>` : ''}
             <div class="flex gap-2.5 mt-2">
-              \${meta.profile_url
-                ? `<a class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="\${meta.profile_url}">Профиль</a>`
+              ${meta.profile_url
+                ? `<a class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>`
                 : `<button class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
-              \${meta.lesson_url
-                ? `<a class="flex-1 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="\${meta.lesson_url}">Урок</a>`
+              ${meta.lesson_url
+                ? `<a class="flex-1 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.lesson_url}">Урок</a>`
                 : `<button class="flex-1 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/30 text-boo-primary dark:text-purple-300 rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Урок</button>`}
             </div>
           </div>
@@ -238,8 +238,8 @@ window.initPremiumSchedule = () => {
               Сохранить изменения
             </button>
             <div class="flex gap-2.5">
-              \${meta.profile_url
-                ? `<a class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="\${meta.profile_url}">Профиль</a>`
+              ${meta.profile_url
+                ? `<a class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold hover:bg-surface hover:text-primary transition-colors shadow-sm flex justify-center items-center gap-2 text-sm no-underline" href="${meta.profile_url}">Профиль</a>`
                 : `<button class="flex-1 py-2 bg-surface-alt border border-stroke text-secondary rounded-xl font-bold transition-colors shadow-sm flex justify-center items-center gap-2 text-sm btn-disabled" type="button">Профиль</button>`}
               <button class="flex-1 py-2 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-boo-coral hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors shadow-sm flex justify-center items-center gap-2 text-sm" type="button" id="inspectorDelete">Удалить</button>
             </div>
@@ -283,7 +283,7 @@ window.initPremiumSchedule = () => {
             await postJSON(url, { status: nextStatus });
             meta.status_code = nextStatus;
             lessonEl.classList.remove('status-planned', 'status-in_progress', 'status-completed', 'status-cancelled');
-            lessonEl.classList.add(`status-\${nextStatus}`);
+            lessonEl.classList.add(`status-${nextStatus}`);
           }
 
           let resp = null;
@@ -333,7 +333,7 @@ window.initPremiumSchedule = () => {
             meta.start_total = newStartTotal;
             meta.start_time = nextTime;
 
-            const newDayCol = qs(`.day-col[data-day="\${nextDate}"]`);
+            const newDayCol = qs(`.day-col[data-day="${nextDate}"]`);
             if (newDayCol && newDayCol !== currentDayCol) {
               const newTop = minutesToY(newStartTotal);
               lessonEl.style.top = `${newTop}px`;
@@ -367,7 +367,7 @@ window.initPremiumSchedule = () => {
 
       recurringBtn?.addEventListener('click', async () => {
         try {
-          const url = `/schedule/templates/api/from-lesson/\${meta.lesson_id}`;
+          const url = `/schedule/templates/api/from-lesson/${meta.lesson_id}`;
           await postJSON(url, { timezone: tz });
           if (window.toast) window.toast.success('Добавлено в автоплан');
         } catch (e) {
