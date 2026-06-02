@@ -2,7 +2,7 @@
 Маршруты расписания
 """
 import logging
-from datetime import datetime, timedelta, time, date
+from datetime import datetime, timedelta, time, date, timezone as dt_timezone
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 
@@ -185,7 +185,8 @@ def _parse_local_datetime(date_str: str, time_str: str, timezone: str):
     lesson_datetime_str = f"{date_str} {time_str}"
     lesson_datetime_local = datetime.strptime(lesson_datetime_str, '%Y-%m-%d %H:%M')
     lesson_datetime_local = lesson_datetime_local.replace(tzinfo=input_tz)
-    return lesson_datetime_local.astimezone(datetime.timezone.utc)
+    lesson_datetime_msk = lesson_datetime_local.astimezone(MOSCOW_TZ)
+    return lesson_datetime_msk.replace(tzinfo=None)
 
 
 def _student_has_overlap(student_id: int, start_dt: datetime, duration_min: int, exclude_lesson_id: int | None = None) -> bool:
