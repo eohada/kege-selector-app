@@ -1080,6 +1080,6 @@
 
     </script>
 
-    <script src="{{ url_for('static', filename='schedule-premium.js') }}"></script>
+    <script src="{{ url_for('static', filename='schedule-premium.js') }}?v={{ range(1, 100000) | random }}"></script>
 {% endblock %}
 
