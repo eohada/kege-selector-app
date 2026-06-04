@@ -13,6 +13,7 @@ import os
 import threading
 
 from flask import Blueprint, request, jsonify
+import httpx
 from telegram.request import HTTPXRequest
 from telegram.ext import (
     Application,
@@ -22,6 +23,8 @@ from telegram.ext import (
     ConversationHandler,
     filters,
 )
+
+from app.telegram.config import telegram_proxy_parts
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +44,10 @@ def _get_token() -> str:
 
 
 def _build_request() -> HTTPXRequest | None:
-    proxy = (os.environ.get('TELEGRAM_PROXY_URL') or os.environ.get('HTTP_PROXY') or os.environ.get('HTTPS_PROXY') or '').strip()
+    proxy = telegram_proxy_parts()
     if not proxy:
         return None
-    return HTTPXRequest(proxy=proxy)
+    return HTTPXRequest(proxy=httpx.Proxy(proxy['url'], auth=proxy['auth']))
 
 
 def _ensure_event_loop() -> asyncio.AbstractEventLoop:
