@@ -13,6 +13,7 @@ import os
 import threading
 
 from flask import Blueprint, request, jsonify
+from telegram.request import HTTPXRequest
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -37,6 +38,13 @@ def _get_token() -> str:
     if not token:
         raise RuntimeError('BOT_TOKEN / TELEGRAM_BOT_TOKEN env var not set')
     return token
+
+
+def _build_request() -> HTTPXRequest | None:
+    proxy = (os.environ.get('TELEGRAM_PROXY_URL') or os.environ.get('HTTP_PROXY') or os.environ.get('HTTPS_PROXY') or '').strip()
+    if not proxy:
+        return None
+    return HTTPXRequest(proxy=proxy)
 
 
 def _ensure_event_loop() -> asyncio.AbstractEventLoop:
@@ -137,12 +145,11 @@ def get_application() -> Application:
             return _application
         loop = _ensure_event_loop()
         token = _get_token()
-        app = (
-            Application.builder()
-            .token(token)
-            .updater(None)
-            .build()
-        )
+        request = _build_request()
+        builder = Application.builder().token(token)
+        if request:
+            builder = builder.request(request)
+        app = builder.updater(None).build()
         _register_handlers(app)
         future = asyncio.run_coroutine_threadsafe(app.initialize(), loop)
         future.result(timeout=30)
@@ -166,12 +173,11 @@ async def _process_update_once(update_data: dict) -> dict:
     loop, but the worker uses this one-shot path.
     """
     token = _get_token()
-    app = (
-        Application.builder()
-        .token(token)
-        .updater(None)
-        .build()
-    )
+    request = _build_request()
+    builder = Application.builder().token(token)
+    if request:
+        builder = builder.request(request)
+    app = builder.updater(None).build()
     _register_handlers(app)
     await app.initialize()
     try:

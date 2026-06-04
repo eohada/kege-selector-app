@@ -29,6 +29,10 @@ def _bot_token() -> str | None:
     return BOT_TOKEN or None
 
 
+def _proxy_url() -> str | None:
+    return (os.environ.get('TELEGRAM_PROXY_URL') or os.environ.get('HTTP_PROXY') or os.environ.get('HTTPS_PROXY') or '').strip() or None
+
+
 def _tg_post(method: str, payload: dict, timeout: int = 10) -> Optional[dict]:
     """Generic Telegram Bot API POST."""
     token = _bot_token()
@@ -38,8 +42,12 @@ def _tg_post(method: str, payload: dict, timeout: int = 10) -> Optional[dict]:
     url = f'https://api.telegram.org/bot{token}/{method}'
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+    opener = urllib.request.build_opener()
+    proxy = _proxy_url()
+    if proxy:
+        opener.add_handler(urllib.request.ProxyHandler({'http': proxy, 'https': proxy}))
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with opener.open(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode('utf-8'))
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8', errors='replace')
