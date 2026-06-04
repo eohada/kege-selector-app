@@ -87,6 +87,12 @@ def make_celery(app=None):
                 return self.run(*args, **kwargs)
 
     celery.Task = ContextTask
+
+    # Import task modules so decorator-registered tasks are actually loaded
+    # when the worker process starts. Without this, the worker can connect to
+    # Redis but still show an empty task registry.
+    import app.tasks  # noqa: F401
+
     return celery
 
 
