@@ -11,6 +11,7 @@ from app.models import db, User, UserProfile, FamilyTie, Enrollment, moscow_now,
 from app.auth.rbac_utils import require_admin
 from core.audit_logger import audit_logger
 from flask_login import current_user
+from app.telegram.role_management import actor_can_assign_role, notify_role_changed, set_single_role
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,11 @@ def api_users_create():
         valid_roles = ['creator', 'chief_admin', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'content_maker']
         if role not in valid_roles:
             return jsonify({'success': False, 'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'}), 400
+
+        if current_user.role == 'chief_admin' and role in ('creator', 'chief_admin'):
+            return jsonify({'success': False, 'error': 'Старший администратор не может создавать создателей или других старших администраторов.'}), 403
+        if current_user.role == 'admin' and role in ('creator', 'chief_admin', 'admin'):
+            return jsonify({'success': False, 'error': 'Обычный администратор не может создавать или назначать администраторов.'}), 403
         
         if User.query.filter_by(username=username).first():
             return jsonify({'success': False, 'error': 'Username already exists'}), 409
@@ -101,6 +107,7 @@ def api_users_create():
         )
         db.session.add(user)
         db.session.flush()  # Получаем ID пользователя
+        db.session.add(UserRole(user_id=user.id, role=role))
         
         profile_data = data.get('profile', {})
         if profile_data:
@@ -245,12 +252,16 @@ def api_users_update(user_id):
         
         if 'role' in data:
             role = data['role'].strip()
-            valid_roles = ['admin', 'tutor', 'student', 'parent']
+            valid_roles = ['creator', 'chief_admin', 'admin', 'tutor', 'student', 'parent']
             if role not in valid_roles:
                 return jsonify({'success': False, 'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'}), 400
-            user.role = role
-            UserRole.query.filter_by(user_id=user.id).delete()
-            db.session.add(UserRole(user_id=user.id, role=role))
+            if role != user.role:
+                ok, reason = actor_can_assign_role(current_user, user, role)
+                if not ok:
+                    return jsonify({'success': False, 'error': reason}), 403
+                old_role = set_single_role(user, role)
+            else:
+                old_role = user.role
         
         if 'is_active' in data:
             user.is_active = bool(data['is_active'])
@@ -279,6 +290,8 @@ def api_users_update(user_id):
                 user.profile.avatar_url = profile_data['avatar_url']
         
         db.session.commit()
+        if 'role' in data and data['role'].strip() != old_role:
+            notify_role_changed(user, old_role, data['role'].strip(), actor=current_user)
         
         audit_logger.log(
             action='user_updated',

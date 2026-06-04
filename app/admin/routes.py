@@ -21,6 +21,12 @@ from werkzeug.security import generate_password_hash  # Хешируем пар�
 from app.admin import admin_bp
 from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask, Topic
 from app.models import UserProfile, FamilyTie, Enrollment, Student, UserRole
+from app.telegram.role_management import (
+    actor_can_assign_role,
+    notify_relations_changed,
+    notify_role_changed,
+    set_single_role,
+)
 from app.models import Submission, Answer, UserSubscription, UserNotification, BotAdmin, SubmissionComment, Assignment
 from core.db_models import Tester, task_topics
 from core.audit_logger import audit_logger
@@ -2627,10 +2633,18 @@ def admin_user_edit(user_id):
             if new_password:
                 user.password_hash = generate_password_hash(new_password)
             
+            old_role = user.role
+            if role != old_role:
+                ok, reason = actor_can_assign_role(current_user, user, role)
+                if not ok:
+                    flash(reason, 'danger')
+                    return redirect(url_for('admin.admin_user_edit', user_id=user.id))
+
             user.username = username
-            user.role = role
-            UserRole.query.filter_by(user_id=user.id).delete()
-            db.session.add(UserRole(user_id=user.id, role=role))
+            if role != old_role:
+                set_single_role(user, role)
+            elif not UserRole.query.filter_by(user_id=user.id).first():
+                db.session.add(UserRole(user_id=user.id, role=role))
             user.is_active = is_active
             
             if current_user.is_creator():
@@ -2677,6 +2691,8 @@ def admin_user_edit(user_id):
                 else:
                     logger.info(f"POST: Profile for user {user.id} - no changes detected")
             
+            relations_changed = False
+
             if role == 'student':
                 student_record = Student.query.filter_by(user_id=user.id).first()
                 profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
@@ -2713,6 +2729,7 @@ def admin_user_edit(user_id):
                             is_confirmed = request.form.get('new_parent_confirmed') == 'on'
                             family_tie = FamilyTie(parent_id=new_parent_id, student_id=user.id, access_level=access_level, is_confirmed=is_confirmed)
                             db.session.add(family_tie)
+                            relations_changed = True
                             logger.info(f"POST: Added family tie: parent_id={new_parent_id}, student_id={user.id}, access_level={access_level}, is_confirmed={is_confirmed}")
                         else:
                             logger.warning(f"POST: Family tie already exists: parent_id={new_parent_id}, student_id={user.id}")
@@ -2730,6 +2747,7 @@ def admin_user_edit(user_id):
                             status = request.form.get('new_tutor_status', 'active')
                             enrollment = Enrollment(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject, status=status)
                             db.session.add(enrollment)
+                            relations_changed = True
                             logger.info(f"POST: Added enrollment: student_id={user.id}, tutor_id={new_tutor_id}, subject={new_tutor_subject}, status={status}")
                         else:
                             logger.warning(f"POST: Enrollment already exists: student_id={user.id}, tutor_id={new_tutor_id}, subject={new_tutor_subject}")
@@ -2747,6 +2765,7 @@ def admin_user_edit(user_id):
                         is_confirmed = request.form.get('new_student_confirmed') == 'on'
                         family_tie = FamilyTie(parent_id=user.id, student_id=new_student_id, access_level=access_level, is_confirmed=is_confirmed)
                         db.session.add(family_tie)
+                        relations_changed = True
                         logger.info(f"Added family tie: parent_id={user.id}, student_id={new_student_id}")
                     else:
                         logger.warning(f"Family tie already exists: parent_id={user.id}, student_id={new_student_id}")
@@ -2762,6 +2781,7 @@ def admin_user_edit(user_id):
                         status = request.form.get('new_enrollment_status', 'active')
                         enrollment = Enrollment(student_id=new_enrollment_student_id, tutor_id=user.id, subject=new_enrollment_subject, status=status)
                         db.session.add(enrollment)
+                        relations_changed = True
                         logger.info(f"Added enrollment: student_id={new_enrollment_student_id}, tutor_id={user.id}, subject={new_enrollment_subject}")
                     else:
                         logger.warning(f"Enrollment already exists: student_id={new_enrollment_student_id}, tutor_id={user.id}, subject={new_enrollment_subject}")
@@ -2771,6 +2791,10 @@ def admin_user_edit(user_id):
             try:
                 db.session.commit()
                 logger.info(f"Successfully committed changes for user {user.id} and related data")
+                if role != old_role:
+                    notify_role_changed(user, old_role, role, actor=current_user)
+                elif relations_changed:
+                    notify_relations_changed(user, actor=current_user)
             except Exception as commit_error:
                 db.session.rollback()
                 logger.error(f"Error committing changes for user {user.id}: {commit_error}", exc_info=True)
@@ -2881,6 +2905,8 @@ def admin_user_new():
             all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
             all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all()
             all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all()
+            environment = os.environ.get('ENVIRONMENT', 'local')
+            is_sandbox = _is_sandbox(environment)
             
             if not username:
                 flash('Имя пользователя обязательно.', 'error')
@@ -2908,6 +2934,17 @@ def admin_user_new():
                 return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
                                      all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
                                      family_ties=[], enrollments=[])
+
+            if current_user.role == 'chief_admin' and role in ('creator', 'chief_admin'):
+                flash('Старший администратор не может создавать создателей или других старших администраторов.', 'danger')
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+                                     all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
+                                     family_ties=[], enrollments=[])
+            if current_user.role == 'admin' and role in ('creator', 'chief_admin', 'admin'):
+                flash('Обычный администратор не может создавать или назначать администраторов.', 'danger')
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+                                     all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
+                                     family_ties=[], enrollments=[])
             
             user = User(
                 username=username,
@@ -2918,6 +2955,7 @@ def admin_user_new():
             )
             db.session.add(user)
             db.session.flush()
+            db.session.add(UserRole(user_id=user.id, role=role))
             
             profile_data = {
                 'first_name': request.form.get('first_name', '').strip() or None,

@@ -827,7 +827,7 @@ class User(db.Model):
         """Возвращает отображаемое название основной роли."""
         role_map = {
             'creator': 'Создатель',
-            'chief_admin': 'Главный администратор',
+            'chief_admin': 'Старший администратор',
             'admin': 'Администратор',
             'chief_tester': 'Главный тестировщик',
             'content_maker': 'Контент мейкер',
@@ -843,7 +843,7 @@ class User(db.Model):
         """Возвращает список отображаемых названий всех ролей пользователя."""
         role_map = {
             'creator': 'Создатель',
-            'chief_admin': 'Главный администратор',
+            'chief_admin': 'Старший администратор',
             'admin': 'Администратор',
             'chief_tester': 'Главный тестировщик',
             'content_maker': 'Контент мейкер',
@@ -855,13 +855,13 @@ class User(db.Model):
         }
         return [role_map.get(r, r) for r in self.roles()]
 
-    ROLE_STRENGTH_ORDER = ('creator', 'chief_admin', 'admin', 'chief_tester', 'content_maker', 'tutor', 'designer', 'tester', 'student', 'parent')
+    ROLE_STRENGTH_ORDER = ('creator', 'chief_admin', 'admin', 'tutor', 'parent', 'student', 'chief_tester', 'content_maker', 'designer', 'tester')
 
     def get_primary_role_display(self):
         """Возвращает отображаемое название «главной» роли (для бейджа у авы): creator > chief_admin > admin > ..."""
         role_map = {
             'creator': 'Создатель',
-            'chief_admin': 'Главный администратор',
+            'chief_admin': 'Старший администратор',
             'admin': 'Администратор',
             'chief_tester': 'Главный тестировщик',
             'content_maker': 'Контент мейкер',
@@ -2319,4 +2319,3 @@ class PlatformBugReport(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
     user = db.relationship('User', foreign_keys=[user_id])
-
