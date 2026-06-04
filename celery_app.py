@@ -6,6 +6,19 @@ import os
 
 from celery import Celery
 
+CELERY_TASK_MODULES = [
+    'app.tasks.code_check',
+    'app.tasks.notifications',
+    'app.tasks.submissions',
+    'app.tasks.telegram_dispatch',
+    'app.tasks.telegram_deadlines',
+    'app.tasks.telegram_lesson_reminders',
+    'app.tasks.telegram_daily_digest',
+    'app.tasks.telegram_subscription_expiry',
+    'app.tasks.telegram_broadcast',
+    'app.tasks.telegram_webhook',
+]
+
 
 def make_celery(app=None):
     """Create a Celery instance that uses the Flask app context."""
@@ -13,6 +26,7 @@ def make_celery(app=None):
         'boostudy',
         broker=None,
         backend=None,
+        include=CELERY_TASK_MODULES,
     )
 
     if app is None:
@@ -87,11 +101,6 @@ def make_celery(app=None):
                 return self.run(*args, **kwargs)
 
     celery.Task = ContextTask
-
-    # Import task modules so decorator-registered tasks are actually loaded
-    # when the worker process starts. Without this, the worker can connect to
-    # Redis but still show an empty task registry.
-    import app.tasks  # noqa: F401
 
     return celery
 
