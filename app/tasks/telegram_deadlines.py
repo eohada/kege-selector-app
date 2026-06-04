@@ -29,7 +29,10 @@ def telegram_deadline_reminders_task() -> dict:
                 Student.user_id.isnot(None),
             )
         )
-        for sub in q.yield_per(300):
+        # Materialize rows before entering the loop.
+        # Committing inside the loop closes the transaction, so a live server-side
+        # cursor would become invalid mid-iteration.
+        for sub in q.all():
             try:
                 assignment = sub.assignment
                 if not assignment or not assignment.deadline or not sub.student or not sub.student.user_id:
