@@ -682,8 +682,6 @@ def review_queue():
         ql = LessonTask.query.join(Lesson, Lesson.lesson_id == LessonTask.lesson_id).join(Student, Student.student_id == Lesson.student_id)
         if lesson_id:
             ql = ql.filter(Lesson.lesson_id == int(lesson_id))
-        if assignment_type:
-            ql = ql.filter((LessonTask.assignment_type == assignment_type) | (LessonTask.assignment_type.is_(None) if assignment_type == 'homework' else False))
         if student_query:
             ql = ql.filter(Student.name.ilike(f'%{student_query}%'))
         if accessible_student_ids is not None:
@@ -703,8 +701,6 @@ def review_queue():
         qs0 = Submission.query.join(Student, Student.student_id == Submission.student_id).join(Assignment, Assignment.assignment_id == Submission.assignment_id)
         if assignment_id:
             qs0 = qs0.filter(Assignment.assignment_id == int(assignment_id))
-        if assignment_type:
-            qs0 = qs0.filter(Assignment.assignment_type == assignment_type)
         if student_query:
             qs0 = qs0.filter(Student.name.ilike(f'%{student_query}%'))
         if not scope.get('can_see_all'):
@@ -732,6 +728,74 @@ def review_queue():
             k: int(status_counts_lessons.get(k, 0)) + int(status_counts_assignments.get(k, 0))
             for k in ['submitted', 'returned', 'graded', 'pending']
         }
+
+    # Tab counts (for active status)
+    tab_counts = {'all': 0, 'homework': 0, 'classwork': 0, 'exam': 0}
+    if source in {'all', 'lessons'}:
+        try:
+            ql_tab = LessonTask.query.join(Lesson, Lesson.lesson_id == LessonTask.lesson_id).join(Student, Student.student_id == Lesson.student_id)
+            ql_tab = ql_tab.filter(LessonTask.status == status)
+            if lesson_id:
+                ql_tab = ql_tab.filter(Lesson.lesson_id == int(lesson_id))
+            if student_query:
+                ql_tab = ql_tab.filter(Student.name.ilike(f'%{student_query}%'))
+            if accessible_student_ids is not None:
+                if not accessible_student_ids:
+                    ql_tab = ql_tab.filter(False)
+                else:
+                    ql_tab = ql_tab.filter(Lesson.student_id.in_(accessible_student_ids))
+            
+            rows_l = ql_tab.with_entities(LessonTask.assignment_type, db.func.count(LessonTask.lesson_task_id)).group_by(LessonTask.assignment_type).all()
+            for atype, cnt in rows_l:
+                cnt_val = int(cnt or 0)
+                at_key = (atype or '').strip().lower()
+                if not at_key or at_key == 'homework':
+                    tab_counts['homework'] += cnt_val
+                elif at_key == 'classwork':
+                    tab_counts['classwork'] += cnt_val
+                elif at_key == 'exam':
+                    tab_counts['exam'] += cnt_val
+                tab_counts['all'] += cnt_val
+        except Exception as e:
+            logger.error(f"Error querying LessonTask tab counts: {e}")
+
+    if source in {'all', 'assignments'}:
+        try:
+            qs_tab = Submission.query.join(Student, Student.student_id == Submission.student_id).join(Assignment, Assignment.assignment_id == Submission.assignment_id)
+            status_map = {
+                'submitted': ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'],
+                'returned': ['RETURNED'],
+                'graded': ['GRADED'],
+                'pending': ['ASSIGNED', 'IN_PROGRESS'],
+            }
+            statuses = status_map.get(status, ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'])
+            qs_tab = qs_tab.filter(Submission.status.in_(statuses))
+            if assignment_id:
+                qs_tab = qs_tab.filter(Assignment.assignment_id == int(assignment_id))
+            if student_query:
+                qs_tab = qs_tab.filter(or_(
+                    Student.name.ilike(f'%{student_query}%'),
+                    Assignment.title.ilike(f'%{student_query}%'),
+                ))
+            if not scope.get('can_see_all'):
+                qs_tab = qs_tab.filter(Assignment.created_by_id == current_user.id)
+                if accessible_student_ids is not None:
+                    if not accessible_student_ids:
+                        qs_tab = qs_tab.filter(False)
+                    else:
+                        qs_tab = qs_tab.filter(Submission.student_id.in_(accessible_student_ids))
+            
+            rows_a = qs_tab.with_entities(Assignment.assignment_type, db.func.count(Submission.submission_id)).group_by(Assignment.assignment_type).all()
+            for atype, cnt in rows_a:
+                cnt_val = int(cnt or 0)
+                at_key = (atype or '').strip().lower()
+                if at_key in ['homework', 'classwork', 'exam']:
+                    tab_counts[at_key] += cnt_val
+                else:
+                    tab_counts['homework'] += cnt_val
+                tab_counts['all'] += cnt_val
+        except Exception as e:
+            logger.error(f"Error querying Submission tab counts: {e}")
 
     lesson_cards = []
     if source in {'all', 'lessons'}:
@@ -865,6 +929,7 @@ def review_queue():
         assignment_type=assignment_type,
         student_query=student_query,
         status_counts=status_counts,
+        tab_counts=tab_counts,
         lesson_id=lesson_id,
         assignment_id=assignment_id,
     )

@@ -2,131 +2,158 @@
 {% block title %}Группа · {{ group.title }}{% endblock %}
 
 {% set active_page = 'groups' %}
+{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
 {% block content %}
-<section class="glass-panel" style="margin-bottom: 1.25rem;">
-    <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
-        <div>
-            <p class="hero-eyebrow">группа</p>
-            <h1 class="hero-title" style="margin-bottom: .25rem;">{{ group.title }}</h1>
-            <div style="color: var(--text-muted);">
-                Статус: <strong>{{ group.status }}</strong>
-                {% if group.subject %} · Предмет: <strong>{{ group.subject }}</strong>{% endif %}
+<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6 pb-6">
+    <section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-[32px] p-8 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
+        <div class="absolute -right-20 -top-20 w-80 h-80 bg-boo-primary/10 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative z-10 max-w-3xl">
+            <div class="text-[10px] font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <i class="ph-fill ph-users-four text-sm"></i> группа
+            </div>
+            <h1 class="text-3xl md:text-4xl font-black text-primary dark:text-white tracking-tight mb-2">{{ group.title }}</h1>
+            <div class="text-xs font-bold text-muted dark:text-dark-muted flex items-center gap-3">
+                <span>Статус: <strong class="text-secondary dark:text-zinc-200">{{ group.status }}</strong></span>
+                {% if group.subject %}
+                <span>• Предмет: <strong class="text-secondary dark:text-zinc-200">{{ group.subject }}</strong></span>
+                {% endif %}
             </div>
             {% if group.description %}
-            <div style="color: var(--text-muted); margin-top: .6rem; white-space: pre-line;">{{ group.description }}</div>
+            <p class="text-sm text-muted dark:text-dark-muted font-medium mt-3 leading-relaxed max-w-3xl">{{ group.description }}</p>
             {% endif %}
         </div>
-        <div class="hero-actions">
-            <a href="{{ url_for('groups.groups_list') }}" class="neo-button ghost">← Все группы</a>
-            <a href="{{ url_for('groups.group_export_csv', group_id=group.group_id) }}" class="neo-button outline">Экспорт CSV</a>
-            <a href="{{ url_for('groups.group_export_pdf', group_id=group.group_id) }}" class="neo-button outline">Экспорт PDF</a>
+        <div class="relative z-10 flex flex-wrap items-center gap-3 shrink-0">
+            <a href="{{ url_for('groups.groups_list') }}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
+                <i class="ph-bold ph-arrow-left"></i> Все группы
+            </a>
+            <a href="{{ url_for('groups.group_export_csv', group_id=group.group_id) }}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
+                <i class="ph-bold ph-file-csv"></i> CSV
+            </a>
+            <a href="{{ url_for('groups.group_export_pdf', group_id=group.group_id) }}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
+                <i class="ph-bold ph-file-pdf"></i> PDF
+            </a>
             {% if can_manage %}
-            <a href="{{ url_for('groups.group_edit', group_id=group.group_id) }}" class="neo-button outline">Редактировать</a>
+            <a href="{{ url_for('groups.group_edit', group_id=group.group_id) }}" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
+                <i class="ph-bold ph-pencil-simple"></i> Редактировать
+            </a>
+            {% endif %}
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-zinc-800/80 border-b-[4px] border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-6 lg:p-8">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <p class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-0.5">состав</p>
+                    <h2 class="text-2xl font-black text-primary dark:text-white tracking-tight">Участники ({{ members|length }})</h2>
+                </div>
+            </div>
+
+            {% if members and members|length > 0 %}
+            <div class="grid gap-3">
+                {% for m in members %}
+                <div class="bg-surface-alt dark:bg-white/[0.02] border border-slate-250/50 dark:border-zinc-800/60 rounded-2xl p-4 flex justify-between items-center gap-4 hover:shadow-sm transition-all">
+                    <div>
+                        <div class="font-black text-secondary dark:text-zinc-200">{{ m.student.name if m.student else ('Student #' ~ m.student_id) }}</div>
+                        <div class="text-[11px] font-bold text-muted dark:text-dark-muted mt-0.5">ID ученика: {{ m.student_id }}</div>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        {% if m.student %}
+                        <a class="h-9 px-3.5 py-1.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-extrabold text-xs transition-all duration-150 active:scale-[0.98] no-underline flex items-center justify-center gap-1.5" href="{{ url_for('students.student_profile', student_id=m.student.student_id) }}">
+                            <i class="ph-bold ph-user-focus"></i> Профиль
+                        </a>
+                        {% endif %}
+                        {% if can_manage %}
+                        <form method="POST" action="{{ url_for('groups.group_member_remove', group_id=group.group_id, member_id=m.id) }}" data-no-ajax="1" class="inline">
+                            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                            <button type="submit" class="h-9 w-9 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 text-red-650 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl font-extrabold transition-all duration-150 active:scale-[0.98] cursor-pointer flex items-center justify-center shrink-0" onclick="return confirm('Удалить ученика из группы?')">
+                                <i class="ph-bold ph-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="py-12 text-center flex flex-col items-center justify-center bg-slate-50/50 dark:bg-white/[0.01] rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.06]">
+                <div class="text-4xl text-muted dark:text-dark-muted mb-3"><i class="ph-bold ph-users-three"></i></div>
+                <h3 class="text-base font-bold text-secondary dark:text-white mb-1">Пока пусто</h3>
+                <p class="text-sm text-muted dark:text-dark-muted">В этой группе пока нет учеников</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="flex flex-col gap-6">
+            {% if can_manage %}
+            <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-zinc-800/80 border-b-[4px] border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-6 lg:p-8">
+                <div class="mb-5">
+                    <p class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-0.5">управление</p>
+                    <h2 class="text-xl font-black text-primary dark:text-white tracking-tight">Добавить ученика</h2>
+                </div>
+
+                <form method="POST" action="{{ url_for('groups.group_member_add', group_id=group.group_id) }}" data-no-ajax="1" class="space-y-4">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Ученик</label>
+                        <select name="student_id" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl px-4 py-3 font-semibold text-sm focus:outline-none focus:border-boo-primary cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat" required>
+                            <option value="">— выбрать ученика —</option>
+                            {% for s in available_students %}
+                            <option value="{{ s.student_id }}">{{ s.name }} ({{ s.student_id }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full h-11 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+                        <i class="ph-bold ph-user-plus text-base"></i> Добавить в группу
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-zinc-800/80 border-b-[4px] border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-6 lg:p-8">
+                <div class="mb-5">
+                    <p class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-0.5">массовое действие</p>
+                    <h2 class="text-xl font-black text-primary dark:text-white tracking-tight">Массовое ДЗ</h2>
+                </div>
+
+                <form method="POST" action="{{ url_for('groups.group_mass_assignment', group_id=group.group_id) }}" data-no-ajax="1" class="space-y-4">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Источник задач (урок)</label>
+                        <select name="lesson_id" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl px-4 py-3 font-semibold text-sm focus:outline-none focus:border-boo-primary cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat" required>
+                            <option value="">— выбрать урок —</option>
+                            {% for l in available_lessons %}
+                            <option value="{{ l.lesson_id }}">#{{ l.lesson_id }} · {{ l.topic or 'Урок' }} · {{ l.lesson_date.strftime('%d.%m.%Y %H:%M') if l.lesson_date else '—' }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Название работы</label>
+                        <input type="text" name="title" placeholder="Например: Массовое ДЗ для группы" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input" required>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Тип выдачи</label>
+                        <select name="assignment_type" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl px-4 py-3 font-semibold text-sm focus:outline-none focus:border-boo-primary cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat">
+                            <option value="homework" selected>Домашнее задание</option>
+                            <option value="classwork">Классная работа</option>
+                            <option value="exam">Проверочная работа</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Срок выполнения (дедлайн)</label>
+                        <input type="datetime-local" name="deadline" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input" required>
+                    </div>
+                    <button type="submit" class="w-full h-11 bg-orange-50 dark:bg-amber-950/30 border border-orange-200 dark:border-orange-950/50 text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-amber-900/40 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+                        <i class="ph-bold ph-paper-plane-right text-base"></i> Выдать работу группе
+                    </button>
+                </form>
+            </div>
+            {% else %}
+            <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-zinc-800/80 border-b-[4px] border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-6 text-center">
+                <div class="text-muted dark:text-dark-muted">У вас нет прав на управление этой группой.</div>
+            </div>
             {% endif %}
         </div>
     </div>
-</section>
-
-<div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.25rem;" class="profile-grid-responsive">
-    <section class="glass-panel">
-        <div class="panel-head">
-            <div>
-                <p class="eyebrow">состав</p>
-                <h2>Участники ({{ members|length }})</h2>
-            </div>
-        </div>
-
-        {% if members and members|length > 0 %}
-        <div style="display:grid; gap: .75rem; margin-top: 1rem;">
-            {% for m in members %}
-            <div class="glass-panel" style="padding:.9rem 1rem; display:flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap;">
-                <div style="min-width: 0;">
-                    <div style="font-weight: 800;">{{ m.student.name if m.student else ('Student #' ~ m.student_id) }}</div>
-                    <div style="color: var(--text-muted); font-size: .9rem;">ID: {{ m.student_id }}</div>
-                </div>
-                <div style="display:flex; gap: .5rem; align-items: center; flex-wrap: wrap;">
-                    {% if m.student %}
-                    <a class="neo-button ghost sm" href="{{ url_for('students.student_profile', student_id=m.student.student_id) }}">Профиль</a>
-                    {% endif %}
-                    {% if can_manage %}
-                    <form method="POST" action="{{ url_for('groups.group_member_remove', group_id=group.group_id, member_id=m.id) }}" data-no-ajax="1" style="display:inline;">
-                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                        <button type="submit" class="neo-button danger sm" onclick="return confirm('Удалить ученика из группы?')">Удалить</button>
-                    </form>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state" style="padding: 2.5rem 1rem;">
-            <p>В группе пока нет учеников.</p>
-        </div>
-        {% endif %}
-    </section>
-
-    <aside class="glass-panel">
-        <div class="panel-head">
-            <div>
-                <p class="eyebrow">управление</p>
-                <h2>Добавить ученика</h2>
-            </div>
-        </div>
-
-        {% if can_manage %}
-        <form method="POST" action="{{ url_for('groups.group_member_add', group_id=group.group_id) }}" data-no-ajax="1" style="margin-top: 1rem;">
-            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-            <div class="neo-field">
-                <label class="neo-label">Ученик</label>
-                <select class="neo-select" name="student_id">
-                    <option value="">—</option>
-                    {% for s in available_students %}
-                    <option value="{{ s.student_id }}">{{ s.name }} ({{ s.student_id }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div style="margin-top: 1rem;">
-                <button type="submit" class="neo-button accent" style="width: 100%;">Добавить</button>
-            </div>
-        </form>
-
-        <form method="POST" action="{{ url_for('groups.group_mass_assignment', group_id=group.group_id) }}" data-no-ajax="1" style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
-            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-            <div class="neo-field">
-                <label class="neo-label">Массовое ДЗ · источник задач (урок)</label>
-                <select class="neo-select" name="lesson_id" required>
-                    <option value="">— выбрать урок —</option>
-                    {% for l in available_lessons %}
-                    <option value="{{ l.lesson_id }}">#{{ l.lesson_id }} · {{ l.topic or 'Урок' }} · {{ l.lesson_date.strftime('%d.%m.%Y %H:%M') if l.lesson_date else '—' }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="neo-field">
-                <label class="neo-label">Название работы</label>
-                <input class="neo-input" name="title" required placeholder="Например: Массовое ДЗ для группы">
-            </div>
-            <div class="neo-field">
-                <label class="neo-label">Тип</label>
-                <select class="neo-select" name="assignment_type">
-                    <option value="homework" selected>Домашняя</option>
-                    <option value="classwork">Классная</option>
-                    <option value="exam">Проверочная</option>
-                </select>
-            </div>
-            <div class="neo-field">
-                <label class="neo-label">Дедлайн</label>
-                <input class="neo-input" type="datetime-local" name="deadline" required>
-            </div>
-            <div style="margin-top: .75rem;">
-                <button type="submit" class="neo-button outline" style="width: 100%;">Массовая выдача ДЗ</button>
-            </div>
-        </form>
-        {% else %}
-        <div style="padding: 1rem; border-radius: var(--radius-lg); background: var(--surface-2); margin-top: 1rem;">
-            <div style="color: var(--text-muted);">Нет прав на управление группой.</div>
-        </div>
-        {% endif %}
-    </aside>
 </div>
 {% endblock %}

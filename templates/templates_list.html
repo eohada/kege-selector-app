@@ -5,40 +5,40 @@
 
 {% block content %}
 {% set can_manage_templates = (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage'))) %}
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 pb-4">
-<section class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
-    <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
+<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6 pb-6">
+<section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-[32px] p-8 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
+    <div class="absolute -right-20 -top-20 w-80 h-80 bg-boo-primary/10 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
     <div class="relative z-10 max-w-3xl">
-        <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-            <i class="ph-fill ph-books"></i> Библиотека шаблонов
+        <div class="text-[10px] font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+            <i class="ph-fill ph-books text-sm"></i> Библиотека шаблонов
         </div>
-        <h1 class="text-3xl md:text-4xl font-black text-primary tracking-tight mb-2">Шаблоны заданий</h1>
-        <p class="text-muted font-medium text-sm leading-relaxed">Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ.</p>
+        <h1 class="text-3xl md:text-4xl font-black text-primary dark:text-white tracking-tight mb-2">Шаблоны заданий</h1>
+        <p class="text-muted dark:text-dark-muted font-medium text-sm leading-relaxed">Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ.</p>
     </div>
     {% if can_manage_templates %}
-    <div class="relative z-10 flex flex-col sm:flex-row gap-3 shrink-0">
-        <a href="{{ url_for('templates.template_new') }}" class="px-6 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
-            <i class="ph-bold ph-plus text-lg"></i> Создать шаблон
+    <div class="relative z-10 flex items-center gap-3 shrink-0">
+        <a href="{{ url_for('templates.template_new') }}" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] no-underline">
+            <i class="ph-bold ph-plus text-base"></i> Создать шаблон
         </a>
-        <a href="{{ url_for('templates.template_new', mode='manual') }}" class="px-6 py-3.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex justify-center items-center gap-2 text-sm no-underline">
-            <i class="ph-bold ph-pencil-simple text-lg"></i> Вручную
+        <a href="{{ url_for('templates.template_new', mode='manual') }}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
+            <i class="ph-bold ph-pencil-simple text-base"></i> Вручную
         </a>
     </div>
     {% endif %}
 </section>
 
-<section class="bg-surface rounded-[24px] p-5 border border-slate-200 shadow-tactile">
+<section class="bg-surface dark:bg-dark-card rounded-[24px] p-5 border border-slate-200 dark:border-zinc-800/80 border-b-[4px] border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile">
     <div class="flex gap-4 flex-wrap items-end">
         <div class="min-w-[260px] flex-1">
-            <label class="block mb-2 text-[10px] font-extrabold text-muted uppercase tracking-widest">Поиск</label>
+            <label class="block mb-2 text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Поиск</label>
             <div class="relative">
-                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted text-lg"></i>
-                <input id="searchFilter" type="text" value="{{ current_q or '' }}" placeholder="Название шаблона..." class="w-full bg-surface-alt border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 font-medium text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" onkeydown="if(event.key==='Enter'){applyFilters();}">
+                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted dark:text-dark-muted text-base"></i>
+                <input id="searchFilter" type="text" value="{{ current_q or '' }}" placeholder="Название шаблона..." class="w-full h-11 bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input" onkeydown="if(event.key==='Enter'){applyFilters();}">
             </div>
         </div>
         <div>
-            <label class="block mb-2 text-[10px] font-extrabold text-muted uppercase tracking-widest">Тип шаблона</label>
-            <select id="typeFilter" class="w-full min-w-[200px] bg-surface-alt border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100" onchange="applyFilters()">
+            <label class="block mb-2 text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Тип шаблона</label>
+            <select id="typeFilter" class="no-tomselect w-full min-w-[200px] h-11 pl-4 pr-10 bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat cursor-pointer" onchange="applyFilters()">
                 <option value="">Все типы</option>
                 <option value="homework" {% if current_type == 'homework' %}selected{% endif %}>Домашние задания</option>
                 <option value="classwork" {% if current_type == 'classwork' %}selected{% endif %}>Классные работы</option>
@@ -47,8 +47,8 @@
             </select>
         </div>
         <div>
-            <label class="block mb-2 text-[10px] font-extrabold text-muted uppercase tracking-widest">Категория</label>
-            <select id="categoryFilter" class="w-full min-w-[200px] bg-surface-alt border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100" onchange="applyFilters()">
+            <label class="block mb-2 text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Категория</label>
+            <select id="categoryFilter" class="no-tomselect w-full min-w-[200px] h-11 pl-4 pr-10 bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat cursor-pointer" onchange="applyFilters()">
                 <option value="">Все категории</option>
                 <option value="ЕГЭ" {% if current_category == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
                 <option value="ОГЭ" {% if current_category == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
@@ -56,7 +56,7 @@
                 <option value="ПРОГРАММИРОВАНИЕ" {% if current_category == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
             </select>
         </div>
-        <button type="button" onclick="applyFilters()" class="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-2"><i class="ph-bold ph-funnel"></i>Применить</button>
+        <button type="button" onclick="applyFilters()" class="h-11 px-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 border border-slate-900 dark:border-white rounded-xl font-bold text-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-all flex items-center gap-2 cursor-pointer shadow-sm"><i class="ph-bold ph-funnel"></i>Применить</button>
     </div>
 </section>
 
@@ -68,63 +68,81 @@
 ] %}
 {% set type_templates = templates_by_type.get(type_key, []) %}
 {% if not current_type or current_type == type_key %}
-<section class="bg-surface rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile mb-8 p-6 lg:p-8">
-    <div class="panel-head">
+<section class="bg-surface dark:bg-dark-card rounded-[28px] border border-slate-200 dark:border-zinc-800/80 border-b-[4px] border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile mb-8 p-6 lg:p-8">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 dark:border-zinc-800/60 pb-4 mb-6">
         <div>
-            <p class="eyebrow">
+            <p class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-1.5">
                 {{ ui_icon(type_icon, 'sm', decorative=true) }}
                 {{ type_name }}
             </p>
-            <h2>{{ type_templates|length }} шаблонов</h2>
+            <h2 class="text-2xl font-black text-primary dark:text-white tracking-tight mt-1">{{ type_templates|length }} шаблонов</h2>
         </div>
         <div class="flex gap-2.5 items-center">
             {% if can_manage_templates %}
             <a href="{{ url_for('templates.template_new') }}?template_type={{ type_key }}{% if current_category %}&category={{ current_category }}{% endif %}"
-               class="neo-button outline no-underline px-3 py-2 min-w-0"
-               title="Создать шаблон в разделе «{{ type_name }}»">{{ ui_icon('action.plus', 'sm', decorative=true, extra_class='ui-icon--only') }}</a>
+               class="h-9 px-3.5 py-1.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-xs transition-all duration-150 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 no-underline"
+               title="Создать шаблон в разделе «{{ type_name }}»">
+               <i class="ph-bold ph-plus text-sm"></i> Добавить
+            </a>
             {% endif %}
         </div>
     </div>
 
     {% if type_templates %}
-    <div class="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6 mt-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for template in type_templates %}
-        <div class="template-card">
-            <div class="flex justify-between items-start mb-4">
-                <div class="flex-1">
-                    <h3>{{ template.name }}</h3>
-                    {% if template.description %}
-                    <p>{{ template.description[:100] }}{% if template.description|length > 100 %}...{% endif %}</p>
-                    {% endif %}
-                </div>
+        <div class="bg-surface-alt dark:bg-white/[0.02] border border-slate-200/80 dark:border-zinc-800/60 rounded-[22px] p-5 flex flex-col justify-between hover:shadow-md dark:hover:shadow-glass-dark-hover hover:translate-y-[-2px] transition-all duration-300">
+            <div class="mb-4">
+                <h3 class="text-lg font-black text-secondary dark:text-white tracking-tight leading-snug mb-2">{{ template.name }}</h3>
+                {% if template.description %}
+                <p class="text-sm text-muted dark:text-dark-muted font-medium line-clamp-2 leading-relaxed">{{ template.description }}</p>
+                {% endif %}
             </div>
             
-            <div class="template-badges">
+            <div class="flex flex-wrap gap-2 mb-5">
                 {% if template.category %}
-                <span class="template-badge template-badge--category">{{ template.category }}</span>
+                {% set badge_color = 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300' %}
+                {% if template.category == 'ЕГЭ' %}
+                    {% set badge_color = 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300' %}
+                {% elif template.category == 'ОГЭ' %}
+                    {% set badge_color = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300' %}
+                {% elif template.category == 'ЛЕВЕЛАП' %}
+                    {% set badge_color = 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300' %}
+                {% elif template.category == 'ПРОГРАММИРОВАНИЕ' %}
+                    {% set badge_color = 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300' %}
                 {% endif %}
-                <span class="template-badge template-badge--count">{{ template.template_tasks|length }} заданий</span>
+                <span class="text-xs font-bold px-2.5 py-1 rounded-lg {{ badge_color }}">{{ template.category }}</span>
+                {% endif %}
+                <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.06] text-secondary dark:text-slate-300">{{ template.template_tasks|length }} заданий</span>
             </div>
 
-            <div class="template-actions">
-                <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost no-underline">{{ ui_icon('action.eye', 'sm', decorative=true) }}Просмотр</a>
-                <form method="POST" action="{{ url_for('templates.template_create_assignment', template_id=template.template_id) }}" class="inline">
+            <div class="flex items-center gap-2 mt-auto pt-3 border-t border-slate-100/50 dark:border-zinc-800/40 flex-wrap sm:flex-nowrap">
+                <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="flex-1 min-w-[75px] h-10 px-3 py-2 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-xs transition-all duration-150 active:scale-[0.98] no-underline flex items-center justify-center gap-1.5">
+                    <i class="ph-bold ph-eye text-sm"></i>Просмотр
+                </a>
+                <form method="POST" action="{{ url_for('templates.template_create_assignment', template_id=template.template_id) }}" class="inline flex-1">
                     {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <button type="submit" class="neo-button accent">{{ ui_icon('action.plus', 'sm', decorative=true) }}Сформировать ДЗ</button>
+                    <button type="submit" class="w-full h-10 px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-xs transition-all duration-150 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1 shadow-sm">
+                        <i class="ph-bold ph-plus-circle text-sm"></i>Создать ДЗ
+                    </button>
                 </form>
                 {% if can_manage_templates %}
-                <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost no-underline">{{ ui_icon('action.edit', 'sm', decorative=true) }}Изменить</a>
-                <button type="button" class="neo-button ghost danger flex-none px-3 py-3" onclick="confirmDeleteTemplate({{ template.template_id }})">{{ ui_icon('action.trash', 'sm', decorative=true, extra_class='ui-icon--only') }}</button>
+                <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="h-10 w-10 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold transition-all duration-150 active:scale-[0.98] no-underline flex items-center justify-center shrink-0" title="Редактировать">
+                    <i class="ph-bold ph-pencil-simple text-base"></i>
+                </a>
+                <button type="button" class="h-10 w-10 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 text-red-650 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700/50 rounded-xl font-extrabold transition-all duration-150 active:scale-[0.98] cursor-pointer flex items-center justify-center shrink-0" onclick="confirmDeleteTemplate({{ template.template_id }})" title="Удалить">
+                    <i class="ph-bold ph-trash text-base"></i>
+                </button>
                 {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div class="empty-state p-12 text-center">
-        <div class="text-6xl mb-4 opacity-50">{{ ui_icon('nav.templates', 'lg', decorative=true) }}</div>
-        <h3>Нет шаблонов</h3>
-        <p class="text-text-muted">Создайте первый шаблон для этого типа</p>
+    <div class="py-12 text-center flex flex-col items-center justify-center bg-slate-50/50 dark:bg-white/[0.01] rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.06]">
+        <div class="text-4xl text-muted dark:text-dark-muted mb-3"><i class="ph-bold ph-folder-open"></i></div>
+        <h3 class="text-base font-bold text-secondary dark:text-white mb-1">Нет шаблонов</h3>
+        <p class="text-sm text-muted dark:text-dark-muted">Создайте первый шаблон для этого раздела</p>
     </div>
     {% endif %}
 </section>

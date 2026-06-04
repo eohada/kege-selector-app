@@ -2086,6 +2086,19 @@ def lesson_new(student_id):
     if enrollment and not form.is_submitted():
         form.exam_course_id.data = enrollment.course_id
 
+    if not form.is_submitted():
+        user_tz = 'moscow'
+        if current_user.profile and current_user.profile.timezone:
+            if 'tomsk' in current_user.profile.timezone.lower() or 'Asia/Tomsk' in current_user.profile.timezone:
+                user_tz = 'tomsk'
+        form.timezone.data = user_tz
+        
+        from datetime import datetime
+        if user_tz == 'tomsk':
+            form.lesson_date.data = datetime.now(TOMSK_TZ).replace(tzinfo=None)
+        else:
+            form.lesson_date.data = datetime.now(MOSCOW_TZ).replace(tzinfo=None)
+
     if course_module_id:
         try:
             from app.models import TrajectoryModule, LearningTrajectory

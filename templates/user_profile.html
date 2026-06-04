@@ -1,673 +1,388 @@
 {% extends 'base.html' %}
 {% block title %}Профиль · BooStudy{% endblock %}
+{% set active_page = None %}
 
 {% block html_attrs %}
 {% if current_user and (current_user.is_student() or current_user.is_parent()) %}data-student-room="1"{% endif %}
 {% endblock %}
 
-{% set use_custom_theme = current_user and (current_user.id == custom_theme_user_id or (current_user.numeric_id is not none and (current_user.numeric_id|string) == (custom_theme_user_id|string))) %}
+{% block body_class %}
+layout-teacher bg-boo-bg text-boo-textMain
+{% endblock %}
 
 {% block head_css %}
 <style>
-    @keyframes profile-creator-blob {
-        0% { transform: translate(0, 0) scale(1); }
-        33% { transform: translate(24px, -36px) scale(1.08); }
-        66% { transform: translate(-16px, 16px) scale(0.94); }
-        100% { transform: translate(0, 0) scale(1); }
-    }
-    @keyframes profile-creator-float-dust {
-        0% { transform: translateY(0) translateX(0) scale(0.5); opacity: 0; }
-        12% { opacity: 1; }
-        88% { opacity: 1; }
-        100% { transform: translateY(-105vh) translateX(24px) scale(1.1); opacity: 0; }
-    }
-    .profile-creator-auras { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-    .profile-creator-auras .aura {
-        position: absolute; border-radius: 50%; filter: blur(100px);
-        animation: profile-creator-blob 18s ease-in-out infinite alternate;
-    }
-    .profile-creator-auras .aura--1 { top: -8%; left: -8%; width: 420px; height: 420px; background: rgba(196, 181, 253, 0.45); }
-    .profile-creator-auras .aura--2 { bottom: -10%; right: -10%; width: 380px; height: 380px; background: rgba(103, 232, 249, 0.28); animation-delay: -5s; }
-    .profile-creator-dust { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-    .profile-creator-dust span {
-        position: absolute; bottom: -40px; border-radius: 50%;
-        background: #fff;
-        box-shadow: 0 0 10px 2px rgba(123, 92, 255, 0.45), 0 0 18px 4px rgba(6, 182, 212, 0.28);
-        animation: profile-creator-float-dust linear infinite;
-    }
-    .profile-creator-dust .p1 { left: 12%; width: 4px; height: 4px; animation-duration: 14s; }
-    .profile-creator-dust .p2 { left: 28%; width: 6px; height: 6px; animation-duration: 19s; animation-delay: -4s; }
-    .profile-creator-dust .p3 { left: 44%; width: 3px; height: 3px; animation-duration: 16s; animation-delay: -2s; }
-    .profile-creator-dust .p4 { left: 62%; width: 5px; height: 5px; animation-duration: 21s; animation-delay: -7s; }
-    .profile-creator-dust .p5 { left: 78%; width: 5px; height: 5px; animation-duration: 15s; animation-delay: -3s; }
-    .profile-creator-dust .p6 { left: 91%; width: 4px; height: 4px; animation-duration: 18s; animation-delay: -9s; }
-    .profile-container.theme-creator { position: relative; z-index: 1; }
-    .profile-container.theme-creator .profile-card--creator-no-dup-header .profile-cover,
-    .profile-container.theme-creator .profile-card--creator-no-dup-header .profile-header {
-        display: none;
-    }
-    .profile-container.theme-creator .profile-card--creator-no-dup-header .profile-card-body {
-        padding-top: 1.5rem !important;
-    }
-    .profile-container.theme-student .profile-card--tactile-student-hero .profile-cover,
-    .profile-container.theme-student .profile-card--tactile-student-hero .profile-header {
-        display: none;
-    }
-    .profile-container.theme-student .profile-card--tactile-student-hero .profile-card-body {
-        padding-top: 1.5rem !important;
-    }
-    .profile-content-grid {
-        grid-template-columns: minmax(420px, 1.05fr) minmax(380px, 0.95fr);
-        gap: 1.25rem; align-items: start; min-width: 0;
-    }
-    @media (max-width: 1040px) { .profile-content-grid { grid-template-columns: 1fr; } }
-    .profile-actions-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
-    @media (max-width: 520px) { .profile-actions-grid { grid-template-columns: 1fr; } }
-    .profile-actions-grid .neo-button {
-        width: 100%; justify-content: center; white-space: normal;
-        text-align: center; line-height: 1.15; padding: 0.85rem 1.05rem;
-    }
-    .profile-mini-card { padding: 1rem; border-radius: var(--radius-lg); background: rgba(255,255,255,0.02); }
-    .profile-mini-title { font-weight: 900; margin-bottom: .35rem; }
-    .lessons-remaining--danger { color: var(--danger); }
-    .lessons-remaining--warning { color: var(--warning); }
-    .lessons-remaining--accent { color: var(--accent-1); }
     @media (max-width: 768px) {
-        .profile-creator-auras,
-        .profile-creator-dust { display: none; }
-        .profile-card-body { padding: 0 1rem 1rem !important; }
-        .profile-header { gap: 1rem; }
-        .profile-identity { gap: 1rem; align-items: center; }
+        .px-8, .sm\:px-12, .p-8 { padding-left: 1rem !important; padding-right: 1rem !important; }
     }
 </style>
 {% endblock %}
 
-{% block body_class %}
-{% if use_custom_theme %}custom-theme-active {% endif %}
-{% if current_user %}
-{% if current_user.is_student() %}layout-student {% elif not current_user.is_parent() %}layout-teacher {% endif %}
-{% endif %}
-{% endblock %}
-
-{% set active_page = None %}
-
-{% block body %}
-{% if current_user and current_user.is_creator() %}
-<div class="profile-creator-auras" aria-hidden="true">
-    <div class="aura aura--1"></div>
-    <div class="aura aura--2"></div>
-</div>
-<div class="profile-creator-dust" aria-hidden="true">
-    <span class="p1"></span><span class="p2"></span><span class="p3"></span>
-    <span class="p4"></span><span class="p5"></span><span class="p6"></span>
-</div>
-{% elif use_custom_theme %}
-<div class="custom-theme-stars" aria-hidden="true">
-    {% for i in range(36) %}<span class="star">★</span>{% endfor %}
-</div>
-{% endif %}
-{{ super() }}
-{% endblock %}
-
 {% block content %}
-<div class="profile-container
-    {% if current_user and current_user.is_creator() %}theme-creator
-    {% elif use_custom_theme %}theme-custom-999
-    {% elif current_user and current_user.is_admin() %}theme-admin
-    {% elif current_user and current_user.is_tutor() %}theme-tutor
-    {% elif current_user and current_user.is_content_maker() %}theme-tutor
-    {% elif current_user and current_user.is_parent() %}theme-parent
-    {% elif current_user and current_user.is_student() %}theme-student
-    {% endif %}
-">
-    {% if current_user %}
-        {% if current_user.is_student() %}
-        <div class="w-full max-w-[1400px] mx-auto mb-6">
-            <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:items-center lg:justify-between">
-                <div class="flex items-center gap-4 min-w-0">
-                    <div class="w-16 h-16 rounded-2xl bg-purple-50 text-boo-primary flex items-center justify-center border border-purple-100 shadow-sm dark:shadow-none dark:shadow-none shrink-0 overflow-hidden font-black text-2xl">
-                        {% if current_user.avatar_url %}
-                        <img src="{{ current_user.avatar_url }}" alt="" class="w-full h-full object-cover">
-                        {% else %}
-                        {{ (current_user.username or '?')[0]|upper }}
-                        {% endif %}
-                    </div>
-                    <div class="min-w-0">
-                        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Мой профиль</div>
-                        <h1 class="text-2xl lg:text-3xl font-black text-primary tracking-tight m-0 mt-1 truncate">{{ current_user.username }}</h1>
-                        <div class="flex flex-wrap items-center gap-2 mt-2">
-                            {% if linked_student and linked_student.platform_id %}
-                            <span class="text-xs font-bold text-muted">ID: {{ linked_student.platform_id }}</span>
-                            {% endif %}
-                            <span class="px-2.5 py-1 rounded-lg bg-surface-alt text-muted border border-slate-200 text-[10px] font-extrabold uppercase tracking-wider">Уроков: {{ lesson_counts.total if lesson_counts else 0 }}</span>
-                            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold uppercase tracking-wider">Завершено: {{ lesson_counts.completed if lesson_counts else 0 }}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex flex-wrap gap-2 shrink-0">
-                    {% if linked_student %}
-                    <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline inline-flex items-center gap-2">
-                        <i class="ph-bold ph-door-open text-lg"></i> Комната
-                    </a>
-                    <a href="{{ url_for('assignments.submissions_list') }}" class="px-4 py-2.5 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt text-sm no-underline inline-flex items-center gap-2">
-                        <i class="ph-bold ph-tray text-lg text-boo-primary"></i> Задания
-                    </a>
-                    {% endif %}
-                    <button type="button" class="px-4 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 text-sm inline-flex items-center gap-2" onclick="openEditProfileModal()">
-                        <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
-                    </button>
-                </div>
-            </section>
-        </div>
-        {% endif %}
-        {% if current_user.is_creator() %}
-        <section class="bg-white/95 backdrop-blur-xl rounded-[32px] border border-purple-200/60 border-b-[4px] border-b-purple-300 mb-6 overflow-hidden shadow-[0_10px_50px_-10px_rgba(123,92,255,0.28)]">
-            {% set creator_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
-            <div class="w-full h-52 sm:h-64 bg-slate-900 relative overflow-hidden group">
-                <div class="absolute inset-0 bg-gradient-to-br from-violet-600/40 via-cyan-500/15 to-slate-900 z-[5] pointer-events-none"></div>
-                {% if creator_cover %}
-                <img src="{{ creator_cover }}" alt="" class="w-full h-full object-cover opacity-95 group-hover:scale-[1.03] transition-transform duration-700 absolute inset-0 z-10">
-                <div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/25 z-20 pointer-events-none"></div>
-                {% else %}
-                <div class="absolute inset-0 z-10 bg-gradient-to-br from-violet-500/50 to-cyan-400/25"></div>
-                {% endif %}
-                <button type="button" class="absolute top-4 right-4 sm:top-6 sm:right-6 z-40 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm dark:shadow-none dark:shadow-none" onclick="openCoverPicker()">
-                    <i class="ph-bold ph-camera text-base"></i> Сменить обложку
-                </button>
+<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6 pb-12 pt-6 px-4 sm:px-6 lg:px-8">
+    
+    <!-- Кнопка Назад -->
+    <div class="flex items-center justify-between">
+        <a href="{{ request.referrer or url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary transition-colors bg-white/70 dark:bg-white/5 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 dark:border-white/[0.06] shadow-sm dark:shadow-none no-underline">
+            <i class="ph-bold ph-arrow-left"></i> Вернуться в панель
+        </a>
+    </div>
+
+    <!-- HERO-БЛОК (Шапка профиля с баннером и аватаром) -->
+    <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden relative">
+        <!-- Обложка/Баннер -->
+        {% set tutor_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
+        <div class="w-full h-56 sm:h-72 bg-[#DCE1EA] dark:bg-slate-900 relative overflow-hidden group flex items-center justify-center">
+            {% if tutor_cover %}
+            <div class="absolute inset-0 z-10 overflow-hidden">
+                <img src="{{ tutor_cover }}" alt="Cover" class="w-full h-full object-cover opacity-90 transition-transform duration-700 ease-out will-change-transform transform-gpu group-hover:scale-105" style="transform-origin:center center;">
             </div>
-            <div class="px-6 sm:px-10 pb-8 pt-0 relative bg-surface">
-                <div class="absolute -top-16 sm:-top-20 left-6 sm:left-10 w-28 h-28 sm:w-36 sm:h-36 rounded-[24px] sm:rounded-[28px] shadow-[0_0_0_6px_#fff,0_12px_36px_-6px_rgba(123,92,255,0.42)] bg-slate-900 flex items-center justify-center z-30 ring-4 ring-purple-100 ring-offset-4 ring-offset-white">
-                    <div class="profile-avatar-wrapper w-full h-full rounded-[20px] sm:rounded-[24px] overflow-hidden {% if current_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if current_user.avatar_url %}data-avatar-url="{{ current_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0"{% endif %}>
+            {% else %}
+            <div class="absolute inset-0 z-10 bg-gradient-to-br from-violet-600/40 via-cyan-500/15 to-slate-900"></div>
+            {% endif %}
+            <div class="absolute inset-0 z-20 pointer-events-none bg-gradient-to-t from-white/90 via-transparent to-black/25 dark:from-dark-card dark:via-transparent dark:to-black/50"></div>
+            
+            <button class="absolute top-6 right-6 bg-white/15 hover:bg-white/30 dark:bg-white/5 dark:hover:bg-white/15 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/20 z-30 shadow-sm" type="button" onclick="openCoverPicker()">
+                <i class="ph-bold ph-camera text-lg"></i> Сменить обложку
+            </button>
+        </div>
+
+        <!-- Информация о преподавателе -->
+        <div class="px-8 sm:px-12 pb-8 relative bg-surface dark:bg-dark-card">
+            <div class="-mt-14 sm:-mt-16 flex flex-col md:flex-row md:justify-between md:items-end gap-6 relative z-30">
+                <div class="flex flex-col sm:flex-row items-center sm:items-end gap-5 min-w-0">
+                    <div class="relative w-36 h-36 sm:w-44 sm:h-44 rounded-[32px] bg-slate-900 dark:bg-dark-inner flex items-center justify-center overflow-hidden border-[6px] border-white dark:border-dark-card shadow-[0_12px_28px_-8px_rgba(15,23,42,0.35)] shrink-0 z-30">
                         {% if current_user.avatar_url %}
-                        <img src="{{ current_user.avatar_url }}" alt="Avatar" class="w-full h-full object-cover">
-                        {% else %}
-                        <span class="w-full h-full flex items-center justify-center text-white text-3xl sm:text-4xl font-black">{{ current_user.username[0].upper() }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="pt-16 sm:pt-20 flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-                    <div class="min-w-0 flex-1 pl-0 sm:pl-[152px] lg:pl-0 lg:ml-[152px]">
-                        <div class="flex flex-wrap items-center gap-2 gap-y-1">
-                            <h2 class="text-3xl sm:text-4xl font-black text-primary tracking-tight m-0 truncate">{{ current_user.username }}</h2>
-                            <i class="ph-fill ph-check-circle text-boo-primary text-2xl shrink-0" title="Создатель платформы"></i>
+                        <div class="profile-avatar-wrapper w-full h-full rounded-[26px] overflow-hidden profile-avatar-clickable" data-avatar-url="{{ current_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0">
+                            <img src="{{ current_user.avatar_url }}" alt="Avatar" class="w-full h-full object-cover rounded-[26px]">
                         </div>
-                        {% if current_user.custom_status %}
-                        <p class="text-muted font-medium mt-2 mb-0 italic">"{{ current_user.custom_status }}"</p>
+                        {% else %}
+                        <span class="w-full h-full flex items-center justify-center text-white text-4xl font-black">{{ current_user.username[0].upper() }}</span>
                         {% endif %}
-                        <div class="flex flex-wrap gap-2 mt-4">
+                        <div class="absolute bottom-2 right-2 w-8 h-8 bg-green-500 rounded-full border-[4px] border-white dark:border-dark-card shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] flex items-center justify-center">
+                            <div class="w-2.5 h-2.5 bg-surface dark:bg-dark-card rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center sm:items-start text-center sm:text-left min-w-0 pb-1">
+                        <div class="flex items-center gap-3">
+                            <h1 class="text-3xl sm:text-4xl md:text-5xl font-black text-primary dark:text-white tracking-tight leading-normal py-1">{{ current_user.username }}</h1>
+                            <i class="ph-fill ph-check-circle text-boo-primary text-2xl" title="Верифицированный аккаунт"></i>
+                        </div>
+                        <p class="text-muted dark:text-dark-muted font-medium text-lg italic mt-1">"{{ current_user.custom_status or 'Учись учиться!' }}"</p>
+                        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-4">
                             {% for role_name in current_user.get_roles_display() %}
-                            <span class="px-3 py-1.5 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-[10px] font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 uppercase tracking-wider">{{ role_name }}</span>
+                            <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white/10 dark:to-white/5 text-white dark:text-dark-muted text-xs font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 dark:border-white/[0.08] flex items-center gap-1.5 uppercase tracking-wider">
+                                <i class="ph-fill ph-crown text-boo-accent text-base"></i> {{ role_name }}
+                            </span>
                             {% endfor %}
                         </div>
                     </div>
-                    <button type="button" class="px-5 py-2.5 bg-surface text-boo-primary border border-purple-200 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center justify-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm shrink-0 w-full sm:w-auto" onclick="openEditProfileModal()">
-                        <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
+                </div>
+                <div class="shrink-0 md:mb-2 flex w-full md:w-auto justify-center">
+                    <button class="w-full md:w-auto px-7 py-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] text-sm" type="button" onclick="openEditProfileModal()">
+                        <i class="ph-bold ph-pencil-simple text-xl"></i> Редактировать профиль
                     </button>
                 </div>
-                <div class="mt-8 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <a href="{{ url_for('schedule.schedule') }}" class="px-4 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
-                        <i class="ph-bold ph-calendar-blank text-lg"></i> Расписание
-                    </a>
-                    <a href="{{ url_for('students.students_list') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline">
-                        <i class="ph-bold ph-users-three text-lg text-boo-primary"></i> Ученики
-                    </a>
-                    <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline">
-                        <i class="ph-bold ph-tray text-lg text-boo-primary"></i> Работы
-                    </a>
-                    <a href="{{ url_for('library.materials_library') }}" class="px-4 py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-colors flex justify-center items-center gap-2 text-sm no-underline">
-                        <i class="ph-bold ph-books text-lg text-boo-primary"></i> Библиотека
-                    </a>
-                </div>
             </div>
-        </section>
-        {% endif %}
-        <div class="profile-card {% if current_user.is_creator() %}profile-card--creator-no-dup-header{% elif current_user.is_student() %}profile-card--tactile-student-hero{% endif %}">
-            {% set cover_url = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
-            <div class="profile-cover {% if (current_user.is_creator() or use_custom_theme) and cover_url %}has-cover{% endif %}" {% if (current_user.is_creator() or use_custom_theme) and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}></div>
+        </div>
+    </section>
 
-            <div class="profile-header">
-                <div class="profile-identity">
-                    <div class="profile-avatar-wrapper {% if current_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if current_user.avatar_url %}data-avatar-url="{{ current_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
-                        <div class="profile-avatar-big">
-                            {% if current_user.avatar_url %}
-                            <img src="{{ current_user.avatar_url }}" alt="Avatar">
-                            {% else %}
-                            {{ current_user.username[0].upper() }}
-                            {% endif %}
-                        </div>
+    <!-- Сетка контента (Левая колонка: инфо/настройки, Правая: действия) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- ЛЕВАЯ КОЛОНКА (1/3 ширины) -->
+        <div class="lg:col-span-1 flex flex-col gap-6">
+            <!-- Учетная запись -->
+            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <i class="ph-fill ph-user-circle-gear text-xl"></i> Учетная запись
+                </h2>
+                
+                {% if current_user.about_me %}
+                <div class="mb-6 pb-6 border-b border-slate-100 dark:border-white/[0.08]">
+                    <div class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-2">О себе</div>
+                    <p class="text-sm text-secondary dark:text-dark-muted font-medium leading-relaxed bg-surface-alt dark:bg-dark-inner/40 p-4 rounded-[20px] border border-slate-100 dark:border-white/[0.08] min-h-[80px] whitespace-pre-wrap">{{ current_user.about_me }}</p>
+                </div>
+                {% endif %}
+
+                <div class="flex flex-col gap-1">
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                        <span class="text-sm font-bold text-muted dark:text-dark-muted">ID аккаунта</span>
+                        <span class="text-sm font-black text-white bg-slate-900 px-3 py-1 rounded-lg border border-slate-700">#{{ current_user.numeric_id or current_user.id }}</span>
                     </div>
-                    <div class="profile-info">
-                        <div class="profile-role-badge">{{ current_user.get_primary_role_display() }}</div>
-                        <h1>{{ current_user.username }}</h1>
-                        {% if current_user.custom_status %}
-                        <div class="profile-status" style="color: var(--text-muted); font-size: 1.1rem; margin-top: 0.5rem; font-style: italic;">
-                            "{{ current_user.custom_status }}"
-                        </div>
-                        {% endif %}
-                        <button class="neo-button outline" style="margin-top: 1rem;" onclick="openEditProfileModal()">
-                            {{ ui_icon('action.edit', 'sm', decorative=true) }}
-                            Редактировать
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                        <span class="text-sm font-bold text-muted dark:text-dark-muted">Логин</span>
+                        <span class="text-sm font-bold text-primary dark:text-white">@{{ current_user.username }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                        <span class="text-sm font-bold text-muted dark:text-dark-muted">Регистрация</span>
+                        <span class="text-sm font-bold text-primary dark:text-white">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                        <span class="text-sm font-bold text-muted dark:text-dark-muted">Активность</span>
+                        <span class="text-sm font-bold text-primary dark:text-white local-time" data-timestamp="{{ current_user.last_login.isoformat() if current_user.last_login else '' }}">
+                            {{ current_user.last_login.strftime('%d.%m.%Y %H:%M') if current_user.last_login else '—' }}
+                        </span>
+                    </div>
+                    {% if current_user.telegram_link %}
+                    <div class="flex justify-between items-center py-3.5">
+                        <span class="text-sm font-bold text-muted dark:text-dark-muted">Telegram</span>
+                        <a href="{{ current_user.telegram_link }}" target="_blank" class="text-sm font-bold text-boo-primary hover:underline">
+                            {{ current_user.telegram_link.replace('https://t.me/', '@').replace('http://t.me/', '@') }}
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Часовой пояс -->
+            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8" id="user-timezone-panel">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <i class="ph-fill ph-clock text-xl"></i> Часовой пояс
+                </h2>
+                <p class="text-xs text-muted dark:text-dark-muted leading-relaxed mb-5">
+                    Как отображать даты. «Авто» — часовой пояс браузера (обновляется при входе).
+                </p>
+
+                <div class="space-y-4">
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-mode-select">Режим</label>
+                        <select id="tz-mode-select" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white focus:outline-none focus:border-boo-primary transition-all">
+                            <option value="auto" {% if (current_user.timezone_mode or 'auto') == 'auto' %}selected{% endif %}>Авто (браузер)</option>
+                            <option value="manual" {% if (current_user.timezone_mode or '') == 'manual' %}selected{% endif %}>Указать IANA</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-iana-input">Часовой пояс (IANA)</label>
+                        <input type="text" id="tz-iana-input" list="tz-common-list" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-medium text-sm text-primary dark:text-white focus:outline-none focus:border-boo-primary transition-all" placeholder="Europe/Moscow" value="{{ current_user.timezone_iana or '' }}" {% if (current_user.timezone_mode or 'auto') != 'manual' %}disabled{% endif %}>
+                        <datalist id="tz-common-list">
+                            <option value="Europe/Moscow"></option>
+                            <option value="Europe/Kaliningrad"></option>
+                            <option value="Asia/Yekaterinburg"></option>
+                            <option value="Asia/Novosibirsk"></option>
+                            <option value="Asia/Vladivostok"></option>
+                            <option value="Europe/London"></option>
+                            <option value="UTC"></option>
+                        </datalist>
+                    </div>
+
+                    <button type="button" id="tz-save-btn" class="w-full py-3.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold rounded-xl border border-purple-200 dark:border-purple-800 shadow-sm transition-colors text-sm flex items-center justify-center gap-2">
+                        <i class="ph-bold ph-floppy-disk text-lg"></i> Сохранить настройки
+                    </button>
+                    <p id="tz-save-msg" class="text-xs text-green-600 dark:text-green-400 text-center font-semibold" style="display: none;"></p>
+                </div>
+            </section>
+        </div>
+
+        <!-- ПРАВАЯ КОЛОНКА (2/3 ширины) -->
+        <div class="lg:col-span-2 flex flex-col gap-6">
+            <!-- Быстрые действия -->
+            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <i class="ph-fill ph-grid text-xl"></i> Панель управления
+                </h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {% if has_permission(current_user, 'tools.schedule') or has_permission(current_user, 'schedule.view') %}
+                    <a href="{{ url_for('schedule.schedule') }}" class="py-4 px-4 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-purple-200 dark:border-purple-800/80 hover:scale-[1.02] transition-all no-underline">
+                        <i class="ph-bold ph-calendar-blank text-2xl text-purple-500"></i>
+                        <span>Расписание</span>
+                    </a>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('students.students_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                        <i class="ph-bold ph-users-three text-2xl text-boo-primary"></i>
+                        <span>{{ 'Дети' if current_user.is_parent() else 'Ученики' }}</span>
+                    </a>
+
+                    {% if has_permission(current_user, 'assignment.view') %}
+                    <a href="{{ url_for('assignments.assignments_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                        <i class="ph-bold ph-tray text-2xl text-boo-primary"></i>
+                        <span>Работы</span>
+                    </a>
+                    {% endif %}
+
+                    {% if has_permission(current_user, 'assignment.grade') %}
+                    <a href="{{ url_for('lessons.review_queue') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                        <i class="ph-bold ph-check-square-offset text-2xl text-boo-primary"></i>
+                        <span>Проверка</span>
+                    </a>
+                    {% endif %}
+
+                    {% if has_permission(current_user, 'lesson.edit') %}
+                    <a href="{{ url_for('library.materials_library') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                        <i class="ph-bold ph-books text-2xl text-boo-primary"></i>
+                        <span>Библиотека</span>
+                    </a>
+                    {% endif %}
+
+                    {% if has_permission(current_user, 'trainer.use') %}
+                    <a href="{{ url_for('trainer.trainer_embed') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                        <i class="ph-bold ph-game-controller text-2xl text-boo-primary"></i>
+                        <span>Тренажёр</span>
+                    </a>
+                    {% endif %}
+
+                    {% if has_permission(current_user, 'billing.manage') %}
+                    <a href="{{ url_for('billing.billing_plans') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                        <i class="ph-bold ph-wallet text-2xl text-boo-primary"></i>
+                        <span>Тарифы</span>
+                    </a>
+                    <a href="{{ url_for('billing.billing_subscriptions') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                        <i class="ph-bold ph-credit-card text-2xl text-boo-primary"></i>
+                        <span>Подписки</span>
+                    </a>
+                    {% endif %}
+
+                    {% if (current_user.is_admin() or current_user.is_creator()) and config.ADMIN_URL %}
+                    <a href="{{ config.ADMIN_URL }}" target="_blank" rel="noopener" class="py-4 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-boo-coral rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-red-200 dark:border-red-900 hover:scale-[1.02] transition-all no-underline">
+                        <i class="ph-bold ph-shield text-2xl text-boo-coral"></i>
+                        <span>Админка</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Telegram уведомления -->
+            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8" id="telegram-notifications-block">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="ph-fill ph-telegram-logo text-xl text-blue-500"></i> Telegram уведомления
+                </h2>
+                
+                <div id="telegram-status-content" class="bg-surface-alt dark:bg-dark-inner/40 border border-slate-200/50 dark:border-white/[0.08] p-6 rounded-2xl">
+                    <div class="text-sm text-muted dark:text-dark-muted animate-pulse">Загрузка статуса привязки...</div>
+                </div>
+            </section>
+
+            <!-- Синхронизация календаря -->
+            {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
+            {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
+            {% set ics_tz_param = ('tomsk' if tz_name == 'Asia/Tomsk' else 'moscow') %}
+            <div id="ics-config" style="display:none" data-tz="{{ ics_tz_param }}" data-regenerate-url="{{ url_for('schedule.schedule_regenerate_ics_token') }}" data-token="{{ current_user.schedule_ics_token or '' }}"></div>
+            
+            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <i class="ph-bold ph-calendar-plus text-xl text-boo-primary"></i> Синхронизация календаря
+                </h2>
+                <p class="text-sm text-muted dark:text-dark-muted leading-relaxed mb-6">
+                    Приватная ссылка для внешних календарей (.ics). Позволяет видеть расписание в Google Calendar / Apple Calendar.
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                    <input class="flex-1 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-mono text-sm text-primary dark:text-white js-ics-input" readonly value="">
+                    
+                    <div class="flex gap-2 shrink-0">
+                        <button class="flex-1 sm:flex-none px-5 py-3 bg-boo-primary hover:bg-boo-primaryHover text-white font-bold rounded-xl shadow-sm transition-colors text-sm" type="button" onclick="copyIcsLink()">
+                            Копировать
+                        </button>
+                        <button class="flex-1 sm:flex-none px-5 py-3 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white font-bold rounded-xl border border-slate-200 dark:border-white/[0.1] shadow-sm transition-colors text-sm" type="button" onclick="regenerateIcsToken()">
+                            Обновить
                         </button>
                     </div>
                 </div>
-            </div>
-
-            <div class="profile-card-body" style="padding: 0 2.5rem 2.5rem;">
-                {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
-                {% set ics_tz_param = ('tomsk' if tz_name == 'Asia/Tomsk' else 'moscow') %}
-                {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
-                <div id="ics-config" style="display:none" data-tz="{{ ics_tz_param }}" data-regenerate-url="{{ url_for('schedule.schedule_regenerate_ics_token') }}" data-token="{{ current_user.schedule_ics_token or '' }}"></div>
-                <script>
-                    (function() {
-                        var cfg = document.getElementById('ics-config');
-                        if (!cfg) return;
-                        var origin = window.location.origin;
-                        var token = (cfg.getAttribute('data-token') || '').trim() || null;
-                        var icsTzParam = cfg.getAttribute('data-tz') || 'moscow';
-                        var regenUrl = cfg.getAttribute('data-regenerate-url') || '';
-                        var link = token ? origin + '/schedule/ics/' + token + '?timezone=' + icsTzParam : '';
-                        var el = document.querySelector('.js-ics-input');
-                        if (el) el.value = link || '(нажмите "Обновить ссылку")';
-                        window.copyIcsLink = async function() {
-                            var inp = document.querySelector('.js-ics-input');
-                            var v = inp ? inp.value || '' : '';
-                            if (!v || v.indexOf('(') === 0) return;
-                            try { await navigator.clipboard.writeText(v); if (window.toast) window.toast.success('Скопировано'); } catch(e) { if (window.toast) window.toast.error('Не удалось скопировать'); }
-                        };
-                        window.regenerateIcsToken = async function() {
-                            try {
-                                var r = await fetch(regenUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') || {}).content || '' }, body: '{}' });
-                                var data = await r.json().catch(function() { return {}; });
-                                if (!r.ok || data.success === false) throw new Error(data.error || 'HTTP ' + r.status);
-                                var newLink = origin + '/schedule/ics/' + data.token + '?timezone=' + icsTzParam;
-                                var inp = document.querySelector('.js-ics-input');
-                                if (inp) inp.value = newLink;
-                                if (window.toast) window.toast.success('Ссылка обновлена');
-                            } catch (e) {
-                                if (window.toast) window.toast.error(e.message || 'Ошибка');
-                            }
-                        };
-                    })();
-                </script>
-                {% endif %}
-                <div class="profile-content-grid">
-                    
-                    <div class="profile-section">
-                        <h3>Учетная запись</h3>
-                        
-                        {% if current_user.about_me %}
-                        <div class="profile-bio" style="margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--stroke-1);">
-                            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">О себе</div>
-                            <div style="white-space: pre-wrap; color: var(--text-primary); line-height: 1.6;">{{ current_user.about_me }}</div>
-                        </div>
-                        {% endif %}
-
-                        {% if current_user.is_student() %}
-                        <div class="data-row">
-                            <span class="data-label">ID ученика</span>
-                            <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">
-                                {% if linked_student and linked_student.platform_id %}{{ linked_student.platform_id }}{% else %}—{% endif %}
-                            </span>
-                        </div>
-                        {% else %}
-                        <div class="data-row">
-                            <span class="data-label">ID аккаунта</span>
-                            <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">{% if current_user.numeric_id %}#{{ current_user.numeric_id }}{% else %}—{% endif %}</span>
-                        </div>
-                        {% endif %}
-                        <div class="data-row">
-                            <span class="data-label">Логин</span>
-                            <span class="data-value">{{ current_user.username }}</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">Роль в системе</span>
-                            <span class="data-value" style="color: var(--accent-color);">{{ current_user.get_roles_display() | join(', ') }}</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">Дата регистрации</span>
-                            <span class="data-value">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">Последняя активность</span>
-                            <span class="data-value local-time" data-timestamp="{{ current_user.last_login.isoformat() if current_user.last_login else '' }}">
-                                {{ current_user.last_login.strftime('%d.%m.%Y %H:%M') if current_user.last_login else '—' }}
-                            </span>
-                        </div>
-
-                        {% if current_user.is_student() or current_user.is_parent() %}
-                        <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
-                            <div class="hero-eyebrow">доступ</div>
-                            {% if subscription_access and subscription_access.subscription and subscription_access.plan %}
-                                <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items: center; margin-top: .35rem;">
-                                    <span class="status-badge status-info" style="opacity:0.95;">{{ subscription_access.label }}</span>
-                                    <span class="status-badge status-info" style="opacity:0.85;">Тариф: <strong>{{ subscription_access.plan.title }}</strong></span>
-                                    {% if subscription_access.ends_at_utc %}
-                                    <span class="status-badge status-info" style="opacity:0.85;">До: <strong>{{ subscription_access.ends_at_utc.strftime('%d.%m.%Y') }}</strong></span>
-                                    {% endif %}
-                                </div>
-                                {% if subscription_access.lessons_remaining is not none %}
-                                <div style="margin-top: .6rem; display: flex; align-items: center; gap: .5rem;">
-                                    <span style="color: var(--text-muted);">Осталось уроков:</span>
-                                    {% set _rem_class = 'lessons-remaining--danger' if subscription_access.lessons_remaining <= 2 else ('lessons-remaining--warning' if subscription_access.lessons_remaining <= 5 else 'lessons-remaining--accent') %}
-                                    <span class="lessons-remaining-val {{ _rem_class }}" style="font-size: 1.5rem; font-weight: 900;">{{ subscription_access.lessons_remaining }}</span>
-                                </div>
-                                {% elif subscription_access.seconds_left is not none %}
-                                {% set days_left = (subscription_access.seconds_left // 86400) %}
-                                {% set hours_left = ((subscription_access.seconds_left % 86400) // 3600) %}
-                                <div style="margin-top: .6rem; color: var(--text-muted);">
-                                    Осталось: <strong style="color: var(--text-primary);">{{ days_left }}д {{ hours_left }}ч</strong>
-                                </div>
-                                {% endif %}
-                            {% elif subscription_access and subscription_access.status == 'expired' %}
-                                <div style="margin-top: .35rem; font-weight: 900; color: var(--danger);">
-                                    {% if subscription_access.lessons_remaining is not none and subscription_access.lessons_remaining <= 0 %}
-                                    Уроки закончились
-                                    {% else %}
-                                    Подписка истекла
-                                    {% endif %}
-                                </div>
-                                {% if subscription_access.ends_at_utc %}
-                                <div style="margin-top: .35rem; color: var(--text-muted);">Закончилась: {{ subscription_access.ends_at_utc.strftime('%d.%m.%Y') }}</div>
-                                {% endif %}
-                            {% else %}
-                                <div style="margin-top: .35rem; color: var(--text-muted);">Тариф не задан (доступ без ограничений/legacy).</div>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-
-                        <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;" id="user-timezone-panel">
-                            <div class="hero-eyebrow">время</div>
-                            <p style="margin: 0.35rem 0 0.75rem; color: var(--text-muted); font-size: 0.9rem;">Как показывать даты. «Авто» — часовой пояс браузера (обновляется при входе).</p>
-                            <label class="neo-label" for="tz-mode-select">Режим</label>
-                            <select id="tz-mode-select" class="neo-input" style="margin-bottom: 0.75rem;">
-                                <option value="auto" {% if (current_user.timezone_mode or 'auto') == 'auto' %}selected{% endif %}>Авто (браузер)</option>
-                                <option value="manual" {% if (current_user.timezone_mode or '') == 'manual' %}selected{% endif %}>Указать IANA</option>
-                            </select>
-                            <label class="neo-label" for="tz-iana-input">Часовой пояс (IANA)</label>
-                            <input type="text" id="tz-iana-input" class="neo-input" list="tz-common-list" value="{{ current_user.timezone_iana or '' }}" placeholder="Europe/Moscow" {% if (current_user.timezone_mode or 'auto') != 'manual' %}disabled{% endif %}>
-                            <datalist id="tz-common-list">
-                                <option value="Europe/Moscow"><option value="Europe/Kaliningrad"><option value="Asia/Yekaterinburg"><option value="Asia/Novosibirsk"><option value="Asia/Vladivostok"><option value="Europe/London"><option value="UTC">
-                            </datalist>
-                            <button type="button" id="tz-save-btn" class="neo-button primary sm" style="margin-top: 0.75rem;">Сохранить</button>
-                            <p id="tz-save-msg" style="margin-top: 0.5rem; font-size: 0.85rem; display: none;"></p>
-                        </div>
-
-                        <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;" id="telegram-notifications-block">
-                            <div class="hero-eyebrow">уведомления</div>
-                            <h4 style="margin: 0.35rem 0 0.5rem 0;">Telegram бот</h4>
-                            <div id="telegram-status-content">
-                                <div style="color: var(--text-muted);">Загрузка...</div>
-                            </div>
-                        </div>
-                        
-                        {% if current_user.telegram_link %}
-                        <div class="data-row">
-                            <span class="data-label">Telegram</span>
-                            <a href="{{ current_user.telegram_link }}" target="_blank" class="data-value" style="text-decoration: none; color: var(--text-primary);">
-                                {{ current_user.telegram_link.replace('https://t.me/', '@').replace('http://t.me/', '@') }}
-                            </a>
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        {% if current_user.is_student() %}
-                        <div class="profile-section">
-                            <h3>Учебный профиль</h3>
-                            {% if linked_student %}
-                                <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                                    {% if linked_student.school_class %}
-                                    <span class="status-badge status-info">{{ linked_student.school_class }} класс</span>
-                                    {% endif %}
-                                    {% if linked_student.target_score %}
-                                    <span class="status-badge status-info">Цель: {{ linked_student.target_score }}</span>
-                                    {% endif %}
-                                    {% if linked_student.programming_language %}
-                                    <span class="status-badge status-info">{{ linked_student.programming_language }}</span>
-                                    {% endif %}
-                                </div>
-
-                                {% if lesson_counts %}
-                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
-                                    <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
-                                        <div style="font-size: 0.85rem; color: var(--text-muted); overflow-wrap: anywhere; word-break: break-word; line-height: 1.15;">Всего уроков</div>
-                                        <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.total }}</div>
-                                    </div>
-                                    <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
-                                        <div style="font-size: 0.85rem; color: var(--text-muted); overflow-wrap: anywhere; word-break: break-word; line-height: 1.15;">Проведено</div>
-                                        <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.completed }}</div>
-                                    </div>
-                                    <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
-                                        <div style="font-size: 0.85rem; color: var(--text-muted); overflow-wrap: anywhere; word-break: break-word; line-height: 1.15;">Запланировано</div>
-                                        <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.planned }}</div>
-                                    </div>
-                                </div>
-                                {% endif %}
-
-                                {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
-                                {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
-
-                                <div class="profile-actions-grid" style="margin-top: .25rem;">
-                                    {% if sub_allow_lessons %}
-                                    <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="neo-button accent" style="text-decoration:none;">
-                                        {{ ui_icon('nav.students', 'sm', decorative=true) }} Открыть мою комнату
-                                    </a>
-                                    {% endif %}
-                                    <a href="{{ url_for('students.student_analytics', student_id=linked_student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
-                                        {{ ui_icon('nav.stats', 'sm', decorative=true) }} Статистика
-                                    </a>
-                                    {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
-                                    <a href="{{ url_for('trainer.trainer_embed') }}" class="neo-button outline" style="text-decoration:none;">
-                                        {{ ui_icon('nav.help', 'sm', decorative=true) }} Тренажёр
-                                    </a>
-                                    {% endif %}
-                                    {% if sub_allow_lessons %}
-                                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost" style="text-decoration:none;">
-                                        {{ ui_icon('nav.assignments', 'sm', decorative=true) }} Задания
-                                    </a>
-                                    {% endif %}
-                                </div>
-
-                                {% if sub_allow_lessons and (has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule')) %}
-                                <div class="profile-section" style="margin-top: 1rem;">
-                                    <details>
-                                        <summary style="cursor:pointer; font-weight: 900;">Синхронизация календаря</summary>
-                                        <div style="margin-top: .75rem;">
-                                            <p style="color: var(--text-muted); margin-top: 0;">Приватная ссылка для внешних календарей (.ics). Не передавайте её другим.</p>
-                                            <div style="display:flex; gap: .6rem; flex-wrap: wrap; align-items: center;">
-                                                <input class="neo-input js-ics-input" readonly style="flex:1; min-width: 260px;" value="">
-                                                <button class="neo-button outline" type="button" onclick="copyIcsLink()">Копировать</button>
-                                                <button class="neo-button ghost" type="button" onclick="regenerateIcsToken()">Обновить ссылку</button>
-                                            </div>
-                                            <div style="color: var(--text-muted); font-size: .9rem; margin-top: .5rem;">
-                                                Вставьте ссылку в Google Calendar / Apple Calendar как "Подписка по URL".
-                                            </div>
-                                        </div>
-                                    </details>
-                                </div>
-                                {% endif %}
-                            {% else %}
-                                <p style="color: var(--text-muted); margin: 0;">
-                                    Учебный профиль ещё не привязан к аккаунту. Сообщите преподавателю/администратору ваш логин или ID, чтобы связать аккаунт.
-                                </p>
-                            {% endif %}
-                        </div>
-
-                        {% if recent_lessons and recent_lessons|length > 0 %}
-                        <div class="profile-section">
-                            <details class="profile-details">
-                                <summary>
-                                    Лента уроков
-                                    <span class="status-badge status-info" style="opacity:.75;">{{ recent_lessons|length }}</span>
-                                </summary>
-                                <div class="profile-details-body" style="display:flex; flex-direction: column; gap: 0.75rem;">
-                                    {% for l in recent_lessons %}
-                                    {% set l_local = (l.lesson_date|to_tz(tz_name)) %}
-                                    <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=l.lesson_id) }}" class="glass-panel" style="text-decoration:none; padding: 0.9rem; display:flex; justify-content: space-between; gap: 1rem; align-items: center;">
-                                        <div style="min-width: 0;">
-                                            <div style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ l.topic or 'Урок' }}</div>
-                                            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">{{ l_local.strftime('%d.%m.%Y %H:%M') if l_local else '—' }}</div>
-                                        </div>
-                                        <span class="status-badge status-info" style="white-space: nowrap;">
-                                            {{ 'План' if l.status == 'planned' else ('Проведён' if l.status == 'completed' else ('В процессе' if l.status == 'in_progress' else l.status)) }}
-                                        </span>
-                                    </a>
-                                    {% endfor %}
-                                </div>
-                            </details>
-                        </div>
-                        {% endif %}
-                        {% else %}
-                        <div class="profile-section">
-                            <h3>Быстрые действия</h3>
-                            <div class="profile-actions-grid">
-                                {% if has_permission(current_user, 'tools.schedule') or has_permission(current_user, 'schedule.view') %}
-                                <a href="{{ url_for('schedule.schedule') }}" class="neo-button accent" style="text-decoration:none;">{{ ui_icon('nav.schedule', 'sm', decorative=true) }} Расписание</a>
-                                {% endif %}
-                                <a href="{{ url_for('students.students_list') }}" class="neo-button outline" style="text-decoration:none;">{{ ui_icon('nav.students', 'sm', decorative=true) }} {{ 'Дети' if current_user.is_parent() else 'Ученики' }}</a>
-                                {% if has_permission(current_user, 'assignment.view') %}
-                                <a href="{{ url_for('assignments.assignments_list') }}" class="neo-button outline" style="text-decoration:none;">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Работы</a>
-                                {% endif %}
-                                {% if has_permission(current_user, 'assignment.grade') %}
-                                <a href="{{ url_for('lessons.review_queue') }}" class="neo-button outline" style="text-decoration:none;">{{ ui_icon('action.check', 'sm', decorative=true) }} Проверка</a>
-                                {% endif %}
-                                {% if has_permission(current_user, 'lesson.edit') %}
-                                <a href="{{ url_for('library.materials_library') }}" class="neo-button ghost" style="text-decoration:none;">{{ ui_icon('action.admin', 'sm', decorative=true) }} Библиотека</a>
-                                {% endif %}
-                                {% if has_permission(current_user, 'trainer.use') %}
-                                <a href="{{ url_for('trainer.trainer_embed') }}" class="neo-button ghost" style="text-decoration:none;">{{ ui_icon('nav.help', 'sm', decorative=true) }} Тренажёр</a>
-                                {% endif %}
-                                {% if has_permission(current_user, 'billing.manage') %}
-                                <a href="{{ url_for('billing.billing_plans') }}" class="neo-button ghost" style="text-decoration:none;">{{ ui_icon('nav.billing', 'sm', decorative=true) }} Тарифы</a>
-                                <a href="{{ url_for('billing.billing_subscriptions') }}" class="neo-button ghost" style="text-decoration:none;">{{ ui_icon('nav.billing', 'sm', decorative=true) }} Подписки</a>
-                                {% endif %}
-                                {% if (current_user.is_admin() or current_user.is_creator()) and config.ADMIN_URL %}
-                                <a href="{{ config.ADMIN_URL }}" class="neo-button danger" style="text-decoration:none;" target="_blank" rel="noopener">{{ ui_icon('action.settings', 'sm', decorative=true) }} Админка</a>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
-                        <div class="profile-section">
-                            <details>
-                                <summary style="cursor:pointer; font-weight: 900;">Синхронизация календаря</summary>
-                                <div style="margin-top: .75rem;">
-                                    <p style="color: var(--text-muted); margin-top: 0;">Приватная ссылка для внешних календарей (.ics). Не передавайте её другим.</p>
-                                    <div style="display:flex; gap: .6rem; flex-wrap: wrap; align-items: center;">
-                                        <input class="neo-input js-ics-input" readonly style="flex:1; min-width: 260px;" value="">
-                                        <button class="neo-button outline" type="button" onclick="copyIcsLink()">Копировать</button>
-                                        <button class="neo-button ghost" type="button" onclick="regenerateIcsToken()">Обновить ссылку</button>
-                                    </div>
-                                    <div style="color: var(--text-muted); font-size: .9rem; margin-top: .5rem;">
-                                        Вставьте ссылку в Google Calendar / Apple Calendar как "Подписка по URL".
-                                    </div>
-                                </div>
-                            </details>
-                        </div>
-                        {% endif %}
-                        {% endif %}
-
-                        {% if current_user.is_creator() and config.ADMIN_URL %}
-                        <div class="profile-section" style="background: rgba(255, 46, 46, 0.05); border-color: rgba(255, 46, 46, 0.3);">
-                            <h3>{{ ui_icon('action.admin', 'md', decorative=true) }} Доступ Создателя</h3>
-                            <p style="font-size: 0.9rem; margin-bottom: 1.5rem; opacity: 0.8;">Вам доступны расширенные права управления платформой.</p>
-                            <a href="{{ config.ADMIN_URL }}" class="neo-button danger" style="width: 100%; justify-content: center; background: rgba(255, 46, 46, 0.15); border-color: #ff2e2e; color: #ff2e2e;" target="_blank" rel="noopener">Перейти в админку</a>
-                        </div>
-                        {% endif %}
-
-                        <form method="POST" action="{{ url_for('auth.logout') }}">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button type="submit" class="neo-button outline" style="width: 100%; justify-content: center; opacity: 0.7;">
-                                {{ ui_icon('action.logout', 'sm', decorative=true) }} Выйти из аккаунта
-                            </button>
-                        </form>
-                    </div>
+                <div class="text-xs text-muted dark:text-dark-muted mt-3">
+                    Вставьте ссылку в ваш почтовый клиент или календарь как "Подписка по URL". Не передавайте ссылку другим людям.
                 </div>
-            </div>
-        </div>
-    {% else %}
-        <div class="glass-panel" style="text-align: center; padding: 4rem;">
-            <h1 class="hero-title">Доступ ограничен</h1>
-            <p style="color: var(--text-muted); margin-bottom: 2rem;">Пожалуйста, войдите в систему, чтобы просмотреть профиль.</p>
-            <a href="{{ url_for('auth.login') }}" class="neo-button accent">Войти</a>
-        </div>
-    {% endif %}
-</div>
+            </section>
+            {% endif %}
 
-<div class="modal-overlay avatar-modal-overlay" id="avatarModal" onclick="closeAvatarModal(event)" style="z-index: 10001;">
-    <div class="modal modal-avatar-wrap" onclick="event.stopPropagation()">
-        <img id="avatarModalImg" src="" alt="Аватар в полном размере">
+            <!-- Выход из аккаунта -->
+            <form method="POST" action="{{ url_for('auth.logout') }}" class="mt-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="w-full py-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-boo-coral rounded-2xl font-bold flex justify-center items-center gap-2 border border-red-200 dark:border-red-900 shadow-sm transition-all text-sm">
+                    <i class="ph-bold ph-sign-out text-xl"></i> Выйти из аккаунта
+                </button>
+            </form>
+
+        </div>
+
     </div>
+
 </div>
 
-{% if current_user %}
+<!-- МОДАЛЬНОЕ ОКНО РЕДАКТИРОВАНИЯ ПРОФИЛЯ -->
 <div class="modal-overlay" id="editProfileModal" style="z-index: 9999;">
-    <div class="modal">
+    <div class="modal max-w-lg">
         <div class="modal-header">
             <h2 class="modal-title">Редактировать профиль</h2>
             <button class="modal-close" onclick="closeEditProfileModal()">&times;</button>
         </div>
         <form id="editProfileForm" onsubmit="submitProfileEdit(event)" enctype="multipart/form-data">
-            <div class="modal-body">
-                <div class="neo-field">
+            <div class="modal-body space-y-6">
+                <!-- Аватарка -->
+                <div class="neo-field space-y-2">
                     <label class="neo-label" for="avatar_file">Аватарка</label>
-                    {% if current_user.avatar_url %}
-                    <div style="margin-bottom: 1rem; text-align: center;">
-                        <img id="avatar_preview" src="{{ current_user.avatar_url }}" alt="Текущая аватарка" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--stroke-1);">
+                    <div class="flex items-center gap-4">
+                        {% if current_user.avatar_url %}
+                        <img id="avatar_preview" src="{{ current_user.avatar_url }}" alt="Текущая аватарка" class="w-20 h-20 rounded-full object-cover border-2 border-slate-200 dark:border-white/[0.1]">
+                        {% else %}
+                        <div id="avatar_placeholder" class="w-20 h-20 rounded-full bg-slate-900 flex items-center justify-center text-white text-xl font-bold">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <img id="avatar_preview" src="" alt="Превью" class="w-20 h-20 rounded-full object-cover border-2 border-slate-200 dark:border-white/[0.1] hidden">
+                        {% endif %}
+                        <div class="flex-1 space-y-1">
+                            <input type="file" id="avatar_file" name="avatar_file" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-2.5 text-sm file:hidden text-muted cursor-pointer" accept="image/*">
+                            <p class="text-[10px] text-muted dark:text-dark-muted">JPG, PNG, GIF или WEBP, до 5MB</p>
+                        </div>
                     </div>
-                    {% else %}
-                    <div style="margin-bottom: 1rem; text-align: center;">
-                        <img id="avatar_preview" src="" alt="Превью" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--stroke-1); display: none;">
-                    </div>
-                    {% endif %}
-                    <input type="file" id="avatar_file" name="avatar_file" class="neo-input" accept="image/*">
-                    <small style="color: var(--text-muted); font-size: 0.8rem;">Загрузите изображение (JPG, PNG, GIF, WEBP, макс. 5MB)</small>
                 </div>
 
-                {% if current_user.is_creator() or use_custom_theme %}
-                <div class="neo-field" id="cover_field">
-                    <label class="neo-label" for="cover_file">Баннер профиля (GIF или изображение)</label>
-                    {% set creator_cover = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
-                    {% if creator_cover %}
-                    <div style="margin-bottom: 1rem; text-align: center;">
-                        <img id="cover_preview" src="{{ creator_cover }}" alt="Текущий баннер" style="max-width: 100%; max-height: 120px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);">
+                <!-- Обложка -->
+                <div class="neo-field space-y-2">
+                    <label class="neo-label" for="cover_file">Баннер профиля</label>
+                    <div class="space-y-3">
+                        {% set current_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
+                        {% if current_cover %}
+                        <img id="cover_preview" src="{{ current_cover }}" alt="Текущий баннер" class="w-full max-h-[100px] object-cover rounded-xl border border-slate-200 dark:border-white/[0.1]">
+                        {% else %}
+                        <img id="cover_preview" src="" alt="Превью" class="w-full max-h-[100px] object-cover rounded-xl border border-slate-200 dark:border-white/[0.1] hidden">
+                        {% endif %}
+                        <div class="space-y-1">
+                            <input type="file" id="cover_file" name="cover_file" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-2.5 text-sm file:hidden text-muted cursor-pointer" accept="image/*">
+                            <p class="text-[10px] text-muted dark:text-dark-muted">GIF, JPG, PNG или WEBP, до 8MB</p>
+                        </div>
                     </div>
-                    {% else %}
-                    <div style="margin-bottom: 1rem; text-align: center;">
-                        <img id="cover_preview" src="" alt="Превью" style="max-width: 100%; max-height: 120px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); display: none;">
-                    </div>
-                    {% endif %}
-                    <input type="file" id="cover_file" name="cover_file" class="neo-input" accept="image/*">
-                    <small style="color: var(--text-muted); font-size: 0.8rem;">GIF, JPG, PNG или WEBP, макс. 8MB. Отображается в шапке профиля.</small>
                 </div>
-                {% endif %}
 
-                <div class="neo-field">
+                <!-- Статус -->
+                <div class="neo-field space-y-1.5">
                     <label class="neo-label" for="custom_status">Статус</label>
-                    <input type="text" id="custom_status" name="custom_status" class="neo-input" value="{{ current_user.custom_status or '' }}" placeholder="Ваш статус...">
+                    <input type="text" id="custom_status" name="custom_status" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary transition-all" value="{{ current_user.custom_status or '' }}" placeholder="Учеба - это круто!">
                 </div>
-                <div class="neo-field">
+
+                <!-- О себе -->
+                <div class="neo-field space-y-1.5">
                     <label class="neo-label" for="about_me">О себе</label>
-                    <textarea id="about_me" name="about_me" class="neo-textarea" placeholder="Расскажите немного о себе...">{{ current_user.about_me or '' }}</textarea>
+                    <textarea id="about_me" name="about_me" rows="4" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-medium text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary transition-all resize-none" placeholder="Расскажите немного о своем опыте преподавания...">{{ current_user.about_me or '' }}</textarea>
                 </div>
-                <div class="neo-field">
+
+                <!-- Telegram линк -->
+                <div class="neo-field space-y-1.5">
                     <label class="neo-label" for="telegram_link">Telegram</label>
-                    <input type="text" id="telegram_link" name="telegram_link" class="neo-input" value="{{ current_user.telegram_link or '' }}" placeholder="https://t.me/...">
+                    <input type="text" id="telegram_link" name="telegram_link" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary transition-all" value="{{ current_user.telegram_link or '' }}" placeholder="https://t.me/...">
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="neo-button ghost" onclick="closeEditProfileModal()">Отмена</button>
-                <button type="submit" class="neo-button accent">Сохранить</button>
+            <div class="modal-footer flex gap-3 pt-4 border-t border-slate-100 dark:border-white/[0.08]">
+                <button type="button" class="flex-1 py-3 bg-surface-alt dark:bg-dark-inner text-muted dark:text-dark-muted border border-slate-200 dark:border-white/[0.12] rounded-xl font-bold hover:bg-surface-alt transition-colors text-sm" onclick="closeEditProfileModal()">Отмена</button>
+                <button type="submit" class="flex-1 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-sm text-sm">Сохранить</button>
             </div>
         </form>
     </div>
 </div>
-{% endif %}
+
+<!-- МОДАЛЬНОЕ ОКНО АВАТАРА -->
+<div class="modal-overlay avatar-modal-overlay" id="avatarModal" onclick="closeAvatarModal(event)" style="z-index: 10001;">
+    <div class="modal modal-avatar-wrap" onclick="event.stopPropagation()">
+        <img id="avatarModalImg" src="" alt="Аватар в полном размере" class="max-w-full max-h-[85vh] rounded-2xl">
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
-{% if current_user %}
 <script>
+    // Аватарка в полном размере
     function openAvatarModal(url) {
         var el = document.getElementById('avatarModalImg');
         var overlay = document.getElementById('avatarModal');
@@ -692,6 +407,7 @@
         }
     });
 
+    // Редактирование профиля модалка
     function openEditProfileModal() {
         document.getElementById('editProfileModal').classList.add('active');
         document.body.style.overflow = 'hidden';
@@ -705,9 +421,10 @@
         setTimeout(function () {
             var coverInput = document.getElementById('cover_file');
             if (coverInput) coverInput.click();
-        }, 80);
+        }, 100);
     }
 
+    // Превью файлов при выборе в инпутах
     document.addEventListener('DOMContentLoaded', () => {
         const avatarInput = document.getElementById('avatar_file');
         if (avatarInput) {
@@ -717,7 +434,9 @@
                     const reader = new FileReader();
                     reader.onload = function(ev) {
                         const preview = document.getElementById('avatar_preview');
-                        if (preview) { preview.src = ev.target.result; preview.style.display = 'block'; }
+                        const placeholder = document.getElementById('avatar_placeholder');
+                        if (placeholder) placeholder.classList.add('hidden');
+                        if (preview) { preview.src = ev.target.result; preview.classList.remove('hidden'); }
                     };
                     reader.readAsDataURL(file);
                 }
@@ -731,7 +450,7 @@
                     const reader = new FileReader();
                     reader.onload = function(ev) {
                         const preview = document.getElementById('cover_preview');
-                        if (preview) { preview.src = ev.target.result; preview.style.display = 'block'; }
+                        if (preview) { preview.src = ev.target.result; preview.classList.remove('hidden'); }
                     };
                     reader.readAsDataURL(file);
                 }
@@ -739,6 +458,7 @@
         }
     });
 
+    // Отправка формы редактирования
     async function submitProfileEdit(event) {
         event.preventDefault();
         const form = event.target;
@@ -758,19 +478,8 @@
             }
             const result = await response.json();
             if (result.success) {
-                if (result.avatar_url) {
-                    const avatarImg = document.querySelector('.profile-avatar-big img');
-                    if (avatarImg) { avatarImg.src = result.avatar_url + '?t=' + Date.now(); }
-                    else { const avatarDiv = document.querySelector('.profile-avatar-big'); if (avatarDiv) avatarDiv.innerHTML = `<img src="${result.avatar_url}?t=${Date.now()}" alt="Avatar">`; }
-                }
-                if (result.cover_url) {
-                    const coverEl = document.querySelector('.profile-cover');
-                    if (coverEl) { coverEl.classList.add('has-cover'); coverEl.style.backgroundImage = "url('" + result.cover_url + "?t=" + Date.now() + "')"; }
-                    const coverPreview = document.getElementById('cover_preview');
-                    if (coverPreview) { coverPreview.src = result.cover_url + '?t=' + Date.now(); coverPreview.style.display = 'block'; }
-                }
-                if (window.toast) window.toast.success('Профиль обновлен');
-                setTimeout(() => window.location.reload(), 1000);
+                if (window.toast) window.toast.success('Профиль успешно обновлен');
+                setTimeout(() => window.location.reload(), 600);
             } else {
                 if (window.toast) window.toast.error(result.error || 'Ошибка обновления');
             }
@@ -779,13 +488,10 @@
         }
     }
 </script>
-{% endif %}
 
 <script>
+    // Часовой пояс и время
     document.addEventListener('DOMContentLoaded', () => {
-        const profileContainer = document.querySelector('.profile-container.theme-creator');
-        if (profileContainer) document.body.classList.add('creator-theme-active');
-
         const tzMeta = document.querySelector('meta[name="user-timezone-effective"]');
         const tzName = tzMeta && tzMeta.content ? tzMeta.content : undefined;
         document.querySelectorAll('.local-time').forEach(el => {
@@ -825,13 +531,13 @@
                     });
                     const data = await r.json();
                     if (data.success) {
-                        if (tzMsg) { tzMsg.style.display = 'block'; tzMsg.textContent = 'Сохранено. Эффективная зона: ' + (data.effective || ''); }
+                        if (tzMsg) { tzMsg.style.display = 'block'; tzMsg.textContent = 'Сохранено. Текущий пояс: ' + (data.effective || ''); }
                         const effMeta = document.querySelector('meta[name="user-timezone-effective"]');
                         if (effMeta && data.effective) effMeta.setAttribute('content', data.effective);
-                        if (window.toast) window.toast.success('Часовой пояс обновлён');
-                    } else if (window.toast) window.toast.error(data.error || 'Ошибка');
+                        if (window.toast) window.toast.success('Часовой пояс успешно обновлён');
+                    } else if (window.toast) window.toast.error(data.error || 'Ошибка при сохранении');
                 } catch (e) {
-                    if (window.toast) window.toast.error('Сеть');
+                    if (window.toast) window.toast.error('Ошибка сети при обновлении часового пояса');
                 }
             });
         }
@@ -839,6 +545,7 @@
 </script>
 
 <script>
+    // Telegram Бот статус
     let telegramLinkCode = null;
     let telegramCodeExpires = null;
     
@@ -849,9 +556,9 @@
             const resp = await fetch('/api/telegram/status');
             const data = await resp.json();
             if (data.success) renderTelegramStatus(data);
-            else container.innerHTML = '<div style="color: var(--danger);">Ошибка загрузки</div>';
+            else container.innerHTML = '<div class="text-boo-coral text-sm font-semibold">Не удалось загрузить статус</div>';
         } catch (e) {
-            container.innerHTML = '<div style="color: var(--danger);">Ошибка соединения</div>';
+            container.innerHTML = '<div class="text-boo-coral text-sm font-semibold">Ошибка соединения</div>';
         }
     }
     
@@ -860,21 +567,28 @@
         if (!container) return;
         if (data.linked) {
             container.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                    <span style="color: var(--success); font-weight: 600;">Telegram привязан</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <input type="checkbox" id="tg-notifications-toggle" ${data.notifications_enabled ? 'checked' : ''} onchange="toggleTelegramNotifications(this.checked)">
-                        <span style="color: var(--text-muted);">Получать уведомления</span>
-                    </label>
-                    <button class="neo-button ghost sm" onclick="unlinkTelegram()">Отвязать</button>
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
+                        <i class="ph-bold ph-check-circle text-lg"></i>
+                        <span>Telegram бот успешно подключен</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-4 border-t border-slate-100 dark:border-white/[0.08] pt-4">
+                        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                            <input type="checkbox" id="tg-notifications-toggle" class="w-4 h-4 text-boo-primary border-slate-300 dark:border-white/[0.1] rounded focus:ring-purple-500" ${data.notifications_enabled ? 'checked' : ''} onchange="toggleTelegramNotifications(this.checked)">
+                            <span class="text-sm font-semibold text-secondary dark:text-dark-muted">Получать уведомления в боте</span>
+                        </label>
+                        <button class="px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-boo-coral font-bold rounded-xl border border-red-100 dark:border-red-900 transition-colors text-xs ml-auto" onclick="unlinkTelegram()">Отвязать</button>
+                    </div>
                 </div>`;
         } else {
             container.innerHTML = `
-                <div style="color: var(--text-muted); margin-bottom: 0.75rem;">Привяжите Telegram, чтобы получать уведомления о уроках, проверке ДЗ и сообщениях.</div>
-                <div id="telegram-link-area">
-                    <button class="neo-button accent sm" onclick="generateTelegramCode()">Привязать Telegram</button>
+                <div class="flex flex-col gap-4">
+                    <p class="text-sm text-muted dark:text-dark-muted leading-relaxed m-0">
+                        Подключите Telegram бота, чтобы мгновенно получать уведомления о запланированных уроках, сдаче домашних работ и сообщениях от учеников.
+                    </p>
+                    <div id="telegram-link-area">
+                        <button class="px-5 py-3 bg-boo-primary hover:bg-boo-primaryHover text-white font-bold rounded-xl shadow-sm text-sm" onclick="generateTelegramCode()">Подключить Telegram</button>
+                    </div>
                 </div>`;
         }
     }
@@ -884,7 +598,7 @@
     async function generateTelegramCode() {
         const area = document.getElementById('telegram-link-area');
         if (!area) return;
-        area.innerHTML = '<div style="color: var(--text-muted);">Генерация кода...</div>';
+        area.innerHTML = '<div class="text-sm text-muted dark:text-dark-muted animate-pulse">Генерация секретного кода...</div>';
         try {
             const resp = await fetch('/api/telegram/link-code', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
             const data = await resp.json();
@@ -894,43 +608,51 @@
                 const botHref = data.deep_link || (data.bot_username ? 'https://t.me/' + data.bot_username : 'https://t.me/boostudy_bot');
                 const botLabel = data.bot_username ? ('@' + data.bot_username) : '@boostudy_bot';
                 const deepBtn = data.deep_link
-                    ? `<a class="neo-button accent sm" href="${data.deep_link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;margin-bottom:0.75rem;">Открыть бота и привязать</a>`
+                    ? `<a class="px-5 py-3 bg-boo-primary hover:bg-boo-primaryHover text-white font-bold rounded-xl shadow-sm text-sm text-center no-underline inline-block mb-3 transition-colors" href="${data.deep_link}" target="_blank" rel="noopener">Открыть бота и привязать</a>`
                     : '';
                 area.innerHTML = `
-                    <div style="background: var(--surface-2); padding: 1rem; border-radius: var(--radius-md);">
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;"><b>Способ 1.</b> Нажмите кнопку — откроется ${botLabel} с автоматической привязкой:</div>
-                        ${deepBtn}
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin: 0.75rem 0 0.5rem;"><b>Способ 2.</b> Или откройте <a href="${botHref}" target="_blank" style="color: var(--accent-1);">${botLabel}</a> и отправьте:</div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                            <code style="background: var(--surface-1); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 1.1rem; font-weight: 600; letter-spacing: 0.05em;">/link ${data.code}</code>
-                            <button class="neo-button ghost sm" onclick="copyTelegramCode()" title="Скопировать">📋</button>
+                    <div class="bg-surface dark:bg-dark-inner p-5 rounded-2xl border border-slate-200 dark:border-white/[0.1] space-y-4">
+                        <div class="text-xs font-bold text-secondary dark:text-white uppercase tracking-wider">Вариант 1. Быстрое подключение</div>
+                        <div>${deepBtn}</div>
+                        
+                        <div class="text-xs font-bold text-secondary dark:text-white uppercase tracking-wider border-t border-slate-100 dark:border-white/[0.08] pt-4">Вариант 2. Ручное подключение</div>
+                        <p class="text-xs text-muted dark:text-dark-muted leading-relaxed">
+                            Откройте бота <a href="${botHref}" target="_blank" class="text-boo-primary font-bold hover:underline">${botLabel}</a> и отправьте ему сообщение:
+                        </p>
+                        <div class="flex items-center gap-3">
+                            <code class="bg-surface-alt dark:bg-dark-card border border-slate-200 dark:border-white/[0.1] px-4 py-2.5 rounded-lg text-primary dark:text-white font-mono font-bold text-sm">/link ${data.code}</code>
+                            <button class="px-3 py-2.5 bg-surface hover:bg-surface-alt dark:bg-dark-card border border-slate-200 dark:border-white/[0.1] text-secondary dark:text-white font-bold rounded-lg transition-colors text-sm" onclick="copyTelegramCode()" title="Скопировать команду">
+                                <i class="ph-bold ph-copy"></i>
+                            </button>
                         </div>
-                        <div style="font-size: 0.8rem; color: var(--warning);">Ссылка и код действительны 15 минут. Один сеанс — одна привязка.</div>
+                        <div class="text-[10px] text-boo-coral font-bold mt-2">
+                            Ссылка и код действительны в течение 15 минут.
+                        </div>
                     </div>
-                    <button class="neo-button ghost sm" style="margin-top: 0.75rem;" onclick="loadTelegramStatus()">← Назад</button>`;
+                    <button class="px-4 py-2 bg-surface hover:bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.1] text-secondary dark:text-white font-bold rounded-xl transition-colors text-xs mt-4" onclick="loadTelegramStatus()">← Назад</button>`;
             } else {
-                area.innerHTML = `<div style="color: var(--danger);">Ошибка: ${data.error}</div>`;
+                area.innerHTML = `<div class="text-boo-coral text-sm font-semibold">Ошибка: ${data.error}</div>`;
             }
         } catch (e) {
-            area.innerHTML = '<div style="color: var(--danger);">Ошибка соединения</div>';
+            area.innerHTML = '<div class="text-boo-coral text-sm font-semibold">Ошибка соединения</div>';
         }
     }
     
     function copyTelegramCode() {
         if (telegramLinkCode) {
             navigator.clipboard.writeText('/link ' + telegramLinkCode);
-            if (window.toast) window.toast.success('Команда скопирована!');
+            if (window.toast) window.toast.success('Команда скопирована в буфер обмена!');
         }
     }
     
     async function unlinkTelegram() {
-        if (!confirm('Отвязать Telegram? Вы перестанете получать уведомления.')) return;
+        if (!confirm('Вы уверены, что хотите отвязать Telegram? Вы перестанете получать важные уведомления.')) return;
         try {
             const resp = await fetch('/api/telegram/unlink', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
             const data = await resp.json();
-            if (data.success) { if (window.toast) window.toast.success('Telegram отвязан'); loadTelegramStatus(); }
+            if (data.success) { if (window.toast) window.toast.success('Telegram бот успешно отвязан'); loadTelegramStatus(); }
             else { if (window.toast) window.toast.error(data.error); }
-        } catch (e) { if (window.toast) window.toast.error('Ошибка соединения'); }
+        } catch (e) { if (window.toast) window.toast.error('Ошибка соединения при отвязке Telegram'); }
     }
     
     async function toggleTelegramNotifications(enabled) {
@@ -940,11 +662,52 @@
                 body: JSON.stringify({ enabled })
             });
             const data = await resp.json();
-            if (data.success) { if (window.toast) window.toast.success(enabled ? 'Уведомления включены' : 'Уведомления выключены'); }
+            if (data.success) { if (window.toast) window.toast.success(enabled ? 'Уведомления успешно включены' : 'Уведомления отключены'); }
             else { if (window.toast) window.toast.error(data.error); loadTelegramStatus(); }
-        } catch (e) { if (window.toast) window.toast.error('Ошибка соединения'); loadTelegramStatus(); }
+        } catch (e) { if (window.toast) window.toast.error('Ошибка соединения при переключении уведомлений'); loadTelegramStatus(); }
     }
     
     document.addEventListener('DOMContentLoaded', loadTelegramStatus);
+</script>
+
+<script>
+    // Календарь
+    (function() {
+        var cfg = document.getElementById('ics-config');
+        if (!cfg) return;
+        var origin = window.location.origin;
+        var token = (cfg.getAttribute('data-token') || '').trim() || null;
+        var icsTzParam = cfg.getAttribute('data-tz') || 'moscow';
+        var regenUrl = cfg.getAttribute('data-regenerate-url') || '';
+        var link = token ? origin + '/schedule/ics/' + token + '?timezone=' + icsTzParam : '';
+        var el = document.querySelector('.js-ics-input');
+        if (el) el.value = link || '(нажмите кнопку обновить)';
+        
+        window.copyIcsLink = async function() {
+            var inp = document.querySelector('.js-ics-input');
+            var v = inp ? inp.value || '' : '';
+            if (!v || v.indexOf('(') === 0) return;
+            try {
+                await navigator.clipboard.writeText(v);
+                if (window.toast) window.toast.success('Ссылка на календарь скопирована');
+            } catch(e) {
+                if (window.toast) window.toast.error('Не удалось скопировать ссылку');
+            }
+        };
+        
+        window.regenerateIcsToken = async function() {
+            try {
+                var r = await fetch(regenUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') || {}).content || '' }, body: '{}' });
+                var data = await r.json().catch(function() { return {}; });
+                if (!r.ok || data.success === false) throw new Error(data.error || 'HTTP ' + r.status);
+                var newLink = origin + '/schedule/ics/' + data.token + '?timezone=' + icsTzParam;
+                var inp = document.querySelector('.js-ics-input');
+                if (inp) inp.value = newLink;
+                if (window.toast) window.toast.success('Ссылка успешно обновлена');
+            } catch (e) {
+                if (window.toast) window.toast.error(e.message || 'Ошибка обновления токена');
+            }
+        };
+    })();
 </script>
 {% endblock %}

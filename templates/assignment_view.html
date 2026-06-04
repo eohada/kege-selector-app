@@ -23,12 +23,12 @@
 {% set progress_done = ((counts.submitted if counts is defined else 0) + (counts.graded if counts is defined else 0) + (counts.returned if counts is defined else 0)) %}
 {% set progress_percent = ((progress_done * 100 / total_students)|round(1)) if total_students else 0 %}
 <div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
-            <a href="{{ url_for('assignments.assignments_list') }}" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors px-2 py-1 rounded-lg hover:bg-slate-100 no-underline">
-                <i class="ph-bold ph-arrow-left text-lg"></i> Назад к списку
+            <a href="{{ url_for('assignments.assignments_list') }}" class="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-secondary dark:text-zinc-300 rounded-xl font-extrabold text-sm hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 transition-all shadow-sm no-underline w-fit mb-2">
+                <i class="ph-bold ph-arrow-left text-base"></i> Назад к списку
             </a>
 
             <section class="bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:p-10 flex flex-col relative overflow-hidden">
-                <div class="absolute -right-20 -top-20 w-80 h-80 bg-gradient-to-br from-cyan-50 to-purple-50 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -right-20 -top-20 w-80 h-80 bg-gradient-to-br from-cyan-50 to-purple-50 dark:from-cyan-950/20 dark:to-purple-950/20 rounded-full blur-3xl pointer-events-none"></div>
 
                 <div class="relative z-10 flex flex-col lg:flex-row lg:items-start justify-between gap-6">
                     <div class="min-w-0">
@@ -51,20 +51,20 @@
 
                     <div class="flex flex-wrap items-center gap-3 shrink-0">
                         {% if can_manage %}
-                        <a href="{{ url_for('assignments.assignment_edit', assignment_id=assignment.assignment_id) }}" class="px-5 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm no-underline">
-                            <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
+                        <a href="{{ url_for('assignments.assignment_edit', assignment_id=assignment.assignment_id) }}" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] no-underline">
+                            <i class="ph-bold ph-pencil-simple text-base"></i> Редактировать
                         </a>
-                        <button type="button" class="px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2 text-sm" onclick="duplicateAssignment({{ assignment.assignment_id }})">
-                            <i class="ph-bold ph-copy text-lg"></i> Дублировать
+                        <button type="button" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm" onclick="duplicateAssignment({{ assignment.assignment_id }})">
+                            <i class="ph-bold ph-copy text-base"></i> Дублировать
                         </button>
                         {% if assignment.is_active %}
-                        <button type="button" class="px-5 py-2.5 bg-red-50 text-boo-coral border border-red-100 rounded-xl font-bold hover:bg-red-100 transition-colors shadow-sm flex items-center gap-2 text-sm" onclick="archiveAssignment({{ assignment.assignment_id }})">
-                            <i class="ph-bold ph-archive text-lg"></i> В архив
+                        <button type="button" class="h-11 px-5 py-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 text-red-650 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-800/50 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow-[0_4px_12px_rgba(239,68,68,0.1)]" onclick="archiveAssignment({{ assignment.assignment_id }})">
+                            <i class="ph-bold ph-archive text-base"></i> В архив
                         </button>
                         {% endif %}
                         {% endif %}
-                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted', assignment_type=assignment.assignment_type, assignment_id=assignment.assignment_id) }}" class="px-5 py-2.5 bg-white text-slate-600 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2 text-sm no-underline">
-                            <i class="ph-bold ph-check-circle text-lg"></i> Очередь проверки
+                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted', assignment_type=assignment.assignment_type, assignment_id=assignment.assignment_id) }}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
+                            <i class="ph-bold ph-check-circle text-base"></i> Очередь проверки
                         </a>
                     </div>
                 </div>
@@ -80,28 +80,28 @@
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 relative z-10 mt-6">
-                    <div class="bg-white border-2 border-cyan-200 rounded-2xl p-4 shadow-[0_4px_15px_rgba(6,182,212,0.1)] flex flex-col justify-between">
-                        <div class="text-[10px] font-extrabold text-slate-600 uppercase tracking-widest mb-1">Нужно проверить</div>
+                    <div class="bg-white/45 dark:bg-zinc-900/30 backdrop-blur-md border-2 border-cyan-200 dark:border-cyan-500/40 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-cyan-650 dark:text-cyan-400 uppercase tracking-widest mb-1">Нужно проверить</div>
                         <div class="text-3xl font-black text-slate-900">{{ (counts.needs_grading if counts is defined else 0) }}</div>
                     </div>
-                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">Сдано</div>
+                    <div class="bg-slate-50 dark:bg-zinc-900/30 backdrop-blur-md border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Сдано</div>
                         <div class="text-3xl font-black text-slate-900">{{ (counts.submitted if counts is defined else 0) }}</div>
                     </div>
-                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">На доработке</div>
+                    <div class="bg-slate-50 dark:bg-zinc-900/30 backdrop-blur-md border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mb-1">На доработке</div>
                         <div class="text-3xl font-black text-slate-900">{{ (counts.returned if counts is defined else 0) }}</div>
                     </div>
-                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">В процессе</div>
+                    <div class="bg-slate-50 dark:bg-zinc-900/30 backdrop-blur-md border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mb-1">В процессе</div>
                         <div class="text-3xl font-black text-slate-900">{{ (counts.in_progress if counts is defined else 0) }}</div>
                     </div>
-                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">Назначено</div>
+                    <div class="bg-slate-50 dark:bg-zinc-900/30 backdrop-blur-md border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Назначено</div>
                         <div class="text-3xl font-black text-slate-900">{{ (counts.assigned if counts is defined else 0) }}</div>
                     </div>
-                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                        <div class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">Проверено</div>
+                    <div class="bg-slate-50 dark:bg-zinc-900/30 backdrop-blur-md border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                        <div class="text-[10px] font-extrabold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mb-1">Проверено</div>
                         <div class="text-3xl font-black text-slate-900">{{ (counts.graded if counts is defined else 0) }}</div>
                     </div>
                 </div>
@@ -135,12 +135,12 @@
                                 <input class="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 font-medium text-slate-700 text-sm focus:outline-none shadow-sm" id="student" name="student" value="{{ student_query }}" placeholder="Поиск по имени...">
                             </div>
                         </div>
-                        <div class="flex gap-2 w-full sm:w-auto">
-                            <button type="submit" class="flex-1 sm:flex-none px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm shadow-sm hover:bg-boo-primaryHover transition-colors flex items-center justify-center gap-2">
+                        <div class="flex gap-2 w-full sm:w-auto h-11">
+                            <button type="submit" class="flex-1 sm:flex-none px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)]">
                                 <i class="ph-bold ph-funnel text-base"></i> Применить
                             </button>
-                            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="px-3 py-2.5 bg-white text-slate-500 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm no-underline" title="Сброс">
-                                <i class="ph-bold ph-arrow-counter-clockwise text-lg"></i>
+                            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-350 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center no-underline" title="Сброс">
+                                <i class="ph-bold ph-arrow-counter-clockwise text-base"></i>
                             </a>
                         </div>
                     </form>
@@ -154,7 +154,7 @@
                             <input type="hidden" name="source" value="assignments">
                             <input type="hidden" name="assignment_type" value="{{ assignment.assignment_type }}">
                             <input type="hidden" name="student" value="">
-                            <button type="submit" class="px-4 py-2.5 bg-white text-orange-600 border border-orange-100 rounded-xl font-bold hover:bg-orange-100 transition-colors shadow-sm flex items-center gap-2 text-sm">
+                            <button type="submit" class="px-5 py-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:border-amber-300 dark:hover:border-amber-800/50 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow-[0_4px_12px_rgba(245,158,11,0.1)]">
                                 <i class="ph-bold ph-arrow-u-up-left text-base"></i> Вернуть все сданные на доработку
                             </button>
                         </form>
@@ -197,18 +197,18 @@
                                     </div>
 
                                     <div class="flex gap-2 w-full sm:w-auto">
-                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="flex-1 sm:flex-none px-5 py-2 bg-purple-50 text-boo-primary border border-purple-100 rounded-xl font-bold text-sm hover:bg-purple-100 transition-colors shadow-sm text-center no-underline">
+                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="flex-1 sm:flex-none px-5 py-2 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-secondary dark:text-zinc-300 rounded-xl font-extrabold text-sm hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-350 dark:hover:border-zinc-700/80 transition-all shadow-sm text-center no-underline active:scale-[0.98]">
                                             Открыть
                                         </a>
                                         {% if submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] %}
-                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="flex-1 sm:flex-none px-5 py-2 bg-boo-primary text-white rounded-xl font-bold text-sm hover:bg-boo-primaryHover transition-colors shadow-sm text-center no-underline">
+                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="flex-1 sm:flex-none px-5 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer text-center no-underline shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)]">
                                             Проверить
                                         </a>
                                         {% endif %}
                                         {% if can_manage %}
                                         <button
                                             type="button"
-                                            class="flex-1 sm:flex-none px-4 py-2 bg-orange-50 text-orange-600 border border-orange-100 rounded-xl font-bold text-sm hover:bg-orange-100 transition-colors shadow-sm"
+                                            class="flex-1 sm:flex-none px-5 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-amber-650 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:border-amber-300 dark:hover:border-amber-800/50 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer text-center shadow-sm hover:shadow-[0_4px_12px_rgba(245,158,11,0.1)]"
                                             onclick='revokeSubmission({{ submission.submission_id }}, {{ (submission.student.name if submission.student else "Ученик")|tojson }})'
                                         >
                                             Отозвать
@@ -258,7 +258,7 @@
                                         {% else %}
                                         <span class="bg-white border border-slate-200 text-slate-500 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase shadow-sm">Авто</span>
                                         {% endif %}
-                                        <span class="text-sm font-bold text-boo-primary hover:underline">Открыть</span>
+                                        <span class="text-sm font-extrabold text-boo-primary dark:text-purple-400 hover:text-boo-primaryHover dark:hover:text-purple-300 transition-colors cursor-pointer select-none">Открыть</span>
                                     </div>
                                 </summary>
                                 <div class="task-body mt-4 pt-4 border-t border-slate-200 text-sm leading-7 text-slate-700">
@@ -275,7 +275,7 @@
         <div class="max-w-[760px] w-[calc(100%_-_2rem)] mx-auto my-12 bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8">
             <div class="flex items-center justify-between gap-4 mb-6">
                 <h3 class="text-2xl font-black text-slate-900">Дублировать работу</h3>
-                <button type="button" class="px-4 py-2 bg-white text-slate-500 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm text-sm" id="duplicate-modal-close">Закрыть</button>
+                <button type="button" class="px-4 py-2 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] shadow-sm cursor-pointer" id="duplicate-modal-close">Закрыть</button>
             </div>
             <div class="grid gap-4">
                 <div class="space-y-1.5">
@@ -323,8 +323,8 @@
                         <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1">Получатели</label>
                         <span id="dup-selected-count" class="text-xs text-slate-500 font-bold">Выбрано: 0</span>
                         <div class="flex gap-2">
-                            <button type="button" class="px-3 py-1.5 bg-white text-slate-600 border border-slate-200 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm text-xs" id="dup-select-all">Все</button>
-                            <button type="button" class="px-3 py-1.5 bg-white text-slate-600 border border-slate-200 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm text-xs" id="dup-select-default">Текущие</button>
+                            <button type="button" class="px-3 py-1.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-655 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-350 dark:hover:border-zinc-700/80 rounded-lg font-bold text-xs transition-all shadow-sm cursor-pointer" id="dup-select-all">Все</button>
+                            <button type="button" class="px-3 py-1.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-655 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-350 dark:hover:border-zinc-700/80 rounded-lg font-bold text-xs transition-all shadow-sm cursor-pointer" id="dup-select-default">Текущие</button>
                         </div>
                     </div>
                     <input id="dup-recipient-search" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input" placeholder="Поиск ученика...">
@@ -338,8 +338,8 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-2">
-                    <button type="button" class="px-5 py-2.5 bg-white text-slate-500 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm text-sm" id="dup-cancel-btn">Отмена</button>
-                    <button type="button" class="px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-sm border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 text-sm" id="dup-submit-btn">Создать копию</button>
+                    <button type="button" class="px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] shadow-sm cursor-pointer" id="dup-cancel-btn">Отмена</button>
+                    <button type="button" class="px-6 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)]" id="dup-submit-btn">Создать копию</button>
                 </div>
             </div>
         </div>

@@ -420,103 +420,166 @@
     }
 
     .teacher-mode .task-card.teacher-task-card {
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--stroke-1);
         border-radius: 24px;
-        background: #ffffff;
-        box-shadow: 0 10px 30px -16px rgba(15, 23, 42, 0.28);
-        padding: 1.25rem 1.35rem;
+        background: var(--surface-1);
+        box-shadow: var(--shadow-card);
+        padding: 1.5rem;
         transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
     }
     .teacher-mode .task-card.teacher-task-card:hover {
-        border-color: #c4b5fd;
-        box-shadow: 0 18px 34px -18px rgba(123, 92, 255, 0.35);
+        border-color: var(--boo-primary, #818cf8);
+        box-shadow: 0 12px 30px rgba(129, 140, 248, 0.15);
         transform: translateY(-1px);
     }
     .teacher-mode .task-card.teacher-task-card .task-header {
-        margin-bottom: 1rem;
-        padding-bottom: 0.9rem;
-        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 1.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--stroke-1);
     }
     .teacher-mode .task-card.teacher-task-card .task-number {
-        color: #6d28d9;
-        font-weight: 900;
+        color: var(--boo-primary, #818cf8);
+        font-weight: 800;
+        font-size: 1.15rem;
+    }
+    .teacher-mode .task-card.teacher-task-card .task-number span {
+        color: var(--text-muted) !important;
+        font-weight: 400;
     }
     .teacher-mode .task-card.teacher-task-card .task-content {
-        color: #334155;
+        color: var(--text-primary);
+        font-size: 1rem;
+        line-height: 1.7;
     }
     .teacher-mode .task-card.teacher-task-card .answer-section {
-        margin-top: 1rem;
-        padding: 0.95rem;
-        border-radius: 14px;
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
+        margin-top: 1.25rem;
+        padding: 1rem 1.25rem;
+        border-radius: 16px;
+        border: 1px solid var(--stroke-1);
+        background: var(--surface-2);
     }
     .teacher-mode .task-card.teacher-task-card .answer-section .neo-input {
-        background: #ffffff !important;
-        border: 1px solid #dbe2ea !important;
+        background: var(--surface-1) !important;
+        border: 1px solid var(--stroke-1) !important;
+        color: var(--text-primary) !important;
     }
     .teacher-mode .task-card.teacher-task-card .auto-check-result {
-        background: #f0fdf4 !important;
-        border: 1px solid #86efac !important;
+        background: rgba(16, 185, 129, 0.08) !important;
+        border: 1px solid rgba(16, 185, 129, 0.25) !important;
+        color: #34d399 !important;
     }
     .teacher-mode .teacher-review-panel {
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--stroke-1);
         border-radius: 20px;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-        box-shadow: 0 12px 30px -20px rgba(15, 23, 42, 0.3);
+        background: var(--surface-1);
+        box-shadow: var(--shadow-card);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
     }
     .teacher-mode .task-nav-bar.teacher-task-nav {
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--stroke-1);
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.92);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        background: var(--surface-1);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: var(--shadow-card);
     }
     .teacher-mode .task-nav-bar.teacher-task-nav .task-nav-btn {
         border-radius: 12px;
-        font-weight: 800;
+        font-weight: 700;
     }
     .teacher-mode .teacher-review-cta {
         margin-top: 1.1rem;
-        padding: 1rem;
-        border-radius: 16px;
-        border: 1px solid #e2e8f0;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        padding: 1.25rem;
+        border-radius: 18px;
+        border: 1px solid var(--stroke-1);
+        background: var(--surface-1);
+        box-shadow: var(--shadow-card);
     }
     .teacher-mode .homework-actions.teacher-actions-bar {
-        border: 1px solid #e2e8f0 !important;
+        border: 1px solid var(--stroke-1) !important;
         border-radius: 18px !important;
-        background: rgba(255, 255, 255, 0.94) !important;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        box-shadow: 0 16px 34px -22px rgba(15, 23, 42, 0.35) !important;
+        background: var(--surface-1) !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: var(--shadow-card) !important;
     }
     [data-theme="dark"] .teacher-mode .task-card.teacher-task-card {
-        background: #111827 !important;
-        border-color: rgba(255,255,255,0.08) !important;
-        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+        background: var(--surface-1) !important;
+        border-color: var(--stroke-1) !important;
     }
     [data-theme="dark"] .teacher-mode .task-card.teacher-task-card .task-header {
-        border-bottom-color: rgba(255,255,255,0.08) !important;
+        border-bottom-color: var(--stroke-1) !important;
     }
     [data-theme="dark"] .teacher-mode .task-card.teacher-task-card .task-content {
-        color: var(--text-primary, #e2e8f0);
+        color: var(--text-primary) !important;
     }
     [data-theme="dark"] .teacher-mode .task-card.teacher-task-card .answer-section {
-        background: rgba(255,255,255,0.04);
-        border-color: rgba(255,255,255,0.08) !important;
+        background: var(--surface-2) !important;
+        border-color: var(--stroke-1) !important;
     }
     [data-theme="dark"] .teacher-mode .task-card.teacher-task-card .answer-section .neo-input {
-        background: rgba(0, 0, 0, 0.4) !important;
-        border-color: rgba(255,255,255,0.12) !important;
+        background: var(--color-bg-inset, rgba(0, 0, 0, 0.2)) !important;
+        border-color: var(--stroke-1) !important;
     }
     [data-theme="dark"] .teacher-mode .teacher-review-panel,
     [data-theme="dark"] .teacher-mode .teacher-review-cta,
     [data-theme="dark"] .teacher-mode .homework-actions.teacher-actions-bar,
     [data-theme="dark"] .teacher-mode .task-nav-bar.teacher-task-nav {
-        background: #111827 !important;
-        border-color: rgba(255,255,255,0.09) !important;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.35) !important;
+        background: var(--surface-1) !important;
+        border-color: var(--stroke-1) !important;
+        box-shadow: var(--shadow-card) !important;
+    }
+
+    .neo-button.warning {
+        background: rgba(245, 158, 11, 0.12) !important;
+        color: #d97706 !important;
+        border-color: rgba(245, 158, 11, 0.35) !important;
+        box-shadow: none;
+    }
+    .neo-button.warning:hover {
+        background: rgba(245, 158, 11, 0.2) !important;
+        border-color: rgba(245, 158, 11, 0.55) !important;
+    }
+    [data-theme="dark"] .neo-button.warning {
+        background: rgba(245, 158, 11, 0.16) !important;
+        color: #fbbf24 !important;
+        border-color: rgba(245, 158, 11, 0.35) !important;
+    }
+    [data-theme="dark"] .neo-button.warning:hover {
+        background: rgba(245, 158, 11, 0.24) !important;
+        border-color: rgba(245, 158, 11, 0.5) !important;
+    }
+
+    .status-badge {
+        padding: 0.35rem 0.75rem;
+        font-weight: 600;
+        font-size: 0.8rem;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: 1px solid transparent;
+    }
+    .status-badge.status-pending {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-muted);
+    }
+    .status-badge.status-submitted {
+        background: rgba(59, 130, 246, 0.15);
+        border-color: rgba(59, 130, 246, 0.3);
+        color: #60a5fa;
+    }
+    .status-badge.status-returned {
+        background: rgba(245, 158, 11, 0.15);
+        border-color: rgba(245, 158, 11, 0.3);
+        color: #fbbf24;
+    }
+    .status-badge.status-graded {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: rgba(16, 185, 129, 0.3);
+        color: #34d399;
     }
 
 
@@ -741,6 +804,33 @@
             right: 10px;
         }
     }
+    
+    .lesson-room-workspace {
+        display: flex;
+        gap: 1.5rem;
+        align-items: start;
+        width: 100%;
+        margin-top: 1rem;
+    }
+    
+    .lesson-room-main-column {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        padding-bottom: 6rem;
+    }
+    
+    @media (max-width: 1024px) {
+        .lesson-room-workspace {
+            flex-direction: column;
+        }
+        #lesson-side-chat {
+            width: 100% !important;
+            position: static !important;
+        }
+    }
     </style>
 {% endblock %}
 
@@ -783,17 +873,15 @@
                     <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent sm" style="text-decoration:none;">
                         <i class="ph-bold ph-house-line"></i> Создать ДЗ
                     </a>
-                    <div class="lesson-action-cluster">
-                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="lesson-icon-btn" title="Редактировать" style="text-decoration:none;">
-                            <i class="ph-bold ph-pencil-simple"></i>
-                        </a>
-                        <button type="button" class="lesson-icon-btn danger" title="Удалить урок" onclick="deleteLesson({{ lesson.lesson_id }}, {{ student.student_id }})" aria-label="Удалить урок">
-                            <i class="ph-bold ph-trash"></i>
-                        </button>
-                    </div>
+                    <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button neo-outline sm" title="Редактировать" style="text-decoration:none; height: 36px; width: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0;">
+                        <i class="ph-bold ph-pencil-simple"></i>
+                    </a>
+                    <button type="button" class="neo-button neo-outline sm text-rose-400 border-rose-500/20 hover:bg-rose-500/10" title="Удалить урок" onclick="deleteLesson({{ lesson.lesson_id }}, {{ student.student_id }})" aria-label="Удалить урок" style="height: 36px; width: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0;">
+                        <i class="ph-bold ph-trash"></i>
+                    </button>
                     {% endif %}
                     {% if is_student_view %}
-                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button outline sm" style="text-decoration:none;">
+                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button neo-outline sm" style="text-decoration:none;">
                         <i class="ph-bold ph-check-square-offset"></i> К заданиям
                     </a>
                     {% endif %}
@@ -852,12 +940,13 @@
             <button type="button" class="tab-btn" data-tab="tasks" role="tab" aria-selected="false"><i class="ph-bold ph-chalkboard-teacher"></i> Классная работа</button>
             <button type="button" class="tab-btn" data-tab="materials" role="tab" aria-selected="false"><i class="ph-bold ph-paperclip"></i> Материалы</button>
             <button type="button" class="tab-btn" data-tab="notes" role="tab" aria-selected="false"><i class="ph-bold ph-note"></i> Заметки {{ 'ученика' if not is_student_view else '' }}</button>
-            <button type="button" class="tab-btn" data-tab="chat" role="tab" aria-selected="false"><i class="ph-bold ph-chats"></i> Диалог</button>
             <button type="button" class="tab-btn" data-tab="whiteboard" role="tab" aria-selected="false"><i class="ph-bold ph-presentation-chart"></i> Доска</button>
             <button type="button" class="tab-btn" data-tab="videocall" role="tab" aria-selected="false"><i class="ph-bold ph-video-camera"></i> Звонок</button>
         </div>
 
-        <div id="tab-theory" class="tab-pane active">
+        <div class="lesson-room-workspace">
+            <div class="lesson-room-main-column">
+                <div id="tab-theory" class="tab-pane active">
             <div class="glass-panel">
                 {% if not is_student_view and not is_parent_view %}
                 
@@ -869,9 +958,9 @@
                             <button type="button" class="neo-button ghost sm" id="modeBlocksBtn" onclick="setTheoryMode('blocks')" style="border-radius: 999px;"><i class="fas fa-cubes"></i> Blocks</button>
                         </div>
                         <a class="neo-button ghost sm" href="{{ url_for('library.lesson_templates', lesson_id=lesson.lesson_id) }}" target="_blank"><i class="fas fa-layer-group"></i> Шаблоны</a>
-                        <button class="neo-button outline sm" type="button" onclick="openCreateLessonTemplateModal()"><i class="fas fa-bookmark"></i> Сохранить как шаблон</button>
+                        <button class="neo-button neo-outline sm" type="button" onclick="openCreateLessonTemplateModal()"><i class="fas fa-bookmark"></i> Сохранить как шаблон</button>
                         <button class="neo-button accent sm" onclick="saveContent()"><i class="fas fa-save"></i> Сохранить</button>
-                        <button class="neo-button outline sm" type="button" onclick="saveBlocks()"><i class="fas fa-save"></i> Сохранить блоки</button>
+                        <button class="neo-button neo-outline sm" type="button" onclick="saveBlocks()"><i class="fas fa-save"></i> Сохранить блоки</button>
                     </div>
                 </div>
                 <div id="theory-markdown-wrap">
@@ -880,7 +969,7 @@
                 <div id="theory-blocks-wrap" style="display:none;">
                     <div style="display:flex; justify-content: space-between; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem;">
                         <div style="color: var(--text-muted); font-size: 0.95rem;">Блоки — foundation для конструктора (без Markdown). Можно смешивать: Markdown для текста, Blocks для структуры/раздаток.</div>
-                        <button type="button" class="neo-button outline sm" onclick="addBlock()"><i class="fas fa-plus"></i> Блок</button>
+                        <button type="button" class="neo-button neo-outline sm" onclick="addBlock()"><i class="fas fa-plus"></i> Блок</button>
                     </div>
                     <div id="blocksList" style="display:flex; flex-direction: column; gap: 0.75rem;"></div>
                 </div>
@@ -946,7 +1035,7 @@
                             <textarea class="neo-textarea" id="tplDesc" placeholder="Что внутри, как использовать..."></textarea>
                         </div>
                         <div style="display:flex; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap;">
-                            <button type="button" class="neo-button outline" onclick="closeCreateLessonTemplateModal()">Отмена</button>
+                            <button type="button" class="neo-button neo-outline" onclick="closeCreateLessonTemplateModal()">Отмена</button>
                             <button type="button" class="neo-button accent" onclick="createLessonTemplate()"><i class="fas fa-bookmark"></i> Сохранить</button>
                         </div>
                         <div style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
@@ -967,7 +1056,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% endif %}
 
-                {% if not is_parent_view %}
+                {% if not is_parent_view and assignment_type != 'classwork' %}
                 <div class="glass-panel" style="margin-bottom: 1.25rem;">
                     <div class="lesson-panel-header" style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
                         <div style="min-width: 0;">
@@ -1091,25 +1180,25 @@
                 {% set cnt_returned = homework_tasks|selectattr('status', 'equalto', 'returned')|list|length %}
                 {% set cnt_graded = homework_tasks|selectattr('status', 'equalto', 'graded')|list|length %}
 
-                <div class="glass-panel teacher-review-panel" style="margin-bottom: 1.5rem;">
-                    <div class="lesson-panel-header" style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                <div class="glass-panel teacher-review-panel" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+                    <div class="lesson-panel-header" style="display:flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
                         <div>
                             <div class="hero-eyebrow">панель проверки</div>
                             <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
-                                <span class="status-badge status-info" data-tooltip="Не начато">{{ cnt_pending }} · Не начато</span>
-                                <span class="status-badge status-info" data-tooltip="Сдано">{{ cnt_submitted }} · Сдано</span>
-                                <span class="status-badge status-warning" data-tooltip="На доработку">{{ cnt_returned }} · На доработку</span>
-                                <span class="status-badge status-success" data-tooltip="Проверено">{{ cnt_graded }} · Проверено</span>
+                                <span class="status-badge status-pending" data-tooltip="Не начато">{{ cnt_pending }} · Не начато</span>
+                                <span class="status-badge status-submitted" data-tooltip="Сдано">{{ cnt_submitted }} · Сдано</span>
+                                <span class="status-badge status-returned" data-tooltip="На доработку">{{ cnt_returned }} · На доработку</span>
+                                <span class="status-badge status-graded" data-tooltip="Проверено">{{ cnt_graded }} · Проверено</span>
                             </div>
                         </div>
-                        <div class="lesson-panel-actions" style="display:flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end;">
+                        <div class="lesson-panel-actions" style="display:flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; justify-content: flex-end;">
                             <a class="neo-button accent sm" href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='submitted') }}" style="text-decoration:none;">
                                 <i class="fas fa-check ui-icon ui-icon--sm"></i> Открыть проверку по уроку
                             </a>
-                            <a class="neo-button outline sm" href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='returned') }}" style="text-decoration:none;">
+                            <a class="neo-button warning sm" href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='returned') }}" style="text-decoration:none;">
                                 На доработку
                             </a>
-                            <a class="neo-button ghost sm" href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='graded') }}" style="text-decoration:none;">
+                            <a class="neo-button success sm" href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='graded') }}" style="text-decoration:none;">
                                 Проверено
                             </a>
                         </div>
@@ -1210,15 +1299,15 @@
                             {% if not task_is_locked %}
                             <input type="text" class="neo-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
                             {% else %}
-                            <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; cursor: not-allowed; opacity: 0.8;">{{ hw_task.student_submission or '—' }}</div>
+                            <div class="neo-input" style="background: var(--surface-2); border: 1px solid var(--stroke-1); color: var(--text-primary); cursor: not-allowed; opacity: 0.8;">{{ hw_task.student_submission or '—' }}</div>
                             {% endif %}
                         {% else %}
-                            <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; opacity: 0.95;">{{ hw_task.student_submission or '—' }}</div>
+                            <div class="neo-input" style="background: var(--surface-2); border: 1px solid var(--stroke-1); color: var(--text-primary); opacity: 0.95;">{{ hw_task.student_submission or '—' }}</div>
                         {% endif %}
                         {% if show_answer_block_sub %}
                         <div style="margin-top: 0.5rem; font-size: 0.9rem;">
                             <span style="color: var(--success);"><i class="fas fa-check"></i> Правильный ответ:</span>
-                            <span style="font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); padding: 0.2rem 0.4rem; border-radius: 4px;">{{ correct_val or '—' }}</span>
+                            <span style="font-family: 'JetBrains Mono', monospace; background: var(--surface-3, rgba(0, 0, 0, 0.05)); border: 1px solid var(--stroke-1); color: var(--text-primary); padding: 0.2rem 0.5rem; border-radius: 6px;">{{ correct_val or '—' }}</span>
                         </div>
                         {% endif %}
                     </div>
@@ -1339,12 +1428,12 @@
                             {% if not task_is_locked_for_student %}
                                 <input type="text" class="neo-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
                             {% else %}
-                                <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; cursor: not-allowed; opacity: 0.8;">
+                                <div class="neo-input" style="background: var(--surface-2); border: 1px solid var(--stroke-1); color: var(--text-primary); cursor: not-allowed; opacity: 0.8;">
                                     {{ hw_task.student_submission or '—' }}
                                 </div>
                             {% endif %}
                         {% else %}
-                            <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; cursor: default; opacity: 0.95;">
+                            <div class="neo-input" style="background: var(--surface-2); border: 1px solid var(--stroke-1); color: var(--text-primary); cursor: default; opacity: 0.95;">
                                 {{ hw_task.student_submission or '—' }}
                             </div>
                         {% endif %}
@@ -1363,7 +1452,7 @@
                         <div id="task-answer-{{ hw_task.lesson_task_id }}" class="auto-check-result" style="margin-top: 1rem; padding: 1rem; background: rgba(0, 254, 202, 0.05); border: 1px solid rgba(0, 254, 202, 0.2); border-radius: var(--radius-sm); {% if is_student_view %}display:none;{% endif %}">
                             <div style="font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 0.5rem;">
                                 <i class="fas fa-check"></i> Правильный ответ:
-                                <span style="font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); padding: 0.2rem 0.5rem; border-radius: 4px;">{{ correct_val or '—' }}</span>
+                                <span style="font-family: 'JetBrains Mono', monospace; background: var(--surface-3, rgba(0, 0, 0, 0.05)); border: 1px solid var(--stroke-1); color: var(--text-primary); padding: 0.2rem 0.5rem; border-radius: 6px;">{{ correct_val or '—' }}</span>
                             </div>
                         </div>
                         {% endif %}
@@ -1394,7 +1483,7 @@
                     {% if is_student_view and allow_task_submit %}
                     <div style="margin-top: 1rem; display:flex; gap:0.6rem; flex-wrap:wrap;">
                         <button type="submit"
-                                class="neo-button outline sm"
+                                class="neo-button neo-outline sm"
                                 {% if task_is_locked_for_student %}disabled{% endif %}
                                 formaction="{{ url_for('lessons.lesson_task_student_submit', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id) }}">
                             <i class="fas fa-check"></i> Сдать это задание
@@ -1413,7 +1502,7 @@
                                 </div>
                             </div>
                             <a class="neo-button accent sm" href="{{ url_for('lessons.review_lesson_task', lesson_task_id=hw_task.lesson_task_id) }}" style="text-decoration:none;">
-                                ✅ Проверить
+                                <i class="fas fa-clipboard-check"></i> Проверить
                             </a>
                         </div>
                         <div style="margin-top: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -1438,12 +1527,12 @@
                 {% endif %}
                 {% endfor %}
                 
-                <div class="homework-actions teacher-actions-bar" style="position: sticky; bottom: 2rem; z-index: 100; background: var(--surface-1); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); display: flex; gap: 1rem; box-shadow: var(--shadow-soft);">
+                <div class="homework-actions teacher-actions-bar" style="position: sticky; bottom: 2rem; z-index: 100; background: var(--surface-1); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); display: flex; gap: 1rem; box-shadow: var(--shadow-soft); margin-top: 2.5rem;">
                     {% if not is_student_view and not is_parent_view %}
                         <a href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='submitted') }}" class="neo-button accent" style="text-decoration:none;">
                             <i class="fas fa-check"></i> Проверка (очередь)
                         </a>
-                        <a href="{{ url_for('task_generator.task_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button outline"><i class="fas fa-plus"></i> Добавить задания</a>
+                        <a href="{{ url_for('task_generator.task_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button neo-outline"><i class="fas fa-plus"></i> Добавить задания</a>
                         {% if assignment_type == 'homework' %}
                         <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" target="_blank"><i class="fas fa-download"></i> Экспорт ДЗ</a>
                         {% elif assignment_type == 'classwork' %}
@@ -1453,7 +1542,7 @@
                         {% endif %}
                     {% elif is_student_view %}
                         <button type="submit" class="neo-button accent" id="cinema-save-draft" data-cinema="save-draft" {% if is_read_only %}disabled{% endif %}><i class="fas fa-save"></i> Сохранить черновик</button>
-                        <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}"><i class="fas fa-check-double"></i> Сдать работу</button>
+                        <button type="submit" class="neo-button neo-outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}"><i class="fas fa-check-double"></i> Сдать работу</button>
                     {% else %}
                         <div style="color: var(--text-muted); font-weight: 700;">
                             Режим просмотра: отправка/черновики доступны только ученику.
@@ -1483,7 +1572,7 @@
                         <a class="neo-button ghost sm" href="{{ url_for('library.materials_library') }}" target="_blank">
                             <i class="fas fa-layer-group"></i> Библиотека
                         </a>
-                        <button type="button" class="neo-button outline sm" onclick="openLibraryAttachModal()">
+                        <button type="button" class="neo-button neo-outline sm" onclick="openLibraryAttachModal()">
                             <i class="fas fa-paperclip"></i> Из библиотеки
                         </button>
                         <label class="neo-button accent sm" style="cursor: pointer;">
@@ -1508,7 +1597,7 @@
                             </div>
                             <div class="material-name">{{ mat.name }}</div>
                             <div class="status-badge status-info" style="opacity: 0.8; margin-top: 0.25rem;">в уроке</div>
-                            <a href="{{ mat.url }}" target="_blank" class="neo-button outline sm" download>Скачать</a>
+                            <a href="{{ mat.url }}" target="_blank" class="neo-button neo-outline sm" download>Скачать</a>
                         </div>
                         {% endfor %}
                         {% endif %}
@@ -1524,7 +1613,7 @@
                             </div>
                             <div class="material-name">{{ mat.name }}</div>
                             <div class="status-badge status-success" style="opacity: 0.9; margin-top: 0.25rem;">из библиотеки</div>
-                            <a href="{{ mat.url }}" target="_blank" class="neo-button outline sm" download>Скачать</a>
+                            <a href="{{ mat.url }}" target="_blank" class="neo-button neo-outline sm" download>Скачать</a>
                         </div>
                         {% endfor %}
                         {% endif %}
@@ -1548,7 +1637,7 @@
                 <div style="padding: 1rem;">
                     <div style="display:flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
                         <input class="neo-input" id="libraryAttachSearch" placeholder="Поиск по названию…" style="flex: 1; min-width: 240px;">
-                        <button class="neo-button outline sm" type="button" onclick="loadLibraryAssets()"><i class="fas fa-search"></i> Найти</button>
+                        <button class="neo-button neo-outline sm" type="button" onclick="loadLibraryAssets()"><i class="fas fa-search"></i> Найти</button>
                         <a class="neo-button ghost sm" href="{{ url_for('library.materials_library') }}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i> Открыть библиотеку</a>
                     </div>
                     <div id="libraryAttachList" style="margin-top: 1rem; display:flex; flex-direction: column; gap: 0.65rem; overflow:auto; max-height: 55vh;"></div>
@@ -1570,41 +1659,7 @@
             </div>
         </div>
 
-        <div id="tab-chat" class="tab-pane">
-            <div class="glass-panel">
-                <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
-                    <div>
-                        <div class="hero-eyebrow">диалог по уроку</div>
-                        <h3 style="margin: 0.35rem 0 0 0;">Сообщения</h3>
-                        <div style="color: var(--text-muted); margin-top: 0.35rem; line-height: 1.45;">
-                            {% if is_parent_view %}
-                                Родитель видит диалог, но не пишет.
-                            {% elif is_student_view %}
-                                Можно задать вопрос по уроку и получить ответ.
-                            {% else %}
-                                Ответь ученику — ему придет уведомление.
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end;">
-                        <button class="neo-button outline sm" type="button" onclick="reloadLessonChat()"><i class="fas fa-rotate"></i> Обновить</button>
-                    </div>
-                </div>
 
-                <div id="lessonChatList" style="margin-top: 1rem; display:flex; flex-direction: column; gap: 0.75rem;">
-                    
-                </div>
-
-                {% if not is_parent_view %}
-                <div style="margin-top: 1rem; border-top: 1px solid var(--stroke-1); padding-top: 1rem;">
-                    <textarea class="neo-textarea" id="lessonChatText" placeholder="Напиши сообщение..." style="min-height: 110px;"></textarea>
-                    <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; margin-top: 0.75rem;">
-                        <button class="neo-button accent sm" id="lessonChatSendBtn" type="button" onclick="sendLessonChatMessage()"><i class="fas fa-paper-plane"></i> Отправить</button>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
 
         <div id="tab-whiteboard" class="tab-pane">
             <div class="glass-panel">
@@ -1672,8 +1727,10 @@
                 </div>
             </div>
         </div>
-
         </div>
+            </div> <!-- end of lesson-room-main-column -->
+
+        </div> <!-- end of lesson-room-workspace -->
 
     {% for hw_task in homework_tasks %}
     <form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lessons.lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;">
@@ -1971,24 +2028,25 @@
             }
         })();
 
-        // Глобальное делегирование кликов по вкладкам (100% совместимо с HTMX SPA)
-        if (!window.__lessonTabsDelegated) {
-            window.__lessonTabsDelegated = true;
-            document.addEventListener('click', function(e) {
-                var btn = e.target && (e.target.closest && e.target.closest('.tab-btn') || (e.target.classList && e.target.classList.contains('tab-btn') ? e.target : null));
-                if (btn && btn.getAttribute('data-tab')) {
-                    if (btn.closest('.lesson-tabs')) {
-                        e.preventDefault();
-                        if (typeof window.switchLessonTab === 'function') {
-                            window.switchLessonTab(btn.getAttribute('data-tab'));
-                        }
-                    }
-                }
-            });
-        }
-
         // Initialize Editors
         window.initLessonPage = function() {
+            // Bind tab click listener directly to the container on every page init
+            var tabsContainer = document.querySelector('.lesson-tabs');
+            if (tabsContainer) {
+                // Remove any existing listener by cloning or direct event handler replacement if needed
+                // Add fresh click listener
+                tabsContainer.onclick = function(e) {
+                    var btn = e.target && (e.target.closest && e.target.closest('.tab-btn') || (e.target.classList && e.target.classList.contains('tab-btn') ? e.target : null));
+                    if (btn && btn.getAttribute('data-tab')) {
+                        e.preventDefault();
+                        var tab = btn.getAttribute('data-tab');
+                        if (typeof window.switchLessonTab === 'function') {
+                            window.switchLessonTab(tab);
+                        }
+                    }
+                };
+            }
+
             try {
                 // restore tab from hash/localStorage
                 var hash = (location.hash || '').trim();
@@ -1996,6 +2054,7 @@
                 var fromHash = match ? match[1] : null;
                 var fromStore = localStorage.getItem('lesson_' + LESSON_ID + '_active_tab');
                 var tab = fromHash || fromStore;
+                if (tab === 'chat') tab = 'theory'; // default to theory, chat is side panel
                 if (tab && document.getElementById('tab-' + tab)) {
                     switchLessonTab(tab);
                 }
@@ -2647,7 +2706,7 @@
                         </div>
                         <div style="display:flex; gap: 0.5rem; flex-wrap: wrap; justify-content:flex-end;">
                             <a class="neo-button ghost sm" href="${a.file_url}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i></a>
-                            <button class="neo-button outline sm" type="button">Прикрепить</button>
+                            <button class="neo-button neo-outline sm" type="button">Прикрепить</button>
                         </div>
                     `;
                     const btn = row.querySelector('button');
@@ -3179,7 +3238,7 @@
                     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; background: var(--surface-2); border-radius: var(--radius-lg);">
                         <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: var(--danger); margin-bottom: 1rem;"></i>
                         <span style="color: var(--text-muted);">Ошибка загрузки доски: ${e.message}</span>
-                        <button class="neo-button outline sm" style="margin-top: 1rem;" onclick="fetchWhiteboardInfo()">
+                        <button class="neo-button neo-outline sm" style="margin-top: 1rem;" onclick="fetchWhiteboardInfo()">
                             <i class="fas fa-redo"></i> Повторить
                         </button>
                     </div>
@@ -3267,7 +3326,7 @@
             
             // Кнопка полноэкранного режима
             const fullscreenBtn = `
-                <button class="neo-button outline sm" onclick="toggleWhiteboardFullscreen()">
+                <button class="neo-button neo-outline sm" onclick="toggleWhiteboardFullscreen()">
                     <i class="fas fa-expand"></i> На весь экран
                 </button>
             `;
@@ -3277,7 +3336,7 @@
                 html = `
                     ${miroAuthBtn}
                     ${fullscreenBtn}
-                    <a href="https://miro.com/app/board/${whiteboardData.miro_board_id}/" target="_blank" class="neo-button outline sm">
+                    <a href="https://miro.com/app/board/${whiteboardData.miro_board_id}/" target="_blank" class="neo-button neo-outline sm">
                         <i class="fas fa-external-link-alt"></i> Открыть в Miro
                     </a>
                     <button class="neo-button ghost sm" onclick="inviteStudentToWhiteboard()">
@@ -3292,7 +3351,7 @@
                 html = `
                     ${miroAuthBtn}
                     ${fullscreenBtn}
-                    <a href="https://miro.com/app/board/${whiteboardData.miro_board_id}/" target="_blank" class="neo-button outline sm">
+                    <a href="https://miro.com/app/board/${whiteboardData.miro_board_id}/" target="_blank" class="neo-button neo-outline sm">
                         <i class="fas fa-external-link-alt"></i> Открыть в Miro
                     </a>
                 `;

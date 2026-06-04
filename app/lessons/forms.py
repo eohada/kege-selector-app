@@ -15,13 +15,13 @@ class LessonForm(FlaskForm):
     """Форма для создания и редактирования урока"""
     exam_course_id = SelectField('Программа подготовки', coerce=int, validators=[Optional()])
     lesson_type = SelectField('Тип урока', choices=[
-        ('regular', '📚 Обычный урок'),
-        ('exam', '✅ Проверочный урок'),
-        ('introductory', '👋 Вводный урок')
+        ('regular', 'Обычный урок'),
+        ('exam', 'Проверочный урок'),
+        ('introductory', 'Вводный урок')
     ], default='regular', validators=[DataRequired()])
     timezone = SelectField('Часовой пояс', choices=[
-        ('moscow', '🕐 Московское время (МСК)'),
-        ('tomsk', '🕐 Томское время (ТОМСК)')
+        ('moscow', 'Московское время (МСК)'),
+        ('tomsk', 'Томское время (ТОМСК)')
     ], default='moscow', validators=[DataRequired()])
     lesson_date = DateTimeLocalField('Дата и время урока', format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
     duration = IntegerField('Длительность (минуты)', default=60, validators=[DataRequired(), NumberRange(min=15, max=240)])

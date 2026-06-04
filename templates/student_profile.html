@@ -323,28 +323,144 @@
         </div>
 
         {% if other_lessons and other_lessons|length > 0 %}
-        <div class="space-y-2">
+        <div class="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-white/[0.08]">
             {% for l in other_lessons[:20] %}
-            <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=l.lesson_id) }}"
-               class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 p-4 rounded-2xl hover:bg-slate-50/60 dark:hover:bg-white/[0.04] transition-colors border border-transparent dark:hover:border-white/[0.06] no-underline group">
-                <div class="text-center sm:w-16 shrink-0">
-                    <div class="text-xl font-black text-boo-primary">{% if l.lesson_date %}{{ l.lesson_date.strftime('%d') }}{% else %}—{% endif %}</div>
-                    <div class="text-[10px] font-bold text-muted dark:text-white/75 dark:group-hover:text-dark-muted uppercase tracking-widest transition-colors">{% if l.lesson_date %}{{ l.lesson_date.strftime('%b') }}{% else %}—{% endif %}</div>
+            {% set l_status = (l.status or '')|lower %}
+            <div class="relative group">
+                <!-- Timeline Dot Indicator -->
+                <div class="absolute -left-9 sm:-left-11 top-1.5 w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all duration-300 z-10
+                    {% if l_status == 'completed' %}
+                        bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30
+                    {% elif l_status == 'in_progress' %}
+                        bg-boo-primary/10 text-boo-primary border-boo-primary/30 dark:bg-boo-primary/20 dark:text-boo-primary/90 dark:border-boo-primary/40 animate-pulse shadow-[0_0_12px_rgba(139,92,246,0.3)]
+                    {% else %}
+                        bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-zinc-500 border-slate-200 dark:border-white/[0.08]
+                    {% endif %}">
+                    {% if l_status == 'completed' %}
+                        <i class="ph-bold ph-check text-[10px]"></i>
+                    {% elif l_status == 'in_progress' %}
+                        <i class="ph-bold ph-play text-[10px]"></i>
+                    {% else %}
+                        <i class="ph-bold ph-calendar text-[10px]"></i>
+                    {% endif %}
                 </div>
-                <div class="min-w-0 flex-1">
-                    <h4 class="text-sm font-bold text-boo-primary mb-1 group-hover:text-boo-primaryHover transition-colors truncate">{{ l.topic or 'Урок' }}</h4>
-                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-slate-600 dark:text-white/85 dark:group-hover:text-dark-muted transition-colors">
-                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-clock"></i> {% if l.lesson_date %}{{ l.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}</span>
-                        <span class="inline-flex items-center gap-1.5"><i class="ph-bold ph-hourglass"></i> {{ l.duration or 60 }} мин</span>
-                        <span class="inline-flex items-center gap-1.5 transition-colors {% if l.status == 'completed' %}text-green-600 dark:text-green-400 dark:group-hover:text-green-500/90{% elif l.status == 'in_progress' %}text-boo-primary dark:group-hover:text-boo-primary{% else %}text-slate-600 dark:text-white/75 dark:group-hover:text-dark-muted{% endif %}">
-                            <span class="w-2 h-2 rounded-full {% if l.status == 'completed' %}bg-green-500{% elif l.status == 'in_progress' %}bg-boo-primary{% else %}bg-zinc-400 dark:bg-white/45 dark:group-hover:bg-slate-500{% endif %} transition-colors"></span>
-                            {{ 'Завершен' if l.status == 'completed' else ('В процессе' if l.status == 'in_progress' else 'Запланирован') }}
-                        </span>
+
+                <!-- Lesson Info Card -->
+                <div class="bg-surface-alt/30 dark:bg-white/[0.01] border border-slate-250/50 dark:border-white/[0.04] rounded-2xl p-5 hover:bg-slate-50/50 dark:hover:bg-white/[0.03] transition-all duration-300 hover:shadow-[0_8px_24px_-4px_rgba(15,23,42,0.04)] dark:hover:shadow-none relative">
+                    <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                        <div class="min-w-0 flex-1">
+                            <!-- Header tags -->
+                            <div class="flex flex-wrap items-center gap-2 mb-3">
+                                <!-- Date -->
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-650 border border-slate-200/50 dark:bg-white/5 dark:text-white/80 dark:border-white/[0.06]">
+                                    <i class="ph-bold ph-clock"></i>
+                                    {% if l.lesson_date %}{{ l.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}
+                                </span>
+                                <!-- Duration -->
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-650 border border-slate-200/50 dark:bg-white/5 dark:text-white/80 dark:border-white/[0.06]">
+                                    <i class="ph-bold ph-hourglass"></i>
+                                    {{ l.duration or 60 }} мин
+                                </span>
+                                <!-- Status Badge -->
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border
+                                    {% if l_status == 'completed' %}
+                                        bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/25
+                                    {% elif l_status == 'in_progress' %}
+                                        bg-boo-primary/10 text-boo-primary border-boo-primary/20 dark:bg-boo-primary/10 dark:text-boo-primary dark:border-boo-primary/25
+                                    {% else %}
+                                        bg-slate-100 text-slate-500 border-slate-200 dark:bg-white/5 dark:text-white/60 dark:border-white/[0.06]
+                                    {% endif %}">
+                                    {{ 'Завершен' if l_status == 'completed' else ('Идет сейчас' if l_status == 'in_progress' else 'Запланирован') }}
+                                </span>
+                                <!-- Lesson Type -->
+                                {% if l.lesson_type and l.lesson_type != 'regular' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20">
+                                    {{ 'Вводный' if l.lesson_type == 'introductory' else l.lesson_type }}
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Topic Title -->
+                            <h4 class="text-base sm:text-lg font-black text-primary dark:text-white mb-3 leading-snug">
+                                {{ l.topic or 'Тема урока не указана' }}
+                            </h4>
+
+                            <!-- Task / Assignments Bento-style Grid -->
+                            <div class="flex flex-wrap gap-2 pt-1">
+                                <!-- Classwork Progress -->
+                                {% set cw_list = l.classwork_assignments %}
+                                {% if cw_list %}
+                                    {% set cw_total = cw_list|length %}
+                                    {% set cw_done = cw_list|selectattr('status', 'ne', 'pending')|list|length %}
+                                    {% set cw_correct = cw_list|selectattr('submission_correct', 'equalto', True)|list|length %}
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-500/5 text-purple-700 border border-purple-500/10 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/20">
+                                        <i class="ph-bold ph-users-three"></i>
+                                        Классная: {{ cw_done }}/{{ cw_total }} {% if cw_correct > 0 %}({{ cw_correct }} верных){% endif %}
+                                    </span>
+                                {% endif %}
+
+                                <!-- Homework Progress -->
+                                {% set hw_list = l.homework_assignments %}
+                                {% if hw_list %}
+                                    {% set hw_total = hw_list|length %}
+                                    {% set hw_done = hw_list|selectattr('status', 'ne', 'pending')|list|length %}
+                                    {% set hw_correct = hw_list|selectattr('submission_correct', 'equalto', True)|list|length %}
+                                    
+                                    <!-- Homework Status & Score -->
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold
+                                        {% if l.homework_status == 'assigned_done' %}
+                                            bg-emerald-500/5 text-emerald-700 border-emerald-500/10 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20
+                                        {% elif l.homework_status == 'assigned_not_done' %}
+                                            bg-rose-500/5 text-rose-700 border-rose-500/10 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20
+                                        {% else %}
+                                            bg-slate-100 text-slate-650 border-slate-200/50 dark:bg-white/5 dark:text-white/70 dark:border-white/[0.06]
+                                        {% endif %}">
+                                        <i class="ph-bold ph-notebook"></i>
+                                        ДЗ: {{ hw_done }}/{{ hw_total }}
+                                        
+                                        <!-- Score percentage if graded -->
+                                        {% if l.homework_result_percent is not none %}
+                                            <span class="ml-1 px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 text-[10px] font-black">
+                                                {{ l.homework_result_percent }}%
+                                            </span>
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+
+                                <!-- Exam Progress -->
+                                {% set ex_list = l.exam_assignments %}
+                                {% if ex_list %}
+                                    {% set ex_total = ex_list|length %}
+                                    {% set ex_done = ex_list|selectattr('status', 'ne', 'pending')|list|length %}
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/5 text-amber-700 border border-amber-500/10 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20">
+                                        <i class="ph-bold ph-exam"></i>
+                                        Контрольная: {{ ex_done }}/{{ ex_total }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Action Button Column -->
+                        <div class="flex items-center sm:self-center shrink-0 w-full md:w-auto">
+                            {% if l_status == 'in_progress' %}
+                                <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=l.lesson_id) }}"
+                                   class="neo-button accent w-full md:w-auto px-5 py-3 shadow-[0_8px_20px_rgba(139,92,246,0.3)] animate-pulse inline-flex items-center justify-center gap-2 no-underline text-xs font-black uppercase tracking-wider">
+                                    Войти в класс <i class="ph-bold ph-arrow-right"></i>
+                                </a>
+                            {% elif l_status == 'completed' %}
+                                <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=l.lesson_id) }}"
+                                   class="w-full md:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-secondary dark:bg-white/5 dark:hover:bg-white/10 dark:text-white rounded-xl font-bold text-xs border border-slate-200/50 dark:border-white/[0.08] inline-flex items-center justify-center gap-2 no-underline transition-all">
+                                    Материалы <i class="ph-bold ph-arrow-right"></i>
+                                </a>
+                            {% else %}
+                                <span class="w-full md:w-auto px-4 py-2.5 bg-slate-100/50 text-slate-400 dark:bg-white/[0.02] dark:text-zinc-650 rounded-xl font-bold text-xs border border-slate-200/30 dark:border-white/[0.04] inline-flex items-center justify-center gap-2 cursor-not-allowed select-none">
+                                    Скоро начнется
+                                </span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-                <i class="ph-bold ph-arrow-right text-slate-400 dark:text-white/90 dark:group-hover:text-dark-muted transition-colors hidden sm:block shrink-0"></i>
-            </a>
-            {% if not loop.last %}<div class="h-px w-full bg-slate-100 dark:bg-white/[0.06]"></div>{% endif %}
+            </div>
             {% endfor %}
         </div>
         {% else %}

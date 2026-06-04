@@ -2,50 +2,69 @@
 {% set active_page = 'templates' %}
 {% block title %}{% if is_new %}Создать шаблон{% else %}Редактировать шаблон{% endif %}{% endblock %}
 
+{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
+
 {% block content %}
-<section class="glass-panel mb-8">
-    <div class="flex items-center gap-4 mb-4">
-        <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost no-underline">← К библиотеке</a>
+<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6 pb-6">
+<section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] rounded-[28px] p-6 lg:p-8 shadow-sm dark:shadow-glass-dark mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <a href="{{ url_for('templates.templates_list') }}" class="px-4 py-2 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-secondary dark:text-white rounded-xl font-bold text-xs transition-all no-underline flex items-center gap-1.5 self-start">
+            <i class="ph-bold ph-arrow-left text-sm"></i> К библиотеке
+        </a>
         {% if is_new %}
         {% set _m = (mode or '') %}
-        <div class="flex gap-2 flex-wrap">
-            <a href="{{ url_for('templates.template_new') }}" class="neo-button {{ 'accent' if _m != 'manual' else 'outline' }} no-underline">Быстро</a>
-            <a href="{{ url_for('templates.template_new', mode='manual') }}" class="neo-button {{ 'accent' if _m == 'manual' else 'outline' }} no-underline">Вручную</a>
+        <div class="bg-slate-200/50 dark:bg-white/5 p-1 rounded-xl flex gap-1 self-start sm:self-auto">
+            <a href="{{ url_for('templates.template_new') }}" class="px-4 py-2 rounded-lg text-xs font-bold transition-all no-underline flex items-center gap-1.5 {{ 'bg-white dark:bg-white/10 text-secondary dark:text-white shadow-sm' if _m != 'manual' else 'text-muted dark:text-dark-muted hover:text-secondary dark:hover:text-slate-200' }}">
+                <i class="ph-bold ph-lightning text-sm"></i> Быстро
+            </a>
+            <a href="{{ url_for('templates.template_new', mode='manual') }}" class="px-4 py-2 rounded-lg text-xs font-bold transition-all no-underline flex items-center gap-1.5 {{ 'bg-white dark:bg-white/10 text-secondary dark:text-white shadow-sm' if _m == 'manual' else 'text-muted dark:text-dark-muted hover:text-secondary dark:hover:text-slate-200' }}">
+                <i class="ph-bold ph-pencil-simple text-sm"></i> Вручную
+            </a>
         </div>
         {% endif %}
     </div>
-    <p class="hero-eyebrow">{% if is_new %}создание шаблона{% else %}редактирование шаблона{% endif %}</p>
-    <h1 class="hero-title">{% if is_new %}{{ ui_icon('action.plus', 'md', decorative=true) }}Создать шаблон{% else %}{{ ui_icon('action.edit', 'md', decorative=true) }}Редактировать шаблон{% endif %}</h1>
+    <div>
+        <p class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-1 flex items-center gap-1.5">
+            {% if is_new %}создание шаблона{% else %}редактирование шаблона{% endif %}
+        </p>
+        <h1 class="text-3xl font-black text-primary dark:text-white tracking-tight flex items-center gap-2">
+            {% if is_new %}
+            <i class="ph-bold ph-plus-circle text-2xl text-boo-primary"></i>Создать шаблон
+            {% else %}
+            <i class="ph-bold ph-pencil-line text-2xl text-boo-primary"></i>Редактировать шаблон
+            {% endif %}
+        </h1>
+    </div>
 </section>
 
-<form id="templateForm" class="glass-panel">
-    <div class="mb-8">
-        <label class="neo-label" for="name">Название шаблона *</label>
-        <input type="text" id="name" name="name" class="neo-input" 
+<form id="templateForm" class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] rounded-[28px] p-6 lg:p-8 shadow-sm dark:shadow-glass-dark mb-6">
+    <div class="mb-6">
+        <label class="block mb-2 text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest" for="name">Название шаблона *</label>
+        <input type="text" id="name" name="name" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-500/20 transition-all text-sm" 
                value="{{ template.name if template else '' }}" 
                placeholder="Например: Базовый набор заданий 1-5" required>
     </div>
 
-    <div class="mb-8">
-        <label class="neo-label" for="description">Описание</label>
-        <textarea id="description" name="description" class="neo-input" rows="3" 
+    <div class="mb-6">
+        <label class="block mb-2 text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest" for="description">Описание</label>
+        <textarea id="description" name="description" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-500/20 transition-all text-sm" rows="3" 
                   placeholder="Краткое описание шаблона (необязательно)">{{ template.description if template else '' }}</textarea>
     </div>
 
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div>
-            <label class="neo-label" for="template_type">Тип шаблона *</label>
-            <select id="template_type" name="template_type" class="neo-select" required>
-                <option value="homework" {% if (template and template.template_type == 'homework') or (is_new and preset_type == 'homework') %}selected{% endif %}>Домашние задания</option>
-                <option value="classwork" {% if (template and template.template_type == 'classwork') or (is_new and preset_type == 'classwork') %}selected{% endif %}>Классные работы</option>
-                <option value="exam" {% if (template and template.template_type == 'exam') or (is_new and preset_type == 'exam') %}selected{% endif %}>Проверочные работы</option>
-                <option value="lesson" {% if (template and template.template_type == 'lesson') or (is_new and preset_type == 'lesson') %}selected{% endif %}>Уроки</option>
+            <label class="block mb-2 text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest" for="template_type">Тип шаблона *</label>
+            <select id="template_type" name="template_type" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-200 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-500/20 transition-all text-sm" required>
+                <option value="homework" {% if (template and template.template_type == 'homework') or (is_new and preset_type == 'homework') %}selected{% endif %}>Домашнее задание</option>
+                <option value="classwork" {% if (template and template.template_type == 'classwork') or (is_new and preset_type == 'classwork') %}selected{% endif %}>Классная работа</option>
+                <option value="exam" {% if (template and template.template_type == 'exam') or (is_new and preset_type == 'exam') %}selected{% endif %}>Проверочная работа</option>
+                <option value="lesson" {% if (template and template.template_type == 'lesson') or (is_new and preset_type == 'lesson') %}selected{% endif %}>Урок</option>
             </select>
         </div>
 
         <div>
-            <label class="neo-label" for="category">Категория</label>
-            <select id="category" name="category" class="neo-select">
+            <label class="block mb-2 text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest" for="category">Категория</label>
+            <select id="category" name="category" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-200 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-500/20 transition-all text-sm">
                 <option value="">Не указана</option>
                 <option value="ЕГЭ" {% if (template and template.category == 'ЕГЭ') or (is_new and preset_category == 'ЕГЭ') %}selected{% endif %}>ЕГЭ</option>
                 <option value="ОГЭ" {% if (template and template.category == 'ОГЭ') or (is_new and preset_category == 'ОГЭ') %}selected{% endif %}>ОГЭ</option>
@@ -56,42 +75,51 @@
     </div>
 
     {% if not is_new and template %}
-    <div class="mb-8 p-6 bg-bg-surface-alt rounded-card shadow-card">
-        <h3 class="m-0 mb-4 text-lg">Задания в шаблоне ({{ template.template_tasks|length }})</h3>
-        <p class="text-text-muted m-0 mb-4">Для добавления или изменения заданий используйте генератор и сохраните выбранные задания в этот шаблон.</p>
-        <a href="{{ url_for('task_generator.task_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания через генератор</a>
+    <div class="mb-8 p-6 bg-surface-alt dark:bg-white/[0.02] rounded-2xl border border-slate-100 dark:border-white/[0.04]">
+        <h3 class="m-0 mb-2 text-base font-black text-secondary dark:text-white tracking-tight flex items-center gap-1.5"><i class="ph-bold ph-cards text-lg text-boo-primary"></i>Задания в шаблоне ({{ template.template_tasks|length }})</h3>
+        <p class="text-muted dark:text-dark-muted text-xs leading-relaxed m-0 mb-4">Для изменения состава или структуры заданий перейдите в интерактивный генератор.</p>
+        <a href="{{ url_for('task_generator.task_generator') }}?template_id={{ template.template_id }}" class="h-9 px-3.5 py-1.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-xs transition-all duration-150 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 no-underline">
+            <i class="ph-bold ph-dice text-sm"></i> Открыть генератор
+        </a>
     </div>
     {% endif %}
 
     {% if is_new and (mode or '') == 'manual' %}
-        <div class="mt-6 p-4 border border-dashed border-stroke rounded-card bg-white/[0.02]">
-            <div class="hero-eyebrow">вручную</div>
-            <div class="font-black mt-1">Добавь задания карточками и нажми «Сохранить шаблон».</div>
-            <div class="text-text-muted mt-1.5 leading-snug">Это тот же шаблон, просто без генератора — всё сохраняется через единый `/templates/new`.</div>
+        <div class="mt-4 mb-6 p-4 border border-dashed border-purple-200 dark:border-purple-900/40 rounded-2xl bg-purple-500/[0.02]">
+            <div class="text-[10px] font-extrabold text-purple-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                <i class="ph-fill ph-info text-xs"></i> Конструктор вручную
+            </div>
+            <div class="font-black text-xs text-secondary dark:text-white">Добавьте карточки заданий ниже и заполните их параметры.</div>
+            <div class="text-muted dark:text-dark-muted text-[11px] mt-1 leading-snug">Шаблон будет создан с указанными заданиями в базе.</div>
         </div>
 
         {% include '_manual_task_cards.html' %}
 
-        <section class="glass-panel sticky bottom-8 mt-8 z-[100]">
+        <section class="bg-surface/90 dark:bg-dark-card/90 backdrop-blur border border-slate-200 dark:border-white/[0.08] rounded-2xl p-4 sticky bottom-4 mt-6 z-[100] shadow-lg dark:shadow-glass-dark">
             <div class="flex justify-between items-center">
-                <div id="status-text" class="text-text-muted">Заданий: <span id="tasks-count">0</span></div>
-                <button type="button" onclick="saveManualTemplate()" class="neo-button accent">
-                    {{ ui_icon('action.backup', 'sm') }} Сохранить шаблон
+                <div id="status-text" class="text-sm font-bold text-muted dark:text-dark-muted">Добавлено заданий: <span id="tasks-count" class="text-boo-primary dark:text-purple-300">0</span></div>
+                <button type="button" onclick="saveManualTemplate()" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] border-0">
+                    <i class="ph-bold ph-cloud-arrow-up text-base"></i> Сохранить шаблон
                 </button>
             </div>
         </section>
 
-        <div class="flex gap-4 justify-end mt-4">
-            <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost">Отмена</a>
+        <div class="flex gap-4 justify-end mt-6">
+            <a href="{{ url_for('templates.templates_list') }}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center no-underline">Отмена</a>
         </div>
     {% else %}
-        <div class="flex gap-4 justify-end">
-            <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost">Отмена</a>
-            <button type="submit" class="neo-button outline" data-after="generator">{% if is_new %}Создать и добавить задания{% else %}Сохранить и добавить задания{% endif %}</button>
-            <button type="submit" class="neo-button accent" data-after="list">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
+        <div class="flex gap-4 justify-end flex-wrap">
+            <a href="{{ url_for('templates.templates_list') }}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center no-underline">Отмена</a>
+            <button type="submit" class="h-11 px-5 py-2.5 bg-white/40 dark:bg-zinc-900/40 border border-purple-200 dark:border-purple-500/20 text-purple-750 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-zinc-800/60 hover:border-purple-300 dark:hover:border-purple-500/40 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.06)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.12)]" data-after="generator">
+                <i class="ph-bold ph-dice text-base"></i> {% if is_new %}Создать и открыть генератор{% else %}Сохранить и открыть генератор{% endif %}
+            </button>
+            <button type="submit" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] border-0" data-after="list">
+                <i class="ph-bold ph-check text-base"></i> {% if is_new %}Создать шаблон{% else %}Сохранить шаблон{% endif %}
+            </button>
         </div>
     {% endif %}
 </form>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}

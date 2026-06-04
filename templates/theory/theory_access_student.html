@@ -3,40 +3,48 @@
 
 {% block title %}Доступ к теории: {{ student.name or 'Ученик' }} · BooStudy{% endblock %}
 
+{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
+
 {% block head_css %}
 <style>
-    .access-student-container { max-width: 800px; margin: 0 auto; }
-    .access-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.5rem; }
-    .access-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: var(--surface-1); border-radius: var(--radius-sm); box-shadow: var(--shadow-card); }
-    .access-item input[type="checkbox"] { width: 1.1rem; height: 1.1rem; accent-color: var(--accent-1); }
-    .access-item label { margin: 0; cursor: pointer; flex: 1; }
-    .form-actions { margin-top: 1.5rem; }
-    .form-hint { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem; }
+    .access-student-container { max-width: 1600px; margin: 0 auto; width: 100%; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="access-student-container">
-    <section class="dashboard-hero mb-6">
-        <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="text-muted no-underline mb-2 inline-block">← К списку учеников</a>
-        <h1 class="hero-title">Доступ к теории: {{ student.name or 'Ученик' }}</h1>
-        <p class="form-hint">Включите номера заданий, по которым ученик может смотреть теорию. Снятая галочка = просмотр запрещён. По умолчанию все разрешены.</p>
+<div class="access-student-container pt-6 pb-12 px-4 lg:px-8">
+    <section class="mb-6 flex flex-col gap-2">
+        <div class="back-link">
+            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="text-sm font-bold text-muted hover:text-boo-primary no-underline flex items-center gap-1.5 transition-colors">
+              <i class="ph-bold ph-arrow-left"></i> К списку учеников
+            </a>
+        </div>
+        <div class="mt-2">
+            <h1 class="text-3xl font-black text-primary">Доступ к теории: {{ student.name or 'Ученик' }}</h1>
+            <p class="text-sm font-semibold text-muted">Включите номера заданий, по которым ученик может смотреть теорию. Снятая галочка = просмотр запрещён. По умолчанию все разрешены.</p>
+        </div>
     </section>
 
     <form method="post" action="{{ url_for('theory.manage_access_student', student_id=student.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=student.student_id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% if course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}
-        <div class="access-grid">
+        
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {% for num in task_numbers %}
-            <div class="access-item">
-                <input type="checkbox" id="allow_{{ num }}" name="allow_{{ num }}" {% if access_by_number.get(num, true) %}checked{% endif %}>
-                <label for="allow_{{ num }}">Задание {{ num }}</label>
-            </div>
+            <label for="allow_{{ num }}" class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.08] hover:border-boo-primary/40 dark:hover:border-purple-500/40 rounded-2xl p-4 flex items-center gap-3.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer select-none">
+                <input type="checkbox" id="allow_{{ num }}" name="allow_{{ num }}" class="w-5 h-5 rounded-lg border-slate-300 dark:border-white/[0.12] text-boo-primary bg-surface-alt dark:bg-white/[0.02] focus:ring-purple-200 cursor-pointer" {% if access_by_number.get(num, true) %}checked{% endif %}>
+                <span class="font-extrabold text-sm text-secondary dark:text-slate-200">Задание {{ num }}</span>
+            </label>
             {% endfor %}
         </div>
-        <div class="form-actions">
-            <button type="submit" class="neo-button accent">Сохранить</button>
-            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="neo-button ghost">Отмена</a>
+
+        <div class="flex gap-3 items-center mt-8">
+            <button type="submit" class="px-6 py-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] cursor-pointer shadow-[0_4px_12px_rgba(139,92,246,0.08)]">
+              Сохранить
+            </button>
+            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="px-6 py-3 bg-surface dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] text-secondary dark:text-slate-300 font-bold rounded-xl hover:bg-surface-alt transition-all no-underline">
+              Отмена
+            </a>
         </div>
     </form>
 </div>

@@ -89,7 +89,7 @@
 
 /* ── Dark theme ── */
 [data-theme="dark"] {
-  --color-bg-app: #09090B; /* Zinc 950 */
+  --color-bg-app: #000000;
   --color-bg-surface: #131316; /* Level 1 */
   --color-bg-surface-alt: #18181B; /* Level -1 */
   --color-bg-sidebar: #131316;
@@ -129,31 +129,14 @@
   isolation: isolate;
   /* Сильнее @layer base body { color: text-primary } — как в эталоне (#A1A1AA) */
   color: var(--color-text-body) !important;
+  background-color: var(--color-bg-app) !important;
 }
 [data-theme="dark"] body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 18% 10%, rgba(139, 92, 246, 0.18), transparent 45%),
-    radial-gradient(circle at 85% 20%, rgba(34, 211, 238, 0.14), transparent 42%),
-    radial-gradient(circle at 55% 90%, rgba(251, 113, 133, 0.10), transparent 50%);
-  filter: blur(110px);
-  opacity: 0.95;
+  display: none !important;
 }
 
 [data-theme="dark"] body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.10), transparent 55%);
-  filter: blur(160px);
-  opacity: 0.7;
+  display: none !important;
 }
 
 /*
@@ -174,17 +157,11 @@ html[data-theme="dark"][data-student-room="1"], html[data-theme="dark"][data-stu
 }
 
 html[data-theme="dark"][data-student-room="1"] body::before, html[data-theme="dark"][data-student-dashboard="1"] body::before, html[data-theme="dark"][data-student-assignments="1"] body::before, html[data-theme="dark"][data-student-theory="1"] body::before, html[data-theme="dark"][data-student-analytics="1"] body::before, html[data-theme="dark"][data-student-lesson-room="1"] body::before, html[data-theme="dark"][data-student-submission="1"] body::before {
-  opacity: 0.38;
-  filter: blur(96px);
-  background:
-    radial-gradient(circle at 14% 18%, rgba(139, 92, 246, 0.22), transparent 42%),
-    radial-gradient(circle at 88% 22%, rgba(34, 211, 238, 0.16), transparent 40%),
-    radial-gradient(circle at 52% 92%, rgba(251, 113, 133, 0.12), transparent 48%);
+  display: none !important;
 }
 
 html[data-theme="dark"][data-student-room="1"] body::after, html[data-theme="dark"][data-student-dashboard="1"] body::after, html[data-theme="dark"][data-student-assignments="1"] body::after, html[data-theme="dark"][data-student-theory="1"] body::after, html[data-theme="dark"][data-student-analytics="1"] body::after, html[data-theme="dark"][data-student-lesson-room="1"] body::after, html[data-theme="dark"][data-student-submission="1"] body::after {
-  opacity: 0.18;
-  filter: blur(120px);
+  display: none !important;
 }
 
 html[data-theme="dark"][data-student-room="1"] .layout-student .dock, html[data-theme="dark"][data-student-dashboard="1"] .layout-student .dock, html[data-theme="dark"][data-student-assignments="1"] .layout-student .dock, html[data-theme="dark"][data-student-theory="1"] .layout-student .dock, html[data-theme="dark"][data-student-analytics="1"] .layout-student .dock, html[data-theme="dark"][data-student-lesson-room="1"] .layout-student .dock, html[data-theme="dark"][data-student-submission="1"] .layout-student .dock {
@@ -1094,7 +1071,9 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
 
   .neo-button {
     @apply inline-flex items-center justify-center gap-1.5 font-bold no-underline whitespace-nowrap cursor-pointer;
-    padding: 0.55rem 1.15rem;
+    height: 42px;
+    padding: 0 1.25rem;
+    box-sizing: border-box;
     border-radius: 12px;
     font-size: 0.875rem;
     border: 1px solid var(--color-stroke);
@@ -1102,7 +1081,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     color: var(--color-text-secondary);
     box-shadow: 0 1px 2px rgba(15,23,42,0.04);
     transition: background 0.14s ease, color 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
-    line-height: 1.4;
+    line-height: 1;
     user-select: none;
   }
   .neo-button:hover {
@@ -1121,17 +1100,17 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   .neo-button.accent {
     background: var(--color-accent);
     color: #FFFFFF;
-    border-color: rgba(139, 92, 246, 0.6);
-    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.22);
+    border-color: rgba(123, 92, 255, 0.8);
+    box-shadow: 0 2px 8px rgba(123, 92, 255, 0.22);
   }
   .neo-button.accent:hover {
-    background: #7A4DE8;
-    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.34);
-    border-color: rgba(139, 92, 246, 0.8);
+    background: #6A4CE5;
+    box-shadow: 0 4px 16px rgba(123, 92, 255, 0.34);
+    border-color: rgba(123, 92, 255, 0.9);
   }
   .neo-button.accent:active {
-    background: #6A3ED8;
-    box-shadow: 0 1px 4px rgba(139, 92, 246, 0.2);
+    background: #5B3DD5;
+    box-shadow: 0 1px 4px rgba(123, 92, 255, 0.2);
     opacity: 1;
   }
 
@@ -1151,18 +1130,18 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   .neo-button.ghost:active { background: var(--color-bg-surface-alt); opacity: 0.8; }
 
   /* Outline — акцентный контур */
-  .neo-button.outline {
+  .neo-button.neo-outline {
     background: transparent;
     color: var(--color-accent);
-    border-color: rgba(139, 92, 246, 0.45);
+    border-color: rgba(123, 92, 255, 0.4);
     box-shadow: none;
   }
-  .neo-button.outline:hover {
-    background: rgba(139, 92, 246, 0.06);
+  .neo-button.neo-outline:hover {
+    background: rgba(123, 92, 255, 0.05);
     border-color: var(--color-accent);
   }
-  .neo-button.outline:active {
-    background: rgba(139, 92, 246, 0.1);
+  .neo-button.neo-outline:active {
+    background: rgba(123, 92, 255, 0.1);
     opacity: 1;
   }
 
@@ -1191,8 +1170,8 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     border-color: rgba(34, 211, 238, 0.55);
   }
 
-  .neo-button.sm { padding: 0.375rem 0.85rem; font-size: 0.8rem; border-radius: 10px; }
-  .neo-button.lg { padding: 0.7rem 1.5rem; font-size: 0.95rem; border-radius: 14px; }
+  .neo-button.sm { height: 36px; padding: 0 0.9rem; font-size: 0.8rem; border-radius: 10px; }
+  .neo-button.lg { height: 48px; padding: 0 1.5rem; font-size: 0.95rem; border-radius: 14px; }
 
   /* Full-width CTA */
   .neo-button.cta {
@@ -2086,54 +2065,55 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   }
   /* ─── Dark theme buttons ─── */
   [data-theme="dark"] .neo-button {
-    background: rgba(255,255,255,0.05);
-    border-color: rgba(255,255,255,0.09);
-    color: var(--color-text-secondary);
-    box-shadow: none;
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
   [data-theme="dark"] .neo-button:hover {
-    background: rgba(255,255,255,0.09);
-    color: var(--color-text-primary);
-    border-color: rgba(255,255,255,0.15);
-    box-shadow: none;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
   }
-  [data-theme="dark"] .neo-button:active { background: rgba(255,255,255,0.06); opacity: 0.9; }
+  [data-theme="dark"] .neo-button:active { background: rgba(255,255,255,0.02); opacity: 0.95; }
 
   [data-theme="dark"] .neo-button.accent {
-    background: var(--color-accent);
-    color: #FFFFFF;
-    border-color: rgba(139, 92, 246, 0.55);
-    box-shadow: 0 2px 12px rgba(139, 92, 246, 0.28);
+    background: rgba(139, 92, 246, 0.16);
+    border-color: rgba(139, 92, 246, 0.35);
+    color: #c4b5fd;
+    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.12);
   }
   [data-theme="dark"] .neo-button.accent:hover {
-    background: #7A4DE8;
-    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+    background: rgba(139, 92, 246, 0.24);
+    border-color: rgba(139, 92, 246, 0.5);
+    color: #ddd6fe;
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.2);
   }
   [data-theme="dark"] .neo-button.accent:active {
-    background: #6A3ED8;
-    box-shadow: 0 1px 8px rgba(139, 92, 246, 0.25);
+    background: rgba(139, 92, 246, 0.12);
+    box-shadow: 0 2px 6px rgba(139, 92, 246, 0.1);
   }
 
   [data-theme="dark"] .neo-button.ghost {
     background: transparent;
     border-color: transparent;
-    color: var(--color-text-muted);
+    color: rgba(255, 255, 255, 0.65);
   }
   [data-theme="dark"] .neo-button.ghost:hover {
-    background: rgba(255,255,255,0.07);
-    border-color: rgba(255,255,255,0.1);
-    color: var(--color-text-primary);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.95);
   }
 
-  [data-theme="dark"] .neo-button.outline {
-    background: transparent;
-    color: #C4B5FD;
-    border-color: rgba(139, 92, 246, 0.4);
+  [data-theme="dark"] .neo-button.neo-outline {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.85);
   }
-  [data-theme="dark"] .neo-button.outline:hover {
-    background: rgba(139, 92, 246, 0.12);
-    border-color: rgba(139, 92, 246, 0.6);
-    color: #DDD6FE;
+  [data-theme="dark"] .neo-button.neo-outline:hover {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.35);
+    color: #a78bfa;
   }
 
   [data-theme="dark"] .neo-button.danger {
@@ -2153,7 +2133,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   }
   [data-theme="dark"] .neo-button.success:hover {
     background: rgba(34, 211, 238, 0.18);
-    border-color: rgba(34, 211, 238, 0.5);
+    border-color: rgba(34, 211, 238, 0.55);
   }
   [data-theme="dark"] .neo-input, [data-theme="dark"] .neo-select, [data-theme="dark"] .neo-textarea {
     background: var(--color-bg-inset);
@@ -2595,3 +2575,30 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
 [data-theme="dark"] .ts-wrapper.single .ts-control::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A1A1AA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
+
+/* Global button/link overrides for dark mode to fix eye-bleeding purple */
+[data-theme="dark"] button.bg-boo-primary,
+[data-theme="dark"] a.bg-boo-primary,
+[data-theme="dark"] input[type="submit"].bg-boo-primary {
+  background-color: rgba(139, 92, 246, 0.16) !important;
+  color: #c4b5fd !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.12) !important;
+}
+[data-theme="dark"] button.bg-boo-primary:hover,
+[data-theme="dark"] a.bg-boo-primary:hover,
+[data-theme="dark"] input[type="submit"].bg-boo-primary:hover {
+  background-color: rgba(139, 92, 246, 0.24) !important;
+  border-color: rgba(139, 92, 246, 0.5) !important;
+  border-bottom-color: rgba(139, 92, 246, 0.5) !important;
+  color: #ddd6fe !important;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.2) !important;
+}
+[data-theme="dark"] button.bg-boo-primary:active,
+[data-theme="dark"] a.bg-boo-primary:active,
+[data-theme="dark"] input[type="submit"].bg-boo-primary:active {
+  background-color: rgba(139, 92, 246, 0.12) !important;
+  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.1) !important;
+}
+

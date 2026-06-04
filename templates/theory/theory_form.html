@@ -3,71 +3,101 @@
 
 {% block title %}{% if is_new %}Новый блок теории{% else %}Редактирование · Задание {{ task_number }}{% endif %} · BooStudy{% endblock %}
 
+{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
+
 {% block head_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css">
 <style>
-    .theory-form-container { max-width: 820px; margin: 0 auto; }
-    .theory-form-hero {
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-    .theory-form-hero .back-link { width: 100%; margin-bottom: 0.25rem; }
-    .theory-form-hero .back-link a {
-        color: var(--text-muted);
-        text-decoration: none;
-        font-size: 0.95rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-    .theory-form-hero .back-link a:hover { color: var(--accent-1); }
-    .theory-form-hero h1 { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin: 0; line-height: 1.3; }
-    .theory-form-hero .hero-sub { color: var(--text-muted); font-size: 0.95rem; margin-top: 0.35rem; }
+    .theory-form-container { max-width: 960px; margin: 0 auto; width: 100%; }
     .form-section {
-        background: var(--surface-1);
-        border-radius: var(--radius-lg);
-        padding: 1.75rem 2rem;
+        background: var(--color-bg-surface);
+        border: 1px solid var(--color-stroke);
+        border-radius: 24px;
+        padding: 2rem;
         margin-bottom: 1.5rem;
-        box-shadow: var(--shadow-card);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
     }
-    .form-section-title { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1.25rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--stroke-1); }
-    .form-group { margin-bottom: 1.25rem; }
-    .form-group:last-child { margin-bottom: 0; }
-    .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary); font-size: 0.95rem; }
+    [data-theme="dark"] .form-section {
+        background: var(--color-bg-surface);
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    }
+    .form-section-title { 
+        font-size: 1.15rem; 
+        font-weight: 800; 
+        color: var(--color-text-primary); 
+        margin-bottom: 1.5rem; 
+        padding-bottom: 0.75rem; 
+        border-bottom: 1px solid var(--color-stroke); 
+    }
+    [data-theme="dark"] .form-section-title {
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+    .form-group { margin-bottom: 1.5rem; }
+    .form-group label { display: block; font-weight: 700; margin-bottom: 0.5rem; color: var(--color-text-primary); font-size: 0.95rem; }
     .form-group .form-control {
-        width: 100%; max-width: 420px; padding: 0.6rem 0.85rem;
-        border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);
-        background: var(--surface-2); color: var(--text-primary); font-size: 1rem;
+        width: 100%; 
+        max-width: 480px; 
+        padding: 0.7rem 1rem;
+        border-radius: 12px; 
+        border: 1px solid var(--color-stroke);
+        background: var(--color-bg-surface-alt); 
+        color: var(--color-text-primary); 
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
     }
-    .form-group .form-control:focus { outline: none; border-color: var(--accent-1); box-shadow: 0 0 0 2px rgba(0, 255, 213, 0.15); }
-    .form-group select.form-control { cursor: pointer; }
-    .form-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap; }
-    .form-hint { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+    [data-theme="dark"] .form-group .form-control {
+        border-color: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.02);
+    }
+    .form-group .form-control:focus { 
+        outline: none; 
+        border-color: var(--accent-1); 
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15); 
+    }
+    .form-hint { font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.5rem; font-weight: 500; }
     .theory-editor-wrap { margin-top: 0.5rem; }
     .theory-editor-wrap .CodeMirror,
-    .theory-editor-wrap .CodeMirror-gutters { background: var(--surface-2) !important; border-color: var(--stroke-1) !important; color: var(--text-primary) !important; }
+    .theory-editor-wrap .CodeMirror-gutters { 
+        background: var(--color-bg-surface-alt) !important; 
+        border-color: var(--color-stroke) !important; 
+        color: var(--color-text-primary) !important; 
+    }
+    [data-theme="dark"] .theory-editor-wrap .CodeMirror,
+    [data-theme="dark"] .theory-editor-wrap .CodeMirror-gutters { 
+        background: rgba(255, 255, 255, 0.01) !important; 
+        border-color: rgba(255, 255, 255, 0.08) !important; 
+    }
     .theory-editor-wrap .CodeMirror-cursor { border-left-color: var(--accent-1) !important; }
-    .theory-editor-wrap .editor-toolbar { background: var(--surface-2) !important; border: 1px solid var(--stroke-1) !important; border-bottom: none !important; border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important; }
-    .theory-editor-wrap .editor-toolbar button { color: var(--text-primary) !important; }
-    .theory-editor-wrap .editor-toolbar button:hover { background: var(--surface-1) !important; color: var(--accent-1) !important; }
-    .theory-editor-wrap .CodeMirror { border-radius: 0 0 var(--radius-sm) var(--radius-sm) !important; border: 1px solid var(--stroke-1) !important; }
-    .theory-editor-wrap .editor-statusbar { color: var(--text-muted) !important; }
+    .theory-editor-wrap .editor-toolbar { 
+        background: var(--color-bg-surface-alt) !important; 
+        border: 1px solid var(--color-stroke) !important; 
+        border-bottom: none !important; 
+        border-radius: 12px 12px 0 0 !important; 
+    }
+    [data-theme="dark"] .theory-editor-wrap .editor-toolbar {
+        background: rgba(255, 255, 255, 0.02) !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+    .theory-editor-wrap .editor-toolbar button { color: var(--color-text-primary) !important; }
+    .theory-editor-wrap .editor-toolbar button:hover { background: var(--color-bg-surface) !important; color: var(--accent-1) !important; }
+    .theory-editor-wrap .CodeMirror { border-radius: 0 0 12px 12px !important; border: 1px solid var(--color-stroke) !important; }
+    .theory-editor-wrap .editor-statusbar { color: var(--color-text-muted) !important; font-weight: 500; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="theory-form-container">
-    <section class="theory-form-hero">
+<div class="theory-form-container pt-6 pb-12 px-4">
+    <section class="mb-6 flex flex-col gap-2">
         <div class="back-link">
-            <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}">← К списку</a>
+            <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" class="text-sm font-bold text-muted hover:text-boo-primary no-underline flex items-center gap-1.5 transition-colors">
+              <i class="ph-bold ph-arrow-left"></i> К списку тем
+            </a>
         </div>
-        <div>
-            <h1>{% if is_new %}Новый блок теории{% else %}Редактирование: задание {{ task_number }}{% endif %}</h1>
-            <p class="hero-sub">{% if is_new %}Выберите номер задания и заполните контент{% else %}Измените заголовок и текст{% endif %}</p>
+        <div class="mt-2">
+            <h1 class="text-3xl font-black text-primary">{% if is_new %}Новый блок теории{% else %}Редактирование: задание {{ task_number }}{% endif %}</h1>
+            <p class="text-sm font-semibold text-muted">{% if is_new %}Выберите номер задания и заполните контент{% else %}Измените заголовок и текст{% endif %}</p>
         </div>
     </section>
 
@@ -75,9 +105,9 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% if is_new and course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}
         {% if form and form.errors %}
-        <div class="mb-4 p-3 rounded-btn" style="background: var(--danger-bg, #fde8e8); color: var(--color-error); border: 1px solid var(--color-error);">
-            <strong>Ошибки валидации:</strong>
-            <ul class="ml-5 mt-1">
+        <div class="mb-5 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400">
+            <strong class="font-extrabold">Ошибки валидации:</strong>
+            <ul class="ml-5 mt-1 list-disc font-semibold text-sm">
                 {% for field, errors in form.errors.items() %}
                     {% for error in errors %}
                     <li>{{ error }}</li>
@@ -86,6 +116,7 @@
             </ul>
         </div>
         {% endif %}
+        
         <div class="form-section">
             {% if is_new and free_numbers %}
             <div class="form-section-title">Параметры блока</div>
@@ -100,15 +131,17 @@
             </div>
             {% elif is_new %}
             <p class="form-hint" style="margin: 0;">Все слоты (1–27) заняты. Удалите ненужный блок в списке или отредактируйте существующий.</p>
-            <div class="form-actions">
-                <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" class="neo-button ghost">Вернуться</a>
+            <div class="mt-4">
+                <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" class="px-5 py-2.5 bg-surface dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] text-secondary dark:text-slate-300 font-bold rounded-xl hover:bg-surface-alt transition-colors no-underline">
+                  Вернуться
+                </a>
             </div>
             {% else %}
             <input type="hidden" name="task_number" value="{{ task_number }}">
             {% endif %}
 
             {% if not is_new or free_numbers %}
-            <div class="form-group">
+            <div class="form-group mt-4">
                 <label for="title">Заголовок (необязательно)</label>
                 <input type="text" id="title" name="title" class="form-control" value="{{ title|e }}" placeholder="Например: Задание 5. Графы">
             </div>
@@ -117,15 +150,16 @@
                 <input type="file" id="pdf_file" name="pdf_file" class="form-control" accept="application/pdf">
                 <div class="form-hint">Можно прикрепить один PDF с теорией. Он будет отображаться на странице и будет доступен для скачивания.</div>
                 {% if not is_new and block and block.pdf_path %}
-                <div class="form-hint mt-2">
-                    Текущий файл:
-                    <a href="{{ url_for('static', filename=block.pdf_path) }}" target="_blank" rel="noopener">открыть</a>
-                    ·
-                    <a href="{{ url_for('static', filename=block.pdf_path) }}" download>скачать</a>
+                <div class="form-hint mt-3 p-3 bg-surface-alt dark:bg-white/[0.02] rounded-xl flex items-center justify-between border border-slate-200 dark:border-white/[0.08]">
+                    <span class="font-bold text-secondary dark:text-slate-300">Прикреплённый PDF</span>
+                    <div class="flex gap-3">
+                        <a href="{{ url_for('static', filename=block.pdf_path) }}" target="_blank" rel="noopener" class="text-boo-primary hover:underline">Открыть</a>
+                        <a href="{{ url_for('static', filename=block.pdf_path) }}" download class="text-boo-primary hover:underline">Скачать</a>
+                    </div>
                 </div>
-                <div class="form-hint mt-1">
-                    <label class="inline-flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox" name="remove_pdf">
+                <div class="form-hint mt-2">
+                    <label class="inline-flex items-center gap-2 cursor-pointer font-bold text-red-600 dark:text-red-400">
+                        <input type="checkbox" name="remove_pdf" class="rounded border-red-300 text-red-600 focus:ring-red-200">
                         <span>Удалить прикреплённый PDF</span>
                     </label>
                 </div>
@@ -140,16 +174,20 @@
             <div class="form-section-title">Содержание</div>
             <div class="form-group">
                 <label for="content">Текст теории</label>
-                <div class="form-hint">Заголовки, списки, код, картинки — через панель инструментов или Markdown.</div>
+                <div class="form-hint mb-3">Заголовки, списки, код, картинки — через панель инструментов или Markdown.</div>
                 <div class="theory-editor-wrap">
                     <textarea id="content"></textarea>
                     <textarea name="content" id="content-sync" style="display:none; height:0; overflow:hidden; position:absolute; left:-9999px;" aria-hidden="true"></textarea>
                 </div>
                 <script type="application/json" id="content-initial">{{ content|tojson }}</script>
             </div>
-            <div class="form-actions">
-                <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
-                <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" class="neo-button ghost">Отмена</a>
+            <div class="flex gap-3 items-center mt-6">
+                <button type="submit" class="px-6 py-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] cursor-pointer shadow-[0_4px_12px_rgba(139,92,246,0.08)]">
+                  {% if is_new %}Создать{% else %}Сохранить{% endif %}
+                </button>
+                <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" class="px-6 py-3 bg-surface dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] text-secondary dark:text-slate-300 font-bold rounded-xl hover:bg-surface-alt transition-all no-underline">
+                  Отмена
+                </a>
             </div>
         </div>
         {% endif %}

@@ -284,6 +284,11 @@ window.initPremiumSchedule = () => {
             meta.status_code = nextStatus;
             lessonEl.classList.remove('status-planned', 'status-in_progress', 'status-completed', 'status-cancelled');
             lessonEl.classList.add(`status-${nextStatus}`);
+            if (inspectorSubtitle) {
+              const st = statusMap[nextStatus] || nextStatus || '';
+              const dotCls = statusDotClass[nextStatus] || 'bg-slate-400';
+              inspectorSubtitle.innerHTML = `<span class="inspector-status-badge"><span class="w-2 h-2 rounded-full ${dotCls}"></span>${st}</span>`;
+            }
           }
 
           let resp = null;

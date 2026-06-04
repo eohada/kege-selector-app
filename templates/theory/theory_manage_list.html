@@ -2,150 +2,159 @@
 {% set active_page = active_page|default('theory_manage') %}
 {% block title %}Редактор Теории · BooStudy{% endblock %}
 
+{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
+
 {% block head_css %}
 <style>
-  /* Идеальный, широкий тулбар */
-  .theory-toolbar-btn { 
-      background: transparent; 
-      color: #475569; 
-      border-radius: 8px; 
-      height: 38px; 
-      padding: 0 14px; 
-      font-size: 14px; 
-      font-weight: 700; 
-      display: inline-flex; 
-      align-items: center; 
-      justify-content: center;
-      gap: 8px; 
-      transition: all .2s ease; 
-      white-space: nowrap; 
-      cursor: pointer;
-  }
-  .theory-toolbar-btn:hover { background: #F1F5F9; color: #1E293B; }
-  .theory-toolbar-btn.icon-only { padding: 0; width: 38px; }
-  .theory-toolbar-btn .toolbar-text { display: inline; }
-  .theory-format-toolbar {
-      gap: 8px;
-      overflow-x: auto;
-      overflow-y: hidden;
-      flex-wrap: nowrap !important;
-      justify-content: flex-start !important;
-      scrollbar-width: thin;
-  }
-  .theory-format-toolbar > * {
-      flex: 0 0 auto;
-  }
-
-  /* Спец. цвета для инфо-блоков */
-  .btn-code:hover { color: #1E293B; background: #F1F5F9; }
-  .btn-math:hover { color: #1E293B; background: #F1F5F9; }
-  .btn-attention:hover { color: #F97316; background: #FFF7ED; }
-  .btn-tip:hover { color: #0891B2; background: #ECFEFF; }
-  .btn-danger-callout:hover { color: #DC2626; background: #FEF2F2; }
-  .btn-practice:hover { color: #7B5CFF; background: #FAF5FF; }
-
-  /* Скрытие скроллбара */
+  /* Premium scrollbar hiding */
   .hide-scroll::-webkit-scrollbar { display: none; }
   .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* Плейсхолдеры для чистой типографики */
-  #theoryContentInput::placeholder { color: #CBD5E1; font-weight: 500; font-family: "Golos Text", sans-serif; }
-  input[name="title"]::placeholder { color: #E2E8F0; }
-  input[name="description"]::placeholder { color: #94A3B8; font-weight: 500; }
+  /* Input placeholders styling */
+  #theoryContentInput::placeholder { color: var(--color-text-muted); opacity: 0.6; }
+  input[name="title"]::placeholder { color: var(--color-text-muted); opacity: 0.5; }
+  input[name="description"]::placeholder { color: var(--color-text-muted); opacity: 0.6; }
   
-  /* Прозрачный фон: без «второго» прямоугольника вокруг скруглённой панели */
-  .sticky-toolbar-wrapper { 
-      position: sticky; 
-      top: 0; 
-      z-index: 40; 
-      background: transparent;
-      padding-top: 16px;
-      padding-bottom: 24px;
-      isolation: isolate;
-  }
-  .live-preview-shell {
-      border: 1px solid #E2E8F0;
-      border-radius: 20px;
-      padding: 16px;
-      background: #FFFFFF;
-      min-height: 68vh;
-  }
+  /* Unified Callout Styles for Rendered Preview */
   .live-preview-shell .preview-callout {
-      border: 1px solid #FDBA74;
-      background: #FFFBEB;
       border-radius: 20px;
       padding: 18px 20px;
       display: flex;
       gap: 14px;
       align-items: flex-start;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      background: rgba(139, 92, 246, 0.04);
   }
   .live-preview-shell .preview-callout-dot {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border-radius: 9999px;
-      border: 1px solid #FED7AA;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #F97316;
-      background: #FFF7ED;
       flex: 0 0 auto;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      background: rgba(139, 92, 246, 0.08);
+      color: #8b5cf6;
   }
   .live-preview-shell .preview-callout-title {
       font-weight: 800;
-      color: #0F172A;
+      color: var(--color-text-primary);
       margin-bottom: 4px;
-      font-size: 26px;
-      line-height: 1.1;
+      font-size: 16px;
+      line-height: 1.2;
   }
   .live-preview-shell .preview-callout-text {
-      color: #334155;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .02em;
+      color: var(--color-text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.5;
   }
+
+  /* Warning Alert Callouts */
+  .live-preview-shell .preview-callout.preview-attention {
+      border-color: rgba(249, 115, 22, 0.3);
+      background: rgba(249, 115, 22, 0.04);
+  }
+  .live-preview-shell .preview-callout.preview-attention .preview-callout-dot {
+      border-color: rgba(249, 115, 22, 0.3);
+      background: rgba(249, 115, 22, 0.08);
+      color: #f97316;
+  }
+
+  /* Lifehack Tip Callouts */
+  .live-preview-shell .preview-callout.preview-tip {
+      border-color: rgba(6, 182, 212, 0.3);
+      background: rgba(6, 182, 212, 0.04);
+  }
+  .live-preview-shell .preview-callout.preview-tip .preview-callout-dot {
+      border-color: rgba(6, 182, 212, 0.3);
+      background: rgba(6, 182, 212, 0.08);
+      color: #06b6d4;
+  }
+
+  /* Danger Alert Callouts */
+  .live-preview-shell .preview-callout.preview-danger {
+      border-color: rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.04);
+  }
+  .live-preview-shell .preview-callout.preview-danger .preview-callout-dot {
+      border-color: rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.08);
+      color: #ef4444;
+  }
+
+  /* Practice Task Callouts */
+  .live-preview-shell .preview-callout.preview-practice {
+      border-color: rgba(168, 85, 247, 0.3);
+      background: rgba(168, 85, 247, 0.04);
+  }
+  .live-preview-shell .preview-callout.preview-practice .preview-callout-dot {
+      border-color: rgba(168, 85, 247, 0.3);
+      background: rgba(168, 85, 247, 0.08);
+      color: #a855f7;
+  }
+
+  /* Code execution container in live preview */
   .live-preview-shell .preview-code {
-      border: 1px solid #CBD5E1;
-      background: #0F172A;
-      color: #E2E8F0;
+      border: 1px solid var(--color-stroke);
+      background: #09090b;
+      color: #e4e4e7;
       border-radius: 16px;
       padding: 16px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       white-space: pre-wrap;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
       overflow: auto;
+      font-size: 14px;
+      line-height: 1.6;
   }
-  @media (max-width: 1480px) {
-      .theory-format-toolbar {
-          padding: 6px;
-          gap: 6px;
-      }
-      .theory-toolbar-btn {
-          height: 34px;
-          padding: 0 10px;
-          font-size: 13px;
-          gap: 6px;
-          flex: 0 0 auto;
-      }
-      .theory-toolbar-btn.icon-only {
-          width: 34px;
-          padding: 0;
-      }
-      .theory-toolbar-btn .toolbar-text {
-          display: none;
-      }
-      .sticky-toolbar-wrapper {
-          padding-bottom: 14px;
-      }
+
+  /* Style headings in preview */
+  .live-preview-shell h1, .live-preview-shell h2, .live-preview-shell h3 {
+      font-weight: 800;
+      color: var(--color-text-primary);
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+      line-height: 1.3;
   }
-  .theory-feedback-card {
-      background: var(--color-bg-surface, #FFFFFF);
-      border: 1px solid #E2E8F0;
-      border-bottom: 4px solid #CBD5E1;
-      border-radius: 28px;
-      box-shadow: var(--shadow-tactile, 0 10px 28px -14px rgba(15, 23, 42, 0.45));
+  .live-preview-shell h1 { font-size: 1.8rem; }
+  .live-preview-shell h2 { font-size: 1.4rem; }
+  .live-preview-shell h3 { font-size: 1.2rem; }
+  .live-preview-shell p { margin-bottom: 1rem; line-height: 1.7; color: var(--color-text-secondary); }
+  .live-preview-shell ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: var(--color-text-secondary); }
+  .live-preview-shell li { margin-bottom: 0.35rem; }
+
+  /* Premium toolbar button stylings */
+  .theory-toolbar-btn { 
+      background: transparent; 
+      color: var(--color-text-secondary); 
+      border-radius: 10px; 
+      height: 34px; 
+      padding: 0 10px; 
+      font-size: 13px; 
+      font-weight: 700; 
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center;
+      gap: 6px; 
+      transition: all .2s ease; 
+      white-space: nowrap; 
+      cursor: pointer;
   }
+  .theory-toolbar-btn:hover { 
+      background: var(--color-bg-surface); 
+      color: var(--color-text-primary); 
+  }
+  .theory-toolbar-btn.icon-only { padding: 0; width: 34px; }
+  
+  .btn-code:hover { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+  .btn-math:hover { color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
+  .btn-attention:hover { color: #f97316; background: rgba(249, 115, 22, 0.1); }
+  .btn-tip:hover { color: #06b6d4; background: rgba(6, 182, 212, 0.1); }
+  .btn-danger-callout:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+  .btn-practice:hover { color: #ec4899; background: rgba(236, 72, 153, 0.1); }
 </style>
 {% endblock %}
 
@@ -155,45 +164,45 @@
   {% set selected_clean_content = selected_block.content|replace('<!--status:published-->\n','')|replace('<!--status:draft-->\n','')|replace('<!--status:published-->','')|replace('<!--status:draft-->','') %}
 {% endif %}
 
-<main class="flex-1 pt-6 pb-8 px-6 lg:px-8 h-full flex justify-center">
+<main class="flex-1 pt-6 pb-8 px-4 lg:px-8 h-full flex justify-center">
   <div class="w-full max-w-[1600px] flex flex-col lg:flex-row gap-6 h-full items-stretch">
 
     <!-- ========================================== -->
-    <!-- ЛЕВАЯ ПАНЕЛЬ: НАВИГАТОР И ГРУППЫ (НЕ ТРОГАЕМ) -->
+    <!-- ЛЕВАЯ ПАНЕЛЬ: НАВИГАТОР И ГРУППЫ           -->
     <!-- ========================================== -->
-    <aside class="w-full lg:w-[380px] xl:w-[400px] shrink-0 h-full flex flex-col">
-      <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 lg:p-8 flex flex-col h-full overflow-hidden relative">
+    <aside class="w-full lg:w-[360px] xl:w-[380px] shrink-0 h-full flex flex-col">
+      <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-glass-dark p-6 lg:p-8 flex flex-col h-full overflow-hidden relative">
         
         <div class="mb-6 shrink-0">
-          <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-1 flex items-center gap-1.5">
+          <div class="text-[10px] font-extrabold text-muted dark:text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
             <i class="ph-fill ph-book-open text-boo-primary"></i> База знаний
           </div>
           <h2 class="text-3xl font-black text-primary tracking-tight mb-5">Навигатор</h2>
           
-          <div class="relative bg-surface-alt border border-slate-200 rounded-xl flex items-center px-4 py-3 shadow-sm dark:shadow-none dark:shadow-none">
+          <div class="relative bg-surface-alt dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl flex items-center px-4 py-3 shadow-sm">
             <i class="ph-fill ph-exam text-boo-primary text-xl mr-3"></i>
             <span class="font-bold text-primary text-sm flex-1 truncate">{{ course.title if course else 'Курс' }}</span>
             <i class="ph-bold ph-caret-down text-muted text-sm"></i>
           </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto pr-2 hide-scroll flex flex-col">
-          <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-3 ml-1">Группы</div>
+        <div class="flex-1 overflow-y-auto pr-1 hide-scroll flex flex-col">
+          <div class="text-[10px] font-extrabold text-muted dark:text-slate-400 uppercase tracking-widest mb-3 ml-1">Группы</div>
           
-          <div class="space-y-3 mb-5">
+          <div class="space-y-2.5 mb-5">
             {% for group in groups %}
             <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=group.id) }}"
-               class="block {{ 'bg-purple-50 border-2 border-boo-primary text-boo-primary shadow-sm dark:shadow-none dark:shadow-none' if selected_group and selected_group.id == group.id else 'bg-surface border border-slate-200 border-b-[3px] border-b-slate-300 text-secondary hover:-translate-y-0.5 hover:shadow-tactile hover:text-boo-primary' }} rounded-xl px-4 py-3.5 font-bold text-sm no-underline transition-all truncate">
+               class="block rounded-xl px-4 py-3 font-bold text-sm no-underline transition-all truncate {{ 'bg-boo-primary/10 text-boo-primary border border-boo-primary/30 dark:bg-boo-primary/20 dark:text-purple-300 dark:border-boo-primary/45' if selected_group and selected_group.id == group.id else 'bg-surface-alt dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] text-secondary dark:text-slate-400 hover:text-boo-primary dark:hover:text-purple-300 hover:border-boo-primary/40 transition-all' }}">
               {{ group.name }}
             </a>
             {% endfor %}
           </div>
 
-          <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex items-center bg-surface border border-slate-200 rounded-xl overflow-hidden shadow-sm dark:shadow-none dark:shadow-none h-12 focus-within:border-boo-primary focus-within:ring-2 focus-within:ring-purple-100 transition-all shrink-0">
+          <form method="post" action="{{ url_for('theory.manage_list', course_id=course_id) }}" class="flex items-center bg-surface-alt dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl overflow-hidden shadow-sm h-11 focus-within:border-boo-primary focus-within:ring-2 focus-within:ring-purple-100 transition-all shrink-0">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="create_group">
-            <input type="text" name="group_name" placeholder="Новая группа" class="flex-1 bg-transparent border-none px-4 text-sm font-medium text-secondary focus:outline-none focus:ring-0 placeholder-slate-400 h-full">
-            <button type="submit" class="w-12 h-full bg-surface-alt text-muted flex items-center justify-center hover:bg-boo-primary hover:text-white transition-colors border-l border-slate-200 shrink-0">
+            <input type="text" name="group_name" placeholder="Новая группа" class="flex-1 bg-transparent border-none px-4 text-sm font-semibold text-secondary dark:text-slate-300 focus:outline-none focus:ring-0 placeholder-slate-400 dark:placeholder-slate-600 h-full">
+            <button type="submit" class="w-11 h-full bg-slate-100 dark:bg-white/[0.04] text-muted dark:text-slate-400 flex items-center justify-center hover:bg-boo-primary hover:text-white dark:hover:bg-boo-primary transition-colors border-l border-slate-200 dark:border-white/[0.06] shrink-0">
               <i class="ph-bold ph-plus text-lg"></i>
             </button>
           </form>
@@ -206,7 +215,7 @@
               <input type="hidden" name="group_id" value="{{ selected_group.id }}">
               <input type="hidden" name="group_name" value="{{ selected_group.name }}">
               <input type="hidden" name="group_description" value="{{ selected_group.description or '' }}">
-              <button type="submit" class="w-full py-2.5 bg-surface-alt text-muted border border-slate-200 rounded-xl text-xs font-bold hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none dark:shadow-none">
+              <button type="submit" class="w-full py-2 bg-surface-alt dark:bg-white/[0.04] text-secondary dark:text-slate-300 border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-colors shadow-sm">
                   Редактировать
               </button>
             </form>
@@ -214,24 +223,24 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="action" value="delete_group">
               <input type="hidden" name="group_id" value="{{ selected_group.id }}">
-              <button type="submit" class="w-full py-2.5 bg-red-50 text-boo-coral border border-red-200 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors shadow-sm dark:shadow-none dark:shadow-none">
+              <button type="submit" class="w-full py-2 bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm">
                   Удалить
               </button>
             </form>
           </div>
           {% endif %}
 
-          <div class="mt-auto pt-8 border-t border-slate-100 shrink-0">
+          <div class="mt-auto pt-6 border-t border-slate-100 dark:border-white/[0.06] shrink-0">
             <div class="flex justify-between items-end mb-3 ml-1">
-              <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Заполнение базы: <span class="text-primary font-black">{{ completion_percent }}%</span></span>
+              <span class="text-[10px] font-extrabold text-muted dark:text-slate-400 uppercase tracking-widest">Заполнение базы: <span class="text-primary font-black">{{ completion_percent }}%</span></span>
             </div>
             
-            <div class="w-full h-1.5 bg-surface-alt rounded-full overflow-hidden mb-6 shadow-inner border border-slate-200/50">
-              <div id="navProgressBar" class="h-full bg-boo-primary rounded-full transition-all duration-500 w-0"></div>
+            <div class="w-full h-1.5 bg-slate-100 dark:bg-white/[0.04] rounded-full overflow-hidden mb-6 shadow-inner border border-slate-200/50 dark:border-transparent">
+              <div id="navProgressBar" class="h-full bg-gradient-to-r from-boo-primary to-purple-400 rounded-full transition-all duration-500 w-0"></div>
             </div>
             <script>document.getElementById('navProgressBar').style.width = "{{ completion_percent|default(0) }}%";</script>
             
-            <div class="flex flex-wrap gap-2.5 p-1">
+            <div class="flex flex-wrap gap-2.5 p-1 justify-start">
               {% for item in grid_states %}
                 {% set num = item.display_number %}
                 {% set st = item.state %}
@@ -239,19 +248,19 @@
                 {% set is_active = (selected_block and selected_block.id == block_id) %}
                 
                 {% if is_active %}
-                  <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=block_id) }}" class="w-12 h-12 shrink-0 rounded-2xl bg-boo-primary text-white font-black text-xl flex items-center justify-center ring-[3px] ring-purple-200 ring-offset-2 border-b-[3px] border-purple-800 transition-all no-underline shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] dark:shadow-none active:translate-y-[2px] active:border-b-0 active:shadow-none">
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=block_id) }}" class="w-12 h-12 shrink-0 rounded-2xl bg-boo-primary text-white font-black text-xl flex items-center justify-center ring-[3px] ring-purple-200 dark:ring-purple-900 ring-offset-2 dark:ring-offset-dark-card border-b-[3px] border-purple-800 transition-all no-underline shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] active:translate-y-[2px] active:border-b-0">
                     {{ num }}
                   </a>
                 {% elif st == 'published' %}
-                  <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=block_id) }}" class="w-12 h-12 shrink-0 rounded-2xl bg-green-500 text-white font-black text-xl flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none border-b-[4px] border-green-700 hover:translate-y-[2px] hover:border-b-[2px] transition-all no-underline">
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=block_id) }}" class="w-12 h-12 shrink-0 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black text-xl flex items-center justify-center border border-emerald-500/20 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-500 hover:-translate-y-0.5 transition-all no-underline">
                     {{ num }}
                   </a>
                 {% elif st == 'draft' %}
-                  <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=block_id) }}" class="w-12 h-12 shrink-0 rounded-2xl bg-orange-400 text-white font-black text-xl flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none border-b-[4px] border-orange-600 hover:translate-y-[2px] hover:border-b-[2px] transition-all no-underline">
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=block_id) }}" class="w-12 h-12 shrink-0 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-black text-xl flex items-center justify-center border border-amber-500/20 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 hover:-translate-y-0.5 transition-all no-underline">
                     {{ num }}
                   </a>
                 {% else %}
-                  <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=block_id) }}" class="w-12 h-12 shrink-0 rounded-2xl bg-surface-alt text-muted font-bold text-xl flex items-center justify-center border-2 border-slate-200 border-dashed hover:border-boo-primary hover:text-boo-primary hover:bg-purple-50 transition-all no-underline">
+                  <a href="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=block_id) }}" class="w-12 h-12 shrink-0 rounded-2xl bg-surface-alt dark:bg-white/[0.01] text-muted dark:text-slate-500 font-bold text-xl flex items-center justify-center border-2 border-slate-200 dark:border-white/[0.08] border-dashed hover:border-boo-primary hover:text-boo-primary dark:hover:text-purple-300 hover:bg-boo-primary/5 transition-all no-underline">
                     {{ num }}
                   </a>
                 {% endif %}
@@ -260,8 +269,8 @@
           </div>
         </div>
 
-        <div class="mt-6 pt-5 border-t border-slate-100 shrink-0 grid grid-cols-2 gap-3">
-          <a href="{{ url_for('theory.manage_access_index', course_id=course_id) }}" class="py-3.5 bg-surface text-secondary border border-slate-200 border-b-[3px] border-b-slate-300 rounded-xl font-bold hover:bg-surface-alt transition-all flex justify-center items-center gap-2 text-sm no-underline active:translate-y-[2px] active:border-b-0 shadow-sm dark:shadow-none dark:shadow-none">
+        <div class="mt-6 pt-5 border-t border-slate-100 dark:border-white/[0.06] shrink-0 grid grid-cols-2 gap-3">
+          <a href="{{ url_for('theory.manage_access_index', course_id=course_id) }}" class="py-3 bg-surface dark:bg-white/[0.02] text-secondary dark:text-slate-300 border border-slate-200 dark:border-white/[0.08] rounded-xl font-bold hover:bg-slate-100 dark:hover:bg-white/[0.08] transition-all flex justify-center items-center gap-2 text-sm no-underline shadow-sm">
             <i class="ph-bold ph-lock-key text-lg"></i> Доступ
           </a>
           
@@ -270,12 +279,12 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="create_block">
             <input type="hidden" name="group_id" value="{{ selected_group.id }}">
-            <button type="submit" class="py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm shadow-[0_8px_24px_-4px_rgba(15,23,42,0.22)] border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0 active:shadow-none">
+            <button type="submit" class="py-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold transition-all duration-150 flex justify-center items-center gap-2 text-sm shadow-[0_4px_12px_rgba(139,92,246,0.08)]">
               <i class="ph-bold ph-plus text-lg"></i> Новый
             </button>
           </form>
           {% else %}
-          <a href="{{ url_for('theory.manage_new', course_id=course_id) }}" class="py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex justify-center items-center gap-2 text-sm no-underline shadow-[0_8px_24px_-4px_rgba(15,23,42,0.22)] border-b-[3px] border-b-black active:translate-y-[2px] active:border-b-0 active:shadow-none">
+          <a href="{{ url_for('theory.manage_new', course_id=course_id) }}" class="py-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold transition-all duration-150 flex justify-center items-center gap-2 text-sm no-underline shadow-[0_4px_12px_rgba(139,92,246,0.08)]">
             <i class="ph-bold ph-plus text-lg"></i> Новый
           </a>
           {% endif %}
@@ -284,9 +293,9 @@
     </aside>
 
     <!-- ========================================== -->
-    <!-- ПРАВАЯ ПАНЕЛЬ: РЕДАКТОР СТАТЬИ             -->
+    <!-- ПРАВАЯ ПАНЕЛЬ: РЕДАКТОР И СПЛИТ-ЭКРАН     -->
     <!-- ========================================== -->
-    <section class="flex-1 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile flex flex-col h-full overflow-hidden min-h-[760px] relative">
+    <section class="flex-1 bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.08] shadow-sm dark:shadow-glass-dark flex flex-col h-full overflow-hidden min-h-[760px] relative">
       <form id="theoryEditorForm" method="post" action="{{ url_for('theory.manage_list', course_id=course_id, group_id=(selected_group.id if selected_group else None), block_id=(selected_block.id if selected_block else None)) }}" class="flex flex-col h-full w-full relative">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="block_id" value="{{ selected_block.id if selected_block else '' }}">
@@ -294,27 +303,27 @@
         <input type="hidden" name="group_id" value="{{ selected_group.id if selected_group else '' }}">
         <input type="hidden" name="editor_status" id="editorStatusInput" value="{{ selected_block_status or 'draft' }}">
 
-        <!-- ИДЕАЛЬНАЯ ШАПКА РЕДАКТОРА -->
-        <div class="min-h-[112px] px-6 lg:px-10 border-b border-slate-100 bg-surface flex items-center justify-between gap-3 shrink-0 z-50 pt-2">
+        <!-- ШАПКА РЕДАКТОРА -->
+        <div class="min-h-[96px] px-6 lg:px-10 border-b border-slate-200 dark:border-white/[0.08] bg-surface dark:bg-dark-card flex items-center justify-between gap-3 shrink-0 z-50 pt-2">
           
           <!-- Левая сторона: Номер и Статус -->
           <div class="flex items-center gap-3 min-w-0 flex-1">
-            <div class="w-14 h-14 rounded-2xl bg-boo-primary text-white font-black text-2xl flex items-center justify-center shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] dark:shadow-none">
+            <div class="w-14 h-14 rounded-2xl bg-boo-primary text-white font-black text-2xl flex items-center justify-center shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)]">
                 {{ selected_display_number or '—' }}
             </div>
             {% set is_published = (selected_block_status == 'published') %}
-            <div id="editorStatusBadge" class="flex items-center justify-center gap-2 px-4 h-12 bg-surface {{ 'border border-green-200 text-green-600' if is_published else 'border border-orange-200 text-orange-500' }} rounded-xl shadow-sm dark:shadow-none dark:shadow-none text-sm font-bold shrink-0">
+            <div id="editorStatusBadge" class="flex items-center justify-center gap-2 px-4 h-12 rounded-xl text-sm font-bold shrink-0 transition-all {{ 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400' if is_published else 'bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400' }}">
               {% if is_published %}
-                <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Опубликовано
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Опубликовано
               {% else %}
-                <span class="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span> Черновик
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span> Черновик
               {% endif %}
             </div>
-            <div class="inline-flex items-center rounded-xl border border-slate-200 p-1 bg-surface-alt shrink-0">
-              <button id="modeDraftBtn" type="button" class="px-3 h-9 rounded-lg text-xs font-bold {{ 'bg-surface text-orange-600 border border-orange-200 shadow-sm dark:shadow-none dark:shadow-none' if not is_published else 'text-muted' }}">
+            <div class="inline-flex items-center rounded-xl border border-slate-200 dark:border-white/[0.08] p-1 bg-surface-alt dark:bg-white/[0.02] shrink-0">
+              <button id="modeDraftBtn" type="button" class="px-3 h-9 rounded-lg text-xs font-bold transition-all {{ 'bg-surface dark:bg-white/[0.08] text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-sm' if not is_published else 'text-muted dark:text-slate-400 hover:text-primary' }}">
                 Черновик
               </button>
-              <button id="modePublishedBtn" type="button" class="px-3 h-9 rounded-lg text-xs font-bold {{ 'bg-surface text-green-600 border border-green-200 shadow-sm dark:shadow-none dark:shadow-none' if is_published else 'text-muted' }}">
+              <button id="modePublishedBtn" type="button" class="px-3 h-9 rounded-lg text-xs font-bold transition-all {{ 'bg-surface dark:bg-white/[0.08] text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm' if is_published else 'text-muted dark:text-slate-400 hover:text-primary' }}">
                 Опубликовано
               </button>
             </div>
@@ -322,112 +331,118 @@
 
           <!-- Правая сторона: Кнопки действий -->
           <div class="flex items-center gap-2 shrink-0">
-            <button id="previewTheoryBtn" type="button" class="w-12 h-12 bg-surface text-muted border border-slate-200 rounded-xl hover:bg-surface-alt transition-all shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center" title="Предпросмотр">
-              <i class="ph-bold ph-eye text-xl"></i>
-            </button>
-            
-            <button id="saveDraftBtn" type="submit" class="w-11 h-11 lg:w-12 lg:h-12 bg-surface text-muted border border-slate-200 rounded-xl hover:bg-surface-alt transition-all shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center" title="Сохранить">
+            <button id="saveDraftBtn" type="submit" class="w-12 h-12 bg-surface dark:bg-white/[0.02] text-secondary dark:text-slate-300 border border-slate-200 dark:border-white/[0.08] rounded-xl hover:bg-slate-100 dark:hover:bg-white/[0.08] hover:text-primary transition-all flex items-center justify-center" title="Сохранить черновик">
               <i class="ph-bold ph-floppy-disk text-xl"></i>
             </button>
 
             {% if selected_block %}
-            <button id="deleteTheoryBtn" type="button" data-delete-url="{{ url_for('theory.manage_delete', block_id=selected_block.id) }}" data-delete-label="{{ selected_display_number or selected_task_number or '—' }}" class="w-11 h-11 lg:w-12 lg:h-12 bg-red-50 text-boo-coral border border-red-200 rounded-xl hover:bg-red-100 transition-all shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center ml-1" title="Удалить">
+            <button id="deleteTheoryBtn" type="button" data-delete-url="{{ url_for('theory.manage_delete', block_id=selected_block.id) }}" data-delete-label="{{ selected_display_number or selected_task_number or '—' }}" class="w-12 h-12 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 rounded-xl transition-all flex items-center justify-center ml-1" title="Удалить карточку">
               <i class="ph-bold ph-trash text-xl"></i>
             </button>
             {% endif %}
 
-            <button id="publishBtn" type="submit" class="px-4 lg:px-6 xl:px-8 h-11 lg:h-12 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex items-center justify-center shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none ml-1 gap-2 max-w-[180px]">
+            <button id="publishBtn" type="submit" class="px-5 h-12 bg-purple-600 dark:bg-purple-700 hover:bg-purple-500 dark:hover:bg-purple-600 text-white rounded-xl font-extrabold transition-all duration-150 active:scale-[0.98] ml-1 gap-2 flex items-center justify-center shadow-[0_4px_12px_rgba(139,92,246,0.15)]">
               <i class="ph-bold ph-paper-plane-right text-xl"></i>
               <span class="hidden sm:inline">Опубликовать</span>
             </button>
           </div>
         </div>
 
-        <!-- ЗОНА ВВОДА И ТУЛБАР -->
-        <div class="flex-1 overflow-y-auto relative bg-surface pb-10">
-          <div class="max-w-4xl mx-auto w-full px-8 lg:px-12 relative pt-8">
+        <!-- ЗОНА ВВОДА И СПЛИТ-ЭКРАН -->
+        <div class="flex-1 overflow-y-auto relative bg-surface dark:bg-dark-card pb-10">
+          
+          <!-- Заголовок, описание и селектор режима (на всю ширину) -->
+          <div class="max-w-[1500px] mx-auto w-full px-6 lg:px-10 pt-8 pb-6 border-b border-slate-200 dark:border-white/[0.08] mb-6">
+            <input type="text" name="title" class="w-full text-4xl lg:text-5xl font-black text-primary bg-transparent border-none outline-none mb-3 resize-none focus:ring-0 leading-tight" value="{{ (selected_block.title if selected_block else ('Тема ' ~ (selected_display_number or ''))) }}" placeholder="Заголовок темы">
             
-            <!-- ИДЕАЛЬНЫЙ ШИРОКИЙ ТУЛБАР -->
-            <div class="sticky-toolbar-wrapper">
-              <div class="theory-format-toolbar bg-surface border border-slate-200 dark:border-white/[0.08] rounded-[20px] p-2 shadow-sm dark:shadow-glass-dark flex flex-wrap items-center justify-start gap-2 lg:gap-3 w-full transition-shadow overflow-x-visible">
-                
-                <div class="flex items-center gap-1">
-                  <button type="button" class="theory-toolbar-btn icon-only" data-format="h2" title="Заголовок 2"><span class="font-serif text-[15px] font-bold">H₂</span></button>
-                  <button type="button" class="theory-toolbar-btn icon-only" data-format="h3" title="Заголовок 3"><span class="font-serif text-[15px] font-bold">H₃</span></button>
+            <input type="text" name="description" class="w-full text-base lg:text-lg font-medium text-muted bg-transparent border-none px-0 py-2 focus:outline-none focus:ring-0" value="{{ selected_block.description if selected_block and selected_block.description else '' }}" placeholder="Краткое описание (например: Таблицы истинности, законы Де Моргана)...">
+            
+            <div class="flex items-center justify-between gap-4 flex-wrap mt-4">
+              <div class="flex items-center gap-3">
+                <span class="text-xs font-bold text-muted dark:text-slate-400 uppercase tracking-wider">Время чтения:</span>
+                <div class="flex items-center bg-surface-alt dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-xl px-3 h-10">
+                  <input type="number" min="1" max="180" name="read_minutes" value="{{ selected_block.read_minutes if selected_block and selected_block.read_minutes else 5 }}" class="w-12 bg-transparent border-none text-sm font-bold text-secondary dark:text-slate-300 focus:outline-none focus:ring-0 p-0 text-center">
+                  <span class="text-xs font-bold text-muted ml-1">мин</span>
                 </div>
-                
-                <div class="w-px h-6 bg-slate-200 shrink-0"></div>
-                
-                <div class="flex items-center gap-1">
-                  <button type="button" class="theory-toolbar-btn icon-only" data-format="bold" title="Жирный"><span class="font-serif font-black text-[15px]">B</span></button>
-                  <button type="button" class="theory-toolbar-btn icon-only" data-format="italic" title="Курсив"><span class="font-serif italic font-bold text-[15px]">I</span></button>
-                  <button type="button" class="theory-toolbar-btn icon-only" data-format="quote" title="Подчеркнутый"><span class="underline underline-offset-2 decoration-2 text-[15px] font-bold">U</span></button>
-                </div>
-
-                <div class="w-px h-6 bg-slate-200 shrink-0"></div>
-                
-                <div class="flex items-center gap-1">
-                  <button type="button" class="theory-toolbar-btn icon-only" data-format="ul" title="Список"><i class="ph-bold ph-list-bullets text-lg"></i></button>
-                  <button type="button" class="theory-toolbar-btn icon-only font-serif font-black text-[15px]" data-format="quote" title="Цитата">99</button>
-                </div>
-
-                <div class="w-px h-6 bg-slate-200 shrink-0"></div>
-
-                <div class="flex items-center gap-2 shrink-0">
-                  <button type="button" class="theory-toolbar-btn btn-code" data-format="code">
-                      <i class="ph-bold ph-file-code text-[17px] text-muted"></i> <span class="text-muted toolbar-text">Код</span>
-                  </button>
-                  <button type="button" class="theory-toolbar-btn btn-math" data-format="math">
-                      <span class="font-serif italic font-bold text-muted text-[17px]">f</span> <span class="text-muted toolbar-text">Формула</span>
-                  </button>
-                  <button type="button" class="theory-toolbar-btn btn-attention hover-orange" data-format="attention">
-                      <i class="ph-fill ph-warning-circle text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Внимание</span>
-                  </button>
-                  <button type="button" class="theory-toolbar-btn btn-tip" data-format="tip" title="Лайфхак / запомнить">
-                      <i class="ph-fill ph-lightbulb text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Лайфхак</span>
-                  </button>
-                  <button type="button" class="theory-toolbar-btn btn-danger-callout" data-format="danger" title="Предупреждение">
-                      <i class="ph-fill ph-shield-warning text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Осторожно</span>
-                  </button>
-                  <button type="button" class="theory-toolbar-btn btn-practice hover-purple" data-format="practice">
-                      <i class="ph-bold ph-game-controller text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Задача</span>
-                  </button>
-                  <button type="button" id="insertImageBtn" class="theory-toolbar-btn" title="Вставить фотографию">
-                      <i class="ph-bold ph-image text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Фото</span>
-                  </button>
-                  <button type="button" id="insertFileBtn" class="theory-toolbar-btn" title="Прикрепить файл">
-                      <i class="ph-bold ph-paperclip text-[17px] text-primary"></i> <span class="text-muted toolbar-text">Файл</span>
-                  </button>
-                </div>
-                <input id="theoryImageInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" class="hidden">
-                <input id="theoryFileInput" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.csv,.zip,.rar,.7z,.odt,.ods,.odp" class="hidden">
-
+              </div>
+              
+              <!-- 3-режимный переключатель визуализации -->
+              <div class="inline-flex items-center rounded-xl border border-slate-200 dark:border-white/[0.08] p-1 bg-surface-alt dark:bg-white/[0.02]">
+                <button id="tabEditBtn" type="button" class="px-3.5 h-8 rounded-lg text-xs font-bold transition-all">
+                  Редактор
+                </button>
+                <button id="tabSplitBtn" type="button" class="px-3.5 h-8 rounded-lg text-xs font-bold transition-all hidden lg:block">
+                  Сплит-экран
+                </button>
+                <button id="tabPreviewBtn" type="button" class="px-3.5 h-8 rounded-lg text-xs font-bold transition-all">
+                  Просмотр
+                </button>
               </div>
             </div>
+          </div>
 
-            <!-- ИНПУТЫ -->
-            <div class="mt-8">
-              <input type="text" name="title" class="w-full text-5xl font-black text-primary placeholder-slate-200 bg-transparent border-none outline-none mb-6 resize-none focus:ring-0 leading-tight" value="{{ (selected_block.title if selected_block else ('Тема ' ~ (selected_display_number or ''))) }}" placeholder="Заголовок темы">
-              
-              <input type="text" name="description" class="w-full text-lg font-medium text-muted placeholder-slate-400 bg-transparent border-none px-0 py-2 mb-10 focus:outline-none focus:ring-0 transition-colors" value="{{ selected_block.description if selected_block and selected_block.description else '' }}" placeholder="Краткое описание (например: Таблицы истинности, законы Де Моргана)...">
-              <div class="mb-8 max-w-[220px]">
-                <label class="block text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2">Время чтения (мин)</label>
-                <input type="number" min="1" max="180" name="read_minutes" value="{{ selected_block.read_minutes if selected_block and selected_block.read_minutes else 5 }}" class="w-full h-11 rounded-xl border border-slate-200 bg-surface px-4 text-sm font-bold text-secondary focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100">
-              </div>
-              
-              <div class="inline-flex items-center rounded-xl border border-slate-200 p-1 bg-surface-alt mb-4">
-                <button id="tabMarkupBtn" type="button" class="px-3 h-9 rounded-lg text-xs font-bold bg-surface text-secondary border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none">
-                  Разметка
+          <!-- Основная сетка: Редактор / Сплит / Просмотр -->
+          <div id="theoryWorkspaceGrid" class="max-w-[1500px] mx-auto w-full px-6 lg:px-10 grid grid-cols-1 gap-8 items-stretch">
+            
+            <!-- Левая колонка: Редактор и Тулбар -->
+            <div id="editorPane" class="flex flex-col gap-4">
+              <!-- ТУЛБАР ФОРМАТИРОВАНИЯ -->
+              <div class="theory-format-toolbar bg-surface-alt dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-[24px] p-2 shadow-sm flex flex-wrap items-center justify-start gap-2 w-full">
+                
+                <button type="button" class="theory-toolbar-btn icon-only" data-format="h2" title="Заголовок H2"><span class="font-serif text-[15px] font-bold">H₂</span></button>
+                <button type="button" class="theory-toolbar-btn icon-only" data-format="h3" title="Заголовок H3"><span class="font-serif text-[15px] font-bold">H₃</span></button>
+                <div class="w-px h-6 bg-slate-200 dark:bg-white/[0.1] shrink-0"></div>
+                
+                <button type="button" class="theory-toolbar-btn icon-only" data-format="bold" title="Жирный"><span class="font-serif font-black text-[15px]">B</span></button>
+                <button type="button" class="theory-toolbar-btn icon-only" data-format="italic" title="Курсив"><span class="font-serif italic font-bold text-[15px]">I</span></button>
+                <button type="button" class="theory-toolbar-btn icon-only" data-format="ul" title="Список"><i class="ph-bold ph-list-bullets text-lg"></i></button>
+                <button type="button" class="theory-toolbar-btn icon-only" data-format="quote" title="Цитата"><i class="ph-bold ph-quotes text-lg"></i></button>
+                
+                <div class="w-px h-6 bg-slate-200 dark:bg-white/[0.1] shrink-0"></div>
+                
+                <button type="button" class="theory-toolbar-btn btn-code" data-format="code" title="Блок кода [CODE]">
+                  <i class="ph-bold ph-file-code text-[16px] mr-1.5"></i>Код
                 </button>
-                <button id="tabVisualBtn" type="button" class="px-3 h-9 rounded-lg text-xs font-bold text-muted">
-                  Визуал
+                <button type="button" class="theory-toolbar-btn btn-math" data-format="math" title="Формула $$">
+                  <span class="font-serif italic font-bold text-[16px] mr-1.5">f</span>Формула
                 </button>
+                <button type="button" class="theory-toolbar-btn btn-attention" data-format="attention" title="Внимание">
+                  <i class="ph-fill ph-warning-circle text-[16px] mr-1.5"></i>Внимание
+                </button>
+                <button type="button" class="theory-toolbar-btn btn-tip" data-format="tip" title="Лайфхак">
+                  <i class="ph-fill ph-lightbulb text-[16px] mr-1.5"></i>Лайфхак
+                </button>
+                <button type="button" class="theory-toolbar-btn btn-danger-callout" data-format="danger" title="Осторожно">
+                  <i class="ph-fill ph-shield-warning text-[16px] mr-1.5"></i>Осторожно
+                </button>
+                <button type="button" class="theory-toolbar-btn btn-practice" data-format="practice" title="Задача практики">
+                  <i class="ph-bold ph-game-controller text-[16px] mr-1.5"></i>Задача
+                </button>
+                
+                <div class="w-px h-6 bg-slate-200 dark:bg-white/[0.1] shrink-0"></div>
+                
+                <button type="button" id="insertImageBtn" class="theory-toolbar-btn hover:text-boo-primary" title="Вставить фото">
+                  <i class="ph-bold ph-image text-[16px] mr-1.5"></i>Фото
+                </button>
+                <button type="button" id="insertFileBtn" class="theory-toolbar-btn hover:text-boo-primary" title="Прикрепить файл">
+                  <i class="ph-bold ph-paperclip text-[16px] mr-1.5"></i>Файл
+                </button>
+                
+                <input id="theoryImageInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" class="hidden">
+                <input id="theoryFileInput" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.csv,.zip,.rar,.7z,.odt,.ods,.odp" class="hidden">
               </div>
-              <div id="markupPane">
-                <textarea id="theoryContentInput" name="content" class="w-full bg-transparent border-none outline-none text-[16px] leading-[2.0] resize-y font-mono text-secondary placeholder-slate-300 focus:ring-0 px-0 min-h-[68vh]" style="min-height: 68vh;" placeholder="Начни писать теорию... Используй тулбар сверху для добавления блоков кода, формул и задач." spellcheck="false">{{ selected_clean_content }}</textarea>
+
+              <!-- Текстовое поле ввода разметки -->
+              <textarea id="theoryContentInput" name="content" class="w-full bg-surface-alt dark:bg-white/[0.01] border border-slate-200 dark:border-white/[0.08] rounded-2xl outline-none text-[15px] leading-relaxed resize-y font-mono text-secondary dark:text-slate-300 placeholder-slate-300 dark:placeholder-slate-700 focus:ring-0 focus:border-boo-primary p-5 min-h-[560px]" placeholder="Начни писать теорию... Используй тулбар сверху для добавления блоков кода, формул и задач." spellcheck="false">{{ selected_clean_content }}</textarea>
+            </div>
+            
+            <!-- Правая колонка: Рендеринг визуализации -->
+            <div id="previewPane" class="flex flex-col gap-4">
+              <div class="text-[11px] font-bold text-muted dark:text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                <i class="ph-bold ph-laptop text-sm"></i> Визуальный результат
               </div>
-              <div id="visualPane" class="hidden">
-                <div id="livePreviewShell" class="live-preview-shell"></div>
+              <div id="livePreviewShell" class="live-preview-shell bg-surface-alt dark:bg-white/[0.01] border border-slate-200 dark:border-white/[0.08] rounded-[24px] p-6 lg:p-8 min-h-[560px] overflow-y-auto">
+                <!-- Сюда вставляется отрендеренный JS превью-код -->
               </div>
             </div>
 
@@ -439,11 +454,11 @@
   </div>
 </main>
 
-<section class="mt-6 px-6 lg:px-8">
-  <div class="w-full max-w-[1600px] mx-auto theory-feedback-card p-6 lg:p-8">
-    <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
+<section class="mt-6 px-4 lg:px-8">
+  <div class="w-full max-w-[1600px] mx-auto bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.08] rounded-[32px] p-6 lg:p-8 shadow-sm dark:shadow-glass-dark">
+    <div class="flex items-center justify-between gap-3 flex-wrap mb-6">
       <div>
-        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-1">Аналитика</div>
+        <div class="text-[10px] font-extrabold text-muted dark:text-slate-400 uppercase tracking-widest mb-1.5">Аналитика</div>
         <h3 class="text-2xl font-black text-primary">Отзывы учеников по теме</h3>
       </div>
       {% set rated = namespace(total=0, sum=0) %}
@@ -453,16 +468,16 @@
           {% set rated.sum = rated.sum + row.rating %}
         {% endif %}
       {% endfor %}
-      <div class="text-sm font-bold text-secondary">
+      <div class="text-sm font-bold text-secondary dark:text-slate-300">
         {% if selected_block %}
           Тема: {{ selected_block.title or ('Тема ' ~ (selected_display_number or selected_task_number or '—')) }}
         {% else %}
           Выберите тему в редакторе
         {% endif %}
-        <span class="ml-3 px-3 py-1 rounded-lg bg-surface-alt border border-slate-200 text-xs">
+        <span class="ml-3 px-3 py-1.5 rounded-lg bg-surface-alt dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] text-xs font-bold text-primary">
           Средняя оценка:
           {% if rated.total > 0 %}
-            {{ '%.2f'|format(rated.sum / rated.total) }} / 5 ({{ rated.total }})
+            <span class="text-amber-500 font-extrabold">{{ '%.2f'|format(rated.sum / rated.total) }}★</span> ({{ rated.total }})
           {% else %}
             нет оценок
           {% endif %}
@@ -472,63 +487,77 @@
 
     {% if selected_block %}
       {% if student_stats and student_stats|length > 0 %}
-      <div class="overflow-x-auto mb-6">
-        <table class="min-w-full text-sm border border-slate-200 rounded-xl overflow-hidden">
-          <thead class="bg-surface-alt">
+      <div class="overflow-x-auto mb-8 border border-slate-200 dark:border-white/[0.08] rounded-2xl">
+        <table class="min-w-full text-sm">
+          <thead class="bg-surface-alt dark:bg-white/[0.02] border-b border-slate-200 dark:border-white/[0.08]">
             <tr>
-              <th class="text-left px-3 py-2 font-black text-primary">Ученик</th>
-              <th class="text-left px-3 py-2 font-black text-primary">Изучено</th>
-              <th class="text-left px-3 py-2 font-black text-primary">Оценка</th>
-              <th class="text-left px-3 py-2 font-black text-primary">Комментарий</th>
-              <th class="text-left px-3 py-2 font-black text-primary">Обновлено</th>
+              <th class="text-left px-4 py-3 font-black text-primary">Ученик</th>
+              <th class="text-left px-4 py-3 font-black text-primary">Изучено</th>
+              <th class="text-left px-4 py-3 font-black text-primary">Оценка</th>
+              <th class="text-left px-4 py-3 font-black text-primary">Комментарий</th>
+              <th class="text-left px-4 py-3 font-black text-primary">Обновлено</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody class="divide-y divide-slate-100 dark:divide-white/[0.06] bg-surface dark:bg-transparent">
             {% for row in student_stats %}
-            <tr class="border-t border-slate-100">
-              <td class="px-3 py-2 font-semibold text-secondary">{{ row.student.name if row.student and row.student.name else ('ID ' ~ (row.student.student_id if row.student else '—')) }}</td>
-              <td class="px-3 py-2">{% if row.is_read %}<span class="text-green-600 font-bold">Да</span>{% else %}<span class="text-muted">Нет</span>{% endif %}</td>
-              <td class="px-3 py-2">
+            <tr>
+              <td class="px-4 py-3 font-bold text-secondary dark:text-slate-300">{{ row.student.name if row.student and row.student.name else ('ID ' ~ (row.student.student_id if row.student else '—')) }}</td>
+              <td class="px-4 py-3">
+                {% if row.is_read %}
+                  <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">Изучено</span>
+                {% else %}
+                  <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-white/[0.06] text-muted dark:text-slate-400">В процессе</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3">
                 {% if row.rating is not none %}
                   <span class="font-black text-amber-500">{{ row.rating }}★</span>
                 {% else %}
-                  <span class="text-muted">—</span>
+                  <span class="text-muted dark:text-slate-500">—</span>
                 {% endif %}
               </td>
-              <td class="px-3 py-2 text-secondary">{{ row.comment if row.comment else '—' }}</td>
-              <td class="px-3 py-2 text-muted">{{ row.updated_at.strftime('%d.%m.%Y %H:%M') if row.updated_at else '—' }}</td>
+              <td class="px-4 py-3 text-secondary dark:text-slate-300">{{ row.comment if row.comment else '—' }}</td>
+              <td class="px-4 py-3 text-muted dark:text-slate-500">{{ row.updated_at.strftime('%d.%m.%Y %H:%M') if row.updated_at else '—' }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
       {% else %}
-      <div class="text-sm font-semibold text-muted mb-6">Пока нет данных от учеников по этой теме.</div>
+      <div class="text-sm font-bold text-muted dark:text-slate-500 mb-8 p-4 bg-surface-alt dark:bg-white/[0.01] border border-slate-200 dark:border-white/[0.06] border-dashed rounded-2xl flex justify-center items-center">
+        Пока нет данных от учеников по этой теме.
+      </div>
       {% endif %}
 
       <div>
-        <h4 class="text-lg font-black text-primary mb-2">История комментариев</h4>
+        <h4 class="text-lg font-black text-primary mb-4 flex items-center gap-2">
+          <i class="ph-bold ph-chat-centered-text"></i> История комментариев
+        </h4>
         {% if comments_history and comments_history|length > 0 %}
-        <div class="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[360px] overflow-y-auto pr-1">
           {% for item in comments_history %}
-          <div class="p-3 rounded-xl border border-slate-200 bg-surface-alt">
-            <div class="flex items-center justify-between gap-2 text-xs mb-1">
-              <span class="font-extrabold text-secondary">
+          <div class="p-4 rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-surface-alt dark:bg-white/[0.02]">
+            <div class="flex items-center justify-between gap-2 text-xs mb-2">
+              <span class="font-extrabold text-secondary dark:text-slate-300">
                 {{ item.student.name if item.student and item.student.name else ('ID ' ~ item.student_id) }}
               </span>
-              <span class="text-muted">{{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else '' }}</span>
+              <span class="text-muted dark:text-slate-500">{{ item.created_at.strftime('%d.%m.%Y %H:%M') if item.created_at else '' }}</span>
             </div>
-            <div class="text-xs font-bold text-amber-500 mb-1">{% if item.rating is not none %}Оценка: {{ item.rating }}★{% else %}Без оценки{% endif %}</div>
-            <div class="text-sm text-secondary">{{ item.comment if item.comment else 'Комментарий не оставлен' }}</div>
+            <div class="text-xs font-black text-amber-500 mb-2">{% if item.rating is not none %}Оценка: {{ item.rating }}★{% else %}Без оценки{% endif %}</div>
+            <div class="text-sm text-secondary dark:text-slate-300 leading-relaxed">{{ item.comment if item.comment else 'Комментарий не оставлен' }}</div>
           </div>
           {% endfor %}
         </div>
         {% else %}
-        <div class="text-sm font-semibold text-muted">История комментариев пока пустая.</div>
+        <div class="text-sm font-bold text-muted dark:text-slate-500 p-4 bg-surface-alt dark:bg-white/[0.01] border border-slate-200 dark:border-white/[0.06] border-dashed rounded-2xl flex justify-center items-center">
+          История комментариев пока пустая.
+        </div>
         {% endif %}
       </div>
     {% else %}
-      <div class="text-sm font-semibold text-muted">Выберите тему слева, чтобы увидеть оценки и комментарии учеников в отдельном блоке.</div>
+      <div class="text-sm font-bold text-muted dark:text-slate-500 p-6 bg-surface-alt dark:bg-white/[0.01] border border-slate-200 dark:border-white/[0.06] border-dashed rounded-3xl flex justify-center items-center">
+        Выберите тему слева, чтобы увидеть оценки и комментарии учеников.
+      </div>
     {% endif %}
   </div>
 </section>
@@ -549,11 +578,16 @@
   const uploadImageUrl = '{{ url_for("theory.upload_image") }}';
   const uploadFileUrl = '{{ url_for("theory.upload_file") }}';
   const content = document.getElementById('theoryContentInput');
-  const tabMarkupBtn = document.getElementById('tabMarkupBtn');
-  const tabVisualBtn = document.getElementById('tabVisualBtn');
-  const markupPane = document.getElementById('markupPane');
-  const visualPane = document.getElementById('visualPane');
+  
+  // 3-Mode View elements
+  const workspaceGrid = document.getElementById('theoryWorkspaceGrid');
+  const editorPane = document.getElementById('editorPane');
+  const previewPane = document.getElementById('previewPane');
+  const tabEditBtn = document.getElementById('tabEditBtn');
+  const tabSplitBtn = document.getElementById('tabSplitBtn');
+  const tabPreviewBtn = document.getElementById('tabPreviewBtn');
   const livePreviewShell = document.getElementById('livePreviewShell');
+
   const formatBtns = Array.from(document.querySelectorAll('[data-format]'));
   const insertImageBtn = document.getElementById('insertImageBtn');
   const insertFileBtn = document.getElementById('insertFileBtn');
@@ -563,37 +597,90 @@
   function setDraftState() {
     if (!statusInput || !statusBadge) return;
     statusInput.value = 'draft';
-    statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span> Черновик';
-    statusBadge.className = 'flex items-center justify-center gap-2 px-6 h-12 bg-surface border border-orange-200 rounded-xl shadow-sm dark:shadow-none dark:shadow-none text-sm font-bold text-orange-500';
+    statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span> Черновик';
+    statusBadge.className = 'flex items-center justify-center gap-2 px-4 h-12 bg-amber-500/10 border border-amber-500/20 rounded-xl text-sm font-bold text-amber-600 dark:text-amber-400 shrink-0';
     if (modeDraftBtn && modePublishedBtn) {
-      modeDraftBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold bg-surface text-orange-600 border border-orange-200 shadow-sm dark:shadow-none dark:shadow-none';
-      modePublishedBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold text-muted';
+      modeDraftBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold bg-surface dark:bg-white/[0.08] text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-sm';
+      modePublishedBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold text-muted dark:text-slate-400 hover:text-primary';
     }
   }
+
   function setPublishedState() {
     if (!statusInput || !statusBadge) return;
     statusInput.value = 'published';
-    statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Опубликовано';
-    statusBadge.className = 'flex items-center justify-center gap-2 px-6 h-12 bg-surface border border-green-200 rounded-xl shadow-sm dark:shadow-none dark:shadow-none text-sm font-bold text-green-600';
+    statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Опубликовано';
+    statusBadge.className = 'flex items-center justify-center gap-2 px-4 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm font-bold text-emerald-600 dark:text-emerald-400 shrink-0';
     if (modeDraftBtn && modePublishedBtn) {
-      modeDraftBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold text-muted';
-      modePublishedBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold bg-surface text-green-600 border border-green-200 shadow-sm dark:shadow-none dark:shadow-none';
+      modeDraftBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold text-muted dark:text-slate-400 hover:text-primary';
+      modePublishedBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold bg-surface dark:bg-white/[0.08] text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm';
     }
   }
 
   if (statusInput && statusBadge) {
       if (statusInput.value === 'published') {
-        statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Опубликовано';
-        statusBadge.className = 'flex items-center justify-center gap-2 px-6 h-12 bg-surface border border-green-200 rounded-xl shadow-sm dark:shadow-none dark:shadow-none text-sm font-bold text-green-600';
+        statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Опубликовано';
+        statusBadge.className = 'flex items-center justify-center gap-2 px-4 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm font-bold text-emerald-600 dark:text-emerald-400 shrink-0';
       }
   }
 
   content && content.addEventListener('input', () => {
     setDraftState();
-    renderLivePreview(content.value);
+    if (workspaceGrid && !previewPane.classList.contains('hidden')) {
+      renderLivePreview(content.value);
+    }
   });
-  tabMarkupBtn && tabMarkupBtn.addEventListener('click', switchToMarkup);
-  tabVisualBtn && tabVisualBtn.addEventListener('click', switchToVisual);
+
+  // Switch View Modes Handler
+  function setViewMode(mode) {
+    const btnActiveClasses = 'bg-surface dark:bg-white/[0.08] text-primary shadow-sm border border-slate-200/50 dark:border-white/[0.08]';
+    const btnInactiveClasses = 'text-muted dark:text-slate-400 hover:text-primary';
+    
+    [tabEditBtn, tabSplitBtn, tabPreviewBtn].forEach(btn => {
+      if (btn) {
+        btn.className = `px-3.5 h-8 rounded-lg text-xs font-bold transition-all ${btnInactiveClasses}`;
+      }
+    });
+
+    if (mode === 'edit') {
+      if (tabEditBtn) tabEditBtn.className = `px-3.5 h-8 rounded-lg text-xs font-bold transition-all ${btnActiveClasses}`;
+      if (workspaceGrid) {
+        workspaceGrid.classList.remove('lg:grid-cols-2');
+        workspaceGrid.classList.add('grid-cols-1');
+      }
+      if (editorPane) editorPane.classList.remove('hidden');
+      if (previewPane) previewPane.classList.add('hidden');
+    } else if (mode === 'split') {
+      if (tabSplitBtn) tabSplitBtn.className = `px-3.5 h-8 rounded-lg text-xs font-bold transition-all ${btnActiveClasses}`;
+      if (workspaceGrid) {
+        workspaceGrid.classList.remove('grid-cols-1');
+        workspaceGrid.classList.add('lg:grid-cols-2');
+      }
+      if (editorPane) editorPane.classList.remove('hidden');
+      if (previewPane) previewPane.classList.remove('hidden');
+      renderLivePreview(content ? content.value : '');
+    } else if (mode === 'preview') {
+      if (tabPreviewBtn) tabPreviewBtn.className = `px-3.5 h-8 rounded-lg text-xs font-bold transition-all ${btnActiveClasses}`;
+      if (workspaceGrid) {
+        workspaceGrid.classList.remove('lg:grid-cols-2');
+        workspaceGrid.classList.add('grid-cols-1');
+      }
+      if (editorPane) editorPane.classList.add('hidden');
+      if (previewPane) previewPane.classList.remove('hidden');
+      renderLivePreview(content ? content.value : '');
+    }
+  }
+
+  tabEditBtn && tabEditBtn.addEventListener('click', () => setViewMode('edit'));
+  tabSplitBtn && tabSplitBtn.addEventListener('click', () => setViewMode('split'));
+  tabPreviewBtn && tabPreviewBtn.addEventListener('click', () => setViewMode('preview'));
+
+  // Initial load view setup based on screen width
+  if (window.innerWidth >= 1024) {
+    setViewMode('split');
+  } else {
+    setViewMode('edit');
+  }
+
   saveDraftBtn && saveDraftBtn.addEventListener('click', setDraftState);
   publishBtn && publishBtn.addEventListener('click', setPublishedState);
   modeDraftBtn && modeDraftBtn.addEventListener('click', setDraftState);
@@ -636,85 +723,132 @@
   function toInlineHtml(value) {
     return escapeHtml(value)
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>');
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
   }
 
   function renderLivePreview(rawText) {
     if (!livePreviewShell) return;
-    const source = (rawText || '').trim();
+    let source = (rawText || '').trim();
     if (!source) {
-      livePreviewShell.innerHTML = '<div class="text-muted font-semibold">Здесь появится визуальный результат.</div>';
+      livePreviewShell.innerHTML = '<div class="text-muted font-bold dark:text-slate-500">Здесь появится визуальный результат.</div>';
       return;
     }
-    let html = '';
-    let tail = source;
+
+    // 1. Process custom blocks and replace them with placeholder tokens to protect them
+    const blocks = [];
+    
+    // Protect CODE blocks
+    source = source.replace(/\[CODE(?:\s+lang="([^"]+)")?\]([\s\S]*?)\[\/CODE\]/gi, (_, lang, codeBody) => {
+      const token = `<!--BLOCK_TOKEN_${blocks.length}-->`;
+      const caption = lang ? `<div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-1.5 ml-1">${escapeHtml(lang)}</div>` : '';
+      const html = `${caption}<pre class="preview-code">${escapeHtml((codeBody || '').trim())}</pre>`;
+      blocks.push(html);
+      return `\n\n${token}\n\n`;
+    });
+
     const calloutPreview = {
-      attention: {
-        title: 'Внимание',
-        wrapClass: '',
-        dotClass: '',
-        dotIcon: 'ph-fill ph-warning-circle',
-        titleStyle: '',
-        textStyle: '',
-      },
-      tip: {
-        title: 'Лайфхак',
-        wrapClass: ' style="border-color:#A5F3FC;background:#ECFEFF;"',
-        dotClass: ' style="border-color:#67E8F9;color:#0891B2;background:#CFFAFE;"',
-        dotIcon: 'ph-fill ph-lightbulb',
-        titleStyle: '',
-        textStyle: ' style="color:#0E7490;"',
-      },
-      danger: {
-        title: 'Осторожно',
-        wrapClass: ' style="border-color:#FECACA;background:#FEF2F2;"',
-        dotClass: ' style="border-color:#FCA5A5;color:#DC2626;background:#FEE2E2;"',
-        dotIcon: 'ph-fill ph-shield-warning',
-        titleStyle: ' style="color:#991B1B;"',
-        textStyle: ' style="color:#7F1D1D;"',
-      },
+      attention: { title: 'Внимание', wrap: 'preview-attention', icon: 'ph-fill ph-warning-circle' },
+      tip: { title: 'Лайфхак', wrap: 'preview-tip', icon: 'ph-fill ph-lightbulb' },
+      danger: { title: 'Осторожно', wrap: 'preview-danger', icon: 'ph-fill ph-shield-warning' }
     };
-    const calloutRegex = /\[CALLOUT\s+type="(attention|tip|danger)"\]([\s\S]*?)\[\/CALLOUT\]/gi;
-    tail = tail.replace(calloutRegex, (_, kind, body) => {
+
+    // Protect CALLOUT blocks
+    source = source.replace(/\[CALLOUT\s+type="(attention|tip|danger)"\]([\s\S]*?)\[\/CALLOUT\]/gi, (_, kind, body) => {
+      const token = `<!--BLOCK_TOKEN_${blocks.length}-->`;
       const meta = calloutPreview[kind] || calloutPreview.attention;
       const clean = (body || '').trim();
-      html += `<div class="preview-callout"${meta.wrapClass}><div class="preview-callout-dot"${meta.dotClass
-      }><i class="${meta.dotIcon} text-[20px]"></i></div><div><div class="preview-callout-title"${meta.titleStyle}>${meta.title}</div><div class="preview-callout-text"${meta.textStyle}>${toInlineHtml(clean)}</div></div></div>`;
-      return '';
+      const html = `<div class="preview-callout ${meta.wrap}"><div class="preview-callout-dot"><i class="${meta.icon} text-[18px]"></i></div><div><div class="preview-callout-title">${meta.title}</div><div class="preview-callout-text">${toInlineHtml(clean)}</div></div></div>`;
+      blocks.push(html);
+      return `\n\n${token}\n\n`;
     });
-    const codeRegex = /\[CODE(?:\s+lang="([^"]+)")?\]([\s\S]*?)\[\/CODE\]/gi;
-    tail = tail.replace(codeRegex, (_, lang, codeBody) => {
-      const caption = lang ? `<div class="text-xs font-bold text-muted mb-2 uppercase tracking-wide">${escapeHtml(lang)}</div>` : '';
-      html += `${caption}<pre class="preview-code">${escapeHtml((codeBody || '').trim())}</pre>`;
-      return '';
+
+    // Protect PRACTICE_TASK blocks
+    source = source.replace(/\[PRACTICE_TASK\s+id="([^"]+)"\]/gi, (_, id) => {
+      const token = `<!--BLOCK_TOKEN_${blocks.length}-->`;
+      const html = `<div class="preview-callout preview-practice"><div class="preview-callout-dot"><i class="ph-fill ph-game-controller text-[18px]"></i></div><div><div class="preview-callout-title">Практика</div><div class="preview-callout-text">Задача ID: ${escapeHtml(id)}</div></div></div>`;
+      blocks.push(html);
+      return `\n\n${token}\n\n`;
     });
-    const practiceRegex = /\[PRACTICE_TASK\s+id="([^"]+)"\]/gi;
-    tail = tail.replace(practiceRegex, (_, id) => {
-      html += `<div class="preview-callout" style="border-color:#C4B5FD;background:#F5F3FF;"><div class="preview-callout-dot" style="border-color:#DDD6FE;color:#7C3AED;background:#F3E8FF;"><i class="ph-fill ph-lightbulb text-[20px]"></i></div><div><div class="preview-callout-title" style="font-size:22px;">Практика</div><div class="preview-callout-text" style="color:#5B21B6;">Задача ID: ${escapeHtml(id)}</div></div></div>`;
-      return '';
-    });
-    const rest = tail.trim();
-    if (rest) {
-      html += `<div class="text-secondary leading-8">${toInlineHtml(rest).replace(/\n/g, '<br>')}</div>`;
+
+    // 2. Parse Markdown line-by-line
+    const lines = source.split('\n');
+    let renderedHtml = '';
+    let currentBlock = null; // 'p', 'ul', 'blockquote'
+    let currentText = [];
+
+    function closeCurrentBlock() {
+      if (!currentBlock) return;
+      if (currentBlock === 'p') {
+        renderedHtml += `<p class="mb-4 text-secondary dark:text-slate-300 leading-relaxed font-medium">${toInlineHtml(currentText.join('\n')).replace(/\n/g, '<br>')}</p>`;
+      } else if (currentBlock === 'blockquote') {
+        renderedHtml += `<blockquote class="border-l-4 border-slate-300 dark:border-white/[0.1] pl-4 py-1 my-4 italic text-muted">${toInlineHtml(currentText.join('\n')).replace(/\n/g, '<br>')}</blockquote>`;
+      } else if (currentBlock === 'ul') {
+        renderedHtml += `<ul class="list-disc pl-5 mb-4 text-secondary dark:text-slate-300">${currentText.map(t => `<li>${toInlineHtml(t)}</li>`).join('')}</ul>`;
+      }
+      currentText = [];
+      currentBlock = null;
     }
-    livePreviewShell.innerHTML = html || '<div class="text-muted font-semibold">Нет поддерживаемых блоков для визуализации.</div>';
-  }
 
-  function switchToMarkup() {
-    if (!tabMarkupBtn || !tabVisualBtn || !markupPane || !visualPane) return;
-    tabMarkupBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold bg-surface text-secondary border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none';
-    tabVisualBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold text-muted';
-    markupPane.classList.remove('hidden');
-    visualPane.classList.add('hidden');
-  }
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i];
+      let trimmed = line.trim();
 
-  function switchToVisual() {
-    if (!tabMarkupBtn || !tabVisualBtn || !markupPane || !visualPane) return;
-    tabMarkupBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold text-muted';
-    tabVisualBtn.className = 'px-3 h-9 rounded-lg text-xs font-bold bg-surface text-secondary border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none';
-    markupPane.classList.add('hidden');
-    visualPane.classList.remove('hidden');
-    renderLivePreview(content ? content.value : '');
+      // If it is a token, restore it immediately
+      if (trimmed.startsWith('<!--BLOCK_TOKEN_') && trimmed.endsWith('-->')) {
+        closeCurrentBlock();
+        const index = parseInt(trimmed.replace('<!--BLOCK_TOKEN_', '').replace('-->', ''));
+        if (!isNaN(index) && blocks[index] !== undefined) {
+          renderedHtml += blocks[index] + '\n';
+        }
+        continue;
+      }
+
+      // Empty line
+      if (trimmed === '') {
+        closeCurrentBlock();
+        continue;
+      }
+
+      // Headings (must be single line)
+      if (trimmed.startsWith('### ')) {
+        closeCurrentBlock();
+        renderedHtml += `<h3>${toInlineHtml(trimmed.slice(4))}</h3>`;
+      } else if (trimmed.startsWith('## ')) {
+        closeCurrentBlock();
+        renderedHtml += `<h2>${toInlineHtml(trimmed.slice(3))}</h2>`;
+      } else if (trimmed.startsWith('# ')) {
+        closeCurrentBlock();
+        renderedHtml += `<h1>${toInlineHtml(trimmed.slice(2))}</h1>`;
+      }
+      // Blockquotes
+      else if (trimmed.startsWith('> ')) {
+        if (currentBlock && currentBlock !== 'blockquote') {
+          closeCurrentBlock();
+        }
+        currentBlock = 'blockquote';
+        currentText.push(trimmed.slice(2));
+      }
+      // List items
+      else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        if (currentBlock && currentBlock !== 'ul') {
+          closeCurrentBlock();
+        }
+        currentBlock = 'ul';
+        currentText.push(trimmed.slice(2));
+      }
+      // Regular text
+      else {
+        if (currentBlock && currentBlock !== 'p') {
+          closeCurrentBlock();
+        }
+        currentBlock = 'p';
+        currentText.push(line);
+      }
+    }
+
+    closeCurrentBlock();
+    livePreviewShell.innerHTML = renderedHtml;
   }
 
   function replaceSelection(wrapperStart, wrapperEnd = '') {
@@ -741,7 +875,7 @@
       case 'ul': return appendToContent('- Пункт 1\n- Пункт 2');
       case 'quote': return appendToContent('> Важная мысль');
       case 'code':
-        return appendToContent('### Пример кода\n[CODE lang="python"]\n# Демонстрация цикла\nfor i in range(1, 6):\n    print(f\"Шаг: {i}\")\n[/CODE]\n> Что можно менять: диапазон, формат вывода, условия.');
+        return appendToContent('### Пример кода\n[CODE lang="python"]\n# Демонстрация цикла\nfor i in range(1, 6):\n    print(f"Шаг: {i}")\n[/CODE]\n> Что можно менять: диапазон, формат вывода, условия.');
       case 'math':
         return appendToContent('### Формула\n$$\\neg(A \\land B) \\equiv \\neg A \\lor \\neg B$$\n> Разбор: закон Де Моргана для отрицания конъюнкции.');
       case 'attention':
@@ -798,7 +932,7 @@
     try {
       const data = await uploadBinary(theoryFileInput, uploadFileUrl, file);
       const safeName = (data.name || file.name || 'Файл').replace(/"/g, '&quot;');
-      const html = `<div class="theory-file-attachment"><a href="${data.url}" target="_blank" rel="noopener">${safeName}</a> · <a href="${data.url}" download>Скачать</a></div>`;
+      const html = `<div class="theory-file-attachment my-4 p-3 bg-surface border border-slate-200 dark:border-white/[0.08] rounded-xl flex items-center justify-between"><span class="font-semibold text-secondary dark:text-slate-300 text-sm">${safeName}</span> <div class="flex gap-3"><a href="${data.url}" target="_blank" rel="noopener" class="text-xs text-boo-primary hover:underline">Открыть</a><a href="${data.url}" download class="text-xs text-boo-primary hover:underline">Скачать</a></div></div>`;
       insertAtCursor(html, true);
       if (window.toast) window.toast.success('Файл прикреплен');
     } catch (err) {
@@ -853,6 +987,8 @@
       w.document.close();
     } catch (e) {}
   });
+
+  // Perform initial render
   renderLivePreview(content ? content.value : '');
 })();
 </script>

@@ -2,7 +2,7 @@
 module.exports = {
   content: [
     './templates/**/*.html',
-    './static/src/**/*.js',
+    './static/**/*.js',
     './app/theory/routes.py',
   ],
   darkMode: ['selector', '[data-theme="dark"]'],
@@ -15,7 +15,7 @@ module.exports = {
       colors: {
         /* Airy Dark tokens — совпадает с boostudy2.0_examples/prepod/dark_mode*.html */
         dark: {
-          bg:     '#09090B',
+          bg:     '#000000',
           card:   '#131316',
           inner:  '#18181B',
           border: '#27272A',

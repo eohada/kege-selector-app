@@ -2,7 +2,7 @@
 {% set active_page = 'library' %}
 {% block title %}Библиотека · Материалы{% endblock %}
 
-{% block body_class %}{{ super() }} bg-boo-bg text-boo-textMain{% endblock %}
+{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
 {% block head_extra %}
 <style>
@@ -15,78 +15,77 @@
 {% endblock %}
 
 {% block content %}
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 -mt-2">
+<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6 pb-6">
 
-    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none dark:shadow-none relative overflow-hidden flex flex-col">
-        <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute right-60 bottom-[-50px] w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
-        <div class="relative z-10 max-w-4xl">
-            <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                <i class="ph-fill ph-books"></i> Контент и библиотека
+    <section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-[32px] p-8 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-8">
+        <div class="absolute -right-20 -top-20 w-80 h-80 bg-boo-primary/10 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative z-10 max-w-3xl">
+            <div class="text-[10px] font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <i class="ph-fill ph-books text-sm"></i> Контент и библиотека
             </div>
-            <h1 class="text-4xl font-black text-primary tracking-tight mb-3">Библиотека материалов</h1>
-            <p class="text-muted font-medium text-sm leading-relaxed max-w-3xl">
+            <h1 class="text-3xl md:text-4xl font-black text-primary dark:text-white tracking-tight mb-2">Библиотека материалов</h1>
+            <p class="text-muted dark:text-dark-muted font-medium text-sm leading-relaxed">
                 Храни раздатки, файлы и опоры в одном месте и прикрепляй к любым урокам. Сейчас это приватная библиотека (для твоего аккаунта) — дальше добавим shared и теги.
             </p>
         </div>
-    </div>
+    </section>
 
     <div class="flex flex-col lg:flex-row gap-6 items-start">
-        <div class="w-full lg:w-1/3 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 lg:sticky lg:top-24 self-start">
-            <h2 class="text-xl font-black text-primary mb-6">Загрузить новый материал</h2>
+        <div class="w-full lg:w-1/3 bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-zinc-800/80 border-b-[4px] border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-8 lg:sticky lg:top-24 self-start">
+            <h2 class="text-xl font-black text-primary dark:text-white mb-6">Загрузить новый материал</h2>
             <form method="POST" action="{{ url_for('library.materials_upload') }}" enctype="multipart/form-data" id="lib-upload-form" class="space-y-6">
                 {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                 <div class="space-y-2">
-                    <label class="text-[11px] font-extrabold text-muted uppercase tracking-widest ml-1">Файл</label>
-                    <div class="lib-file-drop relative border-2 border-dashed border-slate-300 rounded-2xl bg-surface-alt p-6 flex flex-col items-center justify-center text-center cursor-pointer overflow-hidden group">
+                    <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Файл</label>
+                    <div class="lib-file-drop relative border-2 border-dashed border-slate-300 dark:border-zinc-800 rounded-2xl bg-surface-alt dark:bg-zinc-900/40 p-6 flex flex-col items-center justify-center text-center cursor-pointer overflow-hidden group">
                         <input type="file" name="file" id="lib-file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required>
-                        <div class="w-12 h-12 bg-surface rounded-full flex items-center justify-center shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 mb-3 group-hover:scale-110 transition-transform pointer-events-none">
-                            <i class="ph-bold ph-upload-simple text-xl text-boo-primary"></i>
+                        <div class="w-12 h-12 bg-surface dark:bg-zinc-900 rounded-full flex items-center justify-center border border-slate-200 dark:border-zinc-800 shadow-sm mb-3 group-hover:scale-110 transition-transform pointer-events-none">
+                            <i class="ph-bold ph-upload-simple text-xl text-purple-600 dark:text-purple-400"></i>
                         </div>
-                        <p class="text-sm font-bold text-secondary mb-1 pointer-events-none">Выберите файл или перетащите</p>
-                        <p class="text-xs font-medium text-muted pointer-events-none">PDF, DOCX, PNG, JPG до 50MB</p>
+                        <p class="text-sm font-bold text-secondary dark:text-zinc-200 mb-1 pointer-events-none">Выберите файл или перетащите</p>
+                        <p class="text-xs font-medium text-muted dark:text-dark-muted pointer-events-none">PDF, DOCX, PNG, JPG до 50MB</p>
                     </div>
                 </div>
                 <div class="space-y-2">
-                    <label class="text-[11px] font-extrabold text-muted uppercase tracking-widest ml-1">Название <span class="text-muted font-medium normal-case tracking-normal">(опционально)</span></label>
-                    <input type="text" name="title" placeholder="Напр.: Таблица истинности - шпаргалка" class="w-full bg-surface-alt border border-slate-200 rounded-xl px-4 py-3 font-medium text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                    <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Название <span class="text-muted dark:text-dark-muted font-medium normal-case tracking-normal">(опционально)</span></label>
+                    <input type="text" name="title" placeholder="Напр.: Таблица истинности - шпаргалка" class="w-full bg-surface-alt dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
                 </div>
                 <div class="space-y-2">
-                    <label class="text-[11px] font-extrabold text-muted uppercase tracking-widest ml-1">Теги <span class="text-muted font-medium normal-case tracking-normal">(через запятую)</span></label>
-                    <input type="text" name="tags" placeholder="егэ, 24, питон, шпора" class="w-full bg-surface-alt border border-slate-200 rounded-xl px-4 py-3 font-medium text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                    <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Теги <span class="text-muted dark:text-dark-muted font-medium normal-case tracking-normal">(через запятую)</span></label>
+                    <input type="text" name="tags" placeholder="егэ, 24, питон, шпора" class="w-full bg-surface-alt dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
                 </div>
                 <div class="space-y-2">
-                    <label class="text-[11px] font-extrabold text-muted uppercase tracking-widest ml-1">Описание <span class="text-muted font-medium normal-case tracking-normal">(опционально)</span></label>
-                    <textarea name="description" rows="3" placeholder="Коротко: для чего, когда выдавать, нюансы..." class="w-full bg-surface-alt border border-slate-200 rounded-xl px-4 py-3 font-medium text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input resize-y"></textarea>
+                    <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Описание <span class="text-muted dark:text-dark-muted font-medium normal-case tracking-normal">(опционально)</span></label>
+                    <textarea name="description" rows="3" placeholder="Коротко: для чего, когда выдавать, нюансы..." class="w-full bg-surface-alt dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input resize-y"></textarea>
                 </div>
-                <div class="pt-2 border-t border-slate-100">
-                    <button type="submit" class="w-full py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm">
-                        <i class="ph-bold ph-cloud-arrow-up text-lg"></i> Добавить материал
+                <div class="pt-2 border-t border-slate-100 dark:border-zinc-800/60">
+                    <button type="submit" class="w-full h-11 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)]">
+                        <i class="ph-bold ph-cloud-arrow-up text-base"></i> Добавить материал
                     </button>
                 </div>
             </form>
         </div>
 
         <div class="w-full lg:w-2/3 flex flex-col gap-6">
-            <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+            <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-zinc-800/80 border-b-[4px] border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-8">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-black text-primary tracking-tight">Мои материалы</h2>
+                    <h2 class="text-2xl font-black text-primary dark:text-white tracking-tight">Мои материалы</h2>
                     <span class="text-xs font-bold text-muted bg-surface-alt px-3 py-1 rounded-lg">{{ assets|length }} шт.</span>
                 </div>
                 <form method="GET" class="flex flex-col sm:flex-row gap-3 mb-8">
                     <div class="relative flex-1">
-                        <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-muted text-lg"></i>
-                        <input type="text" name="q" value="{{ q or '' }}" placeholder="Поиск по названию..." class="w-full bg-surface-alt border border-slate-200 rounded-xl pl-11 pr-4 py-3 font-medium text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input">
+                        <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-muted dark:text-dark-muted text-lg"></i>
+                        <input type="text" name="q" value="{{ q or '' }}" placeholder="Поиск по названию..." class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-xl pl-11 pr-4 py-3 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
                     </div>
                     <div class="flex gap-3 w-full sm:w-auto">
                         <div class="relative w-full sm:w-40">
-                            <i class="ph-bold ph-tag absolute left-4 top-1/2 -translate-y-1/2 text-muted"></i>
-                            <input type="text" name="tag" value="{{ tag or '' }}" placeholder="Тег" class="w-full bg-surface-alt border border-slate-200 rounded-xl pl-10 pr-4 py-3 font-medium text-secondary text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
+                            <i class="ph-bold ph-tag absolute left-4 top-1/2 -translate-y-1/2 text-muted dark:text-dark-muted"></i>
+                            <input type="text" name="tag" value="{{ tag or '' }}" placeholder="Тег" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-xl pl-10 pr-4 py-3 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
                         </div>
-                        <button type="submit" class="w-12 h-12 bg-surface border border-slate-200 text-boo-primary rounded-xl flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm dark:shadow-none dark:shadow-none shrink-0" aria-label="Искать">
+                        <button type="submit" class="w-12 h-12 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-[0.98] cursor-pointer shadow-sm shrink-0" aria-label="Искать">
                             <i class="ph-bold ph-magnifying-glass"></i>
                         </button>
-                        <a href="{{ url_for('library.materials_library') }}" class="w-12 h-12 bg-surface border border-slate-200 text-muted rounded-xl flex items-center justify-center hover:bg-surface-alt hover:text-secondary transition-colors shadow-sm dark:shadow-none dark:shadow-none shrink-0" title="Сбросить фильтры">
+                        <a href="{{ url_for('library.materials_library') }}" class="w-12 h-12 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-[0.98] shrink-0" title="Сбросить фильтры">
                             <i class="ph-bold ph-arrow-counter-clockwise"></i>
                         </a>
                     </div>
@@ -97,62 +96,62 @@
                     {% for a in assets %}
                     {% set fn = (a.file_name or '')|lower %}
                     {% set ext = fn.split('.')[-1] if '.' in fn else '' %}
-                    <div class="bg-surface rounded-[24px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col group relative">
-                        <div class="p-5 flex-1">
+                    <div class="bg-surface-alt dark:bg-white/[0.02] border border-slate-200/80 dark:border-zinc-800/60 rounded-[22px] p-5 flex flex-col justify-between hover:shadow-md dark:hover:shadow-glass-dark-hover hover:translate-y-[-2px] transition-all duration-300 group relative">
+                        <div class="flex-1">
                             <div class="flex justify-between items-start mb-4">
                                 {% if ext in ['png','jpg','jpeg','gif','webp','svg'] %}
-                                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-100 shadow-sm dark:shadow-none dark:shadow-none overflow-hidden relative">
-                                    <i class="ph-fill ph-image text-2xl relative z-10 text-blue-600"></i>
+                                <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/20 text-blue-500 flex items-center justify-center border border-blue-100 dark:border-blue-900/40 shadow-sm overflow-hidden relative">
+                                    <i class="ph-fill ph-image text-2xl relative z-10 text-blue-600 dark:text-blue-400"></i>
                                 </div>
                                 {% elif ext == 'pdf' %}
-                                <div class="w-12 h-12 rounded-xl bg-red-50 text-red-500 flex items-center justify-center border border-red-100 shadow-sm dark:shadow-none dark:shadow-none">
-                                    <i class="ph-fill ph-file-pdf text-2xl"></i>
+                                <div class="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/20 text-rose-500 flex items-center justify-center border border-rose-100 dark:border-rose-900/40 shadow-sm">
+                                    <i class="ph-fill ph-file-pdf text-2xl text-rose-600 dark:text-rose-400"></i>
                                 </div>
                                 {% else %}
-                                <div class="w-12 h-12 rounded-xl bg-surface-alt text-muted flex items-center justify-center border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none">
+                                <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-zinc-900 text-muted dark:text-dark-muted flex items-center justify-center border border-slate-200 dark:border-zinc-800 shadow-sm">
                                     <i class="ph-fill ph-file text-2xl"></i>
                                 </div>
                                 {% endif %}
                                 <form method="POST" action="{{ url_for('library.materials_delete', asset_id=a.asset_id) }}" class="inline" onsubmit="return confirm('Удалить материал из библиотеки?');">
                                     {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                                    <button type="submit" class="text-muted hover:text-red-500 transition-colors" title="Удалить"><i class="ph-bold ph-trash text-lg"></i></button>
+                                    <button type="submit" class="text-muted dark:text-dark-muted hover:text-red-500 dark:hover:text-red-400 transition-colors bg-transparent border-0 cursor-pointer" title="Удалить"><i class="ph-bold ph-trash text-lg"></i></button>
                                 </form>
                             </div>
-                            <h3 class="text-lg font-black text-primary mb-2 leading-tight group-hover:text-boo-primary transition-colors line-clamp-2" title="{{ a.title }}">{{ a.title }}</h3>
+                            <h3 class="text-lg font-black text-primary dark:text-white mb-2 leading-tight group-hover:text-boo-primary transition-colors line-clamp-2" title="{{ a.title }}">{{ a.title }}</h3>
                             {% if a.tags and a.tags|length > 0 %}
                             <div class="flex flex-wrap gap-1.5 mb-4">
                                 {% for t in a.tags[:6] %}
                                 {% set c = loop.index0 % 4 %}
-                                <span class="{% if c == 0 %}bg-cyan-50 text-cyan-600 border-cyan-100{% elif c == 1 %}bg-purple-50 text-purple-600 border-purple-100{% elif c == 2 %}bg-orange-50 text-orange-600 border-orange-100{% else %}bg-green-50 text-green-600 border-green-100{% endif %} text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border">{{ t }}</span>
+                                <span class="{% if c == 0 %}bg-cyan-50 text-cyan-600 border-cyan-100 dark:bg-cyan-950/30 dark:text-cyan-400 dark:border-cyan-800/40{% elif c == 1 %}bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/40{% elif c == 2 %}bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800/40{% else %}bg-green-50 text-green-600 border-green-100 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/40{% endif %} text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded border">{{ t }}</span>
                                 {% endfor %}
                             </div>
                             {% endif %}
-                            <div class="text-xs font-bold text-muted flex items-center gap-2">
+                            <div class="text-xs font-bold text-muted dark:text-dark-muted flex items-center gap-2">
                                 <i class="ph-bold ph-calendar-blank"></i>
                                 {% if a.updated_at %}{{ a.updated_at.strftime('%d.%m.%Y') }}{% else %}—{% endif %}
                                 {% if a.file_size %} • {{ (a.file_size / 1024)|round(1) }} KB{% endif %}
                             </div>
                             {% if a.description %}
-                            <p class="text-xs text-muted mt-2 line-clamp-2">{{ a.description }}</p>
+                            <p class="text-xs text-muted dark:text-dark-muted mt-2 line-clamp-2 leading-relaxed">{{ a.description }}</p>
                             {% endif %}
                         </div>
-                        <div class="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-[24px] flex flex-col gap-2">
+                        <div class="p-3 mt-4 border-t border-slate-250/50 dark:border-zinc-800/50 bg-slate-100/30 dark:bg-zinc-950/20 rounded-b-[20px] flex flex-col gap-2">
                             <div class="flex gap-2">
-                                <a href="{{ a.file_url }}" target="_blank" rel="noopener" class="flex-1 py-2 bg-surface text-secondary border border-slate-200 rounded-lg text-xs font-bold hover:bg-surface-alt transition-colors shadow-sm dark:shadow-none dark:shadow-none flex items-center justify-center gap-1.5 no-underline">
+                                <a href="{{ a.file_url }}" target="_blank" rel="noopener" class="flex-1 py-2 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl text-xs font-extrabold transition-all duration-150 active:scale-[0.98] flex items-center justify-center gap-1.5 no-underline">
                                     <i class="ph-bold ph-download-simple"></i> Скачать
                                 </a>
-                                <button type="button" class="w-10 h-10 bg-surface text-boo-primary border border-purple-200 rounded-lg flex items-center justify-center hover:bg-purple-50 transition-colors shadow-sm dark:shadow-none dark:shadow-none" title="Скопировать ссылку" data-copy-url="{{ a.file_url }}">
+                                <button type="button" class="w-10 h-10 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-[0.98] cursor-pointer" title="Скопировать ссылку" data-copy-url="{{ a.file_url }}">
                                     <i class="ph-bold ph-link"></i>
                                 </button>
                             </div>
                             <details class="text-xs">
-                                <summary class="cursor-pointer font-bold text-muted hover:text-boo-primary list-none flex items-center gap-1"><i class="ph-bold ph-pencil-simple"></i> Редактировать</summary>
-                                <form method="POST" action="{{ url_for('library.materials_edit', asset_id=a.asset_id) }}" class="mt-2 space-y-2 p-3 bg-surface rounded-xl border border-slate-200">
+                                <summary class="cursor-pointer font-bold text-muted dark:text-dark-muted hover:text-purple-600 dark:hover:text-purple-400 list-none flex items-center gap-1"><i class="ph-bold ph-pencil-simple"></i> Редактировать</summary>
+                                <form method="POST" action="{{ url_for('library.materials_edit', asset_id=a.asset_id) }}" class="mt-2 space-y-2 p-3 bg-surface dark:bg-dark-card rounded-xl border border-slate-200 dark:border-zinc-800">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <input type="text" name="title" value="{{ a.title }}" class="w-full bg-surface-alt border border-slate-200 rounded-lg px-3 py-2 text-sm" required>
-                                    <input type="text" name="description" value="{{ a.description or '' }}" placeholder="Описание" class="w-full bg-surface-alt border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                                    <input type="text" name="tags" value="{{ (a.tags or [])|join(', ') }}" placeholder="Теги" class="w-full bg-surface-alt border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                                    <button type="submit" class="w-full py-2 bg-boo-primary text-white rounded-lg font-bold text-xs">Сохранить</button>
+                                    <input type="text" name="title" value="{{ a.title }}" class="w-full bg-surface-alt dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm text-secondary dark:text-zinc-300 font-semibold focus:outline-none focus:border-boo-primary" required>
+                                    <input type="text" name="description" value="{{ a.description or '' }}" placeholder="Описание" class="w-full bg-surface-alt dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm text-secondary dark:text-zinc-300 font-semibold focus:outline-none focus:border-boo-primary">
+                                    <input type="text" name="tags" value="{{ (a.tags or [])|join(', ') }}" placeholder="Теги" class="w-full bg-surface-alt dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-sm text-secondary dark:text-zinc-300 font-semibold focus:outline-none focus:border-boo-primary">
+                                    <button type="submit" class="w-full py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-lg font-bold text-xs cursor-pointer">Сохранить</button>
                                 </form>
                             </details>
                         </div>
@@ -160,12 +159,12 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="w-full bg-surface rounded-[24px] border-2 border-slate-200 border-dashed p-10 lg:p-14 flex flex-col items-center justify-center text-center">
-                    <div class="w-16 h-16 bg-surface-alt rounded-2xl flex items-center justify-center mb-4 border-2 border-white shadow-sm dark:shadow-none dark:shadow-none">
-                        <i class="ph-fill ph-paperclip text-3xl text-muted"></i>
+                <div class="w-full bg-surface dark:bg-dark-card rounded-[24px] border-2 border-slate-200 dark:border-zinc-800 border-dashed p-10 lg:p-14 flex flex-col items-center justify-center text-center">
+                    <div class="w-16 h-16 bg-surface-alt dark:bg-zinc-900 rounded-2xl flex items-center justify-center mb-4 border border-slate-200 dark:border-zinc-800 shadow-sm">
+                        <i class="ph-fill ph-paperclip text-3xl text-muted dark:text-dark-muted"></i>
                     </div>
-                    <h3 class="text-lg font-black text-primary tracking-tight mb-1">Пока пусто</h3>
-                    <p class="text-muted font-medium text-sm">Загрузи первый материал — и он появится здесь.</p>
+                    <h3 class="text-lg font-black text-primary dark:text-white tracking-tight mb-1">Пока пусто</h3>
+                    <p class="text-muted dark:text-dark-muted font-medium text-sm">Загрузи первый материал — и он появится здесь.</p>
                 </div>
                 {% endif %}
             </div>

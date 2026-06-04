@@ -34,7 +34,7 @@
         </div>
 
         <div class="px-8 sm:px-12 pb-8 relative bg-surface">
-            <div class="-mt-14 sm:-mt-16 flex flex-col md:flex-row md:justify-between md:items-end gap-6">
+            <div class="-mt-14 sm:-mt-16 flex flex-col md:flex-row md:justify-between md:items-end gap-6 relative z-30">
                 <div class="flex flex-col items-start gap-3 min-w-0">
                     <div class="relative w-36 h-36 sm:w-44 sm:h-44 rounded-[32px] bg-slate-900 flex items-center justify-center overflow-hidden border-[6px] border-white" style="z-index:60;isolation:isolate;box-shadow:0 12px 28px -8px rgba(15,23,42,0.35);">
                         {% if current_user.avatar_url %}
@@ -47,7 +47,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
-                        <h1 class="text-4xl md:text-5xl font-black text-primary tracking-tight truncate">{{ current_user.username }}</h1>
+                        <h1 class="text-4xl md:text-5xl font-black text-primary tracking-tight leading-normal py-1">{{ current_user.username }}</h1>
                         <i class="ph-fill ph-check-circle text-boo-primary text-2xl" title="Верифицированный"></i>
                     </div>
                     <p class="text-muted font-medium text-lg italic">"{{ current_user.custom_status or 'слеп, но не глуп' }}"</p>

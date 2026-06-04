@@ -2,54 +2,69 @@
 {% block title %}{% if is_new %}Создать группу{% else %}Редактировать группу{% endif %}{% endblock %}
 
 {% set active_page = 'groups' %}
+{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
 {% block content %}
-<section class="glass-panel" style="margin-bottom: 1.25rem;">
-    <p class="hero-eyebrow">группы</p>
-    <h1 class="hero-title">{% if is_new %}Создать группу{% else %}Редактировать группу{% endif %}</h1>
-</section>
+<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6 pb-6">
+    <section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-[32px] p-8 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden">
+        <div class="absolute -right-20 -top-20 w-80 h-80 bg-boo-primary/10 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
+        <p class="text-[10px] font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+            <i class="ph-fill ph-users-four text-sm"></i> группы
+        </p>
+        <h1 class="text-3xl font-black text-primary dark:text-white tracking-tight">
+            {% if is_new %}Создать новую группу{% else %}Редактировать группу{% endif %}
+        </h1>
+    </section>
 
-<section class="glass-panel">
-    <form method="POST" action="{% if is_new %}{{ url_for('groups.group_new') }}{% else %}{{ url_for('groups.group_edit', group_id=group.group_id) }}{% endif %}" data-no-ajax="1">
-        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-        {% if form and form.errors %}
-        <div class="alert alert-danger" style="margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 8px; background: var(--danger-bg, #fde8e8); color: var(--danger, #c53030); border: 1px solid var(--danger, #c53030);">
-            <strong>Ошибки валидации:</strong>
-            <ul style="margin: 0.25rem 0 0 1.2rem; padding: 0;">
-                {% for field, errors in form.errors.items() %}
-                {% for error in errors %}
-                <li>{{ error }}</li>
-                {% endfor %}
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
-        <div class="neo-field">
-            <label class="neo-label">Название *</label>
-            <input class="neo-input" name="title" required value="{{ group.title if group else '' }}" placeholder="Например: 10А (информатика)">
-        </div>
-        <div class="neo-field" style="margin-top: .9rem;">
-            <label class="neo-label">Предмет</label>
-            <input class="neo-input" name="subject" value="{{ group.subject if group else '' }}" placeholder="INFORMATICS_EGE_2026">
-        </div>
-        <div class="neo-field" style="margin-top: .9rem;">
-            <label class="neo-label">Статус</label>
-            {% set st = (group.status if group else 'active') %}
-            <select class="neo-select" name="status">
-                <option value="active" {% if st == 'active' %}selected{% endif %}>active</option>
-                <option value="archived" {% if st == 'archived' %}selected{% endif %}>archived</option>
-            </select>
-        </div>
-        <div class="neo-field" style="margin-top: .9rem;">
-            <label class="neo-label">Описание</label>
-            <textarea class="neo-input" rows="4" name="description" placeholder="Для кого группа, цели, примечания...">{{ group.description if group and group.description else '' }}</textarea>
-        </div>
-        <div style="display:flex; gap:.6rem; margin-top: 1rem; flex-wrap: wrap;">
-            <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
-            <a href="{% if is_new %}{{ url_for('groups.groups_list') }}{% else %}{{ url_for('groups.group_view', group_id=group.group_id) }}{% endif %}" class="neo-button outline">Отмена</a>
-        </div>
-    </form>
-</section>
+    <div class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] rounded-[28px] p-6 lg:p-8 shadow-sm dark:shadow-glass-dark mb-6">
+        <form method="POST" action="{% if is_new %}{{ url_for('groups.group_new') }}{% else %}{{ url_for('groups.group_edit', group_id=group.group_id) }}{% endif %}" data-no-ajax="1" class="space-y-6">
+            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+            {% if form and form.errors %}
+            <div class="alert alert-danger p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl text-red-650 dark:text-red-400 text-sm">
+                <strong class="font-extrabold">Ошибки валидации:</strong>
+                <ul class="list-disc pl-5 mt-2 space-y-1">
+                    {% for field, errors in form.errors.items() %}
+                    {% for error in errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Название *</label>
+                <input type="text" name="title" required value="{{ group.title if group else '' }}" placeholder="Например: 10А (информатика)" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm">
+            </div>
+
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Предмет</label>
+                <input type="text" name="subject" value="{{ group.subject if group else '' }}" placeholder="INFORMATICS_EGE_2026" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm">
+            </div>
+
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Статус</label>
+                {% set st = (group.status if group else 'active') %}
+                <select name="status" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-200 focus:outline-none focus:border-boo-primary cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat">
+                    <option value="active" {% if st == 'active' %}selected{% endif %}>active</option>
+                    <option value="archived" {% if st == 'archived' %}selected{% endif %}>archived</option>
+                </select>
+            </div>
+
+            <div class="space-y-1.5">
+                <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Описание</label>
+                <textarea rows="4" name="description" placeholder="Для кого группа, цели, примечания..." class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm resize-y">{{ group.description if group and group.description else '' }}</textarea>
+            </div>
+
+            <div class="flex gap-4 justify-end">
+                <a href="{% if is_new %}{{ url_for('groups.groups_list') }}{% else %}{{ url_for('groups.group_view', group_id=group.group_id) }}{% endif %}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center no-underline">Отмена</a>
+                <button type="submit" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)]">
+                    {% if is_new %}Создать{% else %}Сохранить{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
