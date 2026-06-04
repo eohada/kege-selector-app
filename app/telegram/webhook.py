@@ -14,6 +14,7 @@ import threading
 
 from flask import Blueprint, request, jsonify
 import httpx
+from telegram import Update
 from telegram.request import HTTPXRequest
 from telegram.ext import (
     Application,
