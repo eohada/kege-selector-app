@@ -55,14 +55,14 @@ sudo nginx -t && sudo systemctl reload nginx
 
 502 обычно значит, что nginx не дождался ответа от gunicorn или не может к нему подключиться.
 
-В `location`, который проксирует на приложение, выровняйте таймауты с gunicorn (`--timeout 120` в `Procfile`):
+В `location`, который проксирует на приложение, выровняйте таймауты с gunicorn (`--timeout 180` в `Procfile`):
 
 ```nginx
 location / {
     proxy_pass http://127.0.0.1:8000;  # порт вашего web_prod
     proxy_connect_timeout 10s;
-    proxy_read_timeout 120s;
-    proxy_send_timeout 120s;
+    proxy_read_timeout 180s;
+    proxy_send_timeout 180s;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
