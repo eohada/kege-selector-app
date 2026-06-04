@@ -32,8 +32,8 @@ from telegram import (
 from telegram.ext import ContextTypes, ConversationHandler
 from sqlalchemy import text
 
-from urep_bot.db import get_session, close_session
-from urep_bot.bot import (
+from app.telegram.db import get_session, close_session
+from app.telegram.compat import (
     get_user_by_chat_id,
     get_student_by_email,
     get_lessons,
@@ -45,7 +45,7 @@ from urep_bot.bot import (
     PROFILE_NOT_LINKED,
     ERROR_MESSAGE,
 )
-from urep_bot.config import APP_URL, APP_OPEN_URL
+from app.telegram.config import APP_URL, APP_OPEN_URL
 
 from app.telegram.link_api import call_link_bot_api
 from app.telegram.role_management import (

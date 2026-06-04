@@ -25,7 +25,7 @@ def telegram_subscription_expiry_task() -> dict:
     sent = 0
 
     try:
-        from urep_bot.db import get_session, close_session
+        from app.telegram.db import get_session, close_session
         session = get_session()
         try:
             # Подписки, истекающие через 1 или 3 дня

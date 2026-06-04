@@ -15,6 +15,8 @@ import urllib.error
 from typing import Optional
 
 from sqlalchemy import text
+from app.telegram.config import APP_URL, BOT_TOKEN
+from app.telegram.db import get_session, close_session
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _bot_token() -> str | None:
-    return os.environ.get('BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN')
+    return BOT_TOKEN or None
 
 
 def _tg_post(method: str, payload: dict, timeout: int = 10) -> Optional[dict]:
@@ -97,8 +99,6 @@ def send_telegram_photo(
 
 def notify_teacher_manual_review(submission_id: int) -> bool:
     """Уведомить автора задания о поступлении работы на ручную проверку."""
-    from urep_bot.db import get_session, close_session
-    from urep_bot.config import APP_URL
     from app.telegram.user_notify import user_allows_telegram_notification, get_profile_for_user
 
     session = get_session()
@@ -143,8 +143,6 @@ def notify_teacher_manual_review(submission_id: int) -> bool:
 
 def notify_submission_submitted_to_staff(submission_id: int) -> int:
     """Уведомить учителя и всех создателей о сдаче работы. Возвращает кол-во отправок."""
-    from urep_bot.db import get_session, close_session
-    from urep_bot.config import APP_URL
     from app.telegram.user_notify import user_allows_telegram_notification, get_profile_for_user
 
     session = get_session()
@@ -212,8 +210,6 @@ def notify_submission_submitted_to_staff(submission_id: int) -> int:
 
 def notify_student_graded(submission_id: int) -> bool:
     """Уведомить ученика о проверке/возврате работы."""
-    from urep_bot.db import get_session, close_session
-    from urep_bot.config import APP_URL
     from app.telegram.user_notify import notify_user_by_id
 
     session = get_session()
@@ -261,7 +257,6 @@ def notify_new_gradebook_entry(
     *, student_user_id: int, student_id: int, entry_title: str, score_text: str,
 ) -> bool:
     """Новая запись в журнале оценок — уведомление ученику."""
-    from urep_bot.config import APP_URL
     from app.telegram.user_notify import notify_user_by_id
 
     base = (APP_URL or '').rstrip('/')
@@ -300,7 +295,6 @@ def notify_lesson_started_for_lesson(lesson_id: int) -> None:
 
 def notify_lesson_started_to_student(*, student_user_id: int, lesson_id: int, topic: str) -> bool:
     """Урок переведён в статус in_progress — уведомление ученику."""
-    from urep_bot.config import APP_URL
     from app.telegram.user_notify import notify_user_by_id
 
     base = (APP_URL or '').rstrip('/')
@@ -322,7 +316,6 @@ def notify_subscription_expiring(
     *, student_user_id: int, days_left: int, subscription_end: str,
 ) -> bool:
     """Подписка истекает — предупреждение ученику."""
-    from urep_bot.config import APP_URL
     from app.telegram.user_notify import notify_user_by_id
 
     base = (APP_URL or '').rstrip('/')
@@ -368,7 +361,6 @@ def notify_bug_report_reply(*, student_chat_id: int, report_id: int, reply_text:
 def notify_daily_digest(*, student_user_id: int, lessons_today: list, pending_count: int) -> bool:
     """Утренний дайджест для ученика."""
     from app.telegram.user_notify import notify_user_by_id
-    from urep_bot.config import APP_URL
 
     lines = ['☀️ <b>Доброе утро! Твой план на сегодня:</b>', '']
 
@@ -448,7 +440,6 @@ def _esc(value: str) -> str:
 
 
 def _get_teacher_user_id(submission_id: int) -> Optional[int]:
-    from urep_bot.db import get_session, close_session
     session = get_session()
     try:
         row = session.execute(text("""
