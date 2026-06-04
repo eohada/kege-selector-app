@@ -157,6 +157,34 @@ def _run_async(coro):
     return future.result(timeout=60)
 
 
+async def _process_update_once(update_data: dict) -> dict:
+    """
+    Process a single Telegram update without the background loop/thread.
+
+    This path is used from Celery workers, where prefork + thread locks can
+    become poisonous after fork. The Flask runtime still uses the singleton
+    loop, but the worker uses this one-shot path.
+    """
+    token = _get_token()
+    app = (
+        Application.builder()
+        .token(token)
+        .updater(None)
+        .build()
+    )
+    _register_handlers(app)
+    await app.initialize()
+    try:
+        update = Update.de_json(update_data, app.bot)
+        await app.process_update(update)
+        return {'ok': True}
+    finally:
+        try:
+            await app.shutdown()
+        except Exception:
+            logger.debug('one-shot telegram app shutdown failed', exc_info=True)
+
+
 # ---------------------------------------------------------------------------
 # Flask routes
 # ---------------------------------------------------------------------------

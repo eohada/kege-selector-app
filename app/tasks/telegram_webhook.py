@@ -5,7 +5,6 @@ import asyncio
 import logging
 
 from celery_app import celery
-from telegram import Update
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +22,9 @@ def process_telegram_update_task(self, update_data: dict) -> dict:
     The webhook route only enqueues this task and returns 200 immediately.
     """
     try:
-        # Lazy import to avoid circular imports during app bootstrap.
-        from app.telegram.webhook import get_application, _run_async
+        from app.telegram.webhook import _process_update_once
 
-        bot_app = get_application()
-        update = Update.de_json(update_data, bot_app.bot)
-        _run_async(bot_app.process_update(update))
-        return {'ok': True}
+        return asyncio.run(_process_update_once(update_data))
     except Exception as exc:
         logger.error('process_telegram_update_task failed: %s', exc, exc_info=True)
         try:
