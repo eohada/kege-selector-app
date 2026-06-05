@@ -164,6 +164,8 @@ def _delete_student_related_rows(student_id: int, linked_user_id: int | None = N
         .all()
     ]
     if submission_ids:
+        from core.db_models import SubmissionTelegramDeadlineSent
+
         m.Answer.query.filter(m.Answer.submission_id.in_(submission_ids)).delete(synchronize_session=False)
         m.SubmissionAttempt.query.filter(
             m.SubmissionAttempt.submission_id.in_(submission_ids)
@@ -173,6 +175,9 @@ def _delete_student_related_rows(student_id: int, linked_user_id: int | None = N
         ).delete(synchronize_session=False)
         m.SubmissionCommentThreadRead.query.filter(
             m.SubmissionCommentThreadRead.submission_id.in_(submission_ids)
+        ).delete(synchronize_session=False)
+        SubmissionTelegramDeadlineSent.query.filter(
+            SubmissionTelegramDeadlineSent.submission_id.in_(submission_ids)
         ).delete(synchronize_session=False)
 
     course_ids = [
@@ -216,6 +221,193 @@ def _delete_student_related_rows(student_id: int, linked_user_id: int | None = N
         m.Enrollment.query.filter_by(student_id=linked_user_id).delete(synchronize_session=False)
         m.StudentWorkspaceFile.query.filter_by(user_id=linked_user_id).delete(synchronize_session=False)
         m.TaskCanvasDrawing.query.filter_by(user_id=linked_user_id).delete(synchronize_session=False)
+
+
+def _delete_user_related_rows(user_id: int) -> None:
+    """Удаляет/отвязывает зависимости User перед физическим удалением демо-аккаунта."""
+    from app import models as m
+    from core.db_models import (
+        AnalyticsEvent,
+        AuditLog,
+        BotAdmin,
+        BotErrorReport,
+        MiroUserToken,
+        PlatformBugReport,
+        QAComment,
+        QATask,
+        ReferralCode,
+        ReferralUsage,
+        RematchQueue,
+        Reminder,
+        SubmissionTelegramDeadlineSent,
+        TelegramStartLead,
+        UserConsent,
+        UserMastery,
+        UserNotification,
+        UserRole,
+        UserSubscription,
+        UserTaskMMR,
+    )
+
+    m.FamilyTie.query.filter(
+        or_(m.FamilyTie.parent_id == user_id, m.FamilyTie.student_id == user_id)
+    ).delete(synchronize_session=False)
+    m.Enrollment.query.filter(
+        or_(m.Enrollment.student_id == user_id, m.Enrollment.tutor_id == user_id)
+    ).delete(synchronize_session=False)
+
+    qa_task_ids = [
+        row[0]
+        for row in db.session.query(QATask.id)
+        .filter(QATask.reporter_id == user_id)
+        .all()
+    ]
+    if qa_task_ids:
+        QAComment.query.filter(QAComment.task_id.in_(qa_task_ids)).delete(synchronize_session=False)
+        QATask.query.filter(QATask.id.in_(qa_task_ids)).delete(synchronize_session=False)
+    QAComment.query.filter_by(author_id=user_id).delete(synchronize_session=False)
+    QATask.query.filter_by(assignee_id=user_id).update(
+        {'assignee_id': None},
+        synchronize_session=False,
+    )
+
+    assignment_ids = [
+        row[0]
+        for row in db.session.query(m.Assignment.assignment_id)
+        .filter(m.Assignment.created_by_id == user_id)
+        .all()
+    ]
+    if assignment_ids:
+        submission_ids = [
+            row[0]
+            for row in db.session.query(m.Submission.submission_id)
+            .filter(m.Submission.assignment_id.in_(assignment_ids))
+            .all()
+        ]
+        if submission_ids:
+            m.Answer.query.filter(m.Answer.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+            m.SubmissionAttempt.query.filter(
+                m.SubmissionAttempt.submission_id.in_(submission_ids)
+            ).delete(synchronize_session=False)
+            m.SubmissionComment.query.filter(
+                m.SubmissionComment.submission_id.in_(submission_ids)
+            ).delete(synchronize_session=False)
+            m.SubmissionCommentThreadRead.query.filter(
+                m.SubmissionCommentThreadRead.submission_id.in_(submission_ids)
+            ).delete(synchronize_session=False)
+            m.GradebookEntry.query.filter(
+                m.GradebookEntry.submission_id.in_(submission_ids)
+            ).delete(synchronize_session=False)
+            SubmissionTelegramDeadlineSent.query.filter(
+                SubmissionTelegramDeadlineSent.submission_id.in_(submission_ids)
+            ).delete(synchronize_session=False)
+        m.AssignmentTask.query.filter(
+            m.AssignmentTask.assignment_id.in_(assignment_ids)
+        ).delete(synchronize_session=False)
+        m.Submission.query.filter(
+            m.Submission.assignment_id.in_(assignment_ids)
+        ).delete(synchronize_session=False)
+        m.Assignment.query.filter(
+            m.Assignment.assignment_id.in_(assignment_ids)
+        ).delete(synchronize_session=False)
+
+    for model in (
+        UserRole,
+        UserNotification,
+        m.UserProfile,
+        MiroUserToken,
+        ReferralUsage,
+        Reminder,
+        BotAdmin,
+        UserSubscription,
+        m.TrainerSession,
+        m.TrainerLlmLog,
+        UserMastery,
+        AnalyticsEvent,
+        UserTaskMMR,
+        RematchQueue,
+        m.StudentWorkspaceFile,
+        m.TaskCanvasDrawing,
+        PlatformBugReport,
+        UserConsent,
+    ):
+        model.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+
+    m.CallRequest.query.filter_by(created_by_user_id=user_id).delete(synchronize_session=False)
+
+    ReferralCode.query.filter_by(creator_id=user_id).delete(synchronize_session=False)
+    m.LessonMessage.query.filter_by(author_user_id=user_id).delete(synchronize_session=False)
+    m.LessonTaskTeacherComment.query.filter_by(author_user_id=user_id).delete(synchronize_session=False)
+    m.SubmissionComment.query.filter_by(author_id=user_id).delete(synchronize_session=False)
+
+    m.StudentDiagnosticCheckpoint.query.filter_by(created_by_user_id=user_id).update(
+        {'created_by_user_id': None},
+        synchronize_session=False,
+    )
+    m.GroupStudent.query.filter_by(added_by_user_id=user_id).update(
+        {'added_by_user_id': None},
+        synchronize_session=False,
+    )
+    m.LearningTrajectory.query.filter_by(created_by_user_id=user_id).update(
+        {'created_by_user_id': None},
+        synchronize_session=False,
+    )
+    m.MaterialAsset.query.filter_by(owner_user_id=user_id).update(
+        {'owner_user_id': None},
+        synchronize_session=False,
+    )
+    m.LessonMaterialLink.query.filter_by(created_by_user_id=user_id).update(
+        {'created_by_user_id': None},
+        synchronize_session=False,
+    )
+    m.LessonRoomTemplate.query.filter_by(created_by_user_id=user_id).update(
+        {'created_by_user_id': None},
+        synchronize_session=False,
+    )
+    m.RecurringLessonSlot.query.filter_by(owner_user_id=user_id).update(
+        {'owner_user_id': None},
+        synchronize_session=False,
+    )
+    m.RubricTemplate.query.filter_by(owner_user_id=user_id).update(
+        {'owner_user_id': None},
+        synchronize_session=False,
+    )
+    m.GradebookEntry.query.filter_by(created_by_user_id=user_id).update(
+        {'created_by_user_id': None},
+        synchronize_session=False,
+    )
+    m.TheoryFeedback.query.filter_by(user_id=user_id).update(
+        {'user_id': None},
+        synchronize_session=False,
+    )
+    m.TheoryFeedbackHistory.query.filter_by(user_id=user_id).update(
+        {'user_id': None},
+        synchronize_session=False,
+    )
+    m.TheoryBlock.query.filter_by(author_id=user_id).update(
+        {'author_id': None},
+        synchronize_session=False,
+    )
+    m.TheoryGroup.query.filter_by(created_by=user_id).update(
+        {'created_by': None},
+        synchronize_session=False,
+    )
+    TelegramStartLead.query.filter_by(assigned_user_id=user_id).update(
+        {'assigned_user_id': None},
+        synchronize_session=False,
+    )
+    BotErrorReport.query.filter_by(user_id=user_id).update(
+        {'user_id': None},
+        synchronize_session=False,
+    )
+    BotErrorReport.query.filter_by(admin_user_id=user_id).update(
+        {'admin_user_id': None},
+        synchronize_session=False,
+    )
+    AuditLog.query.filter_by(user_id=user_id).update(
+        {'user_id': None},
+        synchronize_session=False,
+    )
 
 @students_bp.route('/students')
 @login_required
@@ -2006,18 +2198,12 @@ def student_delete(student_id):
         linked_user = student.user if student.user_id else None
         is_demo = linked_user and getattr(linked_user, 'is_demo_user', False)
 
-        from core.db_models import UserMastery
-
         _delete_student_related_rows(student_id, linked_user.id if linked_user else None)
 
         db.session.delete(student)
 
         if is_demo and linked_user:
-            from core.db_models import UserRole
-            UserRole.query.filter_by(user_id=linked_user.id).delete()
-            UserMastery.query.filter_by(user_id=linked_user.id).delete()
-            FamilyTie.query.filter_by(parent_id=linked_user.id).delete()
-            FamilyTie.query.filter_by(student_id=linked_user.id).delete()
+            _delete_user_related_rows(linked_user.id)
             db.session.delete(linked_user)
 
         db.session.commit()
@@ -2090,8 +2276,6 @@ def delete_all_demo():
         return redirect(url_for('main.dashboard'))
 
     try:
-        from core.db_models import UserMastery, UserRole
-
         demo_users = User.query.filter_by(is_demo_user=True).all()
         demo_user_ids = [u.id for u in demo_users]
 
@@ -2107,14 +2291,11 @@ def delete_all_demo():
             student = next((s for s in demo_students if s.student_id == sid), None)
             _delete_student_related_rows(sid, student.user_id if student else None)
 
-        Student.query.filter(Student.student_id.in_(demo_student_ids)).delete(synchronize_session=False)
-
         for uid in demo_user_ids:
-            UserRole.query.filter_by(user_id=uid).delete()
-            UserMastery.query.filter_by(user_id=uid).delete()
-            FamilyTie.query.filter_by(parent_id=uid).delete()
-            FamilyTie.query.filter_by(student_id=uid).delete()
+            _delete_user_related_rows(uid)
 
+        if demo_student_ids:
+            Student.query.filter(Student.student_id.in_(demo_student_ids)).delete(synchronize_session=False)
         User.query.filter(User.id.in_(demo_user_ids)).delete(synchronize_session=False)
 
         db.session.commit()

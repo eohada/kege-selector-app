@@ -24,6 +24,13 @@ from app import csrf
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 
+def _regular_student_filter():
+    return (
+        or_(Student.user_id.is_(None), User.id.is_(None), User.is_demo_user.is_(False)),
+        or_(Student.user_id.is_(None), User.id.is_(None), User.is_qa_pool.is_(False)),
+    )
+
+
 @main_bp.route('/api/presence/ping', methods=['GET', 'POST'])
 @login_required
 def presence_ping():
@@ -358,11 +365,21 @@ def dashboard():
     search_query = request.args.get('search', '').strip()
     category_filter = request.args.get('category', '')
     show_archive = request.args.get('show_archive', 'false').lower() == 'true'  # Параметр для просмотра архива
+    student_scope = (request.args.get('student_scope') or 'regular').strip().lower()
+    if student_scope not in {'regular', 'test', 'demo'}:
+        student_scope = 'regular'
 
     if show_archive:
-        query = Student.query.options(db.joinedload(Student.user)).filter_by(is_active=False)
+        query = Student.query.options(db.joinedload(Student.user)).outerjoin(User, Student.user_id == User.id).filter(Student.is_active == False)
     else:
-        query = Student.query.options(db.joinedload(Student.user)).filter_by(is_active=True)
+        query = Student.query.options(db.joinedload(Student.user)).outerjoin(User, Student.user_id == User.id).filter(Student.is_active == True)
+
+    if student_scope == 'test':
+        query = query.filter(User.is_qa_pool.is_(True))
+    elif student_scope == 'demo':
+        query = query.filter(User.is_demo_user.is_(True))
+    else:
+        query = query.filter(*_regular_student_filter())
     
     scope = get_user_scope(current_user)
     if not scope['can_see_all'] and scope['student_ids']:
@@ -396,8 +413,8 @@ def dashboard():
         
         query = query.filter(or_(*filters))
 
-    if category_filter:
-        query = query.filter_by(category=category_filter)
+    if category_filter and student_scope == 'regular':
+        query = query.filter(Student.category == category_filter)
 
     page = request.args.get('page', 1, type=int)
     per_page = 20
@@ -406,14 +423,20 @@ def dashboard():
 
     base_is_active = not show_archive
     
-    if category_filter:
+    if category_filter and student_scope == 'regular':
         total_students = len(students)
         ege_students = len([s for s in students if s.category == 'ЕГЭ']) if category_filter != 'ЕГЭ' else total_students
         oge_students = len([s for s in students if s.category == 'ОГЭ']) if category_filter != 'ОГЭ' else total_students
         levelup_students = len([s for s in students if s.category == 'ЛЕВЕЛАП']) if category_filter != 'ЛЕВЕЛАП' else total_students
         programming_students = len([s for s in students if s.category == 'ПРОГРАММИРОВАНИЕ']) if category_filter != 'ПРОГРАММИРОВАНИЕ' else total_students
     else:
-        count_query = Student.query.filter_by(is_active=base_is_active)
+        count_query = Student.query.outerjoin(User, Student.user_id == User.id).filter(Student.is_active == base_is_active)
+        if student_scope == 'test':
+            count_query = count_query.filter(User.is_qa_pool.is_(True))
+        elif student_scope == 'demo':
+            count_query = count_query.filter(User.is_demo_user.is_(True))
+        else:
+            count_query = count_query.filter(*_regular_student_filter())
         if not scope['can_see_all'] and scope['student_ids']:
             count_query = count_query.filter(Student.user_id.in_(scope['student_ids']))
         elif not scope['can_see_all']:
@@ -429,7 +452,8 @@ def dashboard():
             category_stats_query = db.session.query(
                 Student.category,
                 func.count(Student.student_id).label('count')
-            ).filter_by(is_active=base_is_active)
+            ).outerjoin(User, Student.user_id == User.id).filter(Student.is_active == True)
+            category_stats_query = category_stats_query.filter(*_regular_student_filter())
             
             if not scope['can_see_all'] and scope['student_ids']:
                 category_stats_query = category_stats_query.filter(Student.user_id.in_(scope['student_ids']))
@@ -483,10 +507,38 @@ def dashboard():
         cancelled_lessons = 0
     
     try:
-        archived_students_count = Student.query.filter_by(is_active=False).count()
+        archived_students_count = (
+            Student.query.outerjoin(User, Student.user_id == User.id)
+            .filter(Student.is_active == False)
+            .filter(*_regular_student_filter())
+            .count()
+        )
     except Exception as e:
         logger.warning(f"Error counting archived students: {e}")
         archived_students_count = 0
+
+    try:
+        regular_students_count = (
+            Student.query.outerjoin(User, Student.user_id == User.id)
+            .filter(Student.is_active == True)
+            .filter(*_regular_student_filter())
+            .count()
+        )
+        test_students_count = (
+            Student.query.join(User, Student.user_id == User.id)
+            .filter(Student.is_active == True, User.is_qa_pool.is_(True))
+            .count()
+        )
+        demo_students_count = (
+            Student.query.join(User, Student.user_id == User.id)
+            .filter(Student.is_active == True, User.is_demo_user.is_(True))
+            .count()
+        )
+    except Exception as e:
+        logger.warning(f"Error counting student scopes: {e}")
+        regular_students_count = total_students if student_scope == 'regular' else 0
+        test_students_count = total_students if student_scope == 'test' else 0
+        demo_students_count = total_students if student_scope == 'demo' else 0
     
     try:
         if current_user.is_student() or current_user.is_parent() or current_user.is_designer() or (current_user.role == 'tester' and not current_user.is_chief_tester()):
@@ -554,6 +606,13 @@ def dashboard():
         qs_students = Student.query
         if base_is_active is not None:
             qs_students = qs_students.filter(Student.is_active == base_is_active)
+        qs_students = qs_students.outerjoin(User, Student.user_id == User.id)
+        if student_scope == 'test':
+            qs_students = qs_students.filter(User.is_qa_pool.is_(True))
+        elif student_scope == 'demo':
+            qs_students = qs_students.filter(User.is_demo_user.is_(True))
+        else:
+            qs_students = qs_students.filter(*_regular_student_filter())
         if not scope.get('can_see_all') and scope.get('student_ids'):
             qs_students = qs_students.filter(Student.user_id.in_(scope['student_ids']))
         elif not scope.get('can_see_all'):
@@ -638,8 +697,12 @@ def dashboard():
                          search_query=search_query,
                          category_filter=category_filter,
                          show_archive=show_archive,
+                         student_scope=student_scope,
                          my_tutors=my_tutors,
                          total_students=total_students,
+                         regular_students_count=regular_students_count,
+                         test_students_count=test_students_count,
+                         demo_students_count=demo_students_count,
                          students_delta_30d=students_delta_30d,
                          total_lessons=total_lessons,
                          completed_lessons=completed_lessons,
