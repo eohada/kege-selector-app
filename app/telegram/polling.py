@@ -5,6 +5,7 @@ import logging
 import os
 
 from telegram import Update
+from telegram.error import Conflict
 from telegram.ext import CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 from app.telegram.webhook import _build_application
@@ -24,10 +25,13 @@ async def _log_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         update_type = 'message'
     else:
         update_type = 'other'
-    logger.info('Telegram polling received update_id=%s type=%s', update.update_id, update_type)
+    logger.debug('Telegram polling received update_id=%s type=%s', update.update_id, update_type)
 
 
 async def _log_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if isinstance(context.error, Conflict):
+        logger.warning('Telegram polling conflict: another getUpdates client is active')
+        return
     logger.exception('Telegram polling error while processing update=%r', update, exc_info=context.error)
 
 
