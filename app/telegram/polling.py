@@ -4,6 +4,9 @@ from __future__ import annotations
 import logging
 import os
 
+from telegram import Update
+from telegram.ext import CallbackQueryHandler, ContextTypes, MessageHandler, filters
+
 from app.telegram.webhook import _build_application
 from wsgi import app as flask_app
 
@@ -12,6 +15,20 @@ logger = logging.getLogger(__name__)
 
 def _truthy(value: str | None) -> bool:
     return (value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+async def _log_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.callback_query:
+        update_type = 'callback_query'
+    elif update.message:
+        update_type = 'message'
+    else:
+        update_type = 'other'
+    logger.info('Telegram polling received update_id=%s type=%s', update.update_id, update_type)
+
+
+async def _log_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    logger.exception('Telegram polling error while processing update=%r', update, exc_info=context.error)
 
 
 def main() -> None:
@@ -26,6 +43,9 @@ def main() -> None:
     drop_pending = _truthy(os.environ.get('TELEGRAM_POLLING_DROP_PENDING_UPDATES'))
     with flask_app.app_context():
         application = _build_application(with_updater=True)
+        application.add_handler(MessageHandler(filters.ALL, _log_update, block=False), group=-1000)
+        application.add_handler(CallbackQueryHandler(_log_update, block=False), group=-1000)
+        application.add_error_handler(_log_error)
         logger.info('Starting Telegram long-polling runner')
         application.run_polling(
             allowed_updates=['message', 'callback_query'],
