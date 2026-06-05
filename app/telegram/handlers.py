@@ -546,6 +546,50 @@ def _student_dashboard_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
+def _student_admin_summary(session, student_user_id: int, student_id: int | None, name: str | None = None) -> str:
+    student_label = name or f'ID {student_user_id}'
+    next_lesson = None
+    if student_id:
+        next_lesson = session.execute(text("""
+            SELECT lesson_date, topic
+            FROM "Lessons"
+            WHERE student_id = :sid AND status = 'planned' AND lesson_date >= NOW()
+            ORDER BY lesson_date ASC
+            LIMIT 1
+        """), {'sid': student_id}).fetchone()
+
+    active_debts = 0
+    if student_id:
+        active_debts = session.execute(text("""
+            SELECT COUNT(*)
+            FROM "Submissions" s
+            WHERE s.student_id = :sid
+              AND s.status IN ('ASSIGNED', 'IN_PROGRESS', 'RETURNED')
+        """), {'sid': student_id}).scalar() or 0
+
+    summary = subscription_summary_for_user(int(student_user_id))
+    parts = [
+        '🎓 <b>Карточка ученика</b>',
+        '',
+        f'Имя: <b>{esc(student_label)}</b>',
+        f'ID пользователя: <code>{student_user_id}</code>',
+    ]
+    if student_id:
+        parts.append(f'ID ученика: <code>{student_id}</code>')
+    parts.append(f'Тариф: <b>{esc(summary.plan_title)}</b>')
+    parts.append(f'Осталось уроков: <b>{esc(summary.lessons_remaining)}</b>')
+    parts.append(f'Активных работ: <b>{active_debts}</b>')
+    if next_lesson:
+        lesson_date, topic = next_lesson
+        when = lesson_date.strftime('%d.%m в %H:%M') if lesson_date else '—'
+        parts.append(f'Ближайший урок: <b>{when}</b> — {esc((topic or "Урок")[:60])}')
+    else:
+        parts.append('Ближайших уроков пока нет')
+    parts.append('')
+    parts.append('Здесь можно быстро проверить профиль и связи.')
+    return '\n'.join(parts)
+
+
 def _student_dashboard_text(session, user: dict) -> str:
     student = get_student_by_email(session, user.get('email'), user.get('id'))
     if not student:
@@ -631,6 +675,14 @@ def _admin_dashboard_text(session) -> str:
         SELECT COUNT(*) FROM "Users"
         WHERE is_active = TRUE AND role = 'tutor' AND COALESCE(is_demo_user, FALSE) = FALSE
     """)).scalar() or 0
+    demo_students = session.execute(text("""
+        SELECT COUNT(*) FROM "Users"
+        WHERE is_active = TRUE AND role = 'student' AND COALESCE(is_demo_user, FALSE) = TRUE
+    """)).scalar() or 0
+    test_accounts = session.execute(text("""
+        SELECT COUNT(*) FROM "Users"
+        WHERE is_active = TRUE AND role IN ('tester', 'chief_tester')
+    """)).scalar() or 0
     pending_leads = session.execute(text("""
         SELECT COUNT(*) FROM "TelegramStartLeads"
         WHERE COALESCE(is_authorized, FALSE) = FALSE
@@ -645,6 +697,8 @@ def _admin_dashboard_text(session) -> str:
         f'🎓 Ученики: <b>{students}</b>\n'
         f'👪 Родители: <b>{parents}</b>\n'
         f'👨‍🏫 Преподаватели: <b>{tutors}</b>\n'
+        f'🧪 Демо-ученики: <b>{demo_students}</b>\n'
+        f'🧫 Тестовые аккаунты: <b>{test_accounts}</b>\n'
         f'🆕 Неавторизованные лиды: <b>{pending_leads}</b>\n'
         f'🐛 Открытые баг-репорты: <b>{bug_reports}</b>\n\n'
         'Выбери раздел для управления.'
@@ -2173,16 +2227,7 @@ async def _cb_student_manage(query, session, user, data: str):
 
     name, username, parent_count, tutor_count = row
     profile_url = _build_student_profile_url(student_id)
-    lines = [
-        '🎓 <b>Карточка ученика</b>',
-        '',
-        f'Имя: <b>{esc(name or username or "Ученик")}</b>',
-        f'ID ученика: <code>{student_id}</code>',
-        f'Родителей прикреплено: <b>{parent_count or 0}</b>',
-        f'Преподавателей прикреплено: <b>{tutor_count or 0}</b>',
-        '',
-        'Здесь можно быстро проверить профиль и добавить заглушку для родителя вне платформы.',
-    ]
+    lines = [_student_admin_summary(session, student_user_id, student_id, name or username)]
     buttons = []
     if profile_url:
         buttons.append([InlineKeyboardButton('🔗 Открыть профиль ученика', url=profile_url)])
@@ -2191,7 +2236,10 @@ async def _cb_student_manage(query, session, user, data: str):
         InlineKeyboardButton('👨‍🏫 Преподаватели', callback_data=f'student_tutors_{student_user_id}_{student_id}'),
     ])
     buttons.append([InlineKeyboardButton('👪 Родитель вне платформы', callback_data=f'student_stub_parent_{student_user_id}_{student_id}')])
-    buttons.append([InlineKeyboardButton('↩️ К ученикам', callback_data='admin_students')])
+    buttons.append([
+        InlineKeyboardButton('↩️ К ученикам', callback_data='admin_students'),
+        InlineKeyboardButton('📊 К сводке', callback_data='admin_home'),
+    ])
     buttons.append(_BACK_ROW)
     await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
 
@@ -2881,7 +2929,9 @@ async def _cb_admin_students(query, session, user):
                u.username,
                up.telegram_chat_id IS NOT NULL AS has_tg,
                up.telegram_id,
-               (SELECT COUNT(*) FROM "FamilyTies" ft WHERE ft.student_id = u.id) AS parent_count
+               (SELECT COUNT(*) FROM "FamilyTies" ft WHERE ft.student_id = u.id) AS parent_count,
+               (SELECT COUNT(*) FROM "Submissions" s WHERE s.student_id = st.student_id AND s.status IN ('ASSIGNED', 'IN_PROGRESS', 'RETURNED')) AS debt_count,
+               (SELECT lesson_date FROM "Lessons" l WHERE l.student_id = st.student_id AND l.status = 'planned' AND l.lesson_date >= NOW() ORDER BY l.lesson_date ASC LIMIT 1) AS next_lesson_at
         FROM "Users" u
         LEFT JOIN "Students" st ON st.user_id = u.id
         LEFT JOIN "UserProfiles" up ON up.user_id = u.id
@@ -2898,11 +2948,12 @@ async def _cb_admin_students(query, session, user):
     else:
         lines.append('Нажми на ученика, чтобы открыть карточку и проверить связи.')
         lines.append('')
-        for student_user_id, student_id, display_name, username, has_tg, telegram_id, parent_count in rows:
+        for student_user_id, student_id, display_name, username, has_tg, telegram_id, parent_count, debt_count, next_lesson_at in rows:
             tg_badge = ' 📱' if has_tg else ''
             tg_caption = f' · {telegram_id}' if telegram_id else ''
             display_name = display_name or username or 'Ученик'
-            lines.append(f'• <b>{esc(display_name)}</b>{tg_badge} · родителей: {parent_count or 0}{esc(tg_caption)}')
+            next_lesson = f' · след. урок: {next_lesson_at.strftime("%d.%m %H:%M")}' if next_lesson_at else ''
+            lines.append(f'• <b>{esc(display_name)}</b>{tg_badge} · родителей: {parent_count or 0} · долги: {debt_count or 0}{next_lesson}{esc(tg_caption)}')
             row_buttons = []
             if student_user_id and student_id:
                 row_buttons.append(InlineKeyboardButton(display_name[:24], callback_data=f'student_manage_{student_user_id}_{student_id}'))
