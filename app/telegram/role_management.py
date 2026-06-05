@@ -93,7 +93,7 @@ def set_single_role(user: User, new_role: str) -> str:
 def clear_all_roles(user: User) -> str:
     """Remove all primary roles and move user into neutral no-access state."""
     old_role = user.role
-    user.role = 'tester'
+    user.role = ''
     UserRole.query.filter_by(user_id=user.id).delete()
     return old_role
 
