@@ -589,6 +589,68 @@ def _student_dashboard_text(session, user: dict) -> str:
     return '\n'.join(parts)
 
 
+def _admin_dashboard_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton('📊 Сводка', callback_data='admin_home'),
+            InlineKeyboardButton('👥 Пользователи', callback_data='admin_users'),
+        ],
+        [
+            InlineKeyboardButton('🎓 Ученики', callback_data='admin_students'),
+            InlineKeyboardButton('👪 Родители', callback_data='admin_parents'),
+        ],
+        [
+            InlineKeyboardButton('👨‍🏫 Преподаватели', callback_data='admin_tutors'),
+            InlineKeyboardButton('🧩 Роли и связи', callback_data='roles_panel'),
+        ],
+        [
+            InlineKeyboardButton('🆕 Неавторизованные', callback_data='unauth_users'),
+            InlineKeyboardButton('🐛 Баг-репорты', callback_data='view_bug_reports'),
+        ],
+        [
+            InlineKeyboardButton('📢 Рассылка', callback_data='broadcast_prompt'),
+            InlineKeyboardButton('📨 Тест-рассылка', callback_data='test_broadcast_send'),
+        ],
+        _BACK_ROW,
+    ])
+
+
+def _admin_dashboard_text(session) -> str:
+    active_users = session.execute(text("""
+        SELECT COUNT(*) FROM "Users" WHERE is_active = TRUE
+    """)).scalar() or 0
+    students = session.execute(text("""
+        SELECT COUNT(*) FROM "Users"
+        WHERE is_active = TRUE AND role = 'student' AND COALESCE(is_demo_user, FALSE) = FALSE
+    """)).scalar() or 0
+    parents = session.execute(text("""
+        SELECT COUNT(*) FROM "Users"
+        WHERE is_active = TRUE AND role = 'parent' AND COALESCE(is_demo_user, FALSE) = FALSE
+    """)).scalar() or 0
+    tutors = session.execute(text("""
+        SELECT COUNT(*) FROM "Users"
+        WHERE is_active = TRUE AND role = 'tutor' AND COALESCE(is_demo_user, FALSE) = FALSE
+    """)).scalar() or 0
+    pending_leads = session.execute(text("""
+        SELECT COUNT(*) FROM "TelegramStartLeads"
+        WHERE COALESCE(is_authorized, FALSE) = FALSE
+    """)).scalar() or 0
+    bug_reports = session.execute(text("""
+        SELECT COUNT(*) FROM "BotErrorReports"
+        WHERE COALESCE(status, 'new') IN ('new', 'open')
+    """)).scalar() or 0
+    return (
+        '📊 <b>Админ-сводка</b>\n\n'
+        f'👥 Активных пользователей: <b>{active_users}</b>\n'
+        f'🎓 Ученики: <b>{students}</b>\n'
+        f'👪 Родители: <b>{parents}</b>\n'
+        f'👨‍🏫 Преподаватели: <b>{tutors}</b>\n'
+        f'🆕 Неавторизованные лиды: <b>{pending_leads}</b>\n'
+        f'🐛 Открытые баг-репорты: <b>{bug_reports}</b>\n\n'
+        'Выбери раздел для управления.'
+    )
+
+
 def _settings_keyboard(profile) -> InlineKeyboardMarkup:
     """Inline toggles for notification settings."""
     def _btn(label: str, attr: str, cb_prefix: str) -> InlineKeyboardButton:
@@ -706,6 +768,16 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             finally:
                 close_session(session)
+        elif _is_admin(user.get('role', '')):
+            session = get_session()
+            try:
+                await update.message.reply_text(
+                    _admin_dashboard_text(session),
+                    parse_mode='HTML',
+                    reply_markup=_admin_dashboard_keyboard(),
+                )
+            finally:
+                close_session(session)
         else:
             await update.message.reply_text(
                 f'👋 <b>Привет, {esc(name)}!</b>\n\n'
@@ -776,6 +848,17 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 _student_dashboard_text(session, user),
                 parse_mode='HTML',
                 reply_markup=_student_dashboard_keyboard(),
+            )
+        finally:
+            close_session(session)
+        return
+    if _is_admin(user.get('role', '')):
+        session = get_session()
+        try:
+            await update.message.reply_text(
+                _admin_dashboard_text(session),
+                parse_mode='HTML',
+                reply_markup=_admin_dashboard_keyboard(),
             )
         finally:
             close_session(session)
@@ -1265,6 +1348,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = get_user_by_chat_id(session, chat_id)
 
         dispatch = {
+            'admin_home':        _cb_admin_home,
             'student_home':      _cb_student_home,
             'my_debts':           _cb_my_debts,
             'random_task':        _cb_random_task,
@@ -1374,8 +1458,22 @@ async def _cb_back_menu(query, session, user):
     if _is_student(user.get('role', '')):
         await _cb_student_home(query, session, user)
         return
+    if _is_admin(user.get('role', '')):
+        await _cb_admin_home(query, session, user)
+        return
     await query.edit_message_text(
         '📋 <b>Меню BooStudy</b>', parse_mode='HTML', reply_markup=_menu_keyboard(user),
+    )
+
+
+async def _cb_admin_home(query, session, user):
+    if not user or not _is_admin(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+    await query.edit_message_text(
+        _admin_dashboard_text(session),
+        parse_mode='HTML',
+        reply_markup=_admin_dashboard_keyboard(),
     )
 
 
