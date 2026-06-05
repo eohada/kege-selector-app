@@ -41,6 +41,7 @@ from app.telegram.compat import (
     get_lessons,
     build_lessons_text,
     build_stats_text,
+    build_help_message,
     esc,
     WELCOME_MESSAGE,
     HELP_MESSAGE,
@@ -1006,7 +1007,18 @@ async def cmd_findstudent(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     touch_telegram_activity(update.effective_chat.id)
-    await update.message.reply_text(HELP_MESSAGE, parse_mode='HTML')
+    user = _get_linked_user(
+        update.effective_chat.id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
+    role = (user or {}).get('role')
+    await update.message.reply_text(
+        build_help_message(role),
+        parse_mode='HTML',
+        reply_markup=_menu_keyboard(user) if user else None,
+    )
 
 
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1022,7 +1034,10 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         student = get_student_by_email(session, user.get('email'), user.get('id'))
         if not student:
-            await update.message.reply_text('ℹ️ Нет связанного профиля ученика.')
+            await update.message.reply_text(
+                'ℹ️ Нет связанного профиля ученика.',
+                reply_markup=_menu_keyboard(user),
+            )
             return
         sid = student['student_id']
 
@@ -1042,7 +1057,7 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
               AND s.status IN ('ASSIGNED','IN_PROGRESS','RETURNED')
         """), {'sid': sid}).scalar() or 0
 
-        parts = []
+        parts = ['📌 <b>Коротко по делу</b>', '']
         if next_lesson:
             d = next_lesson[0].strftime('%d.%m в %H:%M') if next_lesson[0] else '—'
             t = esc((next_lesson[1] or 'Урок')[:40])
@@ -1052,7 +1067,22 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         parts.append(f'📋 Долгов: <b>{debts}</b>')
 
-        await update.message.reply_text('\n'.join(parts), parse_mode='HTML')
+        summary_buttons = [
+            [
+                InlineKeyboardButton('📅 Расписание', callback_data='schedule'),
+                InlineKeyboardButton('📋 Долги', callback_data='my_debts'),
+            ],
+            [
+                InlineKeyboardButton('⚙️ Уведомления', callback_data='settings'),
+                InlineKeyboardButton('📋 Меню', callback_data='back_menu'),
+            ],
+        ]
+        if _is_student(user.get('role', '')):
+            summary_buttons.insert(1, [
+                InlineKeyboardButton('🎲 Задача', callback_data='random_task'),
+                InlineKeyboardButton('💳 Тариф', callback_data='subscription'),
+            ])
+        await update.message.reply_text('\n'.join(parts), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(summary_buttons))
     except Exception as e:
         logger.error('cmd_status error: %s', e)
         await update.message.reply_text('⚠️ Не удалось получить статус.')

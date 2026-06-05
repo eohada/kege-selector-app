@@ -14,7 +14,46 @@ WELCOME_MESSAGE = """
 
 HELP_MESSAGE = """
 📚 <b>Команды бота:</b>
+
+• /menu — открыть главное меню
+• /status — краткая сводка
+• /settings — настройки уведомлений
+• /start — приветствие и привязка
 """
+
+
+def build_help_message(role: str | None = None) -> str:
+    role = (role or '').strip()
+    lines = [HELP_MESSAGE.strip(), '']
+
+    if role == 'student':
+        lines += [
+            '👤 <b>Для ученика:</b>',
+            '• /findstudent — недоступно, это для админов',
+            '• Кнопки в меню: расписание, долги, тариф, Mini App',
+        ]
+    elif role == 'parent':
+        lines += [
+            '👪 <b>Для родителя:</b>',
+            '• Кнопки в меню: дети, расписание, долги, тарифы',
+        ]
+    elif role in {'creator', 'chief_admin', 'admin'}:
+        lines += [
+            '🧩 <b>Для админа:</b>',
+            '• /findstudent запрос — быстрый поиск ученика',
+            '• Кнопки в меню: сводка, ученики, роли, рассылка',
+        ]
+    else:
+        lines += [
+            'ℹ️ <b>Подсказка:</b>',
+            '• Сначала привяжи аккаунт через /start или /link',
+        ]
+
+    lines += [
+        '',
+        'Если что-то не нашлось, жми /menu — там самый короткий путь.',
+    ]
+    return '\n'.join(lines)
 
 PROFILE_NOT_LINKED = """
 ❌ <b>Telegram не привязан к аккаунту</b>
