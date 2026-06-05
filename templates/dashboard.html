@@ -221,6 +221,7 @@
         <div class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %} {% if student.has_overdue_hw is defined and student.has_overdue_hw %}student-card--alert{% endif %}"
              data-student-id="{{ student.student_id }}"
              x-data="{ open: false }"
+             :style="open ? 'z-index: 80;' : ''"
              @click.outside="open = false">
 
             <div class="flex justify-between items-center mb-3">
@@ -279,7 +280,8 @@
                             <i class="ph-bold ph-dots-three text-lg"></i>
                         </button>
                         <div x-cloak x-show="open" x-transition
-                             class="absolute right-0 mt-2 w-56 bg-surface dark:bg-dark-inner border border-slate-200 dark:border-white/[0.06] rounded-2xl shadow-lg p-1 z-20">
+                             class="absolute right-0 mt-2 w-56 bg-surface dark:bg-dark-inner border border-slate-200 dark:border-white/[0.06] rounded-2xl shadow-lg p-1"
+                             style="z-index: 90;">
                             <a class="dock-mega-link" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
                                 <i class="ph-bold ph-house text-base text-muted"></i> Профиль
                             </a>
