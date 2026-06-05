@@ -208,10 +208,9 @@ def process_update_sync(update_data: dict) -> dict:
     """
     Process a Telegram update through a per-process Application.
 
-    Celery imports this module before any update is processed, but the actual
-    Application is created lazily inside the worker process, after fork.
-    Reusing it avoids paying initialize/shutdown latency before every callback
-    acknowledgement.
+    Do not use this from Celery prefork workers: the background loop/thread
+    lock can be inherited in an unsafe state after fork. Celery uses the
+    one-shot async path below instead.
     """
     app = get_application()
     update = Update.de_json(update_data, app.bot)
