@@ -70,6 +70,7 @@ def _register_handlers(app: Application) -> None:
     from app.telegram.handlers import (
         # Commands
         cmd_start, cmd_link, cmd_menu, cmd_help, cmd_status, cmd_random, cmd_settings,
+        cmd_claim_creator, cmd_testnotify, cmd_broadcast,
         # FSM
         bug_report_start, bug_report_receive, bug_report_cancel,
         creator_reply_start, creator_reply_receive, creator_reply_cancel,
@@ -129,6 +130,9 @@ def _register_handlers(app: Application) -> None:
     app.add_handler(CommandHandler('status', cmd_status))
     app.add_handler(CommandHandler('random', cmd_random))
     app.add_handler(CommandHandler('settings', cmd_settings))
+    app.add_handler(CommandHandler('claimcreator', cmd_claim_creator))
+    app.add_handler(CommandHandler('testnotify', cmd_testnotify))
+    app.add_handler(CommandHandler('broadcast', cmd_broadcast))
 
     # Inline callbacks (after ConversationHandlers so FSM gets priority)
     app.add_handler(CallbackQueryHandler(callback_handler))

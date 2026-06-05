@@ -31,6 +31,7 @@ from telegram import (
 )
 from telegram.ext import ContextTypes, ConversationHandler
 from sqlalchemy import text
+from werkzeug.security import generate_password_hash
 
 from app.telegram.db import get_session, close_session
 from app.telegram.compat import (
@@ -45,7 +46,13 @@ from app.telegram.compat import (
     PROFILE_NOT_LINKED,
     ERROR_MESSAGE,
 )
-from app.telegram.config import APP_URL, APP_OPEN_URL
+from app.telegram.config import (
+    APP_URL,
+    APP_OPEN_URL,
+    BOOTSTRAP_CREATOR_CHAT_ID,
+    BOOTSTRAP_CREATOR_DISPLAY_NAME,
+    BOOTSTRAP_CREATOR_USERNAME,
+)
 
 from app.telegram.link_api import call_link_bot_api
 from app.telegram.role_management import (
@@ -81,6 +88,97 @@ def _mini_app_url() -> str:
     return f'{base}/tg-app/' if base else ''
 
 
+def _normalize_tg_username(value: str | None) -> str:
+    return (value or '').strip().lstrip('@').lower()
+
+
+def _creator_identity_matches(chat_id: int, tg_username: str | None = None) -> bool:
+    username = _normalize_tg_username(tg_username)
+    if chat_id == BOOTSTRAP_CREATOR_CHAT_ID:
+        return True
+    return bool(username and username == BOOTSTRAP_CREATOR_USERNAME)
+
+
+def _ensure_bootstrap_creator_link(
+    chat_id: int,
+    *,
+    tg_username: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> Optional[dict]:
+    if not _creator_identity_matches(chat_id, tg_username):
+        return None
+
+    from app.models import db, User, UserProfile, UserRole
+
+    username_norm = _normalize_tg_username(tg_username) or BOOTSTRAP_CREATOR_USERNAME
+    telegram_id = f'@{username_norm}' if username_norm else None
+
+    profile = UserProfile.query.filter_by(telegram_chat_id=chat_id).first()
+    user = profile.user if profile and profile.user else None
+
+    if not user and telegram_id:
+        profile = UserProfile.query.filter_by(telegram_id=telegram_id).first()
+        user = profile.user if profile and profile.user else None
+
+    if not user and username_norm:
+        user = User.query.filter_by(username=username_norm).first()
+
+    if not user:
+        user = User.query.filter_by(role='creator').order_by(User.id.asc()).first()
+
+    created = False
+    if not user:
+        user = User(
+            username=username_norm or 'creator',
+            email=None,
+            password_hash=generate_password_hash(secrets.token_urlsafe(24)),
+            role='creator',
+            is_active=True,
+            telegram_link=telegram_id,
+            custom_status='автопривязка Telegram для создателя',
+        )
+        db.session.add(user)
+        db.session.flush()
+        created = True
+
+    user.is_active = True
+    user.role = 'creator'
+    if telegram_id:
+        user.telegram_link = telegram_id
+
+    if not any((ur.role == 'creator') for ur in (user.user_roles or [])):
+        db.session.add(UserRole(user_id=user.id, role='creator'))
+
+    profile = profile or getattr(user, 'profile', None)
+    if not profile:
+        profile = UserProfile(user_id=user.id)
+        db.session.add(profile)
+
+    profile.telegram_chat_id = chat_id
+    if telegram_id:
+        profile.telegram_id = telegram_id
+    if first_name and not profile.first_name:
+        profile.first_name = first_name
+    if last_name and not profile.last_name:
+        profile.last_name = last_name
+    if not profile.first_name:
+        profile.first_name = BOOTSTRAP_CREATOR_DISPLAY_NAME
+    profile.telegram_notifications_enabled = True
+
+    db.session.commit()
+    logger.info(
+        'Bootstrap creator Telegram link ensured for chat_id=%s username=%s user_id=%s created=%s',
+        chat_id, username_norm, user.id, created,
+    )
+
+    session = get_session()
+    try:
+        return get_user_by_chat_id(session, chat_id)
+    finally:
+        close_session(session)
+
+
 def touch_telegram_activity(chat_id: int) -> None:
     """Обновить время последней активности пользователя в боте."""
     try:
@@ -104,12 +202,26 @@ def touch_telegram_activity(chat_id: int) -> None:
         logger.debug('touch_telegram_activity failed for chat_id=%s', chat_id, exc_info=True)
 
 
-def _get_linked_user(chat_id: int) -> Optional[dict]:
+def _get_linked_user(
+    chat_id: int,
+    *,
+    tg_username: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> Optional[dict]:
     session = get_session()
     try:
-        return get_user_by_chat_id(session, chat_id)
+        linked = get_user_by_chat_id(session, chat_id)
     finally:
         close_session(session)
+    if linked:
+        return linked
+    return _ensure_bootstrap_creator_link(
+        chat_id,
+        tg_username=tg_username,
+        first_name=first_name,
+        last_name=last_name,
+    )
 
 
 def _is_creator(role: str) -> bool:
@@ -358,7 +470,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await _apply_link_result(update, chat_id=chat_id, result=result)
             return
 
-    user = _get_linked_user(chat_id)
+    user = _get_linked_user(
+        chat_id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
     mini_kb = _reply_keyboard_with_mini_app(user)
 
     if user:
@@ -407,7 +524,12 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/menu — ролевое меню."""
     chat_id = update.effective_chat.id
     touch_telegram_activity(chat_id)
-    user = _get_linked_user(chat_id)
+    user = _get_linked_user(
+        chat_id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
 
     if not user:
         await update.message.reply_text(
@@ -504,11 +626,118 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/settings — настройки уведомлений."""
     chat_id = update.effective_chat.id
     touch_telegram_activity(chat_id)
-    user = _get_linked_user(chat_id)
+    user = _get_linked_user(
+        chat_id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
     if not user:
         await update.message.reply_text('🔗 Привяжи аккаунт командой /start')
         return
     await _send_settings(update.message.reply_text, chat_id)
+
+
+async def cmd_claim_creator(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Принудительно активировать автономную creator-привязку."""
+    chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
+    user = _ensure_bootstrap_creator_link(
+        chat_id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
+    if not user:
+        await update.message.reply_text(
+            '⛔ Эта команда доступна только для резервного аккаунта создателя.',
+        )
+        return
+    await update.message.reply_text(
+        '✅ Creator-доступ активирован для этого Telegram.\n\nИспользуй /menu для панели управления.',
+    )
+    await update.message.reply_text(
+        '📋 <b>Меню BooStudy</b>',
+        parse_mode='HTML',
+        reply_markup=_menu_keyboard(user),
+    )
+
+
+async def cmd_testnotify(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/testnotify — отправить себе тестовое уведомление."""
+    chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
+    user = _get_linked_user(
+        chat_id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
+    if not user or not _is_admin(user.get('role', '')):
+        await update.message.reply_text('⛔ Эта команда доступна только создателю или администратору.')
+        return
+
+    from app.telegram.notifications import send_telegram_message
+
+    result = send_telegram_message(
+        chat_id,
+        'Тестовое уведомление BooStudy.\n\nЭто автономная проверка Telegram-контура без платформы.',
+        parse_mode=None,
+    )
+    if result and result.get('ok'):
+        await update.message.reply_text('✅ Тестовое уведомление отправлено в этот чат.')
+    else:
+        await update.message.reply_text('⚠️ Не удалось отправить тестовое уведомление.')
+
+
+async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/broadcast текст — быстрая Telegram-рассылка по привязанным пользователям."""
+    chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
+    user = _get_linked_user(
+        chat_id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
+    if not user or not _is_admin(user.get('role', '')):
+        await update.message.reply_text('⛔ Эта команда доступна только создателю или администратору.')
+        return
+    if not context.args:
+        await update.message.reply_text('ℹ️ Используй: <code>/broadcast Текст рассылки</code>', parse_mode='HTML')
+        return
+
+    from app.telegram.notifications import send_telegram_message
+
+    text_body = '📢 BooStudy\n\n' + ' '.join(context.args).strip()
+    session = get_session()
+    sent = 0
+    failed = 0
+    try:
+        rows = session.execute(text("""
+            SELECT up.telegram_chat_id
+            FROM "UserProfiles" up
+            JOIN "Users" u ON u.id = up.user_id
+            WHERE up.telegram_chat_id IS NOT NULL
+              AND u.is_active = TRUE
+            ORDER BY u.id ASC
+        """)).fetchall()
+        for (recipient_chat_id,) in rows:
+            try:
+                result = send_telegram_message(int(recipient_chat_id), text_body, parse_mode=None)
+                if result and result.get('ok'):
+                    sent += 1
+                else:
+                    failed += 1
+            except Exception:
+                failed += 1
+    finally:
+        close_session(session)
+
+    await update.message.reply_text(
+        f'✅ Рассылка завершена.\n\nУспешно: {sent}\nС ошибкой: {failed}',
+        parse_mode=None,
+    )
 
 
 async def _send_settings(send_fn, chat_id: int) -> None:
@@ -1019,21 +1248,19 @@ async def _cb_broadcast_prompt(query, session, user):
         return
 
     mini_url = _mini_app_url()
+    rows = []
     if mini_url:
-        kb = InlineKeyboardMarkup([
-            [InlineKeyboardButton('📱 Открыть рассылку в Mini App', web_app=WebAppInfo(url=mini_url))],
-            _BACK_ROW,
-        ])
-        await query.edit_message_text(
-            '📢 <b>Рассылка</b>\n\nОткрой Mini App для создания рассылки.',
-            parse_mode='HTML',
-            reply_markup=kb,
-        )
-    else:
-        await query.edit_message_text(
-            '📢 Рассылка доступна через Mini App. Настрой APP_URL в переменных окружения.',
-            reply_markup=_back_keyboard(),
-        )
+        rows.append([InlineKeyboardButton('📱 Открыть рассылку в Mini App', web_app=WebAppInfo(url=mini_url))])
+    rows.append(_BACK_ROW)
+    await query.edit_message_text(
+        '📢 <b>Рассылка</b>\n\n'
+        'Автономный режим уже доступен прямо в боте.\n'
+        'Используй команду:\n'
+        '<code>/broadcast Текст рассылки</code>\n\n'
+        'Mini App можно использовать позже, когда платформа вернется.',
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup(rows),
+    )
 
 
 # ---------------------------------------------------------------------------
