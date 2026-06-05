@@ -22,6 +22,7 @@ def main() -> None:
     the public webhook endpoint, while outbound access through TELEGRAM_PROXY_URL
     is available.
     """
+    logging.getLogger('httpx').setLevel(logging.WARNING)
     drop_pending = _truthy(os.environ.get('TELEGRAM_POLLING_DROP_PENDING_UPDATES'))
     with flask_app.app_context():
         application = _build_application(with_updater=True)
