@@ -57,12 +57,44 @@ def actor_can_assign_role(actor: User, target: User, new_role: str) -> tuple[boo
     return False, 'Недостаточно прав.'
 
 
+def actor_can_clear_role(actor: User, target: User) -> tuple[bool, str]:
+    """Return whether actor may remove target role entirely."""
+    actor_role = actor.role
+    old_role = target.role
+
+    if actor.id == target.id:
+        return False, 'Нельзя снять роль самому себе.'
+
+    if actor_role == 'creator':
+        return True, ''
+
+    if actor_role == 'chief_admin':
+        if old_role in {'creator', 'chief_admin'}:
+            return False, 'Создателя и старшего администратора может менять только создатель.'
+        return True, ''
+
+    if actor_role == 'admin':
+        if old_role in ADMIN_ROLES:
+            return False, 'Обычный администратор не может снимать админские роли.'
+        return True, ''
+
+    return False, 'Недостаточно прав.'
+
+
 def set_single_role(user: User, new_role: str) -> str:
     """Set one primary role and mirror it into UserRoles."""
     old_role = user.role
     user.role = new_role
     UserRole.query.filter_by(user_id=user.id).delete()
     db.session.add(UserRole(user_id=user.id, role=new_role))
+    return old_role
+
+
+def clear_all_roles(user: User) -> str:
+    """Remove all primary roles and move user into neutral no-access state."""
+    old_role = user.role
+    user.role = 'tester'
+    UserRole.query.filter_by(user_id=user.id).delete()
     return old_role
 
 
@@ -101,13 +133,22 @@ def relation_summary(user: User, role: str | None = None) -> str:
     return 'Профиль не требует отдельного прикрепления.'
 
 
-def notify_role_changed(user: User, old_role: str, new_role: str, *, actor: User | None = None) -> bool:
+def notify_role_changed(user: User, old_role: str | None, new_role: str | None, *, actor: User | None = None) -> bool:
     profile = UserProfile.query.filter_by(user_id=user.id).first()
     if not profile or not profile.telegram_chat_id:
         return False
 
     actor_line = f'\nИзменил: {user_display_name(actor)}' if actor else ''
-    if new_role == 'designer':
+    if not new_role:
+        msg = (
+            'Ваша роль в BooStudy изменена.\n\n'
+            f'Старая роль: {role_label(old_role)}\n'
+            'Новая роль: Без роли\n'
+            'Доступ к рабочим разделам бота и платформы теперь может быть ограничен.'
+            f'{actor_line}\n\n'
+            'Если это ошибка, напишите администратору.'
+        )
+    elif new_role == 'designer':
         msg = (
             'Ваша роль в BooStudy изменена.\n\n'
             f'Старая роль: {role_label(old_role)}\n'

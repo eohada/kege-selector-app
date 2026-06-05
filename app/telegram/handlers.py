@@ -58,6 +58,8 @@ from app.telegram.link_api import call_link_bot_api
 from app.telegram.role_management import (
     MAIN_BOT_ROLES,
     actor_can_assign_role,
+    actor_can_clear_role,
+    clear_all_roles,
     notify_role_changed,
     relation_summary,
     role_label,
@@ -225,6 +227,8 @@ def _track_start_lead(
     try:
         from app.models import db, TelegramStartLead
 
+        db.create_all()
+
         username = _normalize_tg_username(tg_username) or None
         lead = TelegramStartLead.query.filter_by(telegram_chat_id=chat_id).first()
         if not lead:
@@ -255,6 +259,11 @@ def _build_student_profile_url(student_id: int | None) -> str:
     if not APP_URL or not student_id:
         return ''
     return f'{APP_URL.rstrip("/")}/student/{int(student_id)}'
+
+
+def _telegram_public_link(username: str | None) -> str:
+    username = _normalize_tg_username(username)
+    return f'https://t.me/{username}' if username else ''
 
 
 def _pick_lead_display_name(lead) -> str:
@@ -1158,6 +1167,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await _cb_role_set(query, session, user, data)
             return
 
+        if data.startswith('role_clear_'):
+            await _cb_role_clear(query, session, user, data)
+            return
+
         if data.startswith('lead_user_'):
             await _cb_lead_user(query, session, user, data)
             return
@@ -1387,11 +1400,12 @@ async def _cb_roles_panel(query, session, user):
         return
 
     rows = session.execute(text("""
-        SELECT u.id, u.username, u.role, up.first_name, up.last_name, up.telegram_chat_id
+        SELECT u.id, u.username, u.role, up.first_name, up.last_name, up.telegram_chat_id, up.telegram_id
         FROM "Users" u
         LEFT JOIN "UserProfiles" up ON up.user_id = u.id
         WHERE u.is_active = TRUE
           AND up.telegram_chat_id IS NOT NULL
+          AND COALESCE(u.is_demo_user, FALSE) = FALSE
         ORDER BY up.telegram_last_interaction_at DESC NULLS LAST, u.created_at DESC
         LIMIT 12
     """)).fetchall()
@@ -1399,9 +1413,10 @@ async def _cb_roles_panel(query, session, user):
     lines = ['🧩 <b>Роли и связи</b>', '']
     lines.append('Выбери подключенного Telegram-пользователя:')
     buttons = []
-    for uid, username, role, first_name, last_name, chat_id in rows:
+    for uid, username, role, first_name, last_name, chat_id, telegram_id in rows:
         name = (f'{first_name or ""} {last_name or ""}'.strip() or username or f'ID {uid}')[:32]
-        lines.append(f'• {esc(name)} — {esc(role_label(role))}')
+        tg_line = telegram_id or f'chat {chat_id}'
+        lines.append(f'• {esc(name)} — {esc(role_label(role))} · {esc(tg_line)}')
         buttons.append([InlineKeyboardButton(f'{name} · {role_label(role)}', callback_data=f'role_user_{uid}')])
     if not rows:
         lines.append('Пока нет подключенных Telegram-пользователей.')
@@ -1426,11 +1441,17 @@ async def _cb_role_user(query, session, user, data: str):
         await query.edit_message_text('⚠️ Пользователь не найден.', reply_markup=_back_keyboard())
         return
 
+    profile = getattr(target, 'profile', None)
+    telegram_id = getattr(profile, 'telegram_id', None)
+    telegram_chat_id = getattr(profile, 'telegram_chat_id', None)
+    telegram_line = telegram_id or (f'chat_id {telegram_chat_id}' if telegram_chat_id else 'не привязан')
+
     lines = [
         '👤 <b>Пользователь</b>',
         '',
         f'Имя: <b>{esc(user_display_name(target))}</b>',
         f'Текущая роль: <b>{esc(role_label(target.role))}</b>',
+        f'Telegram: {esc(telegram_line)}',
         esc(relation_summary(target)),
         '',
         'Выбери новую роль:',
@@ -1441,6 +1462,12 @@ async def _cb_role_user(query, session, user, data: str):
         ok, _ = actor_can_assign_role(actor, target, role)
         if ok and role != target.role:
             buttons.append([InlineKeyboardButton(role_label(role), callback_data=f'role_set_{target.id}_{role}')])
+    clear_ok, _ = actor_can_clear_role(actor, target)
+    if clear_ok and target.role and target.role != 'tester':
+        buttons.append([InlineKeyboardButton('Снять роль', callback_data=f'role_clear_{target.id}')])
+    tg_link = _telegram_public_link(telegram_id)
+    if tg_link:
+        buttons.append([InlineKeyboardButton('Открыть Telegram', url=tg_link)])
     if not buttons:
         lines.append('Нет доступных изменений для твоей роли.')
     buttons.append([InlineKeyboardButton('↩️ К списку', callback_data='roles_panel')])
@@ -1495,10 +1522,57 @@ async def _cb_role_set(query, session, user, data: str):
     )
 
 
+async def _cb_role_clear(query, session, user, data: str):
+    if not user or not _can_manage_roles(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+    try:
+        target_id = int(data[len('role_clear_'):])
+    except ValueError:
+        await query.edit_message_text('⚠️ Пользователь не найден.', reply_markup=_back_keyboard())
+        return
+
+    from app.models import User, db
+
+    actor = User.query.get(int(user['id']))
+    target = User.query.get(target_id)
+    if not actor or not target:
+        await query.edit_message_text('⚠️ Пользователь не найден.', reply_markup=_back_keyboard())
+        return
+
+    ok, reason = actor_can_clear_role(actor, target)
+    if not ok:
+        await query.edit_message_text(f'⛔ {esc(reason)}', parse_mode='HTML', reply_markup=_back_keyboard())
+        return
+
+    old_role = clear_all_roles(target)
+    db.session.commit()
+    notified = notify_role_changed(target, old_role, None, actor=actor)
+
+    msg = (
+        '✅ <b>Роль снята</b>\n\n'
+        f'Пользователь: <b>{esc(user_display_name(target))}</b>\n'
+        f'Старая роль: {esc(role_label(old_role))}\n'
+        'Новая роль: <b>Без роли</b>\n\n'
+        f'Уведомление пользователю: {"отправлено" if notified else "не отправлено, Telegram не привязан"}'
+    )
+    await query.edit_message_text(
+        msg,
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton('↩️ К пользователю', callback_data=f'role_user_{target.id}')],
+            [InlineKeyboardButton('👥 К списку', callback_data='roles_panel')],
+        ]),
+    )
+
+
 async def _cb_unauth_users(query, session, user):
     if not user or not _can_manage_roles(user.get('role', '')):
         await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
         return
+
+    from app.models import db
+    db.create_all()
 
     rows = session.execute(text("""
         SELECT lead_id, telegram_chat_id, telegram_username, first_name, last_name, last_seen_at
@@ -1534,7 +1608,9 @@ async def _cb_lead_user(query, session, user, data: str):
         await query.edit_message_text('⚠️ Пользователь не найден.', reply_markup=_back_keyboard())
         return
 
-    from app.models import TelegramStartLead, User
+    from app.models import db, TelegramStartLead, User
+
+    db.create_all()
 
     lead = TelegramStartLead.query.get(lead_id)
     actor = User.query.get(int(user['id']))
@@ -1616,6 +1692,8 @@ async def _cb_lead_set(query, session, user, data: str):
         return
 
     from app.models import db, TelegramStartLead, User, UserProfile
+
+    db.create_all()
 
     lead = TelegramStartLead.query.get(lead_id)
     actor = User.query.get(int(user['id']))
@@ -2272,14 +2350,20 @@ async def _cb_admin_students(query, session, user):
         await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
         return
     rows = session.execute(text("""
-        SELECT st.student_id, COALESCE(st.user_id, 0) AS student_user_id,
-               st.name, u.username, up.telegram_chat_id IS NOT NULL AS has_tg,
+        SELECT u.id AS student_user_id,
+               st.student_id,
+               COALESCE(NULLIF(st.name, ''), up.first_name, u.username) AS display_name,
+               u.username,
+               up.telegram_chat_id IS NOT NULL AS has_tg,
+               up.telegram_id,
                (SELECT COUNT(*) FROM "FamilyTies" ft WHERE ft.student_id = u.id) AS parent_count
-        FROM "Students" st
-        LEFT JOIN "Users" u ON u.id = st.user_id
+        FROM "Users" u
+        LEFT JOIN "Students" st ON st.user_id = u.id
         LEFT JOIN "UserProfiles" up ON up.user_id = u.id
-        WHERE st.is_active = TRUE
-        ORDER BY st.student_id DESC
+        WHERE u.is_active = TRUE
+          AND u.role = 'student'
+          AND COALESCE(u.is_demo_user, FALSE) = FALSE
+        ORDER BY up.telegram_last_interaction_at DESC NULLS LAST, u.created_at DESC
         LIMIT 12
     """)).fetchall()
     lines = ['🎓 <b>Ученики</b>', '']
@@ -2289,16 +2373,20 @@ async def _cb_admin_students(query, session, user):
     else:
         lines.append('Нажми на ученика, чтобы открыть карточку и проверить связи.')
         lines.append('')
-        for student_id, student_user_id, name, username, has_tg, parent_count in rows:
+        for student_user_id, student_id, display_name, username, has_tg, telegram_id, parent_count in rows:
             tg_badge = ' 📱' if has_tg else ''
-            display_name = name or username or 'Ученик'
-            lines.append(f'• <b>{esc(display_name)}</b>{tg_badge} · родителей: {parent_count or 0}')
+            tg_caption = f' · {telegram_id}' if telegram_id else ''
+            display_name = display_name or username or 'Ученик'
+            lines.append(f'• <b>{esc(display_name)}</b>{tg_badge} · родителей: {parent_count or 0}{esc(tg_caption)}')
             row_buttons = []
-            if student_user_id:
+            if student_user_id and student_id:
                 row_buttons.append(InlineKeyboardButton(display_name[:24], callback_data=f'student_manage_{student_user_id}_{student_id}'))
             profile_url = _build_student_profile_url(student_id)
             if profile_url:
                 row_buttons.append(InlineKeyboardButton('Профиль', url=profile_url))
+            tg_link = _telegram_public_link(telegram_id)
+            if tg_link:
+                row_buttons.append(InlineKeyboardButton('Telegram', url=tg_link))
             if row_buttons:
                 buttons.append(row_buttons)
     buttons.append(_BACK_ROW)
