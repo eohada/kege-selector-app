@@ -24,7 +24,7 @@ def main() -> None:
     """
     drop_pending = _truthy(os.environ.get('TELEGRAM_POLLING_DROP_PENDING_UPDATES'))
     with flask_app.app_context():
-        application = _build_application()
+        application = _build_application(with_updater=True)
         logger.info('Starting Telegram long-polling runner')
         application.run_polling(
             allowed_updates=['message', 'callback_query'],

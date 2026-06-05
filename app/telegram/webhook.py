@@ -174,10 +174,12 @@ def _register_handlers(app: Application) -> None:
     ))
 
 
-def _build_application(token: str | None = None) -> Application:
+def _build_application(token: str | None = None, with_updater: bool = False) -> Application:
     builder = Application.builder().token(token or _get_token())
     builder = builder.request(_build_request())
-    app = builder.updater(None).build()
+    if not with_updater:
+        builder = builder.updater(None)
+    app = builder.build()
     _register_handlers(app)
     return app
 
