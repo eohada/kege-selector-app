@@ -29,6 +29,7 @@ from telegram import (
     ReplyKeyboardRemove,
     WebAppInfo,
 )
+from telegram.error import BadRequest, TelegramError
 from telegram.ext import ContextTypes, ConversationHandler
 from sqlalchemy import text
 from werkzeug.security import generate_password_hash
@@ -86,6 +87,23 @@ _CTX_REPLY_STUDENT_CHAT_ID = 'bug_reply_student_chat_id'
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+async def _answer_callback_query(query, *args, **kwargs) -> bool:
+    """Acknowledge callback quickly without making old callbacks retry forever."""
+    if not query:
+        return False
+    try:
+        await query.answer(*args, **kwargs)
+        return True
+    except BadRequest as exc:
+        message = str(exc).lower()
+        if 'query is too old' in message or 'query id is invalid' in message:
+            logger.warning('Telegram callback answer skipped: %s', exc)
+            return False
+        raise
+    except TelegramError as exc:
+        logger.warning('Telegram callback answer failed: %s', exc)
+        return False
 
 def _mini_app_url() -> str:
     base = (APP_URL or os.environ.get('APP_URL') or '').strip().rstrip('/')
@@ -901,6 +919,9 @@ async def _send_settings(send_fn, chat_id: int) -> None:
 
 async def bug_report_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Начало: отправляем приглашение описать проблему."""
+    if update.callback_query:
+        await _answer_callback_query(update.callback_query)
+
     touch_telegram_activity(update.effective_chat.id)
     user = _get_linked_user(update.effective_chat.id)
     if not user:
@@ -911,7 +932,6 @@ async def bug_report_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return ConversationHandler.END
 
     if update.callback_query:
-        await update.callback_query.answer()
         await update.callback_query.message.reply_text(
             '🐛 <b>Баг-репорт</b>\n\n'
             'Опиши проблему подробно. Можно приложить скриншот.\n\n'
@@ -1057,7 +1077,7 @@ async def bug_report_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def creator_reply_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Создатель нажал «Ответить» на баг-репорте."""
     query = update.callback_query
-    await query.answer()
+    await _answer_callback_query(query)
 
     _, _, report_id_str, student_chat_str = query.data.split('_', 3)
     context.user_data[_CTX_REPLY_REPORT_ID] = int(report_id_str)
@@ -1134,7 +1154,7 @@ async def creator_reply_cancel(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    await _answer_callback_query(query)
 
     data = query.data or ''
     chat_id = update.effective_chat.id

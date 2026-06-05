@@ -37,6 +37,28 @@ _thread: threading.Thread | None = None
 _init_lock = threading.Lock()
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == '':
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        logger.warning('Invalid %s=%r, using default %s', name, raw, default)
+        return default
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == '':
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning('Invalid %s=%r, using default %s', name, raw, default)
+        return default
+
+
 def _get_token() -> str:
     token = os.environ.get('BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN')
     if not token:
@@ -44,11 +66,19 @@ def _get_token() -> str:
     return token
 
 
-def _build_request() -> HTTPXRequest | None:
+def _build_request() -> HTTPXRequest:
     proxy = telegram_proxy_parts()
-    if not proxy:
-        return None
-    return HTTPXRequest(proxy=httpx.Proxy(proxy['url'], auth=proxy['auth']))
+    kwargs = {
+        'connection_pool_size': _env_int('TELEGRAM_HTTP_POOL_SIZE', 32),
+        'read_timeout': _env_float('TELEGRAM_HTTP_READ_TIMEOUT', 20.0),
+        'write_timeout': _env_float('TELEGRAM_HTTP_WRITE_TIMEOUT', 20.0),
+        'connect_timeout': _env_float('TELEGRAM_HTTP_CONNECT_TIMEOUT', 10.0),
+        'pool_timeout': _env_float('TELEGRAM_HTTP_POOL_TIMEOUT', 10.0),
+        'media_write_timeout': _env_float('TELEGRAM_HTTP_MEDIA_WRITE_TIMEOUT', 60.0),
+    }
+    if proxy:
+        kwargs['proxy'] = httpx.Proxy(proxy['url'], auth=proxy['auth'])
+    return HTTPXRequest(**kwargs)
 
 
 def _ensure_event_loop() -> asyncio.AbstractEventLoop:
@@ -144,6 +174,14 @@ def _register_handlers(app: Application) -> None:
     ))
 
 
+def _build_application(token: str | None = None) -> Application:
+    builder = Application.builder().token(token or _get_token())
+    builder = builder.request(_build_request())
+    app = builder.updater(None).build()
+    _register_handlers(app)
+    return app
+
+
 def get_application() -> Application:
     global _application
     if _application is not None:
@@ -152,13 +190,7 @@ def get_application() -> Application:
         if _application is not None:
             return _application
         loop = _ensure_event_loop()
-        token = _get_token()
-        request = _build_request()
-        builder = Application.builder().token(token)
-        if request:
-            builder = builder.request(request)
-        app = builder.updater(None).build()
-        _register_handlers(app)
+        app = _build_application()
         future = asyncio.run_coroutine_threadsafe(app.initialize(), loop)
         future.result(timeout=30)
         _application = app
@@ -172,21 +204,30 @@ def _run_async(coro):
     return future.result(timeout=60)
 
 
+def process_update_sync(update_data: dict) -> dict:
+    """
+    Process a Telegram update through a per-process Application.
+
+    Celery imports this module before any update is processed, but the actual
+    Application is created lazily inside the worker process, after fork.
+    Reusing it avoids paying initialize/shutdown latency before every callback
+    acknowledgement.
+    """
+    app = get_application()
+    update = Update.de_json(update_data, app.bot)
+    _run_async(app.process_update(update))
+    return {'ok': True}
+
+
 async def _process_update_once(update_data: dict) -> dict:
     """
     Process a single Telegram update without the background loop/thread.
 
-    This path is used from Celery workers, where prefork + thread locks can
-    become poisonous after fork. The Flask runtime still uses the singleton
-    loop, but the worker uses this one-shot path.
+    Kept as a low-level fallback for scripts/tests that need a one-shot
+    Application lifecycle. Celery uses ``process_update_sync`` so callbacks do
+    not pay initialize/shutdown latency before acknowledgement.
     """
-    token = _get_token()
-    request = _build_request()
-    builder = Application.builder().token(token)
-    if request:
-        builder = builder.request(request)
-    app = builder.updater(None).build()
-    _register_handlers(app)
+    app = _build_application()
     await app.initialize()
     try:
         update = Update.de_json(update_data, app.bot)
