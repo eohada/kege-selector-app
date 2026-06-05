@@ -27,5 +27,6 @@ jobs:
           script: |
             cd /opt/boostudy
             git pull origin main
+            python3 scripts/ensure_eventlet_compose.py docker-compose.yml
             docker compose up -d --build
             docker image prune -f
