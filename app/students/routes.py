@@ -117,6 +117,106 @@ def _parse_datetime_local(value: str | None):
     except Exception:
         return None
 
+
+def _delete_student_related_rows(student_id: int, linked_user_id: int | None = None) -> None:
+    """Удаляет зависимые записи, которые не везде имеют DB-level cascade."""
+    from app import models as m
+
+    lesson_ids = [
+        row[0]
+        for row in db.session.query(Lesson.lesson_id)
+        .filter(Lesson.student_id == student_id)
+        .all()
+    ]
+    lesson_task_ids = []
+    if lesson_ids:
+        lesson_task_ids = [
+            row[0]
+            for row in db.session.query(LessonTask.lesson_task_id)
+            .filter(LessonTask.lesson_id.in_(lesson_ids))
+            .all()
+        ]
+        if lesson_task_ids:
+            m.LessonTaskTeacherComment.query.filter(
+                m.LessonTaskTeacherComment.lesson_task_id.in_(lesson_task_ids)
+            ).delete(synchronize_session=False)
+            m.LessonTaskAttempt.query.filter(
+                m.LessonTaskAttempt.lesson_task_id.in_(lesson_task_ids)
+            ).delete(synchronize_session=False)
+        m.LessonMaterialLink.query.filter(
+            m.LessonMaterialLink.lesson_id.in_(lesson_ids)
+        ).delete(synchronize_session=False)
+        m.LessonMessage.query.filter(
+            m.LessonMessage.lesson_id.in_(lesson_ids)
+        ).delete(synchronize_session=False)
+        m.LessonWhiteboard.query.filter(
+            m.LessonWhiteboard.lesson_id.in_(lesson_ids)
+        ).delete(synchronize_session=False)
+        m.PendingAssignmentNotification.query.filter(
+            m.PendingAssignmentNotification.lesson_id.in_(lesson_ids)
+        ).delete(synchronize_session=False)
+        LessonTask.query.filter(LessonTask.lesson_id.in_(lesson_ids)).delete(synchronize_session=False)
+
+    submission_ids = [
+        row[0]
+        for row in db.session.query(Submission.submission_id)
+        .filter(Submission.student_id == student_id)
+        .all()
+    ]
+    if submission_ids:
+        m.Answer.query.filter(m.Answer.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+        m.SubmissionAttempt.query.filter(
+            m.SubmissionAttempt.submission_id.in_(submission_ids)
+        ).delete(synchronize_session=False)
+        m.SubmissionComment.query.filter(
+            m.SubmissionComment.submission_id.in_(submission_ids)
+        ).delete(synchronize_session=False)
+        m.SubmissionCommentThreadRead.query.filter(
+            m.SubmissionCommentThreadRead.submission_id.in_(submission_ids)
+        ).delete(synchronize_session=False)
+
+    course_ids = [
+        row[0]
+        for row in db.session.query(LearningTrajectory.course_id)
+        .filter(LearningTrajectory.student_id == student_id)
+        .all()
+    ]
+    if course_ids:
+        m.TrajectoryModule.query.filter(
+            m.TrajectoryModule.course_id.in_(course_ids)
+        ).delete(synchronize_session=False)
+
+    for model in (
+        m.GroupStudent,
+        m.StudentDiagnosticCheckpoint,
+        m.StudentTaskSeen,
+        m.PendingAssignmentNotification,
+        m.RecurringLessonSlot,
+        m.CallRequest,
+        m.InviteLink,
+        m.TrainerSession,
+        m.TrainerLlmLog,
+        m.StudentTheoryAccess,
+        m.StudentTheoryState,
+        m.TheoryFeedback,
+        m.TheoryFeedbackHistory,
+        StudentTaskStatistics,
+        GradebookEntry,
+        StudentLearningPlanItem,
+        StudentCourseEnrollment,
+        LearningTrajectory,
+        Submission,
+        Lesson,
+        Enrollment,
+    ):
+        model.query.filter_by(student_id=student_id).delete(synchronize_session=False)
+
+    if linked_user_id:
+        m.FamilyTie.query.filter_by(student_id=linked_user_id).delete(synchronize_session=False)
+        m.Enrollment.query.filter_by(student_id=linked_user_id).delete(synchronize_session=False)
+        m.StudentWorkspaceFile.query.filter_by(user_id=linked_user_id).delete(synchronize_session=False)
+        m.TaskCanvasDrawing.query.filter_by(user_id=linked_user_id).delete(synchronize_session=False)
+
 @students_bp.route('/students')
 @login_required
 def students_list():
@@ -1906,24 +2006,9 @@ def student_delete(student_id):
         linked_user = student.user if student.user_id else None
         is_demo = linked_user and getattr(linked_user, 'is_demo_user', False)
 
-        from app.models import LessonTask, StudentTaskStatistics, GradebookEntry, StudentLearningPlanItem
-        from core.db_models import UserMastery, Answer
+        from core.db_models import UserMastery
 
-        lessons = Lesson.query.filter_by(student_id=student_id).all()
-        for lesson in lessons:
-            LessonTask.query.filter_by(lesson_id=lesson.lesson_id).delete()
-        Lesson.query.filter_by(student_id=student_id).delete()
-
-        submissions = Submission.query.filter_by(student_id=student_id).all()
-        for sub in submissions:
-            Answer.query.filter_by(submission_id=sub.submission_id).delete()
-        Submission.query.filter_by(student_id=student_id).delete()
-
-        StudentTaskStatistics.query.filter_by(student_id=student_id).delete()
-        GradebookEntry.query.filter_by(student_id=student_id).delete()
-        StudentLearningPlanItem.query.filter_by(student_id=student_id).delete()
-        StudentCourseEnrollment.query.filter_by(student_id=student_id).delete()
-        Enrollment.query.filter_by(student_id=student_id).delete()
+        _delete_student_related_rows(student_id, linked_user.id if linked_user else None)
 
         db.session.delete(student)
 
@@ -1953,14 +2038,17 @@ def student_delete(student_id):
         flash(f'Ученик {name} удалён из системы.', 'success')
     except Exception as e:
         db.session.rollback()
-        logger.error(f'Ошибка при удалении ученика {student_id}: {e}')
+        logger.error(f'Ошибка при удалении ученика {student_id}: {e}', exc_info=True)
 
-        audit_logger.log_error(
-            action='delete_student',
-            entity='Student',
-            entity_id=student_id,
-            error=str(e)
-        )
+        try:
+            audit_logger.log_error(
+                action='delete_student',
+                entity='Student',
+                entity_id=student_id,
+                error=str(e)
+            )
+        except Exception as log_error:
+            logger.warning(f'Ошибка при логировании удаления ученика {student_id}: {log_error}')
 
         flash(f'Ошибка при удалении ученика: {str(e)}', 'error')
     next_url = (request.form.get('next') or request.args.get('next') or '').strip()
@@ -2002,8 +2090,7 @@ def delete_all_demo():
         return redirect(url_for('main.dashboard'))
 
     try:
-        from app.models import LessonTask, StudentTaskStatistics, GradebookEntry, StudentLearningPlanItem
-        from core.db_models import UserMastery, Answer, UserRole
+        from core.db_models import UserMastery, UserRole
 
         demo_users = User.query.filter_by(is_demo_user=True).all()
         demo_user_ids = [u.id for u in demo_users]
@@ -2017,21 +2104,8 @@ def delete_all_demo():
         deleted_count = len(demo_students)
 
         for sid in demo_student_ids:
-            lessons = Lesson.query.filter_by(student_id=sid).all()
-            for lesson in lessons:
-                LessonTask.query.filter_by(lesson_id=lesson.lesson_id).delete()
-            Lesson.query.filter_by(student_id=sid).delete()
-
-            submissions = Submission.query.filter_by(student_id=sid).all()
-            for sub in submissions:
-                Answer.query.filter_by(submission_id=sub.submission_id).delete()
-            Submission.query.filter_by(student_id=sid).delete()
-
-            StudentTaskStatistics.query.filter_by(student_id=sid).delete()
-            GradebookEntry.query.filter_by(student_id=sid).delete()
-            StudentLearningPlanItem.query.filter_by(student_id=sid).delete()
-            StudentCourseEnrollment.query.filter_by(student_id=sid).delete()
-            Enrollment.query.filter_by(student_id=sid).delete()
+            student = next((s for s in demo_students if s.student_id == sid), None)
+            _delete_student_related_rows(sid, student.user_id if student else None)
 
         Student.query.filter(Student.student_id.in_(demo_student_ids)).delete(synchronize_session=False)
 
