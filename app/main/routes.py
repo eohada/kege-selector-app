@@ -15,6 +15,7 @@ from app.models import Student, Lesson, Tasks, UsageHistory, SkippedTasks, Black
 from app.models import User, Enrollment, FamilyTie, UserConsent, StudentCourseEnrollment
 from app.students.forms import normalize_school_class
 from app.auth.rbac_utils import get_user_scope, apply_data_scope
+from app.utils.release_notes import build_release_notes_text, RELEASE_VERSION
 from sqlalchemy import func, or_
 from datetime import timedelta
 from core.audit_logger import audit_logger
@@ -692,6 +693,8 @@ def dashboard():
             pass
 
     return render_template('dashboard.html',
+                         release_notes=build_release_notes_text(),
+                         release_version=RELEASE_VERSION,
                          students=students,
                          pagination=pagination,
                          search_query=search_query,
@@ -741,7 +744,18 @@ def student_dashboard():
 
     if not student:
         flash('Профиль ученика не найден.', 'warning')
-        return render_template('student_dashboard.html', student=None, plan_items=[], pending_submissions=[], unread_notifications=0, problem_topics=[], enrollments=[], selected_course_id=None)
+        return render_template(
+            'student_dashboard.html',
+            release_notes=build_release_notes_text(),
+            release_version=RELEASE_VERSION,
+            student=None,
+            plan_items=[],
+            pending_submissions=[],
+            unread_notifications=0,
+            problem_topics=[],
+            enrollments=[],
+            selected_course_id=None,
+        )
 
     from app.students.stats_service import StatsService
     from app.models import StudentLearningPlanItem, Submission, UserNotification, GradebookEntry, Assignment, Lesson
@@ -857,6 +871,8 @@ def student_dashboard():
 
     return render_template(
         'student_dashboard.html',
+        release_notes=build_release_notes_text(),
+        release_version=RELEASE_VERSION,
         student=student,
         plan_items=plan_items,
         pending_submissions=pending_submissions,

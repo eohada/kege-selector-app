@@ -48,6 +48,7 @@ from app.telegram.compat import (
     PROFILE_NOT_LINKED,
     ERROR_MESSAGE,
 )
+from app.utils.release_notes import build_release_notes_text
 from app.telegram.config import (
     APP_URL,
     APP_OPEN_URL,
@@ -1018,6 +1019,24 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         build_help_message(role),
         parse_mode='HTML',
         reply_markup=_menu_keyboard(user) if user else None,
+    )
+
+
+async def cmd_whatsnew(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    touch_telegram_activity(update.effective_chat.id)
+    user = _get_linked_user(
+        update.effective_chat.id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
+    buttons = [[InlineKeyboardButton('🌐 Открыть платформу', url=APP_URL or APP_OPEN_URL)]]
+    if user:
+        buttons.insert(0, [InlineKeyboardButton('📋 Открыть меню', callback_data='back_menu')])
+    await update.message.reply_text(
+        build_release_notes_text(),
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup(buttons),
     )
 
 
