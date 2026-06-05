@@ -18,12 +18,12 @@ ROLE_LABELS = {
     'parent': 'Родитель',
     'student': 'Ученик',
     'content_maker': 'Контент-мейкер',
-    'designer': 'Дизайнер',
+    'designer': 'Графический дизайнер',
     'tester': 'Тестировщик',
     'chief_tester': 'Старший тестировщик',
 }
 
-MAIN_BOT_ROLES = ('creator', 'chief_admin', 'admin', 'tutor', 'parent', 'student')
+MAIN_BOT_ROLES = ('creator', 'chief_admin', 'admin', 'tutor', 'parent', 'student', 'designer')
 ADMIN_ROLES = {'creator', 'chief_admin', 'admin'}
 
 
@@ -52,7 +52,7 @@ def actor_can_assign_role(actor: User, target: User, new_role: str) -> tuple[boo
     if actor_role == 'admin':
         if old_role in ADMIN_ROLES or new_role in ADMIN_ROLES:
             return False, 'Обычный администратор не может назначать или снимать администраторов.'
-        return new_role in {'tutor', 'parent', 'student'}, 'Администратор может назначать только преподавателя, родителя или ученика.'
+        return new_role in {'tutor', 'parent', 'student', 'designer'}, 'Администратор может назначать только преподавателя, родителя, ученика или графического дизайнера.'
 
     return False, 'Недостаточно прав.'
 
@@ -107,14 +107,24 @@ def notify_role_changed(user: User, old_role: str, new_role: str, *, actor: User
         return False
 
     actor_line = f'\nИзменил: {user_display_name(actor)}' if actor else ''
-    msg = (
-        'Ваша роль в BooStudy изменена.\n\n'
-        f'Старая роль: {role_label(old_role)}\n'
-        f'Новая роль: {role_label(new_role)}\n'
-        f'{relation_summary(user, new_role)}'
-        f'{actor_line}\n\n'
-        'Если это ошибка, напишите администратору.'
-    )
+    if new_role == 'designer':
+        msg = (
+            'Ваша роль в BooStudy изменена.\n\n'
+            f'Старая роль: {role_label(old_role)}\n'
+            f'Новая роль: {role_label(new_role)}\n'
+            'Эта роль - пустышка(пока что), просто наслаждайся своим новым статусом.'
+            f'{actor_line}\n\n'
+            'Если это ошибка, напишите администратору.'
+        )
+    else:
+        msg = (
+            'Ваша роль в BooStudy изменена.\n\n'
+            f'Старая роль: {role_label(old_role)}\n'
+            f'Новая роль: {role_label(new_role)}\n'
+            f'{relation_summary(user, new_role)}'
+            f'{actor_line}\n\n'
+            'Если это ошибка, напишите администратору.'
+        )
     result = send_telegram_message(int(profile.telegram_chat_id), msg, parse_mode=None)
     return bool(result and result.get('ok'))
 

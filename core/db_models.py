@@ -1339,6 +1339,28 @@ class UserProfile(db.Model):
         return f'<UserProfile {self.user_id}: {self.first_name} {self.last_name}>'
 
 
+class TelegramStartLead(db.Model):
+    """Telegram-пользователь, который писал боту, но ещё не получил роль/профиль."""
+    __tablename__ = 'TelegramStartLeads'
+
+    lead_id = db.Column(db.Integer, primary_key=True)
+    telegram_chat_id = db.Column(db.BigInteger, nullable=False, unique=True, index=True)
+    telegram_username = db.Column(db.String(100), nullable=True, index=True)
+    first_name = db.Column(db.String(100), nullable=True)
+    last_name = db.Column(db.String(100), nullable=True)
+    assigned_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    is_authorized = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    last_seen_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    assigned_user = db.relationship('User', foreign_keys=[assigned_user_id])
+
+    def __repr__(self):
+        return f'<TelegramStartLead chat_id={self.telegram_chat_id} authorized={self.is_authorized}>'
+
+
 class TelegramBroadcast(db.Model):
     """Массовая рассылка в Telegram (инициатор — creator/chief_admin через Mini App)."""
     __tablename__ = 'TelegramBroadcasts'

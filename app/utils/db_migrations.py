@@ -1518,6 +1518,14 @@ def ensure_schema_columns(app):
                     logger.info("Created BotErrorReports table")
                 except Exception as e:
                     logger.warning(f"Could not create BotErrorReports table: {e}")
+
+            telegram_start_leads_table = _resolve_table_name(table_names, 'TelegramStartLeads')
+            if not telegram_start_leads_table:
+                try:
+                    db.create_all()
+                    logger.info("Created TelegramStartLeads table")
+                except Exception as e:
+                    logger.warning(f"Could not create TelegramStartLeads table: {e}")
             
             family_ties_table = _resolve_table_name(table_names, 'FamilyTies')
             if not family_ties_table:

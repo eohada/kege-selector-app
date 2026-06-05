@@ -68,6 +68,8 @@ from app.telegram.role_management import (
 
 logger = logging.getLogger(__name__)
 
+UNAUTHORIZED_ROLE_OPTIONS = ('student', 'parent', 'tutor', 'designer', 'admin')
+
 # ---------------------------------------------------------------------------
 # FSM state constants
 # ---------------------------------------------------------------------------
@@ -167,6 +169,14 @@ def _ensure_bootstrap_creator_link(
     profile.telegram_notifications_enabled = True
 
     db.session.commit()
+    _track_start_lead(
+        chat_id,
+        tg_username=tg_username,
+        first_name=first_name,
+        last_name=last_name,
+        assigned_user_id=user.id,
+        is_authorized=True,
+    )
     logger.info(
         'Bootstrap creator Telegram link ensured for chat_id=%s username=%s user_id=%s created=%s',
         chat_id, username_norm, user.id, created,
@@ -200,6 +210,61 @@ def touch_telegram_activity(chat_id: int) -> None:
             close_session(session)
     except Exception:
         logger.debug('touch_telegram_activity failed for chat_id=%s', chat_id, exc_info=True)
+
+
+def _track_start_lead(
+    chat_id: int,
+    *,
+    tg_username: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    assigned_user_id: int | None = None,
+    is_authorized: bool = False,
+) -> None:
+    """Запомнить Telegram-пользователя, который написал боту."""
+    try:
+        from app.models import db, TelegramStartLead
+
+        username = _normalize_tg_username(tg_username) or None
+        lead = TelegramStartLead.query.filter_by(telegram_chat_id=chat_id).first()
+        if not lead:
+            lead = TelegramStartLead(telegram_chat_id=chat_id)
+            db.session.add(lead)
+
+        lead.telegram_username = username
+        lead.first_name = first_name or lead.first_name
+        lead.last_name = last_name or lead.last_name
+        lead.last_seen_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        if assigned_user_id is not None:
+            lead.assigned_user_id = assigned_user_id
+        if is_authorized:
+            lead.is_authorized = True
+        elif lead.is_authorized is None:
+            lead.is_authorized = False
+        db.session.commit()
+    except Exception:
+        logger.debug('track_start_lead failed for chat_id=%s', chat_id, exc_info=True)
+        try:
+            from app.models import db
+            db.session.rollback()
+        except Exception:
+            pass
+
+
+def _build_student_profile_url(student_id: int | None) -> str:
+    if not APP_URL or not student_id:
+        return ''
+    return f'{APP_URL.rstrip("/")}/student/{int(student_id)}'
+
+
+def _pick_lead_display_name(lead) -> str:
+    full_name = f'{getattr(lead, "first_name", "") or ""} {getattr(lead, "last_name", "") or ""}'.strip()
+    username = getattr(lead, 'telegram_username', None)
+    if full_name:
+        return full_name
+    if username:
+        return f'@{username}'
+    return f'chat {getattr(lead, "telegram_chat_id", "—")}'
 
 
 def _get_linked_user(
@@ -319,12 +384,16 @@ def _menu_keyboard(user: dict | None) -> InlineKeyboardMarkup:
                 InlineKeyboardButton('🎓 Ученики', callback_data='admin_students'),
             ],
             [
-                InlineKeyboardButton('📝 Непроверенные', callback_data='ungraded'),
+                InlineKeyboardButton('🆕 Неавторизованные', callback_data='unauth_users'),
                 InlineKeyboardButton('🔗 Инвайт', callback_data='gen_invite'),
             ],
             [
-                InlineKeyboardButton('📢 Рассылка', callback_data='broadcast_prompt'),
+                InlineKeyboardButton('📝 Непроверенные', callback_data='ungraded'),
                 InlineKeyboardButton('🐛 Баг-репорты', callback_data='view_bug_reports'),
+            ],
+            [
+                InlineKeyboardButton('📢 Рассылка', callback_data='broadcast_prompt'),
+                InlineKeyboardButton('⚙️ Уведомления', callback_data='settings'),
             ],
             [InlineKeyboardButton('🌐 Панель управления', url=f'{APP_URL}/admin' if APP_URL else APP_OPEN_URL)],
         ]
@@ -336,6 +405,10 @@ def _menu_keyboard(user: dict | None) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton('👥 Пользователи', callback_data='admin_users'),
+                InlineKeyboardButton('🆕 Неавторизованные', callback_data='unauth_users'),
+            ],
+            [
+                InlineKeyboardButton('🎓 Ученики', callback_data='admin_students'),
                 InlineKeyboardButton('📝 Непроверенные', callback_data='ungraded'),
             ],
             [
@@ -352,6 +425,10 @@ def _menu_keyboard(user: dict | None) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton('🧩 Роли без админов', callback_data='roles_panel'),
+                InlineKeyboardButton('🆕 Неавторизованные', callback_data='unauth_users'),
+            ],
+            [
+                InlineKeyboardButton('🎓 Ученики', callback_data='admin_students'),
                 InlineKeyboardButton('📝 Непроверенные', callback_data='ungraded'),
             ],
             [
@@ -359,6 +436,14 @@ def _menu_keyboard(user: dict | None) -> InlineKeyboardMarkup:
                 InlineKeyboardButton('⚙️ Уведомления', callback_data='settings'),
             ],
             [InlineKeyboardButton('🌐 Панель управления', url=f'{APP_URL}/admin/users' if APP_URL else APP_OPEN_URL)],
+        ]
+    elif role == 'designer':
+        rows = [
+            [InlineKeyboardButton('✨ Мой статус', callback_data='designer_status')],
+            [
+                InlineKeyboardButton('⚙️ Уведомления', callback_data='settings'),
+                InlineKeyboardButton('🌐 Открыть сайт', url=APP_OPEN_URL),
+            ],
         ]
     else:
         rows = [
@@ -421,6 +506,8 @@ async def _apply_link_result(update: Update, *, chat_id: int, result: dict | Non
     err = data.get('error')
     if result.get('status') == 200 and data.get('success'):
         user = _get_linked_user(chat_id)
+        if user:
+            _track_start_lead(chat_id, assigned_user_id=int(user['id']), is_authorized=True)
         name = (user or {}).get('first_name') or (user or {}).get('username') or 'пользователь'
         mini_kb = _reply_keyboard_with_mini_app(user)
         await update.message.reply_text(
@@ -456,6 +543,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Приветствие; /start TOKEN — привязывает аккаунт по deep link."""
     chat_id = update.effective_chat.id
     touch_telegram_activity(chat_id)
+    _track_start_lead(
+        chat_id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
 
     if update.message and context.args:
         token = (context.args[0] or '').strip()
@@ -479,6 +572,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mini_kb = _reply_keyboard_with_mini_app(user)
 
     if user:
+        _track_start_lead(chat_id, assigned_user_id=int(user['id']), is_authorized=True)
         name = user.get('first_name') or user.get('username') or 'пользователь'
         await update.message.reply_text(
             f'👋 <b>Привет, {esc(name)}!</b>\n\n'
@@ -536,6 +630,8 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
             '🔗 Сначала привяжи аккаунт командой /start или /link КОД',
         )
         return
+
+    _track_start_lead(chat_id, assigned_user_id=int(user['id']), is_authorized=True)
 
     mini_kb = _reply_keyboard_with_mini_app(user)
     if mini_kb:
@@ -1037,10 +1133,12 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'gen_invite':         _cb_gen_invite,
             'admin_users':        _cb_admin_users,
             'admin_students':      _cb_admin_students,
+            'unauth_users':       _cb_unauth_users,
             'roles_panel':        _cb_roles_panel,
             'teacher_stats':      _cb_teacher_stats,
             'teacher_students':    _cb_teacher_students,
             'teacher_schedule':    _cb_teacher_schedule,
+            'designer_status':    _cb_designer_status,
             'back_menu':          _cb_back_menu,
             'settings':           _cb_settings,
             'view_bug_reports':   _cb_view_bug_reports,
@@ -1058,6 +1156,22 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if data.startswith('role_set_'):
             await _cb_role_set(query, session, user, data)
+            return
+
+        if data.startswith('lead_user_'):
+            await _cb_lead_user(query, session, user, data)
+            return
+
+        if data.startswith('lead_set_'):
+            await _cb_lead_set(query, session, user, data)
+            return
+
+        if data.startswith('student_manage_'):
+            await _cb_student_manage(query, session, user, data)
+            return
+
+        if data.startswith('student_stub_parent_'):
+            await _cb_student_stub_parent(query, session, user, data)
             return
 
         handler_fn = dispatch.get(data)
@@ -1378,6 +1492,348 @@ async def _cb_role_set(query, session, user, data: str):
             [InlineKeyboardButton('↩️ К пользователю', callback_data=f'role_user_{target.id}')],
             [InlineKeyboardButton('👥 К списку', callback_data='roles_panel')],
         ]),
+    )
+
+
+async def _cb_unauth_users(query, session, user):
+    if not user or not _can_manage_roles(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+
+    rows = session.execute(text("""
+        SELECT lead_id, telegram_chat_id, telegram_username, first_name, last_name, last_seen_at
+        FROM "TelegramStartLeads"
+        WHERE COALESCE(is_authorized, FALSE) = FALSE
+        ORDER BY last_seen_at DESC NULLS LAST, lead_id DESC
+        LIMIT 20
+    """)).fetchall()
+
+    lines = ['🆕 <b>Неавторизованные пользователи</b>', '']
+    buttons = []
+    if not rows:
+        lines.append('Пока пусто. Здесь появятся люди, которые нажали /start, но еще не получили роль.')
+    else:
+        lines.append('Выбери человека и сразу выдай ему роль:')
+        for lead_id, chat_id, username, first_name, last_name, last_seen_at in rows:
+            name = (f'{first_name or ""} {last_name or ""}'.strip() or (f'@{username}' if username else f'chat {chat_id}'))[:32]
+            last_seen = f' · {last_seen_at.strftime("%d.%m %H:%M")}' if last_seen_at else ''
+            lines.append(f'• <b>{esc(name)}</b>{esc(last_seen)}')
+            buttons.append([InlineKeyboardButton(name, callback_data=f'lead_user_{lead_id}')])
+    buttons.append(_BACK_ROW)
+    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
+
+
+async def _cb_lead_user(query, session, user, data: str):
+    if not user or not _can_manage_roles(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+
+    try:
+        lead_id = int(data[len('lead_user_'):])
+    except ValueError:
+        await query.edit_message_text('⚠️ Пользователь не найден.', reply_markup=_back_keyboard())
+        return
+
+    from app.models import TelegramStartLead, User
+
+    lead = TelegramStartLead.query.get(lead_id)
+    actor = User.query.get(int(user['id']))
+    if not lead or not actor:
+        await query.edit_message_text('⚠️ Пользователь не найден.', reply_markup=_back_keyboard())
+        return
+
+    lines = [
+        '🆕 <b>Пользователь из Telegram</b>',
+        '',
+        f'Имя: <b>{esc(_pick_lead_display_name(lead))}</b>',
+        f'chat_id: <code>{lead.telegram_chat_id}</code>',
+        f'username: {esc("@" + lead.telegram_username if lead.telegram_username else "не указан")}',
+        '',
+        'Выбери роль, которую нужно выдать:',
+    ]
+
+    buttons = []
+    for role in UNAUTHORIZED_ROLE_OPTIONS:
+        shadow_target = User(username='shadow', password_hash='shadow', role='student', is_active=True)
+        ok, _ = actor_can_assign_role(actor, shadow_target, role)
+        if ok:
+            buttons.append([InlineKeyboardButton(role_label(role), callback_data=f'lead_set_{lead.lead_id}_{role}')])
+
+    buttons.append([InlineKeyboardButton('↩️ К списку', callback_data='unauth_users')])
+    buttons.append(_BACK_ROW)
+    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
+
+
+def _make_safe_username(base: str) -> str:
+    cleaned = ''.join(ch for ch in (base or '').lower() if ch.isalnum() or ch == '_').strip('_')
+    return cleaned or 'user'
+
+
+def _ensure_unique_username(base: str) -> str:
+    from app.models import User
+
+    candidate = _make_safe_username(base)
+    if not User.query.filter_by(username=candidate).first():
+        return candidate
+
+    for _ in range(50):
+        alt = f'{candidate}_{secrets.token_hex(2)}'
+        if not User.query.filter_by(username=alt).first():
+            return alt
+    return f'{candidate}_{int(datetime.now(timezone.utc).timestamp())}'
+
+
+def _ensure_user_student_record(user_obj, display_name: str, tg_username: str | None = None):
+    from app.models import db, Student
+
+    student = Student.query.filter_by(user_id=user_obj.id).first()
+    if student:
+        return student
+
+    student = Student(
+        user_id=user_obj.id,
+        name=display_name or user_obj.username or f'Ученик {user_obj.id}',
+        telegram=f'@{tg_username}' if tg_username else None,
+        telegram_username=tg_username,
+        is_active=True,
+    )
+    db.session.add(student)
+    db.session.flush()
+    return student
+
+
+async def _cb_lead_set(query, session, user, data: str):
+    if not user or not _can_manage_roles(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+
+    raw = data[len('lead_set_'):]
+    try:
+        lead_id_str, new_role = raw.split('_', 1)
+        lead_id = int(lead_id_str)
+    except ValueError:
+        await query.edit_message_text('⚠️ Не удалось понять роль.', reply_markup=_back_keyboard())
+        return
+
+    from app.models import db, TelegramStartLead, User, UserProfile
+
+    lead = TelegramStartLead.query.get(lead_id)
+    actor = User.query.get(int(user['id']))
+    if not lead or not actor:
+        await query.edit_message_text('⚠️ Пользователь не найден.', reply_markup=_back_keyboard())
+        return
+
+    shadow_target = User(username='shadow', password_hash='shadow', role='student', is_active=True)
+    ok, reason = actor_can_assign_role(actor, shadow_target, new_role)
+    if not ok:
+        await query.edit_message_text(f'⛔ {esc(reason)}', parse_mode='HTML', reply_markup=_back_keyboard())
+        return
+
+    user_obj = lead.assigned_user
+    created = False
+    if not user_obj:
+        username_seed = lead.telegram_username or f'tg_{lead.telegram_chat_id}'
+        user_obj = User(
+            username=_ensure_unique_username(username_seed),
+            email=None,
+            password_hash=generate_password_hash(secrets.token_urlsafe(24)),
+            role=new_role,
+            is_active=True,
+            telegram_link=f'@{lead.telegram_username}' if lead.telegram_username else None,
+            custom_status='создано из Telegram-бота',
+        )
+        db.session.add(user_obj)
+        db.session.flush()
+        created = True
+
+    old_role = user_obj.role
+    if created:
+        old_role = 'Без роли'
+    set_single_role(user_obj, new_role)
+
+    profile = getattr(user_obj, 'profile', None)
+    if not profile:
+        profile = UserProfile(user_id=user_obj.id)
+        db.session.add(profile)
+    profile.telegram_chat_id = lead.telegram_chat_id
+    if lead.telegram_username:
+        profile.telegram_id = f'@{lead.telegram_username}'
+    if lead.first_name and not profile.first_name:
+        profile.first_name = lead.first_name
+    if lead.last_name and not profile.last_name:
+        profile.last_name = lead.last_name
+    profile.telegram_notifications_enabled = True
+
+    if new_role == 'student':
+        _ensure_user_student_record(user_obj, _pick_lead_display_name(lead), lead.telegram_username)
+
+    lead.assigned_user_id = user_obj.id
+    lead.is_authorized = True
+    lead.last_seen_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    db.session.commit()
+    notified = notify_role_changed(user_obj, old_role, new_role, actor=actor)
+
+    msg = (
+        '✅ <b>Роль выдана прямо из бота</b>\n\n'
+        f'Кому: <b>{esc(_pick_lead_display_name(lead))}</b>\n'
+        f'Новая роль: <b>{esc(role_label(new_role))}</b>\n'
+        f'Профиль: <b>{esc(user_display_name(user_obj))}</b>\n\n'
+        f'Уведомление: {"отправлено" if notified else "не отправлено"}'
+    )
+    await query.edit_message_text(
+        msg,
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton('🧩 Открыть роли пользователя', callback_data=f'role_user_{user_obj.id}')],
+            [InlineKeyboardButton('↩️ К неавторизованным', callback_data='unauth_users')],
+            _BACK_ROW,
+        ]),
+    )
+
+
+async def _cb_student_manage(query, session, user, data: str):
+    if not user or not _is_admin(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+
+    raw = data[len('student_manage_'):]
+    try:
+        student_user_id_str, student_id_str = raw.split('_', 1)
+        student_user_id = int(student_user_id_str)
+        student_id = int(student_id_str)
+    except ValueError:
+        await query.edit_message_text('⚠️ Ученик не найден.', reply_markup=_back_keyboard())
+        return
+
+    row = session.execute(text("""
+        SELECT st.name, u.username,
+               (SELECT COUNT(*) FROM "FamilyTies" ft WHERE ft.student_id = :student_user_id) AS parent_count,
+               (SELECT COUNT(*) FROM "Enrollments" e WHERE e.student_id = :student_user_id AND e.status = 'active') AS tutor_count
+        FROM "Students" st
+        LEFT JOIN "Users" u ON u.id = st.user_id
+        WHERE st.student_id = :student_id
+        LIMIT 1
+    """), {'student_user_id': student_user_id, 'student_id': student_id}).fetchone()
+
+    if not row:
+        await query.edit_message_text('⚠️ Ученик не найден.', reply_markup=_back_keyboard())
+        return
+
+    name, username, parent_count, tutor_count = row
+    profile_url = _build_student_profile_url(student_id)
+    lines = [
+        '🎓 <b>Карточка ученика</b>',
+        '',
+        f'Имя: <b>{esc(name or username or "Ученик")}</b>',
+        f'ID ученика: <code>{student_id}</code>',
+        f'Родителей прикреплено: <b>{parent_count or 0}</b>',
+        f'Преподавателей прикреплено: <b>{tutor_count or 0}</b>',
+        '',
+        'Здесь можно быстро проверить профиль и добавить заглушку для родителя вне платформы.',
+    ]
+    buttons = []
+    if profile_url:
+        buttons.append([InlineKeyboardButton('🔗 Открыть профиль ученика', url=profile_url)])
+    buttons.append([InlineKeyboardButton('👪 Родитель вне платформы', callback_data=f'student_stub_parent_{student_user_id}_{student_id}')])
+    buttons.append([InlineKeyboardButton('↩️ К ученикам', callback_data='admin_students')])
+    buttons.append(_BACK_ROW)
+    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
+
+
+async def _cb_student_stub_parent(query, session, user, data: str):
+    if not user or not _is_admin(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+
+    raw = data[len('student_stub_parent_'):]
+    try:
+        student_user_id_str, student_id_str = raw.split('_', 1)
+        student_user_id = int(student_user_id_str)
+        student_id = int(student_id_str)
+    except ValueError:
+        await query.edit_message_text('⚠️ Не удалось определить ученика.', reply_markup=_back_keyboard())
+        return
+
+    from app.models import db, User, UserProfile, UserRole, FamilyTie, Student
+
+    student = Student.query.get(student_id)
+    if not student:
+        await query.edit_message_text('⚠️ Ученик не найден.', reply_markup=_back_keyboard())
+        return
+
+    student_name = student.name or f'Ученик {student_id}'
+    existing_tie = (
+        FamilyTie.query
+        .join(User, User.id == FamilyTie.parent_id)
+        .filter(
+            FamilyTie.student_id == student_user_id,
+            User.role == 'parent',
+            User.is_active.is_(False),
+            User.custom_status == 'родитель отсутствует на платформе',
+        )
+        .first()
+    )
+    if existing_tie:
+        await query.edit_message_text(
+            'ℹ️ Для этого ученика уже есть пометка, что родитель отсутствует на платформе.',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton('↩️ К карточке ученика', callback_data=f'student_manage_{student_user_id}_{student_id}')],
+                _BACK_ROW,
+            ]),
+        )
+        return
+
+    parent_user = User(
+        username=_ensure_unique_username(f'offline_parent_{student_user_id}'),
+        email=None,
+        password_hash=generate_password_hash(secrets.token_urlsafe(24)),
+        role='parent',
+        is_active=False,
+        custom_status='родитель отсутствует на платформе',
+    )
+    db.session.add(parent_user)
+    db.session.flush()
+    db.session.add(UserRole(user_id=parent_user.id, role='parent'))
+    db.session.add(UserProfile(
+        user_id=parent_user.id,
+        first_name='Родитель',
+        last_name='вне платформы',
+        internal_notes=f'Создано из Telegram-бота для ученика {student_name}',
+        telegram_notifications_enabled=False,
+    ))
+    db.session.add(FamilyTie(
+        parent_id=parent_user.id,
+        student_id=student_user_id,
+        access_level='full',
+        is_confirmed=True,
+    ))
+    db.session.commit()
+
+    await query.edit_message_text(
+        '✅ <b>Готово</b>\n\n'
+        f'Для ученика <b>{esc(student_name)}</b> создана заглушка:\n'
+        '«родитель отсутствует на платформе / не пользуется платформой».\n\n'
+        'Теперь в связях ученика будет видно, что родитель учтен.',
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton('↩️ К карточке ученика', callback_data=f'student_manage_{student_user_id}_{student_id}')],
+            [InlineKeyboardButton('🧩 К ролям и связям', callback_data='roles_panel')],
+            _BACK_ROW,
+        ]),
+    )
+
+
+async def _cb_designer_status(query, session, user):
+    if not user or user.get('role') != 'designer':
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+    await query.edit_message_text(
+        '✨ <b>Графический дизайнер</b>\n\n'
+        'Пока это роль-заглушка.\n'
+        'Эта роль - пустышка(пока что), просто наслаждайся своим новым статусом.',
+        parse_mode='HTML',
+        reply_markup=_back_keyboard(),
     )
 
 
@@ -1816,22 +2272,37 @@ async def _cb_admin_students(query, session, user):
         await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
         return
     rows = session.execute(text("""
-        SELECT st.name, u.username, up.telegram_chat_id IS NOT NULL AS has_tg
+        SELECT st.student_id, COALESCE(st.user_id, 0) AS student_user_id,
+               st.name, u.username, up.telegram_chat_id IS NOT NULL AS has_tg,
+               (SELECT COUNT(*) FROM "FamilyTies" ft WHERE ft.student_id = u.id) AS parent_count
         FROM "Students" st
         LEFT JOIN "Users" u ON u.id = st.user_id
         LEFT JOIN "UserProfiles" up ON up.user_id = u.id
         WHERE st.is_active = TRUE
         ORDER BY st.student_id DESC
-        LIMIT 20
+        LIMIT 12
     """)).fetchall()
     lines = ['🎓 <b>Ученики</b>', '']
+    buttons = []
     if not rows:
         lines.append('Активных учеников пока нет.')
     else:
-        for name, username, has_tg in rows:
+        lines.append('Нажми на ученика, чтобы открыть карточку и проверить связи.')
+        lines.append('')
+        for student_id, student_user_id, name, username, has_tg, parent_count in rows:
             tg_badge = ' 📱' if has_tg else ''
-            lines.append(f'• <b>{esc(name or username or "Ученик")}</b>{tg_badge}')
-    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_back_keyboard())
+            display_name = name or username or 'Ученик'
+            lines.append(f'• <b>{esc(display_name)}</b>{tg_badge} · родителей: {parent_count or 0}')
+            row_buttons = []
+            if student_user_id:
+                row_buttons.append(InlineKeyboardButton(display_name[:24], callback_data=f'student_manage_{student_user_id}_{student_id}'))
+            profile_url = _build_student_profile_url(student_id)
+            if profile_url:
+                row_buttons.append(InlineKeyboardButton('Профиль', url=profile_url))
+            if row_buttons:
+                buttons.append(row_buttons)
+    buttons.append(_BACK_ROW)
+    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
 
 
 # ---------------------------------------------------------------------------
