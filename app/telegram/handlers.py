@@ -416,9 +416,12 @@ def _menu_keyboard(user: dict | None) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton('📢 Рассылка', callback_data='broadcast_prompt'),
-                InlineKeyboardButton('⚙️ Уведомления', callback_data='settings'),
+                InlineKeyboardButton('📨 Тест-рассылка', callback_data='test_broadcast_send'),
             ],
-            [InlineKeyboardButton('🌐 Панель управления', url=f'{APP_URL}/admin' if APP_URL else APP_OPEN_URL)],
+            [
+                InlineKeyboardButton('⚙️ Уведомления', callback_data='settings'),
+                InlineKeyboardButton('🌐 Панель управления', url=f'{APP_URL}/admin' if APP_URL else APP_OPEN_URL),
+            ],
         ]
     elif _is_senior_admin(role):
         rows = [
@@ -1224,6 +1227,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await _cb_student_tutors(query, session, user, data)
             return
 
+        if data.startswith('student_remove_parent_'):
+            await _cb_student_remove_parent(query, session, user, data)
+            return
+
+        if data.startswith('student_remove_tutor_'):
+            await _cb_student_remove_tutor(query, session, user, data)
+            return
+
         if data.startswith('test_feedback_'):
             await _cb_test_feedback(query, session, user, data)
             return
@@ -1978,7 +1989,7 @@ async def _cb_student_parents(query, session, user, data: str):
         return
 
     rows = session.execute(text("""
-        SELECT p.id, p.username, up.first_name, up.last_name, up.telegram_id
+        SELECT ft.tie_id, p.id, p.username, up.first_name, up.last_name, up.telegram_id
         FROM "FamilyTies" ft
         JOIN "Users" p ON p.id = ft.parent_id
         LEFT JOIN "UserProfiles" up ON up.user_id = p.id
@@ -1991,11 +2002,14 @@ async def _cb_student_parents(query, session, user, data: str):
     if not rows:
         lines.append('Пока никто не прикреплен.')
     else:
-        for parent_id, username, first_name, last_name, telegram_id in rows:
+        for tie_id, parent_id, username, first_name, last_name, telegram_id in rows:
             display = (f'{first_name or ""} {last_name or ""}'.strip() or username or f'ID {parent_id}')[:32]
             tg = f' · {telegram_id}' if telegram_id else ''
             lines.append(f'• <b>{esc(display)}</b>{esc(tg)}')
-            buttons.append([InlineKeyboardButton(display, callback_data=f'role_user_{parent_id}')])
+            buttons.append([
+                InlineKeyboardButton(display, callback_data=f'role_user_{parent_id}'),
+                InlineKeyboardButton('Удалить', callback_data=f'student_remove_parent_{tie_id}_{student_user_id}_{student_id}'),
+            ])
     buttons.append([InlineKeyboardButton('↩️ К ученику', callback_data=f'student_manage_{student_user_id}_{student_id}')])
     buttons.append(_BACK_ROW)
     await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
@@ -2015,7 +2029,7 @@ async def _cb_student_tutors(query, session, user, data: str):
         return
 
     rows = session.execute(text("""
-        SELECT t.id, t.username, up.first_name, up.last_name, up.telegram_id, e.subject
+        SELECT e.enrollment_id, t.id, t.username, up.first_name, up.last_name, up.telegram_id, e.subject
         FROM "Enrollments" e
         JOIN "Users" t ON t.id = e.tutor_id
         LEFT JOIN "UserProfiles" up ON up.user_id = t.id
@@ -2029,15 +2043,84 @@ async def _cb_student_tutors(query, session, user, data: str):
     if not rows:
         lines.append('Пока никто не прикреплен.')
     else:
-        for tutor_id, username, first_name, last_name, telegram_id, subject in rows:
+        for enrollment_id, tutor_id, username, first_name, last_name, telegram_id, subject in rows:
             display = (f'{first_name or ""} {last_name or ""}'.strip() or username or f'ID {tutor_id}')[:32]
             suffix = f' · {subject}' if subject else ''
             tg = f' · {telegram_id}' if telegram_id else ''
             lines.append(f'• <b>{esc(display)}</b>{esc(suffix)}{esc(tg)}')
-            buttons.append([InlineKeyboardButton(display, callback_data=f'role_user_{tutor_id}')])
+            buttons.append([
+                InlineKeyboardButton(display, callback_data=f'role_user_{tutor_id}'),
+                InlineKeyboardButton('Удалить', callback_data=f'student_remove_tutor_{enrollment_id}_{student_user_id}_{student_id}'),
+            ])
     buttons.append([InlineKeyboardButton('↩️ К ученику', callback_data=f'student_manage_{student_user_id}_{student_id}')])
     buttons.append(_BACK_ROW)
     await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
+
+
+async def _cb_student_remove_parent(query, session, user, data: str):
+    if not user or not _is_admin(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+    raw = data[len('student_remove_parent_'):]
+    try:
+        tie_id_str, student_user_id_str, student_id_str = raw.split('_', 2)
+        tie_id = int(tie_id_str)
+        student_user_id = int(student_user_id_str)
+        student_id = int(student_id_str)
+    except ValueError:
+        await query.edit_message_text('⚠️ Не удалось понять связь.', reply_markup=_back_keyboard())
+        return
+
+    from app.models import db, FamilyTie
+
+    tie = FamilyTie.query.get(tie_id)
+    if not tie:
+        await query.edit_message_text('⚠️ Связь уже удалена.', reply_markup=_back_keyboard())
+        return
+
+    db.session.delete(tie)
+    db.session.commit()
+    await query.edit_message_text(
+        '✅ Родитель отвязан от ученика.',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton('↩️ К родителям ученика', callback_data=f'student_parents_{student_user_id}_{student_id}')],
+            [InlineKeyboardButton('↩️ К карточке ученика', callback_data=f'student_manage_{student_user_id}_{student_id}')],
+            _BACK_ROW,
+        ]),
+    )
+
+
+async def _cb_student_remove_tutor(query, session, user, data: str):
+    if not user or not _is_admin(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+    raw = data[len('student_remove_tutor_'):]
+    try:
+        enrollment_id_str, student_user_id_str, student_id_str = raw.split('_', 2)
+        enrollment_id = int(enrollment_id_str)
+        student_user_id = int(student_user_id_str)
+        student_id = int(student_id_str)
+    except ValueError:
+        await query.edit_message_text('⚠️ Не удалось понять связь.', reply_markup=_back_keyboard())
+        return
+
+    from app.models import db, Enrollment
+
+    enrollment = Enrollment.query.get(enrollment_id)
+    if not enrollment:
+        await query.edit_message_text('⚠️ Связь уже удалена.', reply_markup=_back_keyboard())
+        return
+
+    db.session.delete(enrollment)
+    db.session.commit()
+    await query.edit_message_text(
+        '✅ Преподаватель отвязан от ученика.',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton('↩️ К преподавателям ученика', callback_data=f'student_tutors_{student_user_id}_{student_id}')],
+            [InlineKeyboardButton('↩️ К карточке ученика', callback_data=f'student_manage_{student_user_id}_{student_id}')],
+            _BACK_ROW,
+        ]),
+    )
 
 
 async def _cb_student_stub_parent(query, session, user, data: str):
