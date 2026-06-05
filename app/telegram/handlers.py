@@ -378,21 +378,22 @@ def _menu_keyboard(user: dict | None) -> InlineKeyboardMarkup:
     if _is_student(role):
         rows = [
             [
-                InlineKeyboardButton('📋 Мои долги', callback_data='my_debts'),
+                InlineKeyboardButton('🏠 Мой кабинет', callback_data='student_home'),
                 InlineKeyboardButton('📅 Расписание', callback_data='schedule'),
             ],
             [
+                InlineKeyboardButton('📋 Мои долги', callback_data='my_debts'),
                 InlineKeyboardButton('🎲 Случайная задача', callback_data='random_task'),
+            ],
+            [
                 InlineKeyboardButton('📊 Статистика', callback_data='stats'),
-            ],
-            [
                 InlineKeyboardButton('💳 Мой тариф', callback_data='subscription'),
-                InlineKeyboardButton('📱 Mini App', web_app=WebAppInfo(url=_mini_app_url())) if _mini_app_url() else InlineKeyboardButton('🌐 Открыть сайт', url=APP_OPEN_URL),
             ],
             [
+                InlineKeyboardButton('📱 Mini App', web_app=WebAppInfo(url=_mini_app_url())) if _mini_app_url() else InlineKeyboardButton('🌐 Открыть сайт', url=APP_OPEN_URL),
                 InlineKeyboardButton('⚙️ Уведомления', callback_data='settings'),
-                InlineKeyboardButton('🐛 Баг-репорт', callback_data='bug_report_start'),
             ],
+            [InlineKeyboardButton('🐛 Баг-репорт', callback_data='bug_report_start')],
             [InlineKeyboardButton('🌐 Открыть сайт', url=APP_OPEN_URL)],
         ]
     elif _is_parent(role):
@@ -523,6 +524,71 @@ def _back_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([_BACK_ROW])
 
 
+def _student_dashboard_keyboard() -> InlineKeyboardMarkup:
+    mini_app_url = _mini_app_url()
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton('📅 Расписание', callback_data='schedule'),
+            InlineKeyboardButton('📋 Долги', callback_data='my_debts'),
+        ],
+        [
+            InlineKeyboardButton('🎲 Задача', callback_data='random_task'),
+            InlineKeyboardButton('📊 Статистика', callback_data='stats'),
+        ],
+        [
+            InlineKeyboardButton('💳 Тариф', callback_data='subscription'),
+            InlineKeyboardButton('⚙️ Уведомления', callback_data='settings'),
+        ],
+        [
+            InlineKeyboardButton('📱 Mini App', web_app=WebAppInfo(url=mini_app_url)) if mini_app_url else InlineKeyboardButton('🌐 Открыть сайт', url=APP_OPEN_URL),
+        ],
+        _BACK_ROW,
+    ])
+
+
+def _student_dashboard_text(session, user: dict) -> str:
+    student = get_student_by_email(session, user.get('email'), user.get('id'))
+    if not student:
+        return (
+            '🏠 <b>Мой кабинет</b>\n\n'
+            'Профиль ученика пока не найден. Обратись к преподавателю.'
+        )
+
+    sid = student['student_id']
+    next_lesson = session.execute(text("""
+        SELECT lesson_date, topic
+        FROM "Lessons"
+        WHERE student_id = :sid AND status = 'planned' AND lesson_date >= NOW()
+        ORDER BY lesson_date ASC
+        LIMIT 1
+    """), {'sid': sid}).fetchone()
+
+    debts = session.execute(text("""
+        SELECT COUNT(*)
+        FROM "Submissions" s
+        JOIN "Assignments" a ON a.assignment_id = s.assignment_id
+        WHERE s.student_id = :sid
+          AND s.status IN ('ASSIGNED', 'IN_PROGRESS', 'RETURNED')
+    """), {'sid': sid}).scalar() or 0
+
+    plan_summary = subscription_summary_for_user(int(user['id']))
+    parts = ['🏠 <b>Мой кабинет</b>', '']
+    parts.append(f'👤 <b>{esc(user.get("first_name") or user.get("username") or "Ученик")}</b>')
+    parts.append(f'📋 Долгов: <b>{debts}</b>')
+    parts.append(f'💳 Тариф: <b>{esc(plan_summary.plan_title)}</b>')
+
+    if next_lesson:
+        lesson_date, topic = next_lesson
+        when = lesson_date.strftime('%d.%m в %H:%M') if lesson_date else '—'
+        parts.append(f'📅 Ближайший урок: <b>{when}</b> — {esc((topic or "Урок")[:60])}')
+    else:
+        parts.append('📅 Ближайших уроков пока нет')
+
+    parts.append('')
+    parts.append('Выбери, что сделать дальше:')
+    return '\n'.join(parts)
+
+
 def _settings_keyboard(profile) -> InlineKeyboardMarkup:
     """Inline toggles for notification settings."""
     def _btn(label: str, attr: str, cb_prefix: str) -> InlineKeyboardButton:
@@ -630,18 +696,29 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user:
         _track_start_lead(chat_id, assigned_user_id=int(user['id']), is_authorized=True)
         name = user.get('first_name') or user.get('username') or 'пользователь'
-        await update.message.reply_text(
-            f'👋 <b>Привет, {esc(name)}!</b>\n\n'
-            f'Ты привязан к BooStudy как <b>{esc(user.get("username", ""))}</b>.\n'
-            'Нажми /menu для навигации или открой Mini App кнопкой ниже.',
-            parse_mode='HTML',
-            reply_markup=mini_kb,
-        )
-        await update.message.reply_text(
-            '📋 <b>Меню BooStudy</b>',
-            parse_mode='HTML',
-            reply_markup=_menu_keyboard(user),
-        )
+        if _is_student(user.get('role', '')):
+            session = get_session()
+            try:
+                await update.message.reply_text(
+                    _student_dashboard_text(session, user),
+                    parse_mode='HTML',
+                    reply_markup=_student_dashboard_keyboard(),
+                )
+            finally:
+                close_session(session)
+        else:
+            await update.message.reply_text(
+                f'👋 <b>Привет, {esc(name)}!</b>\n\n'
+                f'Ты привязан к BooStudy как <b>{esc(user.get("username", ""))}</b>.\n'
+                'Нажми /menu для навигации или открой Mini App кнопкой ниже.',
+                parse_mode='HTML',
+                reply_markup=mini_kb,
+            )
+            await update.message.reply_text(
+                '📋 <b>Меню BooStudy</b>',
+                parse_mode='HTML',
+                reply_markup=_menu_keyboard(user),
+            )
     else:
         await update.message.reply_text(
             WELCOME_MESSAGE + f'\n\n🔢 <b>Твой chat_id:</b> <code>{chat_id}</code>',
@@ -692,6 +769,17 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mini_kb = _reply_keyboard_with_mini_app(user)
     if mini_kb:
         await update.message.reply_text('👇 Mini App', reply_markup=mini_kb)
+    if _is_student(user.get('role', '')):
+        session = get_session()
+        try:
+            await update.message.reply_text(
+                _student_dashboard_text(session, user),
+                parse_mode='HTML',
+                reply_markup=_student_dashboard_keyboard(),
+            )
+        finally:
+            close_session(session)
+        return
     await update.message.reply_text(
         '📋 <b>Меню BooStudy</b>',
         parse_mode='HTML',
@@ -1177,6 +1265,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = get_user_by_chat_id(session, chat_id)
 
         dispatch = {
+            'student_home':      _cb_student_home,
             'my_debts':           _cb_my_debts,
             'random_task':        _cb_random_task,
             'schedule':           _cb_schedule,
@@ -1282,8 +1371,22 @@ async def _cb_back_menu(query, session, user):
     if not user:
         await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode='HTML')
         return
+    if _is_student(user.get('role', '')):
+        await _cb_student_home(query, session, user)
+        return
     await query.edit_message_text(
         '📋 <b>Меню BooStudy</b>', parse_mode='HTML', reply_markup=_menu_keyboard(user),
+    )
+
+
+async def _cb_student_home(query, session, user):
+    if not user:
+        await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode='HTML', reply_markup=_back_keyboard())
+        return
+    await query.edit_message_text(
+        _student_dashboard_text(session, user),
+        parse_mode='HTML',
+        reply_markup=_student_dashboard_keyboard(),
     )
 
 
