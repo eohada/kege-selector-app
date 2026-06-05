@@ -41,10 +41,24 @@
   let dirty = false;
   let saveTimer = null;
   let pendingSavePromise = null;
+  const LOAD_CACHE_TTL_MS = 15000;
+  const LOAD_DEBOUNCE_MS = 250;
+  let loadState = {
+    key: null,
+    lastAt: 0,
+    lastData: null,
+    promise: null,
+  };
+  let checkTimer = null;
 
   function storageKey() {
     if (!taskId) return null;
     return `boo.canvas.${contextType || 'submission'}.${contextId || 'none'}.${taskId}`;
+  }
+
+  function contextKey() {
+    if (!taskId) return null;
+    return `${contextType || 'submission'}:${contextId || 'none'}:${taskId}`;
   }
 
   function saveLocal() {
@@ -483,6 +497,8 @@
           body: JSON.stringify(body),
         });
         dirty = false;
+        loadState.lastAt = 0;
+        loadState.lastData = null;
         saveLocal();
         updateBadge();
       } catch (e) {
@@ -502,6 +518,52 @@
     }
   }
 
+  async function fetchCanvasState(force = false) {
+    const key = contextKey();
+    if (!key) return null;
+
+    const now = Date.now();
+    if (loadState.promise && loadState.key === key) {
+      return loadState.promise;
+    }
+    if (
+      !force &&
+      loadState.key === key &&
+      loadState.lastData &&
+      now - loadState.lastAt < LOAD_CACHE_TTL_MS
+    ) {
+      return loadState.lastData;
+    }
+
+    const params = new URLSearchParams({ task_id: taskId, context_type: contextType });
+    if (contextId) params.set('context_id', contextId);
+
+    loadState.key = key;
+    loadState.promise = fetch('/api/canvas/load?' + params.toString(), {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        loadState.lastAt = Date.now();
+        loadState.lastData = data;
+        return data;
+      })
+      .finally(() => {
+        loadState.promise = null;
+      });
+
+    return loadState.promise;
+  }
+
+  function scheduleExistingDrawingCheck() {
+    if (checkTimer) clearTimeout(checkTimer);
+    checkTimer = setTimeout(() => {
+      checkTimer = null;
+      checkExistingDrawing();
+    }, LOAD_DEBOUNCE_MS);
+  }
+
   async function loadFromServer() {
     if (!taskId) { strokes = []; redraw(); return; }
     const localStrokes = loadLocal();
@@ -512,13 +574,7 @@
     }
     await waitPendingSave();
     try {
-      const params = new URLSearchParams({ task_id: taskId, context_type: contextType });
-      if (contextId) params.set('context_id', contextId);
-      const res = await fetch('/api/canvas/load?' + params.toString(), {
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      });
-      const data = await res.json();
+      const data = await fetchCanvasState(false);
       if (data.success && data.strokes) {
         const parsed = typeof data.strokes === 'string' ? JSON.parse(data.strokes) : data.strokes;
         if (Array.isArray(parsed) && (parsed.length > 0 || !Array.isArray(localStrokes))) {
@@ -596,7 +652,7 @@
     }
     if (changed && isOpen) loadFromServer();
     if (changed && !isOpen) {
-      checkExistingDrawing();
+      scheduleExistingDrawingCheck();
     }
   }
 
@@ -613,13 +669,7 @@
     if (!taskId) { updateBadge(); return; }
     await waitPendingSave();
     try {
-      const params = new URLSearchParams({ task_id: taskId, context_type: contextType });
-      if (contextId) params.set('context_id', contextId);
-      const res = await fetch('/api/canvas/load?' + params.toString(), {
-        credentials: 'same-origin',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      });
-      const data = await res.json();
+      const data = await fetchCanvasState(false);
       if (data.success && data.exists) {
         const parsed = typeof data.strokes === 'string' ? JSON.parse(data.strokes) : data.strokes;
         strokes = Array.isArray(parsed) ? parsed : [];

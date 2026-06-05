@@ -15,4 +15,4 @@ cmds = [
 cmds = []
 
 [start]
-cmd = "/opt/venv/bin/gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 4 --threads 2 --timeout 180 --keep-alive 5"
+cmd = "EVENTLET_NO_GREENDNS=yes /opt/venv/bin/gunicorn wsgi:app --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT --timeout 180 --keep-alive 5"

@@ -13,7 +13,7 @@
 services:
   web:
     build: .
-    command: gunicorn wsgi:app --bind 0.0.0.0:8000 --workers 4 --threads 2 --timeout 180 --keep-alive 5
+    command: env EVENTLET_NO_GREENDNS=yes gunicorn wsgi:app --worker-class eventlet -w 1 --bind 0.0.0.0:8000 --timeout 180 --keep-alive 5
     # env_file: .env — те же BOT_TOKEN, APP_URL, BOT_INTERNAL_TOKEN, что и раньше
     # ...
 

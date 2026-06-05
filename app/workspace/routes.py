@@ -862,6 +862,7 @@ def canvas_save():
 
 @workspace_bp.route('/api/canvas/load', methods=['GET'])
 @login_required
+@limiter.limit('30/minute')
 def canvas_load():
     _ensure_workspace_tables()
     task_id = request.args.get('task_id', type=int)
