@@ -641,6 +641,7 @@ def _admin_dashboard_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton('🎓 Ученики', callback_data='admin_students'),
+            InlineKeyboardButton('🔎 Поиск ученика', callback_data='admin_student_search_help'),
             InlineKeyboardButton('👪 Родители', callback_data='admin_parents'),
         ],
         [
@@ -702,6 +703,15 @@ def _admin_dashboard_text(session) -> str:
         f'🆕 Неавторизованные лиды: <b>{pending_leads}</b>\n'
         f'🐛 Открытые баг-репорты: <b>{bug_reports}</b>\n\n'
         'Выбери раздел для управления.'
+    )
+
+
+def _admin_student_search_help_text() -> str:
+    return (
+        '🔎 <b>Поиск ученика</b>\n\n'
+        'Используй команду:\n'
+        '<code>/findstudent часть_имени</code>\n\n'
+        'Или ищи по username, Telegram-id и ID пользователя.'
     )
 
 
@@ -922,6 +932,76 @@ async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML',
         reply_markup=_menu_keyboard(user),
     )
+
+
+async def cmd_findstudent(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
+    user = _get_linked_user(
+        chat_id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
+    if not user or not _is_admin(user.get('role', '')):
+        await update.message.reply_text('⛔ Команда доступна только админам и создателю.')
+        return
+    query_text = ' '.join(context.args).strip() if context.args else ''
+    if not query_text:
+        await update.message.reply_text(_admin_student_search_help_text(), parse_mode='HTML')
+        return
+
+    pattern = f'%{query_text.lower()}%'
+    session = get_session()
+    try:
+        rows = session.execute(text("""
+            SELECT u.id AS student_user_id,
+                   st.student_id,
+                   COALESCE(NULLIF(st.name, ''), up.first_name, u.username) AS display_name,
+                   u.username,
+                   up.telegram_id,
+                   up.telegram_chat_id IS NOT NULL AS has_tg
+            FROM "Users" u
+            LEFT JOIN "Students" st ON st.user_id = u.id
+            LEFT JOIN "UserProfiles" up ON up.user_id = u.id
+            WHERE u.is_active = TRUE
+              AND u.role = 'student'
+              AND COALESCE(u.is_demo_user, FALSE) = FALSE
+              AND (
+                    LOWER(COALESCE(st.name, '')) LIKE :pattern
+                 OR LOWER(COALESCE(up.first_name, '')) LIKE :pattern
+                 OR LOWER(COALESCE(up.last_name, '')) LIKE :pattern
+                 OR LOWER(COALESCE(u.username, '')) LIKE :pattern
+                 OR LOWER(COALESCE(up.telegram_id, '')) LIKE :pattern
+                 OR CAST(u.id AS TEXT) LIKE :plain_pattern
+                 OR CAST(COALESCE(st.student_id, 0) AS TEXT) LIKE :plain_pattern
+                 OR CAST(COALESCE(up.telegram_chat_id, 0) AS TEXT) LIKE :plain_pattern
+              )
+            ORDER BY up.telegram_last_interaction_at DESC NULLS LAST, u.created_at DESC
+            LIMIT 12
+        """), {'pattern': pattern, 'plain_pattern': f'%{query_text}%'}).fetchall()
+    finally:
+        close_session(session)
+
+    if not rows:
+        await update.message.reply_text(
+            f'🔎 По запросу <b>{esc(query_text)}</b> ничего не найдено.',
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('↩️ К сводке', callback_data='admin_home')]]),
+        )
+        return
+
+    lines = [f'🔎 <b>Результаты поиска: {esc(query_text)}</b>', '']
+    buttons = []
+    for student_user_id, student_id, display_name, username, telegram_id, has_tg in rows:
+        tg_badge = ' 📱' if has_tg else ''
+        lines.append(f'• <b>{esc(display_name or username or "Ученик")}</b>{tg_badge} · user_id: <code>{student_user_id}</code>')
+        row_buttons = [InlineKeyboardButton((display_name or username or 'Ученик')[:24], callback_data=f'student_manage_{student_user_id}_{student_id}') if student_id else InlineKeyboardButton((display_name or username or 'Ученик')[:24], callback_data=f'role_user_{student_user_id}')]
+        if telegram_id:
+            row_buttons.append(InlineKeyboardButton('Telegram', url=_telegram_public_link(telegram_id)))
+        buttons.append(row_buttons)
+    buttons.append([InlineKeyboardButton('↩️ К сводке', callback_data='admin_home')])
+    await update.message.reply_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1403,6 +1483,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         dispatch = {
             'admin_home':        _cb_admin_home,
+            'admin_student_search_help': _cb_admin_student_search_help,
             'student_home':      _cb_student_home,
             'my_debts':           _cb_my_debts,
             'random_task':        _cb_random_task,
@@ -1528,6 +1609,20 @@ async def _cb_admin_home(query, session, user):
         _admin_dashboard_text(session),
         parse_mode='HTML',
         reply_markup=_admin_dashboard_keyboard(),
+    )
+
+
+async def _cb_admin_student_search_help(query, session, user):
+    if not user or not _is_admin(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+    await query.edit_message_text(
+        _admin_student_search_help_text(),
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton('🔎 К поиску', callback_data='admin_home')],
+            _BACK_ROW,
+        ]),
     )
 
 
