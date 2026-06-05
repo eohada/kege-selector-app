@@ -527,6 +527,11 @@ def register_hooks(app):
         if request.path.startswith('/api/internal/'):
             return
 
+        # Telegram bot linking endpoint must work without Flask-login:
+        # bot calls it server-to-server and receives auth from BOT_INTERNAL_TOKEN.
+        if request.path == '/api/telegram/link-bot':
+            return
+
         # Telegram Bot API webhook: POST от серверов Telegram без сессии пользователя
         if request.path.startswith('/webhook/'):
             return
@@ -695,4 +700,3 @@ def register_hooks(app):
         except Exception as e:
             logger.error(f"Ошибка при идентификации тестировщика: {e}", exc_info=True)
             db.session.rollback()
-
