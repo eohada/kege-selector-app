@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 @login_required
 def dashboard():
     """Главная страница удаленной админки"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -39,7 +39,7 @@ def dashboard():
 @login_required
 def select_environment():
     """Выбор окружения"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -66,7 +66,7 @@ def select_environment():
 @login_required
 def environment_status():
     """API: Получить статус окружений"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
     
     env_statuses = get_all_environments_status()
@@ -80,7 +80,7 @@ def environment_status():
 @login_required
 def users_list():
     """Список пользователей из выбранного окружения"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -192,7 +192,7 @@ def _load_users_for_edit():
 @login_required
 def user_new():
     """Создание нового пользователя"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -269,7 +269,7 @@ def user_new():
 @login_required
 def user_edit(user_id):
     """Редактирование пользователя"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -344,7 +344,7 @@ def user_edit(user_id):
 @login_required
 def testers():
     """Управление тестерами"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -401,7 +401,7 @@ def testers():
 @login_required
 def tester_toggle(tester_id):
     """Переключение активности тестера"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -427,7 +427,7 @@ def tester_toggle(tester_id):
 @login_required
 def tester_delete(tester_id):
     """Удаление тестера"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -450,7 +450,7 @@ def tester_delete(tester_id):
 @login_required
 def bot_panel():
     """Админка Telegram-бота в удаленной панели."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -499,7 +499,7 @@ def bot_panel():
 @login_required
 def bot_admins_add():
     """Добавить администратора бота в выбранном окружении."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -525,7 +525,7 @@ def bot_admins_add():
 @login_required
 def bot_admins_toggle(admin_id: int):
     """Переключить статус администратора бота."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -546,7 +546,7 @@ def bot_admins_toggle(admin_id: int):
 @login_required
 def bot_admins_delete(admin_id: int):
     """Удалить администратора бота."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -567,7 +567,7 @@ def bot_admins_delete(admin_id: int):
 @login_required
 def bot_broadcast():
     """Создать рассылку новостей в Telegram."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -600,7 +600,7 @@ def bot_broadcast():
 @login_required
 def bot_error_reply(report_id: int):
     """Ответить на сообщение об ошибке."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -626,7 +626,7 @@ def bot_error_reply(report_id: int):
 @login_required
 def bot_error_status(report_id: int):
     """Изменить статус сообщения об ошибке."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -652,7 +652,7 @@ def bot_error_status(report_id: int):
 @login_required
 def bot_unlink():
     """Отвязать Telegram от профиля в выбранном окружении."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -678,7 +678,7 @@ def bot_unlink():
 @login_required
 def audit_logs():
     """Просмотр логов действий из удаленного окружения"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -761,7 +761,7 @@ def audit_logs():
 @login_required
 def maintenance():
     """Управление техническими работами"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -823,7 +823,7 @@ def permissions():
     """Управление правами доступа (RBAC)"""
     logger.info(f"Permissions page accessed: method={request.method}, user={current_user.username if current_user.is_authenticated else 'anonymous'}")
     
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         logger.warning(f"Non-creator user {current_user.username} attempted to access permissions page")
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
@@ -947,7 +947,7 @@ def permissions():
 @login_required
 def sync_reference_prototypes():
     """Синхронизация всех эталонов (1–27) в банк заданий (на выбранном окружении)."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -993,7 +993,7 @@ def sync_reference_prototypes():
 @login_required
 def task_formator():
     """Формироватор банка заданий (remote-admin UI)."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -1047,7 +1047,7 @@ def task_formator():
 @login_required
 def task_solutions():
     """Просмотр решений заданий (для создателя)."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -1106,7 +1106,7 @@ def task_solutions():
 @login_required
 def create_pack():
     """Быстрое создание пака: ученик + родитель + тариф."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     

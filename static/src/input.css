@@ -1813,7 +1813,18 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
 
   /* ═══════════════ REMOTE ADMIN ═══════════════ */
 
+  .app-shell:has(.remote-sidebar) {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    grid-template-columns: 240px 1fr;
+    grid-template-areas:
+      "header header"
+      "sidebar main";
+    min-height: 100vh;
+  }
+
   .remote-header {
+    grid-area: header;
     @apply flex items-center justify-between;
     background: #FFFFFF; padding: 0.75rem 1.5rem;
     border-bottom: 1px solid #E2E8F0;
@@ -1825,6 +1836,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     background: #FFF1F2; color: #EF4444;
   }
   .remote-sidebar {
+    grid-area: sidebar;
     @apply shrink-0; width: 240px; background: #FFFFFF; padding: 1rem;
     border-right: 1px solid #E2E8F0;
   }
@@ -1835,7 +1847,10 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     transition: all 0.12s ease;
   }
   .remote-sidebar-link:hover { background: #F8FAFC; color: #0F172A; }
-  .remote-main { @apply flex-1; padding: 1.5rem; }
+  .remote-main {
+    grid-area: main;
+    @apply flex-1; padding: 1.5rem;
+  }
 
   /* ═══════════════ MASCOT ═══════════════ */
 
@@ -1927,6 +1942,10 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     .filters-actions { @apply flex-col; }
     .filters-actions .neo-button { @apply w-full; }
     .remote-sidebar { @apply hidden; }
+    .app-shell:has(.remote-sidebar) {
+      display: flex;
+      flex-direction: column;
+    }
     .toast-container { left: 1rem; right: 1rem; max-width: none; top: 5rem; }
     .dock-wrapper { padding: 0.5rem 0.75rem 0; }
     .dock { border-radius: 14px; padding: 0.4rem 0.5rem; }

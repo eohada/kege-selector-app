@@ -43,7 +43,7 @@ def _extract_request_data():
 @login_required
 def api_users_list():
     """Получить список пользователей из выбранного окружения"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
     
     try:
@@ -67,7 +67,7 @@ def api_users_list():
 @login_required
 def api_user_manage(user_id):
     """Управление пользователем (GET, POST для обновления, DELETE для удаления)"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
     
     try:
@@ -101,7 +101,7 @@ def api_user_manage(user_id):
 @login_required
 def api_users_graph():
     """Proxy: граф связей пользователей из выбранного окружения."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
 
     try:
@@ -125,7 +125,7 @@ def api_users_graph():
 @login_required
 def api_family_tie_manage(tie_id: int):
     """Proxy: управление FamilyTie (для графа связей)."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
 
     try:
@@ -149,7 +149,7 @@ def api_family_tie_manage(tie_id: int):
 @login_required
 def api_enrollment_manage(enrollment_id: int):
     """Proxy: управление Enrollment (для графа связей)."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
 
     try:
@@ -173,7 +173,7 @@ def api_enrollment_manage(enrollment_id: int):
 @login_required
 def api_family_tie_create():
     """Proxy: создать FamilyTie (для графа связей)."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
 
     try:
@@ -193,7 +193,7 @@ def api_family_tie_create():
 @login_required
 def api_enrollment_create():
     """Proxy: создать Enrollment (для графа связей)."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
 
     try:
@@ -213,7 +213,7 @@ def api_enrollment_create():
 @login_required
 def api_stats():
     """Получить статистику из выбранного окружения"""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
     
     try:
@@ -245,7 +245,7 @@ if csrf:
 @login_required
 def api_task_formator_list():
     """Proxy: список заданий формироватора из выбранного окружения."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
 
     try:
@@ -269,7 +269,7 @@ def api_task_formator_list():
 @login_required
 def api_task_formator_task(task_id: int):
     """Proxy: карточка задания формироватора."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
 
     try:
@@ -288,7 +288,7 @@ def api_task_formator_task(task_id: int):
 @login_required
 def api_task_formator_save(task_id: int):
     """Proxy: сохранить ревью задания."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
 
     try:
@@ -308,7 +308,7 @@ def api_task_formator_save(task_id: int):
 @login_required
 def api_task_solution_get(task_id: int):
     """Proxy: получить решение задания."""
-    if not current_user.is_creator():
+    if not (current_user.is_creator() or current_user.is_admin()):
         return jsonify({'error': 'Access denied'}), 403
 
     try:

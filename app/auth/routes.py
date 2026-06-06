@@ -130,8 +130,8 @@ def login():
                         logger.error(f"Error checking is_creator: {e}", exc_info=True)
                         is_creator = False
                     
-                    if is_admin_env and not is_creator:
-                        flash('Доступ к админ-панели разрешен только Создателю', 'danger')
+                    if is_admin_env and not (is_creator or user.is_admin()):
+                        flash('Доступ к админ-панели разрешен только Создателю или Администратору', 'danger')
                         return render_template('remote_admin/login.html' if is_admin_env else 'auth/login.html', form=form)
                     
                     user.last_login = moscow_now()
