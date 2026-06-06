@@ -7,9 +7,11 @@ from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 
 from app.schedule import schedule_bp
-from app.models import Lesson, Student, User, RecurringLessonSlot, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, Student, User, RecurringLessonSlot, FamilyTie, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from app.auth.rbac_utils import get_user_scope, has_permission
 from app.notifications.service import notify_student_and_parents
+from app.telegram.user_notify import notify_user_by_id
+from app.utils.datetime_utc import effective_timezone_name
 from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local, lesson_storage_to_utc
 from core.audit_logger import audit_logger
 import secrets
@@ -31,6 +33,17 @@ def _add_months(src: date, months: int) -> date:
     year = src.year + month_idx // 12
     month = month_idx % 12 + 1
     return date(year, month, 1)
+
+
+def _schedule_timezone_from_user() -> str:
+    try:
+        tz = effective_timezone_name(current_user)
+        tz_l = (tz or '').lower()
+        if 'tomsk' in tz_l or tz_l == 'asia/tomsk':
+            return 'tomsk'
+    except Exception:
+        pass
+    return 'moscow'
 
 def _resolve_accessible_student_ids_for_current_user() -> list[int] | None:
     """
@@ -213,6 +226,40 @@ def _student_has_overlap(student_id: int, start_dt: datetime, duration_min: int,
     return False
 
 
+def _student_parent_user_ids(student_id: int | None) -> list[int]:
+    if not student_id:
+        return []
+    try:
+        return [
+            int(t.parent_id)
+            for t in FamilyTie.query.filter_by(student_id=student_id, is_confirmed=True).all()
+            if t and t.parent_id
+        ]
+    except Exception:
+        return []
+
+
+def _notify_lesson_scheduled(lesson: Lesson, student: Student, title: str) -> None:
+    """Direct Telegram delivery for lesson creation/reschedule so it does not depend on background mirroring."""
+    try:
+        if student and student.user_id:
+            notify_user_by_id(
+                int(student.user_id),
+                title,
+                kind='lesson_scheduled',
+                reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)}]]},
+            )
+        for parent_id in _student_parent_user_ids(student.student_id if student else None):
+            notify_user_by_id(
+                int(parent_id),
+                title,
+                kind='lesson_scheduled',
+                reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)}]]},
+            )
+    except Exception as e:
+        logger.warning('Direct lesson_scheduled notify failed: %s', e)
+
+
 def _tutor_has_overlap(tutor_user_id: int, start_dt: datetime, duration_min: int, exclude_lesson_id: int | None = None) -> bool:
     """
     Проверка пересечения по преподавателю (чтобы не поставить 2 урока одновременно).
@@ -262,7 +309,7 @@ def schedule():
         view_mode = 'week'
     status_filter = request.args.get('status', '')
     category_filter = request.args.get('category', '')
-    timezone = request.args.get('timezone', 'moscow')
+    timezone = request.args.get('timezone') or _schedule_timezone_from_user()
     student_filter = request.args.get('student_id', type=int)
 
     display_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
@@ -559,7 +606,7 @@ def schedule_create_lesson():
         lesson_time_str = request.form.get('lesson_time')
         duration = request.form.get('duration', 60, type=int)
         lesson_type = request.form.get('lesson_type', 'regular')
-        timezone = request.form.get('timezone', 'moscow')
+        timezone = request.form.get('timezone') or _schedule_timezone_from_user()
         lesson_mode = request.form.get('lesson_mode', 'single')
         repeat_count = request.form.get('repeat_count', type=int)
 
@@ -629,13 +676,12 @@ def schedule_create_lesson():
             for created_lesson in created_lessons:
                 if created_lesson.status == 'planned':
                     date_str = created_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if created_lesson.lesson_date else ''
-                    notify_student_and_parents(
+                    _notify_lesson_scheduled(
+                        created_lesson,
                         student,
-                        kind='lesson_scheduled',
-                        title='Новый урок запланирован',
-                        body=(created_lesson.topic or '').strip() or None,
-                        link_url=url_for('lessons.lesson_view', lesson_id=created_lesson.lesson_id),
-                        meta={'lesson_id': created_lesson.lesson_id, 'date': date_str, 'topic': created_lesson.topic or ''},
+                        f'📅 <b>Новый урок запланирован</b>\n\n'
+                        f'{date_str}\n'
+                        f'{(created_lesson.topic or "").strip() or "Без темы"}',
                     )
             try:
                 db.session.commit()
@@ -721,7 +767,7 @@ def schedule_create_lesson():
     week_offset = request.form.get('week_offset', 0, type=int)
     status_filter = request.form.get('status_filter', '')
     category_filter = request.form.get('category_filter', '')
-    timezone = request.form.get('timezone', 'moscow')
+    timezone = request.form.get('timezone') or _schedule_timezone_from_user()
 
     params = {'week': week_offset, 'timezone': timezone}
     if status_filter:
@@ -748,7 +794,7 @@ def schedule_reschedule_lesson(lesson_id: int):
 
     date_str = (data.get('lesson_date') or '').strip()
     time_str = (data.get('lesson_time') or '').strip()
-    timezone = (data.get('timezone') or 'moscow').strip()
+    timezone = (data.get('timezone') or _schedule_timezone_from_user()).strip()
 
     if not date_str or not time_str:
         return jsonify({'success': False, 'error': 'lesson_date и lesson_time обязательны'}), 400
@@ -772,13 +818,12 @@ def schedule_reschedule_lesson(lesson_id: int):
         try:
             if lesson.status == 'planned' and lesson.student:
                 date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
-                notify_student_and_parents(
+                _notify_lesson_scheduled(
+                    lesson,
                     lesson.student,
-                    kind='lesson_scheduled',
-                    title='Урок перенесён',
-                    body=(lesson.topic or '').strip() or None,
-                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
-                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or '', 'rescheduled': True},
+                    f'📅 <b>Урок перенесён</b>\n\n'
+                    f'{date_str}\n'
+                    f'{(lesson.topic or "").strip() or "Без темы"}',
                 )
                 try:
                     db.session.commit()
@@ -833,13 +878,10 @@ def schedule_set_status(lesson_id: int):
         try:
             if status == 'planned' and old_status != 'planned' and lesson.student:
                 date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
-                notify_student_and_parents(
+                _notify_lesson_scheduled(
+                    lesson,
                     lesson.student,
-                    kind='lesson_scheduled',
-                    title='Новый урок запланирован',
-                    body=(lesson.topic or '').strip() or None,
-                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
-                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
+                    f'📅 <b>Новый урок запланирован</b>\n\n{date_str}\n{(lesson.topic or "").strip() or "Без темы"}',
                 )
                 try:
                     db.session.commit()
@@ -887,7 +929,7 @@ def schedule_update_lesson(lesson_id: int):
     topic = data.get('topic')
     lesson_date = data.get('lesson_date')
     lesson_time = data.get('lesson_time')
-    timezone = (data.get('timezone') or 'moscow').strip()
+    timezone = (data.get('timezone') or _schedule_timezone_from_user()).strip()
 
     new_lesson_date = None
     if lesson_date is not None and lesson_time is not None:
@@ -948,13 +990,12 @@ def schedule_update_lesson(lesson_id: int):
         try:
             if new_lesson_date is not None and lesson.status == 'planned' and lesson.student:
                 date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
-                notify_student_and_parents(
+                _notify_lesson_scheduled(
+                    lesson,
                     lesson.student,
-                    kind='lesson_scheduled',
-                    title='Урок перенесён',
-                    body=(lesson.topic or '').strip() or None,
-                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
-                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or '', 'rescheduled': True},
+                    f'📅 <b>Урок перенесён</b>\n\n'
+                    f'{date_str}\n'
+                    f'{(lesson.topic or "").strip() or "Без темы"}',
                 )
                 try:
                     db.session.commit()
@@ -1492,13 +1533,10 @@ def schedule_templates_apply_week():
         for lesson, st in created_pairs:
             if lesson.status == 'planned':
                 date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
-                notify_student_and_parents(
+                _notify_lesson_scheduled(
+                    lesson,
                     st,
-                    kind='lesson_scheduled',
-                    title='Новый урок запланирован',
-                    body=(lesson.topic or '').strip() or None,
-                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
-                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
+                    f'📅 <b>Новый урок запланирован</b>\n\n{date_str}\n{(lesson.topic or "").strip() or "Без темы"}',
                 )
         try:
             db.session.commit()

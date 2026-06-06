@@ -19,6 +19,7 @@ layout-teacher bg-boo-bg text-boo-textMain
 {% endblock %}
 
 {% block content %}
+{% set profile_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile else 'Europe/Moscow') %}
 <div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6 pb-12 pt-6 px-4 sm:px-6 lg:px-8">
     
     <!-- Кнопка Назад -->
@@ -141,30 +142,33 @@ layout-teacher bg-boo-bg text-boo-textMain
                     <i class="ph-fill ph-clock text-xl"></i> Часовой пояс
                 </h2>
                 <p class="text-xs text-muted dark:text-dark-muted leading-relaxed mb-5">
-                    Как отображать даты. «Авто» — часовой пояс браузера (обновляется при входе).
+                    Как отображать даты. Выбирай свой реальный пояс из списка, рядом сразу видно текущее время.
                 </p>
 
                 <div class="space-y-4">
                     <div class="space-y-1.5">
-                        <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-mode-select">Режим</label>
-                        <select id="tz-mode-select" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white focus:outline-none focus:border-boo-primary transition-all">
-                            <option value="auto" {% if (current_user.timezone_mode or 'auto') == 'auto' %}selected{% endif %}>Авто (браузер)</option>
-                            <option value="manual" {% if (current_user.timezone_mode or '') == 'manual' %}selected{% endif %}>Указать IANA</option>
+                        <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-iana-input">Пояс</label>
+                        <select id="tz-iana-input" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white focus:outline-none focus:border-boo-primary transition-all">
+                            <option value="Europe/Moscow" data-label="Москва">Москва</option>
+                            <option value="Asia/Tomsk" data-label="Томск">Томск</option>
+                            <option value="Europe/Kaliningrad" data-label="Калининград">Калининград</option>
+                            <option value="Asia/Yekaterinburg" data-label="Екатеринбург">Екатеринбург</option>
+                            <option value="Asia/Novosibirsk" data-label="Новосибирск">Новосибирск</option>
+                            <option value="Asia/Krasnoyarsk" data-label="Красноярск">Красноярск</option>
+                            <option value="Asia/Irkutsk" data-label="Иркутск">Иркутск</option>
+                            <option value="Asia/Vladivostok" data-label="Владивосток">Владивосток</option>
+                            <option value="UTC" data-label="UTC">UTC</option>
                         </select>
                     </div>
 
                     <div class="space-y-1.5">
-                        <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-iana-input">Часовой пояс (IANA)</label>
-                        <input type="text" id="tz-iana-input" list="tz-common-list" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-medium text-sm text-primary dark:text-white focus:outline-none focus:border-boo-primary transition-all" placeholder="Europe/Moscow" value="{{ current_user.timezone_iana or '' }}" {% if (current_user.timezone_mode or 'auto') != 'manual' %}disabled{% endif %}>
-                        <datalist id="tz-common-list">
-                            <option value="Europe/Moscow"></option>
-                            <option value="Europe/Kaliningrad"></option>
-                            <option value="Asia/Yekaterinburg"></option>
-                            <option value="Asia/Novosibirsk"></option>
-                            <option value="Asia/Vladivostok"></option>
-                            <option value="Europe/London"></option>
-                            <option value="UTC"></option>
-                        </datalist>
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Сейчас в выбранном поясе</span>
+                            <button type="button" id="tz-now-btn" class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.12] text-xs font-bold text-boo-primary hover:bg-surface-alt dark:hover:bg-white/[0.06]">Какая у меня сейчас дата и время</button>
+                        </div>
+                        <div id="tz-now-preview" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">
+                            —
+                        </div>
                     </div>
 
                     <button type="button" id="tz-save-btn" class="w-full py-3.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold rounded-xl border border-purple-200 dark:border-purple-800 shadow-sm transition-colors text-sm flex items-center justify-center gap-2">
@@ -504,18 +508,41 @@ layout-teacher bg-boo-bg text-boo-textMain
             }
         });
 
-        const tzMode = document.getElementById('tz-mode-select');
         const tzIana = document.getElementById('tz-iana-input');
         const tzSave = document.getElementById('tz-save-btn');
         const tzMsg = document.getElementById('tz-save-msg');
-        if (tzMode && tzIana) {
-            tzMode.addEventListener('change', () => {
-                tzIana.disabled = tzMode.value !== 'manual';
-            });
+        const tzNowBtn = document.getElementById('tz-now-btn');
+        const tzNowPreview = document.getElementById('tz-now-preview');
+        const tzProfile = {{ profile_tz | tojson }};
+
+        function renderTimezonePreview() {
+            if (!tzIana || !tzNowPreview) return;
+            const tz = tzIana.value || 'Europe/Moscow';
+            const now = new Date();
+            try {
+                tzNowPreview.textContent = now.toLocaleString('ru-RU', {
+                    timeZone: tz,
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+            } catch (e) {
+                tzNowPreview.textContent = now.toLocaleString('ru-RU');
+            }
+        }
+
+        if (tzIana) {
+            if (tzProfile) tzIana.value = tzProfile;
+            tzIana.addEventListener('change', renderTimezonePreview);
+            renderTimezonePreview();
+        }
+        if (tzNowBtn) {
+            tzNowBtn.addEventListener('click', renderTimezonePreview);
         }
         if (tzSave) {
             tzSave.addEventListener('click', async () => {
-                if (!tzMode) return;
                 const csrf = document.querySelector('meta[name="csrf-token"]');
                 try {
                     const r = await fetch('/api/me/timezone', {
@@ -525,8 +552,8 @@ layout-teacher bg-boo-bg text-boo-textMain
                             'X-CSRFToken': csrf ? csrf.getAttribute('content') : '',
                         },
                         body: JSON.stringify({
-                            timezone_mode: tzMode.value,
-                            timezone_iana: tzIana && !tzIana.disabled ? (tzIana.value || '').trim() : '',
+                            timezone_mode: 'manual',
+                            timezone_iana: tzIana ? (tzIana.value || '').trim() : '',
                         }),
                     });
                     const data = await r.json();

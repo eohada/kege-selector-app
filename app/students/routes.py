@@ -20,6 +20,7 @@ from app.students.utils import get_sorted_assignments
 from app.students.stats_service import StatsService
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.notifications.service import notify_student_and_parents
+from app.telegram.user_notify import notify_user_by_id
 from app.models import (
     Student,
     StudentTaskStatistics,
@@ -2448,14 +2449,13 @@ def lesson_new(student_id):
         try:
             if lesson.status == 'planned':
                 date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
-                notify_student_and_parents(
-                    student,
-                    kind='lesson_scheduled',
-                    title='Новый урок запланирован',
-                    body=(lesson.topic or '').strip() or None,
-                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
-                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
-                )
+                if student.user_id:
+                    notify_user_by_id(
+                        int(student.user_id),
+                        f'📅 <b>Новый урок запланирован</b>\n\n{date_str}\n{(lesson.topic or "").strip() or "Без темы"}',
+                        kind='lesson_scheduled',
+                        reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)}]]},
+                    )
                 try:
                     db.session.commit()
                 except Exception as e:
