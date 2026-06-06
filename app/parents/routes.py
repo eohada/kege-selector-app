@@ -120,8 +120,11 @@ def parent_dashboard():
             }
             
             try:
-                all_submissions = Submission.query.filter(
-                    Submission.student_id == selected_student.student_id
+                all_submissions = Submission.query.join(
+                    Assignment, Assignment.assignment_id == Submission.assignment_id
+                ).filter(
+                    Submission.student_id == selected_student.student_id,
+                    Assignment.is_active == True,  # noqa: E712  скрываем архивные
                 ).options(
                     joinedload(Submission.assignment)
                 ).order_by(Submission.assigned_at.desc()).all()

@@ -26,6 +26,7 @@ def telegram_deadline_reminders_task() -> dict:
             .filter(
                 Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED']),
                 Assignment.deadline.isnot(None),
+                Assignment.is_active == True,  # noqa: E712  не уведомляем по архивным
                 Student.user_id.isnot(None),
             )
         )

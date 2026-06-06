@@ -555,11 +555,14 @@ def student_profile(student_id):
         
         active_submissions = []
         try:
-            active_submissions = Submission.query.filter(
+            active_submissions = Submission.query.join(
+                Assignment, Submission.assignment_id == Assignment.assignment_id
+            ).filter(
                 Submission.student_id == student_id,
-                Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED'])
+                Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED']),
+                Assignment.is_active == True,  # noqa: E712  скрываем архивные
             ).options(
-                db.joinedload(Submission.assignment).joinedload(Assignment.created_by)
+                db.contains_eager(Submission.assignment).joinedload(Assignment.created_by)
             ).order_by(Submission.assigned_at.desc()).all()
         except Exception as e:
             logger.error(f"Error loading active submissions: {e}")
@@ -1080,18 +1083,33 @@ def student_gradebook(student_id: int):
     is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
     can_edit = is_teacher_actor and (has_permission(current_user, 'gradebook.edit') or is_tutor_actor)
 
-    entries = GradebookEntry.query.filter_by(student_id=student.student_id).order_by(
-        GradebookEntry.created_at.desc(),
-        GradebookEntry.entry_id.desc(),
-    ).all()
+    entries = (
+        GradebookEntry.query
+        .outerjoin(Submission, GradebookEntry.submission_id == Submission.submission_id)
+        .outerjoin(Assignment, Submission.assignment_id == Assignment.assignment_id)
+        .filter(
+            GradebookEntry.student_id == student.student_id,
+            db.or_(
+                GradebookEntry.submission_id.is_(None),  # ручные записи
+                Assignment.is_active == True,  # noqa: E712  скрываем архивные
+            )
+        )
+        .order_by(GradebookEntry.created_at.desc(), GradebookEntry.entry_id.desc())
+        .all()
+    )
 
     lessons = []
     submissions = []
     if can_edit:
         lessons = Lesson.query.filter_by(student_id=student.student_id).order_by(Lesson.lesson_date.desc()).all()
         submissions = (
-            Submission.query.filter_by(student_id=student.student_id)
-            .options(db.joinedload(Submission.assignment))
+            Submission.query
+            .join(Assignment, Submission.assignment_id == Assignment.assignment_id)
+            .filter(
+                Submission.student_id == student.student_id,
+                Assignment.is_active == True,  # noqa: E712  не показываем архивные
+            )
+            .options(db.contains_eager(Submission.assignment))
             .order_by(Submission.assigned_at.desc())
             .all()
         )

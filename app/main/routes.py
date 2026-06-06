@@ -795,12 +795,15 @@ def student_dashboard():
         completion_pct = 0
 
     try:
-        sub_query = Submission.query.filter(
+        sub_query = Submission.query.join(
+            Assignment, Submission.assignment_id == Assignment.assignment_id
+        ).filter(
             Submission.student_id == student.student_id,
-            Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED'])
-        ).options(db.joinedload(Submission.assignment))
+            Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED']),
+            Assignment.is_active == True,  # noqa: E712  скрываем архивные
+        ).options(db.contains_eager(Submission.assignment))
         if selected_course_id:
-            sub_query = sub_query.join(Assignment, Submission.assignment_id == Assignment.assignment_id).filter(
+            sub_query = sub_query.filter(
                 db.or_(Assignment.exam_course_id == selected_course_id, Assignment.exam_course_id.is_(None))
             )
         pending_submissions = sub_query.order_by(Submission.assigned_at.desc()).limit(12).all()
@@ -828,10 +831,21 @@ def student_dashboard():
         ]
 
     try:
-        recent_grades = GradebookEntry.query.filter_by(student_id=student.student_id).order_by(
-            GradebookEntry.created_at.desc(),
-            GradebookEntry.entry_id.desc()
-        ).limit(8).all()
+        # Исключаем записи журнала, связанные с архивными заданиями
+        recent_grades = (
+            GradebookEntry.query
+            .outerjoin(Submission, GradebookEntry.submission_id == Submission.submission_id)
+            .outerjoin(Assignment, Submission.assignment_id == Assignment.assignment_id)
+            .filter(
+                GradebookEntry.student_id == student.student_id,
+                db.or_(
+                    GradebookEntry.submission_id.is_(None),  # ручные записи — всегда показываем
+                    Assignment.is_active == True,  # noqa: E712
+                )
+            )
+            .order_by(GradebookEntry.created_at.desc(), GradebookEntry.entry_id.desc())
+            .limit(8).all()
+        )
     except Exception:
         recent_grades = []
 
@@ -843,9 +857,12 @@ def student_dashboard():
 
     completed_tasks = 0
     try:
-        completed_tasks = Submission.query.filter(
+        completed_tasks = Submission.query.join(
+            Assignment, Submission.assignment_id == Assignment.assignment_id
+        ).filter(
             Submission.student_id == student.student_id,
-            Submission.status.in_(['GRADED'])
+            Submission.status.in_(['GRADED']),
+            Assignment.is_active == True,  # noqa: E712  скрываем архивные
         ).count()
     except Exception:
         completed_tasks = 0
@@ -854,11 +871,17 @@ def student_dashboard():
     try:
         rows = (
             GradebookEntry.query
+            .outerjoin(Submission, GradebookEntry.submission_id == Submission.submission_id)
+            .outerjoin(Assignment, Submission.assignment_id == Assignment.assignment_id)
             .filter(
                 GradebookEntry.student_id == student.student_id,
                 GradebookEntry.score.isnot(None),
                 GradebookEntry.max_score.isnot(None),
                 GradebookEntry.max_score > 0,
+                db.or_(
+                    GradebookEntry.submission_id.is_(None),  # ручные записи — всегда учитываем
+                    Assignment.is_active == True,  # noqa: E712  скрываем архивные
+                )
             )
             .order_by(GradebookEntry.created_at.desc(), GradebookEntry.entry_id.desc())
             .limit(30)

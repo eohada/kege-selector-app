@@ -54,12 +54,13 @@ def telegram_daily_digest_task() -> dict:
                         'topic': l.topic or 'Занятие',
                     })
 
-                # Незакрытые задания
+                # Незакрытые задания (только активные, не архивированные)
                 pending_count = Submission.query.join(
                     Assignment, Assignment.assignment_id == Submission.assignment_id
                 ).filter(
                     Submission.student_id == student.student_id,
                     Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED']),
+                    Assignment.is_active == True,  # noqa: E712  не считаем архивные
                 ).count()
 
                 if notify_daily_digest(

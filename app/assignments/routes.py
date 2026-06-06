@@ -2975,6 +2975,7 @@ def submissions_list():
     submissions = Submission.query.join(Submission.assignment).filter(
         Submission.student_id == student.student_id,
         func.upper(func.coalesce(Submission.status, '')) != 'REVOKED',
+        Assignment.is_active == True,  # noqa: E712  скрываем архивные
     ).options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks),
         joinedload(Submission.assignment).joinedload(Assignment.created_by),
@@ -3061,6 +3062,10 @@ def submission_view(submission_id):
     assignment = submission.assignment
     if not assignment:
         flash('Работа не найдена', 'danger')
+        return redirect(url_for('assignments.submissions_list'))
+    # Запрещаем доступ студента к архивным заданиям
+    if not assignment.is_active:
+        flash('Это задание было архивировано преподавателем.', 'info')
         return redirect(url_for('assignments.submissions_list'))
     
     try:
@@ -3218,6 +3223,10 @@ def submission_start(submission_id):
                 {'normalized_status': normalize_legacy_status(submission.status)}
             )
             return jsonify({'success': False, 'error': 'Работа уже начата или сдана'}), 400
+
+        # Блокируем запуск архивного задания
+        if not submission.assignment.is_active:
+            return jsonify({'success': False, 'error': 'Задание архивировано'}), 403
         
         now = utc_now()
         deadline = _ensure_aware_datetime(submission.assignment.deadline)
@@ -3531,6 +3540,10 @@ def submission_autosave(submission_id):
     
     if normalize_legacy_status(submission.status) not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
         return jsonify({'success': False, 'error': 'Нельзя сохранять ответы для этой работы'}), 400
+
+    # Блокируем автосохранение для архивных заданий
+    if not submission.assignment or not submission.assignment.is_active:
+        return jsonify({'success': False, 'error': 'Задание архивировано'}), 403
     
     try:
         data = request.get_json()
@@ -3600,6 +3613,9 @@ def submission_submit_task(submission_id):
         if normalize_legacy_status(submission.status) not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
             return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
         assignment = submission.assignment
+        # Блокируем сдачу архивного задания
+        if not assignment or not assignment.is_active:
+            return jsonify({'success': False, 'error': 'Задание архивировано'}), 403
         if not assignment.allow_separate_submission or not getattr(assignment, 'attempts_per_task', False):
             return jsonify({'success': False, 'error': 'Сдача по одному заданию не разрешена для этой работы'}), 400
         if normalize_legacy_status(submission.status) != 'RETURNED' and getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None):
@@ -3734,8 +3750,12 @@ def submission_submit(submission_id):
         
         if normalize_legacy_status(submission.status) not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
             return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
-        
+
         assignment = submission.assignment
+        # Блокируем сдачу архивного задания
+        if not assignment or not assignment.is_active:
+            return jsonify({'success': False, 'error': 'Задание архивировано'}), 403
+
         data = request.get_json(silent=True) or {}
         raw_task_times = data.get('task_times') if isinstance(data, dict) else {}
         task_times_by_assignment_task_id: dict[int, int] = {}

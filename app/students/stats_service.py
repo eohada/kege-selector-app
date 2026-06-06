@@ -42,14 +42,18 @@ class StatsService:
         if getattr(self, '_submissions_cache', None) is None:
             q = (
                 Submission.query
-                .filter(Submission.student_id == self.student_id)
+                .join(Assignment, Submission.assignment_id == Assignment.assignment_id)
+                .filter(
+                    Submission.student_id == self.student_id,
+                    Assignment.is_active == True,  # noqa: E712  скрываем архивные
+                )
             )
             if self.course_id:
-                q = q.join(Assignment, Submission.assignment_id == Assignment.assignment_id).filter(
+                q = q.filter(
                     db.or_(Assignment.exam_course_id == self.course_id, Assignment.exam_course_id.is_(None))
                 )
             self._submissions_cache = q.options(
-                db.joinedload(Submission.assignment),
+                db.contains_eager(Submission.assignment),
                 db.joinedload(Submission.answers)
                   .joinedload(Answer.assignment_task)
                   .joinedload(AssignmentTask.task)
