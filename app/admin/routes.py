@@ -110,7 +110,8 @@ _ADMIN_UI_GET_ENDPOINTS = {
 
 @admin_bp.before_request
 def _redirect_admin_ui_to_remote():
-    if os.environ.get('ENVIRONMENT') == 'admin':
+    is_admin_env = os.environ.get('ENVIRONMENT') == 'admin' or (request.host or '').split(':')[0].lower().startswith('admin.')
+    if is_admin_env:
         return None
     if request.method != 'GET':
         return None

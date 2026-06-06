@@ -13,7 +13,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from app.admin import admin_bp
 import re
 
-from app.models import User, AuditLog, MaintenanceMode, db, UserProfile, Tasks, TaskReview, TaskSolution
+from app.models import User, AuditLog, MaintenanceMode, db, UserProfile, Tasks, TaskReview, TaskSolution, UserSubscription
 from app.models import FamilyTie, Enrollment, Student, Lesson, RolePermission, UserRole
 from app.models import BotAdmin, BotErrorReport, UserNotification
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT_ROLE_PERMISSIONS
@@ -403,7 +403,6 @@ def remote_admin_api_users():
                 return jsonify({'error': 'username already exists'}), 409
             
             if role == 'student' and platform_id:
-                from app.models import Student
                 from app.utils.student_id_manager import is_valid_three_digit_id
                 
                 if not is_valid_three_digit_id(platform_id):
@@ -447,7 +446,6 @@ def remote_admin_api_users():
             db.session.add(profile)
             
             if role == 'student':
-                from app.models import Student
                 from app.utils.student_id_manager import assign_platform_id_if_needed
                 student_record = Student.query.filter_by(user_id=user.id).first()
                 if not student_record:
@@ -1086,7 +1084,6 @@ def remote_admin_api_user(user_id):
             
             student = None
             if user.role == 'student':
-                from app.models import Student
                 student = Student.query.filter_by(user_id=user_id).first()
             
             user_data = {
@@ -1194,7 +1191,6 @@ def remote_admin_api_user(user_id):
                 user.password_hash = generate_password_hash(data['password'])
             
             if user.role == 'student':
-                from app.models import Student
                 from app.utils.student_id_manager import is_valid_three_digit_id, assign_platform_id_if_needed
                 
                 platform_id = (data.get('platform_id') or '').strip() or None  # comment
@@ -1281,13 +1277,11 @@ def remote_admin_api_user(user_id):
                 logger.warning(f"Error deleting enrollments: {e}")
             
             try:
-                from app.models import UserSubscription
                 UserSubscription.query.filter_by(user_id=user_id).delete()
             except Exception as e:
                 logger.warning(f"Error deleting subscriptions: {e}")
             
             try:
-                from app.models import UserNotification
                 UserNotification.query.filter_by(user_id=user_id).delete()
             except Exception as e:
                 logger.warning(f"Error deleting notifications: {e}")

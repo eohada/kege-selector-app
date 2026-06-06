@@ -35,7 +35,7 @@ class LoginForm(FlaskForm):
 
 def _redirect_after_login(user):
     """Редирект после входа (для cross_env)."""
-    is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
+    is_admin_env = os.environ.get('ENVIRONMENT') == 'admin' or (request.host or '').split(':')[0].lower().startswith('admin.')
     if is_admin_env:
         return url_for('remote_admin.dashboard')
     if user.is_parent():
@@ -62,7 +62,7 @@ def _redirect_after_login(user):
 def login():
     """Страница входа"""
     try:
-        is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
+        is_admin_env = os.environ.get('ENVIRONMENT') == 'admin' or (request.host or '').split(':')[0].lower().startswith('admin.')
         is_demo_site = current_app.config.get('DEMO_SITE') is True
         if not is_demo_site and current_app.config.get('DEMO_HOST'):
             req_host = (request.host or '').split(':')[0].lower()
@@ -206,7 +206,7 @@ def login():
     except Exception as e:
         logger.error(f"Error in login route: {e}", exc_info=True)
         flash('Произошла ошибка при обработке запроса. Попробуйте позже.', 'danger')
-        is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
+        is_admin_env = os.environ.get('ENVIRONMENT') == 'admin' or (request.host or '').split(':')[0].lower().startswith('admin.')
         form = LoginForm()
         return render_template('remote_admin/login.html' if is_admin_env else 'auth/login.html', form=form), 500
 

@@ -325,7 +325,8 @@ def setup_first_user():
 @main_bp.route('/landing')
 def landing():
     """Гостевая страница (landing page) - доступна без авторизации"""
-    if os.environ.get('ENVIRONMENT') == 'admin':
+    is_admin_env = os.environ.get('ENVIRONMENT') == 'admin' or (request.host or '').split(':')[0].lower().startswith('admin.')
+    if is_admin_env:
         return redirect(url_for('remote_admin.dashboard'))
     # На демо-сайте или при заходе на демо-хост — сразу страница выбора экзамена
     is_demo = current_app.config.get('DEMO_SITE')
@@ -341,7 +342,8 @@ def landing():
 @main_bp.route('/home')
 def index():
     """Главная страница с описанием платформы"""
-    if os.environ.get('ENVIRONMENT') == 'admin':
+    is_admin_env = os.environ.get('ENVIRONMENT') == 'admin' or (request.host or '').split(':')[0].lower().startswith('admin.')
+    if is_admin_env:
         return redirect(url_for('remote_admin.dashboard'))
 
     if current_user.is_authenticated:
