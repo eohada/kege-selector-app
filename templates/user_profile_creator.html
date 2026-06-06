@@ -202,6 +202,25 @@
                     <textarea id="about_me" name="about_me" class="neo-textarea">{{ current_user.about_me or '' }}</textarea>
                 </div>
                 <div class="neo-field">
+                    <label class="neo-label" for="creator_tz_iana">Часовой пояс</label>
+                    <select id="creator_tz_iana" name="creator_tz_iana" class="neo-input">
+                        <option value="Europe/Moscow" {% if creator_tz == 'Europe/Moscow' %}selected{% endif %}>Москва</option>
+                        <option value="Asia/Tomsk" {% if creator_tz == 'Asia/Tomsk' %}selected{% endif %}>Томск</option>
+                        <option value="Europe/Kaliningrad" {% if creator_tz == 'Europe/Kaliningrad' %}selected{% endif %}>Калининград</option>
+                        <option value="Asia/Yekaterinburg" {% if creator_tz == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург</option>
+                        <option value="Asia/Novosibirsk" {% if creator_tz == 'Asia/Novosibirsk' %}selected{% endif %}>Новосибирск</option>
+                        <option value="Asia/Krasnoyarsk" {% if creator_tz == 'Asia/Krasnoyarsk' %}selected{% endif %}>Красноярск</option>
+                        <option value="Asia/Irkutsk" {% if creator_tz == 'Asia/Irkutsk' %}selected{% endif %}>Иркутск</option>
+                        <option value="Asia/Vladivostok" {% if creator_tz == 'Asia/Vladivostok' %}selected{% endif %}>Владивосток</option>
+                        <option value="UTC" {% if creator_tz == 'UTC' %}selected{% endif %}>UTC</option>
+                    </select>
+                    <div class="mt-2 flex items-center justify-between gap-3">
+                        <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Сейчас в выбранном поясе</span>
+                        <button type="button" class="text-xs font-bold text-boo-primary" id="creator-modal-tz-now-btn">Какая у меня сейчас дата и время</button>
+                    </div>
+                    <div id="creator-modal-tz-now-preview" class="mt-2 w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">—</div>
+                </div>
+                <div class="neo-field">
                     <label class="neo-label" for="telegram_link">Telegram</label>
                     <input type="text" id="telegram_link" name="telegram_link" class="neo-input" value="{{ current_user.telegram_link or '' }}" placeholder="https://t.me/...">
                 </div>
@@ -406,8 +425,11 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCreatorTelegramBind();
 
     const tzSelect = document.getElementById('creator-tz-iana');
+    const modalTzSelect = document.getElementById('creator_tz_iana');
     const tzPreview = document.getElementById('creator-tz-now-preview');
+    const modalTzPreview = document.getElementById('creator-modal-tz-now-preview');
     const tzButton = document.getElementById('creator-tz-now-btn');
+    const modalTzButton = document.getElementById('creator-modal-tz-now-btn');
     const tzSave = document.getElementById('creator-tz-save-btn');
     const tzMsg = document.getElementById('creator-tz-save-msg');
 
@@ -421,6 +443,19 @@ document.addEventListener('DOMContentLoaded', () => {
         tzSelect.addEventListener('change', renderTimezone);
         tzSelect.addEventListener('input', renderTimezone);
         renderTimezone();
+    }
+    if (modalTzSelect) {
+        const renderModalTimezone = () => {
+            if (!modalTzPreview) return;
+            const tz = modalTzSelect.value || 'Europe/Moscow';
+            modalTzPreview.textContent = `${formatTimezoneNow(tz)} · ${tz}`;
+        };
+        modalTzSelect.addEventListener('change', renderModalTimezone);
+        modalTzSelect.addEventListener('input', renderModalTimezone);
+        renderModalTimezone();
+        if (modalTzButton) {
+            modalTzButton.addEventListener('click', renderModalTimezone);
+        }
     }
     if (tzButton) {
         tzButton.addEventListener('click', renderTimezone);

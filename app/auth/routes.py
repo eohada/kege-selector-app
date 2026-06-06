@@ -1010,6 +1010,18 @@ def profile_update():
         if 'telegram_link' in data:
             current_user.telegram_link = data['telegram_link'].strip()[:200]
 
+        tz_value = None
+        if request.is_json and isinstance(data, dict):
+            tz_value = (data.get('creator_tz_iana') or data.get('timezone_iana') or '').strip()
+        else:
+            tz_value = (request.form.get('creator_tz_iana') or request.form.get('timezone_iana') or '').strip()
+        if tz_value:
+            current_user.timezone_mode = 'manual'
+            current_user.timezone_iana = tz_value[:64]
+            prof = getattr(current_user, 'profile', None)
+            if prof:
+                prof.timezone = tz_value[:50]
+
         if getattr(current_user, 'is_creator', lambda: False)():
             magic_in_payload = False
             magic_on = False
