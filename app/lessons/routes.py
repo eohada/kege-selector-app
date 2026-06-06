@@ -24,6 +24,7 @@ from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
 from app.models import FamilyTie  # для доступа родителя к диалогам
 from app.utils.course_tasks import get_task_numbers
+from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local
 
 logger = logging.getLogger(__name__)
 
@@ -146,17 +147,8 @@ def lesson_edit(lesson_id):
         form.timezone.data = user_tz
         
         if lesson.lesson_date:
-            ld = lesson.lesson_date
-            if ld.tzinfo is None:
-                lu = ld.replace(tzinfo=MOSCOW_TZ).astimezone(dt_timezone.utc)
-            else:
-                lu = ld.astimezone(dt_timezone.utc)
-            lesson_date_msk = lu.astimezone(MOSCOW_TZ)
-            if user_tz == 'tomsk':
-                lesson_date_local = lesson_date_msk.astimezone(TOMSK_TZ)
-            else:
-                lesson_date_local = lesson_date_msk
-            form.lesson_date.data = lesson_date_local.replace(tzinfo=None)
+            lesson_date_local = lesson_storage_to_local(lesson.lesson_date, user_tz)
+            form.lesson_date.data = lesson_date_local.replace(tzinfo=None) if lesson_date_local else None
 
     if form.validate_on_submit():
         ensure_introductory_without_homework(form)
@@ -166,14 +158,11 @@ def lesson_edit(lesson_id):
         
         if lesson_date_local.tzinfo is not None:
             lesson_date_local = lesson_date_local.replace(tzinfo=None)
-        
-        if timezone == 'tomsk':
-            lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
-            lesson.lesson_date = lesson_date_local.astimezone(dt_timezone.utc)
-            logger.debug(f"Томское время: {lesson_date_local}, UTC: {lesson.lesson_date}")
-        else:
-            lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
-            lesson.lesson_date = lesson_date_local.astimezone(dt_timezone.utc)
+        lesson.lesson_date = parse_local_lesson_datetime(
+            lesson_date_local.strftime('%Y-%m-%d'),
+            lesson_date_local.strftime('%H:%M'),
+            timezone,
+        )
         
         lesson.lesson_type = form.lesson_type.data
         lesson.duration = form.duration.data
@@ -342,7 +331,7 @@ def lesson_complete(lesson_id):
                 if 'tomsk' in current_user.profile.timezone.lower() or 'Asia/Tomsk' in current_user.profile.timezone:
                     user_tz = 'tomsk'
             
-            new_lesson_date = _parse_local_datetime(lesson_date_str, lesson_time_str, user_tz)
+            new_lesson_date = parse_local_lesson_datetime(lesson_date_str, lesson_time_str, user_tz)
             lesson.lesson_date = new_lesson_date
         except Exception as e:
             logger.warning(f"Ошибка при обновлении времени урока {lesson_id}: {e}")
@@ -1123,6 +1112,18 @@ def lesson_task_teacher_comment_add(lesson_id, lesson_task_id):  # comment
         db.session.rollback()  # comment
         logger.error(f"Failed to add teacher comment: {e}", exc_info=True)  # comment
         return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500  # comment
+    try:  # comment
+        if getattr(lesson_task, 'lesson', None) and lesson_task.lesson.student and lesson_task.lesson.student.user_id:  # comment
+            notify_student_and_parents(  # comment
+                lesson_task.lesson.student,  # comment
+                kind='lesson_comment',  # comment
+                title='Новый комментарий к заданию урока',  # comment
+                body=body,  # comment
+                link_url=url_for('lessons.lesson_homework_view', lesson_id=lesson_id) + f'#task-{lesson_task.lesson_task_id}',  # comment
+                meta={'lesson_id': lesson_id, 'lesson_task_id': lesson_task.lesson_task_id},  # comment
+            )  # comment
+    except Exception as notify_err:  # comment
+        logger.warning('Failed to notify lesson task comment: %s', notify_err, exc_info=True)  # comment
     tz = 'Europe/Moscow'  # comment
     try:  # comment
         if getattr(current_user, 'profile', None) and current_user.profile.timezone:  # comment
@@ -2025,8 +2026,8 @@ def lesson_messages_send(lesson_id: int):
         if not current_user.is_student():
             notify_student_and_parents(
                 lesson.student,
-                kind='lesson_message',
-                title='Новое сообщение по уроку',
+                kind='lesson_comment',
+                title='Новый комментарий по уроку',
                 body=body,
                 link_url=url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) + '#tab=chat',
                 meta={'lesson_id': lesson.lesson_id},

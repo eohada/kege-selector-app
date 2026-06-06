@@ -10,6 +10,7 @@ from app.schedule import schedule_bp
 from app.models import Lesson, Student, User, RecurringLessonSlot, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from app.auth.rbac_utils import get_user_scope, has_permission
 from app.notifications.service import notify_student_and_parents
+from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local, lesson_storage_to_utc
 from core.audit_logger import audit_logger
 import secrets
 
@@ -181,35 +182,32 @@ def _dt_to_ics_local(dt_naive_msk: datetime, tz) -> str:
 
 
 def _parse_local_datetime(date_str: str, time_str: str, timezone: str):
-    input_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
-    lesson_datetime_str = f"{date_str} {time_str}"
-    lesson_datetime_local = datetime.strptime(lesson_datetime_str, '%Y-%m-%d %H:%M')
-    lesson_datetime_local = lesson_datetime_local.replace(tzinfo=input_tz)
-    lesson_datetime_msk = lesson_datetime_local.astimezone(MOSCOW_TZ)
-    return lesson_datetime_msk.replace(tzinfo=None)
+    return parse_local_lesson_datetime(date_str, time_str, timezone)
 
 
 def _student_has_overlap(student_id: int, start_dt: datetime, duration_min: int, exclude_lesson_id: int | None = None) -> bool:
     if not student_id or not start_dt or not duration_min:
         return False
-    end_dt = start_dt + timedelta(minutes=duration_min)
-
-    day_start = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    day_end = day_start + timedelta(days=1)
+    start_dt_utc = lesson_storage_to_utc(start_dt)
+    end_dt_utc = lesson_storage_to_utc(start_dt + timedelta(minutes=duration_min))
+    if not start_dt_utc or not end_dt_utc:
+        return False
 
     q = Lesson.query.filter(
         Lesson.student_id == student_id,
-        Lesson.lesson_date >= day_start,
-        Lesson.lesson_date < day_end
+        Lesson.lesson_date >= (start_dt_utc.replace(tzinfo=None) if start_dt_utc.tzinfo else start_dt_utc),
+        Lesson.lesson_date < (end_dt_utc.replace(tzinfo=None) if end_dt_utc.tzinfo else end_dt_utc)
     )
     if exclude_lesson_id:
         q = q.filter(Lesson.lesson_id != exclude_lesson_id)
 
     candidates = q.all()
     for l in candidates:
-        l_start = l.lesson_date
-        l_end = l.lesson_date + timedelta(minutes=int(l.duration or 60))
-        if (l_start < end_dt) and (start_dt < l_end):
+        l_start = lesson_storage_to_utc(l.lesson_date)
+        l_end = lesson_storage_to_utc(l.lesson_date + timedelta(minutes=int(l.duration or 60)))
+        if not l_start or not l_end:
+            continue
+        if (l_start < end_dt_utc) and (start_dt_utc < l_end):
             return True
 
     return False
@@ -345,11 +343,7 @@ def schedule():
 
     real_events = []
     for lesson in lessons:
-        lesson_date = lesson.lesson_date
-        if lesson_date.tzinfo is None:
-            lesson_date = lesson_date.replace(tzinfo=MOSCOW_TZ)
-
-        lesson_date_display = lesson_date.astimezone(display_tz)
+        lesson_date_display = lesson_storage_to_local(lesson.lesson_date, timezone)
         lesson_date_local = lesson_date_display.date()
         day_index = (lesson_date_local - week_start).days
         
@@ -451,7 +445,7 @@ def schedule():
         for l in lessons:
             if not l.student:
                 continue
-            dt = l.lesson_date.replace(tzinfo=MOSCOW_TZ).astimezone(display_tz)
+            dt = lesson_storage_to_local(l.lesson_date, timezone)
             day_key = dt.date().isoformat()
             month_lessons_map.setdefault(day_key, []).append({
                 'time': dt.strftime('%H:%M'),
@@ -495,8 +489,7 @@ def schedule():
         for l in lessons:
             if not l.student:
                 continue
-            dt = l.lesson_date.replace(tzinfo=MOSCOW_TZ)
-            dt_display = dt.astimezone(display_tz)
+            dt_display = lesson_storage_to_local(l.lesson_date, timezone)
             agenda.append({
                 'lesson_id': l.lesson_id,
                 'date': dt_display.strftime('%Y-%m-%d'),
@@ -679,11 +672,9 @@ def schedule_create_lesson():
             logger.info(f'Created lesson {created_lessons[0].lesson_id} for student {student_id} at {base_lesson_datetime}')
 
         if is_ajax:
-            display_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
             created_payload = []
             for l in created_lessons:
-                dt = l.lesson_date.replace(tzinfo=MOSCOW_TZ)
-                dt_display = dt.astimezone(display_tz)
+                dt_display = lesson_storage_to_local(l.lesson_date, timezone)
                 created_payload.append({
                     'lesson_id': l.lesson_id,
                     'student': student.name,
@@ -1044,8 +1035,7 @@ def schedule_api_events():
     for l in lessons:
         if not l.student:
             continue
-        dt = l.lesson_date.replace(tzinfo=MOSCOW_TZ)
-        dt_display = dt.astimezone(display_tz)
+        dt_display = lesson_storage_to_local(l.lesson_date, timezone)
         out.append({
             'lesson_id': l.lesson_id,
             'student_id': l.student.student_id,
@@ -1378,9 +1368,7 @@ def schedule_templates_create_from_lesson(lesson_id: int):
     if not _require_lesson_in_scope(lesson):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
-    dt = lesson.lesson_date.replace(tzinfo=MOSCOW_TZ)
-    display_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
-    dt_local = dt.astimezone(display_tz)
+    dt_local = lesson_storage_to_local(lesson.lesson_date, timezone)
 
     weekday = int(dt_local.weekday())
     time_hhmm = dt_local.strftime('%H:%M')
@@ -1473,8 +1461,7 @@ def schedule_templates_apply_week():
             db.session.rollback()
             continue
 
-        display_tz = TOMSK_TZ if (data.get('timezone') or 'moscow') == 'tomsk' else MOSCOW_TZ
-        dt_display = l.lesson_date.replace(tzinfo=MOSCOW_TZ).astimezone(display_tz)
+        dt_display = lesson_storage_to_local(l.lesson_date, data.get('timezone') or 'moscow')
         st = Student.query.get(t.student_id)
         if not st:
             continue

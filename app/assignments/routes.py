@@ -23,6 +23,7 @@ from core.db_models import utc_now
 from app.utils.datetime_utc import deadline_from_form_to_utc
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, notify_user, build_task_number_summary, build_task_number_counts
+from app.telegram.user_notify import notify_user_by_id
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
 from app.utils.course_tasks import get_task_numbers
 from app.assignments.submission_lifecycle_service import (
@@ -4650,6 +4651,37 @@ def submission_comment_create(submission_id):
         )
         db.session.add(comment)
         db.session.commit()
+
+        try:
+            author = current_user
+            is_teacher = (scope.get('can_see_all') or submission.assignment.created_by_id == current_user.id)
+            if is_teacher and submission.student and submission.student.user_id:
+                notify_user_by_id(
+                    int(submission.student.user_id),
+                    (
+                        f'💬 <b>Новый комментарий к работе</b>\n\n'
+                        f'{text}\n'
+                        f'\n🔗 {url_for("assignments.submission_view", submission_id=submission.submission_id)}'
+                    ),
+                    kind='lesson_comment',
+                    reply_markup={'inline_keyboard': [[{'text': 'Открыть работу', 'url': url_for("assignments.submission_view", submission_id=submission.submission_id)}]]},
+                )
+            elif not is_teacher and submission.assignment.created_by_id:
+                teacher = User.query.get(submission.assignment.created_by_id)
+                teacher_profile = getattr(teacher, 'profile', None) if teacher else None
+                if teacher_profile and teacher_profile.telegram_chat_id:
+                    notify_user_by_id(
+                        int(teacher.id),
+                        (
+                            f'💬 <b>Новый комментарий от ученика</b>\n\n'
+                            f'{text}\n'
+                            f'\n🔗 {url_for("assignments.submission_view", submission_id=submission.submission_id)}'
+                        ),
+                        kind='lesson_comment',
+                        reply_markup={'inline_keyboard': [[{'text': 'Открыть работу', 'url': url_for("assignments.submission_view", submission_id=submission.submission_id)}]]},
+                    )
+        except Exception as notify_err:
+            logger.warning('submission_comment_create notify failed: %s', notify_err)
         
         author_name = current_user.username
         if current_user.profile:

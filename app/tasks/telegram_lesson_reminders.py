@@ -17,13 +17,14 @@ def telegram_lesson_reminders_task() -> dict:
     Если напоминание ещё не отправлено — отправляет и ставит флаг.
     """
     from app.models import Lesson, Student, db
-    from core.db_models import MOSCOW_TZ, utc_now
+    from core.db_models import MOSCOW_TZ, moscow_now
     from app.telegram.user_notify import notify_user_by_id
     from app.telegram.notifications import _esc
+    from app.utils.lesson_time import lesson_storage_to_local
 
-    now = utc_now()
-    window_start = now + timedelta(minutes=25)
-    window_end = now + timedelta(minutes=35)
+    now = moscow_now()
+    window_start = (now + timedelta(minutes=25)).replace(tzinfo=None)
+    window_end = (now + timedelta(minutes=35)).replace(tzinfo=None)
     sent = 0
 
     try:
@@ -50,11 +51,11 @@ def telegram_lesson_reminders_task() -> dict:
                 base = (os.environ.get('APP_URL') or '').rstrip('/')
                 room_url = f'{base}/lesson/{lesson.lesson_id}/classwork-tasks' if base else ''
 
-                lesson_dt = lesson.lesson_date
-                if lesson_dt is not None:
-                    if getattr(lesson_dt, 'tzinfo', None) is None:
-                        lesson_dt = lesson_dt.replace(tzinfo=timezone.utc)
-                    lesson_dt = lesson_dt.astimezone(MOSCOW_TZ)
+                profile = getattr(student, 'user', None) and getattr(student.user, 'profile', None)
+                lesson_dt = lesson_storage_to_local(
+                    lesson.lesson_date,
+                    getattr(profile, 'timezone', None) or 'moscow',
+                )
                 time_str = lesson_dt.strftime('%H:%M') if lesson_dt else '—'
 
                 msg = (
