@@ -180,6 +180,12 @@
                             <i class="ph-bold ph-user text-base text-muted"></i>
                             <span>Профиль</span>
                         </a>
+                        {% if release_notes %}
+                        <button type="button" class="profile-item w-full text-left bg-transparent border-none cursor-pointer" onclick="openReleaseNotesModal()" style="display: flex; align-items: center; gap: 0.5rem; width: 100%;">
+                            <i class="ph-bold ph-sparkles text-base text-muted" style="color: var(--boo-cyan, #06b6d4);"></i>
+                            <span>Что нового</span>
+                        </button>
+                        {% endif %}
                         <a {{ spa_main_nav_attrs(url_for('notifications.notifications_list'), 'notifications') }} class="profile-item">
                             <i class="ph-bold ph-bell text-base text-muted"></i>
                             <span>Уведомления</span>

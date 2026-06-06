@@ -1,0 +1,108 @@
+<div id="releaseNotesModal" class="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300" style="display: none;" role="dialog" aria-modal="true">
+    <!-- Modal Container -->
+    <div class="relative w-full max-w-lg bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.08] rounded-[28px] shadow-2xl dark:shadow-glass-dark overflow-hidden transform transition-all duration-300 scale-95 opacity-0" id="releaseNotesModalContainer">
+        
+        <!-- Premium Gradient Header Banner -->
+        <div class="relative p-6 bg-gradient-to-r from-cyan-500/10 via-purple-500/5 to-transparent border-b border-slate-100 dark:border-white/[0.06] flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <span class="inline-flex items-center rounded-full bg-cyan-100 dark:bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 text-[10px] font-extrabold uppercase tracking-[0.18em] px-2.5 py-1">Release</span>
+                <span class="text-sm font-bold text-muted dark:text-dark-muted">v{{ release_version }}</span>
+            </div>
+            <button type="button" onclick="closeReleaseNotesModal()" class="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100/50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 text-muted hover:text-primary dark:hover:text-white transition-all cursor-pointer" aria-label="Закрыть">
+                <i class="ph-bold ph-x text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Scrollable content -->
+        <div class="p-6 md:p-8 max-h-[60vh] overflow-y-auto">
+            <h3 class="text-2xl font-black text-primary dark:text-white tracking-tight mb-6">Что нового в обновлении</h3>
+            
+            <div class="space-y-6 text-sm text-primary dark:text-dark-muted leading-relaxed font-medium">
+                <div class="prose prose-slate dark:prose-invert max-w-none release-notes-body">
+                    {{ release_notes | safe }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer actions -->
+        <div class="px-6 py-4 bg-slate-50 dark:bg-dark-inner border-t border-slate-100 dark:border-white/[0.06] flex justify-end">
+            <button type="button" onclick="closeReleaseNotesModal()" class="px-6 py-2.5 bg-boo-primary hover:bg-boo-primaryHover text-white rounded-xl font-bold text-sm transition-all shadow-sm cursor-pointer">
+                Отлично
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Style adjustments for the release notes content inside the modal */
+.release-notes-body {
+    white-space: pre-line;
+}
+.release-notes-body b {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-primary, #0f172a);
+    display: inline-block;
+    margin-bottom: 0.5rem;
+}
+.dark .release-notes-body b {
+    color: #ffffff;
+}
+.release-notes-body code {
+    background: rgba(0, 0, 0, 0.05);
+    color: #0f172a;
+    padding: 0.15rem 0.35rem;
+    border-radius: 6px;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.85em;
+}
+.dark .release-notes-body code {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+</style>
+
+<script>
+function openReleaseNotesModal() {
+    const modal = document.getElementById('releaseNotesModal');
+    const container = document.getElementById('releaseNotesModalContainer');
+    if (!modal || !container) return;
+    
+    modal.style.display = 'flex';
+    // Trigger transition
+    setTimeout(() => {
+        container.classList.remove('scale-95', 'opacity-0');
+        container.classList.add('scale-100', 'opacity-100');
+    }, 10);
+}
+
+function closeReleaseNotesModal() {
+    const modal = document.getElementById('releaseNotesModal');
+    const container = document.getElementById('releaseNotesModalContainer');
+    if (!modal || !container) return;
+    
+    container.classList.remove('scale-100', 'opacity-100');
+    container.classList.add('scale-95', 'opacity-0');
+    
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 150);
+}
+
+// Click outside to close
+document.getElementById('releaseNotesModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeReleaseNotesModal();
+    }
+});
+
+// Escape key to close
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('releaseNotesModal');
+        if (modal && modal.style.display !== 'none') {
+            closeReleaseNotesModal();
+        }
+    }
+});
+</script>

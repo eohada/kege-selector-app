@@ -187,6 +187,11 @@
     <script src="{{ url_for('static', filename='js/demo_cinema.js') }}?v=9"></script>
     {% endif %}
 
+    {# Release Notes Modal #}
+    {% if release_notes %}
+    {% include '_release_notes_modal.html' %}
+    {% endif %}
+
     {# Command Palette (Ctrl+K) #}
     {% include '_command_palette.html' %}
 

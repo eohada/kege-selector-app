@@ -544,6 +544,7 @@ def create_app(config_name=None):
                 tz_eff = effective_timezone_name(current_user)
             except Exception:
                 tz_eff = 'Europe/Moscow'
+        from app.utils.release_notes import build_release_notes_text, RELEASE_VERSION
         return dict(
             current_student=student_data,
             has_permission=has_permission,
@@ -552,6 +553,8 @@ def create_app(config_name=None):
             user_timezone_effective=tz_eff,
             user_timezone_mode=(getattr(current_user, 'timezone_mode', 'auto') if current_user.is_authenticated else 'auto'),
             user_timezone_iana=(getattr(current_user, 'timezone_iana', None) if current_user.is_authenticated else None),
+            release_notes=build_release_notes_text(),
+            release_version=RELEASE_VERSION,
         )
     
     from app.admin.routes import (
