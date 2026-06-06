@@ -76,6 +76,25 @@ def get_environments() -> Dict:
 def get_current_environment() -> str:
     """Получить текущее выбранное окружение из сессии"""
     envs = get_environments()
+    
+    # 1. Проверяем, настроено ли окружение из сессии
+    session_env = session.get('remote_admin_environment')
+    if session_env and session_env in envs:
+        conf = envs[session_env]
+        if conf.get('url') and conf.get('token'):
+            return session_env
+            
+    # 2. Если в сессии нет или оно не настроено, ищем первое настроенное
+    for env_name, conf in envs.items():
+        if conf.get('url') and conf.get('token'):
+            try:
+                session['remote_admin_environment'] = env_name
+                session.permanent = True
+            except Exception:
+                pass
+            return env_name
+            
+    # 3. Резервный дефолтный вариант
     default_env = 'admin' if 'admin' in envs else (list(envs.keys())[0] if envs else 'production')
     return session.get('remote_admin_environment', default_env)
 
