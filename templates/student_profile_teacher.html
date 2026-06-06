@@ -2,6 +2,7 @@
 {% set active_page = 'dashboard' %}
 {% block title %}{{ student.name }} · Ученик · BooStudy{% endblock %}
 {% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
+{% set student_view_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
 
 {% block head_css %}
 <style>
@@ -236,8 +237,9 @@
                                             
                                             <!-- Дата / Время -->
                                             <td class="py-3 pl-3 font-bold text-xs text-primary dark:text-white">
-                                                <span class="block">{% if lesson.lesson_date %}{{ lesson.lesson_date.strftime('%d.%m.%Y') }}{% else %}—{% endif %}</span>
-                                                <span class="text-[10px] text-muted dark:text-dark-muted font-medium mt-0.5 block">{% if lesson.lesson_date %}{{ lesson.lesson_date.strftime('%H:%M') }}{% else %}—{% endif %}</span>
+                                                {% set lesson_local = (lesson.lesson_date|to_tz(student_view_tz)) if lesson.lesson_date else None %}
+                                                <span class="block">{% if lesson_local %}{{ lesson_local.strftime('%d.%m.%Y') }}{% else %}—{% endif %}</span>
+                                                <span class="text-[10px] text-muted dark:text-dark-muted font-medium mt-0.5 block">{% if lesson_local %}{{ lesson_local.strftime('%H:%M') }}{% else %}—{% endif %}</span>
                                             </td>
 
                                             <!-- Тема занятия -->

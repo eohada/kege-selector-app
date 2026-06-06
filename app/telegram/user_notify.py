@@ -30,7 +30,7 @@ _KIND_TO_ATTR: dict[str, str] = {
 }
 
 # Kinds that bypass quiet hours (urgent or time-sensitive)
-_QUIET_HOURS_BYPASS = {'system_errors', 'bug_report_reply'}
+_QUIET_HOURS_BYPASS = {'system_errors', 'bug_report_reply', 'lesson_scheduled', 'lesson_reminder'}
 
 
 def _truthy(v) -> bool:
@@ -70,7 +70,7 @@ def user_allows_telegram_notification(
         return False
 
     attr = _KIND_TO_ATTR.get(kind) if kind else None
-    if attr:
+    if attr and kind not in {'lesson_scheduled', 'lesson_reminder'}:
         if not _truthy(getattr(profile, attr, True)):
             return False
 
