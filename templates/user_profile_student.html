@@ -299,14 +299,26 @@
                 <textarea id="about_me" name="about_me" rows="3" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-medium text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/25 transition-all shadow-input resize-none" placeholder="Расскажите о своих целях...">{{ current_user.about_me or '' }}</textarea>
             </div>
 
-            <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-mode-student">Часовой пояс</label>
-                <select id="tz-mode-student" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">
-                    <option value="auto" {% if (current_user.timezone_mode or 'auto') == 'auto' %}selected{% endif %}>Авто (браузер)</option>
-                    <option value="manual" {% if (current_user.timezone_mode or '') == 'manual' %}selected{% endif %}>Указать IANA</option>
+            {% set student_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
+            <div class="space-y-1.5" id="student-timezone-panel">
+                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-iana-student">Часовой пояс</label>
+                <select id="tz-iana-student" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white focus:outline-none focus:border-boo-primary transition-all">
+                    <option value="Europe/Moscow" {% if student_tz == 'Europe/Moscow' %}selected{% endif %}>Москва</option>
+                    <option value="Asia/Tomsk" {% if student_tz == 'Asia/Tomsk' %}selected{% endif %}>Томск</option>
+                    <option value="Europe/Kaliningrad" {% if student_tz == 'Europe/Kaliningrad' %}selected{% endif %}>Калининград</option>
+                    <option value="Asia/Yekaterinburg" {% if student_tz == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург</option>
+                    <option value="Asia/Novosibirsk" {% if student_tz == 'Asia/Novosibirsk' %}selected{% endif %}>Новосибирск</option>
+                    <option value="Asia/Krasnoyarsk" {% if student_tz == 'Asia/Krasnoyarsk' %}selected{% endif %}>Красноярск</option>
+                    <option value="Asia/Irkutsk" {% if student_tz == 'Asia/Irkutsk' %}selected{% endif %}>Иркутск</option>
+                    <option value="Asia/Vladivostok" {% if student_tz == 'Asia/Vladivostok' %}selected{% endif %}>Владивосток</option>
+                    <option value="UTC" {% if student_tz == 'UTC' %}selected{% endif %}>UTC</option>
                 </select>
-                <input type="text" id="tz-iana-student" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-medium text-sm text-primary dark:text-white" placeholder="Europe/Moscow" value="{{ current_user.timezone_iana or '' }}" {% if (current_user.timezone_mode or 'auto') != 'manual' %}disabled{% endif %}>
-                <button type="button" class="w-full py-2 rounded-xl border border-slate-200 dark:border-white/[0.12] font-bold text-sm text-boo-primary" id="tz-save-student">Сохранить часовой пояс</button>
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Сейчас в выбранном поясе</span>
+                    <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.12] text-xs font-bold text-boo-primary hover:bg-surface-alt dark:hover:bg-white/[0.06]" id="tz-now-student-btn">Какая у меня сейчас дата и время</button>
+                </div>
+                <div id="tz-now-student-preview" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">—</div>
+                <button type="button" class="w-full py-3 rounded-xl border border-slate-200 dark:border-white/[0.12] font-bold text-sm text-boo-primary bg-white/70 dark:bg-white/[0.04] hover:bg-surface-alt dark:hover:bg-white/[0.08] transition-colors" id="tz-save-student">Сохранить часовой пояс</button>
             </div>
 
             <div class="space-y-1.5">
@@ -399,20 +411,46 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    const tm = document.getElementById('tz-mode-student');
     const ti = document.getElementById('tz-iana-student');
     const ts = document.getElementById('tz-save-student');
-    if (tm && ti) {
-        tm.addEventListener('change', () => { ti.disabled = tm.value !== 'manual'; });
+    const tp = document.getElementById('tz-now-student-preview');
+    const tb = document.getElementById('tz-now-student-btn');
+    function renderStudentTimezonePreview() {
+        if (!ti || !tp) return;
+        const tz = ti.value || 'Europe/Moscow';
+        try {
+            const now = new Date();
+            const parts = new Intl.DateTimeFormat('ru-RU', {
+                timeZone: tz,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+            }).formatToParts(now);
+            const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+            tp.textContent = `${map.day}.${map.month}.${map.year} ${map.hour}:${map.minute} · ${tz}`;
+        } catch (e) {
+            tp.textContent = tz;
+        }
     }
-    if (ts && tm) {
+    if (ti) {
+        ti.addEventListener('change', renderStudentTimezonePreview);
+        ti.addEventListener('input', renderStudentTimezonePreview);
+        renderStudentTimezonePreview();
+    }
+    if (tb) {
+        tb.addEventListener('click', renderStudentTimezonePreview);
+    }
+    if (ts && ti) {
         ts.addEventListener('click', async () => {
             const csrf = document.querySelector('meta[name="csrf-token"]');
             try {
                 const r = await fetch('/api/me/timezone', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf ? (csrf.content || csrf.getAttribute('content')) : '' },
-                    body: JSON.stringify({ timezone_mode: tm.value, timezone_iana: ti && !ti.disabled ? (ti.value || '').trim() : '' }),
+                    body: JSON.stringify({ timezone_mode: 'manual', timezone_iana: ti ? (ti.value || '').trim() : '' }),
                 });
                 const data = await r.json();
                 if (data.success) {

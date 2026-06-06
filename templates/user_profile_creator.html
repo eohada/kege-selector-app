@@ -5,6 +5,7 @@
 
 {% block content %}
 {% set creator_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
+{% set creator_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
 <div class="w-full max-w-[1200px] mx-auto flex flex-col gap-6 pb-4">
     <a href="{{ url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-surface text-muted text-sm font-bold no-underline hover:bg-surface-alt">
         <i class="ph-bold ph-arrow-left"></i> Вернуться к метрикам
@@ -90,6 +91,43 @@
                 <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Логин</span><span class="text-sm font-bold text-primary">@{{ current_user.username }}</span></div>
                 <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Регистрация</span><span class="text-sm font-bold text-primary">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span></div>
                 <div class="flex justify-between items-center py-3.5"><span class="text-sm font-bold text-muted">Статус</span><span class="text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
+            </div>
+        </section>
+
+        <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8" id="creator-timezone-panel">
+            <h2 class="text-xs font-extrabold text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
+                <i class="ph-fill ph-clock text-xl"></i> Часовой пояс
+            </h2>
+            <p class="text-xs text-muted leading-relaxed mb-5">
+                Выбирай свой реальный пояс из списка. Рядом сразу видно текущее локальное время.
+            </p>
+
+            <div class="space-y-4">
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="creator-tz-iana">Пояс</label>
+                    <select id="creator-tz-iana" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white focus:outline-none focus:border-boo-primary transition-all">
+                        <option value="Europe/Moscow" {% if creator_tz == 'Europe/Moscow' %}selected{% endif %}>Москва</option>
+                        <option value="Asia/Tomsk" {% if creator_tz == 'Asia/Tomsk' %}selected{% endif %}>Томск</option>
+                        <option value="Europe/Kaliningrad" {% if creator_tz == 'Europe/Kaliningrad' %}selected{% endif %}>Калининград</option>
+                        <option value="Asia/Yekaterinburg" {% if creator_tz == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург</option>
+                        <option value="Asia/Novosibirsk" {% if creator_tz == 'Asia/Novosibirsk' %}selected{% endif %}>Новосибирск</option>
+                        <option value="Asia/Krasnoyarsk" {% if creator_tz == 'Asia/Krasnoyarsk' %}selected{% endif %}>Красноярск</option>
+                        <option value="Asia/Irkutsk" {% if creator_tz == 'Asia/Irkutsk' %}selected{% endif %}>Иркутск</option>
+                        <option value="Asia/Vladivostok" {% if creator_tz == 'Asia/Vladivostok' %}selected{% endif %}>Владивосток</option>
+                        <option value="UTC" {% if creator_tz == 'UTC' %}selected{% endif %}>UTC</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Сейчас в выбранном поясе</span>
+                        <button type="button" id="creator-tz-now-btn" class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.12] text-xs font-bold text-boo-primary hover:bg-surface-alt dark:hover:bg-white/[0.06]">Какая у меня сейчас дата и время</button>
+                    </div>
+                    <div id="creator-tz-now-preview" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">—</div>
+                </div>
+
+                <button type="button" class="w-full py-3 rounded-xl border border-slate-200 dark:border-white/[0.12] font-bold text-sm text-boo-primary bg-white/70 dark:bg-white/[0.04] hover:bg-surface-alt dark:hover:bg-white/[0.08] transition-colors" id="creator-tz-save-btn">Сохранить часовой пояс</button>
+                <p id="creator-tz-save-msg" class="text-xs text-green-600 dark:text-green-400 text-center font-semibold" style="display: none;"></p>
             </div>
         </section>
 
@@ -345,6 +383,74 @@ async function toggleCreatorTelegramNotifications(enabled) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', loadCreatorTelegramBind);
+function formatTimezoneNow(tz) {
+    try {
+        const now = new Date();
+        const parts = new Intl.DateTimeFormat('ru-RU', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).formatToParts(now);
+        const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+        return `${map.day}.${map.month}.${map.year} ${map.hour}:${map.minute}`;
+    } catch (e) {
+        return tz;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadCreatorTelegramBind();
+
+    const tzSelect = document.getElementById('creator-tz-iana');
+    const tzPreview = document.getElementById('creator-tz-now-preview');
+    const tzButton = document.getElementById('creator-tz-now-btn');
+    const tzSave = document.getElementById('creator-tz-save-btn');
+    const tzMsg = document.getElementById('creator-tz-save-msg');
+
+    const renderTimezone = () => {
+        if (!tzSelect || !tzPreview) return;
+        const tz = tzSelect.value || 'Europe/Moscow';
+        tzPreview.textContent = `${formatTimezoneNow(tz)} · ${tz}`;
+    };
+
+    if (tzSelect) {
+        tzSelect.addEventListener('change', renderTimezone);
+        tzSelect.addEventListener('input', renderTimezone);
+        renderTimezone();
+    }
+    if (tzButton) {
+        tzButton.addEventListener('click', renderTimezone);
+    }
+    if (tzSave && tzSelect) {
+        tzSave.addEventListener('click', async () => {
+            const csrf = creatorTelegramCsrfToken();
+            try {
+                const resp = await fetch('/api/me/timezone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                    body: JSON.stringify({ timezone_mode: 'manual', timezone_iana: (tzSelect.value || '').trim() })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    const meta = document.querySelector('meta[name="user-timezone-effective"]');
+                    if (meta && data.effective) meta.setAttribute('content', data.effective);
+                    if (tzMsg) {
+                        tzMsg.textContent = 'Часовой пояс сохранён';
+                        tzMsg.style.display = 'block';
+                    }
+                    if (window.toast) window.toast.success('Часовой пояс сохранён');
+                } else if (window.toast) {
+                    window.toast.error(data.error || 'Ошибка');
+                }
+            } catch (e) {
+                if (window.toast) window.toast.error('Ошибка соединения');
+            }
+        });
+    }
+});
 </script>
 {% endblock %}
