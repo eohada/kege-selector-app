@@ -21,6 +21,8 @@ from app.students.stats_service import StatsService
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.notifications.service import notify_student_and_parents
 from app.telegram.user_notify import notify_user_by_id
+from app.utils.datetime_utc import effective_timezone_name
+from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local
 from app.models import (
     Student,
     StudentTaskStatistics,
@@ -2361,12 +2363,10 @@ def lesson_new(student_id):
         form.exam_course_id.data = enrollment.course_id
 
     if not form.is_submitted():
-        user_tz = 'moscow'
-        if current_user.profile and current_user.profile.timezone:
-            if 'tomsk' in current_user.profile.timezone.lower() or 'Asia/Tomsk' in current_user.profile.timezone:
-                user_tz = 'tomsk'
+        creator_tz_name = effective_timezone_name(current_user)
+        user_tz = 'tomsk' if 'tomsk' in creator_tz_name.lower() or 'asia/tomsk' in creator_tz_name.lower() else 'moscow'
         form.timezone.data = user_tz
-        
+
         from datetime import datetime
         if user_tz == 'tomsk':
             form.lesson_date.data = datetime.now(TOMSK_TZ).replace(tzinfo=None)
@@ -2393,19 +2393,15 @@ def lesson_new(student_id):
         
         lesson_date_local = form.lesson_date.data
         timezone = form.timezone.data
-        
+
         if lesson_date_local.tzinfo is not None:
             lesson_date_local = lesson_date_local.replace(tzinfo=None)
-        
-        if timezone == 'tomsk':
-            lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
-            lesson_date_utc = lesson_date_local.astimezone(MOSCOW_TZ)
-            logger.debug(f"Томское время: {lesson_date_local}, Московское время: {lesson_date_utc}")
-        else:
-            lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
-            lesson_date_utc = lesson_date_local
-        
-        lesson_date_utc = lesson_date_utc.replace(tzinfo=None) if lesson_date_utc.tzinfo else lesson_date_utc
+
+        lesson_date_utc = parse_local_lesson_datetime(
+            lesson_date_local.strftime('%Y-%m-%d'),
+            lesson_date_local.strftime('%H:%M'),
+            timezone,
+        )
         
         selected_exam_course_id = form.exam_course_id.data if form.exam_course_id.data else None
         if selected_exam_course_id == 0:
@@ -2448,19 +2444,32 @@ def lesson_new(student_id):
 
         try:
             if lesson.status == 'planned':
-                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
                 if student.user_id:
+                    recipient_tz = 'Europe/Moscow'
+                    try:
+                        if getattr(student, 'user', None):
+                            recipient_tz = effective_timezone_name(student.user)
+                    except Exception:
+                        recipient_tz = 'Europe/Moscow'
+                    date_dt = lesson_storage_to_local(lesson.lesson_date, recipient_tz)
+                    date_str = date_dt.strftime('%d.%m.%Y %H:%M') if date_dt else (lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else '')
                     notify_user_by_id(
                         int(student.user_id),
                         f'📅 <b>Новый урок запланирован</b>\n\n{date_str}\n{(lesson.topic or "").strip() or "Без темы"}',
                         kind='lesson_scheduled',
                         reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)}]]},
                     )
-                try:
-                    db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    logger.warning(f"Could not commit lesson_scheduled notification: {e}")
+                if current_user.is_authenticated:
+                    creator_tz = effective_timezone_name(current_user)
+                    creator_dt = lesson_storage_to_local(lesson.lesson_date, creator_tz)
+                    creator_date_str = creator_dt.strftime('%d.%m.%Y %H:%M') if creator_dt else (lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else '')
+                    if current_user.id != (student.user_id or current_user.id):
+                        notify_user_by_id(
+                            int(current_user.id),
+                            f'📅 <b>Новый урок запланирован</b>\n\n{creator_date_str}\n{(lesson.topic or "").strip() or "Без темы"}',
+                            kind='lesson_scheduled',
+                            reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)}]]},
+                        )
         except Exception as e:
             logger.warning(f"Failed to notify about lesson_scheduled: {e}")
         

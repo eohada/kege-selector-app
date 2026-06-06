@@ -239,23 +239,37 @@ def _student_parent_user_ids(student_id: int | None) -> list[int]:
         return []
 
 
-def _notify_lesson_scheduled(lesson: Lesson, student: Student, title: str) -> None:
+def _lesson_local_time_for_user(lesson: Lesson, user_id: int | None) -> str:
+    if not lesson or not lesson.lesson_date:
+        return '—'
+    try:
+        recipient = User.query.filter_by(id=user_id).first() if user_id else None
+        tz_name = effective_timezone_name(recipient) if recipient else 'Europe/Moscow'
+        dt = lesson_storage_to_local(lesson.lesson_date, tz_name)
+        return dt.strftime('%d.%m.%Y %H:%M') if dt else (lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else '—')
+    except Exception:
+        return lesson.lesson_date.strftime('%d.%m.%Y %H:%M')
+
+
+def _notify_lesson_scheduled(lesson: Lesson, student: Student, headline: str, actor_user_id: int | None = None) -> None:
     """Direct Telegram delivery for lesson creation/reschedule so it does not depend on background mirroring."""
     try:
+        topic = (lesson.topic or '').strip() or 'Без темы'
+        lesson_url = url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)
+        markup = {'inline_keyboard': [[{'text': 'Открыть урок', 'url': lesson_url}]]}
+
+        def _send(uid: int | None):
+            if not uid:
+                return
+            date_str = _lesson_local_time_for_user(lesson, uid)
+            msg = f'📅 <b>{headline}</b>\n\n{date_str}\n{topic}'
+            notify_user_by_id(int(uid), msg, kind='lesson_scheduled', reply_markup=markup)
+
+        _send(actor_user_id)
         if student and student.user_id:
-            notify_user_by_id(
-                int(student.user_id),
-                title,
-                kind='lesson_scheduled',
-                reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)}]]},
-            )
+            _send(int(student.user_id))
         for parent_id in _student_parent_user_ids(student.student_id if student else None):
-            notify_user_by_id(
-                int(parent_id),
-                title,
-                kind='lesson_scheduled',
-                reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)}]]},
-            )
+            _send(int(parent_id))
     except Exception as e:
         logger.warning('Direct lesson_scheduled notify failed: %s', e)
 
@@ -679,9 +693,8 @@ def schedule_create_lesson():
                     _notify_lesson_scheduled(
                         created_lesson,
                         student,
-                        f'📅 <b>Новый урок запланирован</b>\n\n'
-                        f'{date_str}\n'
-                        f'{(created_lesson.topic or "").strip() or "Без темы"}',
+                        'Новый урок запланирован',
+                        actor_user_id=current_user.id,
                     )
             try:
                 db.session.commit()
@@ -821,9 +834,8 @@ def schedule_reschedule_lesson(lesson_id: int):
                 _notify_lesson_scheduled(
                     lesson,
                     lesson.student,
-                    f'📅 <b>Урок перенесён</b>\n\n'
-                    f'{date_str}\n'
-                    f'{(lesson.topic or "").strip() or "Без темы"}',
+                    'Урок перенесён',
+                    actor_user_id=current_user.id,
                 )
                 try:
                     db.session.commit()
@@ -881,7 +893,8 @@ def schedule_set_status(lesson_id: int):
                 _notify_lesson_scheduled(
                     lesson,
                     lesson.student,
-                    f'📅 <b>Новый урок запланирован</b>\n\n{date_str}\n{(lesson.topic or "").strip() or "Без темы"}',
+                    'Новый урок запланирован',
+                    actor_user_id=current_user.id,
                 )
                 try:
                     db.session.commit()
@@ -993,9 +1006,8 @@ def schedule_update_lesson(lesson_id: int):
                 _notify_lesson_scheduled(
                     lesson,
                     lesson.student,
-                    f'📅 <b>Урок перенесён</b>\n\n'
-                    f'{date_str}\n'
-                    f'{(lesson.topic or "").strip() or "Без темы"}',
+                    'Урок перенесён',
+                    actor_user_id=current_user.id,
                 )
                 try:
                     db.session.commit()
@@ -1536,7 +1548,8 @@ def schedule_templates_apply_week():
                 _notify_lesson_scheduled(
                     lesson,
                     st,
-                    f'📅 <b>Новый урок запланирован</b>\n\n{date_str}\n{(lesson.topic or "").strip() or "Без темы"}',
+                    'Новый урок запланирован',
+                    actor_user_id=current_user.id,
                 )
         try:
             db.session.commit()

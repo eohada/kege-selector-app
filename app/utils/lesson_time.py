@@ -8,9 +8,19 @@ UTC = timezone.utc
 
 
 def _tz_from_name(name: str | None):
-    if (name or '').strip().lower() == 'tomsk':
+    raw = (name or '').strip()
+    if not raw:
+        return MOSCOW_TZ
+    low = raw.lower()
+    if low in {'tomsk', 'asia/tomsk'}:
         return TOMSK_TZ
-    return MOSCOW_TZ
+    if low in {'moscow', 'europe/moscow'}:
+        return MOSCOW_TZ
+    try:
+        from zoneinfo import ZoneInfo
+        return ZoneInfo(raw)
+    except Exception:
+        return MOSCOW_TZ
 
 
 def parse_local_lesson_datetime(date_str: str, time_str: str, timezone_name: str) -> datetime:

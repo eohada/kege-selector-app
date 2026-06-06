@@ -20,6 +20,7 @@ def telegram_lesson_reminders_task() -> dict:
     from core.db_models import MOSCOW_TZ, moscow_now
     from app.telegram.user_notify import notify_user_by_id
     from app.telegram.notifications import _esc
+    from app.utils.datetime_utc import effective_timezone_name
     from app.utils.lesson_time import lesson_storage_to_local
 
     now = moscow_now()
@@ -51,11 +52,13 @@ def telegram_lesson_reminders_task() -> dict:
                 base = (os.environ.get('APP_URL') or '').rstrip('/')
                 room_url = f'{base}/lesson/{lesson.lesson_id}/classwork-tasks' if base else ''
 
-                profile = getattr(student, 'user', None) and getattr(student.user, 'profile', None)
-                lesson_dt = lesson_storage_to_local(
-                    lesson.lesson_date,
-                    getattr(profile, 'timezone', None) or 'moscow',
-                )
+                tz_name = 'Europe/Moscow'
+                try:
+                    if getattr(student, 'user', None):
+                        tz_name = effective_timezone_name(student.user)
+                except Exception:
+                    tz_name = 'Europe/Moscow'
+                lesson_dt = lesson_storage_to_local(lesson.lesson_date, tz_name)
                 time_str = lesson_dt.strftime('%H:%M') if lesson_dt else '—'
 
                 msg = (
