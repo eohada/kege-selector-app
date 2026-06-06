@@ -1012,9 +1012,9 @@ def profile_update():
 
         tz_value = None
         if request.is_json and isinstance(data, dict):
-            tz_value = (data.get('creator_tz_iana') or data.get('timezone_iana') or '').strip()
+            tz_value = (data.get('creator_tz_iana') or data.get('profile_tz_iana') or data.get('timezone_iana') or '').strip()
         else:
-            tz_value = (request.form.get('creator_tz_iana') or request.form.get('timezone_iana') or '').strip()
+            tz_value = (request.form.get('creator_tz_iana') or request.form.get('profile_tz_iana') or request.form.get('timezone_iana') or '').strip()
         if tz_value:
             current_user.timezone_mode = 'manual'
             current_user.timezone_iana = tz_value[:64]

@@ -119,17 +119,23 @@ layout-teacher bg-boo-bg text-boo-textMain
                         <span class="text-sm font-bold text-muted dark:text-dark-muted">Регистрация</span>
                         <span class="text-sm font-bold text-primary dark:text-white">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span>
                     </div>
-                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
-                        <span class="text-sm font-bold text-muted dark:text-dark-muted">Активность</span>
-                        <span class="text-sm font-bold text-primary dark:text-white local-time" data-timestamp="{{ current_user.last_login.isoformat() if current_user.last_login else '' }}">
-                            {{ current_user.last_login.strftime('%d.%m.%Y %H:%M') if current_user.last_login else '—' }}
-                        </span>
-                    </div>
-                    {% if current_user.telegram_link %}
-                    <div class="flex justify-between items-center py-3.5">
-                        <span class="text-sm font-bold text-muted dark:text-dark-muted">Telegram</span>
-                        <a href="{{ current_user.telegram_link }}" target="_blank" class="text-sm font-bold text-boo-primary hover:underline">
-                            {{ current_user.telegram_link.replace('https://t.me/', '@').replace('http://t.me/', '@') }}
+                <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                    <span class="text-sm font-bold text-muted dark:text-dark-muted">Активность</span>
+                    <span class="text-sm font-bold text-primary dark:text-white local-time" data-timestamp="{{ current_user.last_login.isoformat() if current_user.last_login else '' }}">
+                        {{ current_user.last_login.strftime('%d.%m.%Y %H:%M') if current_user.last_login else '—' }}
+                    </span>
+                </div>
+                <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                    <span class="text-sm font-bold text-muted dark:text-dark-muted">Часовой пояс</span>
+                    <button type="button" id="profile-tz-open" class="text-sm font-bold text-boo-primary hover:underline text-right">
+                        {{ profile_tz }}
+                    </button>
+                </div>
+                {% if current_user.telegram_link %}
+                <div class="flex justify-between items-center py-3.5">
+                    <span class="text-sm font-bold text-muted dark:text-dark-muted">Telegram</span>
+                    <a href="{{ current_user.telegram_link }}" target="_blank" class="text-sm font-bold text-boo-primary hover:underline">
+                        {{ current_user.telegram_link.replace('https://t.me/', '@').replace('http://t.me/', '@') }}
                         </a>
                     </div>
                     {% endif %}
@@ -362,6 +368,26 @@ layout-teacher bg-boo-bg text-boo-textMain
                     <textarea id="about_me" name="about_me" rows="4" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-medium text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary transition-all resize-none" placeholder="Расскажите немного о своем опыте преподавания...">{{ current_user.about_me or '' }}</textarea>
                 </div>
 
+                <div class="neo-field space-y-1.5">
+                    <label class="neo-label" for="profile_tz_iana">Часовой пояс</label>
+                    <select id="profile_tz_iana" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white focus:outline-none focus:border-boo-primary transition-all">
+                        <option value="Europe/Moscow" {% if profile_tz == 'Europe/Moscow' %}selected{% endif %}>Москва</option>
+                        <option value="Asia/Tomsk" {% if profile_tz == 'Asia/Tomsk' %}selected{% endif %}>Томск</option>
+                        <option value="Europe/Kaliningrad" {% if profile_tz == 'Europe/Kaliningrad' %}selected{% endif %}>Калининград</option>
+                        <option value="Asia/Yekaterinburg" {% if profile_tz == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург</option>
+                        <option value="Asia/Novosibirsk" {% if profile_tz == 'Asia/Novosibirsk' %}selected{% endif %}>Новосибирск</option>
+                        <option value="Asia/Krasnoyarsk" {% if profile_tz == 'Asia/Krasnoyarsk' %}selected{% endif %}>Красноярск</option>
+                        <option value="Asia/Irkutsk" {% if profile_tz == 'Asia/Irkutsk' %}selected{% endif %}>Иркутск</option>
+                        <option value="Asia/Vladivostok" {% if profile_tz == 'Asia/Vladivostok' %}selected{% endif %}>Владивосток</option>
+                        <option value="UTC" {% if profile_tz == 'UTC' %}selected{% endif %}>UTC</option>
+                    </select>
+                    <div class="mt-2 flex items-center justify-between gap-3">
+                        <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Сейчас в выбранном поясе</span>
+                        <button type="button" id="profile-tz-now-btn" class="text-xs font-bold text-boo-primary">Какая у меня сейчас дата и время</button>
+                    </div>
+                    <div id="profile-tz-preview" class="mt-2 w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">—</div>
+                </div>
+
                 <!-- Telegram линк -->
                 <div class="neo-field space-y-1.5">
                     <label class="neo-label" for="telegram_link">Telegram</label>
@@ -382,6 +408,16 @@ layout-teacher bg-boo-bg text-boo-textMain
         <img id="avatarModalImg" src="" alt="Аватар в полном размере" class="max-w-full max-h-[85vh] rounded-2xl">
     </div>
 </div>
+<style>
+#editProfileModal .modal {
+    max-height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+}
+#editProfileModal .modal-body {
+    overflow-y: auto;
+}
+</style>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -426,6 +462,21 @@ layout-teacher bg-boo-bg text-boo-textMain
             var coverInput = document.getElementById('cover_file');
             if (coverInput) coverInput.click();
         }, 100);
+    }
+    function formatProfileTzNow(tz) {
+        try {
+            return new Intl.DateTimeFormat('ru-RU', {
+                timeZone: tz,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+            }).format(new Date());
+        } catch (e) {
+            return new Date().toLocaleString('ru-RU');
+        }
     }
 
     // Превью файлов при выборе в инпутах
@@ -513,6 +564,10 @@ layout-teacher bg-boo-bg text-boo-textMain
         const tzMsg = document.getElementById('tz-save-msg');
         const tzNowBtn = document.getElementById('tz-now-btn');
         const tzNowPreview = document.getElementById('tz-now-preview');
+        const profileTzOpen = document.getElementById('profile-tz-open');
+        const profileTzSelect = document.getElementById('profile_tz_iana');
+        const profileTzBtn = document.getElementById('profile-tz-now-btn');
+        const profileTzPreview = document.getElementById('profile-tz-preview');
         const tzProfile = {{ profile_tz | tojson }};
 
         function renderTimezonePreview() {
@@ -566,6 +621,25 @@ layout-teacher bg-boo-bg text-boo-textMain
                 } catch (e) {
                     if (window.toast) window.toast.error('Ошибка сети при обновлении часового пояса');
                 }
+            });
+        }
+
+        function renderProfileTimezonePreview() {
+            if (!profileTzSelect || !profileTzPreview) return;
+            const tz = profileTzSelect.value || 'Europe/Moscow';
+            profileTzPreview.textContent = `${formatProfileTzNow(tz)} · ${tz}`;
+        }
+        if (profileTzSelect) {
+            if (tzProfile) profileTzSelect.value = tzProfile;
+            profileTzSelect.addEventListener('change', renderProfileTimezonePreview);
+            profileTzSelect.addEventListener('input', renderProfileTimezonePreview);
+            renderProfileTimezonePreview();
+        }
+        if (profileTzBtn) profileTzBtn.addEventListener('click', renderProfileTimezonePreview);
+        if (profileTzOpen) {
+            profileTzOpen.addEventListener('click', () => {
+                openEditProfileModal();
+                if (profileTzSelect) profileTzSelect.scrollIntoView({ block: 'center', behavior: 'smooth' });
             });
         }
     });
