@@ -13,6 +13,7 @@
 
 {% block content %}
 {% set creator_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
+{% set creator_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
 <div class="w-full max-w-[1200px] mx-auto flex flex-col gap-6 pb-6">
     <a href="{{ url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary transition-colors bg-white/70 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none dark:shadow-none no-underline">
         <i class="ph-bold ph-arrow-left"></i> Вернуться к метрикам
@@ -107,6 +108,12 @@
                     <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Логин</span><span class="text-sm font-bold text-primary">@{{ current_user.username }}</span></div>
                     <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Регистрация</span><span class="text-sm font-bold text-primary">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span></div>
                     <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Статус</span><span class="text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100">
+                        <span class="text-sm font-bold text-muted">Часовой пояс</span>
+                        <button type="button" id="creator-tz-open" class="text-sm font-bold text-boo-primary hover:underline text-right">
+                            {{ creator_tz }}
+                        </button>
+                    </div>
                     <div class="flex justify-between items-center py-3.5">
                         <span class="text-sm font-bold text-muted inline-flex items-center gap-2"><i class="ph-fill ph-sparkle text-boo-primary"></i> Техно-магия</span>
                         <button type="button" id="technoMagicToggle" class="inline-flex items-center gap-2.5 rounded-xl py-1 pl-1 pr-1 border border-slate-200/90 bg-surface-alt/80 hover:bg-surface-alt transition-colors"
@@ -201,6 +208,25 @@
                     <textarea id="about_me" name="about_me" class="neo-textarea">{{ current_user.about_me or '' }}</textarea>
                 </div>
                 <div class="neo-field">
+                    <label class="neo-label" for="creator_tz_iana">Часовой пояс</label>
+                    <select id="creator_tz_iana" name="creator_tz_iana" class="neo-input">
+                        <option value="Europe/Moscow" {% if creator_tz == 'Europe/Moscow' %}selected{% endif %}>Москва</option>
+                        <option value="Asia/Tomsk" {% if creator_tz == 'Asia/Tomsk' %}selected{% endif %}>Томск</option>
+                        <option value="Europe/Kaliningrad" {% if creator_tz == 'Europe/Kaliningrad' %}selected{% endif %}>Калининград</option>
+                        <option value="Asia/Yekaterinburg" {% if creator_tz == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург</option>
+                        <option value="Asia/Novosibirsk" {% if creator_tz == 'Asia/Novosibirsk' %}selected{% endif %}>Новосибирск</option>
+                        <option value="Asia/Krasnoyarsk" {% if creator_tz == 'Asia/Krasnoyarsk' %}selected{% endif %}>Красноярск</option>
+                        <option value="Asia/Irkutsk" {% if creator_tz == 'Asia/Irkutsk' %}selected{% endif %}>Иркутск</option>
+                        <option value="Asia/Vladivostok" {% if creator_tz == 'Asia/Vladivostok' %}selected{% endif %}>Владивосток</option>
+                        <option value="UTC" {% if creator_tz == 'UTC' %}selected{% endif %}>UTC</option>
+                    </select>
+                    <div class="mt-2 flex items-center justify-between gap-3">
+                        <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Сейчас в выбранном поясе</span>
+                        <button type="button" id="creator-tz-now-btn" class="text-xs font-bold text-boo-primary">Какая у меня сейчас дата и время</button>
+                    </div>
+                    <div id="creator-tz-preview" class="mt-2 w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">—</div>
+                </div>
+                <div class="neo-field">
                     <label class="neo-label" for="telegram_link">Telegram</label>
                     <input type="text" id="telegram_link" name="telegram_link" class="neo-input" value="{{ current_user.telegram_link or '' }}">
                 </div>
@@ -212,6 +238,16 @@
         </form>
     </div>
 </div>
+<style>
+#editProfileModal .modal {
+    max-height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+}
+#editProfileModal .modal-body {
+    overflow-y: auto;
+}
+</style>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -282,6 +318,10 @@ async function submitProfileEdit(event) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]');
     if (!csrfToken) return;
     formData.append('csrf_token', csrfToken.content || csrfToken.getAttribute('content'));
+    const tzSelect = document.getElementById('creator_tz_iana');
+    if (tzSelect && !formData.get('creator_tz_iana')) {
+        formData.append('creator_tz_iana', tzSelect.value || '');
+    }
     try {
         const response = await fetch("{{ url_for('auth.profile_update') }}", { method: 'POST', body: formData });
         const result = await response.json();
@@ -461,6 +501,21 @@ async function toggleTechnoMagic() {
         if (window.toast) window.toast.error('Ошибка сети');
     }
 }
+function formatCreatorTimezoneNow(tz) {
+    try {
+        return new Intl.DateTimeFormat('ru-RU', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).format(new Date());
+    } catch (e) {
+        return new Date().toLocaleString('ru-RU');
+    }
+}
 document.addEventListener('DOMContentLoaded', () => {
     let enabled = true;
     try {
@@ -471,6 +526,27 @@ document.addEventListener('DOMContentLoaded', () => {
     applyDevModeState(enabled);
     applyTechnoMagicVisual({{ 'true' if (current_user.profile and current_user.profile.presence_techno_magic_enabled) else 'false' }});
     loadCreatorTelegramBind();
+    const tzSelect = document.getElementById('creator_tz_iana');
+    const tzPreview = document.getElementById('creator-tz-preview');
+    const tzButton = document.getElementById('creator-tz-now-btn');
+    const tzOpen = document.getElementById('creator-tz-open');
+    const renderCreatorTimezonePreview = () => {
+        if (!tzSelect || !tzPreview) return;
+        const tz = tzSelect.value || 'Europe/Moscow';
+        tzPreview.textContent = `${formatCreatorTimezoneNow(tz)} · ${tz}`;
+    };
+    if (tzSelect) {
+        tzSelect.addEventListener('change', renderCreatorTimezonePreview);
+        tzSelect.addEventListener('input', renderCreatorTimezonePreview);
+        renderCreatorTimezonePreview();
+    }
+    if (tzButton) tzButton.addEventListener('click', renderCreatorTimezonePreview);
+    if (tzOpen) {
+        tzOpen.addEventListener('click', () => {
+            openEditProfileModal();
+            if (tzSelect) tzSelect.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        });
+    }
 });
 </script>
 {% endblock %}
