@@ -3,6 +3,7 @@
 """
 import json
 import logging  # Логирование для отладки и прод-логов
+import os
 from flask import render_template, request, redirect, url_for, flash, jsonify, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required
 from sqlalchemy import text, or_, func  # text нужен для выполнения SQL setval(pg_get_serial_sequence(...)) при сбитых sequences
@@ -51,6 +52,13 @@ from app.auth.rbac_utils import get_user_scope, has_permission
 from app.utils.subscription_access import get_effective_access_for_user
 
 logger = logging.getLogger(__name__)
+
+
+def _absolute_app_url(path: str) -> str:
+    base = (os.environ.get('APP_URL') or '').rstrip('/')
+    if base:
+        return f'{base}{path}'
+    return path
 
 def _get_student_user_for_scope(student: Student) -> User | None:
     """Сопоставляет Student с User по user_id или legacy student_id."""
@@ -2457,7 +2465,7 @@ def lesson_new(student_id):
                         int(student.user_id),
                         f'📅 <b>Новый урок запланирован</b>\n\n{date_str}\n{(lesson.topic or "").strip() or "Без темы"}',
                         kind='lesson_scheduled',
-                        reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)}]]},
+                        reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': _absolute_app_url(url_for('lessons.lesson_view', lesson_id=lesson.lesson_id))}]]},
                     )
                 if current_user.is_authenticated:
                     creator_tz = effective_timezone_name(current_user)
@@ -2468,7 +2476,7 @@ def lesson_new(student_id):
                             int(current_user.id),
                             f'📅 <b>Новый урок запланирован</b>\n\n{creator_date_str}\n{(lesson.topic or "").strip() or "Без темы"}',
                             kind='lesson_scheduled',
-                            reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)}]]},
+                            reply_markup={'inline_keyboard': [[{'text': 'Открыть урок', 'url': _absolute_app_url(url_for('lessons.lesson_view', lesson_id=lesson.lesson_id))}]]},
                         )
         except Exception as e:
             logger.warning(f"Failed to notify about lesson_scheduled: {e}")

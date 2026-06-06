@@ -22,6 +22,13 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
+
+def _absolute_app_url(path: str) -> str:
+    base = (os.environ.get('APP_URL') or '').rstrip('/')
+    if base:
+        return f'{base}{path}'
+    return path
+
 @api_bp.route('/api/audit-log', methods=['POST'])
 @login_required
 def api_audit_log():
@@ -417,7 +424,7 @@ def api_lesson_create():
                     kind='lesson_scheduled',
                     title='Новый урок запланирован',
                     body=(lesson.topic or '').strip() or None,
-                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
+                    link_url=_absolute_app_url(url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)),
                     meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
                 )
                 try:

@@ -2,6 +2,7 @@
 Маршруты расписания
 """
 import logging
+import os
 from datetime import datetime, timedelta, time, date, timezone as dt_timezone
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
@@ -251,11 +252,18 @@ def _lesson_local_time_for_user(lesson: Lesson, user_id: int | None) -> str:
         return lesson.lesson_date.strftime('%d.%m.%Y %H:%M')
 
 
+def _absolute_app_url(path: str) -> str:
+    base = (os.environ.get('APP_URL') or '').rstrip('/')
+    if base:
+        return f'{base}{path}'
+    return path
+
+
 def _notify_lesson_scheduled(lesson: Lesson, student: Student, headline: str, actor_user_id: int | None = None) -> None:
     """Direct Telegram delivery for lesson creation/reschedule so it does not depend on background mirroring."""
     try:
         topic = (lesson.topic or '').strip() or 'Без темы'
-        lesson_url = url_for('lessons.lesson_view', lesson_id=lesson.lesson_id)
+        lesson_url = _absolute_app_url(url_for('lessons.lesson_view', lesson_id=lesson.lesson_id))
         markup = {'inline_keyboard': [[{'text': 'Открыть урок', 'url': lesson_url}]]}
 
         def _send(uid: int | None):
