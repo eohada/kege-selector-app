@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import logging
 from typing import Iterable
 from datetime import timedelta
@@ -46,6 +47,23 @@ def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None,
         meta=meta,
     )
     db.session.add(n)
+
+    # Mirror important in-app notifications to Telegram when the user has it enabled.
+    # This keeps the platform notification model and Telegram delivery in sync.
+    try:
+        from app.tasks.telegram_dispatch import telegram_notify_user_task
+
+        telegram_lines = [
+            f'🔔 <b>{html.escape(str(title or "Уведомление"))}</b>',
+        ]
+        if body:
+            telegram_lines.extend(['', html.escape(str(body))])
+        if link_url:
+            telegram_lines.extend(['', str(link_url)])
+        telegram_text = '\n'.join(telegram_lines)
+        telegram_notify_user_task.delay(int(user_id), telegram_text, kind)
+    except Exception as e:
+        logger.warning('Could not enqueue Telegram mirror for notification user_id=%s kind=%s: %s', user_id, kind, e)
 
 
 def notify_admins_critical_error(title: str, body: str, meta: dict | None = None) -> None:
@@ -209,4 +227,3 @@ def process_pending_assignment_notifications(*, debounce_seconds: int | None = N
         logger.warning(f"Could not commit pending assignment notifications: {e}")
 
     return sent
-
