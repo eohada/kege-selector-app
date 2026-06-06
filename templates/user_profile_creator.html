@@ -91,6 +91,12 @@
                 <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Логин</span><span class="text-sm font-bold text-primary">@{{ current_user.username }}</span></div>
                 <div class="flex justify-between items-center py-3.5 border-b border-slate-100"><span class="text-sm font-bold text-muted">Регистрация</span><span class="text-sm font-bold text-primary">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span></div>
                 <div class="flex justify-between items-center py-3.5"><span class="text-sm font-bold text-muted">Статус</span><span class="text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
+                <div class="flex justify-between items-center py-3.5 border-t border-slate-100 mt-1">
+                    <span class="text-sm font-bold text-muted">Часовой пояс</span>
+                    <button type="button" class="text-sm font-bold text-boo-primary hover:underline text-right" id="creator-profile-tz-open">
+                        {{ creator_tz }}
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -232,6 +238,16 @@
         </form>
     </div>
 </div>
+<style>
+#editProfileModal .modal {
+    max-height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+}
+#editProfileModal .modal-body {
+    overflow-y: auto;
+}
+</style>
 {% endblock %}
 
 {% block scripts_extra %}
@@ -426,6 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tzSelect = document.getElementById('creator-tz-iana');
     const modalTzSelect = document.getElementById('creator_tz_iana');
+    const profileTzOpen = document.getElementById('creator-profile-tz-open');
     const tzPreview = document.getElementById('creator-tz-now-preview');
     const modalTzPreview = document.getElementById('creator-modal-tz-now-preview');
     const tzButton = document.getElementById('creator-tz-now-btn');
@@ -443,6 +460,15 @@ document.addEventListener('DOMContentLoaded', () => {
         tzSelect.addEventListener('change', renderTimezone);
         tzSelect.addEventListener('input', renderTimezone);
         renderTimezone();
+    }
+    if (profileTzOpen) {
+        profileTzOpen.addEventListener('click', () => {
+            openEditProfileModal();
+            if (modalTzSelect) {
+                modalTzSelect.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                modalTzSelect.focus({ preventScroll: true });
+            }
+        });
     }
     if (modalTzSelect) {
         const renderModalTimezone = () => {
