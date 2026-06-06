@@ -308,7 +308,13 @@ def remote_admin_api_username_available():
         if exclude_user_id is not None:
             q = q.filter(User.id != exclude_user_id)
         existing = q.first()
-        return jsonify({'available': existing is None, 'username': username})
+        if existing:
+            return jsonify({
+                'available': False,
+                'username': username,
+                'error': f'Логин уже занят другим пользователем (ID: {existing.id})'
+            })
+        return jsonify({'available': True, 'username': username})
     except Exception as e:
         logger.error(f"Error in username-available: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
@@ -1145,10 +1151,11 @@ def remote_admin_api_user(user_id):
                 if not new_username:
                     logger.warning("remote_admin_api_user POST user_id=%s early return: username empty", user_id)
                     return jsonify({'error': 'username не может быть пустым'}), 400
-                other = User.query.filter(func.lower(User.username) == new_username.lower()).filter(User.id != user_id).first()
-                if other:
-                    logger.warning("remote_admin_api_user POST user_id=%s early return: username taken by id=%s", user_id, other.id)
-                    return jsonify({'error': f'Логин «{new_username}» уже занят'}), 409
+                if new_username.lower() != user.username.lower():
+                    other = User.query.filter(func.lower(User.username) == new_username.lower()).filter(User.id != user_id).first()
+                    if other:
+                        logger.warning("remote_admin_api_user POST user_id=%s early return: username taken by id=%s", user_id, other.id)
+                        return jsonify({'error': f'Логин «{new_username}» уже занят другим пользователем (ID: {other.id})'}), 409
                 user.username = new_username
             if 'telegram_link' in data:
                 user.telegram_link = data['telegram_link'] or None
