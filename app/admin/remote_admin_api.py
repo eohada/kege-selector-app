@@ -524,6 +524,7 @@ def remote_admin_api_users():
                     'username': u.username,
                     'role': u.role,
                     'is_active': u.is_active,
+                    'is_demo_user': getattr(u, 'is_demo_user', False),
                     'created_at': u.created_at.isoformat() if u.created_at else None,
                     'last_login': u.last_login.isoformat() if u.last_login else None
                 } for u in users]
@@ -1094,6 +1095,7 @@ def remote_admin_api_user(user_id):
                 'roles': user.roles(),
                 'numeric_id': user.numeric_id,
                 'is_active': user.is_active,
+                'is_demo_user': getattr(user, 'is_demo_user', False),
                 'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None,
                 'profile': {

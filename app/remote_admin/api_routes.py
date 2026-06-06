@@ -323,8 +323,86 @@ def api_task_solution_get(task_id: int):
         return jsonify({'error': str(e)}), 500
 
 
+@remote_admin_bp.route('/api/username-available', methods=['GET'])
+@login_required
+def api_username_available():
+    """Proxy: проверка доступности логина"""
+    if not (current_user.is_creator() or current_user.is_admin()):
+        return jsonify({'error': 'Access denied'}), 403
+    try:
+        import urllib.parse
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+        username = request.args.get('username', '')
+        exclude_user_id = request.args.get('exclude_user_id')
+        path = f'/internal/remote-admin/api/username-available?username={urllib.parse.quote(username)}'
+        if exclude_user_id:
+            path += f'&exclude_user_id={exclude_user_id}'
+        resp = make_remote_request('GET', path)
+        if resp.status_code == 200:
+            return jsonify(resp.json())
+        return jsonify({'error': f'API returned {resp.status_code}'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error checking username availability: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@remote_admin_bp.route('/api/platform-id-available', methods=['GET'])
+@login_required
+def api_platform_id_available():
+    """Proxy: проверка доступности platform_id"""
+    if not (current_user.is_creator() or current_user.is_admin()):
+        return jsonify({'error': 'Access denied'}), 403
+    try:
+        import urllib.parse
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+        platform_id = request.args.get('platform_id', '')
+        exclude_user_id = request.args.get('exclude_user_id')
+        path = f'/internal/remote-admin/api/platform-id-available?platform_id={urllib.parse.quote(platform_id)}'
+        if exclude_user_id:
+            path += f'&exclude_user_id={exclude_user_id}'
+        resp = make_remote_request('GET', path)
+        if resp.status_code == 200:
+            return jsonify(resp.json())
+        return jsonify({'error': f'API returned {resp.status_code}'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error checking platform_id availability: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@remote_admin_bp.route('/api/numeric-id-available', methods=['GET'])
+@login_required
+def api_numeric_id_available():
+    """Proxy: проверка доступности numeric_id"""
+    if not (current_user.is_creator() or current_user.is_admin()):
+        return jsonify({'error': 'Access denied'}), 403
+    try:
+        import urllib.parse
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+        numeric_id = request.args.get('numeric_id', '')
+        exclude_user_id = request.args.get('exclude_user_id')
+        path = f'/internal/remote-admin/api/numeric-id-available?numeric_id={urllib.parse.quote(numeric_id)}'
+        if exclude_user_id:
+            path += f'&exclude_user_id={exclude_user_id}'
+        resp = make_remote_request('GET', path)
+        if resp.status_code == 200:
+            return jsonify(resp.json())
+        return jsonify({'error': f'API returned {resp.status_code}'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error checking numeric_id availability: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
 if csrf:
     csrf.exempt(api_task_formator_list)
     csrf.exempt(api_task_formator_task)
     csrf.exempt(api_task_formator_save)
     csrf.exempt(api_task_solution_get)
+    csrf.exempt(api_username_available)
+    csrf.exempt(api_platform_id_available)
+    csrf.exempt(api_numeric_id_available)

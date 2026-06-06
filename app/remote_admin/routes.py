@@ -140,8 +140,33 @@ def users_list():
         r = (u.get('role') or 'unknown')
         role_stats[r] = role_stats.get(r, 0) + 1
 
+    ordinary_students = []
+    ordinary_users = []
+    demo_students = []
+    qa_users = []
+
+    for u in users or []:
+        role = u.get('role')
+        is_demo = bool(u.get('is_demo_user', False))
+        if role == 'student':
+            if is_demo:
+                demo_students.append(u)
+            else:
+                ordinary_students.append(u)
+        elif role in ('tester', 'chief_tester'):
+            qa_users.append(u)
+        else:
+            if is_demo:
+                demo_students.append(u)
+            else:
+                ordinary_users.append(u)
+
     return render_template('remote_admin/users_list.html',
                          users=users,
+                         ordinary_students=ordinary_students,
+                         ordinary_users=ordinary_users,
+                         demo_students=demo_students,
+                         qa_users=qa_users,
                          role_stats=role_stats,
                          selected_roles=selected_roles,
                          q=(request.args.get('q') or '').strip(),

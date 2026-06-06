@@ -209,7 +209,7 @@
                     return;
                 }
                 setAvailability('Проверка…', 'checking');
-                var url = '/internal/remote-admin/api/username-available?username=' + encodeURIComponent(raw);
+                var url = '{{ url_for("remote_admin.api_username_available") }}?username=' + encodeURIComponent(raw);
                 if (excludeUserId != null) url += '&exclude_user_id=' + excludeUserId;
                 fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
                     .then(function(r) { return r.json(); })
@@ -267,7 +267,7 @@
                     return;
                 }
                 setPlatformAvailability('Проверка…', 'checking');
-                var url = '/internal/remote-admin/api/platform-id-available?platform_id=' + encodeURIComponent(raw);
+                var url = '{{ url_for("remote_admin.api_platform_id_available") }}?platform_id=' + encodeURIComponent(raw);
                 if (excludeUserId != null) url += '&exclude_user_id=' + excludeUserId;
                 fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
                     .then(function(r) { return r.json(); })
@@ -324,7 +324,7 @@
                     return;
                 }
                 setNumAvailability('Проверка…', 'checking');
-                var url = '/internal/remote-admin/api/numeric-id-available?numeric_id=' + encodeURIComponent(raw);
+                var url = '{{ url_for("remote_admin.api_numeric_id_available") }}?numeric_id=' + encodeURIComponent(raw);
                 if (excludeUserId != null) url += '&exclude_user_id=' + excludeUserId;
                 fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
                     .then(function(r) { return r.json(); })
