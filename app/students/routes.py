@@ -775,7 +775,6 @@ def student_profile(student_id):
                         try:
                             parent_user = User.query.get(tie.parent_id)
                             if parent_user:
-                                from app.models import UserProfile
                                 parent_profile = UserProfile.query.filter_by(user_id=parent_user.id).first()
                                 
                                 if parent_profile:
@@ -957,7 +956,6 @@ def student_info(student_id: int):
             getattr(current_user, 'is_creator', None) and current_user.is_creator()
         )
         if can_see_parents and student_user_obj:
-            from app.models import UserProfile
             family_ties = FamilyTie.query.filter_by(
                 student_id=student_user_obj.id,
                 is_confirmed=True
