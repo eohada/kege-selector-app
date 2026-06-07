@@ -6,6 +6,24 @@
 
 {% block head_css %}
 <style>
+    .teacher-kpi {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.05);
+        color: rgba(255,255,255,0.9);
+        font-size: 0.75rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+    .teacher-kpi--light {
+        border-color: rgba(148,163,184,0.28);
+        background: rgba(248,250,252,1);
+        color: rgb(51,65,85);
+    }
     .custom-scrollbar::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -135,17 +153,17 @@
 
                     <div class="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
                         {% if student_profile and student_profile.telegram_chat_id %}
-                        <span class="status-badge status-info opacity-80">
+                        <span class="teacher-kpi">
                             <i class="ph-fill ph-telegram-logo text-sm"></i>
                             Telegram привязан{% if student_profile.telegram_id %}: {{ student_profile.telegram_id }}{% endif %}
                         </span>
                         {% elif student_profile and student_profile.telegram_id %}
-                        <span class="status-badge status-warning opacity-80">
+                        <span class="teacher-kpi teacher-kpi--light">
                             <i class="ph-fill ph-telegram-logo text-sm"></i>
                             Telegram указан: {{ student_profile.telegram_id }}, бот не привязан
                         </span>
                         {% else %}
-                        <span class="status-badge status-info opacity-75">
+                        <span class="teacher-kpi teacher-kpi--light">
                             <i class="ph-fill ph-telegram-logo text-sm"></i>
                             Telegram не привязан
                         </span>
@@ -177,8 +195,9 @@
     </section>
 
     {% if current_user.is_creator() or current_user.is_admin() %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <section class="bg-surface dark:bg-dark-card rounded-[24px] border border-slate-200 dark:border-white/[0.06] shadow-sm dark:shadow-glass-dark p-5">
-        <div class="flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
+        <div class="flex flex-col gap-4">
             <div>
                 <div class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
                     <i class="ph-fill ph-telegram-logo text-cyan-500"></i> Telegram
@@ -196,11 +215,11 @@
                     Для ручной привязки ученик должен хотя бы раз открыть бота BooStudy и нажать /start.
                 </div>
             </div>
-            <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-                <form method="POST" action="{{ url_for('students.student_telegram_link_request', student_id=student.student_id) }}" class="flex gap-2 w-full sm:w-auto" data-no-ajax="1">
+            <div class="flex flex-col gap-2">
+                <form method="POST" action="{{ url_for('students.student_telegram_link_request', student_id=student.student_id) }}" class="flex gap-2 w-full" data-no-ajax="1">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="text" name="telegram_username" placeholder="@username" value="{{ student_profile.telegram_id if student_profile and student_profile.telegram_id else '' }}"
-                           class="min-w-0 sm:w-44 px-3 py-2 rounded-xl bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.08] text-sm font-bold text-primary dark:text-white focus:outline-none focus:border-boo-primary">
+                           class="min-w-0 flex-1 px-3 py-2 rounded-xl bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.08] text-sm font-bold text-primary dark:text-white focus:outline-none focus:border-boo-primary">
                     <button type="submit" class="px-4 py-2 rounded-xl bg-boo-primary hover:bg-boo-primaryHover text-white text-xs font-extrabold transition-colors whitespace-nowrap">
                         Запросить связь
                     </button>
@@ -253,6 +272,7 @@
             </div>
         </div>
     </section>
+    </div>
     {% endif %}
 
     <!-- Сетка контента (Левая колонка: уроки, Правая: bento виджеты) -->
