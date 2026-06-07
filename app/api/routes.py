@@ -110,15 +110,22 @@ def api_update_lessons_remaining(user_id):
         return jsonify({'success': False, 'error': 'Укажите причину изменения количества уроков'}), 400
         
     from app.models import UserSubscription
-    sub = UserSubscription.query.filter_by(user_id=user_id, status='active').first()
-    
+    sub = UserSubscription.query.filter_by(user_id=user_id, status='active').order_by(UserSubscription.ends_at.desc().nullslast(), UserSubscription.subscription_id.desc()).first()
     if not sub:
-        return jsonify({'success': False, 'error': 'Активная подписка не найдена'}), 404
-        
-    if sub.lessons_remaining is None:
-        return jsonify({'success': False, 'error': 'Тип подписки не подразумевает уроки'}), 400
+        sub = UserSubscription(
+            user_id=user_id,
+            plan_id=None,
+            status='active',
+            started_at=datetime.utcnow(),
+            lessons_remaining=0,
+        )
+        db.session.add(sub)
+        db.session.flush()
         
     before = sub.lessons_remaining
+    if before is None:
+        before = 0
+        sub.lessons_remaining = 0
     if has_set_to:
         sub.lessons_remaining = max(0, int(set_to))
     else:
