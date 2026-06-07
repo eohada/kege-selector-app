@@ -1,6 +1,6 @@
 
 
-class LoadingManager {
+window.LoadingManager = window.LoadingManager || class LoadingManager {
     constructor() {
         this.activeLoaders = new Set(); 
     }
@@ -91,8 +91,8 @@ class LoadingManager {
     }
 }
 
-const loading = new LoadingManager(); 
+window.loading = window.loading || new window.LoadingManager();
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = LoadingManager; 
+    module.exports = window.LoadingManager;
 }

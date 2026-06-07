@@ -1,6 +1,6 @@
 
 
-class AjaxUtils {
+window.AjaxUtils = window.AjaxUtils || class AjaxUtils {
     constructor() {
         this.csrfToken = this.getCSRFToken(); 
     }
@@ -117,8 +117,8 @@ class AjaxUtils {
     }
 }
 
-const ajax = new AjaxUtils(); 
+window.ajax = window.ajax || new window.AjaxUtils();
 
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = AjaxUtils; 
+    module.exports = window.AjaxUtils;
 }

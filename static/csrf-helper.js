@@ -1,6 +1,6 @@
 
 
-class CsrfFormHelper { 
+window.CsrfFormHelper = window.CsrfFormHelper || class CsrfFormHelper {
     constructor() { 
         this.token = this.getToken(); 
     } 
@@ -45,7 +45,7 @@ class CsrfFormHelper {
 } 
 
 window.initCsrfHelper = function(root) {
-    const helper = new CsrfFormHelper();
+    const helper = new window.CsrfFormHelper();
     if (root && typeof root.querySelectorAll === 'function') {
         const forms = root.querySelectorAll('form');
         forms.forEach(form => helper.ensureFormToken(form));

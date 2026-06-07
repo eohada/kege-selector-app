@@ -1,5 +1,5 @@
 
-class FilterStorage {
+window.FilterStorage = window.FilterStorage || class FilterStorage {
     constructor(storageKey = 'dashboard_filters') {
         this.storageKey = storageKey;
     }
@@ -94,7 +94,7 @@ window.initFilterStorage = function(root) {
     const scope = root || document;
     if (!scope || typeof scope.querySelector !== 'function') return;
 
-    const filterStorage = new FilterStorage('dashboard_filters');
+    const filterStorage = new window.FilterStorage('dashboard_filters');
     const form = scope.querySelector('.filters-panel form');
     
     if (form) {

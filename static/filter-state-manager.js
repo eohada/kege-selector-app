@@ -1,6 +1,6 @@
 
 
-class FilterStateManager {
+window.FilterStateManager = window.FilterStateManager || class FilterStateManager {
     constructor() {
         this.init();
     }
@@ -74,7 +74,7 @@ class FilterStateManager {
 }
 
 window.initFilterStateManager = function() {
-    new FilterStateManager();
+    new window.FilterStateManager();
 };
 
 document.addEventListener('DOMContentLoaded', () => {

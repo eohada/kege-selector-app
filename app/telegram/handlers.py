@@ -31,7 +31,7 @@ from telegram import (
 )
 from telegram.error import BadRequest, TelegramError
 from telegram.ext import ContextTypes, ConversationHandler
-from sqlalchemy import text
+from sqlalchemy import text, func
 from werkzeug.security import generate_password_hash
 
 from app.telegram.db import get_session, close_session
@@ -570,6 +570,20 @@ def _student_admin_summary(session, student_user_id: int, student_id: int | None
         """), {'sid': student_id}).scalar() or 0
 
     summary = subscription_summary_for_user(int(student_user_id))
+    tg_row = session.execute(text("""
+        SELECT telegram_chat_id, telegram_id
+        FROM "UserProfiles"
+        WHERE user_id = :uid
+        LIMIT 1
+    """), {'uid': int(student_user_id)}).fetchone()
+    tg_chat_id = tg_row[0] if tg_row else None
+    tg_id = tg_row[1] if tg_row else None
+    if tg_chat_id:
+        tg_status = f'✅ бот привязан{f" · {tg_id}" if tg_id else ""}'
+    elif tg_id:
+        tg_status = f'⚠️ указан {tg_id}, бот не подтвержден'
+    else:
+        tg_status = '❌ не привязан'
     parts = [
         '🎓 <b>Карточка ученика</b>',
         '',
@@ -578,6 +592,7 @@ def _student_admin_summary(session, student_user_id: int, student_id: int | None
     ]
     if student_id:
         parts.append(f'ID ученика: <code>{student_id}</code>')
+    parts.append(f'Telegram: <b>{esc(tg_status)}</b>')
     parts.append(f'Тариф: <b>{esc(summary.plan_title)}</b>')
     parts.append(f'Осталось уроков: <b>{esc(summary.lessons_remaining)}</b>')
     parts.append(f'Активных работ: <b>{active_debts}</b>')
@@ -1609,6 +1624,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await _cb_student_manage(query, session, user, data)
             return
 
+        if data.startswith('student_tg_link_'):
+            await _cb_student_tg_link(query, session, user, data, context)
+            return
+
+        if data.startswith('student_tg_unlink_'):
+            await _cb_student_tg_unlink(query, session, user, data)
+            return
+
         if data.startswith('student_stub_parent_'):
             await _cb_student_stub_parent(query, session, user, data)
             return
@@ -2518,6 +2541,10 @@ async def _cb_student_manage(query, session, user, data: str):
     if profile_url:
         buttons.append([InlineKeyboardButton('🔗 Открыть профиль ученика', url=profile_url)])
     buttons.append([
+        InlineKeyboardButton('🔗 Запросить привязку TG', callback_data=f'student_tg_link_{student_user_id}_{student_id}'),
+        InlineKeyboardButton('⛔ Отвязать TG', callback_data=f'student_tg_unlink_{student_user_id}_{student_id}'),
+    ])
+    buttons.append([
         InlineKeyboardButton('👪 Родители', callback_data=f'student_parents_{student_user_id}_{student_id}'),
         InlineKeyboardButton('👨‍🏫 Преподаватели', callback_data=f'student_tutors_{student_user_id}_{student_id}'),
     ])
@@ -2528,6 +2555,100 @@ async def _cb_student_manage(query, session, user, data: str):
     ])
     buttons.append(_BACK_ROW)
     await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
+
+
+async def _cb_student_tg_link(query, session, user, data: str, context: ContextTypes.DEFAULT_TYPE):
+    if not user or not _is_admin(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+    try:
+        raw = data[len('student_tg_link_'):]
+        student_user_id_str, student_id_str = raw.split('_', 1)
+        student_user_id = int(student_user_id_str)
+        student_id = int(student_id_str)
+    except ValueError:
+        await query.edit_message_text('⚠️ Ученик не найден.', reply_markup=_back_keyboard())
+        return
+
+    row = session.execute(text("""
+        SELECT COALESCE(NULLIF(st.name, ''), u.username)
+        FROM "Users" u
+        LEFT JOIN "Students" st ON st.user_id = u.id
+        WHERE u.id = :uid AND st.student_id = :sid
+        LIMIT 1
+    """), {'uid': student_user_id, 'sid': student_id}).fetchone()
+    student_name = row[0] if row else f'ID {student_user_id}'
+    context.user_data['admin_tg_link_target'] = {
+        'student_user_id': student_user_id,
+        'student_id': student_id,
+        'student_name': student_name,
+        'admin_user_id': int(user['id']),
+    }
+    await query.edit_message_text(
+        '🔗 <b>Ручная привязка Telegram</b>\n\n'
+        f'Ученик: <b>{esc(student_name)}</b>\n\n'
+        'Отправь следующим сообщением Telegram-тег ученика, например:\n'
+        '<code>@username</code>\n\n'
+        'Важно: ученик должен хотя бы раз открыть бота BooStudy и нажать /start, иначе бот не сможет отправить ему запрос.',
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton('↩️ К карточке ученика', callback_data=f'student_manage_{student_user_id}_{student_id}')],
+            _BACK_ROW,
+        ]),
+    )
+
+
+async def _cb_student_tg_unlink(query, session, user, data: str):
+    if not user or not _is_admin(user.get('role', '')):
+        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        return
+    try:
+        raw = data[len('student_tg_unlink_'):]
+        student_user_id_str, student_id_str = raw.split('_', 1)
+        student_user_id = int(student_user_id_str)
+        student_id = int(student_id_str)
+    except ValueError:
+        await query.edit_message_text('⚠️ Ученик не найден.', reply_markup=_back_keyboard())
+        return
+
+    try:
+        from app.models import db, Student, UserProfile
+        profile = UserProfile.query.filter_by(user_id=student_user_id).first()
+        student = Student.query.get(student_id)
+        if not profile or (not profile.telegram_chat_id and not profile.telegram_id):
+            await query.edit_message_text(
+                'ℹ️ Telegram у ученика уже не привязан.',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton('↩️ К карточке ученика', callback_data=f'student_manage_{student_user_id}_{student_id}')],
+                    _BACK_ROW,
+                ]),
+            )
+            return
+        profile.telegram_chat_id = None
+        profile.telegram_id = None
+        profile.telegram_link_code = None
+        profile.telegram_link_code_expires = None
+        profile.telegram_link_token = None
+        profile.telegram_link_token_expires = None
+        if student:
+            student.telegram = None
+            student.telegram_username = None
+        db.session.commit()
+        await query.edit_message_text(
+            '✅ Telegram отвязан от аккаунта ученика.',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton('↩️ К карточке ученика', callback_data=f'student_manage_{student_user_id}_{student_id}')],
+                _BACK_ROW,
+            ]),
+        )
+    except Exception as e:
+        try:
+            from app.models import db
+            db.session.rollback()
+        except Exception:
+            pass
+        logger.error('_cb_student_tg_unlink error: %s', e, exc_info=True)
+        await query.edit_message_text('⚠️ Не удалось отвязать Telegram.', reply_markup=_back_keyboard())
 
 
 async def _cb_student_parents(query, session, user, data: str):
@@ -3232,25 +3353,20 @@ async def _cb_admin_students(query, session, user):
     if not rows:
         lines.append('Активных учеников пока нет.')
     else:
-        lines.append('Нажми на ученика, чтобы открыть карточку и проверить связи.')
+        lines.append('Нажми на ученика, чтобы открыть карточку, Telegram и связи.')
         lines.append('')
         for student_user_id, student_id, display_name, username, has_tg, telegram_id, parent_count, debt_count, next_lesson_at in rows:
-            tg_badge = ' 📱' if has_tg else ''
-            tg_caption = f' · {telegram_id}' if telegram_id else ''
+            if has_tg:
+                tg_caption = f'✅ TG {telegram_id or ""}'.strip()
+            elif telegram_id:
+                tg_caption = f'⚠️ TG {telegram_id} без бота'
+            else:
+                tg_caption = '❌ TG нет'
             display_name = display_name or username or 'Ученик'
             next_lesson = f' · след. урок: {next_lesson_at.strftime("%d.%m %H:%M")}' if next_lesson_at else ''
-            lines.append(f'• <b>{esc(display_name)}</b>{tg_badge} · родителей: {parent_count or 0} · долги: {debt_count or 0}{next_lesson}{esc(tg_caption)}')
-            row_buttons = []
+            lines.append(f'• <b>{esc(display_name)}</b> · {esc(tg_caption)} · родители: {parent_count or 0} · долги: {debt_count or 0}{next_lesson}')
             if student_user_id and student_id:
-                row_buttons.append(InlineKeyboardButton(display_name[:24], callback_data=f'student_manage_{student_user_id}_{student_id}'))
-            profile_url = _build_student_profile_url(student_id)
-            if profile_url:
-                row_buttons.append(InlineKeyboardButton('Профиль', url=profile_url))
-            tg_link = _telegram_public_link(telegram_id)
-            if tg_link:
-                row_buttons.append(InlineKeyboardButton('Telegram', url=tg_link))
-            if row_buttons:
-                buttons.append(row_buttons)
+                buttons.append([InlineKeyboardButton(display_name[:34], callback_data=f'student_manage_{student_user_id}_{student_id}')])
     buttons.append(_BACK_ROW)
     await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
 
@@ -3363,7 +3479,92 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not update.message or update.message.chat.type != 'private':
         return
     touch_telegram_activity(update.effective_chat.id)
+    pending_tg_link = context.user_data.get('admin_tg_link_target')
+    if pending_tg_link:
+        await _handle_admin_tg_link_username(update, context, pending_tg_link)
+        return
     await update.message.reply_text(
         'Используй /menu для навигации или /help для справки.\n'
         'Для баг-репорта: /report или кнопка в меню.',
     )
+
+
+async def _handle_admin_tg_link_username(update: Update, context: ContextTypes.DEFAULT_TYPE, target: dict):
+    raw_username = (update.message.text or '').strip()
+    username = _normalize_tg_username(raw_username)
+    student_user_id = int(target.get('student_user_id') or 0)
+    student_id = int(target.get('student_id') or 0)
+    student_name = target.get('student_name') or f'ID {student_user_id}'
+    admin_user_id = int(target.get('admin_user_id') or 0)
+
+    if not username:
+        await update.message.reply_text(
+            '⚠️ Не вижу Telegram-тег. Отправь его в формате @username.',
+            parse_mode='HTML',
+        )
+        return
+
+    try:
+        from app.models import db, TelegramStartLead, UserProfile
+        from app.telegram.notifications import send_telegram_message
+
+        lead = TelegramStartLead.query.filter(func.lower(TelegramStartLead.telegram_username) == username).first()
+        target_chat_id = getattr(lead, 'telegram_chat_id', None)
+        if not target_chat_id:
+            existing_profile = UserProfile.query.filter(
+                func.lower(UserProfile.telegram_id).in_((username, f'@{username}')),
+                UserProfile.telegram_chat_id.isnot(None),
+            ).first()
+            target_chat_id = getattr(existing_profile, 'telegram_chat_id', None)
+
+        if not target_chat_id:
+            await update.message.reply_text(
+                '⚠️ Не нашел этого человека среди тех, кто писал боту.\n\n'
+                'Попроси ученика открыть бота BooStudy, нажать /start, потом повтори привязку.',
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton('↩️ К карточке ученика', callback_data=f'student_manage_{student_user_id}_{student_id}')],
+                    _BACK_ROW,
+                ]),
+            )
+            return
+
+        profile = UserProfile.query.filter_by(user_id=student_user_id).first()
+        if not profile:
+            profile = UserProfile(user_id=student_user_id)
+            db.session.add(profile)
+            db.session.flush()
+        profile.telegram_id = f'@{username}'
+        db.session.commit()
+
+        msg = (
+            '🔗 <b>Запрос на привязку Telegram к BooStudy</b>\n\n'
+            f'Аккаунт на платформе: <b>{esc(student_name)}</b>\n'
+            f'Запросил администратор BooStudy.\n\n'
+            'Если это твой аккаунт BooStudy, подтверди связь кнопкой ниже.'
+        )
+        markup = {'inline_keyboard': [[{
+            'text': '✅ Подтвердить привязку',
+            'callback_data': f'admin_link_confirm:{profile.profile_id}:{admin_user_id}',
+        }]]}
+        result = send_telegram_message(int(target_chat_id), msg, reply_markup=markup)
+        if result and result.get('ok'):
+            context.user_data.pop('admin_tg_link_target', None)
+            await update.message.reply_text(
+                f'✅ Запрос отправлен @{username}.\n\n'
+                'Когда ученик нажмет подтверждение, Telegram привяжется к профилю, а тебе придет сообщение.',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton('↩️ К карточке ученика', callback_data=f'student_manage_{student_user_id}_{student_id}')],
+                    _BACK_ROW,
+                ]),
+            )
+        else:
+            await update.message.reply_text('⚠️ Не удалось отправить запрос ученику в Telegram.')
+    except Exception as e:
+        try:
+            from app.models import db
+            db.session.rollback()
+        except Exception:
+            pass
+        logger.error('_handle_admin_tg_link_username error: %s', e, exc_info=True)
+        await update.message.reply_text('⚠️ Ошибка при запуске привязки Telegram.')
