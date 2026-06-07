@@ -99,10 +99,13 @@ def api_update_lessons_remaining(user_id):
         
     data = request.get_json() or {}
     delta = data.get('delta')
+    set_to = data.get('set_to')
     reason = (data.get('reason') or '').strip()
     
-    if not isinstance(delta, int):
-        return jsonify({'success': False, 'error': 'Некорректное значение delta'}), 400
+    has_delta = isinstance(delta, int)
+    has_set_to = isinstance(set_to, int)
+    if not has_delta and not has_set_to:
+        return jsonify({'success': False, 'error': 'Укажите новое количество уроков или изменение delta'}), 400
     if not reason:
         return jsonify({'success': False, 'error': 'Укажите причину изменения количества уроков'}), 400
         
@@ -116,7 +119,10 @@ def api_update_lessons_remaining(user_id):
         return jsonify({'success': False, 'error': 'Тип подписки не подразумевает уроки'}), 400
         
     before = sub.lessons_remaining
-    sub.lessons_remaining += delta
+    if has_set_to:
+        sub.lessons_remaining = max(0, int(set_to))
+    else:
+        sub.lessons_remaining += int(delta)
     if sub.lessons_remaining < 0:
         sub.lessons_remaining = 0
         

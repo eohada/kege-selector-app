@@ -238,13 +238,19 @@
                     Ручное изменение требует причину и отправит ученику уведомление.
                 </div>
             </div>
-            <div class="flex flex-col sm:flex-row gap-2 items-stretch">
+            <div class="flex flex-col gap-2 items-stretch">
+                <input type="number" id="lessons-remaining-value"
+                       min="0"
+                       step="1"
+                       value="{% if student_subscription and student_subscription.lessons_remaining is not none %}{{ student_subscription.lessons_remaining }}{% else %}0{% endif %}"
+                       placeholder="Новое количество уроков"
+                       class="min-w-0 flex-1 px-3 py-2 rounded-xl bg-white/70 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] text-sm font-medium text-primary dark:text-white focus:outline-none focus:border-boo-primary">
                 <input type="text" id="lessons-balance-reason"
                        placeholder="Причина изменения баланса"
                        class="min-w-0 flex-1 px-3 py-2 rounded-xl bg-white/70 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] text-sm font-medium text-primary dark:text-white focus:outline-none focus:border-boo-primary">
-                <div class="flex gap-2">
-                    <button type="button" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/[0.08] text-sm font-bold" onclick="updateLessonsRemaining('{{ student.user_id }}', -1)">-1</button>
-                    <button type="button" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/[0.08] text-sm font-bold" onclick="updateLessonsRemaining('{{ student.user_id }}', 1)">+1</button>
+                <div class="flex gap-2 flex-wrap">
+                    <button type="button" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/[0.08] text-sm font-bold" onclick="setLessonsRemaining('{{ student.user_id }}', 0)">Обнулить</button>
+                    <button type="button" class="px-4 py-2 rounded-xl bg-boo-primary hover:bg-boo-primaryHover text-white rounded-xl font-bold text-sm" onclick="setLessonsRemaining('{{ student.user_id }}', null)">Подтвердить изменение</button>
                 </div>
             </div>
         </div>
@@ -574,13 +580,24 @@
 
 {% include 'partials/presence_watch_script.html' %}
 <script>
-    async function updateLessonsRemaining(userId, delta) {
+    async function setLessonsRemaining(userId, forcedValue) {
         if (!userId || userId === 'None') return;
         try {
+            const valueInput = document.getElementById('lessons-remaining-value');
             const reasonInput = document.getElementById('lessons-balance-reason');
+            const rawValue = valueInput ? valueInput.value.trim() : '';
             const reason = reasonInput ? reasonInput.value.trim() : '';
             if (!reason) {
                 if (window.toast) window.toast.error('Укажи причину изменения баланса');
+                return;
+            }
+            if (forcedValue === null && rawValue === '') {
+                if (window.toast) window.toast.error('Укажи новое количество уроков');
+                return;
+            }
+            const setTo = forcedValue === null ? Number.parseInt(rawValue, 10) : Number.parseInt(forcedValue, 10);
+            if (!Number.isInteger(setTo) || setTo < 0) {
+                if (window.toast) window.toast.error('Новое количество уроков должно быть целым числом не меньше нуля');
                 return;
             }
             const response = await fetch(`/api/user/${userId}/lessons-remaining`, {
@@ -589,12 +606,13 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
                 },
-                body: JSON.stringify({ delta: delta, reason: reason })
+                body: JSON.stringify({ set_to: setTo, reason: reason })
             });
             const data = await response.json().catch(() => ({}));
             if (response.ok && data.success) {
                 document.querySelectorAll('.lessons-remaining-val').forEach(el => el.innerText = data.new_count);
                 if (reasonInput) reasonInput.value = '';
+                if (valueInput) valueInput.value = data.new_count;
                 if (window.toast) window.toast.success('Количество уроков обновлено');
             } else {
                 if (window.toast) window.toast.error(data.error || 'Ошибка');

@@ -198,14 +198,21 @@
                                         <strong class="lessons-remaining-val text-text-primary" style="font-size: 1.2rem;">{{ student_subscription.lessons_remaining }}</strong>
                                     </div>
                                     {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
-                                    <div class="flex flex-col sm:flex-row gap-2">
+                                    <div class="flex flex-col gap-2">
+                                        <input id="lessons-remaining-value"
+                                               type="number"
+                                               min="0"
+                                               step="1"
+                                               value="{{ student_subscription.lessons_remaining }}"
+                                               placeholder="Новое количество уроков"
+                                               class="neo-input flex-1 min-w-0">
                                         <input id="lessons-balance-reason"
                                                type="text"
                                                placeholder="Причина изменения баланса"
                                                class="neo-input flex-1 min-w-0">
-                                        <div class="flex gap-2">
-                                            <button class="neo-button ghost" onclick="updateLessonsRemaining('{{ student.user_id }}', -1)" title="Уменьшить">-1</button>
-                                            <button class="neo-button ghost" onclick="updateLessonsRemaining('{{ student.user_id }}', 1)" title="Увеличить">+1</button>
+                                        <div class="flex gap-2 flex-wrap">
+                                            <button class="neo-button ghost" onclick="setLessonsRemaining('{{ student.user_id }}', 0)" title="Обнулить">Обнулить</button>
+                                            <button class="neo-button accent" onclick="setLessonsRemaining('{{ student.user_id }}', null)" title="Подтвердить">Подтвердить изменение</button>
                                         </div>
                                     </div>
                                     {% endif %}
@@ -259,20 +266,31 @@
 
 {% block scripts_extra %}
     <script>
-        async function updateLessonsRemaining(userId, delta) {
+        async function setLessonsRemaining(userId, forcedValue) {
             if (!userId || userId === 'None') return;
             try {
+                const valueInput = document.getElementById('lessons-remaining-value');
                 const reasonInput = document.getElementById('lessons-balance-reason');
+                const rawValue = valueInput ? valueInput.value.trim() : '';
                 const reason = reasonInput ? reasonInput.value.trim() : '';
                 if (!reason) {
                     if (window.toast) window.toast.error('Укажи причину изменения баланса');
+                    return;
+                }
+                if (forcedValue === null && rawValue === '') {
+                    if (window.toast) window.toast.error('Укажи новое количество уроков');
+                    return;
+                }
+                const setTo = forcedValue === null ? Number.parseInt(rawValue, 10) : Number.parseInt(forcedValue, 10);
+                if (!Number.isInteger(setTo) || setTo < 0) {
+                    if (window.toast) window.toast.error('Новое количество уроков должно быть целым числом не меньше нуля');
                     return;
                 }
                 const url = `/api/user/${userId}/lessons-remaining`;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
-                    body: JSON.stringify({ delta: delta, reason: reason })
+                    body: JSON.stringify({ set_to: setTo, reason: reason })
                 });
 
                 if (response.ok) {
@@ -281,6 +299,7 @@
                         const countEls = document.querySelectorAll('.lessons-remaining-val');
                         countEls.forEach(el => el.innerText = data.new_count);
                         if (reasonInput) reasonInput.value = '';
+                        if (valueInput) valueInput.value = data.new_count;
                         if (window.toast) window.toast.success('Количество уроков обновлено');
                     } else {
                         if (window.toast) window.toast.error(data.error || 'Ошибка');
