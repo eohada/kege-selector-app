@@ -282,6 +282,22 @@
                             <span>{{ student.school_class }} кл</span>
                             {% endif %}
                         </div>
+                        {% set tg_status = student_tg_status.get(student.student_id) if student_tg_status is defined else none %}
+                        <div class="mt-1.5">
+                            {% if tg_status and tg_status.state == 'linked' %}
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-100 dark:border-cyan-500/20 text-[9px] font-extrabold uppercase tracking-wide">
+                                <i class="ph-fill ph-telegram-logo text-[11px]"></i> {{ tg_status.label }}
+                            </span>
+                            {% elif tg_status and tg_status.state == 'pending' %}
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20 text-[9px] font-extrabold uppercase tracking-wide">
+                                <i class="ph-fill ph-telegram-logo text-[11px]"></i> {{ tg_status.label }}
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/[0.06] text-[9px] font-extrabold uppercase tracking-wide">
+                                <i class="ph-fill ph-telegram-logo text-[11px]"></i> TG нет
+                            </span>
+                            {% endif %}
+                        </div>
                     </div>
                 </a>
                 <div class="flex items-center gap-1.5">
@@ -311,6 +327,7 @@
                                 <i class="ph-bold ph-chart-line-up text-base text-muted"></i> Статистика
                             </a>
                             {% if current_user.is_creator() or current_user.is_admin() %}
+                            <div class="my-1 border-t border-slate-100 dark:border-white/[0.06]"></div>
                             <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" class="m-0">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="next" value="{{ request.full_path }}">

@@ -12,7 +12,7 @@ from datetime import datetime
 
 from app.main import main_bp
 from app.models import Student, Lesson, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, db, moscow_now
-from app.models import User, Enrollment, FamilyTie, UserConsent, StudentCourseEnrollment
+from app.models import User, UserProfile, Enrollment, FamilyTie, UserConsent, StudentCourseEnrollment
 from app.students.forms import normalize_school_class
 from app.auth.rbac_utils import get_user_scope, apply_data_scope
 from app.utils.release_notes import build_release_notes_text, RELEASE_VERSION
@@ -423,6 +423,27 @@ def dashboard():
     per_page = 20
     pagination = query.order_by(Student.name).paginate(page=page, per_page=per_page, error_out=False)
     students = pagination.items
+    student_tg_status = {}
+    student_user_ids = [s.user_id for s in students if getattr(s, 'user_id', None)]
+    if student_user_ids:
+        profiles = UserProfile.query.filter(UserProfile.user_id.in_(student_user_ids)).all()
+        by_user_id = {p.user_id: p for p in profiles}
+        for student in students:
+            profile = by_user_id.get(student.user_id)
+            if not profile:
+                student_tg_status[student.student_id] = {'state': 'none', 'label': 'TG нет'}
+            elif profile.telegram_chat_id:
+                student_tg_status[student.student_id] = {
+                    'state': 'linked',
+                    'label': profile.telegram_id or 'TG привязан',
+                }
+            elif profile.telegram_id:
+                student_tg_status[student.student_id] = {
+                    'state': 'pending',
+                    'label': f'{profile.telegram_id} без бота',
+                }
+            else:
+                student_tg_status[student.student_id] = {'state': 'none', 'label': 'TG нет'}
 
     base_is_active = not show_archive
     
@@ -698,6 +719,7 @@ def dashboard():
                          release_notes=build_release_notes_text(),
                          release_version=RELEASE_VERSION,
                          students=students,
+                         student_tg_status=student_tg_status,
                          pagination=pagination,
                          search_query=search_query,
                          category_filter=category_filter,

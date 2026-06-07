@@ -1524,6 +1524,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _cb_notification_ack(query, data)
         return
 
+    if data.startswith('admin_link_confirm:'):
+        await _cb_admin_link_confirm(query, data)
+        return
+
     if data == 'noop':
         return
 
@@ -1846,6 +1850,80 @@ async def _cb_notification_ack(query, data: str) -> None:
             await message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_rows))
     except Exception:
         logger.debug('notification ack markup update skipped', exc_info=True)
+
+
+async def _cb_admin_link_confirm(query, data: str) -> None:
+    try:
+        _, profile_id_str, admin_id_str = data.split(':', 2)
+        profile_id = int(profile_id_str)
+        admin_id = int(admin_id_str)
+    except Exception:
+        logger.warning('bad admin link callback data=%s', data)
+        return
+
+    from_user = query.from_user
+    try:
+        from app.models import db, Student, User, UserProfile
+        from app.telegram.notifications import send_telegram_message
+
+        profile = UserProfile.query.get(profile_id)
+        if not profile:
+            await query.message.reply_text('⚠️ Профиль для привязки не найден.')
+            return
+
+        existing = UserProfile.query.filter(
+            UserProfile.telegram_chat_id == int(from_user.id),
+            UserProfile.profile_id != profile.profile_id,
+        ).first()
+        if existing:
+            await query.message.reply_text('⚠️ Этот Telegram уже привязан к другому аккаунту BooStudy.')
+            return
+
+        username = (getattr(from_user, 'username', None) or '').strip()
+        profile.telegram_chat_id = int(from_user.id)
+        if username:
+            profile.telegram_id = f'@{username}'
+        profile.telegram_notifications_enabled = True
+        profile.telegram_link_code = None
+        profile.telegram_link_code_expires = None
+        profile.telegram_link_token = None
+        profile.telegram_link_token_expires = None
+        db.session.commit()
+
+        student = Student.query.filter_by(user_id=profile.user_id).first()
+        if student and username:
+            student.telegram = f'@{username}'
+            student.telegram_username = username
+        student_user = User.query.get(profile.user_id)
+        student_name = getattr(student, 'name', None) or getattr(student_user, 'username', None) or f'user_id {profile.user_id}'
+        student_tg = f'@{username}' if username else f'chat_id {from_user.id}'
+
+        await query.message.edit_text(
+            '✅ Telegram привязан к аккаунту BooStudy.\n\n'
+            f'Профиль: {student_name}',
+        )
+
+        admin_profile = UserProfile.query.filter_by(user_id=admin_id).first()
+        admin_chat_id = getattr(admin_profile, 'telegram_chat_id', None)
+        if admin_chat_id:
+            send_telegram_message(
+                int(admin_chat_id),
+                '✅ <b>Ученик подтвердил ручную привязку Telegram</b>\n\n'
+                f'👤 Ученик: <b>{esc(student_name)}</b>\n'
+                f'💬 Telegram: <b>{esc(student_tg)}</b>\n'
+                f'🆔 Профиль платформы: <code>{profile.user_id}</code>',
+            )
+    except Exception as e:
+        try:
+            from app.models import db
+            db.session.rollback()
+        except Exception:
+            pass
+        logger.error('_cb_admin_link_confirm error: %s', e, exc_info=True)
+        try:
+            await query.message.reply_text('⚠️ Не удалось привязать Telegram. Попробуй позже.')
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------

@@ -43,7 +43,7 @@ from app.models import (
     StudentCourseEnrollment,
     CallRequest,
 )
-from app.models import User, FamilyTie, Enrollment
+from app.models import User, UserProfile, TelegramStartLead, FamilyTie, Enrollment
 from app.utils.student_id_manager import assign_platform_id_if_needed
 from core.audit_logger import audit_logger
 from flask_login import current_user
@@ -59,6 +59,23 @@ def _absolute_app_url(path: str) -> str:
     if base:
         return f'{base}{path}'
     return path
+
+
+def _normalize_tg_username(value: str | None) -> str:
+    value = (value or '').strip()
+    if value.startswith('https://t.me/'):
+        value = value.rsplit('/', 1)[-1]
+    return value.strip().lstrip('@').lower()
+
+
+def _telegram_display(profile: UserProfile | None) -> str:
+    if not profile:
+        return ''
+    if profile.telegram_id:
+        return str(profile.telegram_id)
+    if profile.telegram_chat_id:
+        return f'chat_id {profile.telegram_chat_id}'
+    return ''
 
 def _get_student_user_for_scope(student: Student) -> User | None:
     """Сопоставляет Student с User по user_id или legacy student_id."""
@@ -427,6 +444,107 @@ def students_list():
     params = request.args.to_dict(flat=True)
     return redirect(url_for('main.dashboard', **params))
 
+
+@students_bp.route('/student/<int:student_id>/telegram/link-request', methods=['POST'])
+@login_required
+def student_telegram_link_request(student_id: int):
+    """Админ запрашивает у ученика подтверждение ручной привязки Telegram."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        from flask import abort
+        abort(403)
+
+    student = Student.query.get_or_404(student_id)
+    student_user = _get_student_user_for_scope(student)
+    if not student_user:
+        flash('У ученика нет связанного аккаунта платформы.', 'error')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    tg_username = _normalize_tg_username(request.form.get('telegram_username'))
+    if not tg_username:
+        flash('Укажи Telegram-тег ученика, например @username.', 'error')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    lead = TelegramStartLead.query.filter(func.lower(TelegramStartLead.telegram_username) == tg_username).first()
+    target_chat_id = getattr(lead, 'telegram_chat_id', None)
+    if not target_chat_id:
+        existing_profile = UserProfile.query.filter(
+            func.lower(UserProfile.telegram_id).in_((tg_username, f'@{tg_username}'))
+        ).filter(UserProfile.telegram_chat_id.isnot(None)).first()
+        target_chat_id = getattr(existing_profile, 'telegram_chat_id', None)
+
+    if not target_chat_id:
+        flash('Не могу написать этому Telegram: ученик должен сначала открыть бота BooStudy и нажать /start.', 'error')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    admin_profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+    admin_chat_id = getattr(admin_profile, 'telegram_chat_id', None)
+    if not admin_chat_id:
+        flash('Сначала привяжи Telegram к своему аккаунту, чтобы получить обратную связь о подтверждении.', 'error')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    student_profile = UserProfile.query.filter_by(user_id=student_user.id).first()
+    if not student_profile:
+        student_profile = UserProfile(user_id=student_user.id)
+        db.session.add(student_profile)
+        db.session.flush()
+
+    student_profile.telegram_id = f'@{tg_username}'
+    student.telegram = f'@{tg_username}'
+    student.telegram_username = tg_username
+    db.session.commit()
+
+    from app.telegram.notifications import send_telegram_message
+
+    admin_name = getattr(current_user, 'username', None) or 'администратор'
+    msg = (
+        '🔗 <b>Запрос на привязку Telegram к BooStudy</b>\n\n'
+        f'Аккаунт на платформе: <b>{student.name}</b>\n'
+        f'Запросил: <b>{admin_name}</b>\n\n'
+        'Если это твой аккаунт BooStudy, подтверди связь кнопкой ниже.'
+    )
+    markup = {'inline_keyboard': [[{
+        'text': '✅ Подтвердить привязку',
+        'callback_data': f'admin_link_confirm:{student_profile.profile_id}:{current_user.id}',
+    }]]}
+    result = send_telegram_message(int(target_chat_id), msg, reply_markup=markup)
+    if result and result.get('ok'):
+        flash(f'Запрос на привязку отправлен @{tg_username}.', 'success')
+    else:
+        flash('Не удалось отправить запрос в Telegram. Проверь тег и что ученик писал боту.', 'error')
+    return redirect(url_for('students.student_profile', student_id=student_id))
+
+
+@students_bp.route('/student/<int:student_id>/telegram/unlink', methods=['POST'])
+@login_required
+def student_telegram_unlink(student_id: int):
+    """Админская отвязка Telegram без подтверждения ученика."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        from flask import abort
+        abort(403)
+
+    student = Student.query.get_or_404(student_id)
+    student_user = _get_student_user_for_scope(student)
+    if not student_user:
+        flash('У ученика нет связанного аккаунта платформы.', 'error')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    profile = UserProfile.query.filter_by(user_id=student_user.id).first()
+    if not profile or (not profile.telegram_chat_id and not profile.telegram_id):
+        flash('Telegram у ученика уже не привязан.', 'info')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    profile.telegram_chat_id = None
+    profile.telegram_id = None
+    profile.telegram_link_code = None
+    profile.telegram_link_code_expires = None
+    profile.telegram_link_token = None
+    profile.telegram_link_token_expires = None
+    student.telegram = None
+    student.telegram_username = None
+    db.session.commit()
+    flash('Telegram отвязан от аккаунта ученика.', 'success')
+    return redirect(url_for('students.student_profile', student_id=student_id))
+
 @students_bp.route('/student/new', methods=['GET', 'POST'])
 @login_required
 def student_new():
@@ -627,6 +745,7 @@ def student_profile(student_id):
             other_lessons = all_lessons
         
         student_user_obj = User.query.get(student.user_id) if getattr(student, 'user_id', None) else None
+        student_profile_obj = UserProfile.query.filter_by(user_id=student_user_obj.id).first() if student_user_obj else None
         student_subscription = None
         try:
             if student_user_obj:
@@ -699,6 +818,7 @@ def student_profile(student_id):
         return render_template(template_name,
                                student=student, 
                                student_user=student_user_obj,
+                               student_profile=student_profile_obj,
                                student_subscription=student_subscription,
                                tutors_list=tutors_list,
                                active_submissions=active_submissions,
@@ -748,6 +868,7 @@ def student_chat(student_id: int):
         return redirect(url_for('students.student_profile', student_id=student.student_id))
 
     student_user_obj = User.query.get(student.user_id) if getattr(student, 'user_id', None) else None
+    student_profile_obj = UserProfile.query.filter_by(user_id=student_user_obj.id).first() if student_user_obj else None
     return render_template('student_chat.html', student=student, student_user=student_user_obj, lesson=lesson, active_page='student_profile')
 
 
@@ -873,6 +994,7 @@ def student_info(student_id: int):
         'student_info.html',
         student=student,
         student_user=student_user_obj,
+        student_profile=student_profile_obj,
         student_subscription=student_subscription,
         tutors_list=tutors_list,
         parents_info=parents_info,

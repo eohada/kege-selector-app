@@ -135,7 +135,17 @@
                         </div>
                         <div class="data-row">
                             <span class="data-label">Telegram</span>
-                            <span class="data-value">{% if student.telegram %}{{ student.telegram }}{% else %}—{% endif %}</span>
+                            <span class="data-value">
+                                {% if student_profile and student_profile.telegram_chat_id %}
+                                    Бот привязан{% if student_profile.telegram_id %}: {{ student_profile.telegram_id }}{% endif %}
+                                {% elif student_profile and student_profile.telegram_id %}
+                                    {{ student_profile.telegram_id }} · бот не привязан
+                                {% elif student.telegram %}
+                                    {{ student.telegram }} · бот не привязан
+                                {% else %}
+                                    Не привязан
+                                {% endif %}
+                            </span>
                         </div>
                     </div>
                 </div>
