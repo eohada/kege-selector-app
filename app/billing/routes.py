@@ -225,6 +225,7 @@ def billing_subscription_assign():
     for extra in active[1:]:
         extra.status = 'cancelled'
 
+    before_lessons = sub.lessons_remaining if sub else None
     if sub:
         if days:
             base_end = sub.ends_at or now
@@ -257,6 +258,19 @@ def billing_subscription_assign():
         audit_logger.log_error(action='billing_subscription_assign', entity='UserSubscription', error=str(e))
         flash('Не удалось назначить подписку.', 'danger')
         return redirect(url_for('billing.billing_subscriptions'))
+
+    try:
+        if sub and sub.lessons_remaining is not None and (lessons is not None or before_lessons is not None):
+            from app.telegram.notifications import notify_lesson_balance_changed
+            notify_lesson_balance_changed(
+                student_user_id=int(user_id),
+                before=before_lessons,
+                after=sub.lessons_remaining,
+                reason=note or ('Назначение тарифа' if not sub.note else sub.note),
+                source='tariff',
+            )
+    except Exception:
+        logger.warning('Failed to notify lesson balance after billing_subscription_assign for user %s', user_id, exc_info=True)
 
     try:
         audit_logger.log(action='billing_subscription_assign', entity='UserSubscription', entity_id=sub.subscription_id, status='success', metadata={'user_id': user_id, 'plan_id': plan_id, 'days': days, 'lessons': lessons})
@@ -319,4 +333,3 @@ def billing_subscription_cancel(subscription_id: int):
         return redirect(url_for('billing.billing_subscriptions'))
     flash('Подписка отменена.', 'success')
     return redirect(url_for('billing.billing_subscriptions'))
-

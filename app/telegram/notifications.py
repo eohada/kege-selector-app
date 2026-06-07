@@ -390,6 +390,68 @@ def notify_daily_digest(*, student_user_id: int, lessons_today: list, pending_co
     return notify_user_by_id(int(student_user_id), msg, kind='daily_digest')
 
 
+def notify_lesson_balance_changed(
+    *,
+    student_user_id: int,
+    before: int | None,
+    after: int | None,
+    reason: str | None = None,
+    source: str = 'manual',
+) -> bool:
+    """
+    Сообщить ученику об изменении баланса уроков и при необходимости о низком остатке.
+
+    source:
+      - manual: ручное изменение админом/создателем
+      - lesson: списание после урока
+      - tariff: назначение/продление тарифа
+    """
+    from app.telegram.user_notify import notify_user_by_id
+
+    if after is None:
+        return False
+
+    before_val = int(before) if before is not None else None
+    after_val = int(after)
+    reason_text = (reason or '').strip()
+
+    lines = ['📚 <b>Изменение количества уроков</b>', '']
+    if before_val is None:
+        lines.append(f'Было: <b>—</b>')
+    else:
+        lines.append(f'Было: <b>{before_val}</b>')
+    lines.append(f'Стало: <b>{after_val}</b>')
+    if reason_text:
+        lines.append(f'Причина: {_esc(reason_text)}')
+    if source == 'manual':
+        lines.append('')
+        lines.append('Это ручное изменение баланса.')
+
+    extra_kind: str | None = None
+    extra_text: str | None = None
+    if after_val == 5:
+        extra_kind = 'low_lessons'
+        extra_text = '⚠️ <b>Внимание, на балансе осталось пять уроков.</b>'
+    elif after_val == 1:
+        extra_kind = 'low_lessons'
+        extra_text = '⚠️ <b>На балансе остался один урок.</b>'
+    elif after_val == 0:
+        extra_kind = 'low_lessons'
+        extra_text = '🚫 <b>Уроки на балансе закончились.</b>'
+    elif before_val is not None and before_val >= 3 and after_val < 3:
+        extra_kind = 'low_lessons'
+        extra_text = '⚠️ <b>На балансе осталось меньше трех уроков.</b>'
+
+    msg = '\n'.join(lines)
+    ok = notify_user_by_id(int(student_user_id), msg, kind=None)
+    if not ok:
+        return False
+
+    if extra_text:
+        return notify_user_by_id(int(student_user_id), extra_text, kind=extra_kind)
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Submission status hook
 # ---------------------------------------------------------------------------

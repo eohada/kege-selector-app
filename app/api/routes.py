@@ -99,9 +99,12 @@ def api_update_lessons_remaining(user_id):
         
     data = request.get_json() or {}
     delta = data.get('delta')
+    reason = (data.get('reason') or '').strip()
     
     if not isinstance(delta, int):
         return jsonify({'success': False, 'error': 'Некорректное значение delta'}), 400
+    if not reason:
+        return jsonify({'success': False, 'error': 'Укажите причину изменения количества уроков'}), 400
         
     from app.models import UserSubscription
     sub = UserSubscription.query.filter_by(user_id=user_id, status='active').first()
@@ -112,12 +115,24 @@ def api_update_lessons_remaining(user_id):
     if sub.lessons_remaining is None:
         return jsonify({'success': False, 'error': 'Тип подписки не подразумевает уроки'}), 400
         
+    before = sub.lessons_remaining
     sub.lessons_remaining += delta
     if sub.lessons_remaining < 0:
         sub.lessons_remaining = 0
         
     try:
         db.session.commit()
+        try:
+            from app.telegram.notifications import notify_lesson_balance_changed
+            notify_lesson_balance_changed(
+                student_user_id=int(user_id),
+                before=before,
+                after=sub.lessons_remaining,
+                reason=reason,
+                source='manual',
+            )
+        except Exception:
+            logger.warning('Failed to notify lesson balance change for user %s', user_id, exc_info=True)
         return jsonify({'success': True, 'new_count': sub.lessons_remaining})
     except Exception as e:
         db.session.rollback()

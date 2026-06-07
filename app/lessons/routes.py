@@ -345,14 +345,30 @@ def lesson_complete(lesson_id):
                 user_id=lesson.student.user_id,
                 status='active'
             ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
+            balance_notice = None
             if active_sub and active_sub.lessons_remaining is not None and active_sub.lessons_remaining > 0:
+                before = active_sub.lessons_remaining
                 active_sub.lessons_remaining -= 1
-                logger.info(f"Decreased lessons_remaining for user {lesson.student.user_id}: {active_sub.lessons_remaining + 1} -> {active_sub.lessons_remaining}")
+                logger.info(f"Decreased lessons_remaining for user {lesson.student.user_id}: {before} -> {active_sub.lessons_remaining}")
+                balance_notice = (before, active_sub.lessons_remaining, f'Списание после завершения урока #{lesson.lesson_id}')
     except Exception as e:
         logger.warning(f"Could not decrease lessons_remaining for lesson {lesson_id}: {e}")
 
     try:
         db.session.commit()
+        if 'balance_notice' in locals() and balance_notice and lesson.student and lesson.student.user_id:
+            try:
+                from app.telegram.notifications import notify_lesson_balance_changed
+                before, after, reason = balance_notice
+                notify_lesson_balance_changed(
+                    student_user_id=int(lesson.student.user_id),
+                    before=before,
+                    after=after,
+                    reason=reason,
+                    source='lesson',
+                )
+            except Exception:
+                logger.warning('Could not notify lesson balance change after commit for lesson %s', lesson_id, exc_info=True)
     except Exception as e:
         db.session.rollback()
         raise
@@ -378,6 +394,7 @@ def auto_complete_overdue_lessons():
             if st_naive is None or st_naive > threshold:
                 continue
             lesson.status = 'completed'
+            balance_notice = None
             if lesson.student and lesson.student.user_id:
                 from app.models import UserSubscription
                 active_sub = UserSubscription.query.filter_by(
@@ -385,9 +402,24 @@ def auto_complete_overdue_lessons():
                     status='active'
                 ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
                 if active_sub and active_sub.lessons_remaining is not None and active_sub.lessons_remaining > 0:
+                    before = active_sub.lessons_remaining
                     active_sub.lessons_remaining -= 1
-                    logger.info(f"Auto-completed lesson {lesson.lesson_id}, decreased lessons_remaining for user {lesson.student.user_id}")
+                    logger.info(f"Auto-completed lesson {lesson.lesson_id}, decreased lessons_remaining for user {lesson.student.user_id}: {before} -> {active_sub.lessons_remaining}")
+                    balance_notice = (before, active_sub.lessons_remaining, f'Списание после авто-завершения урока #{lesson.lesson_id}')
             db.session.commit()
+            if balance_notice and lesson.student and lesson.student.user_id:
+                try:
+                    from app.telegram.notifications import notify_lesson_balance_changed
+                    before, after, reason = balance_notice
+                    notify_lesson_balance_changed(
+                        student_user_id=int(lesson.student.user_id),
+                        before=before,
+                        after=after,
+                        reason=reason,
+                        source='lesson',
+                    )
+                except Exception:
+                    logger.warning('Could not notify auto-complete lesson balance change for lesson %s', lesson.lesson_id, exc_info=True)
             count += 1
         except Exception as e:
             db.session.rollback()

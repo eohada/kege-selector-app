@@ -147,6 +147,14 @@
                                 {% endif %}
                             </span>
                         </div>
+                        {% if student_subscription and student_subscription.lessons_remaining is not none %}
+                        <div class="data-row">
+                            <span class="data-label">Уроки</span>
+                            <span class="data-value">
+                                <strong class="lessons-remaining-val">{{ student_subscription.lessons_remaining }}</strong>
+                            </span>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -184,14 +192,22 @@
                                 {% endif %}
                             </div>
                             {% if student_subscription.lessons_remaining is not none %}
-                                <div class="flex items-center gap-2 text-text-muted">
-                                    Осталось уроков:
+                                <div class="flex flex-col gap-3 text-text-muted">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        Осталось уроков:
+                                        <strong class="lessons-remaining-val text-text-primary" style="font-size: 1.2rem;">{{ student_subscription.lessons_remaining }}</strong>
+                                    </div>
                                     {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
-                                        <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student.user_id }}', -1)" title="Уменьшить" style="padding: 0 0.4rem;">-</button>
-                                    {% endif %}
-                                    <strong class="lessons-remaining-val text-text-primary" style="font-size: 1.2rem;">{{ student_subscription.lessons_remaining }}</strong>
-                                    {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
-                                        <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student.user_id }}', 1)" title="Увеличить" style="padding: 0 0.4rem;">+</button>
+                                    <div class="flex flex-col sm:flex-row gap-2">
+                                        <input id="lessons-balance-reason"
+                                               type="text"
+                                               placeholder="Причина изменения баланса"
+                                               class="neo-input flex-1 min-w-0">
+                                        <div class="flex gap-2">
+                                            <button class="neo-button ghost" onclick="updateLessonsRemaining('{{ student.user_id }}', -1)" title="Уменьшить">-1</button>
+                                            <button class="neo-button ghost" onclick="updateLessonsRemaining('{{ student.user_id }}', 1)" title="Увеличить">+1</button>
+                                        </div>
+                                    </div>
                                     {% endif %}
                                 </div>
                             {% elif student_subscription.seconds_left is not none %}
@@ -246,11 +262,17 @@
         async function updateLessonsRemaining(userId, delta) {
             if (!userId || userId === 'None') return;
             try {
+                const reasonInput = document.getElementById('lessons-balance-reason');
+                const reason = reasonInput ? reasonInput.value.trim() : '';
+                if (!reason) {
+                    if (window.toast) window.toast.error('Укажи причину изменения баланса');
+                    return;
+                }
                 const url = `/api/user/${userId}/lessons-remaining`;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
-                    body: JSON.stringify({ delta: delta })
+                    body: JSON.stringify({ delta: delta, reason: reason })
                 });
 
                 if (response.ok) {
@@ -258,6 +280,7 @@
                     if (data.success) {
                         const countEls = document.querySelectorAll('.lessons-remaining-val');
                         countEls.forEach(el => el.innerText = data.new_count);
+                        if (reasonInput) reasonInput.value = '';
                         if (window.toast) window.toast.success('Количество уроков обновлено');
                     } else {
                         if (window.toast) window.toast.error(data.error || 'Ошибка');
