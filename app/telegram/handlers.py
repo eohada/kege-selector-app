@@ -1519,6 +1519,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     touch_telegram_activity(chat_id)
 
+    # Student confirms that a test notification arrived
+    if data.startswith('notif_ack:'):
+        await _cb_notification_ack(query, data)
+        return
+
+    if data == 'noop':
+        return
+
     # Creator closes a bug report
     if data.startswith('bug_close_'):
         await _cb_bug_close(query, data)
@@ -1792,6 +1800,52 @@ async def _cb_bug_close(query, data: str) -> None:
     except Exception as e:
         logger.error('_cb_bug_close: %s', e)
         await query.answer('Ошибка', show_alert=True)
+
+
+async def _cb_notification_ack(query, data: str) -> None:
+    parts = data.split(':', 2)
+    kind = parts[2] if len(parts) >= 3 else 'generic'
+    from_user = query.from_user
+    message = query.message
+    notification_text = ''
+    if message:
+        notification_text = getattr(message, 'text', None) or getattr(message, 'caption', None) or ''
+
+    try:
+        from app.telegram.user_notify import send_student_notification_ack_report
+
+        sent = send_student_notification_ack_report(
+            student_chat_id=int(from_user.id),
+            student_username=getattr(from_user, 'username', None),
+            student_first_name=getattr(from_user, 'first_name', None),
+            student_last_name=getattr(from_user, 'last_name', None),
+            notification_text=notification_text,
+            kind=kind,
+        )
+        if not sent:
+            logger.warning('notification ack report had no creator recipients chat_id=%s kind=%s', from_user.id, kind)
+    except Exception as e:
+        logger.error('_cb_notification_ack error: %s', e, exc_info=True)
+        return
+
+    try:
+        markup = getattr(message, 'reply_markup', None) if message else None
+        rows = getattr(markup, 'inline_keyboard', None) or []
+        new_rows = []
+        for row in rows:
+            new_row = []
+            for button in row:
+                callback_data = getattr(button, 'callback_data', None) or ''
+                if callback_data.startswith('notif_ack:'):
+                    new_row.append(InlineKeyboardButton('✅ Подтверждено', callback_data='noop'))
+                else:
+                    new_row.append(button)
+            if new_row:
+                new_rows.append(new_row)
+        if message and new_rows:
+            await message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_rows))
+    except Exception:
+        logger.debug('notification ack markup update skipped', exc_info=True)
 
 
 # ---------------------------------------------------------------------------
