@@ -2515,6 +2515,37 @@ def lesson_new(student_id):
 
     return render_template('lesson_form.html', form=form, student=student, title='Добавить урок', is_new=True)
 
+@students_bp.route('/student/<int:student_id>/lesson/<int:lesson_id>/test-reminder', methods=['POST'])
+@login_required
+def lesson_test_reminder(student_id, lesson_id):
+    """Manual diagnostic send for the 30-minute Telegram lesson reminder."""
+    student = _guard_student_access(student_id)
+    if current_user.is_student() or current_user.is_parent():
+        flash('У вас недостаточно прав для тестовой отправки.', 'danger')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+    if not (has_permission(current_user, 'lesson.create') or has_permission(current_user, 'lesson.edit') or current_user.is_creator() or current_user.is_admin()):
+        flash('У вас недостаточно прав для тестовой отправки.', 'danger')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    lesson = Lesson.query.get_or_404(lesson_id)
+    if lesson.student_id != student.student_id:
+        flash('Урок не относится к этому ученику.', 'danger')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    try:
+        from app.tasks.telegram_lesson_reminders import send_lesson_30min_reminder
+
+        ok = send_lesson_30min_reminder(lesson, force=True)
+        if ok:
+            flash('Тестовое Telegram-напоминание отправлено.', 'success')
+        else:
+            flash('Не удалось отправить тестовое напоминание. Проверь привязку Telegram и включённые уведомления у ученика.', 'warning')
+    except Exception as e:
+        logger.warning('lesson_test_reminder failed lesson_id=%s: %s', lesson_id, e, exc_info=True)
+        flash(f'Ошибка тестового напоминания: {e}', 'danger')
+
+    return redirect(url_for('students.student_profile', student_id=student_id))
+
 @students_bp.route('/student/<int:student_id>/lesson-mode')
 @login_required
 def lesson_mode(student_id):

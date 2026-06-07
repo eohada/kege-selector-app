@@ -53,6 +53,17 @@ services:
       - web
     restart: unless-stopped
 
+  celery-beat:
+    build: .
+    command: celery -A celery_app.celery beat --loglevel=info
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - web
+    restart: unless-stopped
+
 volumes:
   minio_data:
   redis_data:
