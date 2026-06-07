@@ -6,6 +6,101 @@
 
 {% block head_css %}
 <style>
+    .student-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.7rem;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        background: rgba(255, 255, 255, 0.82);
+        color: rgb(30, 41, 59);
+        font-size: 0.75rem;
+        font-weight: 800;
+        line-height: 1;
+        backdrop-filter: blur(8px);
+    }
+    .dark .student-chip {
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.88);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+    .student-action-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+    @media (min-width: 1024px) {
+        .student-action-grid {
+            grid-template-columns: repeat(4, minmax(0, max-content));
+            justify-content: start;
+        }
+    }
+    .student-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 44px;
+        padding: 0.8rem 1rem;
+        border-radius: 0.95rem;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        background: rgba(255, 255, 255, 0.88);
+        color: rgb(15, 23, 42);
+        font-weight: 800;
+        font-size: 0.9rem;
+        text-decoration: none;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    }
+    .student-action-btn:hover {
+        background: rgba(248, 250, 252, 1);
+        border-color: rgba(99, 102, 241, 0.24);
+    }
+    .dark .student-action-btn {
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.92);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+    .dark .student-action-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(167, 139, 250, 0.28);
+    }
+    .student-control-panel {
+        display: grid;
+        gap: 0.75rem;
+    }
+    .student-control-panel input {
+        width: 100%;
+    }
+    .student-confirm-btn {
+        min-height: 44px;
+        border-radius: 0.95rem;
+        background: #1f2937;
+        color: #fff;
+        font-weight: 800;
+        box-shadow: 0 6px 18px rgba(31, 41, 55, 0.12);
+    }
+    .student-confirm-btn:hover {
+        background: #111827;
+    }
+    .dark .student-confirm-btn {
+        background: #8b5cf6;
+    }
+    .dark .student-confirm-btn:hover {
+        background: #7c3aed;
+    }
+    .student-secondary-btn {
+        min-height: 44px;
+        border-radius: 0.95rem;
+        background: rgba(248, 250, 252, 1);
+        color: rgb(51, 65, 85);
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        font-weight: 800;
+    }
+    .dark .student-secondary-btn {
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.9);
+    }
     .custom-scrollbar::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -70,13 +165,13 @@
                     <!-- Теги/Класс/Категория -->
                     <div class="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 mb-1.5">
                         {% if student_user and student_user.is_demo_user %}
-                        <span class="px-2.5 py-0.5 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-[9px] font-extrabold uppercase tracking-wider">Демо</span>
+                        <span class="student-chip">Демо</span>
                         {% endif %}
                         {% if student.school_class %}
-                        <span class="px-2.5 py-0.5 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[9px] font-extrabold uppercase tracking-wider">{{ student.school_class }} класс</span>
+                        <span class="student-chip">{{ student.school_class }} класс</span>
                         {% endif %}
                         {% if student.category %}
-                        <span class="px-2.5 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-extrabold uppercase tracking-wider">{{ student.category }}</span>
+                        <span class="student-chip">{{ student.category }}</span>
                         {% endif %}
                     </div>
 
@@ -135,17 +230,17 @@
 
                     <div class="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
                         {% if student_profile and student_profile.telegram_chat_id %}
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-200 border border-cyan-400/20 text-[10px] font-extrabold uppercase tracking-wider">
+                        <span class="student-chip">
                             <i class="ph-fill ph-telegram-logo text-sm"></i>
                             Telegram привязан{% if student_profile.telegram_id %}: {{ student_profile.telegram_id }}{% endif %}
                         </span>
                         {% elif student_profile and student_profile.telegram_id %}
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-200 border border-amber-400/20 text-[10px] font-extrabold uppercase tracking-wider">
+                        <span class="student-chip">
                             <i class="ph-fill ph-telegram-logo text-sm"></i>
                             Telegram указан: {{ student_profile.telegram_id }}, бот не привязан
                         </span>
                         {% else %}
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 text-slate-300 border border-white/10 text-[10px] font-extrabold uppercase tracking-wider">
+                        <span class="student-chip">
                             <i class="ph-fill ph-telegram-logo text-sm"></i>
                             Telegram не привязан
                         </span>
@@ -163,14 +258,14 @@
             </div>
 
             <!-- Кнопки действий (без вида ученика) -->
-            <div class="flex items-center gap-2.5 flex-wrap w-full md:w-auto justify-center sm:justify-start shrink-0">
+            <div class="student-action-grid w-full">
                 <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
-                   class="px-5 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold border border-white/10 shadow-sm transition-colors text-sm flex items-center gap-2 no-underline">
+                   class="student-action-btn">
                     <i class="ph-bold ph-chart-line-up text-lg"></i>
                     <span>Статистика</span>
                 </a>
                 <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}"
-                   class="px-5 py-3 bg-white hover:bg-slate-100 text-slate-900 rounded-xl font-bold border border-white shadow-md hover:shadow-lg transition-all text-sm flex items-center gap-2 no-underline">
+                   class="student-action-btn">
                     <i class="ph-bold ph-plus text-lg"></i>
                     <span>Новый урок</span>
                 </a>
@@ -222,7 +317,7 @@
 
     {% if current_user.is_creator() or current_user.is_admin() or current_user.is_tutor() or has_permission(current_user, 'tools.admin') %}
     <section class="bg-surface dark:bg-dark-card rounded-[24px] border border-slate-200 dark:border-white/[0.06] shadow-sm dark:shadow-glass-dark p-5">
-        <div class="flex flex-col gap-4">
+        <div class="student-control-panel">
             <div>
                 <div class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
                     <i class="ph-fill ph-books text-violet-500"></i> Баланс уроков
@@ -238,7 +333,7 @@
                     Ручное изменение требует причину и отправит ученику уведомление.
                 </div>
             </div>
-            <div class="flex flex-col gap-2 items-stretch">
+            <div class="student-control-panel">
                 <input type="number" id="lessons-remaining-value"
                        min="0"
                        step="1"
@@ -249,8 +344,8 @@
                        placeholder="Причина изменения баланса"
                        class="min-w-0 flex-1 px-3 py-2 rounded-xl bg-white/70 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] text-sm font-medium text-primary dark:text-white focus:outline-none focus:border-boo-primary">
                 <div class="flex gap-2 flex-wrap">
-                    <button type="button" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/[0.08] text-sm font-bold" onclick="setLessonsRemaining('{{ student.user_id }}', 0)">Обнулить</button>
-                    <button type="button" class="px-4 py-2 rounded-xl bg-boo-primary hover:bg-boo-primaryHover text-white rounded-xl font-bold text-sm" onclick="setLessonsRemaining('{{ student.user_id }}', null)">Подтвердить изменение</button>
+                    <button type="button" class="student-secondary-btn px-4 py-2" onclick="setLessonsRemaining('{{ student.user_id }}', 0)">Обнулить</button>
+                    <button type="button" class="student-confirm-btn px-4 py-2" onclick="setLessonsRemaining('{{ student.user_id }}', null)">Подтвердить изменение</button>
                 </div>
             </div>
         </div>

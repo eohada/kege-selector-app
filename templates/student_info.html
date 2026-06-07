@@ -20,6 +20,45 @@
         border-color: rgba(251, 191, 36, 0.45); color: rgba(251, 191, 36, 0.95); background: rgba(251, 191, 36, 0.08);
         display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .55rem; border-radius: 999px; font-size: .85rem;
     }
+    .lesson-control-grid {
+        display: grid;
+        gap: 0.75rem;
+    }
+    .lesson-control-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .lesson-control-btn {
+        min-height: 44px;
+        padding: 0.75rem 1rem;
+        border-radius: 0.95rem;
+        font-weight: 800;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        background: rgba(248, 250, 252, 1);
+        color: rgb(51, 65, 85);
+    }
+    .lesson-control-btn:hover {
+        background: rgba(241, 245, 249, 1);
+    }
+    .lesson-control-btn--primary {
+        background: #1f2937;
+        color: #fff;
+    }
+    .lesson-control-btn--primary:hover {
+        background: #111827;
+    }
+    .dark .lesson-control-btn {
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.92);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+    .dark .lesson-control-btn--primary {
+        background: #8b5cf6;
+    }
+    .dark .lesson-control-btn--primary:hover {
+        background: #7c3aed;
+    }
     @media (max-width: 768px) {
         .data-row { flex-direction: column; gap: 0.25rem; text-align: left; }
         .data-value { text-align: left; }
@@ -198,7 +237,7 @@
                                         <strong class="lessons-remaining-val text-text-primary" style="font-size: 1.2rem;">{{ student_subscription.lessons_remaining }}</strong>
                                     </div>
                                     {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
-                                    <div class="flex flex-col gap-2">
+                                    <div class="lesson-control-grid">
                                         <input id="lessons-remaining-value"
                                                type="number"
                                                min="0"
@@ -210,9 +249,9 @@
                                                type="text"
                                                placeholder="Причина изменения баланса"
                                                class="neo-input flex-1 min-w-0">
-                                        <div class="flex gap-2 flex-wrap">
-                                            <button class="neo-button ghost" onclick="setLessonsRemaining('{{ student.user_id }}', 0)" title="Обнулить">Обнулить</button>
-                                            <button class="neo-button accent" onclick="setLessonsRemaining('{{ student.user_id }}', null)" title="Подтвердить">Подтвердить изменение</button>
+                                        <div class="lesson-control-actions">
+                                            <button class="lesson-control-btn" onclick="setLessonsRemaining('{{ student.user_id }}', 0)" title="Обнулить">Обнулить</button>
+                                            <button class="lesson-control-btn lesson-control-btn--primary" onclick="setLessonsRemaining('{{ student.user_id }}', null)" title="Подтвердить">Подтвердить изменение</button>
                                         </div>
                                     </div>
                                     {% endif %}
