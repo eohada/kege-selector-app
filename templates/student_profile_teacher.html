@@ -282,6 +282,12 @@
                                                                 Начать
                                                             </button>
                                                         </form>
+                                                        <form method="POST" action="{{ url_for('students.lesson_test_reminder', student_id=student.student_id, lesson_id=lesson.lesson_id) }}" class="inline">
+                                                            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                                            <button type="submit" class="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-500/20 font-bold rounded-lg text-[10px] transition-colors" title="Отправить тестовое Telegram-напоминание">
+                                                                Тест уведа
+                                                            </button>
+                                                        </form>
                                                     {% elif _ls == 'in_progress' %}
                                                         <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=lesson.lesson_id) }}" class="inline">
                                                             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
@@ -296,15 +302,6 @@
                                                        title="Редактировать параметры занятия">
                                                         <i class="ph-bold ph-pencil-simple text-xs"></i>
                                                     </a>
-                                                    {% if _ls == 'planned' %}
-                                                        <form method="POST" action="{{ url_for('students.lesson_test_reminder', student_id=student.student_id, lesson_id=lesson.lesson_id) }}" class="inline">
-                                                            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                                                            <button type="submit" class="w-7 h-7 bg-cyan-500/5 hover:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/10 rounded-lg flex items-center justify-center transition-colors" title="Тест Telegram-напоминания">
-                                                                <i class="ph-bold ph-paper-plane-tilt text-xs"></i>
-                                                            </button>
-                                                        </form>
-                                                    {% endif %}
-                                                    
                                                     <form method="POST" action="{{ url_for('lessons.lesson_delete', lesson_id=lesson.lesson_id) }}" class="inline confirm-delete-form">
                                                         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                                                         <button type="submit" class="w-7 h-7 bg-red-500/5 hover:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/10 rounded-lg flex items-center justify-center transition-colors" title="Удалить урок">
