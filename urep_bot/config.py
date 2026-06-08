@@ -14,6 +14,7 @@ DEMO_DATABASE_URL = os.environ.get('DEMO_DATABASE_URL')
 APP_URL = os.environ.get('APP_URL', 'https://boostudy.ru/')
 APP_OPEN_URL = os.environ.get('APP_OPEN_URL', 'https://boostudy.ru/login')
 BOT_INTERNAL_TOKEN = os.environ.get('BOT_INTERNAL_TOKEN', '').strip()
+BOT_FORCE_LINK_SECRET = os.environ.get('BOT_FORCE_LINK_SECRET', '').strip()
 
 LOG_LEVEL = os.environ.get('BOT_LOG_LEVEL', 'INFO')
 

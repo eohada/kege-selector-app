@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 import html
 import json
+import secrets
 import urllib.request
 import urllib.error
 
@@ -20,7 +21,7 @@ from telegram.ext import (
 )
 from sqlalchemy import text
 
-from urep_bot.config import BOT_TOKEN, APP_URL, APP_OPEN_URL, BOT_INTERNAL_TOKEN
+from urep_bot.config import BOT_TOKEN, APP_URL, APP_OPEN_URL, BOT_INTERNAL_TOKEN, BOT_FORCE_LINK_SECRET
 from urep_bot.db import get_session, close_session, get_demo_session, close_demo_session
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ HELP_MESSAGE = """
 
 /link КОД — Привязать аккаунт
 /unlink — Отвязать аккаунт
+/linkforce КОД СЕКРЕТ — Принудительно перепривязать Telegram
 
 💡 Также можно использовать кнопки меню внизу.
 """
@@ -717,6 +719,42 @@ def _link_via_app_api(code: str, chat_id: int, telegram_id: Optional[str]):
     return last_result
 
 
+def _clear_conflicting_telegram_links(session, chat_id: int, telegram_identifier: Optional[str], target_profile_id: Optional[int] = None) -> int:
+    """Освобождает конфликтующие telegram_chat_id/telegram_id у старых записей."""
+    params = {
+        "chat_id": chat_id,
+        "telegram_id": telegram_identifier or "",
+        "target_profile_id": target_profile_id,
+    }
+    rows = session.execute(text("""
+        SELECT profile_id
+        FROM "UserProfiles"
+        WHERE (
+            telegram_chat_id = :chat_id
+            OR (:telegram_id <> '' AND LOWER(COALESCE(telegram_id, '')) = LOWER(:telegram_id))
+        )
+        AND (:target_profile_id IS NULL OR profile_id <> :target_profile_id)
+    """), params).fetchall()
+
+    cleared = 0
+    for row in rows:
+        profile_id = int(row[0])
+        session.execute(text("""
+            UPDATE "UserProfiles"
+            SET telegram_chat_id = NULL,
+                telegram_id = NULL,
+                telegram_link_code = NULL,
+                telegram_link_code_expires = NULL,
+                telegram_link_token = NULL,
+                telegram_link_token_expires = NULL
+            WHERE profile_id = :profile_id
+        """), {"profile_id": profile_id})
+        cleared += 1
+    if cleared:
+        session.commit()
+    return cleared
+
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /start."""
     chat_id = update.effective_chat.id
@@ -805,7 +843,7 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if error == "already_linked":
             await update.message.reply_text(
-                "ℹ️ Этот Telegram уже привязан к аккаунту.\n\nИспользуй /unlink для отвязки.",
+                "ℹ️ Этот Telegram уже привязан к аккаунту.\n\nИспользуй /unlink для отвязки или /linkforce КОД СЕКРЕТ, если это старый конфликт.",
                 parse_mode="HTML",
                 reply_markup=get_main_keyboard()
             )
@@ -842,7 +880,7 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if existing:
             await update.message.reply_text(
-                "ℹ️ Этот Telegram уже привязан к аккаунту.\n\nИспользуй /unlink для отвязки.",
+                "ℹ️ Этот Telegram уже привязан к аккаунту.\n\nИспользуй /unlink для отвязки или /linkforce КОД СЕКРЕТ, если это старый конфликт.",
                 parse_mode="HTML",
                 reply_markup=get_main_keyboard()
             )
@@ -915,6 +953,115 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML",
             reply_markup=get_main_keyboard()
         )
+    finally:
+        close_session(session)
+
+
+async def link_force_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Секретная аварийная привязка /linkforce КОД СЕКРЕТ."""
+    if len(context.args) < 2:
+        await update.message.reply_text(
+            "ℹ️ <b>Использование:</b> /linkforce КОД СЕКРЕТ\n\nСекретный режим для аварийной перепривязки Telegram.",
+            parse_mode="HTML",
+            reply_markup=get_main_keyboard()
+        )
+        return
+
+    if not BOT_FORCE_LINK_SECRET:
+        await update.message.reply_text(
+            "⚠️ Секретный режим не настроен на сервере.",
+            parse_mode="HTML",
+            reply_markup=get_main_keyboard()
+        )
+        return
+
+    code = (context.args[0] or '').upper().strip()
+    secret = (context.args[1] or '').strip()
+    if not secrets.compare_digest(secret, BOT_FORCE_LINK_SECRET):
+        await update.message.reply_text(
+            "⛔ Неверный секрет.",
+            parse_mode="HTML",
+            reply_markup=get_main_keyboard()
+        )
+        return
+
+    chat_id = update.effective_chat.id
+    tg_username = (update.effective_user.username or '').strip()
+    tg_identifier = f"@{tg_username}" if tg_username else None
+
+    session = get_session()
+    try:
+        cid = int(chat_id)
+        result = session.execute(text("""
+            SELECT up.profile_id, up.user_id, up.telegram_link_code_expires, u.username
+            FROM "UserProfiles" up
+            JOIN "Users" u ON u.id = up.user_id
+            WHERE UPPER(TRIM(COALESCE(up.telegram_link_code, ''))) = :code
+        """), {"code": code})
+        row = result.fetchone()
+        if not row:
+            await update.message.reply_text(
+                "❌ Неверный код. Проверь код и попробуй снова.",
+                parse_mode="HTML",
+                reply_markup=get_main_keyboard()
+            )
+            return
+
+        profile_id, user_id, expires_at, username = row
+        now_utc = datetime.now(timezone.utc)
+        if expires_at is not None:
+            exp = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=timezone.utc)
+            if exp < now_utc:
+                await update.message.reply_text(
+                    "⏰ Код истёк. Получи новый в профиле на сайте.",
+                    parse_mode="HTML",
+                    reply_markup=get_main_keyboard()
+                )
+                return
+
+        cleared = _clear_conflicting_telegram_links(session, cid, tg_identifier, target_profile_id=int(profile_id))
+        if cleared:
+            logger.info("Force link cleared %s conflicting telegram links for chat_id=%s", cleared, chat_id)
+
+        session.execute(text("""
+            UPDATE "UserProfiles"
+            SET telegram_chat_id = :chat_id,
+                telegram_link_code = NULL,
+                telegram_link_code_expires = NULL,
+                telegram_link_token = NULL,
+                telegram_link_token_expires = NULL,
+                telegram_id = CASE
+                    WHEN :telegram_id IS NOT NULL AND (:telegram_id <> '' AND (telegram_id IS NULL OR telegram_id = '')) THEN :telegram_id
+                    ELSE COALESCE(telegram_id, :telegram_id)
+                END
+            WHERE profile_id = :profile_id
+        """), {
+            "chat_id": cid,
+            "profile_id": int(profile_id),
+            "telegram_id": tg_identifier,
+        })
+        session.commit()
+
+        session2 = get_session()
+        try:
+            user = get_user_by_chat_id(session2, cid)
+            role = user.get("role") if user else None
+            reply_markup = get_main_keyboard(role)
+        finally:
+            close_session(session2)
+
+        await update.message.reply_text(
+            "✅ <b>Принудительная привязка выполнена.</b>\n\nЕсли меню не обновилось, отправь /start.",
+            parse_mode="HTML",
+            reply_markup=reply_markup
+        )
+    except Exception as e:
+        try:
+            session.rollback()
+        except Exception:
+            pass
+        logger.error(f"Error in link_force_command chat_id={chat_id} code={code!r}: {e}", exc_info=True)
+        await update.message.reply_text(ERROR_MESSAGE, parse_mode="HTML", reply_markup=get_main_keyboard())
     finally:
         close_session(session)
 
@@ -1830,6 +1977,7 @@ def create_bot_application() -> Application:
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("link", link_command))
+    application.add_handler(CommandHandler("linkforce", link_force_command))
     application.add_handler(CommandHandler("unlink", unlink_command))
     application.add_handler(CommandHandler("me", me_command))
     application.add_handler(CommandHandler("lessons", lessons_command))
