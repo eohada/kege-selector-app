@@ -583,12 +583,28 @@ def register_hooks(app):
             if not sub or not plan:
                 return None
 
+            student_safe_endpoints = {
+                'auth.logout',
+                'auth.user_profile',
+                'main.dashboard',
+                'main.student_dashboard',
+                'main.faq',
+                'students.student_profile',
+                'students.student_analytics',
+                'students.student_statistics',
+            }
+            student_safe_prefixes = (
+                'auth.',
+                'notifications.',
+            )
+
             if eff.status == 'expired':
                 try:
                     mark_subscription_expired_if_needed(sub)
                 except Exception:
                     pass
-                if (request.endpoint or '').startswith('auth.') or request.endpoint in ('auth.logout', 'auth.user_profile'):
+                ep = request.endpoint or ''
+                if ep in student_safe_endpoints or any(ep.startswith(pfx) for pfx in student_safe_prefixes):
                     return None
                 if request.path.startswith('/api/telegram/'):
                     return None
@@ -603,6 +619,8 @@ def register_hooks(app):
             allow_trainer = True if plan.allow_trainer is None else bool(plan.allow_trainer)
 
             ep = (request.endpoint or '')
+            if ep in student_safe_endpoints or any(ep.startswith(pfx) for pfx in student_safe_prefixes):
+                return None
             if request.path.startswith('/internal/trainer/') or ep.startswith('trainer.'):
                 if not allow_trainer:
                     return redirect(url_for('main.dashboard'))
