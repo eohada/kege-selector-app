@@ -16,6 +16,45 @@ logger = logging.getLogger(__name__)
 AVATAR_FILENAME_RE = re.compile(r'^avatar_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
 COVER_FILENAME_RE = re.compile(r'^cover_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
 
+def _resolve_uploaded_asset(base_name: str, roots: list[str], allowed_prefix: str) -> str | None:
+    """
+    Resolve uploaded asset path with a tolerant fallback:
+    - exact basename match
+    - same stem with any allowed extension
+    - search across configured roots
+    """
+    stem, _ext = os.path.splitext(base_name)
+    allowed_exts = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
+
+    for root in roots:
+        if not root:
+            continue
+        root_abs = os.path.abspath(root)
+        exact_path = os.path.join(root_abs, base_name)
+        if os.path.isfile(exact_path):
+            return exact_path
+        for ext in allowed_exts:
+            candidate = os.path.join(root_abs, stem + ext)
+            if os.path.isfile(candidate):
+                return candidate
+
+    # Final fallback: look in legacy app static directories.
+    legacy_roots = [
+        os.path.join(os.path.dirname(current_app.root_path), 'static', 'uploads', allowed_prefix),
+        os.path.join(current_app.root_path, 'static', 'uploads', allowed_prefix),
+        os.path.join(current_app.root_path, 'uploads', allowed_prefix),
+    ]
+    for root in legacy_roots:
+        root_abs = os.path.abspath(root)
+        exact_path = os.path.join(root_abs, base_name)
+        if os.path.isfile(exact_path):
+            return exact_path
+        for ext in allowed_exts:
+            candidate = os.path.join(root_abs, stem + ext)
+            if os.path.isfile(candidate):
+                return candidate
+    return None
+
 def _resolve_accessible_student_ids(scope: dict) -> list[int]:
     if not scope or scope.get('can_see_all'):
         return []
@@ -119,15 +158,17 @@ def avatar_file(filename: str):
     base_name = os.path.basename(filename)
     if not base_name or not AVATAR_FILENAME_RE.match(base_name):
         abort(404)
+    roots = []
     root = current_app.config.get('AVATAR_UPLOAD_ROOT')
     if root:
-        abs_path = os.path.join(root, base_name)
-        if not os.path.abspath(abs_path).startswith(os.path.abspath(root)):
-            abort(404)
-    else:
-        app_root = os.path.dirname(current_app.root_path)
-        abs_path = os.path.join(app_root, 'static', 'uploads', 'avatars', base_name)
-    if not os.path.isfile(abs_path):
+        roots.append(root)
+    roots.extend([
+        os.path.join(os.path.dirname(current_app.root_path), 'static', 'uploads', 'avatars'),
+        os.path.join(current_app.root_path, 'static', 'uploads', 'avatars'),
+        os.path.join(current_app.root_path, 'uploads', 'avatars'),
+    ])
+    abs_path = _resolve_uploaded_asset(base_name, roots, 'avatars')
+    if not abs_path:
         abort(404)
     return send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)
 
@@ -141,15 +182,17 @@ def cover_file(filename: str):
     base_name = os.path.basename(filename)
     if not base_name or not COVER_FILENAME_RE.match(base_name):
         abort(404)
+    roots = []
     root = current_app.config.get('COVER_UPLOAD_ROOT')
     if root:
-        abs_path = os.path.join(root, base_name)
-        if not os.path.abspath(abs_path).startswith(os.path.abspath(root)):
-            abort(404)
-    else:
-        app_root = os.path.dirname(current_app.root_path)
-        abs_path = os.path.join(app_root, 'static', 'uploads', 'covers', base_name)
-    if not os.path.isfile(abs_path):
+        roots.append(root)
+    roots.extend([
+        os.path.join(os.path.dirname(current_app.root_path), 'static', 'uploads', 'covers'),
+        os.path.join(current_app.root_path, 'static', 'uploads', 'covers'),
+        os.path.join(current_app.root_path, 'uploads', 'covers'),
+    ])
+    abs_path = _resolve_uploaded_asset(base_name, roots, 'covers')
+    if not abs_path:
         abort(404)
     return send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)
 
@@ -210,4 +253,3 @@ def upload_cover():
         db.session.rollback()
         logger.error(f"Error saving cover: {e}", exc_info=True)
         return jsonify({'success': False, 'error': 'Ошибка при сохранении в базу данных'}), 500
-
