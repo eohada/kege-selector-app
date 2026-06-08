@@ -540,6 +540,10 @@ def register_hooks(app):
         if request.path.startswith('/tg-app/'):
             return
         
+        # Public uploaded media must stay accessible without a session.
+        if request.path.startswith('/avatars/') or request.path.startswith('/covers/'):
+            return
+        
         if not current_user.is_authenticated:
             if request.endpoint and request.endpoint != 'auth.login':
                 logger.info(f"require_login: redirecting unauthenticated user from {request.path} to login")
