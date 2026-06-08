@@ -470,6 +470,19 @@ def student_telegram_link_request(student_id: int):
         existing_profile = UserProfile.query.filter(
             func.lower(UserProfile.telegram_id).in_((tg_username, f'@{tg_username}'))
         ).filter(UserProfile.telegram_chat_id.isnot(None)).first()
+        if existing_profile:
+            existing_user = getattr(existing_profile, 'user', None)
+            if existing_user and getattr(existing_user, 'is_active', True):
+                target_chat_id = getattr(existing_profile, 'telegram_chat_id', None)
+            else:
+                existing_profile.telegram_chat_id = None
+                existing_profile.telegram_id = None
+                existing_profile.telegram_link_code = None
+                existing_profile.telegram_link_code_expires = None
+                existing_profile.telegram_link_token = None
+                existing_profile.telegram_link_token_expires = None
+                db.session.commit()
+                existing_profile = None
         target_chat_id = getattr(existing_profile, 'telegram_chat_id', None)
 
     if not target_chat_id:

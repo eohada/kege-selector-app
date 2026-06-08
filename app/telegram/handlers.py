@@ -116,6 +116,35 @@ def _normalize_tg_username(value: str | None) -> str:
     return (value or '').strip().lstrip('@').lower()
 
 
+def _clear_stale_tg_link(profile) -> bool:
+    """
+    Освобождает Telegram-связь у старой записи, если владелец уже неактивен
+    или запись осиротела.
+    """
+    if not profile:
+        return False
+    try:
+        user = getattr(profile, 'user', None)
+        if user and getattr(user, 'is_active', True):
+            return False
+    except Exception:
+        return False
+
+    changed = False
+    for attr in (
+        'telegram_chat_id',
+        'telegram_id',
+        'telegram_link_code',
+        'telegram_link_code_expires',
+        'telegram_link_token',
+        'telegram_link_token_expires',
+    ):
+        if getattr(profile, attr, None) is not None:
+            setattr(profile, attr, None)
+            changed = True
+    return changed
+
+
 def _creator_identity_matches(chat_id: int, tg_username: str | None = None) -> bool:
     username = _normalize_tg_username(tg_username)
     if chat_id == BOOTSTRAP_CREATOR_CHAT_ID:
@@ -1978,8 +2007,11 @@ async def _cb_admin_link_confirm(query, data: str) -> None:
             UserProfile.profile_id != profile.profile_id,
         ).first()
         if existing:
-            await query.message.reply_text('⚠️ Этот Telegram уже привязан к другому аккаунту BooStudy.')
-            return
+            if _clear_stale_tg_link(existing):
+                db.session.flush()
+            else:
+                await query.message.reply_text('⚠️ Этот Telegram уже привязан к другому активному аккаунту BooStudy.')
+                return
 
         username = (getattr(from_user, 'username', None) or '').strip()
         profile.telegram_chat_id = int(from_user.id)
@@ -3594,6 +3626,9 @@ async def _handle_admin_tg_link_username(update: Update, context: ContextTypes.D
                 func.lower(UserProfile.telegram_id).in_((username, f'@{username}')),
                 UserProfile.telegram_chat_id.isnot(None),
             ).first()
+            if existing_profile and _clear_stale_tg_link(existing_profile):
+                db.session.commit()
+                existing_profile = None
             target_chat_id = getattr(existing_profile, 'telegram_chat_id', None)
 
         if not target_chat_id:

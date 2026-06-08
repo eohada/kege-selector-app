@@ -591,7 +591,16 @@ def api_telegram_link_bot():
 
         existing = UserProfile.query.filter_by(telegram_chat_id=chat_id).first()
         if existing:
-            return jsonify({'success': False, 'error': 'already_linked'}), 409
+            user = getattr(existing, 'user', None)
+            if user and getattr(user, 'is_active', True):
+                return jsonify({'success': False, 'error': 'already_linked'}), 409
+            existing.telegram_chat_id = None
+            existing.telegram_id = None
+            existing.telegram_link_code = None
+            existing.telegram_link_code_expires = None
+            existing.telegram_link_token = None
+            existing.telegram_link_token_expires = None
+            db.session.flush()
 
         profile = None
         if link_token:
