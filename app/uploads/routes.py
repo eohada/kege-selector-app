@@ -169,7 +169,11 @@ def avatar_file(filename: str):
     ])
     abs_path = _resolve_uploaded_asset(base_name, roots, 'avatars')
     if not abs_path:
+        app_root = os.path.dirname(current_app.root_path)
         fallback_candidates = [
+            os.path.join(app_root, 'static', 'images', 'avatar_3.jpg'),
+            os.path.join(app_root, 'static', 'images', 'demo_user_avatar.png'),
+            os.path.join(app_root, 'static', 'images', 'demo_creator_avatar.jpg'),
             os.path.join(current_app.root_path, 'static', 'images', 'avatar_3.jpg'),
             os.path.join(current_app.root_path, 'static', 'images', 'demo_user_avatar.png'),
             os.path.join(current_app.root_path, 'static', 'images', 'demo_creator_avatar.jpg'),
