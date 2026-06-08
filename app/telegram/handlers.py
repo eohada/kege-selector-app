@@ -1539,6 +1539,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _cb_notification_ack(query, data)
         return
 
+    if data.startswith('lesson_rsvp:'):
+        await _cb_lesson_rsvp(query, data)
+        return
+
     if data.startswith('admin_link_confirm:'):
         await _cb_admin_link_confirm(query, data)
         return
@@ -1873,6 +1877,81 @@ async def _cb_notification_ack(query, data: str) -> None:
             await message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_rows))
     except Exception:
         logger.debug('notification ack markup update skipped', exc_info=True)
+
+
+async def _cb_lesson_rsvp(query, data: str) -> None:
+    parts = data.split(':', 2)
+    response_kind = parts[1] if len(parts) >= 2 else 'ontime'
+    lesson_id = None
+    try:
+        lesson_id = int(parts[2]) if len(parts) >= 3 else None
+    except Exception:
+        lesson_id = None
+
+    response_map = {
+        'ontime': 'Приду вовремя',
+        'late': 'Опаздываю',
+        'skip': 'Не приду',
+    }
+    response_label = response_map.get(response_kind, 'Ответ получен')
+    from_user = query.from_user
+    message = query.message
+    original_text = ''
+    if message:
+        original_text = getattr(message, 'text', None) or getattr(message, 'caption', None) or ''
+
+    try:
+        from app.models import Lesson, Student
+        from app.telegram.notifications import notify_lesson_reminder_response_to_creators
+
+        lesson = Lesson.query.get(lesson_id) if lesson_id else None
+        student = None
+        if lesson and lesson.student:
+            student = lesson.student
+        elif lesson and lesson.student_id:
+            student = Student.query.get(lesson.student_id)
+
+        if not student or not student.user_id:
+            await query.answer('Не удалось найти ученика', show_alert=True)
+            return
+
+        sent = notify_lesson_reminder_response_to_creators(
+            student_user_id=int(student.user_id),
+            student_chat_id=int(from_user.id),
+            student_username=getattr(from_user, 'username', None),
+            student_first_name=getattr(from_user, 'first_name', None),
+            student_last_name=getattr(from_user, 'last_name', None),
+            lesson_id=lesson_id,
+            lesson_topic=getattr(lesson, 'topic', None),
+            lesson_time=(lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson and getattr(lesson, 'lesson_date', None) else None),
+            response_kind=response_kind,
+            response_label=response_label,
+            original_text=original_text,
+        )
+        if not sent:
+            logger.warning('lesson reminder response report had no recipients lesson_id=%s kind=%s', lesson_id, response_kind)
+    except Exception as e:
+        logger.error('_cb_lesson_rsvp error: %s', e, exc_info=True)
+        return
+
+    try:
+        if message:
+            base_rows = getattr(getattr(message, 'reply_markup', None), 'inline_keyboard', None) or []
+            new_rows = []
+            for row in base_rows:
+                new_row = []
+                for button in row:
+                    callback_data = getattr(button, 'callback_data', None) or ''
+                    if callback_data.startswith('lesson_rsvp:'):
+                        new_row.append(InlineKeyboardButton('✅ Ответ отправлен', callback_data='noop'))
+                    else:
+                        new_row.append(button)
+                if new_row:
+                    new_rows.append(new_row)
+            if new_rows:
+                await message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_rows))
+    except Exception:
+        logger.debug('lesson rsvp markup update skipped', exc_info=True)
 
 
 async def _cb_admin_link_confirm(query, data: str) -> None:

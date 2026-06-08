@@ -17,6 +17,7 @@ def send_lesson_30min_reminder(lesson, *, force: bool = False) -> bool:
     from app.telegram.notifications import _esc
     from app.utils.datetime_utc import effective_timezone_name
     from app.utils.lesson_time import lesson_storage_to_local
+    from app.utils.subscription_access import get_effective_access_for_user
 
     if not lesson or not getattr(lesson, 'lesson_id', None):
         return False
@@ -43,18 +44,36 @@ def send_lesson_30min_reminder(lesson, *, force: bool = False) -> bool:
     lesson_dt = lesson_storage_to_local(lesson.lesson_date, tz_name)
     time_str = lesson_dt.strftime('%H:%M') if lesson_dt else '—'
 
+    balance_note = ''
+    try:
+        eff = get_effective_access_for_user(int(student.user_id))
+        lessons_remaining = getattr(eff, 'lessons_remaining', None)
+        if lessons_remaining is not None:
+            lessons_remaining = int(lessons_remaining)
+            if lessons_remaining <= 0:
+                balance_note = '\n\n⚠️ <b>Предстоящий урок в текущий момент находится вне текущего тарифного плана</b>'
+            elif lessons_remaining <= 5:
+                balance_note = f'\n\n⚠️ <b>На балансе осталось {lessons_remaining} уроков.</b>'
+    except Exception:
+        balance_note = ''
+
     msg = (
         f'⏰ <b>Урок через 30 минут!</b>\n\n'
         f'📚 {topic}\n'
         f'🕐 Начало: {time_str}\n'
     )
+    msg += balance_note
     if room_url:
         msg += f'\n🔗 {room_url}'
-    markup = None
+    rows = [[
+        {'text': '✅ Приду вовремя', 'callback_data': f'lesson_rsvp:ontime:{lesson.lesson_id}'},
+        {'text': '⏳ Опаздываю', 'callback_data': f'lesson_rsvp:late:{lesson.lesson_id}'},
+        {'text': '❌ Не приду', 'callback_data': f'lesson_rsvp:skip:{lesson.lesson_id}'},
+    ]]
     if room_url:
-        markup = {'inline_keyboard': [[{'text': '🚪 Войти в класс', 'url': room_url}]]}
+        rows.append([{'text': '🚪 Войти в класс', 'url': room_url}])
 
-    ok = notify_user_by_id(int(student.user_id), msg, kind='lesson_reminder', reply_markup=markup)
+    ok = notify_user_by_id(int(student.user_id), msg, kind='lesson_reminder', reply_markup={'inline_keyboard': rows})
     if ok and not force:
         lesson.tg_reminder_30min_sent = True
         db.session.commit()

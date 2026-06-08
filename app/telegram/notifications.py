@@ -390,6 +390,72 @@ def notify_daily_digest(*, student_user_id: int, lessons_today: list, pending_co
     return notify_user_by_id(int(student_user_id), msg, kind='daily_digest')
 
 
+def notify_lesson_reminder_response_to_creators(
+    *,
+    student_user_id: int,
+    student_chat_id: int,
+    student_username: str | None,
+    student_first_name: str | None,
+    student_last_name: str | None,
+    lesson_id: int | None,
+    lesson_topic: str | None,
+    lesson_time: str | None,
+    response_kind: str,
+    response_label: str,
+    original_text: str,
+) -> int:
+    """Сообщить создателям, как ученик ответил на напоминание."""
+    from app.telegram.notifications import send_telegram_message
+    from app.models import User, UserProfile
+
+    username = (student_username or '').strip().lstrip('@')
+    full_name = ' '.join(part for part in [student_first_name, student_last_name] if part).strip()
+    if username:
+        student_tag = f'@{username}'
+    elif full_name:
+        student_tag = full_name
+    else:
+        student_tag = f'chat_id {student_chat_id}'
+
+    lesson_ref = f'#{lesson_id}' if lesson_id else '—'
+    topic = (lesson_topic or 'Занятие').strip()
+    time_line = f'🕐 Начало: <b>{_esc(lesson_time or "—")}</b>\n' if lesson_time else ''
+
+    report = (
+        '⏰ <b>Ответ на напоминание об уроке</b>\n\n'
+        f'👤 Ученик: <b>{_esc(student_tag)}</b>\n'
+        f'🆔 Платформа: <code>{int(student_user_id)}</code>\n'
+        f'📚 Урок: <b>{_esc(lesson_ref)}</b>\n'
+        f'📄 Тема: <b>{_esc(topic)}</b>\n'
+        f'{time_line}'
+        f'✅ Ответ: <b>{_esc(response_label)}</b>\n\n'
+        '<b>Текст уведомления:</b>\n'
+        f'<pre>{html.escape((original_text or "").strip())}</pre>'
+    )
+
+    recipients = (
+        User.query
+        .join(UserProfile, UserProfile.user_id == User.id)
+        .filter(UserProfile.telegram_chat_id.isnot(None))
+        .filter(User.role.in_(('creator', 'chief_admin')))
+        .all()
+    )
+
+    sent = 0
+    for creator in recipients:
+        profile = UserProfile.query.filter_by(user_id=creator.id).first()
+        chat_id = getattr(profile, 'telegram_chat_id', None)
+        if not chat_id:
+            continue
+        try:
+            result = send_telegram_message(int(chat_id), report)
+            if result and result.get('ok'):
+                sent += 1
+        except Exception:
+            logger.warning('lesson reminder response report failed creator_id=%s', creator.id, exc_info=True)
+    return sent
+
+
 def notify_lesson_balance_changed(
     *,
     student_user_id: int,
