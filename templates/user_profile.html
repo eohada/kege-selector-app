@@ -20,7 +20,7 @@ layout-teacher bg-boo-bg text-boo-textMain
 
 {% block content %}
 {% set profile_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile else 'Europe/Moscow') %}
-<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6 pb-12 pt-6 px-4 sm:px-6 lg:px-8">
+<div class="w-full max-w-[1760px] mx-auto flex flex-col gap-6 pb-12 pt-6 px-4 sm:px-6 lg:px-8">
     
     <!-- Кнопка Назад -->
     <div class="flex items-center justify-between">
@@ -89,10 +89,10 @@ layout-teacher bg-boo-bg text-boo-textMain
     </section>
 
     <!-- Сетка контента (Левая колонка: инфо/настройки, Правая: действия) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-6">
         
-        <!-- ЛЕВАЯ КОЛОНКА (1/3 ширины) -->
-        <div class="lg:col-span-1 flex flex-col gap-6">
+        <!-- ЛЕВАЯ КОЛОНКА -->
+        <div class="flex flex-col gap-6">
             <!-- Учетная запись -->
             <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
                 <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -185,8 +185,8 @@ layout-teacher bg-boo-bg text-boo-textMain
             </section>
         </div>
 
-        <!-- ПРАВАЯ КОЛОНКА (2/3 ширины) -->
-        <div class="lg:col-span-2 flex flex-col gap-6">
+        <!-- ПРАВАЯ КОЛОНКА -->
+        <div class="flex flex-col gap-6">
             <!-- Быстрые действия -->
             <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
                 <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-6 flex items-center gap-2">
