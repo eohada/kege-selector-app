@@ -465,20 +465,14 @@ def dashboard():
         logger.warning(f"Error counting total students: {e}")
         total_students = 0
 
-    # Tab counters must stay global for the selected scope, regardless of
-    # which category tab is currently active.
+    # Category tab counters must stay global for regular active students,
+    # regardless of which scope tab is currently open.
     try:
         category_stats_query = db.session.query(
             Student.category,
             func.count(Student.student_id).label('count')
         ).outerjoin(User, Student.user_id == User.id).filter(Student.is_active == base_is_active)
-
-        if student_scope == 'test':
-            category_stats_query = category_stats_query.filter(User.is_qa_pool.is_(True))
-        elif student_scope == 'demo':
-            category_stats_query = category_stats_query.filter(User.is_demo_user.is_(True))
-        elif student_scope == 'regular':
-            category_stats_query = category_stats_query.filter(*_regular_student_filter())
+        category_stats_query = category_stats_query.filter(*_regular_student_filter())
 
         if not scope['can_see_all'] and scope['student_ids']:
             category_stats_query = category_stats_query.filter(Student.user_id.in_(scope['student_ids']))
