@@ -15,7 +15,7 @@
 {% set sub_allow_trainer = (student_subscription.allow_trainer if student_subscription and student_subscription.allow_trainer is not none else True) %}
 {% set trainer_is_available = (sub_allow_trainer and has_permission(current_user, 'trainer.use')) %}
 
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
+<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6">
 
     <!-- ВЕРХНИЙ РЯД (Hero & Mentor) — пиксель-пер-пиксель с dark_,ode1.html -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

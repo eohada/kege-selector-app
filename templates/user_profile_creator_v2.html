@@ -8,69 +8,69 @@
     .grid.grid-cols-2 { grid-template-columns: 1fr; }
     .px-8, .sm\:px-12, .p-8 { padding-left: 1rem !important; padding-right: 1rem !important; }
 }
+.creator-v2-shell { max-width: 1600px; }
 </style>
 {% endblock %}
 
 {% block content %}
 {% set creator_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
 {% set creator_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
-<div class="w-full max-w-[1200px] mx-auto flex flex-col gap-6 pb-6">
+<div class="creator-v2-shell w-full mx-auto flex flex-col gap-6 pb-6">
     <a href="{{ url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary transition-colors bg-white/70 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none dark:shadow-none no-underline">
         <i class="ph-bold ph-arrow-left"></i> Вернуться к метрикам
     </a>
 
-    <section class="bg-white/95 backdrop-blur-xl rounded-[32px] border border-purple-200/60 border-b-[4px] border-b-purple-300 shadow-[0_10px_50px_-10px_rgba(123,92,255,0.3)] overflow-hidden">
-        <div class="w-full h-56 sm:h-72 bg-[#DCE1EA] relative overflow-hidden group flex items-center justify-center rounded-t-[32px]">
+    <section class="bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl rounded-[32px] border border-purple-200/60 dark:border-white/[0.08] border-b-[4px] border-b-purple-300 dark:border-b-purple-900/40 shadow-[0_10px_50px_-10px_rgba(123,92,255,0.3)] dark:shadow-glass-dark overflow-hidden relative">
+        <div class="absolute inset-0 z-0">
             {% if creator_cover %}
-            <div class="absolute inset-0 z-10 overflow-hidden rounded-t-[32px]">
-                <img src="{{ creator_cover }}" alt="Cover" class="w-full h-full object-cover opacity-90 transition-transform duration-700 ease-out will-change-transform transform-gpu group-hover:scale-105" style="transform-origin:center center;">
-            </div>
+            <img src="{{ creator_cover }}" alt="Cover" class="w-full h-full object-cover opacity-90 transition-transform duration-700 ease-out will-change-transform transform-gpu group-hover:scale-105" style="transform-origin:center center;">
             {% else %}
-            <div class="absolute inset-0 z-10 bg-gradient-to-br from-violet-600 to-cyan-700"></div>
+            <div class="w-full h-full bg-gradient-to-br from-violet-600 to-cyan-700"></div>
             {% endif %}
-            <div class="absolute inset-0 z-20 pointer-events-none" style="background:linear-gradient(to top, rgba(255,255,255,0.86) 0%, rgba(255,255,255,0.54) 30%, rgba(255,255,255,0.16) 52%, rgba(255,255,255,0) 72%, rgba(0,0,0,0.28) 100%);"></div>
+        </div>
+        <div class="absolute inset-0 z-10 pointer-events-none hidden dark:block" style="background:linear-gradient(to top, rgba(9,9,11,0.88) 0%, rgba(9,9,11,0.64) 22%, rgba(9,9,11,0.18) 48%, rgba(9,9,11,0) 70%, rgba(0,0,0,0.25) 100%);"></div>
+        <div class="absolute inset-0 z-10 pointer-events-none dark:hidden" style="background:linear-gradient(to top, rgba(255,255,255,0.86) 0%, rgba(255,255,255,0.54) 30%, rgba(255,255,255,0.16) 52%, rgba(255,255,255,0) 72%, rgba(0,0,0,0.28) 100%);"></div>
+        <div class="relative z-20 px-8 sm:px-12 py-8 sm:py-10">
             <button class="absolute top-6 right-6 bg-white/10 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/20 z-30 shadow-sm dark:shadow-none dark:shadow-none" type="button" onclick="openEditProfileModal()">
                 <i class="ph-bold ph-camera text-lg"></i> Сменить обложку
             </button>
-        </div>
-
-        <div class="px-8 sm:px-12 pb-8 relative bg-surface">
-            <div class="-mt-14 sm:-mt-16 flex flex-col md:flex-row md:justify-between md:items-end gap-6 relative z-30">
-                <div class="flex flex-col items-start gap-3 min-w-0">
-                    <div class="relative w-36 h-36 sm:w-44 sm:h-44 rounded-[32px] bg-slate-900 flex items-center justify-center overflow-hidden border-[6px] border-white" style="z-index:60;isolation:isolate;box-shadow:0 12px 28px -8px rgba(15,23,42,0.35);">
-                        {% if current_user.avatar_url %}
-                        <img src="{{ current_user.avatar_url }}" alt="Avatar" class="w-full h-full object-cover rounded-[26px]" style="position:relative;z-index:2;mix-blend-mode:normal;filter:none;opacity:1;">
-                        {% else %}
-                        <span class="w-full h-full flex items-center justify-center text-white text-4xl font-black" style="position:relative;z-index:2;">{{ current_user.username[0].upper() }}</span>
-                        {% endif %}
-                        <div class="absolute bottom-2 right-2 w-8 h-8 bg-green-500 rounded-full border-[4px] border-white shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] flex items-center justify-center">
-                            <div class="w-2.5 h-2.5 bg-surface rounded-full animate-pulse"></div>
+            <div class="min-h-[20rem] sm:min-h-[24rem] flex flex-col justify-end">
+                <div class="-mt-14 sm:-mt-16 flex flex-col md:flex-row md:justify-between md:items-end gap-6 relative z-30">
+                    <div class="flex flex-col items-start gap-3 min-w-0">
+                        <div class="relative w-36 h-36 sm:w-44 sm:h-44 rounded-[32px] bg-slate-900 flex items-center justify-center overflow-hidden border-[6px] border-white dark:border-dark-card" style="z-index:60;isolation:isolate;box-shadow:0 12px 28px -8px rgba(15,23,42,0.35);">
+                            {% if current_user.avatar_url %}
+                            <img src="{{ current_user.avatar_url }}" alt="Avatar" class="w-full h-full object-cover rounded-[26px]" style="position:relative;z-index:2;mix-blend-mode:normal;filter:none;opacity:1;">
+                            {% else %}
+                            <span class="w-full h-full flex items-center justify-center text-white text-4xl font-black" style="position:relative;z-index:2;">{{ current_user.username[0].upper() }}</span>
+                            {% endif %}
+                            <div class="absolute bottom-2 right-2 w-8 h-8 bg-green-500 rounded-full border-[4px] border-white dark:border-dark-card shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] flex items-center justify-center">
+                                <div class="w-2.5 h-2.5 bg-surface dark:bg-dark-card rounded-full animate-pulse"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <h1 class="text-4xl md:text-5xl font-black text-primary dark:text-white tracking-tight leading-normal py-1">{{ current_user.username }}</h1>
+                            <i class="ph-fill ph-check-circle text-boo-primary text-2xl" title="Верифицированный"></i>
+                        </div>
+                        <p class="text-muted dark:text-dark-muted font-medium text-lg italic">"{{ current_user.custom_status or 'слеп, но не глуп' }}"</p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 flex items-center gap-1.5 uppercase tracking-wider">
+                                <i class="ph-fill ph-crown text-boo-accent text-base"></i> Создатель
+                            </span>
+                            <span class="px-4 py-2 bg-purple-50 text-purple-700 text-xs font-extrabold rounded-xl border border-purple-200 shadow-sm dark:bg-white/[0.05] dark:text-purple-200 dark:border-white/[0.08] dark:shadow-none uppercase tracking-wide">
+                                <i class="ph-fill ph-bug text-purple-500"></i> Главный тестировщик
+                            </span>
+                            <span class="px-4 py-2 bg-cyan-50 text-cyan-700 text-xs font-extrabold rounded-xl border border-cyan-200 shadow-sm dark:bg-white/[0.05] dark:text-cyan-200 dark:border-white/[0.08] dark:shadow-none uppercase tracking-wide">
+                                <i class="ph-fill ph-palette text-cyan-500"></i> Графический дизайнер
+                            </span>
                         </div>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <h1 class="text-4xl md:text-5xl font-black text-primary tracking-tight leading-normal py-1">{{ current_user.username }}</h1>
-                        <i class="ph-fill ph-check-circle text-boo-primary text-2xl" title="Верифицированный"></i>
+                    <div class="shrink-0 md:mb-2">
+                        <button class="px-7 py-4 bg-surface/90 dark:bg-white/[0.08] hover:bg-surface-alt dark:hover:bg-white/[0.12] text-secondary dark:text-white rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm dark:shadow-none border border-slate-200/80 dark:border-white/[0.08] text-sm backdrop-blur-sm" type="button" onclick="openEditProfileModal()">
+                            <i class="ph-bold ph-pencil-simple text-xl"></i> Редактировать профиль
+                        </button>
                     </div>
-                    <p class="text-muted font-medium text-lg italic">"{{ current_user.custom_status or 'слеп, но не глуп' }}"</p>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 flex items-center gap-1.5 uppercase tracking-wider">
-                            <i class="ph-fill ph-crown text-boo-accent text-base"></i> Создатель
-                        </span>
-                        <span class="px-4 py-2 bg-purple-50 text-purple-700 text-xs font-extrabold rounded-xl border border-purple-200 shadow-sm dark:shadow-none dark:shadow-none uppercase tracking-wide">
-                            <i class="ph-fill ph-bug text-purple-500"></i> Главный тестировщик
-                        </span>
-                        <span class="px-4 py-2 bg-cyan-50 text-cyan-700 text-xs font-extrabold rounded-xl border border-cyan-200 shadow-sm dark:shadow-none dark:shadow-none uppercase tracking-wide">
-                            <i class="ph-fill ph-palette text-cyan-500"></i> Графический дизайнер
-                        </span>
-                    </div>
-                </div>
-                <div class="shrink-0 md:mb-2">
-                    <button class="px-7 py-4 bg-surface hover:bg-surface-alt text-secondary rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm" type="button" onclick="openEditProfileModal()">
-                        <i class="ph-bold ph-pencil-simple text-xl"></i> Редактировать профиль
-                    </button>
                 </div>
             </div>
-
         </div>
     </section>
 
