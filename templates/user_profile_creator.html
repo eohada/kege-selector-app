@@ -3,28 +3,70 @@
 {% set active_page = None %}
 {% block body_class %}layout-teacher{% endblock %}
 
+{% block head_css %}
+<style>
+    .creator-page-wrap { max-width: 1600px; }
+    @media (max-width: 768px) {
+        .creator-page-wrap { padding-left: 1rem; padding-right: 1rem; }
+        .creator-role-badges { gap: .4rem; }
+        .creator-role-badges .creator-role-badge { padding: .4rem .7rem; font-size: .64rem; }
+    }
+    html[data-theme="dark"] .creator-role-badge { background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.12) !important; color: #e2e8f0 !important; }
+    html[data-theme="dark"] .creator-role-badge.creator-main { background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.12) !important; color: #f8fafc !important; }
+    html[data-theme="dark"] .creator-card,
+    html[data-theme="dark"] .creator-panel {
+        background: rgba(9,9,11,.95) !important;
+        border-color: rgba(255,255,255,.08) !important;
+        box-shadow: 0 14px 60px -18px rgba(0,0,0,.65) !important;
+    }
+    html[data-theme="dark"] .creator-title,
+    html[data-theme="dark"] .creator-status,
+    html[data-theme="dark"] .creator-meta-label,
+    html[data-theme="dark"] .creator-meta-value {
+        color: #f8fafc !important;
+    }
+    html[data-theme="dark"] .creator-muted,
+    html[data-theme="dark"] .creator-subtitle {
+        color: #cbd5e1 !important;
+    }
+    html[data-theme="dark"] .creator-edit-btn,
+    html[data-theme="dark"] .creator-cover-btn {
+        background: rgba(255,255,255,.08) !important;
+        color: #f8fafc !important;
+        border-color: rgba(255,255,255,.12) !important;
+    }
+    html[data-theme="dark"] .creator-hero-cover::after {
+        background: linear-gradient(to top, rgba(9,9,11,.92) 0%, rgba(9,9,11,.62) 55%, rgba(9,9,11,.18) 100%) !important;
+    }
+    html[data-theme="dark"] .creator-hero-shell {
+        background: rgba(9,9,11,.95) !important;
+        border-color: rgba(255,255,255,.08) !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 {% set creator_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
 {% set creator_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
-<div class="w-full max-w-[1200px] mx-auto flex flex-col gap-6 pb-4">
+<div class="creator-page-wrap w-full mx-auto flex flex-col gap-6 pb-4 px-4 sm:px-6 lg:px-8">
     <a href="{{ url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-surface text-muted text-sm font-bold no-underline hover:bg-surface-alt">
         <i class="ph-bold ph-arrow-left"></i> Вернуться к метрикам
     </a>
 
-    <section class="bg-white/95 backdrop-blur-xl rounded-[32px] border border-purple-200/60 border-b-[4px] border-b-purple-300 overflow-hidden shadow-[0_10px_50px_-10px_rgba(123,92,255,0.28)]">
-        <div class="w-full h-56 sm:h-72 bg-slate-900 relative overflow-hidden group">
+    <section class="creator-card bg-white/95 backdrop-blur-xl rounded-[32px] border border-purple-200/60 overflow-hidden shadow-[0_10px_50px_-10px_rgba(123,92,255,0.28)]">
+        <div class="creator-hero-cover w-full h-56 sm:h-72 bg-slate-900 relative overflow-hidden group">
             {% if creator_cover %}
             <img src="{{ creator_cover }}" alt="" class="w-full h-full object-cover opacity-95 group-hover:scale-[1.03] transition-transform duration-700 absolute inset-0 z-10">
             {% else %}
             <div class="absolute inset-0 z-10 bg-gradient-to-br from-violet-600 to-cyan-700"></div>
             {% endif %}
-            <div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/30 z-20 pointer-events-none"></div>
-            <button type="button" class="absolute top-6 right-6 z-30 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm dark:shadow-none dark:shadow-none" onclick="openEditProfileModal()">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30 z-20 pointer-events-none"></div>
+            <button type="button" class="creator-cover-btn absolute top-6 right-6 z-30 bg-white/15 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/25 shadow-sm dark:shadow-none" onclick="openEditProfileModal()">
                 <i class="ph-bold ph-camera text-base"></i> Сменить обложку
             </button>
         </div>
 
-        <div class="px-8 sm:px-12 pb-10 pt-0 relative bg-surface">
+        <div class="px-8 sm:px-12 pb-10 pt-0 relative bg-surface creator-hero-shell">
             <div class="absolute -top-20 sm:-top-24 left-8 sm:left-12 w-36 h-36 sm:w-44 sm:h-44 rounded-[28px] shadow-[0_0_0_6px_#fff,0_12px_36px_-6px_rgba(123,92,255,0.42)] bg-slate-900 flex items-center justify-center z-30 ring-4 ring-purple-100 ring-offset-4 ring-offset-white overflow-hidden">
                 {% if current_user.avatar_url %}
                 <img src="{{ current_user.avatar_url }}" alt="Avatar" class="w-full h-full object-cover">
@@ -36,19 +78,21 @@
             <div class="mt-20 sm:mt-24 flex flex-col md:flex-row md:justify-between md:items-start gap-6">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-3">
-                        <h1 class="text-4xl md:text-5xl font-black text-primary tracking-tight truncate">{{ current_user.username }}</h1>
+                        <h1 class="creator-title text-4xl md:text-5xl font-black text-primary tracking-tight truncate">{{ current_user.username }}</h1>
                         <i class="ph-fill ph-check-circle text-boo-primary text-2xl"></i>
                     </div>
                     {% if current_user.custom_status %}
-                    <p class="text-muted font-medium text-lg italic mt-2">"{{ current_user.custom_status }}"</p>
+                    <p class="creator-subtitle text-muted font-medium text-lg italic mt-2">"{{ current_user.custom_status }}"</p>
+                    {% else %}
+                    <p class="creator-subtitle text-muted font-medium text-lg italic mt-2">"слеп, но не глуп"</p>
                     {% endif %}
-                    <div class="flex flex-wrap items-center gap-2 mt-6">
+                    <div class="creator-role-badges flex flex-wrap items-center gap-2 mt-6">
                         {% for role_name in current_user.get_roles_display()[:3] %}
-                        <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 uppercase tracking-wider">{{ role_name }}</span>
+                        <span class="creator-role-badge {% if loop.first %}creator-main{% endif %} px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 uppercase tracking-wider">{{ role_name }}</span>
                         {% endfor %}
                     </div>
                 </div>
-                <button type="button" class="px-7 py-4 bg-surface hover:bg-surface-alt text-secondary rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none border border-slate-200 text-sm" onclick="openEditProfileModal()">
+                <button type="button" class="creator-edit-btn px-7 py-4 bg-surface hover:bg-surface-alt text-secondary rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm dark:shadow-none border border-slate-200 text-sm" onclick="openEditProfileModal()">
                     <i class="ph-bold ph-pencil-simple text-xl"></i> Редактировать профиль
                 </button>
             </div>
@@ -63,7 +107,7 @@
     </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+        <section class="creator-panel bg-surface rounded-[32px] border border-slate-200 shadow-tactile p-8">
             <h2 class="text-xs font-extrabold text-muted uppercase tracking-widest mb-6 flex items-center gap-2">
                 <i class="ph-fill ph-user-circle-gear text-xl"></i> Информация профиля
             </h2>
@@ -100,7 +144,7 @@
             </div>
         </section>
 
-        <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8" id="creator-timezone-panel">
+        <section class="creator-panel bg-surface rounded-[32px] border border-slate-200 shadow-tactile p-8" id="creator-timezone-panel">
             <h2 class="text-xs font-extrabold text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
                 <i class="ph-fill ph-clock text-xl"></i> Часовой пояс
             </h2>
@@ -137,7 +181,7 @@
             </div>
         </section>
 
-        <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
+        <section class="creator-panel bg-surface rounded-[32px] border border-slate-200 shadow-tactile p-8">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xs font-extrabold text-muted uppercase tracking-widest flex items-center gap-2">
                     <i class="ph-fill ph-terminal-window text-xl"></i> Панель управления
