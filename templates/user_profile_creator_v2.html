@@ -184,32 +184,56 @@
 </div>
 
 <div class="modal-overlay" id="editProfileModal" style="z-index:9999;">
-    <div class="modal">
+    <div class="modal max-w-lg">
         <div class="modal-header">
             <h2 class="modal-title">Редактировать профиль</h2>
             <button class="modal-close" onclick="closeEditProfileModal()">&times;</button>
         </div>
         <form id="editProfileForm" onsubmit="submitProfileEdit(event)" enctype="multipart/form-data">
-            <div class="modal-body">
-                <div class="neo-field">
+            <div class="modal-body space-y-6">
+                <div class="neo-field space-y-2">
                     <label class="neo-label" for="avatar_file">Аватарка</label>
-                    <input type="file" id="avatar_file" name="avatar_file" class="neo-input" accept="image/*">
+                    <div class="flex items-center gap-4">
+                        {% if current_user.avatar_url %}
+                        <img id="creator_avatar_preview" src="{{ current_user.avatar_url }}" alt="Текущая аватарка" class="w-20 h-20 rounded-full object-cover border border-slate-200 dark:border-white/[0.1]">
+                        {% else %}
+                        <div id="creator_avatar_placeholder" class="w-20 h-20 rounded-full bg-slate-900 flex items-center justify-center text-white text-xl font-bold">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <img id="creator_avatar_preview" src="" alt="Превью" class="w-20 h-20 rounded-full object-cover border border-slate-200 dark:border-white/[0.1] hidden">
+                        {% endif %}
+                        <div class="flex-1 space-y-1">
+                            <input type="file" id="avatar_file" name="avatar_file" class="neo-input w-full" accept="image/*">
+                            <p class="text-[10px] text-muted dark:text-dark-muted">JPG, PNG, GIF или WEBP, до 5MB</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="neo-field">
+                <div class="neo-field space-y-2">
                     <label class="neo-label" for="cover_file">Баннер профиля</label>
-                    <input type="file" id="cover_file" name="cover_file" class="neo-input" accept="image/*">
+                    <div class="space-y-3">
+                        {% set current_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
+                        {% if current_cover %}
+                        <img id="creator_cover_preview" src="{{ current_cover }}" alt="Текущий баннер" class="w-full max-h-[110px] object-cover rounded-xl border border-slate-200 dark:border-white/[0.1]">
+                        {% else %}
+                        <img id="creator_cover_preview" src="" alt="Превью" class="w-full max-h-[110px] object-cover rounded-xl border border-slate-200 dark:border-white/[0.1] hidden">
+                        {% endif %}
+                        <div class="space-y-1">
+                            <input type="file" id="cover_file" name="cover_file" class="neo-input w-full" accept="image/*">
+                            <p class="text-[10px] text-muted dark:text-dark-muted">GIF, JPG, PNG или WEBP, до 8MB</p>
+                        </div>
+                    </div>
                 </div>
                 <div class="neo-field">
                     <label class="neo-label" for="custom_status">Статус</label>
-                    <input type="text" id="custom_status" name="custom_status" class="neo-input" value="{{ current_user.custom_status or '' }}">
+                    <input type="text" id="custom_status" name="custom_status" class="neo-input w-full" value="{{ current_user.custom_status or '' }}">
                 </div>
                 <div class="neo-field">
                     <label class="neo-label" for="about_me">О себе</label>
-                    <textarea id="about_me" name="about_me" class="neo-textarea">{{ current_user.about_me or '' }}</textarea>
+                    <textarea id="about_me" name="about_me" class="neo-textarea w-full min-h-[110px]">{{ current_user.about_me or '' }}</textarea>
                 </div>
                 <div class="neo-field">
                     <label class="neo-label" for="creator_tz_iana">Часовой пояс</label>
-                    <select id="creator_tz_iana" name="creator_tz_iana" class="neo-input">
+                    <select id="creator_tz_iana" name="creator_tz_iana" class="neo-input w-full">
                         <option value="Europe/Moscow" {% if creator_tz == 'Europe/Moscow' %}selected{% endif %}>Москва</option>
                         <option value="Asia/Tomsk" {% if creator_tz == 'Asia/Tomsk' %}selected{% endif %}>Томск</option>
                         <option value="Europe/Kaliningrad" {% if creator_tz == 'Europe/Kaliningrad' %}selected{% endif %}>Калининград</option>
@@ -228,7 +252,7 @@
                 </div>
                 <div class="neo-field">
                     <label class="neo-label" for="telegram_link">Telegram</label>
-                    <input type="text" id="telegram_link" name="telegram_link" class="neo-input" value="{{ current_user.telegram_link or '' }}">
+                    <input type="text" id="telegram_link" name="telegram_link" class="neo-input w-full" value="{{ current_user.telegram_link or '' }}">
                 </div>
             </div>
             <div class="modal-footer">
@@ -243,9 +267,12 @@
     max-height: calc(100vh - 2rem);
     display: flex;
     flex-direction: column;
+    width: min(92vw, 720px);
 }
 #editProfileModal .modal-body {
     overflow-y: auto;
+    padding-bottom: 1.25rem;
+    gap: 1.5rem;
 }
 </style>
 {% endblock %}
@@ -255,6 +282,8 @@
 function openEditProfileModal() {
     document.getElementById('editProfileModal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    const modalBody = document.querySelector('#editProfileModal .modal-body');
+    if (modalBody) modalBody.scrollTop = 0;
 }
 function closeEditProfileModal() {
     document.getElementById('editProfileModal').classList.remove('active');
@@ -312,6 +341,42 @@ function toggleMoreTools() {
     if (!panel) return;
     panel.classList.toggle('hidden');
 }
+document.addEventListener('DOMContentLoaded', () => {
+    const avatarInput = document.getElementById('avatar_file');
+    const coverInput = document.getElementById('cover_file');
+    if (avatarInput) {
+        avatarInput.addEventListener('change', (event) => {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const preview = document.getElementById('creator_avatar_preview');
+                const placeholder = document.getElementById('creator_avatar_placeholder');
+                if (placeholder) placeholder.classList.add('hidden');
+                if (preview) {
+                    preview.src = ev.target.result;
+                    preview.classList.remove('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    if (coverInput) {
+        coverInput.addEventListener('change', (event) => {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const preview = document.getElementById('creator_cover_preview');
+                if (preview) {
+                    preview.src = ev.target.result;
+                    preview.classList.remove('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+});
 async function submitProfileEdit(event) {
     event.preventDefault();
     const formData = new FormData(event.target);

@@ -171,18 +171,27 @@ def avatar_file(filename: str):
     if not abs_path:
         app_root = os.path.dirname(current_app.root_path)
         fallback_candidates = [
-            os.path.join(app_root, 'static', 'images', 'avatar_3.jpg'),
             os.path.join(app_root, 'static', 'images', 'demo_user_avatar.png'),
+            os.path.join(app_root, 'static', 'images', 'demo_creator_avatar_1.png'),
             os.path.join(app_root, 'static', 'images', 'demo_creator_avatar.jpg'),
-            os.path.join(current_app.root_path, 'static', 'images', 'avatar_3.jpg'),
             os.path.join(current_app.root_path, 'static', 'images', 'demo_user_avatar.png'),
+            os.path.join(current_app.root_path, 'static', 'images', 'demo_creator_avatar_1.png'),
             os.path.join(current_app.root_path, 'static', 'images', 'demo_creator_avatar.jpg'),
         ]
         for fallback_path in fallback_candidates:
             if os.path.isfile(fallback_path):
-                return send_file(fallback_path, mimetype=None, as_attachment=False, download_name=os.path.basename(fallback_path))
+                response = send_file(
+                    fallback_path,
+                    mimetype=None,
+                    as_attachment=False,
+                    download_name=os.path.basename(fallback_path),
+                )
+                response.headers['Cache-Control'] = 'no-store, max-age=0'
+                return response
         abort(404)
-    return send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)
+    response = send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)
+    response.headers['Cache-Control'] = 'public, max-age=300'
+    return response
 
 
 @uploads_bp.route('/covers/<path:filename>')
@@ -206,7 +215,9 @@ def cover_file(filename: str):
     abs_path = _resolve_uploaded_asset(base_name, roots, 'covers')
     if not abs_path:
         abort(404)
-    return send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)
+    response = send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)
+    response.headers['Cache-Control'] = 'public, max-age=300'
+    return response
 
 @uploads_bp.route('/upload/cover', methods=['POST'])
 @login_required
