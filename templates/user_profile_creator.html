@@ -6,41 +6,62 @@
 {% block head_css %}
 <style>
     .creator-page-wrap { max-width: 1600px; }
+    .creator-card,
+    .creator-panel {
+        background: rgba(9,9,11,.96);
+        border-color: rgba(255,255,255,.08);
+        box-shadow: 0 14px 60px -18px rgba(0,0,0,.7);
+    }
+    .creator-hero-shell {
+        background: transparent;
+    }
+    .creator-hero-cover::after {
+        background: linear-gradient(to top, rgba(9,9,11,.94) 0%, rgba(9,9,11,.62) 55%, rgba(9,9,11,.18) 100%);
+    }
+    .creator-title { color: #f8fafc; text-shadow: 0 1px 0 rgba(0,0,0,.2); }
+    .creator-subtitle { color: #cbd5e1; }
+    .creator-role-badge {
+        background: rgba(255,255,255,.06) !important;
+        border-color: rgba(255,255,255,.12) !important;
+        color: #e2e8f0 !important;
+        backdrop-filter: blur(10px);
+    }
+    .creator-role-badge.creator-main {
+        color: #f8fafc !important;
+    }
+    .creator-edit-btn,
+    .creator-cover-btn {
+        background: rgba(255,255,255,.08) !important;
+        border-color: rgba(255,255,255,.14) !important;
+        color: #f8fafc !important;
+    }
+    .creator-edit-btn:hover,
+    .creator-cover-btn:hover {
+        background: rgba(255,255,255,.14) !important;
+    }
+    .creator-meta-label,
+    .creator-meta-value,
+    .creator-muted {
+        color: #e2e8f0;
+    }
+    .creator-page-wrap .bg-surface {
+        background: rgba(9,9,11,.96) !important;
+        color: #f8fafc !important;
+    }
+    .creator-page-wrap .border-slate-100,
+    .creator-page-wrap .border-slate-200 {
+        border-color: rgba(255,255,255,.08) !important;
+    }
+    .creator-page-wrap .text-muted {
+        color: #94a3b8 !important;
+    }
+    .creator-page-wrap .text-primary {
+        color: #f8fafc !important;
+    }
     @media (max-width: 768px) {
         .creator-page-wrap { padding-left: 1rem; padding-right: 1rem; }
         .creator-role-badges { gap: .4rem; }
         .creator-role-badges .creator-role-badge { padding: .4rem .7rem; font-size: .64rem; }
-    }
-    html[data-theme="dark"] .creator-role-badge { background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.12) !important; color: #e2e8f0 !important; }
-    html[data-theme="dark"] .creator-role-badge.creator-main { background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.12) !important; color: #f8fafc !important; }
-    html[data-theme="dark"] .creator-card,
-    html[data-theme="dark"] .creator-panel {
-        background: rgba(9,9,11,.95) !important;
-        border-color: rgba(255,255,255,.08) !important;
-        box-shadow: 0 14px 60px -18px rgba(0,0,0,.65) !important;
-    }
-    html[data-theme="dark"] .creator-title,
-    html[data-theme="dark"] .creator-status,
-    html[data-theme="dark"] .creator-meta-label,
-    html[data-theme="dark"] .creator-meta-value {
-        color: #f8fafc !important;
-    }
-    html[data-theme="dark"] .creator-muted,
-    html[data-theme="dark"] .creator-subtitle {
-        color: #cbd5e1 !important;
-    }
-    html[data-theme="dark"] .creator-edit-btn,
-    html[data-theme="dark"] .creator-cover-btn {
-        background: rgba(255,255,255,.08) !important;
-        color: #f8fafc !important;
-        border-color: rgba(255,255,255,.12) !important;
-    }
-    html[data-theme="dark"] .creator-hero-cover::after {
-        background: linear-gradient(to top, rgba(9,9,11,.92) 0%, rgba(9,9,11,.62) 55%, rgba(9,9,11,.18) 100%) !important;
-    }
-    html[data-theme="dark"] .creator-hero-shell {
-        background: rgba(9,9,11,.95) !important;
-        border-color: rgba(255,255,255,.08) !important;
     }
 </style>
 {% endblock %}
