@@ -23,6 +23,13 @@ from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.notifications.service import notify_student_and_parents
 from app.telegram.user_notify import notify_user_by_id
 from app.utils.datetime_utc import effective_timezone_name
+from app.utils.relationship_scope import (
+    can_user_access_student,
+    get_family_tie_between,
+    get_family_ties_for_student,
+    remove_family_ties_for_parent,
+    remove_family_ties_for_student,
+)
 from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local
 from app.models import (
     Student,
@@ -114,14 +121,12 @@ def _can_access_student(student: Student) -> bool:
             return True
         return False
 
+    st_user = _get_student_user_for_scope(student)
+    if can_user_access_student(current_user, student_user_id=getattr(st_user, 'id', None), student_platform_id=student.student_id):
+        return True
     scope = get_user_scope(current_user)
     if scope.get('can_see_all'):
         return True
-
-    st_user = _get_student_user_for_scope(student)
-    if st_user and st_user.id in (scope.get('student_ids') or []):
-        return True
-
     return student.student_id in (scope.get('student_ids') or [])
 
 
@@ -245,7 +250,7 @@ def _delete_student_related_rows(student_id: int, linked_user_id: int | None = N
         model.query.filter_by(student_id=student_id).delete(synchronize_session=False)
 
     if linked_user_id:
-        m.FamilyTie.query.filter_by(student_id=linked_user_id).delete(synchronize_session=False)
+        remove_family_ties_for_student(linked_user_id)
         m.Enrollment.query.filter_by(student_id=linked_user_id).delete(synchronize_session=False)
         m.StudentWorkspaceFile.query.filter_by(user_id=linked_user_id).delete(synchronize_session=False)
         m.TaskCanvasDrawing.query.filter_by(user_id=linked_user_id).delete(synchronize_session=False)
@@ -277,9 +282,8 @@ def _delete_user_related_rows(user_id: int) -> None:
         UserTaskMMR,
     )
 
-    m.FamilyTie.query.filter(
-        or_(m.FamilyTie.parent_id == user_id, m.FamilyTie.student_id == user_id)
-    ).delete(synchronize_session=False)
+    remove_family_ties_for_parent(user_id)
+    remove_family_ties_for_student(user_id)
     m.Enrollment.query.filter(
         or_(m.Enrollment.student_id == user_id, m.Enrollment.tutor_id == user_id)
     ).delete(synchronize_session=False)
@@ -766,7 +770,27 @@ def student_profile(student_id):
         except Exception:
             student_subscription = None
 
+        current_parent_tie = None
+        current_parent_summary = None
+        if current_user.is_authenticated and current_user.is_parent() and student_user_obj:
+            try:
+                current_parent_tie = get_family_tie_between(current_user.id, student_user_obj.id, include_pending=True)
+                if current_parent_tie:
+                    current_parent_summary = {
+                        'confirmed': bool(current_parent_tie.is_confirmed),
+                        'access_level': current_parent_tie.access_level,
+                        'status_label': 'Подтверждена' if current_parent_tie.is_confirmed else 'Ожидает подтверждения',
+                    }
+            except Exception as e:
+                logger.warning(f"Failed to resolve current parent tie for student profile: {e}")
+
         parents_info = []
+        family_summary = {
+            'parents_count': 0,
+            'confirmed_parents_count': 0,
+            'pending_parents_count': 0,
+            'tutors_count': 0,
+        }
         try:
             can_see_parents = False
             if current_user.is_authenticated:
@@ -779,11 +803,7 @@ def student_profile(student_id):
             
             if can_see_parents and student_user_obj:
                 try:
-                    family_ties = FamilyTie.query.filter_by(
-                        student_id=student_user_obj.id,
-                        is_confirmed=True
-                    ).all()
-                    
+                    family_ties = get_family_ties_for_student(student_user_obj.id, include_pending=True)
                     for tie in family_ties:
                         try:
                             parent_user = User.query.get(tie.parent_id)
@@ -799,11 +819,16 @@ def student_profile(student_id):
                                         'name': name,
                                         'phone': parent_profile.phone,
                                         'telegram_id': parent_profile.telegram_id,
-                                        'access_level': tie.access_level
+                                        'access_level': tie.access_level,
+                                        'confirmed': bool(tie.is_confirmed),
+                                        'tie_id': tie.tie_id,
                                     })
                         except Exception as e:
                             logger.error(f"Ошибка при загрузке родителя {tie.parent_id}: {e}", exc_info=True)
                             continue
+                    family_summary['parents_count'] = len(parents_info)
+                    family_summary['confirmed_parents_count'] = len([p for p in parents_info if p.get('confirmed')])
+                    family_summary['pending_parents_count'] = len([p for p in parents_info if not p.get('confirmed')])
                 except Exception as e:
                     logger.error(f"Ошибка при загрузке информации о родителях: {e}", exc_info=True)
         except Exception as e:
@@ -816,6 +841,7 @@ def student_profile(student_id):
                     db.joinedload(Enrollment.tutor)
                 ).all()
                 tutors_list = [e.tutor for e in enrollments if getattr(e, 'tutor', None)]
+                family_summary['tutors_count'] = len(tutors_list)
             except Exception as e:
                 logger.warning(f"Ошибка загрузки преподавателей для ученика: {e}")
         
@@ -839,7 +865,10 @@ def student_profile(student_id):
                                upcoming_lessons=upcoming_lessons,
                                in_progress_lesson=in_progress_lesson,
                                other_lessons=other_lessons,
-                               parents_info=parents_info)
+                               parents_info=parents_info,
+                               family_summary=family_summary,
+                               current_parent_tie=current_parent_tie,
+                               current_parent_summary=current_parent_summary)
     except Exception as e:
         logger.error(f"Critical error in student_profile: {e}", exc_info=True)
         flash('Произошла ошибка при загрузке профиля ученика.', 'danger')
@@ -953,6 +982,7 @@ def student_info(student_id: int):
         if me_student and me_student.student_id != student_id:
             return redirect(url_for('students.student_info', student_id=me_student.student_id))
     student_user_obj = User.query.get(student.user_id) if getattr(student, 'user_id', None) else None
+    student_profile_obj = UserProfile.query.filter_by(user_id=student_user_obj.id).first() if student_user_obj else None
     student_subscription = None
     try:
         if student_user_obj:
@@ -969,10 +999,7 @@ def student_info(student_id: int):
             getattr(current_user, 'is_creator', None) and current_user.is_creator()
         )
         if can_see_parents and student_user_obj:
-            family_ties = FamilyTie.query.filter_by(
-                student_id=student_user_obj.id,
-                is_confirmed=True
-            ).all()
+            family_ties = get_family_ties_for_student(student_user_obj.id, include_pending=False)
             for tie in family_ties:
                 try:
                     parent_user = User.query.get(tie.parent_id)

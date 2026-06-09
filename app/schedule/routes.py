@@ -8,10 +8,11 @@ from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 
 from app.schedule import schedule_bp
-from app.models import Lesson, Student, User, RecurringLessonSlot, FamilyTie, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, Student, User, RecurringLessonSlot, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from app.auth.rbac_utils import get_user_scope, has_permission
 from app.notifications.service import notify_student_and_parents
 from app.telegram.user_notify import notify_user_by_id
+from app.utils.relationship_scope import get_parent_user_ids_for_student
 from app.utils.datetime_utc import effective_timezone_name
 from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local, lesson_storage_to_utc
 from core.audit_logger import audit_logger
@@ -231,11 +232,10 @@ def _student_parent_user_ids(student_id: int | None) -> list[int]:
     if not student_id:
         return []
     try:
-        return [
-            int(t.parent_id)
-            for t in FamilyTie.query.filter_by(student_id=student_id, is_confirmed=True).all()
-            if t and t.parent_id
-        ]
+        student = Student.query.get(student_id)
+        if not student or not student.user_id:
+            return []
+        return [int(pid) for pid in get_parent_user_ids_for_student(int(student.user_id))]
     except Exception:
         return []
 

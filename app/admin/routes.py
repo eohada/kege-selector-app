@@ -34,6 +34,12 @@ from app import csrf
 from app.auth.rbac_utils import require_admin, has_permission, check_access
 from app.utils.course_tasks import get_task_numbers
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES
+from app.utils.relationship_scope import (
+    get_all_family_ties,
+    get_family_tie_between,
+    get_family_ties_for_parent,
+    get_family_ties_for_student,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +51,31 @@ _DB_SYNC_STATE = {
     'ok': None,
     'log': '',
 }
+
+
+def _admin_user_relations(user: User):
+    if not user:
+        return [], []
+    if user.is_student():
+        family_ties = get_family_ties_for_student(user.id, include_pending=True)
+        enrollments = Enrollment.query.filter_by(student_id=user.id).all()
+    elif user.is_parent():
+        family_ties = get_family_ties_for_parent(user.id, include_pending=True)
+        enrollments = []
+    elif user.is_tutor():
+        family_ties = []
+        enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
+    else:
+        family_ties = []
+        enrollments = []
+    return family_ties, enrollments
+
+
+def _admin_relation_choices(user: User):
+    all_parents = User.query.filter(User.role == 'parent', User.is_active == True).order_by(User.username).all() if user and user.is_student() else []
+    all_students = User.query.filter(User.role == 'student', User.is_active == True).order_by(User.username).all() if user and (user.is_parent() or user.is_tutor()) else []
+    all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
+    return all_parents, all_students, all_tutors
 
 
 def _get_environment():
@@ -2107,7 +2138,7 @@ def admin_users_graph_data():
                 'status': getattr(e, 'status', None) or 'active',
             } for e in best_by_pair.values()]
 
-        ties = FamilyTie.query.all()
+        ties = get_all_family_ties()
         family_edges = [{
             'tie_id': t.tie_id,
             'from_id': t.parent_id,
@@ -2231,7 +2262,7 @@ def admin_api_family_tie_create():
         if not student.is_student():
             return jsonify({'success': False, 'error': 'User is not a student'}), 400
 
-        existing = FamilyTie.query.filter_by(parent_id=parent_id, student_id=student_id).first()
+        existing = get_family_tie_between(parent_id, student_id)
         if existing:
             return jsonify({'success': False, 'error': 'Family tie already exists'}), 409
 
@@ -2353,7 +2384,7 @@ def admin_user_family_tie_add(user_id):
             access_level = request.form.get('access_level', 'full')
             is_confirmed = request.form.get('is_confirmed') == 'on'
             
-            existing = FamilyTie.query.filter_by(parent_id=parent_id, student_id=user.id).first()
+            existing = get_family_tie_between(parent_id, user.id)
             if existing:
                 flash('Связь уже существует.', 'warning')
                 return redirect(url_for('admin.admin_user_edit', user_id=user_id))
@@ -2372,7 +2403,7 @@ def admin_user_family_tie_add(user_id):
             access_level = request.form.get('access_level', 'full')
             is_confirmed = request.form.get('is_confirmed') == 'on'
             
-            existing = FamilyTie.query.filter_by(parent_id=user.id, student_id=student_id).first()
+            existing = get_family_tie_between(user.id, student_id)
             if existing:
                 flash('Связь уже существует.', 'warning')
                 return redirect(url_for('admin.admin_user_edit', user_id=user_id))
@@ -2579,18 +2610,8 @@ def admin_user_edit(user_id):
             
             if not username:
                 flash('Имя пользователя обязательно.', 'error')
-                family_ties = []
-                enrollments = []
-                if user.is_student():
-                    family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
-                    enrollments = Enrollment.query.filter_by(student_id=user.id).all()
-                elif user.is_parent():
-                    family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
-                elif user.is_tutor():
-                    enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
-                all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
-                all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-                all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
+                family_ties, enrollments = _admin_user_relations(user)
+                all_parents, all_students, all_tutors = _admin_relation_choices(user)
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 is_sandbox = _is_sandbox(environment)
                 
@@ -2606,18 +2627,8 @@ def admin_user_edit(user_id):
             existing_user = User.query.filter_by(username=username).first()
             if existing_user and existing_user.id != user.id:
                 flash('Пользователь с таким именем уже существует.', 'error')
-                family_ties = []
-                enrollments = []
-                if user.is_student():
-                    family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
-                    enrollments = Enrollment.query.filter_by(student_id=user.id).all()
-                elif user.is_parent():
-                    family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
-                elif user.is_tutor():
-                    enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
-                all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
-                all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-                all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
+                family_ties, enrollments = _admin_user_relations(user)
+                all_parents, all_students, all_tutors = _admin_relation_choices(user)
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 is_sandbox = _is_sandbox(environment)
                 
@@ -2724,7 +2735,7 @@ def admin_user_edit(user_id):
                 if new_parent_id_str:
                     try:
                         new_parent_id = int(new_parent_id_str)
-                        existing = FamilyTie.query.filter_by(parent_id=new_parent_id, student_id=user.id).first()
+                        existing = get_family_tie_between(new_parent_id, user.id)
                         if not existing:
                             access_level = request.form.get('new_parent_access_level', 'full')
                             is_confirmed = request.form.get('new_parent_confirmed') == 'on'
@@ -2760,7 +2771,7 @@ def admin_user_edit(user_id):
             elif user.is_parent():
                 new_student_id = request.form.get('new_student_id', type=int)
                 if new_student_id:
-                    existing = FamilyTie.query.filter_by(parent_id=user.id, student_id=new_student_id).first()
+                    existing = get_family_tie_between(user.id, new_student_id)
                     if not existing:
                         access_level = request.form.get('new_student_access_level', 'full')
                         is_confirmed = request.form.get('new_student_confirmed') == 'on'
@@ -2832,18 +2843,8 @@ def admin_user_edit(user_id):
             if not user:
                 flash('Пользователь не найден.', 'error')
                 return redirect(url_for('admin.admin_users'))
-            family_ties = []
-            enrollments = []
-            if user.is_student():
-                family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
-                enrollments = Enrollment.query.filter_by(student_id=user.id).all()
-            elif user.is_parent():
-                family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
-            elif user.is_tutor():
-                enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
-            all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
-            all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-            all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
+            family_ties, enrollments = _admin_user_relations(user)
+            all_parents, all_students, all_tutors = _admin_relation_choices(user)
             environment = os.environ.get('ENVIRONMENT', 'local')
             is_sandbox = _is_sandbox(environment)
             
@@ -2856,20 +2857,8 @@ def admin_user_edit(user_id):
                                  all_tutors=all_tutors)
     
     try:
-        family_ties = []
-        enrollments = []
-        
-        if user.is_student():
-            family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
-            enrollments = Enrollment.query.filter_by(student_id=user.id).all()
-        elif user.is_parent():
-            family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
-        elif user.is_tutor():
-            enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
-        
-        all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
-        all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-        all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
+        family_ties, enrollments = _admin_user_relations(user)
+        all_parents, all_students, all_tutors = _admin_relation_choices(user)
         
         resp = make_response(render_template('admin_user_edit.html',
                              user=user,
@@ -2995,7 +2984,7 @@ def admin_user_new():
                             access_level = request.form.get(f'parent_access_level_{parent_id}', 'full')
                             is_confirmed = request.form.get(f'parent_confirmed_{parent_id}') == 'on'
                             
-                            existing = FamilyTie.query.filter_by(parent_id=parent_id, student_id=user.id).first()
+                            existing = get_family_tie_between(parent_id, user.id)
                             if not existing:
                                 family_tie = FamilyTie(parent_id=parent_id, student_id=user.id, access_level=access_level, is_confirmed=is_confirmed)
                                 db.session.add(family_tie)
@@ -3024,12 +3013,16 @@ def admin_user_new():
                             access_level = request.form.get(f'student_access_level_{student_id}', 'full')
                             is_confirmed = request.form.get(f'student_confirmed_{student_id}') == 'on'
                             
-                            existing = FamilyTie.query.filter_by(parent_id=user.id, student_id=student_id).first()
+                            existing = get_family_tie_between(user.id, student_id)
                             if not existing:
                                 family_tie = FamilyTie(parent_id=user.id, student_id=student_id, access_level=access_level, is_confirmed=is_confirmed)
                                 db.session.add(family_tie)
                         except (ValueError, TypeError):
                             continue
+
+            elif role == 'student' or role == 'parent' or role == 'tutor':
+                # role-specific relations already handled above; keep path explicit for readability
+                pass
             
             elif role == 'tutor':
                 student_ids = request.form.getlist('student_ids')

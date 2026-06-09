@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass
 
 from app.models import db, User, UserRole, UserProfile, FamilyTie, Enrollment, UserSubscription
+from app.utils.relationship_scope import get_confirmed_family_ties_for_parent, get_family_ties_for_student
 from app.telegram.notifications import send_telegram_message
 
 logger = logging.getLogger(__name__)
@@ -112,7 +113,7 @@ def relation_summary(user: User, role: str | None = None) -> str:
     """Human-readable attachment text for role-change notifications."""
     role = role or user.role
     if role == 'parent':
-        ties = FamilyTie.query.filter_by(parent_id=user.id).all()
+        ties = get_confirmed_family_ties_for_parent(user.id)
         names = [user_display_name(t.student) for t in ties if t.student]
         return 'Прикреплен к ученику: ' + ', '.join(names) if names else 'Пока не прикреплен к ученику.'
     if role == 'tutor':
@@ -120,7 +121,7 @@ def relation_summary(user: User, role: str | None = None) -> str:
         names = [user_display_name(e.student) for e in enrollments if e.student]
         return 'Прикреплен к ученикам: ' + ', '.join(names[:8]) if names else 'Пока не прикреплен к ученикам.'
     if role == 'student':
-        parents = FamilyTie.query.filter_by(student_id=user.id).all()
+        parents = get_family_ties_for_student(user.id, include_pending=False)
         tutors = Enrollment.query.filter_by(student_id=user.id, status='active').all()
         parts = []
         parent_names = [user_display_name(t.parent) for t in parents if t.parent]

@@ -12,6 +12,7 @@ from app.auth.rbac_utils import require_admin
 from core.audit_logger import audit_logger
 from flask_login import current_user
 from app.telegram.role_management import actor_can_assign_role, notify_role_changed, set_single_role
+from app.utils.relationship_scope import get_family_ties_for_parent, get_family_ties_for_student
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,7 @@ def api_users_get(user_id):
             }
         
         if user.is_student():
-            family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
+            family_ties = get_family_ties_for_student(user.id, include_pending=True)
             user_data['parents'] = [
                 {
                     'parent_id': ft.parent_id,
@@ -202,7 +203,7 @@ def api_users_get(user_id):
             ]
         
         if user.is_parent():
-            family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
+            family_ties = get_family_ties_for_parent(user.id, include_pending=True)
             user_data['children'] = [
                 {
                     'student_id': ft.student_id,

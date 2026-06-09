@@ -19,6 +19,7 @@ def _room(lesson_id: int) -> str:
 def register_lesson_socket(socketio) -> None:
     from flask import request
     from flask_login import current_user
+    from app.utils.relationship_scope import get_confirmed_student_user_ids_for_parent
 
     @socketio.on("connect", namespace="/lesson")
     def _on_connect():
@@ -61,14 +62,13 @@ def register_lesson_socket(socketio) -> None:
             return
         # Проверка доступа: преподаватель или ученик этого урока / родитель
         from app.lessons.routes import get_user_scope, _get_current_lesson_student
-        from app.models import FamilyTie, Student
+        from app.models import Student
         scope = get_user_scope(current_user)
         if current_user.is_student():
             if not _get_current_lesson_student(lesson):
                 return
         elif current_user.is_parent():
-            ties = FamilyTie.query.filter_by(parent_id=current_user.id, is_confirmed=True).all()
-            child_ids = [t.student_id for t in ties]
+            child_ids = get_confirmed_student_user_ids_for_parent(current_user.id)
             if lesson.student_id not in child_ids:
                 return
         else:

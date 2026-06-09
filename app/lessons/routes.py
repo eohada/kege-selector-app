@@ -23,6 +23,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
 from app.models import FamilyTie  # для доступа родителя к диалогам
+from app.utils.relationship_scope import can_user_access_student
 from app.utils.course_tasks import get_task_numbers
 from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local
 
@@ -1975,10 +1976,7 @@ def lesson_messages_list(lesson_id: int):
             if not _get_current_lesson_student(lesson):
                 return jsonify({'success': False, 'error': 'Forbidden'}), 403
         elif current_user.is_parent():
-            ties = FamilyTie.query.filter_by(parent_id=current_user.id, is_confirmed=True).all()
-            child_user_ids = [t.student_id for t in ties]
-            allowed_students = Student.query.filter(Student.student_id.in_(child_user_ids)).all()
-            if lesson.student_id not in [s.student_id for s in allowed_students]:
+            if not can_user_access_student(current_user, student_platform_id=lesson.student_id):
                 return jsonify({'success': False, 'error': 'Forbidden'}), 403
         else:
             accessible_student_ids = _resolve_accessible_student_ids(scope)

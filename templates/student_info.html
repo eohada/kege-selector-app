@@ -197,6 +197,32 @@
                     </div>
                 </div>
 
+                {% if current_user.is_parent() %}
+                <div class="info-section">
+                    <h3>Связь с ребёнком</h3>
+                    <div class="glass-panel p-4">
+                        <div class="data-row">
+                            <span class="data-label">Доступ</span>
+                            <span class="data-value">
+                                {% if parents_info %}
+                                    Родительский доступ активен
+                                {% else %}
+                                    Связь подтверждена
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Профиль</span>
+                            <span class="data-value">
+                                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="text-boo-primary hover:underline">
+                                    Открыть комнату ученика
+                                </a>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 {% if tutors_list %}
                 <div class="info-section">
                     <h3>Преподаватель{% if tutors_list|length > 1 %}и{% endif %}</h3>
@@ -285,6 +311,11 @@
                 <div class="info-section">
                     <h3>Родители</h3>
                     <div class="glass-panel p-4">
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="status-badge status-info opacity-90">Родителей: {{ parents_info|length }}</span>
+                            {% if tutors_list %}<span class="status-badge status-info opacity-90">Преподавателей: {{ tutors_list|length }}</span>{% endif %}
+                            {% if current_user.is_parent() %}<span class="status-badge status-info opacity-90">Родительский просмотр</span>{% endif %}
+                        </div>
                         {% for p in parents_info %}
                         <div class="data-row">
                             <span class="data-label">{{ p.name }}</span>
@@ -296,6 +327,22 @@
                             </span>
                         </div>
                         {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if current_user.is_parent() %}
+                <div class="info-section">
+                    <h3>Семейная навигация</h3>
+                    <div class="glass-panel p-4">
+                        <div class="lesson-control-grid">
+                            <a href="{{ url_for('parents.parent_dashboard') }}" class="lesson-control-btn lesson-control-btn--primary no-underline text-center">
+                                Открыть родительский кабинет
+                            </a>
+                            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="lesson-control-btn no-underline text-center">
+                                Перейти в комнату ученика
+                            </a>
+                        </div>
                     </div>
                 </div>
                 {% endif %}

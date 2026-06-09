@@ -177,6 +177,23 @@
                         <span class="lessons-remaining-val">{{ student_subscription.lessons_remaining }}</span>
                     </div>
                     {% endif %}
+
+                    <div class="mt-4 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                        <span class="teacher-kpi">
+                            <i class="ph-fill ph-users-three text-sm"></i>
+                            Родителей: {{ family_summary.parents_count if family_summary else (parents_info|length if parents_info else 0) }}
+                        </span>
+                        {% if family_summary and family_summary.pending_parents_count %}
+                        <span class="teacher-kpi teacher-kpi--light">
+                            <i class="ph-fill ph-hourglass text-sm"></i>
+                            Ожидают подтверждения: {{ family_summary.pending_parents_count }}
+                        </span>
+                        {% endif %}
+                        <span class="teacher-kpi">
+                            <i class="ph-fill ph-chalkboard-teacher text-sm"></i>
+                            Преподавателей: {{ family_summary.tutors_count if family_summary else (tutors_list|length if tutors_list else 0) }}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -190,6 +207,12 @@
                     <i class="ph-bold ph-plus text-lg"></i>
                     <span>Новый урок</span>
                 </a>
+                {% if current_user.is_creator() or current_user.is_admin() %}
+                <a href="{{ url_for('admin.admin_user_edit', user_id=student.user_id) }}" class="neo-button outline">
+                    <i class="ph-bold ph-link-simple-horizontal text-lg"></i>
+                    <span>Связи и роли</span>
+                </a>
+                {% endif %}
             </div>
         </div>
     </section>
@@ -528,7 +551,14 @@
                                 <div class="bg-surface-alt/45 dark:bg-dark-inner/30 border border-slate-200 dark:border-white/[0.06] p-4 rounded-2xl space-y-2.5">
                                     <div class="flex justify-between items-start">
                                         <div class="font-black text-sm text-primary dark:text-white">{{ parent.name }}</div>
-                                        <span class="px-2 py-0.5 bg-slate-900/5 dark:bg-white/5 border border-slate-200/50 dark:border-white/[0.06] rounded text-[8px] font-extrabold uppercase tracking-widest text-muted dark:text-dark-muted">{{ parent.access_level or 'Родитель' }}</span>
+                                        <div class="flex items-center gap-2">
+                                            {% if parent.confirmed %}
+                                            <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20 rounded text-[8px] font-extrabold uppercase tracking-widest">Подтверждено</span>
+                                            {% else %}
+                                            <span class="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20 rounded text-[8px] font-extrabold uppercase tracking-widest">Ожидает</span>
+                                            {% endif %}
+                                            <span class="px-2 py-0.5 bg-slate-900/5 dark:bg-white/5 border border-slate-200/50 dark:border-white/[0.06] rounded text-[8px] font-extrabold uppercase tracking-widest text-muted dark:text-dark-muted">{{ parent.access_level or 'Родитель' }}</span>
+                                        </div>
                                     </div>
                                     <div class="text-xs font-bold text-muted dark:text-dark-muted space-y-1">
                                         {% if parent.phone %}
@@ -543,7 +573,7 @@
                         </div>
                     {% else %}
                         <div class="text-center py-6 text-muted dark:text-dark-muted font-medium text-sm border border-dashed border-slate-200 dark:border-white/[0.12] rounded-2xl dark:bg-white/[0.03]">
-                            Контакты родителей не привязаны
+                            Связи с родителями пока не привязаны
                         </div>
                     {% endif %}
                 </div>

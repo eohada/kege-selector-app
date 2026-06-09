@@ -6,8 +6,13 @@ from functools import wraps
 from flask import abort, flash, redirect, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_
-from app.models import db, User, Enrollment, FamilyTie, RolePermission
+from app.models import db, User, RolePermission
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
+from app.utils.relationship_scope import (
+    get_confirmed_student_user_ids_for_parent,
+    get_student_user_ids_for_tutor,
+    is_creator_or_admin,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -22,7 +27,7 @@ def has_permission(user, permission_name):
     if not user or not user.is_authenticated:
         return False
         
-    if user.is_creator():
+    if user.is_creator() or user.is_chief_admin() or user.is_admin():
         return True
     if user.is_chief_tester():
         return True
@@ -74,24 +79,17 @@ def get_user_scope(user):
     if not user or not user.is_authenticated:
          return scope
     
-    if user.is_creator() or user.is_admin() or user.is_chief_tester():
+    if is_creator_or_admin(user) or user.is_chief_tester():
         scope['can_see_all'] = True
         return scope
     
     student_ids = set()
     
     if user.is_tutor():
-        enrollments = Enrollment.query.filter(
-            Enrollment.tutor_id == user.id,
-            Enrollment.status != 'archived'
-        ).all()
-        student_ids.update(e.student_id for e in enrollments)
+        student_ids.update(get_student_user_ids_for_tutor(user.id))
     
     if user.is_parent():
-        family_ties = FamilyTie.query.filter_by(parent_id=user.id, is_confirmed=True).all()
-        if not family_ties:
-            family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
-        student_ids.update(ft.student_id for ft in family_ties)
+        student_ids.update(get_confirmed_student_user_ids_for_parent(user.id))
     
     if user.is_student():
         student_ids.add(user.id)

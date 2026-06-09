@@ -6,6 +6,7 @@ from typing import Iterable
 from datetime import timedelta
 
 from app.models import db, User, Student, UserNotification, FamilyTie, Tasks, PendingAssignmentNotification, Lesson, moscow_now, BotAdmin
+from app.utils.relationship_scope import get_parent_user_ids_for_student
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +31,7 @@ def _get_student_user(student: Student) -> User | None:
 
 def _get_parent_user_ids_for_student_user(student_user_id: int) -> list[int]:
     try:
-        ties = FamilyTie.query.filter_by(student_id=student_user_id, is_confirmed=True).all()
-        return [t.parent_id for t in ties if t and t.parent_id]
+        return get_parent_user_ids_for_student(student_user_id)
     except Exception as e:
         logger.warning(f"Failed to load FamilyTies for student_user_id={student_user_id}: {e}")
         return []
@@ -64,6 +64,31 @@ def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None,
         telegram_notify_user_task.delay(int(user_id), telegram_text, kind)
     except Exception as e:
         logger.warning('Could not enqueue Telegram mirror for notification user_id=%s kind=%s: %s', user_id, kind, e)
+
+
+def notify_family_tie(parent_id: int, student_id: int, *, kind: str, title: str, body: str | None = None, tie_id: int | None = None, meta: dict | None = None) -> None:
+    """Unified notification helper for parent/student relation events."""
+    payload = dict(meta or {})
+    if tie_id is not None:
+        payload.setdefault('tie_id', tie_id)
+
+    parent_body = body
+    student_body = body
+    if kind == 'family_link_created':
+        parent_body = body or 'Создана связь с ребёнком.'
+        student_body = body or 'К вашему аккаунту привязали родителя.'
+    elif kind == 'family_link_confirmed':
+        parent_body = body or 'Связь с ребёнком подтверждена.'
+        student_body = body or 'Связь с родителем подтверждена.'
+    elif kind == 'family_link_updated':
+        parent_body = body or 'Параметры семейной связи были обновлены.'
+        student_body = body or 'Параметры семейной связи были обновлены.'
+    elif kind == 'family_link_removed':
+        parent_body = body or 'Связь с ребёнком удалена.'
+        student_body = body or 'Связь с родителем удалена.'
+
+    notify_user(parent_id, kind=kind, title=title, body=parent_body, meta=payload)
+    notify_user(student_id, kind=kind, title=title, body=student_body, meta=payload)
 
 
 def notify_admins_critical_error(title: str, body: str, meta: dict | None = None) -> None:

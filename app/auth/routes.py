@@ -790,10 +790,16 @@ def demo_start():
 @login_required
 def user_profile():
     """Страница профиля пользователя"""
-    from app.models import Student, Lesson, db
+    from app.models import Student, Lesson, db, User
+    from app.utils.relationship_scope import get_family_ties_for_parent, get_family_ties_for_student
     linked_student = None
     recent_lessons = []
     lesson_counts = {'total': 0, 'planned': 0, 'completed': 0}
+    parent_children = []
+    student_parents = []
+    parent_children_count = 0
+    parent_children_confirmed_count = 0
+    student_parents_count = 0
     try:
         if current_user.is_student():
             linked_student = Student.query.filter_by(user_id=current_user.id).first()
@@ -804,11 +810,34 @@ def user_profile():
                 lesson_counts['total'] = Lesson.query.filter_by(student_id=linked_student.student_id).count()
                 lesson_counts['planned'] = Lesson.query.filter_by(student_id=linked_student.student_id, status='planned').count()
                 lesson_counts['completed'] = Lesson.query.filter_by(student_id=linked_student.student_id, status='completed').count()
+                student_parents = get_family_ties_for_student(current_user.id, include_pending=True)
+        elif current_user.is_parent():
+            for tie in get_family_ties_for_parent(current_user.id, include_pending=True):
+                child_user = User.query.get(tie.student_id)
+                if not child_user:
+                    continue
+                child_student = Student.query.filter_by(user_id=child_user.id).first()
+                parent_children.append({
+                    'user': child_user,
+                    'student': child_student,
+                    'confirmed': bool(tie.is_confirmed),
+                    'access_level': tie.access_level,
+                    })
+            parent_children_count = len(parent_children)
+            parent_children_confirmed_count = len([item for item in parent_children if item['confirmed']])
     except Exception as e:
         logger.warning(f"Failed to build profile context for user {current_user.id}: {e}")
         linked_student = None
         recent_lessons = []
         lesson_counts = {'total': 0, 'planned': 0, 'completed': 0}
+        parent_children = []
+        student_parents = []
+        parent_children_count = 0
+        parent_children_confirmed_count = 0
+        student_parents_count = 0
+
+    if current_user.is_student():
+        student_parents_count = len(student_parents)
 
     if current_user.is_student():
         return render_template(
@@ -831,6 +860,11 @@ def user_profile():
         linked_student=linked_student,
         recent_lessons=recent_lessons,
         lesson_counts=lesson_counts,
+        parent_children=parent_children,
+        student_parents=student_parents,
+        parent_children_count=parent_children_count,
+        parent_children_confirmed_count=parent_children_confirmed_count,
+        student_parents_count=student_parents_count,
     )
 
 

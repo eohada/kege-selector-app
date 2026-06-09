@@ -58,6 +58,7 @@ from app.telegram.config import (
 )
 
 from app.telegram.link_api import call_link_bot_api
+from app.utils.relationship_scope import get_family_tie_by_id, get_family_ties_for_parent, get_family_ties_for_student
 from app.telegram.role_management import (
     MAIN_BOT_ROLES,
     actor_can_assign_role,
@@ -1628,6 +1629,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'stats':              _cb_student_stats,
             'subscription':        _cb_subscription,
             'parent_children':     _cb_parent_children,
+            'parent_child':        _cb_parent_child_detail,
             'parent_schedule':     _cb_parent_schedule,
             'parent_debts':        _cb_parent_debts,
             'parent_subscription': _cb_parent_subscription,
@@ -1658,6 +1660,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if data.startswith('role_user_'):
             await _cb_role_user(query, session, user, data)
+            return
+
+        if data.startswith('parent_child_'):
+            await _cb_parent_child_detail(query, session, user, data)
             return
 
         if data.startswith('role_set_'):
@@ -2798,14 +2804,24 @@ async def _cb_student_parents(query, session, user, data: str):
         await query.edit_message_text('⚠️ Ученик не найден.', reply_markup=_back_keyboard())
         return
 
-    rows = session.execute(text("""
-        SELECT ft.tie_id, p.id, p.username, up.first_name, up.last_name, up.telegram_id
-        FROM "FamilyTies" ft
-        JOIN "Users" p ON p.id = ft.parent_id
-        LEFT JOIN "UserProfiles" up ON up.user_id = p.id
-        WHERE ft.student_id = :student_user_id
-        ORDER BY up.first_name ASC NULLS LAST, p.username ASC
-    """), {'student_user_id': student_user_id}).fetchall()
+    from app.models import User, UserProfile
+
+    rows = []
+    family_ties = get_family_ties_for_student(student_user_id, include_pending=False)
+    for tie in family_ties:
+        parent = User.query.get(tie.parent_id)
+        if not parent:
+            continue
+        profile = UserProfile.query.filter_by(user_id=parent.id).first()
+        rows.append((
+            tie.tie_id,
+            parent.id,
+            parent.username,
+            getattr(profile, 'first_name', None),
+            getattr(profile, 'last_name', None),
+            getattr(profile, 'telegram_id', None),
+        ))
+    rows.sort(key=lambda row: ((row[3] or '').lower(), (row[2] or '').lower()))
 
     lines = ['👪 <b>Родители ученика</b>', '']
     buttons = []
@@ -2883,7 +2899,7 @@ async def _cb_student_remove_parent(query, session, user, data: str):
 
     from app.models import db, FamilyTie
 
-    tie = FamilyTie.query.get(tie_id)
+    tie = get_family_tie_by_id(tie_id)
     if not tie:
         await query.edit_message_text('⚠️ Связь уже удалена.', reply_markup=_back_keyboard())
         return
@@ -3172,14 +3188,26 @@ async def _cb_subscription(query, session, user):
 # ---------------------------------------------------------------------------
 
 def _parent_children_rows(session, parent_user_id: int):
-    return session.execute(text("""
-        SELECT su.id AS student_user_id, st.student_id, st.name, su.username
-        FROM "FamilyTies" ft
-        JOIN "Users" su ON su.id = ft.student_id
-        LEFT JOIN "Students" st ON st.user_id = su.id
-        WHERE ft.parent_id = :uid
-        ORDER BY st.name ASC NULLS LAST, su.username ASC
-    """), {'uid': parent_user_id}).fetchall()
+    from app.models import Student, User
+    ties = get_family_ties_for_parent(int(parent_user_id), include_pending=True)
+    rows = []
+    for tie in ties:
+        su = User.query.get(tie.student_id)
+        if not su:
+            continue
+        st = Student.query.filter_by(user_id=su.id).first()
+        rows.append((su.id, getattr(st, 'student_id', None), getattr(st, 'name', None), su.username, bool(tie.is_confirmed), tie.access_level))
+    rows.sort(key=lambda row: ((row[2] or row[3] or '').lower(), (row[3] or '').lower()))
+    return rows
+
+
+def _parent_children_keyboard(rows):
+    buttons = []
+    for student_user_id, student_id, name, username, confirmed, access_level in rows[:8]:
+        label = (name or username or 'Ученик')[:24]
+        buttons.append([InlineKeyboardButton(f'👤 {label}', callback_data=f'parent_child_{student_user_id}_{student_id or 0}')])
+    buttons.append([InlineKeyboardButton('↩️ Назад', callback_data='back_menu')])
+    return InlineKeyboardMarkup(buttons)
 
 
 async def _cb_parent_children(query, session, user):
@@ -3191,9 +3219,70 @@ async def _cb_parent_children(query, session, user):
     if not rows:
         lines.append('Пока не прикреплен ни один ученик.')
     else:
-        for student_user_id, student_id, name, username in rows:
-            lines.append(f'• <b>{esc(name or username or "Ученик")}</b>')
-    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_back_keyboard())
+        for student_user_id, student_id, name, username, confirmed, access_level in rows:
+            status = 'подтверждено' if confirmed else 'ожидает подтверждения'
+            lines.append(f'• <b>{esc(name or username or "Ученик")}</b> — {status}, доступ: {esc(access_level or "—")}')
+    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_parent_children_keyboard(rows))
+
+
+async def _cb_parent_child_detail(query, session, user, data: str):
+    if not user:
+        await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode='HTML', reply_markup=_back_keyboard())
+        return
+    raw = data[len('parent_child_'):]
+    try:
+        student_user_id_str, student_id_str = raw.split('_', 1)
+        student_user_id = int(student_user_id_str)
+        student_id = int(student_id_str)
+    except ValueError:
+        await query.edit_message_text('⚠️ Ученик не найден.', reply_markup=_back_keyboard())
+        return
+
+    from app.models import Student, User, UserProfile, UserSubscription
+
+    tie = get_family_tie_between(int(user['id']), student_user_id, include_pending=True)
+    if not tie:
+        await query.edit_message_text('⚠️ Связь с учеником не найдена.', reply_markup=_back_keyboard())
+        return
+
+    su = User.query.get(student_user_id)
+    st = Student.query.filter_by(user_id=student_user_id).first()
+    profile = UserProfile.query.filter_by(user_id=student_user_id).first()
+    sub = (
+        UserSubscription.query.filter_by(user_id=student_user_id, status='active')
+        .order_by(UserSubscription.ends_at.desc().nullslast(), UserSubscription.subscription_id.desc())
+        .first()
+    )
+    access_label = tie.access_level or '—'
+    status_label = 'Подтверждена' if tie.is_confirmed else 'Ожидает подтверждения'
+    lesson_count = 'не указано'
+    if sub:
+        lesson_count = 'без лимита' if sub.lessons_remaining is None else str(sub.lessons_remaining)
+    name = getattr(st, 'name', None) or (su.username if su else 'Ученик')
+    lines = [
+        '👤 <b>Карточка ребенка</b>',
+        '',
+        f'• <b>{esc(name)}</b>',
+        f'• Связь: {esc(status_label)}',
+        f'• Уровень доступа: {esc(access_label)}',
+        f'• Telegram: {esc((profile.telegram_id if profile else None) or "не привязан")}',
+        f'• Баланс уроков: {esc(lesson_count)}',
+    ]
+    if student_id:
+        lines.append(f'• Профиль на платформе: #{student_id}')
+    buttons = []
+    if student_id:
+        buttons.append([InlineKeyboardButton('🔗 Открыть профиль на сайте', url=f'{(APP_URL or APP_OPEN_URL).rstrip("/")}/student/{student_id}')])
+    buttons.append([
+        InlineKeyboardButton('📅 Расписание', callback_data='parent_schedule'),
+        InlineKeyboardButton('📝 Домашки', callback_data='parent_debts'),
+    ])
+    buttons.append([
+        InlineKeyboardButton('💳 Тарифы', callback_data='parent_subscription'),
+        InlineKeyboardButton('👤 К списку детей', callback_data='parent_children'),
+    ])
+    buttons.append(_BACK_ROW)
+    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
 
 
 async def _cb_parent_schedule(query, session, user):
@@ -3203,8 +3292,12 @@ async def _cb_parent_schedule(query, session, user):
     children = _parent_children_rows(session, int(user['id']))
     lines = ['📅 <b>Расписание детей</b>', '']
     found = False
-    for _student_user_id, student_id, name, username in children[:4]:
+    for _student_user_id, student_id, name, username, confirmed, access_level in children[:4]:
         if not student_id:
+            continue
+        if not confirmed:
+            lines.append(f'<b>{esc(name or username or "Ученик")}</b> — связь ожидает подтверждения')
+            lines.append('')
             continue
         lessons = get_lessons(session, int(student_id), upcoming=True, limit=3)
         lines.append(f'<b>{esc(name or username or "Ученик")}</b>')
@@ -3222,7 +3315,7 @@ async def _cb_parent_schedule(query, session, user):
         lines.append('Пока не прикреплен ни один ученик.')
     elif not found and len(lines) <= 3:
         lines.append('Ближайших уроков пока нет.')
-    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_back_keyboard())
+    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_parent_children_keyboard(children))
 
 
 async def _cb_parent_debts(query, session, user):
@@ -3233,7 +3326,7 @@ async def _cb_parent_debts(query, session, user):
     lines = ['📝 <b>Домашки и долги детей</b>', '']
     if not children:
         lines.append('Пока не прикреплен ни один ученик.')
-    for _student_user_id, student_id, name, username in children[:5]:
+    for student_user_id, student_id, name, username, confirmed, access_level in children[:5]:
         if not student_id:
             continue
         count = session.execute(text("""
@@ -3242,8 +3335,8 @@ async def _cb_parent_debts(query, session, user):
             WHERE s.student_id = :sid
               AND s.status IN ('ASSIGNED', 'IN_PROGRESS', 'RETURNED')
         """), {'sid': int(student_id)}).scalar() or 0
-        lines.append(f'• <b>{esc(name or username or "Ученик")}</b>: {count} активных работ')
-    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_back_keyboard())
+        lines.append(f'• <b>{esc(name or username or "Ученик")}</b>: {count} активных работ · {"подтверждено" if confirmed else "ожидает подтверждения"}')
+    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_parent_children_keyboard(children))
 
 
 async def _cb_parent_subscription(query, session, user):
@@ -3254,13 +3347,14 @@ async def _cb_parent_subscription(query, session, user):
     lines = ['💳 <b>Тарифы детей</b>', '']
     if not children:
         lines.append('Пока не прикреплен ни один ученик.')
-    for student_user_id, _student_id, name, username in children[:5]:
+    for student_user_id, _student_id, name, username, confirmed, access_level in children[:5]:
         summary = subscription_summary_for_user(int(student_user_id))
         lines.append(f'<b>{esc(name or username or "Ученик")}</b>')
         lines.append(f'  Тариф: {esc(summary.plan_title)}')
         lines.append(f'  Осталось уроков: {esc(summary.lessons_remaining)}')
+        lines.append(f'  Связь: {"подтверждена" if confirmed else "ожидает подтверждения"}')
         lines.append('')
-    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_back_keyboard())
+    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_parent_children_keyboard(children))
 
 
 # ---------------------------------------------------------------------------

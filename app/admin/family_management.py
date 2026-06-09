@@ -10,6 +10,8 @@ from app.models import db, User, FamilyTie, moscow_now
 from app.auth.rbac_utils import require_admin
 from core.audit_logger import audit_logger
 from flask_login import current_user
+from app.notifications.service import notify_family_tie
+from app.utils.relationship_scope import get_family_tie_between, get_family_tie_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -88,10 +90,7 @@ def api_family_ties_create():
         if not student.is_student():
             return jsonify({'success': False, 'error': 'User is not a student'}), 400
         
-        existing = FamilyTie.query.filter_by(
-            parent_id=parent_id,
-            student_id=student_id
-        ).first()
+        existing = get_family_tie_between(parent_id, student_id)
         
         if existing:
             return jsonify({'success': False, 'error': 'Family tie already exists'}), 409
@@ -108,6 +107,18 @@ def api_family_ties_create():
         )
         db.session.add(family_tie)
         db.session.commit()
+
+        try:
+            notify_family_tie(
+                parent_id,
+                student_id,
+                kind='family_link_created',
+                title='Создана связь между родителем и учеником',
+                body=f'Связь между родителем {parent.username} и учеником {student.username} создана администратором.',
+                tie_id=family_tie.tie_id,
+            )
+        except Exception:
+            logger.warning('Could not send family tie created notifications tie_id=%s', family_tie.tie_id, exc_info=True)
         
         audit_logger.log(
             action='family_tie_created',
@@ -139,7 +150,9 @@ def api_family_ties_create():
 def api_family_ties_update(tie_id):
     """API: Обновление семейной связи (только для администратора)"""
     try:
-        tie = FamilyTie.query.get_or_404(tie_id)
+        tie = get_family_tie_by_id(tie_id)
+        if not tie:
+            return jsonify({'success': False, 'error': 'Family tie not found'}), 404
         data = request.get_json()
         
         if 'access_level' in data:
@@ -153,6 +166,18 @@ def api_family_ties_update(tie_id):
             tie.is_confirmed = bool(data['is_confirmed'])
         
         db.session.commit()
+
+        try:
+            notify_family_tie(
+                tie.parent_id,
+                tie.student_id,
+                kind='family_link_updated',
+                title='Связь между родителем и учеником обновлена',
+                body=f'Администратор обновил параметры связи между родителем {tie.parent.username if tie.parent else tie.parent_id} и учеником {tie.student.username if tie.student else tie.student_id}.',
+                tie_id=tie_id,
+            )
+        except Exception:
+            logger.warning('Could not send family tie updated notifications tie_id=%s', tie_id, exc_info=True)
         
         audit_logger.log(
             action='family_tie_updated',
@@ -181,13 +206,27 @@ def api_family_ties_update(tie_id):
 def api_family_ties_delete(tie_id):
     """API: Удаление семейной связи (только для администратора)"""
     try:
-        tie = FamilyTie.query.get_or_404(tie_id)
+        tie = get_family_tie_by_id(tie_id)
+        if not tie:
+            return jsonify({'success': False, 'error': 'Family tie not found'}), 404
         
         parent_id = tie.parent_id
         student_id = tie.student_id
         
         db.session.delete(tie)
         db.session.commit()
+
+        try:
+            notify_family_tie(
+                parent_id,
+                student_id,
+                kind='family_link_removed',
+                title='Связь между родителем и учеником удалена',
+                body=f'Связь между родителем {tie.parent.username if tie.parent else parent_id} и учеником {tie.student.username if tie.student else student_id} была удалена администратором.',
+                tie_id=tie_id,
+            )
+        except Exception:
+            logger.warning('Could not send family tie deleted notifications tie_id=%s', tie_id, exc_info=True)
         
         audit_logger.log(
             action='family_tie_deleted',
@@ -217,9 +256,23 @@ def api_family_ties_delete(tie_id):
 def api_family_ties_confirm(tie_id):
     """API: Подтверждение семейной связи (только для администратора)"""
     try:
-        tie = FamilyTie.query.get_or_404(tie_id)
+        tie = get_family_tie_by_id(tie_id)
+        if not tie:
+            return jsonify({'success': False, 'error': 'Family tie not found'}), 404
         tie.is_confirmed = True
         db.session.commit()
+
+        try:
+            notify_family_tie(
+                tie.parent_id,
+                tie.student_id,
+                kind='family_link_confirmed',
+                title='Связь между родителем и учеником подтверждена',
+                body=f'Связь между родителем {tie.parent.username if tie.parent else tie.parent_id} и учеником {tie.student.username if tie.student else tie.student_id} подтверждена.',
+                tie_id=tie_id,
+            )
+        except Exception:
+            logger.warning('Could not send family tie confirmed notifications tie_id=%s', tie_id, exc_info=True)
         
         audit_logger.log(
             action='family_tie_confirmed',

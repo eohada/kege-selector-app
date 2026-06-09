@@ -7,12 +7,13 @@ from flask import render_template, request, jsonify, flash
 from flask_login import login_required, current_user
 
 from app.parents import parents_bp
-from app.models import db, User, FamilyTie, Student, Lesson, Enrollment, Submission, Assignment
+from app.models import db, User, FamilyTie, Student, Lesson, Enrollment, Submission, Assignment, UserProfile
 from app.students.stats_service import StatsService
 from app.auth.rbac_utils import require_parent, get_user_scope
 from core.audit_logger import audit_logger
 from core.db_models import moscow_now
 from sqlalchemy.orm import joinedload
+from app.utils.relationship_scope import get_family_ties_for_parent, get_family_tie_status_label
 
 logger = logging.getLogger(__name__)
 
@@ -32,28 +33,35 @@ def _resolve_student_for_user(student_user):
 def parent_dashboard():
     """Дашборд родителя с информацией о детях"""
     try:
-        family_ties = FamilyTie.query.filter_by(parent_id=current_user.id).all()
+        family_ties = get_family_ties_for_parent(current_user.id, include_pending=True)
+        confirmed_ties = [tie for tie in family_ties if tie.is_confirmed]
+        pending_ties = [tie for tie in family_ties if not tie.is_confirmed]
         
         if not family_ties:
             return render_template('parent_dashboard.html',
                                  children=[],
+                                 pending_children=[],
                                  selected_child=None,
+                                 selected_child_user=None,
+                                 selected_tie=None,
                                  child_stats=None,
                                  upcoming_lessons=[],
-                                 recent_lessons=[])
+                                 recent_lessons=[],
+                                 pending_assignments=[],
+                                 recent_submissions=[],
+                                 financial_data={'lessons_remaining': 0, 'total_paid': 0, 'can_topup': False})
         
         selected_student_id = request.args.get('student_id', type=int)
-        
-        if not selected_student_id:
-            selected_student_id = family_ties[0].student_id
-        
-        selected_tie = next((ft for ft in family_ties if ft.student_id == selected_student_id), None)
-        if not selected_tie:
-            selected_student_id = family_ties[0].student_id
-            selected_tie = family_ties[0]
+
+        selected_tie = next((ft for ft in confirmed_ties if ft.student_id == selected_student_id), None)
+        if not selected_tie and confirmed_ties:
+            selected_tie = confirmed_ties[0]
+            selected_student_id = selected_tie.student_id
+        elif not selected_tie:
+            selected_student_id = None
         
         children_data = []
-        for tie in family_ties:
+        for tie in confirmed_ties:
             student_user = User.query.get(tie.student_id)
             if not student_user:
                 continue
@@ -75,7 +83,24 @@ def parent_dashboard():
                 'student_id': student.student_id if student else None,
                 'student_name': student_name,
                 'access_level': tie.access_level,
-                'is_selected': tie.student_id == selected_student_id
+                'is_selected': tie.student_id == selected_student_id,
+                'tie_status': get_family_tie_status_label(tie),
+                'telegram_linked': bool(student_user.profile and student_user.profile.telegram_chat_id),
+            })
+
+        pending_children = []
+        for tie in pending_ties:
+            student_user = User.query.get(tie.student_id)
+            if not student_user:
+                continue
+            student = _resolve_student_for_user(student_user)
+            pending_children.append({
+                'user_id': student_user.id,
+                'username': student_user.username,
+                'student_id': student.student_id if student else None,
+                'student_name': student.name if student else student_user.username,
+                'access_level': tie.access_level,
+                'tie_status': get_family_tie_status_label(tie),
             })
         
         child_stats = None
@@ -85,7 +110,7 @@ def parent_dashboard():
         recent_submissions = []
         
         selected_student = None
-        selected_student_user = User.query.get(selected_student_id)
+        selected_student_user = User.query.get(selected_student_id) if selected_student_id else None
         
         if selected_student_user:
             selected_student = _resolve_student_for_user(selected_student_user)
@@ -169,7 +194,7 @@ def parent_dashboard():
         financial_data = {
             'lessons_remaining': lessons_remaining_val,
             'total_paid': 0,
-            'can_topup': selected_tie.access_level in ['full', 'financial_only']
+            'can_topup': bool(selected_tie and selected_tie.access_level in ['full', 'financial_only'])
         }
         
         selected_child_name = None
@@ -186,7 +211,10 @@ def parent_dashboard():
         
         return render_template('parent_dashboard.html',
                              children=children_data,
+                             pending_children=pending_children,
                              selected_child=selected_student,
+                             selected_child_user=selected_student_user,
+                             selected_tie=selected_tie,
                              selected_child_name=selected_child_name,
                              selected_child_user_id=selected_student_id,
                              child_stats=child_stats,
@@ -195,7 +223,7 @@ def parent_dashboard():
                              recent_lessons=recent_lessons,
                              pending_assignments=pending_assignments,
                              recent_submissions=recent_submissions,
-                             access_level=selected_tie.access_level)
+                             access_level=selected_tie.access_level if selected_tie else None)
         
     except Exception as e:
         logger.error(f"Error in parent_dashboard: {e}", exc_info=True)
@@ -205,12 +233,16 @@ def parent_dashboard():
             pass
         return render_template('parent_dashboard.html',
                              children=[],
+                             pending_children=[],
                              selected_child=None,
+                             selected_child_user=None,
+                             selected_tie=None,
                              child_stats=None,
                              upcoming_lessons=[],
                              recent_lessons=[],
                              pending_assignments=[],
-                             recent_submissions=[])
+                             recent_submissions=[],
+                             financial_data={'lessons_remaining': 0, 'total_paid': 0, 'can_topup': False})
 
 
 @parents_bp.route('/api/parent/children', methods=['GET'])
@@ -218,7 +250,7 @@ def parent_dashboard():
 def api_parent_children():
     """API: Список детей родителя"""
     try:
-        family_ties = FamilyTie.query.filter_by(parent_id=current_user.id).all()
+        family_ties = get_family_ties_for_parent(current_user.id, include_pending=True)
         
         children_data = []
         for tie in family_ties:

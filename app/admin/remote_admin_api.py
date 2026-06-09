@@ -14,6 +14,16 @@ from app.admin import admin_bp
 import re
 
 from app.models import User, AuditLog, MaintenanceMode, db, UserProfile, Tasks, TaskReview, TaskSolution, UserSubscription
+from app.notifications.service import notify_user, notify_family_tie
+from app.utils.relationship_scope import (
+    get_all_family_ties,
+    get_family_tie_by_id,
+    get_family_tie_between,
+    get_family_ties_for_parent,
+    get_family_ties_for_student,
+    remove_family_ties_for_parent,
+    remove_family_ties_for_student,
+)
 from app.models import FamilyTie, Enrollment, Student, Lesson, RolePermission, UserRole
 from app.models import BotAdmin, BotErrorReport, UserNotification
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT_ROLE_PERMISSIONS
@@ -171,7 +181,7 @@ def _manage_family_ties(target_user_id, target_role, related_ids, replace=False)
         new_ids = set(int(x) for x in related_ids if x)
         
         if target_role == 'student':
-            current_ties = FamilyTie.query.filter_by(student_id=target_user_id).all()
+            current_ties = get_family_ties_for_student(target_user_id, include_pending=True)
             current_parent_ids = {t.parent_id for t in current_ties}
             
             if replace:
@@ -190,7 +200,7 @@ def _manage_family_ties(target_user_id, target_role, related_ids, replace=False)
                     db.session.add(tie)
                     
         elif target_role == 'parent':
-            current_ties = FamilyTie.query.filter_by(parent_id=target_user_id).all()
+            current_ties = get_family_ties_for_parent(target_user_id, include_pending=True)
             current_child_ids = {t.student_id for t in current_ties}
             
             if replace:
@@ -640,7 +650,7 @@ def remote_admin_api_users_graph():
                     'status': getattr(e, 'status', None) or 'active',
                 })
 
-        ties = FamilyTie.query.all()
+        ties = get_all_family_ties()
         family_edges = []
         for t in ties:
             if t.parent_id not in users_by_id or t.student_id not in users_by_id:
@@ -671,7 +681,7 @@ def remote_admin_api_family_tie_manage(tie_id: int):
     if not _remote_admin_guard():
         return jsonify({'error': 'unauthorized'}), 401
 
-    tie = FamilyTie.query.get(tie_id)
+    tie = get_family_tie_by_id(tie_id)
     if not tie:
         return jsonify({'success': False, 'error': 'tie not found'}), 404
 
@@ -797,7 +807,7 @@ def remote_admin_api_family_tie_create():
         if not student.is_student():
             return jsonify({'success': False, 'error': 'User is not a student'}), 400
 
-        existing = FamilyTie.query.filter_by(parent_id=parent_id, student_id=student_id).first()
+        existing = get_family_tie_between(parent_id, student_id)
         if existing:
             return jsonify({'success': False, 'error': 'Family tie already exists'}), 409
 
@@ -813,6 +823,17 @@ def remote_admin_api_family_tie_create():
         )
         db.session.add(tie)
         db.session.commit()
+        try:
+            notify_family_tie(
+                parent_id,
+                student_id,
+                kind='family_link_created',
+                title='Создана связь между родителем и учеником',
+                body=f'Связь между родителем {parent.username} и учеником {student.username} создана.',
+                tie_id=tie.tie_id,
+            )
+        except Exception:
+            logger.warning("remote_admin_api_family_tie_create notify failed tie_id=%s", tie.tie_id, exc_info=True)
         return jsonify({
             'success': True,
             'tie': {
@@ -1126,11 +1147,11 @@ def remote_admin_api_user(user_id):
                 if active_enrollment:
                     user_data['tutor_id'] = active_enrollment.tutor_id
                 
-                ties = FamilyTie.query.filter_by(student_id=user.id).all()
+                ties = get_family_ties_for_student(user.id, include_pending=True)
                 user_data['parent_ids'] = [t.parent_id for t in ties]
                 
             elif user.role == 'parent':
-                ties = FamilyTie.query.filter_by(parent_id=user.id).all()
+                ties = get_family_ties_for_parent(user.id, include_pending=True)
                 user_data['child_ids'] = [t.student_id for t in ties]
             
             return jsonify({
@@ -1271,9 +1292,31 @@ def remote_admin_api_user(user_id):
             
             try:
                 if user_role == 'parent':
-                    FamilyTie.query.filter_by(parent_id=user_id).delete()
+                    tied_students = [t.student_id for t in remove_family_ties_for_parent(user_id)]
+                    for sid in tied_students:
+                        try:
+                            notify_family_tie(
+                                user_id,
+                                sid,
+                                kind='family_link_removed',
+                                title='Связь между родителем и учеником удалена',
+                                body=f'Связь между родителем {username} и учеником была удалена.',
+                            )
+                        except Exception:
+                            logger.warning("remote_admin_api_user delete notify failed parent=%s student=%s", user_id, sid, exc_info=True)
                 elif user_role == 'student':
-                    FamilyTie.query.filter_by(student_id=user_id).delete()
+                    tied_parents = [t.parent_id for t in remove_family_ties_for_student(user_id)]
+                    for pid in tied_parents:
+                        try:
+                            notify_family_tie(
+                                pid,
+                                user_id,
+                                kind='family_link_removed',
+                                title='Связь между родителем и учеником удалена',
+                                body=f'Связь между родителем и учеником {username} была удалена.',
+                            )
+                        except Exception:
+                            logger.warning("remote_admin_api_user delete notify failed student=%s parent=%s", user_id, pid, exc_info=True)
             except Exception as e:
                 logger.warning(f"Error deleting family ties: {e}")
             

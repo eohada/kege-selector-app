@@ -3,286 +3,265 @@
 
 {% block head_css %}
 <style>
-    .child-selector { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-    .child-selector-btn {
-        padding: 0.85rem 1.75rem; background: var(--surface-3);
-        border: none; border-radius: 10px; color: var(--text-primary);
-        font-family: var(--font-base); font-size: 1.05rem; font-weight: 600;
-        letter-spacing: 0.01em; cursor: pointer; transition: all 0.2s ease;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); text-decoration: none;
+    .parent-grid { display: grid; gap: 1.25rem; }
+    .child-strip { display:flex; flex-wrap:wrap; gap:.75rem; margin: 1rem 0 1.5rem; }
+    .child-chip {
+        display:inline-flex; align-items:center; gap:.5rem;
+        padding:.75rem 1rem; border-radius: 999px;
+        background: var(--surface-2); color: var(--text-primary);
+        text-decoration:none; border:1px solid var(--border-color);
+        font-weight:700; transition: all .2s ease;
     }
-    .child-selector-btn:hover { background: rgba(59, 130, 246, 0.12); transform: translateY(-1px); }
-    .child-selector-btn.active {
-        background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
-        color: #ffffff; box-shadow: 0 12px 26px rgba(14, 165, 233, 0.35);
+    .child-chip.active { background: linear-gradient(135deg, rgba(34,197,94,.18), rgba(14,165,233,.18)); border-color: rgba(14,165,233,.35); }
+    .child-chip.pending { opacity:.72; border-style:dashed; }
+    .section-grid {
+        display:grid; gap:1rem;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }
-    .child-selector-btn:focus-visible { outline: 2px solid rgba(14, 165, 233, 0.9); outline-offset: 2px; }
-    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
-    .metric-card { padding: 1.5rem; background: var(--surface-2); border-radius: 8px; }
-    .metric-label { font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.5rem; }
-    .metric-value { font-size: 2rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem; }
-    .metric-delta { font-size: 0.85em; color: var(--text-muted); }
-    .ai-summary {
-        padding: 1.5rem;
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%);
-        border-radius: 8px; color: #f8fafc;
-        margin-bottom: 1.5rem; box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+    .metric-row { display:grid; gap:.75rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .metric-card {
+        background: var(--surface-2); border-radius: 12px; padding: 1rem;
+        border: 1px solid var(--border-color);
     }
-    .ai-summary h3 { margin: 0 0 1rem 0; font-size: 1.2rem; }
-    .ai-summary p { margin: 0.5rem 0; line-height: 1.6; }
-    .ai-summary strong { color: #ffffff; }
-    .lessons-list { display: grid; gap: 1rem; }
-    .lesson-item { padding: 1rem; background: var(--surface-2); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .lesson-date { font-weight: 500; color: var(--text-primary); }
-    .lesson-status { padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.85em; font-weight: 500; }
-    .lesson-status.completed { background: #22c55e; color: white; }
-    .lesson-status.planned { background: #3b82f6; color: white; }
-    .lesson-status.cancelled { background: #ef4444; color: white; }
+    .metric-label { color: var(--text-muted); font-size: .82rem; margin-bottom: .35rem; }
+    .metric-value { font-size: 1.5rem; font-weight: 800; }
+    .empty-state {
+        padding: 1.5rem; border-radius: 16px;
+        background: var(--surface-2); border: 1px dashed var(--border-color);
+        color: var(--text-muted);
+    }
+    .lesson-list { display:grid; gap:.75rem; }
+    .lesson-item {
+        display:flex; justify-content:space-between; align-items:center; gap:1rem;
+        padding: .95rem 1rem; border-radius: 12px;
+        background: var(--surface-2); border:1px solid var(--border-color);
+    }
+    .lesson-meta { color: var(--text-muted); font-size: .85rem; }
 </style>
 {% endblock %}
 
 {% set active_page = 'parent_dashboard' %}
 
 {% block content %}
-<div class="content-container">
-    <section class="glass-panel" style="margin-bottom: 1.5rem;">
+<div class="content-container parent-grid">
+    <section class="glass-panel">
         <div class="panel-head">
             <div>
-                <p class="eyebrow">дашборд родителя</p>
+                <p class="eyebrow">Родительский кабинет</p>
                 <h1>Мои дети</h1>
             </div>
         </div>
-        
+
+        <div class="metric-row" style="margin-top: 1rem;">
+            <div class="metric-card">
+                <div class="metric-label">Детей в связке</div>
+                <div class="metric-value">{{ children|length if children else 0 }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Ожидают подтверждения</div>
+                <div class="metric-value">{{ pending_children|length if pending_children else 0 }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Открыт профиль</div>
+                <div class="metric-value" style="font-size:1rem;">{{ selected_child_name or '—' }}</div>
+            </div>
+        </div>
+
         {% if children %}
-        
-        <div class="child-selector">
-            {% for child in children %}
-            <a href="{{ url_for('parents.parent_dashboard', student_id=child.user_id) }}" 
-               class="child-selector-btn {% if child.is_selected %}active{% endif %}">
-                {{ child.student_name }}
-            </a>
-            {% endfor %}
-        </div>
-        
-        {% if selected_child %}
-        
-        <div style="margin-top: 2rem;">
-            <h2 style="margin-bottom: 1rem;">{{ selected_child.name }}</h2>
-
-            {% if financial_data.can_topup %}
-            <section class="glass-panel" style="margin-bottom: 1.5rem;">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">финансы</p>
-                        <h2>Баланс уроков</h2>
-                    </div>
-                </div>
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-label">Остаток уроков</div>
-                        <div class="metric-value">{{ financial_data.lessons_remaining }}</div>
-                        <div class="metric-delta">Оплачено: {{ financial_data.total_paid }}</div>
-                    </div>
-                </div>
-            </section>
-            {% endif %}
-
-            {% if child_stats and child_stats.ai_summary %}
-            <section class="ai-summary" style="margin-bottom: 1.5rem;">
-                <h3>📊 Успеваемость за неделю</h3>
-                <p>
-                    За эту неделю <strong>{{ selected_child_name }}</strong> решил(а) 
-                    <strong>{{ child_stats.ai_summary.tasks_solved_week }}</strong> задач.
-                </p>
-                {% if child_stats.ai_summary.problem_topic %}
-                <p>Проблемная тема: <strong>{{ child_stats.ai_summary.problem_topic }}</strong></p>
-                {% endif %}
-                {% if child_stats.ai_summary.gpa_forecast %}
-                <p>Прогноз балла: <strong>{{ child_stats.ai_summary.gpa_forecast }}</strong></p>
-                {% endif %}
-            </section>
-            {% endif %}
-
-            {% if child_stats and child_stats.metrics %}
-            <section class="glass-panel" style="margin-bottom: 1.5rem;">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">статистика</p>
-                        <h2>Основные показатели</h2>
-                    </div>
-                </div>
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-label">Средний балл (ДЗ)</div>
-                        <div class="metric-value">{{ child_stats.metrics.hw_gpa|round(1) if child_stats.metrics.hw_gpa else 'N/A' }}</div>
-                        <div class="metric-delta">Домашние задания</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">Средний балл (Экзамены)</div>
-                        <div class="metric-value">{{ child_stats.metrics.exam_gpa|round(1) if child_stats.metrics.exam_gpa else 'N/A' }}</div>
-                        <div class="metric-delta">Экзамены</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">Проведено уроков</div>
-                        <div class="metric-value">{{ child_stats.metrics.completed_lessons }}</div>
-                        <div class="metric-delta">из {{ child_stats.metrics.total_lessons }}</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">Пропущено</div>
-                        <div class="metric-value">{{ child_stats.metrics.missed_lessons }}</div>
-                    </div>
-                </div>
-            </section>
-            {% endif %}
-
-            {% if pending_assignments or recent_submissions %}
-            <section class="glass-panel" style="margin-bottom: 1.5rem;">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">обучение</p>
-                        <h2>Задания</h2>
-                    </div>
-                </div>
-                
-                <div style="display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
-                    <div>
-                        <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Нужно выполнить</h3>
-                        {% if pending_assignments %}
-                        <div class="lessons-list">
-                            {% for sub in pending_assignments %}
-                            <div class="lesson-item" style="align-items: flex-start;">
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 500; color: var(--text-primary);">{{ sub.assignment.title }}</div>
-                                    {% if sub.assignment.deadline %}
-                                    <div style="font-size: 0.85em; margin-top: 0.25rem; {% if sub.assignment.deadline < moscow_now() %}color: var(--danger);{% else %}color: var(--text-muted);{% endif %}">
-                                        Дедлайн: {{ sub.assignment.deadline.strftime('%d.%m %H:%M') }}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                <div class="lesson-status" style="background: var(--surface-3); color: var(--text-muted);">{{ sub.status }}</div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <p style="color: var(--text-muted); font-size: 0.9em; font-style: italic;">Нет активных заданий</p>
-                        {% endif %}
-                    </div>
-
-                    <div>
-                        <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Недавние результаты</h3>
-                        {% if recent_submissions %}
-                        <div class="lessons-list">
-                            {% for sub in recent_submissions %}
-                            <div class="lesson-item">
-                                <div>
-                                    <div style="font-weight: 500; color: var(--text-primary);">{{ sub.assignment.title }}</div>
-                                    <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.25rem;">
-                                        Сдано: {{ sub.submitted_at.strftime('%d.%m') if sub.submitted_at else '-' }}
-                                    </div>
-                                </div>
-                                {% if sub.status == 'GRADED' %}
-                                <div class="lesson-status completed">{{ sub.percentage|round|int }}%</div>
-                                {% else %}
-                                <div class="lesson-status planned">На проверке</div>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <p style="color: var(--text-muted); font-size: 0.9em; font-style: italic;">Нет проверенных работ</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </section>
-            {% endif %}
-
-            {% if upcoming_lessons %}
-            <section class="glass-panel" style="margin-bottom: 1.5rem;">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">расписание</p>
-                        <h2>Предстоящие уроки</h2>
-                    </div>
-                </div>
-                <div class="lessons-list">
-                    {% for lesson in upcoming_lessons %}
-                    <div class="lesson-item">
-                        <div>
-                            <div class="lesson-date">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата не указана' }}</div>
-                            {% if lesson.topic %}
-                            <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">{{ lesson.topic }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="lesson-status planned">Запланирован</div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
-
-            {% if recent_lessons %}
-            <section class="glass-panel" style="margin-bottom: 1.5rem;">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">история</p>
-                        <h2>Последние уроки</h2>
-                    </div>
-                </div>
-                <div class="lessons-list">
-                    {% for lesson in recent_lessons %}
-                    <div class="lesson-item">
-                        <div>
-                            <div class="lesson-date">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата не указана' }}</div>
-                            {% if lesson.topic %}
-                            <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">{{ lesson.topic }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="lesson-status {% if lesson.status == 'completed' %}completed{% elif lesson.status == 'cancelled' %}cancelled{% else %}planned{% endif %}">
-                            {% if lesson.status == 'completed' %}Проведен
-                            {% elif lesson.status == 'cancelled' %}Отменен
-                            {% else %}{{ lesson.status }}{% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
-
-            {% if child_stats and child_stats.problem_topics %}
-            <section class="glass-panel" style="margin-bottom: 1.5rem;">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">требует внимания</p>
-                        <h2>Проблемные темы</h2>
-                    </div>
-                </div>
-                <div style="margin-top: 1.5rem;">
-                    <div style="display: grid; gap: 1rem;">
-                        {% for topic in child_stats.problem_topics %}
-                        <div class="glass-panel" style="padding: 1rem; display: flex; align-items: center; justify-content: space-between;">
-                            <div>
-                                <span style="font-weight: 500;">{{ topic.name }}</span>
-                                <span style="color: var(--text-muted); margin-left: 1rem;">{{ topic.avg_score }}%</span>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </section>
-            {% endif %}
-        </div>
-        {% else %}
-        <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
-            Выберите ребенка из списка выше
-        </p>
+            <div class="child-strip">
+                {% for child in children %}
+                    <a href="{{ url_for('parents.parent_dashboard', student_id=child.user_id) }}" class="child-chip {% if child.is_selected %}active{% endif %}">
+                        <span>{{ child.student_name }}</span>
+                        <span class="text-xs opacity-75">{{ child.tie_status }}</span>
+                    </a>
+                {% endfor %}
+            </div>
         {% endif %}
-        
-        {% else %}
-        <div style="text-align: center; padding: 3rem;">
-            <p style="color: var(--text-muted); margin-bottom: 1rem;">У вас пока нет привязанных детей</p>
-            <p style="color: var(--text-muted); font-size: 0.9em;">Обратитесь к администратору для привязки аккаунта вашего ребенка</p>
-        </div>
+
+        {% if pending_children %}
+            <div class="empty-state" style="margin-bottom:1rem;">
+                <strong>Ожидают подтверждения:</strong>
+                <div class="child-strip" style="margin: .85rem 0 0;">
+                    {% for child in pending_children %}
+                        <span class="child-chip pending">
+                            <span>{{ child.student_name }}</span>
+                            <span class="text-xs opacity-75">{{ child.tie_status }}</span>
+                        </span>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if not selected_child %}
+            <div class="empty-state">
+                {% if children %}
+                    У вас пока нет подтверждённых детей для просмотра. После подтверждения связи здесь появятся уроки, задания и баланс.
+                {% else %}
+                    У вас ещё нет привязанных детей. Когда связь будет создана и подтверждена, здесь откроется сводка по ребёнку, расписание и уведомления.
+                {% endif %}
+            </div>
         {% endif %}
     </section>
+
+    {% if selected_child %}
+        <section class="glass-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">Выбранный ребёнок</p>
+                    <h2>{{ selected_child_name }}</h2>
+                </div>
+            </div>
+            <div class="metric-row">
+                <div class="metric-card">
+                    <div class="metric-label">Баланс уроков</div>
+                    <div class="metric-value">{{ financial_data.lessons_remaining }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Уровень доступа</div>
+                    <div class="metric-value" style="font-size:1rem;">{{ access_level or '—' }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Telegram</div>
+                    <div class="metric-value" style="font-size:1rem;">
+                        {% if selected_child_user and selected_child_user.profile and selected_child_user.profile.telegram_chat_id %}
+                            Привязан
+                        {% else %}
+                            Не привязан
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="metric-row" style="margin-top: 1rem;">
+                <div class="metric-card">
+                    <div class="metric-label">Связь</div>
+                    <div class="metric-value" style="font-size:1rem;">
+                        {% if selected_tie and selected_tie.is_confirmed %}
+                            Подтверждена
+                        {% elif selected_tie %}
+                            Ожидает подтверждения
+                        {% else %}
+                            — 
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Профиль</div>
+                    <div class="metric-value" style="font-size:1rem;">
+                        {% if selected_child_user and selected_child_user.username %}
+                            @{{ selected_child_user.username }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Платформа</div>
+                    <div class="metric-value" style="font-size:1rem;">
+                        {% if selected_child and selected_child.student_id %}
+                            ID {{ selected_child.student_id }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="section-grid" style="margin-top: 1rem;">
+                <a class="child-chip" href="{{ url_for('students.student_profile', student_id=selected_child.student_id) if selected_child else '#' }}">
+                    <span>Открыть профиль ученика</span>
+                    <span class="text-xs opacity-75">карточка и уроки</span>
+                </a>
+                <a class="child-chip" href="{{ url_for('students.student_analytics', student_id=selected_child.student_id) if selected_child else '#' }}">
+                    <span>Статистика</span>
+                    <span class="text-xs opacity-75">прогресс и баланс</span>
+                </a>
+                <a class="child-chip" href="{{ url_for('schedule.schedule') }}">
+                    <span>Расписание</span>
+                    <span class="text-xs opacity-75">весь календарь</span>
+                </a>
+                {% if selected_child_user and selected_child_user.profile and selected_child_user.profile.telegram_chat_id %}
+                <span class="child-chip active">
+                    <span>Telegram подключен</span>
+                    <span class="text-xs opacity-75">@{{ selected_child_user.profile.telegram_id or selected_child_user.username }}</span>
+                </span>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if child_stats and child_stats.metrics %}
+        <section class="glass-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">Прогресс</p>
+                    <h2>Основные показатели</h2>
+                </div>
+            </div>
+            <div class="metric-row">
+                <div class="metric-card"><div class="metric-label">Средний балл (ДЗ)</div><div class="metric-value">{{ child_stats.metrics.hw_gpa|round(1) if child_stats.metrics.hw_gpa else 'N/A' }}</div></div>
+                <div class="metric-card"><div class="metric-label">Средний балл (Экзамены)</div><div class="metric-value">{{ child_stats.metrics.exam_gpa|round(1) if child_stats.metrics.exam_gpa else 'N/A' }}</div></div>
+                <div class="metric-card"><div class="metric-label">Уроков проведено</div><div class="metric-value">{{ child_stats.metrics.completed_lessons }}</div></div>
+                <div class="metric-card"><div class="metric-label">Пропущено</div><div class="metric-value">{{ child_stats.metrics.missed_lessons }}</div></div>
+            </div>
+        </section>
+        {% endif %}
+
+        <div class="section-grid">
+            <section class="glass-panel">
+                <div class="panel-head"><div><p class="eyebrow">Расписание</p><h2>Предстоящие уроки</h2></div></div>
+                {% if upcoming_lessons %}
+                    <div class="lesson-list">
+                        {% for lesson in upcoming_lessons %}
+                            <div class="lesson-item">
+                                <div>
+                                    <div style="font-weight:800;">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата не указана' }}</div>
+                                    <div class="lesson-meta">{{ lesson.topic or 'Занятие' }}</div>
+                                </div>
+                                <div class="lesson-meta">Запланирован</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">Ближайших уроков нет.</div>
+                {% endif %}
+            </section>
+
+            <section class="glass-panel">
+                <div class="panel-head"><div><p class="eyebrow">Задания</p><h2>Нужно выполнить</h2></div></div>
+                {% if pending_assignments %}
+                    <div class="lesson-list">
+                        {% for sub in pending_assignments %}
+                            <div class="lesson-item">
+                                <div>
+                                    <div style="font-weight:800;">{{ sub.assignment.title }}</div>
+                                    <div class="lesson-meta">{{ sub.status }}</div>
+                                </div>
+                                <div class="lesson-meta">{% if sub.assignment.deadline %}{{ sub.assignment.deadline.strftime('%d.%m %H:%M') }}{% endif %}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">Активных заданий нет.</div>
+                {% endif %}
+            </section>
+        </div>
+
+        <section class="glass-panel">
+            <div class="panel-head"><div><p class="eyebrow">История</p><h2>Последние уроки</h2></div></div>
+            {% if recent_lessons %}
+                <div class="lesson-list">
+                    {% for lesson in recent_lessons %}
+                        <div class="lesson-item">
+                            <div>
+                                <div style="font-weight:800;">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата не указана' }}</div>
+                                <div class="lesson-meta">{{ lesson.topic or 'Занятие' }}</div>
+                            </div>
+                            <div class="lesson-meta">{{ lesson.status }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">Пока нет завершённых уроков.</div>
+            {% endif %}
+        </section>
+    {% endif %}
 </div>
 {% endblock %}

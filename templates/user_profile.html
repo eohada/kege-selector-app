@@ -142,6 +142,52 @@ layout-teacher bg-boo-bg text-boo-textMain
                 </div>
             </section>
 
+            {% if current_user.is_parent() %}
+            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="ph-fill ph-baby text-xl"></i> Мои дети
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                    <div class="px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-surface-alt dark:bg-dark-inner/40">
+                        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Всего</div>
+                        <div class="text-2xl font-black text-primary dark:text-white">{{ parent_children_count or 0 }}</div>
+                    </div>
+                    <div class="px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-surface-alt dark:bg-dark-inner/40">
+                        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Подтверждено</div>
+                        <div class="text-2xl font-black text-primary dark:text-white">{{ parent_children_confirmed_count or 0 }}</div>
+                    </div>
+                    <div class="px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-surface-alt dark:bg-dark-inner/40">
+                        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Ожидают</div>
+                        <div class="text-2xl font-black text-primary dark:text-white">{{ (parent_children_count or 0) - (parent_children_confirmed_count or 0) }}</div>
+                    </div>
+                </div>
+                {% if parent_children %}
+                <div class="flex flex-col gap-3">
+                    {% for child in parent_children %}
+                    <a href="{{ url_for('students.student_profile', student_id=child.student.student_id) if child.student else url_for('students.student_info', student_id=child.user.id) }}"
+                       class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-surface-alt dark:bg-dark-inner/40 no-underline text-inherit">
+                        <div class="min-w-0">
+                            <div class="font-bold text-primary dark:text-white truncate">
+                                {% if child.user.profile and (child.user.profile.first_name or child.user.profile.last_name) %}
+                                    {{ child.user.profile.first_name or '' }} {{ child.user.profile.last_name or '' }}
+                                {% else %}
+                                    {{ child.user.username }}
+                                {% endif %}
+                            </div>
+                            <div class="text-xs text-muted dark:text-dark-muted">
+                                {{ 'Подтверждена' if child.confirmed else 'Ожидает подтверждения' }} · доступ {{ child.access_level }}
+                            </div>
+                        </div>
+                        <i class="ph-bold ph-arrow-right text-boo-primary"></i>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-sm text-muted dark:text-dark-muted">Пока нет привязанных детей. Когда связь подтвердится, они появятся здесь и в родительском кабинете.</p>
+                {% endif %}
+            </section>
+            {% endif %}
+
             <!-- Часовой пояс -->
             <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8" id="user-timezone-panel">
                 <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-2 flex items-center gap-2">
