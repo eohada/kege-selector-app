@@ -934,6 +934,29 @@ async def cmd_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _apply_link_result(update, chat_id=chat_id, result=result)
 
 
+async def cmd_linkforce(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/linkforce КОД — принудительная привязка аккаунта."""
+    chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
+    if not context.args:
+        await update.message.reply_text(
+            'ℹ️ Укажи код: <code>/linkforce ABCDEF</code>\n'
+            'Команда принудительно отвяжет старый аккаунт Telegram и привяжет новый.',
+            parse_mode='HTML',
+        )
+        return
+    code = context.args[0].strip().upper()
+    uname = (update.effective_user.username or '').strip()
+    result = call_link_bot_api(
+        chat_id=chat_id,
+        telegram_id=f'@{uname}' if uname else None,
+        code=code,
+        force=True,
+        app_url=APP_URL,
+    )
+    await _apply_link_result(update, chat_id=chat_id, result=result)
+
+
 async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/menu — ролевое меню."""
     chat_id = update.effective_chat.id

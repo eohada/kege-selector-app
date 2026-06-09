@@ -578,6 +578,7 @@ def api_telegram_link_bot():
         link_token = (data.get('link_token') or data.get('start_payload') or '').strip()
         chat_id = data.get('chat_id')
         telegram_id = (data.get('telegram_id') or '').strip() or None
+        force = bool(data.get('force'))
 
         if chat_id is None:
             return jsonify({'success': False, 'error': 'invalid_payload'}), 400
@@ -592,7 +593,7 @@ def api_telegram_link_bot():
         existing = UserProfile.query.filter_by(telegram_chat_id=chat_id).first()
         if existing:
             user = getattr(existing, 'user', None)
-            if user and getattr(user, 'is_active', True):
+            if user and getattr(user, 'is_active', True) and not force:
                 return jsonify({'success': False, 'error': 'already_linked'}), 409
             existing.telegram_chat_id = None
             existing.telegram_id = None

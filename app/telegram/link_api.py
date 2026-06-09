@@ -17,6 +17,7 @@ def call_link_bot_api(
     telegram_id: Optional[str] = None,
     code: Optional[str] = None,
     link_token: Optional[str] = None,
+    force: bool = False,
     app_url: Optional[str] = None,
 ) -> Optional[dict[str, Any]]:
     """
@@ -37,6 +38,8 @@ def call_link_bot_api(
         payload['code'] = code.strip().upper()
     else:
         return None
+    if force:
+        payload['force'] = True
 
     body = json.dumps(payload).encode('utf-8')
     headers = {'Content-Type': 'application/json'}
