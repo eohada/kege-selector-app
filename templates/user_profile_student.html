@@ -388,7 +388,13 @@ async function submitProfileEdit(event, formOverride) {
     
     try {
         const response = await fetch("{{ url_for('auth.profile_update') }}", { method: 'POST', body: formData });
-        const result = await response.json();
+        const rawText = await response.text();
+        let result = {};
+        try {
+            result = rawText ? JSON.parse(rawText) : {};
+        } catch (parseError) {
+            throw new Error(rawText ? rawText.slice(0, 180) : 'Пустой ответ сервера');
+        }
         
         if (response.ok && result.success) {
             if (window.toast) window.toast.success('Профиль обновлен');

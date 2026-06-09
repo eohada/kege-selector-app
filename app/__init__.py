@@ -7,13 +7,14 @@ import threading
 import time
 import uuid
 import json
-from flask import Flask
+from flask import Flask, request, jsonify
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 from sqlalchemy import text
 from zoneinfo import ZoneInfo  # comment
 from datetime import datetime, timezone  # comment
 from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from flask_migrate import Migrate
 from app.models import db
@@ -179,6 +180,15 @@ def create_app(config_name=None):
     def load_user(user_id):
         """Загрузка пользователя для Flask-Login"""
         return User.query.get(int(user_id))
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_request_entity_too_large(error):
+        payload = {'success': False, 'error': 'Файл слишком большой. Максимум 10MB.'}
+        try:
+            accepts_json = 'application/json' in (request.headers.get('Accept') or '').lower() or request.path.endswith('/user/profile/update')
+        except Exception:
+            accepts_json = False
+        return jsonify(payload), 413
 
     @app.template_filter('format_dt_tz')  # comment
     def format_dt_tz(dt, tz_name='Europe/Moscow'):  # comment
