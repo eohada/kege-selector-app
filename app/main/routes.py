@@ -447,56 +447,56 @@ def dashboard():
 
     base_is_active = not show_archive
     
-    if category_filter and student_scope == 'regular':
-        total_students = len(students)
-        ege_students = len([s for s in students if s.category == 'ЕГЭ']) if category_filter != 'ЕГЭ' else total_students
-        oge_students = len([s for s in students if s.category == 'ОГЭ']) if category_filter != 'ОГЭ' else total_students
-        levelup_students = len([s for s in students if s.category == 'ЛЕВЕЛАП']) if category_filter != 'ЛЕВЕЛАП' else total_students
-        programming_students = len([s for s in students if s.category == 'ПРОГРАММИРОВАНИЕ']) if category_filter != 'ПРОГРАММИРОВАНИЕ' else total_students
-    else:
-        count_query = Student.query.outerjoin(User, Student.user_id == User.id).filter(Student.is_active == base_is_active)
+    count_query = Student.query.outerjoin(User, Student.user_id == User.id).filter(Student.is_active == base_is_active)
+    if student_scope == 'test':
+        count_query = count_query.filter(User.is_qa_pool.is_(True))
+    elif student_scope == 'demo':
+        count_query = count_query.filter(User.is_demo_user.is_(True))
+    elif student_scope == 'regular':
+        count_query = count_query.filter(*_regular_student_filter())
+    if not scope['can_see_all'] and scope['student_ids']:
+        count_query = count_query.filter(Student.user_id.in_(scope['student_ids']))
+    elif not scope['can_see_all']:
+        count_query = count_query.filter(False)
+
+    try:
+        total_students = count_query.count()
+    except Exception as e:
+        logger.warning(f"Error counting total students: {e}")
+        total_students = 0
+
+    # Tab counters must stay global for the selected scope, regardless of
+    # which category tab is currently active.
+    try:
+        category_stats_query = db.session.query(
+            Student.category,
+            func.count(Student.student_id).label('count')
+        ).outerjoin(User, Student.user_id == User.id).filter(Student.is_active == base_is_active)
+
         if student_scope == 'test':
-            count_query = count_query.filter(User.is_qa_pool.is_(True))
+            category_stats_query = category_stats_query.filter(User.is_qa_pool.is_(True))
         elif student_scope == 'demo':
-            count_query = count_query.filter(User.is_demo_user.is_(True))
-        else:
-            count_query = count_query.filter(*_regular_student_filter())
-        if not scope['can_see_all'] and scope['student_ids']:
-            count_query = count_query.filter(Student.user_id.in_(scope['student_ids']))
-        elif not scope['can_see_all']:
-            count_query = count_query.filter(False)
-        
-        try:
-            total_students = count_query.count()
-        except Exception as e:
-            logger.warning(f"Error counting total students: {e}")
-            total_students = 0
-        
-        try:
-            category_stats_query = db.session.query(
-                Student.category,
-                func.count(Student.student_id).label('count')
-            ).outerjoin(User, Student.user_id == User.id).filter(Student.is_active == True)
+            category_stats_query = category_stats_query.filter(User.is_demo_user.is_(True))
+        elif student_scope == 'regular':
             category_stats_query = category_stats_query.filter(*_regular_student_filter())
-            
-            if not scope['can_see_all'] and scope['student_ids']:
-                category_stats_query = category_stats_query.filter(Student.user_id.in_(scope['student_ids']))
-            elif not scope['can_see_all']:
-                category_stats_query = category_stats_query.filter(False)
-            
-            category_stats = category_stats_query.group_by(Student.category).all()
-            
-            category_dict = {cat[0]: cat[1] for cat in category_stats if cat[0]}
-            ege_students = category_dict.get('ЕГЭ', 0)
-            oge_students = category_dict.get('ОГЭ', 0)
-            levelup_students = category_dict.get('ЛЕВЕЛАП', 0)
-            programming_students = category_dict.get('ПРОГРАММИРОВАНИЕ', 0)
-        except Exception as e:
-            logger.warning(f"Error getting category statistics: {e}")
-            ege_students = 0
-            oge_students = 0
-            levelup_students = 0
-            programming_students = 0
+
+        if not scope['can_see_all'] and scope['student_ids']:
+            category_stats_query = category_stats_query.filter(Student.user_id.in_(scope['student_ids']))
+        elif not scope['can_see_all']:
+            category_stats_query = category_stats_query.filter(False)
+
+        category_stats = category_stats_query.group_by(Student.category).all()
+        category_dict = {cat[0]: cat[1] for cat in category_stats if cat[0]}
+        ege_students = category_dict.get('ЕГЭ', 0)
+        oge_students = category_dict.get('ОГЭ', 0)
+        levelup_students = category_dict.get('ЛЕВЕЛАП', 0)
+        programming_students = category_dict.get('ПРОГРАММИРОВАНИЕ', 0)
+    except Exception as e:
+        logger.warning(f"Error getting category statistics: {e}")
+        ege_students = 0
+        oge_students = 0
+        levelup_students = 0
+        programming_students = 0
     
     try:
         lesson_query = db.session.query(
