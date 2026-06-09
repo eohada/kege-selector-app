@@ -60,7 +60,8 @@
         <i class="ph-bold ph-arrow-left"></i> Вернуться к метрикам
     </a>
 
-    <section class="creator-v2-hero bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl rounded-[32px] border border-purple-200/60 dark:border-white/[0.08] shadow-[0_10px_50px_-10px_rgba(123,92,255,0.28)] dark:shadow-glass-dark overflow-hidden relative">
+    <section class="creator-v2-hero bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl rounded-[32px] border border-purple-200/60 dark:border-white/[0.08] shadow-[0_10px_50px_-10px_rgba(123,92,255,0.28)] dark:shadow-glass-dark overflow-hidden relative"
+             style="background:linear-gradient(135deg,#07070a 0%,#101225 60%,#240b43 100%);color:#f8fafc;border-color:rgba(255,255,255,.08);">
         <div class="creator-v2-hero-cover absolute inset-0 z-0">
             {% if creator_cover %}
             <img src="{{ creator_cover }}" alt="Cover" class="w-full h-full object-cover opacity-90 transition-transform duration-700 ease-out will-change-transform transform-gpu group-hover:scale-105" style="transform-origin:center center;">
@@ -68,10 +69,11 @@
             <div class="w-full h-full bg-gradient-to-br from-violet-600 to-cyan-700"></div>
             {% endif %}
         </div>
-        <div class="absolute inset-0 z-10 pointer-events-none hidden dark:block" style="background:linear-gradient(to top, rgba(9,9,11,0.88) 0%, rgba(9,9,11,0.64) 22%, rgba(9,9,11,0.18) 48%, rgba(9,9,11,0) 70%, rgba(0,0,0,0.25) 100%);"></div>
-        <div class="absolute inset-0 z-10 pointer-events-none dark:hidden" style="background:linear-gradient(to top, rgba(255,255,255,0.86) 0%, rgba(255,255,255,0.54) 30%, rgba(255,255,255,0.16) 52%, rgba(255,255,255,0) 72%, rgba(0,0,0,0.28) 100%);"></div>
+        <div class="absolute inset-0 z-10 pointer-events-none" style="background:linear-gradient(to top, rgba(7,7,10,0.96) 0%, rgba(7,7,10,0.66) 24%, rgba(7,7,10,0.22) 50%, rgba(7,7,10,0.02) 72%, rgba(0,0,0,0.28) 100%);"></div>
         <div class="relative z-20 px-8 sm:px-12 py-8 sm:py-10">
-            <button class="creator-v2-cover-btn absolute top-6 right-6 bg-white/10 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/20 z-30 shadow-sm dark:shadow-none" type="button" onclick="openEditProfileModal()">
+            <button class="creator-v2-cover-btn absolute top-6 right-6 bg-white/10 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors border border-white/20 z-30 shadow-sm dark:shadow-none"
+                    style="background:rgba(255,255,255,.10);color:#f8fafc;border-color:rgba(255,255,255,.16);"
+                    type="button" onclick="openEditProfileModal()">
                 <i class="ph-bold ph-camera text-lg"></i> Сменить обложку
             </button>
             <div class="min-h-[19rem] sm:min-h-[22rem] flex flex-col justify-end">
@@ -86,24 +88,29 @@
                             <div class="absolute bottom-2 right-2 w-7 h-7 bg-green-500 rounded-full border-[3px] border-white dark:border-dark-card shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)]"></div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <h1 class="creator-v2-name text-4xl md:text-5xl font-black text-primary dark:text-white tracking-tight leading-normal py-1">{{ current_user.username }}</h1>
+                            <h1 class="creator-v2-name text-4xl md:text-5xl font-black text-primary dark:text-white tracking-tight leading-normal py-1" style="color:#f8fafc;">{{ current_user.username }}</h1>
                             <i class="ph-fill ph-check-circle text-boo-primary text-2xl" title="Верифицированный"></i>
                         </div>
-                        <p class="creator-v2-status text-muted dark:text-dark-muted font-medium text-lg italic">"{{ current_user.custom_status or 'слеп, но не глуп' }}"</p>
+                        <p class="creator-v2-status text-muted dark:text-dark-muted font-medium text-lg italic" style="color:rgba(248,250,252,.72);">"{{ current_user.custom_status or 'слеп, но не глуп' }}"</p>
                         <div class="creator-v2-roles flex flex-wrap items-center gap-2 max-w-full">
-                            <span class="creator-v2-role creator-v2-role-main px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 flex items-center gap-1.5 uppercase tracking-wider">
+                            <span class="creator-v2-role creator-v2-role-main px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 flex items-center gap-1.5 uppercase tracking-wider"
+                                  style="background:linear-gradient(180deg,rgba(17,24,39,.98),rgba(15,23,42,.96));color:#fff;border-color:rgba(255,255,255,.12);">
                                 <i class="ph-fill ph-crown text-boo-accent text-base"></i> Создатель
                             </span>
-                            <span class="creator-v2-role px-4 py-2 bg-purple-50 text-purple-700 text-xs font-extrabold rounded-xl border border-purple-200 shadow-sm dark:bg-white/[0.05] dark:text-purple-200 dark:border-white/[0.08] dark:shadow-none uppercase tracking-wide">
+                            <span class="creator-v2-role px-4 py-2 bg-purple-50 text-purple-700 text-xs font-extrabold rounded-xl border border-purple-200 shadow-sm dark:bg-white/[0.05] dark:text-purple-200 dark:border-white/[0.08] dark:shadow-none uppercase tracking-wide"
+                                  style="background:rgba(139,92,246,.10);color:#e9d5ff;border-color:rgba(196,181,253,.28);">
                                 <i class="ph-fill ph-bug text-purple-500"></i> Главный тестировщик
                             </span>
-                            <span class="creator-v2-role px-4 py-2 bg-cyan-50 text-cyan-700 text-xs font-extrabold rounded-xl border border-cyan-200 shadow-sm dark:bg-white/[0.05] dark:text-cyan-200 dark:border-white/[0.08] dark:shadow-none uppercase tracking-wide">
+                            <span class="creator-v2-role px-4 py-2 bg-cyan-50 text-cyan-700 text-xs font-extrabold rounded-xl border border-cyan-200 shadow-sm dark:bg-white/[0.05] dark:text-cyan-200 dark:border-white/[0.08] dark:shadow-none uppercase tracking-wide"
+                                  style="background:rgba(34,211,238,.10);color:#cffafe;border-color:rgba(103,232,249,.28);">
                                 <i class="ph-fill ph-palette text-cyan-500"></i> Графический дизайнер
                             </span>
                         </div>
                     </div>
                     <div class="shrink-0 md:mb-2">
-                        <button class="creator-v2-edit-btn px-7 py-4 bg-surface/90 dark:bg-white/[0.08] hover:bg-surface-alt dark:hover:bg-white/[0.12] text-secondary dark:text-white rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm dark:shadow-none border border-slate-200/80 dark:border-white/[0.08] text-sm backdrop-blur-sm" type="button" onclick="openEditProfileModal()">
+                        <button class="creator-v2-edit-btn px-7 py-4 bg-surface/90 dark:bg-white/[0.08] hover:bg-surface-alt dark:hover:bg-white/[0.12] text-secondary dark:text-white rounded-2xl font-bold transition-all flex items-center gap-2 shadow-sm dark:shadow-none border border-slate-200/80 dark:border-white/[0.08] text-sm backdrop-blur-sm"
+                                style="background:rgba(255,255,255,.1);color:#f8fafc;border-color:rgba(255,255,255,.2);box-shadow:0 10px 24px -8px rgba(0,0,0,.45);"
+                                type="button" onclick="openEditProfileModal()">
                             <i class="ph-bold ph-pencil-simple text-xl"></i> Редактировать профиль
                         </button>
                     </div>
@@ -114,16 +121,17 @@
 
     <div class="flex flex-col lg:flex-row gap-6">
         <div class="w-full lg:w-1/2">
-            <section class="creator-v2-panel bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 shadow-tactile p-8">
+            <section class="creator-v2-panel bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 shadow-tactile p-8"
+                     style="background:#09090b;color:#f8fafc;border-color:rgba(255,255,255,.08);">
                 <h2 class="text-xs font-extrabold text-muted uppercase tracking-widest mb-6 flex items-center gap-2">
                     <i class="ph-fill ph-user-circle-gear text-xl"></i> Информация профиля
                 </h2>
-                <div class="creator-v2-info-box p-6 rounded-[24px] border shadow-inner relative overflow-hidden" style="background:#0B1736;border-color:#1e335f;">
-                    <div class="creator-v2-info-head absolute top-0 left-0 w-full h-8 flex items-center px-4 gap-2 border-b" style="background:rgba(27,44,77,0.85);border-color:#2a3f68;">
+                <div class="creator-v2-info-box p-6 rounded-[24px] border shadow-inner relative overflow-hidden" style="background:#0B1736;border-color:#1e335f;color:#f8fafc;">
+                    <div class="creator-v2-info-head absolute top-0 left-0 w-full h-8 flex items-center px-4 gap-2 border-b" style="background:rgba(27,44,77,0.85);border-color:#2a3f68;color:#cbd5e1;">
                         <div class="w-3 h-3 rounded-full bg-red-500"></div>
                         <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
                         <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                        <span class="text-[10px] font-mono ml-2" style="color:#7286ad;">creator_bio.md</span>
+                        <span class="text-[10px] font-mono ml-2" style="color:#cbd5e1;">creator_bio.md</span>
                     </div>
                     <div class="mt-6 text-[13px] leading-relaxed space-y-4 font-mono min-h-[240px]" style="color:#c9d3e3;">
                         {% set about_text = (current_user.about_me or '')|trim %}
@@ -142,13 +150,13 @@
                 </div>
 
                 <div class="flex flex-col gap-1 mt-8">
-                    <div class="creator-v2-meta-row flex justify-between items-center py-3.5 border-b border-slate-100"><span class="creator-v2-label text-sm font-bold text-muted">ID аккаунта</span><span class="creator-v2-value text-sm font-black text-white bg-slate-900 px-3 py-1 rounded-lg shadow-sm dark:shadow-none dark:shadow-none border border-slate-700">{% if current_user.numeric_id %}#{{ current_user.numeric_id }}{% else %}—{% endif %}</span></div>
-                    <div class="creator-v2-meta-row flex justify-between items-center py-3.5 border-b border-slate-100"><span class="creator-v2-label text-sm font-bold text-muted">Логин</span><span class="creator-v2-value text-sm font-bold text-primary">@{{ current_user.username }}</span></div>
-                    <div class="creator-v2-meta-row flex justify-between items-center py-3.5 border-b border-slate-100"><span class="creator-v2-label text-sm font-bold text-muted">Регистрация</span><span class="creator-v2-value text-sm font-bold text-primary">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span></div>
-                    <div class="creator-v2-meta-row flex justify-between items-center py-3.5 border-b border-slate-100"><span class="creator-v2-label text-sm font-bold text-muted">Статус</span><span class="creator-v2-value text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
+                    <div class="creator-v2-meta-row flex justify-between items-center py-3.5 border-b border-slate-100" style="border-bottom-color:rgba(255,255,255,.06);"><span class="creator-v2-label text-sm font-bold text-muted">ID аккаунта</span><span class="creator-v2-value text-sm font-black text-white bg-slate-900 px-3 py-1 rounded-lg shadow-sm dark:shadow-none dark:shadow-none border border-slate-700">{% if current_user.numeric_id %}#{{ current_user.numeric_id }}{% else %}—{% endif %}</span></div>
+                    <div class="creator-v2-meta-row flex justify-between items-center py-3.5 border-b border-slate-100" style="border-bottom-color:rgba(255,255,255,.06);"><span class="creator-v2-label text-sm font-bold text-muted">Логин</span><span class="creator-v2-value text-sm font-bold text-primary">@{{ current_user.username }}</span></div>
+                    <div class="creator-v2-meta-row flex justify-between items-center py-3.5 border-b border-slate-100" style="border-bottom-color:rgba(255,255,255,.06);"><span class="creator-v2-label text-sm font-bold text-muted">Регистрация</span><span class="creator-v2-value text-sm font-bold text-primary">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span></div>
+                    <div class="creator-v2-meta-row flex justify-between items-center py-3.5 border-b border-slate-100" style="border-bottom-color:rgba(255,255,255,.06);"><span class="creator-v2-label text-sm font-bold text-muted">Статус</span><span class="creator-v2-value text-sm font-bold text-green-700 flex items-center gap-2 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200"><i class="ph-fill ph-check-circle"></i> В системе</span></div>
                     <div class="creator-v2-meta-row flex justify-between items-center py-3.5 border-b border-slate-100">
                         <span class="creator-v2-label text-sm font-bold text-muted">Часовой пояс</span>
-                        <button type="button" id="creator-tz-open" class="creator-v2-value text-sm font-bold text-boo-primary hover:underline text-right">
+                        <button type="button" id="creator-tz-open" class="creator-v2-value text-sm font-bold text-boo-primary hover:underline text-right" style="color:#c4b5fd;">
                             {{ creator_tz }}
                         </button>
                     </div>
@@ -174,7 +182,8 @@
         </div>
 
         <div class="w-full lg:w-1/2">
-            <section class="creator-v2-panel bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 shadow-tactile p-8">
+            <section class="creator-v2-panel bg-white/95 backdrop-blur-md rounded-[32px] border border-slate-200 shadow-tactile p-8"
+                     style="background:#09090b;color:#f8fafc;border-color:rgba(255,255,255,.08);">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xs font-extrabold text-muted uppercase tracking-widest flex items-center gap-2"><i class="ph-fill ph-terminal-window text-xl"></i> Панель управления</h2>
                     <button type="button" id="devModeToggle" aria-pressed="true" class="flex items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-100 transition-colors" onclick="toggleDevMode()">
