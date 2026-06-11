@@ -1256,6 +1256,9 @@
                         <span class="status-badge status-info" style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;">Создано вручную</span>
                         {% endif %}
                         <div class="task-meta" style="margin-left: auto;">
+                            <a class="neo-button accent sm" href="{{ url_for('task_workspace.workspace_page', context_type='lesson_task', context_id=lt19.lesson_task_id) }}" target="_blank" rel="noopener noreferrer" title="Открыть новый workspace" style="text-decoration:none;">
+                                <i class="fas fa-code"></i> Workspace
+                            </a>
                             {% if (not is_student_view) and (not is_parent_view) and lt19.task and lt19.task.source_url %}
                             <a class="neo-button ghost sm" href="{{ lt19.task.source_url }}" target="_blank" rel="noopener noreferrer" title="Открыть источник" style="text-decoration:none;"><i class="fas fa-external-link-alt"></i> Источник</a>
                             {% endif %}
@@ -1382,6 +1385,9 @@
                         {% endif %}
 
                         <div class="task-meta" style="margin-left: auto;">
+                            <a class="neo-button accent sm" href="{{ url_for('task_workspace.workspace_page', context_type='lesson_task', context_id=hw_task.lesson_task_id) }}" target="_blank" rel="noopener noreferrer" title="Открыть новый workspace" style="text-decoration:none;">
+                                <i class="fas fa-code"></i> Workspace
+                            </a>
                             {% if (not is_student_view) and (not is_parent_view) and hw_task.task and hw_task.task.source_url %}
                             <a class="neo-button ghost sm" href="{{ hw_task.task.source_url }}" target="_blank" rel="noopener noreferrer"
                                title="Открыть источник задачи" style="text-decoration:none;">

@@ -1813,6 +1813,73 @@ class Answer(db.Model):
         return f'<Answer {self.answer_id}: submission {self.submission_id}, task {self.assignment_task_id}, score {self.score}>'
 
 
+class CodePlaybackTrace(db.Model):
+    """
+    История редактирования кода для просмотра преподавателем.
+    Хранит последовательность снапшотов кода и метаданных, чтобы можно было воспроизводить набор текста.
+    """
+    __tablename__ = 'CodePlaybackTraces'
+
+    trace_id = db.Column(db.Integer, primary_key=True)
+    context_type = db.Column(db.String(40), nullable=False, index=True)  # demo | lesson_task | submission_task
+    context_id = db.Column(db.Integer, nullable=True, index=True)
+    student_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, index=True)
+    answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id'), nullable=True, index=True)
+
+    frames = db.Column(db.JSON, nullable=False, default=list)  # [{"ts":..., "code":..., "caret":[s,e], "action":...}, ...]
+    meta = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+    student_user = db.relationship('User', foreign_keys=[student_user_id])
+    student_ref = db.relationship('Student', foreign_keys=[student_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+    answer = db.relationship('Answer', foreign_keys=[answer_id])
+
+    __table_args__ = (
+        Index('ix_code_playback_trace_lookup', 'context_type', 'context_id', 'task_id', unique=False),
+    )
+
+    def __repr__(self):
+        return f'<CodePlaybackTrace {self.trace_id}: {self.context_type}#{self.context_id}, task {self.task_id}>'
+
+
+class CodeWorkspaceVersion(db.Model):
+    """
+    Версия кода workspace после автосохранения или ручного сохранения.
+    Нужна для откатов и анализа эволюции решения.
+    """
+    __tablename__ = 'CodeWorkspaceVersions'
+
+    version_id = db.Column(db.Integer, primary_key=True)
+    context_type = db.Column(db.String(40), nullable=False, index=True)
+    context_id = db.Column(db.Integer, nullable=True, index=True)
+    student_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, index=True)
+    answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id'), nullable=True, index=True)
+
+    code = db.Column(db.Text, nullable=False, default='')
+    answer = db.Column(db.Text, nullable=True)
+    source = db.Column(db.String(32), nullable=False, default='autosave')  # autosave | manual | restore
+    snapshot = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+    student_user = db.relationship('User', foreign_keys=[student_user_id])
+    student_ref = db.relationship('Student', foreign_keys=[student_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+    answer_ref = db.relationship('Answer', foreign_keys=[answer_id])
+
+    __table_args__ = (
+        Index('ix_code_workspace_version_lookup', 'context_type', 'context_id', 'task_id', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f'<CodeWorkspaceVersion {self.version_id}: {self.context_type}#{self.context_id}, task {self.task_id}>'
+
+
 class SubmissionAttempt(db.Model):
     """
     Попытка сдачи работы (Submission) в новой системе Assignments.

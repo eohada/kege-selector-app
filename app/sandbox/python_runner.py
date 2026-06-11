@@ -21,6 +21,8 @@ import sys as _py_sys
 import io
 import os
 import builtins as _builtins
+import math as _math
+import types as _types
 
 _cwd = os.getcwd()
 _real_open = open
@@ -64,10 +66,173 @@ import functools
 import fnmatch
 import ipaddress
 
+class _FakeTurtleModule(_types.SimpleNamespace):
+    def __init__(self):
+        super().__init__()
+        self._lines = []
+        self._dots = []
+        self._bg = 'white'
+        self._default = None
+        self.Turtle = self._make_turtle_class()
+
+    def _make_turtle_class(self):
+        module = self
+        class _FakeTurtle:
+            def __init__(self):
+                self.x = 0.0
+                self.y = 0.0
+                self.heading = 0.0
+                self.down = True
+                self.pen_color = 'black'
+                self.pen_width = 2.0
+
+            def _line_to(self, x, y):
+                x = float(x)
+                y = float(y)
+                if self.down:
+                    module._lines.append((self.x, self.y, x, y, self.pen_color, self.pen_width))
+                self.x, self.y = x, y
+
+            def forward(self, distance):
+                rad = _math.radians(self.heading)
+                self._line_to(self.x + _math.cos(rad) * float(distance), self.y + _math.sin(rad) * float(distance))
+            fd = forward
+
+            def backward(self, distance):
+                self.forward(-float(distance))
+            bk = backward
+            back = backward
+
+            def right(self, angle):
+                self.heading -= float(angle)
+            rt = right
+
+            def left(self, angle):
+                self.heading += float(angle)
+            lt = left
+
+            def penup(self):
+                self.down = False
+            pu = up = penup
+
+            def pendown(self):
+                self.down = True
+            pd = down = pendown
+
+            def goto(self, x, y=None):
+                if y is None:
+                    x, y = x
+                self._line_to(x, y)
+            setpos = setposition = goto
+
+            def setx(self, x):
+                self._line_to(x, self.y)
+
+            def sety(self, y):
+                self._line_to(self.x, y)
+
+            def home(self):
+                self._line_to(0, 0)
+                self.heading = 0.0
+
+            def setheading(self, angle):
+                self.heading = float(angle)
+            seth = setheading
+
+            def position(self):
+                return (self.x, self.y)
+            pos = position
+
+            def xcor(self):
+                return self.x
+
+            def ycor(self):
+                return self.y
+
+            def color(self, *args):
+                if args:
+                    self.pen_color = args[0]
+                return (self.pen_color, self.pen_color)
+
+            def pencolor(self, *args):
+                if args:
+                    self.pen_color = args[0]
+                return self.pen_color
+
+            def width(self, value=None):
+                if value is not None:
+                    self.pen_width = max(1.0, float(value))
+                return self.pen_width
+            pensize = width
+
+            def speed(self, *_args, **_kwargs):
+                return 0
+
+            def dot(self, size=6, color=None):
+                module._dots.append((self.x, self.y, float(size), color or self.pen_color))
+
+            def circle(self, radius, extent=None, steps=None):
+                radius = float(radius)
+                extent = 360.0 if extent is None else float(extent)
+                steps = int(steps or max(12, abs(extent) // 12))
+                step = extent / max(1, steps)
+                for _i in range(max(1, steps)):
+                    self.left(step)
+                    self.forward(2 * _math.pi * radius * abs(step) / 360.0)
+
+            def hideturtle(self): pass
+            def showturtle(self): pass
+            def clear(self): module._lines.clear(); module._dots.clear()
+            def reset(self): self.clear(); self.home()
+        return _FakeTurtle
+
+    def _get_default(self):
+        if self._default is None:
+            self._default = self.Turtle()
+        return self._default
+
+    def __getattr__(self, name):
+        if name in {'forward', 'fd', 'backward', 'back', 'bk', 'right', 'rt', 'left', 'lt', 'penup', 'pu', 'up', 'pendown', 'pd', 'down', 'goto', 'setpos', 'setposition', 'setx', 'sety', 'home', 'setheading', 'seth', 'position', 'pos', 'xcor', 'ycor', 'color', 'pencolor', 'width', 'pensize', 'speed', 'dot', 'circle', 'hideturtle', 'showturtle', 'clear', 'reset'}:
+            return getattr(self._get_default(), name)
+        if name in {'done', 'mainloop', 'exitonclick', 'update'}:
+            return lambda *_a, **_k: None
+        if name == 'screensize':
+            return lambda *_a, **_k: None
+        if name == 'bgcolor':
+            def _bg(*args):
+                if args:
+                    self._bg = args[0]
+                return self._bg
+            return _bg
+        raise AttributeError(name)
+
+    def _boostudy_export_svg(self, path):
+        items = self._lines or [(0, 0, 1, 1, 'transparent', 1)]
+        xs = [p for line in items for p in (line[0], line[2])]
+        ys = [p for line in items for p in (line[1], line[3])]
+        for x, y, size, _color in self._dots:
+            xs.extend([x - size, x + size])
+            ys.extend([y - size, y + size])
+        pad = 24
+        min_x, max_x = min(xs) - pad, max(xs) + pad
+        min_y, max_y = min(ys) - pad, max(ys) + pad
+        w, h = max(1, max_x - min_x), max(1, max_y - min_y)
+        parts = [
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{min_x} {-max_y} {w} {h}" width="{int(w)}" height="{int(h)}">',
+            f'<rect x="{min_x}" y="{-max_y}" width="{w}" height="{h}" fill="{self._bg}"/>',
+        ]
+        for x1, y1, x2, y2, color, width in self._lines:
+            parts.append(f'<line x1="{x1}" y1="{-y1}" x2="{x2}" y2="{-y2}" stroke="{color}" stroke-width="{width}" stroke-linecap="round"/>')
+        for x, y, size, color in self._dots:
+            parts.append(f'<circle cx="{x}" cy="{-y}" r="{size / 2}" fill="{color}"/>')
+        parts.append('</svg>')
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(''.join(parts))
+
 try:
     import turtle
 except Exception:
-    turtle = None
+    turtle = _FakeTurtleModule()
 else:
     # В headless/песочнице done()/mainloop() блокируют процесс, ожидая закрытия окна — таймаут.
     def _turtle_noop(*_a, **_k):
@@ -196,7 +361,12 @@ try:
         except Exception:
             pass
 except Exception as e:
-    err.write(str(e))
+    err.write(f"{type(e).__name__}: {e}")
+if turtle is not None and hasattr(turtle, '_boostudy_export_svg'):
+    try:
+        turtle._boostudy_export_svg(os.path.join(_cwd, '.boostudy_turtle.svg'))
+    except Exception:
+        pass
 _py_sys.stdout = _real_sys.__stdout__
 _py_sys.stderr = _real_sys.__stderr__
 print(out.getvalue())
@@ -229,6 +399,7 @@ def _sandbox_timeout_seconds(code: str, explicit: int | None) -> int:
 
 # Файл PostScript пишет раннер (tk canvas) в cwd песочницы.
 TURTLE_PS_NAME = '.boostudy_turtle.ps'
+TURTLE_SVG_NAME = '.boostudy_turtle.svg'
 _MAX_TURTLE_PNG = 2_500_000  # ~3.3MB base64
 
 # Выполняется внутри exec ДО кода ученика: холст по умолчанию 400×300 — обрезка. Ниже — запас, чтобы сетка/прямоугольники
@@ -311,6 +482,19 @@ def _postscript_to_png_b64(ps_path: str) -> str | None:
     return None
 
 
+def _svg_to_b64(svg_path: str) -> str | None:
+    if not os.path.isfile(svg_path) or os.path.getsize(svg_path) < 8:
+        return None
+    try:
+        with open(svg_path, 'rb') as f:
+            b = f.read()
+        if len(b) <= _MAX_TURTLE_PNG:
+            return base64.b64encode(b).decode('ascii')
+    except Exception:
+        return None
+    return None
+
+
 def run_python_sandbox(
     code: str,
     timeout_sec: int | None = None,
@@ -345,7 +529,8 @@ def run_python_sandbox(
             turtle_b64: str | None = None
             if 'turtle' in (code or '').lower():
                 ps = os.path.join(tmpdir, TURTLE_PS_NAME)
-                turtle_b64 = _postscript_to_png_b64(ps)
+                svg = os.path.join(tmpdir, TURTLE_SVG_NAME)
+                turtle_b64 = _postscript_to_png_b64(ps) or _svg_to_b64(svg)
             if not turtle_b64 and (not stdout) and (not stderr) and 'turtle' in (code or '').lower():
                 stdout = (
                     '[turtle] Код выполнен. Рисунок не сгенерировался (нужен ghostscript: «gs» в '

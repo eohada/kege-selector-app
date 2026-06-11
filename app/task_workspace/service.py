@@ -1,0 +1,397 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from flask import abort
+
+from app.models import db
+from app.auth.rbac_utils import get_user_scope
+from app.utils.relationship_scope import can_user_access_student
+from core.db_models import (
+    Answer,
+    CodePlaybackTrace,
+    Assignment,
+    AssignmentTask,
+    CodeWorkspaceVersion,
+    Lesson,
+    LessonTask,
+    Submission,
+    Tasks,
+)
+
+
+MMR_POLICY_LABELS = {
+    "manual_confirm": "Учитывать после подтверждения преподавателя",
+    "always": "Учитывается в ммр",
+    "never": "Не учитывать в ммр",
+}
+
+
+@dataclass
+class WorkspaceContext:
+    context_type: str
+    context_id: int | None
+    task_id: int
+    task: Tasks
+    title: str
+    subtitle: str
+    source_label: str
+    return_url: str | None = None
+    student_id: int | None = None
+    student_user_id: int | None = None
+    lesson_task_id: int | None = None
+    submission_id: int | None = None
+    assignment_task_id: int | None = None
+    answer_id: int | None = None
+    code: str = ""
+    plain_answer: str = ""
+    mmr_policy: str = "manual_confirm"
+    can_edit: bool = True
+    can_review: bool = False
+    timer_seconds_left: int | None = None
+    mmr_value: int = 1000
+
+    def as_payload(self) -> dict[str, Any]:
+        return {
+            "context_type": self.context_type,
+            "context_id": self.context_id,
+            "task_id": self.task_id,
+            "title": self.title,
+            "subtitle": self.subtitle,
+            "source_label": self.source_label,
+            "return_url": self.return_url,
+            "student_id": self.student_id,
+            "student_user_id": self.student_user_id,
+            "lesson_task_id": self.lesson_task_id,
+            "submission_id": self.submission_id,
+            "assignment_task_id": self.assignment_task_id,
+            "answer_id": self.answer_id,
+            "code": self.code,
+            "plain_answer": self.plain_answer,
+            "starter_code": self.task.starter_code or "",
+            "content_html": self.task.content_html or "",
+            "mmr_policy": self.mmr_policy,
+            "mmr_policy_label": MMR_POLICY_LABELS.get(self.mmr_policy, MMR_POLICY_LABELS["manual_confirm"]),
+            "can_edit": self.can_edit,
+            "can_review": self.can_review,
+            "timer_seconds_left": self.timer_seconds_left,
+            "mmr_value": self.mmr_value,
+            "answer_hint": self.task.answer or "",
+            "playback": load_workspace_trace_payload(self),
+            "versions": load_workspace_versions_payload(self),
+        }
+
+
+def _has_teacher_scope(user) -> bool:
+    scope = get_user_scope(user)
+    return bool(
+        scope.get("can_see_all")
+        or getattr(user, "is_creator", lambda: False)()
+        or getattr(user, "is_admin", lambda: False)()
+        or getattr(user, "is_chief_admin", lambda: False)()
+        or getattr(user, "is_tutor", lambda: False)()
+    )
+
+
+def _resolve_demo_context(user) -> WorkspaceContext:
+    task = (
+        Tasks.query.filter(Tasks.is_active.is_(True))
+        .order_by(Tasks.task_id.desc())
+        .first()
+        or Tasks.query.order_by(Tasks.task_id.desc()).first()
+    )
+    if not task:
+        abort(404, "В банке нет задач для тестового workspace")
+    can_edit = not getattr(user, "is_parent", lambda: False)()
+    return WorkspaceContext(
+        context_type="demo",
+        context_id=None,
+        task_id=task.task_id,
+        task=task,
+        title=f"Workspace-прототип · задача #{task.task_id}",
+        subtitle="Локальная тестовая площадка нового редактора",
+        source_label="DEV workspace",
+        code=task.starter_code or "",
+        can_edit=can_edit,
+        can_review=_has_teacher_scope(user),
+    )
+
+
+def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
+    lesson_task = (
+        LessonTask.query.options(
+            db.joinedload(LessonTask.task),
+            db.joinedload(LessonTask.lesson).joinedload(Lesson.student),
+        )
+        .filter_by(lesson_task_id=lesson_task_id)
+        .first_or_404()
+    )
+    lesson = lesson_task.lesson
+    student = lesson.student if lesson else None
+    if not student or not can_user_access_student(user, student_user_id=student.user_id):
+        abort(403)
+    is_student_owner = getattr(user, "is_student", lambda: False)() and user.id == student.user_id
+    can_edit = is_student_owner and (lesson_task.status or "pending") in {"pending", "returned"}
+    can_review = _has_teacher_scope(user)
+    mmr_policy = "manual_confirm"
+    if (lesson_task.assignment_type or "homework") != "classwork":
+        mmr_policy = "always"
+    return WorkspaceContext(
+        context_type="lesson_task",
+        context_id=lesson_task.lesson_task_id,
+        task_id=lesson_task.task_id,
+        task=lesson_task.task,
+        title=f"{'Классная работа' if lesson_task.assignment_type == 'classwork' else 'Задание урока'} · задача #{lesson_task.task_id}",
+        subtitle=f"Урок #{lesson.lesson_id} · {student.user.username if student.user else 'ученик'}",
+        source_label="Урок / классная работа",
+        return_url=f"/lesson/{lesson.lesson_id}/classwork-tasks",
+        student_id=student.student_id,
+        student_user_id=student.user_id,
+        lesson_task_id=lesson_task.lesson_task_id,
+        code=lesson_task.student_submission or lesson_task.task.starter_code or "",
+        plain_answer=lesson_task.student_answer or "",
+        mmr_policy=mmr_policy,
+        can_edit=can_edit or can_review,
+        can_review=can_review,
+    )
+
+
+def _resolve_submission_task_context(user, submission_id: int, assignment_task_id: int) -> WorkspaceContext:
+    submission = (
+        Submission.query.options(
+            db.joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
+            db.joinedload(Submission.answers),
+            db.joinedload(Submission.student),
+        )
+        .filter_by(submission_id=submission_id)
+        .first_or_404()
+    )
+    student = submission.student
+    if not student:
+        abort(404)
+    is_owner = getattr(user, "is_student", lambda: False)() and user.id == student.user_id
+    if not is_owner and not can_user_access_student(user, student_user_id=student.user_id):
+        abort(403)
+    assignment_task = next(
+        (item for item in submission.assignment.tasks if item.assignment_task_id == assignment_task_id),
+        None,
+    )
+    if not assignment_task:
+        abort(404)
+    answer = next(
+        (item for item in (submission.answers or []) if item.assignment_task_id == assignment_task.assignment_task_id),
+        None,
+    )
+    can_review = _has_teacher_scope(user)
+    can_edit = is_owner and submission.status in {"IN_PROGRESS", "RETURNED", "ASSIGNED"}
+
+    timer_seconds_left = None
+    if submission.started_at and submission.assignment.time_limit_minutes:
+        from core.db_models import utc_now
+        limit_sec = submission.assignment.time_limit_minutes * 60
+        elapsed = (utc_now() - submission.started_at).total_seconds()
+        timer_seconds_left = max(0, int(limit_sec - elapsed))
+
+    return WorkspaceContext(
+        context_type="submission_task",
+        context_id=submission.submission_id,
+        task_id=assignment_task.task_id,
+        task=assignment_task.task,
+        title=f"{submission.assignment.title} · задача #{assignment_task.task_id}",
+        subtitle=f"{student.user.username if student.user else 'ученик'} · {submission.assignment.assignment_type}",
+        source_label="Работа / задание",
+        return_url=f"/submissions/{submission.submission_id}",
+        student_id=student.student_id,
+        student_user_id=student.user_id,
+        submission_id=submission.submission_id,
+        assignment_task_id=assignment_task.assignment_task_id,
+        answer_id=answer.answer_id if answer else None,
+        code=(answer.student_code if answer else "") or assignment_task.task.starter_code or "",
+        plain_answer=(answer.value if answer else "") or "",
+        mmr_policy="always",
+        can_edit=can_edit or can_review,
+        can_review=can_review,
+        timer_seconds_left=timer_seconds_left,
+    )
+
+
+def resolve_workspace_context(user, context_type: str, context_id: int | None = None, assignment_task_id: int | None = None) -> WorkspaceContext:
+    kind = (context_type or "demo").strip().lower()
+    if kind == "demo":
+        ctx = _resolve_demo_context(user)
+    elif kind == "lesson_task":
+        if context_id is None:
+            abort(400, "Не указан lesson_task_id")
+        ctx = _resolve_lesson_task_context(user, int(context_id))
+    elif kind == "submission_task":
+        if context_id is None or assignment_task_id is None:
+            abort(400, "Не указаны submission_id / assignment_task_id")
+        ctx = _resolve_submission_task_context(user, int(context_id), int(assignment_task_id))
+    else:
+        abort(404, "Неизвестный тип workspace")
+
+    # Вычисляем текущий MMR
+    if user and user.is_authenticated and ctx.task and ctx.task.task_number:
+        from core.db_models import UserTaskMMR
+        try:
+            mmr_row = UserTaskMMR.query.filter_by(user_id=user.id, task_type=int(ctx.task.task_number or 0)).first()
+            ctx.mmr_value = int(mmr_row.mmr) if mmr_row else 1000
+        except Exception:
+            ctx.mmr_value = 1000
+    else:
+        ctx.mmr_value = 1000
+
+    return ctx
+
+
+def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", frames: list[dict[str, Any]] | None = None) -> None:
+    code = (code or "")[:100_000]
+    answer = (answer or "")[:20_000]
+    if ctx.context_type == "lesson_task" and ctx.lesson_task_id:
+        lesson_task = LessonTask.query.get_or_404(ctx.lesson_task_id)
+        lesson_task.student_submission = code
+        if answer:
+            lesson_task.student_answer = answer
+        save_workspace_trace(ctx, frames=frames, meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)})
+        save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
+        db.session.commit()
+        return
+    if ctx.context_type == "submission_task" and ctx.submission_id and ctx.assignment_task_id:
+        answer_row = Answer.query.filter_by(
+            submission_id=ctx.submission_id,
+            assignment_task_id=ctx.assignment_task_id,
+        ).first()
+        if not answer_row:
+            assignment_task = AssignmentTask.query.get_or_404(ctx.assignment_task_id)
+            answer_row = Answer(
+                submission_id=ctx.submission_id,
+                assignment_task_id=ctx.assignment_task_id,
+                max_score=assignment_task.max_score,
+            )
+            db.session.add(answer_row)
+        answer_row.student_code = code
+        if answer:
+            answer_row.value = answer
+        from core.db_models import utc_now
+
+        answer_row.student_code_saved_at = utc_now()
+        save_workspace_trace(
+            ctx,
+            frames=frames,
+            meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)},
+        )
+        save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
+        db.session.commit()
+
+
+def _trace_lookup(ctx: WorkspaceContext):
+    query = CodePlaybackTrace.query.filter_by(
+        context_type=ctx.context_type,
+        context_id=ctx.context_id,
+        task_id=ctx.task_id,
+    )
+    if ctx.context_type == "submission_task" and ctx.answer_id:
+        query = query.filter_by(answer_id=ctx.answer_id)
+    if ctx.student_id:
+        query = query.filter_by(student_id=ctx.student_id)
+    return query.order_by(CodePlaybackTrace.updated_at.desc(), CodePlaybackTrace.trace_id.desc())
+
+
+def load_workspace_trace_payload(ctx: WorkspaceContext) -> dict[str, Any]:
+    try:
+        trace = _trace_lookup(ctx).first()
+    except Exception:
+        return {"trace_id": None, "frames": [], "meta": {}, "updated_at": None, "frame_count": 0}
+    if not trace:
+        return {"trace_id": None, "frames": [], "meta": {}, "updated_at": None}
+    frames = trace.frames or []
+    return {
+        "trace_id": trace.trace_id,
+        "frames": frames,
+        "meta": trace.meta or {},
+        "updated_at": trace.updated_at.isoformat() if trace.updated_at else None,
+        "frame_count": len(frames),
+    }
+
+
+def save_workspace_trace(ctx: WorkspaceContext, frames: list[dict[str, Any]] | None = None, meta: dict[str, Any] | None = None) -> CodePlaybackTrace:
+    try:
+        trace = _trace_lookup(ctx).first()
+    except Exception:
+        trace = None
+    if not trace:
+        trace = CodePlaybackTrace(
+            context_type=ctx.context_type,
+            context_id=ctx.context_id,
+            task_id=ctx.task_id,
+            student_user_id=ctx.student_user_id,
+            student_id=ctx.student_id,
+            answer_id=ctx.answer_id,
+            frames=frames or [],
+            meta=meta or {},
+        )
+        db.session.add(trace)
+    else:
+        if frames is not None:
+            trace.frames = frames
+        if meta:
+            merged = dict(trace.meta or {})
+            merged.update(meta)
+            trace.meta = merged
+    return trace
+
+
+def _version_lookup(ctx: WorkspaceContext):
+    query = CodeWorkspaceVersion.query.filter_by(
+        context_type=ctx.context_type,
+        context_id=ctx.context_id,
+        task_id=ctx.task_id,
+    )
+    if ctx.context_type == "submission_task" and ctx.answer_id:
+        query = query.filter_by(answer_id=ctx.answer_id)
+    if ctx.student_id:
+        query = query.filter_by(student_id=ctx.student_id)
+    return query.order_by(CodeWorkspaceVersion.created_at.desc(), CodeWorkspaceVersion.version_id.desc())
+
+
+def load_workspace_versions_payload(ctx: WorkspaceContext) -> dict[str, Any]:
+    try:
+        versions = _version_lookup(ctx).limit(20).all()
+    except Exception:
+        return {"items": [], "count": 0}
+    items = []
+    for version in versions:
+        items.append({
+            "version_id": version.version_id,
+            "created_at": version.created_at.isoformat() if version.created_at else None,
+            "source": version.source,
+            "code": version.code or "",
+            "answer": version.answer or "",
+            "preview": (version.code or "")[:240],
+        })
+    return {"items": items, "count": len(items)}
+
+
+def save_workspace_version(ctx: WorkspaceContext, code: str, answer: str = "", source: str = "autosave") -> CodeWorkspaceVersion:
+    try:
+        version = CodeWorkspaceVersion(
+            context_type=ctx.context_type,
+            context_id=ctx.context_id,
+            student_user_id=ctx.student_user_id,
+            student_id=ctx.student_id,
+            task_id=ctx.task_id,
+            answer_id=ctx.answer_id,
+            code=code or "",
+            answer=answer or "",
+            source=source or "autosave",
+            snapshot={
+                "code_length": len(code or ""),
+                "answer_length": len(answer or ""),
+                "mmr_policy": ctx.mmr_policy,
+            },
+        )
+        db.session.add(version)
+        return version
+    except Exception:
+        return None

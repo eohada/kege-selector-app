@@ -667,6 +667,9 @@
                     <button type="button" class="task-tool-btn" onclick="BooCanvasViewer.open({{ current_user.id }}, {{ task_item.task.task_id }}, 'submission', {{ submission.submission_id }}, this)">
                         <i class="ph-bold ph-pencil-line"></i> Мои заметки
                     </button>
+                    <a class="task-tool-btn" href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=submission.submission_id, assignment_task_id=task_item.assignment_task.assignment_task_id) }}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+                        <i class="ph-bold ph-code"></i> Новый workspace
+                    </a>
                 </div>
                 {% if (not should_hide_tasks) and task_item.task.starter_code %}
                 <div class="mt-4 p-4 rounded-[16px] border border-slate-200 bg-slate-50 text-[15px]">
@@ -825,46 +828,28 @@
                     </div>
                     {% endif %}
                     {% if task_can_edit and submission.status in ['IN_PROGRESS', 'RETURNED'] %}
-                    <div class="code-editor-wrap border border-stroke rounded-[24px] overflow-hidden" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 0.75rem;">
-                        <button type="button" class="code-editor-toggle w-full px-6 py-4 bg-surface-alt hover:bg-surface-alt flex items-center justify-between transition-colors font-bold text-secondary">
-                            <span class="flex items-center gap-2"><i class="ph-bold ph-code text-boo-primary text-lg"></i> Редактор кода</span>
-                            <span class="code-editor-toggle-icon">▶</span>
-                        </button>
-                        <div class="code-editor-panel bg-surface border-t border-stroke" style="display: none; padding: 1rem;">
-                            <p class="code-editor-hint">Доступные библиотеки — <code>re</code>, <code>itertools</code> (в т.ч. <code>product</code>, <code>permutations</code>, остальное из модуля), <code>fnmatch</code>, <code>ipaddress</code>, <code>functools</code> (в т.ч. <code>lru_cache</code>), <code>sys</code> только <code>setrecursionlimit</code> / <code>getrecursionlimit</code>, <code>turtle</code>. Рисунок <code>turtle</code> показывается под «Вывод». Файлы задания: <code>open('имя_файла')</code>.</p>
-                            <div class="code-editor-cm-wrap" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
-                                <textarea class="code-editor-text" rows="14" placeholder="# Ваш код&#10;import re&#10;print(re.findall(r'\\d+', 'a1b2'))" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; padding: 0.75rem; border: none; background: var(--surface-1); color: var(--text-primary); resize: vertical; box-sizing: border-box;">{{ task_item.answer.student_code if task_item.answer and task_item.answer.student_code else '' }}</textarea>
+                    <div class="code-editor-wrap border border-stroke rounded-[24px] overflow-hidden bg-slate-50/50 dark:bg-dark-card/30 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4" style="margin-top: 0.75rem; border: 1px dashed var(--stroke-1);">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center text-purple-600 dark:text-purple-400 text-xl shrink-0">
+                                <i class="ph-bold ph-code"></i>
                             </div>
-                            <div class="code-editor-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
-                                <button type="button" class="code-editor-run neo-button ghost sm" {% if is_parent_view %}disabled style="display:none;"{% endif %}>Запустить</button>
-                                <button type="button" class="code-editor-save neo-button accent sm" {% if is_parent_view %}disabled style="display:none;"{% endif %}>Сохранить код</button>
-                                <span class="code-editor-saved-hint" style="font-size: 0.85em; color: var(--text-muted); align-self: center;">{% if task_item.answer and task_item.answer.student_code_saved_at %}Сохранено {{ task_item.answer.student_code_saved_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}</span>
-                            </div>
-                            <div class="code-editor-output-wrap" style="margin-top: 0.75rem;">
-                                <label class="code-editor-output-label">Вывод:</label>
-                                <pre class="code-editor-output" style="margin: 0.35rem 0 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; min-height: 3rem; max-height: 12rem; overflow: auto;"></pre>
-                                <div class="code-editor-turtle-wrap" style="display: none; margin-top: 0.65rem;">
-                                    <div class="code-editor-turtle-head">
-                                        <span class="code-editor-turtle-label">Рисунок turtle</span>
-                                        <div class="code-editor-turtle-toolbar" role="toolbar" aria-label="Масштаб рисунка">
-                                            <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="zoom-out" title="Уменьшить" aria-label="Уменьшить"><i class="ph-bold ph-minus" aria-hidden="true"></i></button>
-                                            <span class="code-editor-turtle-zoom-pct" aria-live="polite">100%</span>
-                                            <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="zoom-in" title="Увеличить" aria-label="Увеличить"><i class="ph-bold ph-plus" aria-hidden="true"></i></button>
-                                            <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="fit" title="Вписать в рамку" aria-label="Вписать в рамку"><i class="ph-bold ph-arrows-in-simple" aria-hidden="true"></i></button>
-                                            <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="one" title="1:1 натуральный размер" aria-label="Натуральный размер 1 к 1">1:1</button>
-                                            <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="expand" title="На весь экран" aria-label="На весь экран"><i class="ph-bold ph-arrows-out" aria-hidden="true"></i></button>
-                                        </div>
-                                    </div>
-                                    <div class="code-editor-turtle-viewport" tabindex="0" aria-label="Прокрутка: панорама. Ctrl+колёсико: масштаб.">
-                                        <img class="code-editor-turtle-img" alt="Рисунок turtle" style="display: block; box-shadow: 0 1px 0 rgba(0,0,0,.04);" />
-                                    </div>
-                                </div>
+                            <div>
+                                <h4 class="font-black text-sm text-primary dark:text-white m-0">Полноэкранный Python IDE</h4>
+                                <p class="text-xs text-muted dark:text-dark-muted m-0 mt-0.5">Современный редактор с автосохранением на сервере, историей версий и холстом для черепашки Turtle.</p>
                             </div>
                         </div>
+                        <a href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=submission.submission_id, assignment_task_id=task_item.assignment_task.assignment_task_id) }}" target="_blank" rel="noopener noreferrer" class="neo-button accent sm shrink-0 text-center" style="text-decoration:none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <i class="ph-bold ph-arrow-square-out text-base"></i> Решать в Workspace
+                        </a>
                     </div>
                     {% elif task_item.answer and task_item.answer.student_code %}
                     <div class="readonly-code-wrap code-editor-wrap" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 0.75rem;">
-                        <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш код (Python):</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div style="font-weight: 600;">Ваш код (Python):</div>
+                            <a class="neo-button ghost sm" href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=submission.submission_id, assignment_task_id=task_item.assignment_task.assignment_task_id) }}" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82em; padding: 0.25rem 0.5rem; border-radius: 10px;">
+                                <i class="ph-bold ph-arrow-square-out"></i> Workspace (Только чтение)
+                            </a>
+                        </div>
                         <pre class="code-editor-output" style="margin: 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word;">{{ task_item.answer.student_code }}</pre>
                     </div>
                     {% endif %}
@@ -1044,36 +1029,14 @@
                 {% endif %}
 
                 {% if task_item.answer and task_item.answer.student_code %}
-                <div class="readonly-code-wrap code-editor-wrap" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}">
-                    <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш код (Python):</div>
-                    <div class="code-editor-panel">
-                        <div class="code-editor-cm-wrap" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
-                            <textarea class="code-editor-text code-editor-readonly" rows="14" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" readonly style="width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; padding: 0.75rem; border: none; background: var(--surface-1); color: var(--text-primary); resize: vertical; box-sizing: border-box;">{{ task_item.answer.student_code }}</textarea>
-                        </div>
-                        <div class="readonly-code-actions">
-                            <button type="button" class="code-editor-run neo-button ghost sm">Запустить</button>
-                        </div>
-                        <div class="code-editor-output-wrap" style="margin-top: 0.75rem;">
-                            <label class="code-editor-output-label">Вывод:</label>
-                            <pre class="code-editor-output" style="margin: 0.35rem 0 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; min-height: 3rem; max-height: 12rem; overflow: auto;"></pre>
-                            <div class="code-editor-turtle-wrap" style="display: none; margin-top: 0.65rem;">
-                                <div class="code-editor-turtle-head">
-                                    <span class="code-editor-turtle-label">Рисунок turtle</span>
-                                    <div class="code-editor-turtle-toolbar" role="toolbar" aria-label="Масштаб рисунка">
-                                        <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="zoom-out" title="Уменьшить" aria-label="Уменьшить"><i class="ph-bold ph-minus" aria-hidden="true"></i></button>
-                                        <span class="code-editor-turtle-zoom-pct" aria-live="polite">100%</span>
-                                        <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="zoom-in" title="Увеличить" aria-label="Увеличить"><i class="ph-bold ph-plus" aria-hidden="true"></i></button>
-                                        <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="fit" title="Вписать в рамку" aria-label="Вписать в рамку"><i class="ph-bold ph-arrows-in-simple" aria-hidden="true"></i></button>
-                                        <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="one" title="1:1 натуральный размер" aria-label="Натуральный размер 1 к 1">1:1</button>
-                                        <button type="button" class="code-editor-turtle-btn neo-button ghost sm" data-turtle="expand" title="На весь экран" aria-label="На весь экран"><i class="ph-bold ph-arrows-out" aria-hidden="true"></i></button>
-                                    </div>
-                                </div>
-                                <div class="code-editor-turtle-viewport" tabindex="0" aria-label="Прокрутка: панорама. Ctrl+колёсико: масштаб.">
-                                    <img class="code-editor-turtle-img" alt="Рисунок turtle" style="display: block; box-shadow: 0 1px 0 rgba(0,0,0,.04);" />
-                                </div>
-                            </div>
-                        </div>
+                <div class="readonly-code-wrap code-editor-wrap" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <div style="font-weight: 600;">Ваш код (Python):</div>
+                        <a class="neo-button ghost sm" href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=submission.submission_id, assignment_task_id=task_item.assignment_task.assignment_task_id) }}" target="_blank" rel="noopener noreferrer" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82em; padding: 0.25rem 0.5rem; border-radius: 10px;">
+                            <i class="ph-bold ph-arrow-square-out"></i> Workspace (Только чтение)
+                        </a>
                     </div>
+                    <pre class="code-editor-output" style="margin: 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word;">{{ task_item.answer.student_code }}</pre>
                 </div>
                 {% endif %}
                 {% if task_item.answer and task_item.answer.files %}
@@ -1881,7 +1844,7 @@
             } catch (e) { /* ignore */ }
         }
         function isAppActive() {
-            return SUBMISSION_TASK_TIMERS_ENABLED;
+            return SUBMISSION_TASK_TIMERS_ENABLED && document.visibilityState === 'visible';
         }
         function isTaskRunning(taskId) {
             ensureTaskTimer(taskId);
@@ -1953,6 +1916,18 @@
         window.addEventListener('beforeunload', function() { syncAllTaskTimers(); persistTaskTimers(true); });
         setInterval(syncAllTaskTimers, 1000);
         window.__syncActiveTaskTimer__ = syncActiveTaskFromDom;
+
+        // Перезагрузка таймеров из localStorage при возвращении фокуса/активности вкладки
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                loadTaskTimersFromStorage();
+            }
+            syncActiveTaskFromDom();
+        });
+        window.addEventListener('focus', function() {
+            loadTaskTimersFromStorage();
+            syncActiveTaskFromDom();
+        });
         window.__collectSubmissionTaskTimes__ = function() {
             const out = {};
             syncAllTaskTimers();

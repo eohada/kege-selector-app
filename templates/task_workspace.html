@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Task Workspace · BooStudy{% endblock %}
+
+{% block head_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260611-6">
+{% endblock %}
+
+{% block content %}
+<main class="tw-shell" data-context-type="{{ workspace.context_type }}" data-context-id="{{ workspace.context_id or '' }}" data-assignment-task-id="{{ workspace.assignment_task_id or '' }}">
+    <header class="tw-topbar">
+        <div>
+            <div class="tw-kicker">{{ workspace.source_label }}</div>
+            <h1>{{ workspace.title }}</h1>
+            <p>{{ workspace.subtitle }}</p>
+        </div>
+        <div class="tw-top-actions">
+            {% if workspace.timer_seconds_left is not none %}
+            <div id="tw-timer-container" class="tw-timer-container" data-seconds-left="{{ workspace.timer_seconds_left }}">
+                <span class="tw-timer-icon">⏱</span>
+                <span id="tw-timer-clock" class="tw-timer-clock">00:00:00</span>
+            </div>
+            {% endif %}
+
+            <button id="tw-toggle-panel-task" class="tw-btn tw-btn-ghost" type="button" title="Показать/скрыть условие">
+                <i class="ph-bold ph-sidebar-simple"></i> Условие
+            </button>
+            <button id="tw-toggle-panel-output" class="tw-btn tw-btn-ghost" type="button" title="Показать/скрыть вывод">
+                Вывод <i class="ph-bold ph-sidebar-simple"></i>
+            </button>
+            <button id="tw-change-layout" class="tw-btn tw-btn-ghost" type="button" title="Сбросить расположение окон">
+                <i class="ph-bold ph-layout"></i> Сбросить раскладку
+            </button>
+
+            <span class="tw-pill">
+                {% if workspace.mmr_policy == 'always' %}
+                Учитывается в ммр, текущий - {{ workspace.mmr_value }}
+                {% else %}
+                {{ workspace.mmr_policy_label }}
+                {% endif %}
+            </span>
+            {% if workspace.return_url %}
+            <a class="tw-btn tw-btn-ghost" href="{{ workspace.return_url }}">Назад</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <section class="tw-grid" id="tw-workspace-grid">
+        <aside class="tw-panel tw-task-panel" id="tw-task-panel">
+            <div class="tw-panel-head">
+                <div>
+                    <span class="tw-drag-grip"><i class="ph-bold ph-dots-six-vertical"></i></span>
+                    <span>Условие</span>
+                </div>
+                <span class="tw-muted">#{{ workspace.task_id }}</span>
+            </div>
+            <div class="tw-task-content">
+                {{ workspace.content_html|safe }}
+            </div>
+            {% if workspace.answer_hint and workspace.can_review %}
+            <details class="tw-answer-hint">
+                <summary>Эталонный ответ</summary>
+                <pre>{{ workspace.answer_hint }}</pre>
+            </details>
+            {% endif %}
+        </aside>
+
+        <section class="tw-panel tw-editor-panel" id="tw-editor-panel">
+            <div class="tw-panel-head">
+                <div>
+                    <span class="tw-drag-grip"><i class="ph-bold ph-dots-six-vertical"></i></span>
+                    <span>Python IDE</span>
+                    <small class="tw-head-note">автоскобки, отступы, подсветка, turtle без системного окна</small>
+                </div>
+                <div class="tw-editor-tools">
+                    <button id="tw-toggle-suggestions" class="tw-btn tw-btn-primary tw-btn-sm" type="button" title="Показать/скрыть подсказки">
+                        <i class="ph-bold ph-lightbulb"></i> Подсказки
+                    </button>
+                    <button data-action="format" class="tw-btn tw-btn-ghost tw-btn-sm" type="button" title="Нормализовать отступы">
+                        <i class="ph-bold ph-magic-wand"></i> Отступы
+                    </button>
+                </div>
+            </div>
+            <div class="tw-ide">
+                <div class="tw-gutter" id="tw-gutter">1</div>
+                <div class="tw-editor-surface">
+                    <div id="tw-active-line" class="tw-active-line" aria-hidden="true"></div>
+                    <div id="tw-pair-hl-1" class="tw-pair-hl" aria-hidden="true"></div>
+                    <div id="tw-pair-hl-2" class="tw-pair-hl" aria-hidden="true"></div>
+                    <pre id="tw-highlight" class="tw-highlight" aria-hidden="true"></pre>
+                    <textarea id="tw-code" class="tw-code" spellcheck="false" autocomplete="off" autocapitalize="off" {% if not workspace.can_edit %}readonly{% endif %}>{{ workspace.code or workspace.starter_code }}</textarea>
+                </div>
+            </div>
+            <div class="tw-suggestions" id="tw-suggestions"></div>
+            <div class="tw-answer-row">
+                <input id="tw-answer" class="tw-answer-input" value="{{ workspace.plain_answer }}" placeholder="Короткий ответ, если нужен">
+            </div>
+            <div class="tw-actionbar">
+                <div class="tw-status">
+                    <span id="tw-status-dot" class="tw-status-dot"></span>
+                    <span id="tw-status-text">Черновик готов</span>
+                </div>
+                <div class="tw-buttons">
+                    <button id="tw-save" class="tw-btn tw-btn-ghost" type="button" {% if not workspace.can_edit %}disabled{% endif %}>Сохранить</button>
+                    <button id="tw-run" class="tw-btn tw-btn-primary" type="button">Запустить</button>
+                </div>
+            </div>
+        </section>
+
+        <aside class="tw-panel tw-output-panel" id="tw-output-panel">
+            <div class="tw-panel-head">
+                <div>
+                    <span class="tw-drag-grip"><i class="ph-bold ph-dots-six-vertical"></i></span>
+                    <span>Результаты запуска</span>
+                </div>
+            </div>
+            <div class="tw-tabs" role="tablist">
+                <button class="tw-tab is-active" type="button" data-tab="output">Вывод</button>
+                <button class="tw-tab" type="button" data-tab="canvas">Рисунок</button>
+                <button class="tw-tab" type="button" data-tab="playback">Ход</button>
+                <button class="tw-tab" type="button" data-tab="versions">Версии</button>
+                <button class="tw-tab" type="button" data-tab="notes">Заметки</button>
+            </div>
+            <div class="tw-tab-pane is-active" data-pane="output">
+                <pre id="tw-output" class="tw-output">Запусти код, и результат появится здесь.</pre>
+            </div>
+            <div class="tw-tab-pane" data-pane="canvas">
+                <div id="tw-turtle-empty" class="tw-empty">Если код использует turtle, изображение появится здесь.</div>
+                <img id="tw-turtle" class="tw-turtle" alt="Рисунок turtle" hidden>
+            </div>
+            <div class="tw-tab-pane" data-pane="playback">
+                <div class="tw-playback">
+                    <div class="tw-playback-controls">
+                        <button class="tw-btn tw-btn-ghost" type="button" id="tw-playback-start">⏮</button>
+                        <button class="tw-btn tw-btn-ghost" type="button" id="tw-playback-step-back">◀</button>
+                        <button class="tw-btn tw-btn-primary" type="button" id="tw-playback-play">▶</button>
+                        <button class="tw-btn tw-btn-ghost" type="button" id="tw-playback-step-forward">▶</button>
+                        <button class="tw-btn tw-btn-ghost" type="button" id="tw-playback-end">⏭</button>
+                        <label class="tw-speed">
+                            <span>Скорость</span>
+                            <select id="tw-playback-speed" class="tw-select">
+                                <option value="0.5">0.5x</option>
+                                <option value="1" selected>1x</option>
+                                <option value="2">2x</option>
+                                <option value="4">4x</option>
+                                <option value="8">8x</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="tw-playback-meta">
+                        <span id="tw-playback-counter">0 / 0</span>
+                        <span id="tw-playback-action">Запись не начата</span>
+                    </div>
+                    <input id="tw-playback-range" class="tw-range" type="range" min="0" max="0" value="0" step="1">
+                    <div id="tw-playback-list" class="tw-playback-list"></div>
+                </div>
+            </div>
+            <div class="tw-tab-pane" data-pane="notes">
+                <textarea id="tw-notes" class="tw-notes" placeholder="Личные заметки к задаче. Пока сохраняются локально."></textarea>
+            </div>
+            <div class="tw-tab-pane" data-pane="versions">
+                <div class="tw-versions-head">
+                    <div>
+                        <strong>Автосохранение на сервере</strong>
+                        <div class="tw-head-note">Можно вернуть любую свежую версию прямо из истории</div>
+                    </div>
+                    <span id="tw-version-count" class="tw-pill">0</span>
+                </div>
+                <div id="tw-version-list" class="tw-version-list"></div>
+            </div>
+        </aside>
+    </section>
+</main>
+<script>
+window.TASK_WORKSPACE = {{ workspace|tojson }};
+</script>
+
+{% include '_partials/canvas_overlay.html' %}
+{% endblock %}
+
+{% block scripts_extra %}
+{{ super() }}
+<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260611-6"></script>
+{% endblock %}

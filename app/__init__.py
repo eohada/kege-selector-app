@@ -270,7 +270,15 @@ def create_app(config_name=None):
     else:
         logger.warning("DATABASE_URL not set, using SQLite")
         logger.warning("This is likely a local development environment")
-    
+        try:
+            with app.app_context():
+                # Локальная sqlite-сборка должна подхватывать новые таблицы автоматически,
+                # иначе свежие модели вроде CodePlaybackTrace ломают workspace на старте.
+                db.create_all()
+                logger.info("✓ Local SQLite schema ensured via db.create_all()")
+        except Exception as schema_error:
+            logger.warning("⚠ Local SQLite schema bootstrap failed: %s", schema_error)
+
     logger.info(f"SECRET_KEY set: {'YES' if os.environ.get('SECRET_KEY') else 'NO'}")
     logger.info(f"=== Initialization Complete ===")
 
@@ -363,6 +371,7 @@ def create_app(config_name=None):
     from app.telegram.webhook import telegram_bp
     from app.telegram.mini_app import tg_app_bp
     from app.workspace import workspace_bp
+    from app.task_workspace import task_workspace_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -393,6 +402,7 @@ def create_app(config_name=None):
     app.register_blueprint(telegram_bp)
     app.register_blueprint(tg_app_bp)
     app.register_blueprint(workspace_bp)
+    app.register_blueprint(task_workspace_bp)
 
     try:
         from flask_socketio import SocketIO

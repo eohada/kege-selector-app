@@ -353,6 +353,9 @@
     if (!el) {
       el = document.querySelector('.task-card .task-content, .task-card-grade .task-content-grade');
     }
+    if (!el) {
+      el = document.querySelector('.tw-task-content');
+    }
     if (!el || !el.getBoundingClientRect) return null;
     const rect = el.getBoundingClientRect();
     const left = rect.left + window.scrollX;
