@@ -107,7 +107,7 @@
 
             {% if user.is_student() and all_parents %}
             <div class="mb-6 p-4 bg-bg-app rounded-card">
-                <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 1rem; align-items: end;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; align-items: end;">
                     <div class="neo-field">
                         <label class="neo-label" for="new_parent_id">Добавить родителя</label>
                         <select id="new_parent_id" name="new_parent_id" class="neo-input">
@@ -117,14 +117,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="neo-field">
-                        <label class="neo-label" for="new_parent_access_level">Уровень доступа</label>
-                        <select id="new_parent_access_level" name="new_parent_access_level" class="neo-input">
-                            <option value="full">Полный доступ</option>
-                            <option value="financial_only">Только финансы</option>
-                            <option value="schedule_only">Только расписание</option>
-                        </select>
-                    </div>
+                    <input type="hidden" name="new_parent_access_level" value="full">
                     <div class="neo-field" style="align-items: flex-start;">
                         <label class="neo-label">Статус</label>
                         <label class="flex gap-2 items-center text-text-primary">
@@ -136,7 +129,7 @@
             </div>
             {% elif user.is_parent() and all_students %}
             <div class="mb-6 p-4 bg-bg-app rounded-card">
-                <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 1rem; align-items: end;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; align-items: end;">
                     <div class="neo-field">
                         <label class="neo-label" for="new_student_id">Добавить ученика</label>
                         <select id="new_student_id" name="new_student_id" class="neo-input">
@@ -146,14 +139,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="neo-field">
-                        <label class="neo-label" for="new_student_access_level">Уровень доступа</label>
-                        <select id="new_student_access_level" name="new_student_access_level" class="neo-input">
-                            <option value="full">Полный доступ</option>
-                            <option value="financial_only">Только финансы</option>
-                            <option value="schedule_only">Только расписание</option>
-                        </select>
-                    </div>
+                    <input type="hidden" name="new_student_access_level" value="full">
                     <div class="neo-field" style="align-items: flex-start;">
                         <label class="neo-label">Статус</label>
                         <label class="flex gap-2 items-center text-text-primary">
@@ -178,7 +164,6 @@
                             {% endif %}
                         </div>
                         <div class="text-sm text-text-muted mt-2">
-                            Уровень доступа: {{ tie.access_level }} ·
                             {% if tie.is_confirmed %}
                             <span class="text-success">Подтверждено</span>
                             {% else %}
@@ -307,12 +292,8 @@
                             <label class="flex items-center gap-2 p-2 cursor-pointer">
                                 <input type="checkbox" name="parent_ids" value="{{ parent.id }}" class="parent-checkbox">
                                 <span>{{ parent.username }}{% if parent.profile and (parent.profile.first_name or parent.profile.last_name) %} ({{ parent.profile.first_name or '' }} {{ parent.profile.last_name or '' }}){% endif %}</span>
-                                <select name="parent_access_level_{{ parent.id }}" class="neo-input" style="margin-left: auto; width: 150px; padding: 0.25rem 0.5rem; font-size: 0.85rem;" disabled>
-                                    <option value="full">Полный доступ</option>
-                                    <option value="financial_only">Только финансы</option>
-                                    <option value="schedule_only">Только расписание</option>
-                                </select>
-                                <label class="flex items-center gap-1 ml-2">
+                                <input type="hidden" name="parent_access_level_{{ parent.id }}" value="full">
+                                <label class="flex items-center gap-1 ml-2" style="margin-left: auto;">
                                     <input type="checkbox" name="parent_confirmed_{{ parent.id }}" checked disabled>
                                     <span class="text-xs text-text-muted">Подтверждено</span>
                                 </label>
@@ -329,12 +310,8 @@
                             <label class="flex items-center gap-2 p-2 cursor-pointer">
                                 <input type="checkbox" name="student_ids" value="{{ student.id }}" class="student-checkbox">
                                 <span>{{ student.username }}{% if student.profile and (student.profile.first_name or student.profile.last_name) %} ({{ student.profile.first_name or '' }} {{ student.profile.last_name or '' }}){% endif %}</span>
-                                <select name="student_access_level_{{ student.id }}" class="neo-input" style="margin-left: auto; width: 150px; padding: 0.25rem 0.5rem; font-size: 0.85rem;" disabled>
-                                    <option value="full">Полный доступ</option>
-                                    <option value="financial_only">Только финансы</option>
-                                    <option value="schedule_only">Только расписание</option>
-                                </select>
-                                <label class="flex items-center gap-1 ml-2">
+                                <input type="hidden" name="student_access_level_{{ student.id }}" value="full">
+                                <label class="flex items-center gap-1 ml-2" style="margin-left: auto;">
                                     <input type="checkbox" name="student_confirmed_{{ student.id }}" checked disabled>
                                     <span class="text-xs text-text-muted">Подтверждено</span>
                                 </label>

@@ -72,10 +72,6 @@
                 </div>
 
                 <div class="shrink-0 hidden sm:flex items-center gap-2">
-                    <a href="{{ url_for('auth.user_profile') if (current_user.is_student() and student.user_id == current_user.id) else url_for('students.student_info', student_id=student.student_id) }}"
-                       class="px-4 py-2.5 bg-slate-100/70 hover:bg-surface-alt text-secondary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/50 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/[0.08] dark:text-white no-underline">
-                        <i class="ph-bold ph-user text-lg text-muted dark:text-boo-primary"></i> Профиль
-                    </a>
                     <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
                        class="px-4 py-2.5 bg-slate-100/70 hover:bg-surface-alt text-secondary rounded-xl font-bold text-sm transition-all inline-flex items-center gap-2 border border-slate-200/50 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/[0.08] dark:text-white no-underline">
                         <i class="ph-bold ph-chart-line-up text-lg dark:text-boo-primary"></i> Статистика
@@ -113,10 +109,6 @@
                 <span class="px-3 py-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-xs border border-emerald-100 inline-flex items-center gap-2 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20">
                     <i class="ph-fill ph-baby text-base"></i>
                     Родительский доступ: {{ current_parent_summary.status_label }}
-                </span>
-                <span class="px-3 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-xs border border-slate-200 inline-flex items-center gap-2 dark:bg-white/5 dark:text-dark-muted dark:border-white/[0.08]">
-                    <i class="ph-fill ph-link text-base"></i>
-                    Уровень доступа: {{ current_parent_summary.access_level }}
                 </span>
             </div>
             {% endif %}

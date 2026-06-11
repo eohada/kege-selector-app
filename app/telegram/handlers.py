@@ -3196,14 +3196,14 @@ def _parent_children_rows(session, parent_user_id: int):
         if not su:
             continue
         st = Student.query.filter_by(user_id=su.id).first()
-        rows.append((su.id, getattr(st, 'student_id', None), getattr(st, 'name', None), su.username, bool(tie.is_confirmed), tie.access_level))
+        rows.append((su.id, getattr(st, 'student_id', None), getattr(st, 'name', None), su.username, bool(tie.is_confirmed)))
     rows.sort(key=lambda row: ((row[2] or row[3] or '').lower(), (row[3] or '').lower()))
     return rows
 
 
 def _parent_children_keyboard(rows):
     buttons = []
-    for student_user_id, student_id, name, username, confirmed, access_level in rows[:8]:
+    for student_user_id, student_id, name, username, confirmed in rows[:8]:
         label = (name or username or 'Ученик')[:24]
         buttons.append([InlineKeyboardButton(f'👤 {label}', callback_data=f'parent_child_{student_user_id}_{student_id or 0}')])
     buttons.append([InlineKeyboardButton('↩️ Назад', callback_data='back_menu')])
@@ -3219,9 +3219,9 @@ async def _cb_parent_children(query, session, user):
     if not rows:
         lines.append('Пока не прикреплен ни один ученик.')
     else:
-        for student_user_id, student_id, name, username, confirmed, access_level in rows:
+        for student_user_id, student_id, name, username, confirmed in rows:
             status = 'подтверждено' if confirmed else 'ожидает подтверждения'
-            lines.append(f'• <b>{esc(name or username or "Ученик")}</b> — {status}, доступ: {esc(access_level or "—")}')
+            lines.append(f'• <b>{esc(name or username or "Ученик")}</b> — {status}')
     await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_parent_children_keyboard(rows))
 
 
@@ -3253,7 +3253,6 @@ async def _cb_parent_child_detail(query, session, user, data: str):
         .order_by(UserSubscription.ends_at.desc().nullslast(), UserSubscription.subscription_id.desc())
         .first()
     )
-    access_label = tie.access_level or '—'
     status_label = 'Подтверждена' if tie.is_confirmed else 'Ожидает подтверждения'
     lesson_count = 'не указано'
     if sub:
@@ -3264,7 +3263,6 @@ async def _cb_parent_child_detail(query, session, user, data: str):
         '',
         f'• <b>{esc(name)}</b>',
         f'• Связь: {esc(status_label)}',
-        f'• Уровень доступа: {esc(access_label)}',
         f'• Telegram: {esc((profile.telegram_id if profile else None) or "не привязан")}',
         f'• Баланс уроков: {esc(lesson_count)}',
     ]
@@ -3292,7 +3290,7 @@ async def _cb_parent_schedule(query, session, user):
     children = _parent_children_rows(session, int(user['id']))
     lines = ['📅 <b>Расписание детей</b>', '']
     found = False
-    for _student_user_id, student_id, name, username, confirmed, access_level in children[:4]:
+    for _student_user_id, student_id, name, username, confirmed in children[:4]:
         if not student_id:
             continue
         if not confirmed:
@@ -3326,7 +3324,7 @@ async def _cb_parent_debts(query, session, user):
     lines = ['📝 <b>Домашки и долги детей</b>', '']
     if not children:
         lines.append('Пока не прикреплен ни один ученик.')
-    for student_user_id, student_id, name, username, confirmed, access_level in children[:5]:
+    for student_user_id, student_id, name, username, confirmed in children[:5]:
         if not student_id:
             continue
         count = session.execute(text("""
@@ -3347,7 +3345,7 @@ async def _cb_parent_subscription(query, session, user):
     lines = ['💳 <b>Тарифы детей</b>', '']
     if not children:
         lines.append('Пока не прикреплен ни один ученик.')
-    for student_user_id, _student_id, name, username, confirmed, access_level in children[:5]:
+    for student_user_id, _student_id, name, username, confirmed in children[:5]:
         summary = subscription_summary_for_user(int(student_user_id))
         lines.append(f'<b>{esc(name or username or "Ученик")}</b>')
         lines.append(f'  Тариф: {esc(summary.plan_title)}')

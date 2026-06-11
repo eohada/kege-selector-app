@@ -87,7 +87,11 @@ def register_lesson_socket(socketio) -> None:
             role = "student"
         elif current_user.is_parent():
             role = "parent"
-        name = (current_user.full_name or getattr(current_user, "name", None) or current_user.email or "Участник")
+        from app.models import UserProfile
+        profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+        name = f"{profile.first_name or ''} {profile.last_name or ''}".strip() if profile else ""
+        if not name:
+            name = current_user.username or current_user.email or "Участник"
         _lesson_presence[lesson_id][current_user.id] = {"tab": "theory", "role": role, "name": name}
         # Отправить текущему клиенту список присутствующих и их вкладки
         presence_list = [
@@ -123,7 +127,11 @@ def register_lesson_socket(socketio) -> None:
             role = "student"
         elif current_user.is_parent():
             role = "parent"
-        name = (current_user.full_name or getattr(current_user, "name", None) or current_user.email or "Участник")
+        from app.models import UserProfile
+        profile = UserProfile.query.filter_by(user_id=current_user.id).first()
+        name = f"{profile.first_name or ''} {profile.last_name or ''}".strip() if profile else ""
+        if not name:
+            name = current_user.username or current_user.email or "Участник"
         _lesson_presence[lesson_id][current_user.id] = {"tab": tab, "role": role, "name": name}
         presence_list = [
             {"user_id": uid, "tab": info["tab"], "role": info["role"], "name": info["name"]}

@@ -821,7 +821,6 @@ def user_profile():
                     'user': child_user,
                     'student': child_student,
                     'confirmed': bool(tie.is_confirmed),
-                    'access_level': tie.access_level,
                     })
             parent_children_count = len(parent_children)
             parent_children_confirmed_count = len([item for item in parent_children if item['confirmed']])
@@ -927,6 +926,21 @@ def user_public_profile(user_id: int):
                 'avatar_url': current_app.config.get('DEMO_CREATOR_AVATAR_URL') or url_for('static', filename='images/demo_creator_avatar.jpg'),
                 'creator_cover_url': current_app.config.get('DEMO_CREATOR_COVER_URL') or url_for('static', filename='images/demo_creator_cover.png'),
             }
+    tutor_subjects = []
+    active_students_count = None
+    if u.is_tutor():
+        from app.models import Enrollment
+        subjects = [row[0] for row in db.session.query(Enrollment.subject).filter_by(tutor_id=u.id, status='active').distinct().all()]
+        subject_map = {
+            'ege_informatics': 'ЕГЭ Информатика',
+            'oge_informatics': 'ОГЭ Информатика',
+            'informatics': 'Информатика',
+            'math': 'Математика',
+            'physics': 'Физика',
+        }
+        tutor_subjects = [subject_map.get(s.lower().strip(), s) for s in subjects if s]
+        active_students_count = db.session.query(Enrollment.student_id).filter_by(tutor_id=u.id, status='active').distinct().count()
+
     return render_template(
         'user_public_profile.html',
         public_user=u,
@@ -935,6 +949,8 @@ def user_public_profile(user_id: int):
         public_numeric_id=(demo_profile_override.get('public_numeric_id') if demo_profile_override else None) or public_numeric_id,
         cinema_demo_ids=cinema_demo_ids,
         demo_profile_override=demo_profile_override,
+        tutor_subjects=tutor_subjects,
+        active_students_count=active_students_count,
     )
 
 @auth_bp.route('/user/profile/update', methods=['POST'])

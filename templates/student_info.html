@@ -323,7 +323,6 @@
                                 {% if p.phone %}{{ p.phone }}{% endif %}
                                 {% if p.phone and p.telegram_id %} · {% endif %}
                                 {% if p.telegram_id %}{{ p.telegram_id }}{% endif %}
-                                {% if p.access_level and p.access_level != 'full' %} <span class="text-text-muted text-sm">({{ p.access_level }})</span>{% endif %}
                             </span>
                         </div>
                         {% endfor %}

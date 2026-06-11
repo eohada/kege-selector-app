@@ -137,6 +137,13 @@ def lesson_edit(lesson_id):
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
     ).get_or_404(lesson_id)
     student = lesson.student
+    if current_user.is_student() or current_user.is_parent():
+        from flask import abort
+        abort(403)
+    if not current_user.is_admin() and not current_user.is_creator():
+        if not can_user_access_student(current_user, student_user_id=student.user_id):
+            from flask import abort
+            abort(403)
     form = LessonForm(obj=lesson)
     
     if request.method == 'GET':
@@ -449,6 +456,9 @@ def lesson_classwork_view(lesson_id):
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.attempts),
     ).get_or_404(lesson_id)
     student = lesson.student
+    if not can_user_access_student(current_user, student_user_id=student.user_id):
+        from flask import abort
+        abort(403)
     content_blocks = []
     try:
         cb = lesson.content_blocks

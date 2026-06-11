@@ -82,7 +82,6 @@ def parent_dashboard():
                 'username': student_user.username,
                 'student_id': student.student_id if student else None,
                 'student_name': student_name,
-                'access_level': tie.access_level,
                 'is_selected': tie.student_id == selected_student_id,
                 'tie_status': get_family_tie_status_label(tie),
                 'telegram_linked': bool(student_user.profile and student_user.profile.telegram_chat_id),
@@ -99,7 +98,6 @@ def parent_dashboard():
                 'username': student_user.username,
                 'student_id': student.student_id if student else None,
                 'student_name': student.name if student else student_user.username,
-                'access_level': tie.access_level,
                 'tie_status': get_family_tie_status_label(tie),
             })
         
@@ -133,10 +131,14 @@ def parent_dashboard():
             
             ai_summary = {
                 'tasks_solved_week': tasks_solved_week,
-                'problem_topic': problem_topics[0].name if problem_topics else None,
+                'problem_topic': problem_topics[0].get('name') if problem_topics else None,
                 'gpa_trend': gpa_data['scores'][-1] if gpa_data['scores'] else None,
                 'gpa_forecast': round(gpa_data['scores'][-1] * 0.8, 1) if gpa_data['scores'] else None  # Простой прогноз
             }
+            
+            if metrics:
+                metrics['hw_gpa'] = metrics.get('gpa_homework')
+                metrics['exam_gpa'] = metrics.get('gpa_exam')
             
             child_stats = {
                 'metrics': metrics,
@@ -194,7 +196,7 @@ def parent_dashboard():
         financial_data = {
             'lessons_remaining': lessons_remaining_val,
             'total_paid': 0,
-            'can_topup': bool(selected_tie and selected_tie.access_level in ['full', 'financial_only'])
+            'can_topup': bool(selected_tie)
         }
         
         selected_child_name = None
@@ -222,8 +224,7 @@ def parent_dashboard():
                              upcoming_lessons=upcoming_lessons,
                              recent_lessons=recent_lessons,
                              pending_assignments=pending_assignments,
-                             recent_submissions=recent_submissions,
-                             access_level=selected_tie.access_level if selected_tie else None)
+                             recent_submissions=recent_submissions)
         
     except Exception as e:
         logger.error(f"Error in parent_dashboard: {e}", exc_info=True)
@@ -265,7 +266,7 @@ def api_parent_children():
                 'username': student_user.username,
                 'student_id': student.student_id if student else None,
                 'student_name': student.name if student else student_user.username,
-                'access_level': tie.access_level
+                'confirmed': bool(tie.is_confirmed),
             })
         
         return jsonify({

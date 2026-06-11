@@ -3049,7 +3049,18 @@ def submission_view(submission_id):
     
     try:
         student = get_student_by_user_id(current_user.id)
-        if not student or submission.student_id != student.student_id:
+        is_parent_view = False
+        if not student:
+            if current_user.is_parent():
+                from app.utils.relationship_scope import get_family_tie_between
+                tie = get_family_tie_between(current_user.id, submission.student.user_id, include_pending=False)
+                if tie:
+                    is_parent_view = True
+                    student = submission.student
+            if not is_parent_view:
+                flash('Доступ запрещен', 'danger')
+                return redirect(url_for('assignments.submissions_list'))
+        elif submission.student_id != student.student_id:
             flash('Доступ запрещен', 'danger')
             return redirect(url_for('assignments.submissions_list'))
         if (submission.status or '').upper() == 'REVOKED':
@@ -3159,6 +3170,11 @@ def submission_view(submission_id):
                 'task_can_edit': _can_student_edit_submission_task(submission, assignment_task.assignment_task_id),
             })
 
+        if is_parent_view:
+            can_submit = False
+            for td in tasks_data:
+                td['task_can_edit'] = False
+
         tasks_view = build_submission_tasks_view(tasks_data, assignment)
         
         legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
@@ -3191,6 +3207,7 @@ def submission_view(submission_id):
                              attempts_per_task=attempts_per_task,
                              time_limit_strict=assignment.time_limit_strict,
                              timer_expired=timer_expired,
+                             is_parent_view=is_parent_view,
                              chat_default_assignment_task_id=chat_default_assignment_task_id)
     except Exception as e:
         logger.error(f"Error processing submission_view for submission {submission_id}: {e}", exc_info=True)

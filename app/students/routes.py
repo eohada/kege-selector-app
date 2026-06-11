@@ -778,7 +778,6 @@ def student_profile(student_id):
                 if current_parent_tie:
                     current_parent_summary = {
                         'confirmed': bool(current_parent_tie.is_confirmed),
-                        'access_level': current_parent_tie.access_level,
                         'status_label': 'Подтверждена' if current_parent_tie.is_confirmed else 'Ожидает подтверждения',
                     }
             except Exception as e:
@@ -819,7 +818,6 @@ def student_profile(student_id):
                                         'name': name,
                                         'phone': parent_profile.phone,
                                         'telegram_id': parent_profile.telegram_id,
-                                        'access_level': tie.access_level,
                                         'confirmed': bool(tie.is_confirmed),
                                         'tie_id': tie.tie_id,
                                     })
@@ -1013,7 +1011,6 @@ def student_info(student_id: int):
                                 'name': name,
                                 'phone': parent_profile.phone,
                                 'telegram_id': parent_profile.telegram_id,
-                                'access_level': tie.access_level
                             })
                 except Exception:
                     continue

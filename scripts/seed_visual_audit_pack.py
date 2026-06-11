@@ -39,6 +39,8 @@ from core.db_models import (
     Enrollment, FamilyTie,
     SchoolGroup, GroupStudent,
     Tasks,
+    UserSubscription,
+    Topic,
 )
 from app.utils.db_migrations import ensure_schema_columns
 from app.utils.student_id_manager import assign_platform_id_if_needed
@@ -116,48 +118,67 @@ def _ensure_enrollment(tutor: User, student_user: User):
         ))
 
 
-def _seed_lessons(student_entity: Student, tutor_user_id: int):
-    now_naive = moscow_now().replace(tzinfo=None)
+def _ensure_subscription(user_id: int):
+    sub = UserSubscription.query.filter_by(user_id=user_id, status="active").first()
+    if not sub:
+        sub = UserSubscription(
+            user_id=user_id,
+            status="active",
+            started_at=moscow_now(),
+            ends_at=moscow_now() + timedelta(days=30),
+            lessons_remaining=15,
+            note="Подписка для визуального аудита",
+            created_at=moscow_now(),
+        )
+        db.session.add(sub)
+        db.session.flush()
+
+
+def _seed_lessons(student_entity: Student, tutor_user_id: int, hours_offset: int = 0):
+    # Clean up duplicate/old lessons for this student to prevent stacking
+    old_lessons = Lesson.query.filter_by(student_id=student_entity.student_id).all()
+    old_ids = [l.lesson_id for l in old_lessons]
+    if old_ids:
+        LessonTask.query.filter(LessonTask.lesson_id.in_(old_ids)).delete(synchronize_session=False)
+        Lesson.query.filter(Lesson.student_id == student_entity.student_id).delete(synchronize_session=False)
+    db.session.flush()
+
+    # Base date: today at 14:00 (clean daytime hour) + hours_offset
+    now_naive = moscow_now().replace(hour=14, minute=0, second=0, microsecond=0).replace(tzinfo=None)
+    base_date = now_naive + timedelta(hours=hours_offset)
+
     lessons_data = [
         {
             "lesson_type": "regular",
-            "lesson_date": now_naive - timedelta(days=5),
+            "lesson_date": base_date - timedelta(days=5),
             "duration": 60,
             "status": "completed",
-            "topic": "Визуальный аудит: Логика и таблицы истинности",
+            "topic": f"Визуальный аудит: Логика ({student_entity.name})",
             "notes": "Урок для проверки скриншотов.",
             "homework_status": "assigned_done",
             "homework_result_percent": 75,
         },
         {
             "lesson_type": "regular",
-            "lesson_date": now_naive - timedelta(days=1),
+            "lesson_date": base_date - timedelta(days=1),
             "duration": 60,
             "status": "in_progress",
-            "topic": "Визуальный аудит: Алгоритмы",
+            "topic": f"Визуальный аудит: Алгоритмы ({student_entity.name})",
             "notes": "Текущий урок.",
             "homework_status": "assigned_not_done",
         },
         {
             "lesson_type": "exam",
-            "lesson_date": now_naive + timedelta(days=2),
+            "lesson_date": base_date + timedelta(days=2),
             "duration": 90,
             "status": "planned",
-            "topic": "Визуальный аудит: Пробник",
+            "topic": f"Визуальный аудит: Пробник ({student_entity.name})",
             "notes": "Запланированная проверочная.",
             "homework_status": "not_assigned",
         },
     ]
     created = []
     for data in lessons_data:
-        existing = Lesson.query.filter_by(
-            student_id=student_entity.student_id,
-            topic=data["topic"],
-            lesson_date=data["lesson_date"],
-        ).first()
-        if existing:
-            created.append(existing)
-            continue
         lesson = Lesson(
             student_id=student_entity.student_id,
             lesson_type=data["lesson_type"],
@@ -174,22 +195,56 @@ def _seed_lessons(student_entity: Student, tutor_user_id: int):
     return created
 
 
+
 def _attach_tasks_to_lesson(lesson: Lesson, limit: int = 3):
     """Привязать несколько заданий из банка к уроку (если есть Tasks)."""
     tasks = Tasks.query.order_by(Tasks.task_id).limit(limit).all()
     if not tasks:
         return
+
+    # Ensure a few topics exist and link them
+    topic_names = ["Кодирование информации", "Базы данных", "Таблицы истинности", "Алгоритмы и циклы", "Адресация в сетях"]
+    topics = []
+    for name in topic_names:
+        t = Topic.query.filter_by(name=name).first()
+        if not t:
+            t = Topic(name=name, created_at=moscow_now())
+            db.session.add(t)
+        topics.append(t)
+    db.session.flush()
+
     for i, task in enumerate(tasks):
+        topic = topics[i % len(topics)]
+        if topic not in task.topics:
+            task.topics.append(topic)
+
+        # Determine status and correctness
+        if lesson.homework_status == "assigned_done":
+            submission_correct = (i % 2 == 0)  # 1st and 3rd correct, 2nd incorrect
+            status = "graded"
+        elif lesson.homework_status == "assigned_not_done":
+            submission_correct = None
+            status = "pending"
+        else:
+            submission_correct = None
+            status = "pending"
+
         existing = LessonTask.query.filter_by(
             lesson_id=lesson.lesson_id,
             task_id=task.task_id,
         ).first()
         if existing:
+            existing.submission_correct = submission_correct
+            existing.status = status
             continue
+
         lt = LessonTask(
             lesson_id=lesson.lesson_id,
             task_id=task.task_id,
             assignment_type="homework",
+            submission_correct=submission_correct,
+            status=status,
+            date_assigned=moscow_now(),
         )
         db.session.add(lt)
 
@@ -225,6 +280,11 @@ def run_seed(app, root_dir: str | None = None, write_ids_file: bool = True) -> i
                 role="student",
                 email="visual_audit_student@example.com",
             )
+            student_user2 = _get_or_create_user(
+                username="visual_audit_student2",
+                role="student",
+                email="visual_audit_student2@example.com",
+            )
             parent = _get_or_create_user(
                 username="visual_audit_parent",
                 role="parent",
@@ -232,16 +292,31 @@ def run_seed(app, root_dir: str | None = None, write_ids_file: bool = True) -> i
             )
 
             student_entity = _get_or_create_student_entity(
-                name="Визуальный Аудит Ученик",
+                name="Визуальный Аудит Ученик 1",
                 email="visual_audit_student@example.com",
                 user_id=student_user.id,
             )
+            student_entity2 = _get_or_create_student_entity(
+                name="Визуальный Аудит Ученик 2",
+                email="visual_audit_student2@example.com",
+                user_id=student_user2.id,
+            )
 
             _ensure_family_tie(parent, student_user)
-            _ensure_enrollment(tutor, student_user)
+            _ensure_family_tie(parent, student_user2)
 
-            lessons = _seed_lessons(student_entity, tutor.id)
+            _ensure_enrollment(tutor, student_user)
+            _ensure_enrollment(tutor, student_user2)
+
+            _ensure_subscription(student_user.id)
+            _ensure_subscription(student_user2.id)
+
+            lessons = _seed_lessons(student_entity, tutor.id, hours_offset=0)
             for lesson in lessons:
+                _attach_tasks_to_lesson(lesson)
+
+            lessons2 = _seed_lessons(student_entity2, tutor.id, hours_offset=2)
+            for lesson in lessons2:
                 _attach_tasks_to_lesson(lesson)
 
             group = SchoolGroup.query.filter_by(
@@ -259,6 +334,7 @@ def run_seed(app, root_dir: str | None = None, write_ids_file: bool = True) -> i
                 )
                 db.session.add(group)
                 db.session.flush()
+
             link = GroupStudent.query.filter_by(
                 group_id=group.group_id,
                 student_id=student_entity.student_id,
@@ -267,6 +343,17 @@ def run_seed(app, root_dir: str | None = None, write_ids_file: bool = True) -> i
                 db.session.add(GroupStudent(
                     group_id=group.group_id,
                     student_id=student_entity.student_id,
+                    added_by_user_id=tutor.id,
+                ))
+
+            link2 = GroupStudent.query.filter_by(
+                group_id=group.group_id,
+                student_id=student_entity2.student_id,
+            ).first()
+            if not link2:
+                db.session.add(GroupStudent(
+                    group_id=group.group_id,
+                    student_id=student_entity2.student_id,
                     added_by_user_id=tutor.id,
                 ))
 

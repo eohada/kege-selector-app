@@ -1690,6 +1690,10 @@ def ensure_schema_columns(app):
                             col_type = 'TIMESTAMP' if _is_postgres(app) else 'DATETIME'
                             db.session.execute(text(f'ALTER TABLE "{answers_table}" ADD COLUMN student_code_saved_at {col_type}'))
                             logger.info(f"Added student_code_saved_at to {answers_table}")
+                        if 'needs_revision' not in ans_cols:
+                            col_type = 'BOOLEAN DEFAULT FALSE' if _is_postgres(app) else 'INTEGER DEFAULT 0'
+                            db.session.execute(text(f'ALTER TABLE "{answers_table}" ADD COLUMN needs_revision {col_type}'))
+                            logger.info(f"Added needs_revision to {answers_table}")
                     except Exception as e:
                         logger.warning(f"Could not add Answer columns: {e}")
                         db.session.rollback()

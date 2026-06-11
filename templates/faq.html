@@ -3,414 +3,655 @@
 
 {% block head_css %}
 <style>
-.faq-section { margin-bottom: 2.5rem; }
-.faq-section-title { font-size: 1.3rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--accent-primary); }
-.faq-item { background: var(--surface-2); border-radius: var(--radius-md); margin-bottom: 0.75rem; overflow: hidden; }
-.faq-question { padding: 1rem 1.25rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 500; transition: background 0.2s; }
-.faq-question:hover { background: var(--surface-3); }
-.faq-toggle { font-size: 1.5rem; color: var(--accent-primary); transition: transform 0.2s; }
-.faq-item.open .faq-toggle { transform: rotate(45deg); }
-.faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out, padding 0.3s; padding: 0 1.25rem; }
-.faq-item.open .faq-answer { max-height: 1000px; padding: 0 1.25rem 1.25rem; }
-.faq-answer p { margin: 0.75rem 0; line-height: 1.6; }
-.faq-answer ul, .faq-answer ol { margin: 0.75rem 0; padding-left: 1.5rem; }
-.faq-answer li { margin: 0.4rem 0; line-height: 1.5; }
-@media (max-width: 720px) {
-    .faq-quick-nav .neo-button { flex: 1 1 100%; justify-content: center; white-space: normal; }
-    .faq-section-title { font-size: 1.15rem; }
-    .faq-question { padding: 0.85rem 1rem; gap: 0.75rem; }
-    .faq-answer { padding: 0 1rem; }
-    .faq-item.open .faq-answer { padding: 0 1rem 1rem; }
-}
+    /* Modern height transition using CSS Grid fractional rows */
+    .faq-grid-wrapper {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .faq-item.open .faq-grid-wrapper {
+        grid-template-rows: 1fr;
+    }
+    .faq-inner-content {
+        overflow: hidden;
+    }
+    
+    /* Active styling for quick nav */
+    .faq-nav-card.active {
+        border-color: var(--color-accent) !important;
+        background-color: var(--color-accent-soft) !important;
+        color: var(--color-accent) !important;
+    }
 </style>
 {% endblock %}
 
 {% set active_page = 'faq' %}
 
 {% block content %}
-<div class="glass-panel" style="padding: 2rem;">
-    <h1 style="margin-bottom: 0.5rem;">📚 База знаний</h1>
-    <p style="color: var(--text-muted); margin-bottom: 2rem;">
-        Ответы для учеников и родителей: как устроена платформа и как с ней работать
-    </p>
-
-    <div class="faq-quick-nav" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 2rem;">
-        <a href="#getting-started" class="neo-button outline sm">🚀 Начало работы</a>
-        <a href="#lessons" class="neo-button outline sm">📖 Уроки</a>
-        <a href="#homework" class="neo-button outline sm">📝 Домашние задания</a>
-        <a href="#trainer" class="neo-button outline sm">🧠 Тренажёр</a>
-        <a href="#schedule" class="neo-button outline sm">📅 Расписание</a>
-        <a href="#notifications" class="neo-button outline sm">🔔 Уведомления</a>
-        <a href="#parents" class="neo-button outline sm">👨‍👩‍👧 Для родителей</a>
-        <a href="#support" class="neo-button outline sm">💬 Поддержка</a>
+<div class="max-w-[1400px] mx-auto space-y-8 animate-fade-in py-6">
+    
+    <!-- Header Banner -->
+    <div class="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-violet-600/10 via-cyan-500/5 to-transparent dark:from-purple-950/20 dark:via-cyan-950/10 dark:to-transparent border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-violet-500/20 dark:border-b-0 p-8 sm:p-10 shadow-tactile dark:shadow-glass-dark">
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-cyan-500/10 dark:bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative z-10 space-y-4">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-800 dark:bg-purple-950/50 dark:text-purple-300">
+                <i class="ph ph-book-open"></i> Справочный центр
+            </span>
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                📚 База знаний BooStudy
+            </h1>
+            <p class="text-slate-600 dark:text-zinc-400 max-w-2xl text-base">
+                Ответы на часто задаваемые вопросы для учеников и родителей. Узнайте, как устроена учебная комната, тренажёр, расписание и оплата.
+            </p>
+        </div>
     </div>
 
-    <section id="getting-started" class="faq-section">
-        <h2 class="faq-section-title">🚀 Начало работы</h2>
+    <!-- Search & Navigation Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
         
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как войти на платформу?</span>
-                <span class="faq-toggle">+</span>
+        <!-- Left: Sidebar Quick Nav & Search -->
+        <div class="lg:col-span-1 space-y-6 lg:sticky lg:top-24">
+            
+            <!-- Real-time Filter Search Input -->
+            <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 p-4 shadow-tactile dark:shadow-glass-dark">
+                <label class="block text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Быстрый поиск</label>
+                <div class="relative">
+                    <input type="text" id="faqSearchInput" oninput="filterFaq()" 
+                           placeholder="Поиск вопросов..." 
+                           class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all text-sm">
+                    <div class="absolute left-3 top-3.5 text-slate-400">
+                        <i class="ph ph-magnifying-glass"></i>
+                    </div>
+                </div>
             </div>
-            <div class="faq-answer">
-                <p>Для входа на платформу используйте логин и пароль, которые вам предоставил преподаватель или администратор.</p>
-                <ol>
-                    <li>Перейдите на страницу входа</li>
-                    <li>Введите ваш логин (имя пользователя)</li>
-                    <li>Введите пароль</li>
-                    <li>Нажмите "Войти"</li>
-                </ol>
-                <p><strong>Важно:</strong> Логин и пароль чувствительны к регистру!</p>
+
+            <!-- Categories Card (Navigation) -->
+            <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 p-5 shadow-tactile dark:shadow-glass-dark space-y-4">
+                <h3 class="font-bold text-slate-900 dark:text-white pb-2 border-b border-slate-100 dark:border-white/[0.06] flex items-center gap-2 text-sm">
+                    <i class="ph ph-list text-violet-500"></i> Разделы справки
+                </h3>
+                
+                <div class="flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 pb-2 lg:pb-0 hide-scroll">
+                    <a href="#getting-started" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                        <i class="ph ph-rocket-launch text-violet-500 text-lg"></i>
+                        <span>Начало работы</span>
+                    </a>
+                    <a href="#lessons" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                        <i class="ph ph-book-open text-violet-500 text-lg"></i>
+                        <span>Уроки</span>
+                    </a>
+                    <a href="#homework" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                        <i class="ph ph-note-pencil text-violet-500 text-lg"></i>
+                        <span>Домашние задания</span>
+                    </a>
+                    <a href="#trainer" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                        <i class="ph ph-brain text-violet-500 text-lg"></i>
+                        <span>Тренажёр</span>
+                    </a>
+                    <a href="#schedule" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                        <i class="ph ph-calendar text-violet-500 text-lg"></i>
+                        <span>Расписание</span>
+                    </a>
+                    <a href="#notifications" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                        <i class="ph ph-bell text-violet-500 text-lg"></i>
+                        <span>Уведомления</span>
+                    </a>
+                    <a href="#parents" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                        <i class="ph ph-users-three text-violet-500 text-lg"></i>
+                        <span>Для родителей</span>
+                    </a>
+                    <a href="#support" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                        <i class="ph ph-chat-circle-dots text-violet-500 text-lg"></i>
+                        <span>Поддержка</span>
+                    </a>
+                </div>
             </div>
         </div>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Что делать, если забыл пароль?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Если вы забыли пароль, свяжитесь с преподавателем или напишите в Telegram‑бот @URep_bot — администратор сбросит пароль и выдаст новый.</p>
-            </div>
-        </div>
+        <!-- Right: FAQ Accordions Grid -->
+        <div class="lg:col-span-3 space-y-10">
+            
+            <!-- Category Section: Getting Started -->
+            <section id="getting-started" class="faq-section-block space-y-4">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                    <i class="ph ph-rocket-launch text-violet-500"></i>🚀 Начало работы
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как войти на платформу?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Для входа на платформу используйте логин и пароль, которые вам предоставил преподаватель или администратор.</p>
+                                    <ol class="list-decimal pl-5 space-y-1.5">
+                                        <li>Перейдите на страницу входа</li>
+                                        <li>Введите ваш логин (имя пользователя)</li>
+                                        <li>Введите пароль</li>
+                                        <li>Нажмите "Войти"</li>
+                                    </ol>
+                                    <p class="text-xs bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 p-2.5 rounded-lg border border-amber-500/10">
+                                        <strong>Важно:</strong> Логин и пароль чувствительны к регистру!
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как подключить Telegram-уведомления?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Чтобы получать уведомления в Telegram:</p>
-                <ol>
-                    <li>Перейдите в ваш профиль (иконка аватара → Профиль)</li>
-                    <li>Найдите блок «Telegram уведомления»</li>
-                    <li>Нажмите «Получить код привязки»</li>
-                    <li>Скопируйте код и отправьте его боту @URep_bot</li>
-                    <li>После успешной привязки вы сможете включать/выключать нужные типы уведомлений</li>
-                </ol>
-            </div>
-        </div>
-    </section>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Что делать, если забыл пароль?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Если вы забыли пароль, свяжитесь с преподавателем или напишите в Telegram‑бот @boostudy_bot — администратор сбросит пароль и выдаст новый.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    <section id="lessons" class="faq-section">
-        <h2 class="faq-section-title">📖 Уроки</h2>
-        
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как попасть на урок?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Есть несколько способов попасть на урок:</p>
-                <ul>
-                    <li><strong>Из профиля:</strong> На главной странице вашего профиля отображаются ближайшие уроки — нажмите на нужный</li>
-                    <li><strong>Из расписания:</strong> Перейдите в раздел "Расписание" и выберите урок</li>
-                    <li><strong>По прямой ссылке:</strong> Преподаватель может отправить вам прямую ссылку на урок</li>
-                </ul>
-            </div>
-        </div>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как подключить Telegram-уведомления?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Чтобы получать уведомления в Telegram:</p>
+                                    <ol class="list-decimal pl-5 space-y-1.5">
+                                        <li>Перейдите в ваш профиль (иконка аватара → Профиль)</li>
+                                        <li>Найдите блок «Telegram уведомления»</li>
+                                        <li>Нажмите «Получить код привязки»</li>
+                                        <li>Скопируйте код и отправьте его боту @boostudy_bot</li>
+                                        <li>После успешной привязки вы сможете включать/выключать нужные типы уведомлений</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Что находится в классной комнате?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Классная комната — это рабочее пространство урока. Внутри есть вкладки:</p>
-                <ul>
-                    <li><strong>Конспект</strong> — материалы урока</li>
-                    <li><strong>Домашнее задание / Классная работа / Проверочная</strong> — задания по текущему типу урока</li>
-                    <li><strong>Материалы</strong> — файлы и ссылки к уроку</li>
-                    <li><strong>Заметки</strong> — личные заметки ученика</li>
-                    <li><strong>Диалог</strong> — чат с преподавателем</li>
-                    <li><strong>Доска</strong> — интерактивная доска Miro</li>
-                    <li><strong>Звонок</strong> — раздел видеосвязи (сейчас в разработке)</li>
-                </ul>
-                <p>Переключайтесь между вкладками, чтобы работать с нужным разделом.</p>
-            </div>
-        </div>
+            <!-- Category Section: Lessons -->
+            <section id="lessons" class="faq-section-block space-y-4">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                    <i class="ph ph-book-open text-violet-500"></i>📖 Уроки
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как попасть на урок?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Есть несколько способов попасть на урок:</p>
+                                    <ul class="list-disc pl-5 space-y-1.5">
+                                        <li><strong>Из профиля:</strong> На главной странице вашего профиля отображаются ближайшие уроки — нажмите на нужный</li>
+                                        <li><strong>Из расписания:</strong> Перейдите в раздел "Расписание" и выберите урок</li>
+                                        <li><strong>По прямой ссылке:</strong> Преподаватель может отправить вам прямую ссылку на урок</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как работать с интерактивной доской?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Интерактивная доска (Miro) позволяет вам и преподавателю работать вместе в реальном времени.</p>
-                <ul>
-                    <li>Используйте инструменты Miro для рисования, текста и стикеров</li>
-                    <li>Приближайте/отдаляйте доску колёсиком мыши или жестом на тачпаде</li>
-                    <li>Все изменения сохраняются автоматически</li>
-                    <li>После урока доска остаётся доступной для просмотра</li>
-                </ul>
-            </div>
-        </div>
-    </section>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Что находится в классной комнате?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Классная комната — это рабочее пространство урока. Внутри есть вкладки:</p>
+                                    <ul class="list-disc pl-5 space-y-1.5">
+                                        <li><strong>Конспект</strong> — материалы урока</li>
+                                        <li><strong>Домашнее задание / Классная работа / Проверочная</strong> — задания по текущему типу урока</li>
+                                        <li><strong>Материалы</strong> — файлы и ссылки к уроку</li>
+                                        <li><strong>Заметки</strong> — личные заметки ученика</li>
+                                        <li><strong>Диалог</strong> — чат с преподавателем</li>
+                                        <li><strong>Доска</strong> — интерактивная доска Miro</li>
+                                        <li><strong>Звонок</strong> — раздел видеосвязи (сейчас в разработке)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    <section id="homework" class="faq-section">
-        <h2 class="faq-section-title">📝 Домашние задания</h2>
-        
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как сдать домашнее задание?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Чтобы сдать домашнее задание:</p>
-                <ol>
-                    <li>Откройте урок и перейдите на вкладку "Домашнее задание"</li>
-                    <li>Найдите задачу, которую хотите сдать</li>
-                    <li>Введите ваш ответ в поле ввода</li>
-                    <li>Нажмите "Отправить"</li>
-                </ol>
-                <p>После отправки задача уйдёт на проверку преподавателю.</p>
-            </div>
-        </div>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как работать с интерактивной доской?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Интерактивная доска (Miro) позволяет вам и преподавателю работать вместе в реальном времени.</p>
+                                    <ul class="list-disc pl-5 space-y-1.5">
+                                        <li>Используйте инструменты Miro для рисования, текста и стикеров</li>
+                                        <li>Приближайте/отдаляйте доску колёсиком мыши или жестом на тачпаде</li>
+                                        <li>Все изменения сохраняются автоматически</li>
+                                        <li>После урока доска остаётся доступной для просмотра</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Какие статусы бывают у задания?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <ul>
-                    <li><strong style="color: var(--text-muted);">⬜ Не начато</strong> — вы ещё не приступали к заданию</li>
-                    <li><strong style="color: var(--warning);">🟡 На проверке</strong> — ответ отправлен, ждёт проверки</li>
-                    <li><strong style="color: var(--success);">🟢 Принято</strong> — преподаватель принял ваш ответ</li>
-                    <li><strong style="color: var(--danger);">🔴 На доработку</strong> — нужно исправить ошибки и отправить снова</li>
-                </ul>
-            </div>
-        </div>
+            <!-- Category Section: Homework -->
+            <section id="homework" class="faq-section-block space-y-4">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                    <i class="ph ph-note-pencil text-violet-500"></i>📝 Домашние задания
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как сдать домашнее задание?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Чтобы сдать домашнее задание:</p>
+                                    <ol class="list-decimal pl-5 space-y-1.5">
+                                        <li>Откройте урок и перейдите на вкладку "Домашнее задание"</li>
+                                        <li>Найдите задачу, которую хотите сдать</li>
+                                        <li>Введите ваш ответ в поле ввода</li>
+                                        <li>Нажмите "Отправить"</li>
+                                    </ol>
+                                    <p>После отправки задача уйдёт на проверку преподавателю.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Можно ли пересдать задание?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Да! Если преподаватель вернул задание на доработку (статус "На доработку"), вы можете:</p>
-                <ol>
-                    <li>Прочитать комментарий преподавателя</li>
-                    <li>Исправить ошибки</li>
-                    <li>Отправить задание повторно</li>
-                </ol>
-                <p>Количество попыток не ограничено — главное разобраться в материале!</p>
-            </div>
-        </div>
-    </section>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Какие статусы бывают у задания?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 border-t border-slate-100 dark:border-white/[0.04]">
+                                    <ul class="space-y-2">
+                                        <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-400"></span> <strong>Не начато</strong> — вы ещё не приступали к заданию</li>
+                                        <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500"></span> <strong>На проверке</strong> — ответ отправлен, ждёт проверки</li>
+                                        <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-cyan-500"></span> <strong>Принято</strong> — преподаватель принял ваш ответ</li>
+                                        <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-rose-500"></span> <strong>На доработку</strong> — нужно исправить ошибки и отправить снова</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    <section id="trainer" class="faq-section">
-        <h2 class="faq-section-title">🧠 Тренажёр</h2>
-        
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Что такое тренажёр?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Тренажёр — это раздел для самостоятельной практики задач. Он доступен, если включён в ваш тариф/доступ.</p>
-                <ul>
-                    <li>Выбирайте номер задания, который хотите отработать</li>
-                    <li>Решайте задачи и получайте проверку</li>
-                    <li>Отслеживайте прогресс в статистике</li>
-                </ul>
-            </div>
-        </div>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Можно ли пересдать задание?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Да! Если преподаватель вернул задание на доработку (статус "На доработку"), вы можете:</p>
+                                    <ol class="list-decimal pl-5 space-y-1.5">
+                                        <li>Прочитать комментарий преподавателя</li>
+                                        <li>Исправить ошибки</li>
+                                        <li>Отправить задание повторно</li>
+                                    </ol>
+                                    <p>Количество попыток не ограничено — главное разобраться в материале!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как пользоваться тренажёром?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <ol>
-                    <li>Перейдите в раздел "Тренажёр" в меню</li>
-                    <li>Выберите номер задания ЕГЭ (1-27)</li>
-                    <li>Прочитайте условие задачи</li>
-                    <li>Введите ваш ответ</li>
-                    <li>Нажмите "Проверить" — система сразу покажет результат</li>
-                    <li>Если ответ неверный, попробуйте ещё раз или посмотрите подсказку</li>
-                </ol>
-            </div>
-        </div>
-    </section>
+            <!-- Category Section: Trainer -->
+            <section id="trainer" class="faq-section-block space-y-4">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                    <i class="ph ph-brain text-violet-500"></i>🧠 Тренажёр
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Что такое тренажёр?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Тренажёр — это раздел для самостоятельной практики задач. Он доступен, если включён в ваш тариф/доступ.</p>
+                                    <ul class="list-disc pl-5 space-y-1.5">
+                                        <li>Выбирайте номер задания, который хотите отработать</li>
+                                        <li>Решайте задачи и получайте мгновенную проверку</li>
+                                        <li>Отслеживайте прогресс в разделе статистики</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    <section id="schedule" class="faq-section">
-        <h2 class="faq-section-title">📅 Расписание</h2>
-        
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Где посмотреть расписание уроков?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Расписание доступно в разделе "Расписание" в верхнем меню.</p>
-                <p>Там вы увидите:</p>
-                <ul>
-                    <li>Календарь с запланированными уроками</li>
-                    <li>Время начала каждого урока</li>
-                    <li>Тему урока</li>
-                    <li>Статус (запланирован / проведён / отменён)</li>
-                </ul>
-            </div>
-        </div>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как пользоваться тренажёром?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <ol class="list-decimal pl-5 space-y-1.5">
+                                        <li>Перейдите в раздел "Тренажёр" в главном меню</li>
+                                        <li>Выберите номер задания ЕГЭ (1-27)</li>
+                                        <li>Прочитайте условие задачи</li>
+                                        <li>Введите ваш ответ в текстовое поле</li>
+                                        <li>Нажмите "Проверить" — система сразу покажет результат</li>
+                                        <li>Если ответ неверный, попробуйте ещё раз или посмотрите подсказку</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как перенести урок?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Если нужно перенести урок, свяжитесь с преподавателем удобным способом (чат, Telegram или другой контакт, который вам дали). Преподаватель согласует новое время и перенесёт урок в системе.</p>
-            </div>
-        </div>
-    </section>
+            <!-- Category Section: Schedule -->
+            <section id="schedule" class="faq-section-block space-y-4">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                    <i class="ph ph-calendar text-violet-500"></i>📅 Расписание
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Где посмотреть расписание уроков?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Расписание доступно в разделе "Расписание" в верхнем навигационном меню.</p>
+                                    <p>Там вы увидите:</p>
+                                    <ul class="list-disc pl-5 space-y-1.5">
+                                        <li>Календарь с запланированными уроками</li>
+                                        <li>Время начала каждого урока</li>
+                                        <li>Тему урока</li>
+                                        <li>Статус (запланирован / проведён / отменён)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    <section id="notifications" class="faq-section">
-        <h2 class="faq-section-title">🔔 Уведомления</h2>
-        
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Какие уведомления я буду получать?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Набор уведомлений зависит от ваших настроек. Обычно доступны:</p>
-                <ul>
-                    <li>📅 Обновления по расписанию уроков</li>
-                    <li>✅ Домашнее задание проверено</li>
-                    <li>🔄 Задание возвращено на доработку</li>
-                    <li>💬 Новое сообщение от преподавателя</li>
-                    <li>📝 Урок запланирован/перенесён</li>
-                    <li>{{ ui_icon('action.warning', 'sm') }} Осталось мало уроков по тарифу</li>
-                    <li>📢 Новости платформы (если включено)</li>
-                </ul>
-            </div>
-        </div>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как перенести урок?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Если нужно перенести урок, свяжитесь с преподавателем удобным способом (чат, Telegram или другой контакт, который вам дали). Преподаватель согласует новое время и перенесёт урок в системе.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как настроить уведомления?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>После привязки Telegram‑бота @URep_bot вы можете настроить, какие уведомления получать:</p>
-                <ol>
-                    <li>Откройте бота @URep_bot</li>
-                    <li>Нажмите «Настройки» или используйте меню бота</li>
-                    <li>Включите или выключите нужные типы уведомлений</li>
-                </ol>
-            </div>
-        </div>
-    </section>
+            <!-- Category Section: Notifications -->
+            <section id="notifications" class="faq-section-block space-y-4">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                    <i class="ph ph-bell text-violet-500"></i>🔔 Уведомления
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Какие уведомления я буду получать?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Набор уведомлений зависит от ваших настроек. Обычно доступны:</p>
+                                    <ul class="list-disc pl-5 space-y-1.5">
+                                        <li>📅 Обновления по расписанию уроков</li>
+                                        <li>✅ Домашнее задание проверено</li>
+                                        <li>🔄 Задание возвращено на доработку</li>
+                                        <li>💬 Новое сообщение от преподавателя</li>
+                                        <li>📝 Урок запланирован/перенесён</li>
+                                        <li>⚠️ Предупреждение об окончании баланса уроков</li>
+                                        <li>📢 Новости платформы</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    <section id="parents" class="faq-section">
-        <h2 class="faq-section-title">👨‍👩‍👧 Для родителей</h2>
-        
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как отслеживать успеваемость ребёнка?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Как родитель, вы имеете доступ к разделу "Мои дети", где можете:</p>
-                <ul>
-                    <li>Видеть расписание уроков ребёнка</li>
-                    <li>Отслеживать выполнение домашних заданий</li>
-                    <li>Смотреть статистику и прогресс</li>
-                    <li>Получать уведомления о пропущенных уроках или невыполненных заданиях</li>
-                </ul>
-            </div>
-        </div>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как настроить уведомления?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>После привязки Telegram‑бота @boostudy_bot вы можете настроить, какие уведомления получать:</p>
+                                    <ol class="list-decimal pl-5 space-y-1.5">
+                                        <li>Откройте бота @boostudy_bot в Telegram</li>
+                                        <li>Нажмите «Настройки» или используйте меню бота</li>
+                                        <li>Включите или выключите нужные типы уведомлений переключателями в боте</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как связаться с преподавателем?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Вы можете связаться с преподавателем через:</p>
-                <ul>
-                    <li>Telegram (контакт указан в профиле преподавателя)</li>
-                    <li>Чат на платформе (если у вас есть доступ к урокам)</li>
-                </ul>
-                <p>Преподаватель обычно отвечает в течение рабочего дня.</p>
-            </div>
-        </div>
+            <!-- Category Section: Parents -->
+            <section id="parents" class="faq-section-block space-y-4">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                    <i class="ph ph-users-three text-violet-500"></i>👨‍👩‍👧 Для родителей
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как отслеживать успеваемость ребёнка?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>В родительском кабинете в разделе "Мои дети" вам доступны следующие возможности:</p>
+                                    <ul class="list-disc pl-5 space-y-1.5">
+                                        <li>Просмотр расписания будущих уроков и тем занятий</li>
+                                        <li>Отслеживание статуса домашних заданий (сдано/доработка)</li>
+                                        <li>Просмотр статистики среднего балла по домашним заданиям и тестам</li>
+                                        <li>Оперативный баланс оставшихся уроков</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Как работает оплата?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Оплата производится за пакет уроков:</p>
-                <ul>
-                    <li>Вы покупаете определённое количество уроков</li>
-                    <li>После каждого проведённого урока счётчик уменьшается на 1</li>
-                    <li>Остаток уроков виден в профиле ученика</li>
-                    <li>Когда уроки заканчиваются, вы получите уведомление</li>
-                </ul>
-                <p>Для продления свяжитесь с администратором или преподавателем.</p>
-            </div>
-        </div>
-    </section>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как связаться с преподавателем?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Вы можете связаться с преподавателем напрямую через Telegram (ссылка или контакт обычно выдается при начале обучения) или через внутренний чат на платформе (если в кабинете ребенка открыта классная комната).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-    <section id="support" class="faq-section">
-        <h2 class="faq-section-title">💬 Поддержка</h2>
-        
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>У меня проблема, куда обратиться?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Если у вас возникла проблема:</p>
-                <ol>
-                    <li><strong>Технические проблемы</strong> (не работает кнопка, не загружается страница) — напишите в Telegram‑бот @URep_bot или преподавателю</li>
-                    <li><strong>Вопросы по учёбе</strong> — обратитесь к преподавателю</li>
-                    <li><strong>Вопросы по оплате</strong> — свяжитесь с администратором</li>
-                </ol>
-                <p>Опишите проблему максимально подробно: что делали, что ожидали, что произошло. Приложите скриншот, если возможно.</p>
-            </div>
-        </div>
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Как работает оплата?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Оплата производится за пакеты занятий. После каждого проведённого урока баланс списывается на 1. Вы получите предупреждение в ЛК и Telegram, когда уроков останется мало, чтобы своевременно продлить обучение.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="faq-item">
-            <div class="faq-question" onclick="toggleFaq(this)">
-                <span>Платформа работает медленно, что делать?</span>
-                <span class="faq-toggle">+</span>
-            </div>
-            <div class="faq-answer">
-                <p>Попробуйте следующее:</p>
-                <ol>
-                    <li>Обновите страницу (F5 или Ctrl+R)</li>
-                    <li>Очистите кэш браузера (Ctrl+Shift+Delete)</li>
-                    <li>Попробуйте другой браузер (рекомендуем Chrome или Firefox)</li>
-                    <li>Проверьте скорость интернета</li>
-                </ol>
-                <p>Если проблема сохраняется — сообщите преподавателю.</p>
-            </div>
+            <!-- Category Section: Support -->
+            <section id="support" class="faq-section-block space-y-4">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                    <i class="ph ph-chat-circle-dots text-violet-500"></i>💬 Поддержка
+                </h2>
+                
+                <div class="space-y-3">
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>У меня техническая проблема, куда обратиться?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>При возникновении сбоев (не грузится страница, не нажимается кнопка):</p>
+                                    <ol class="list-decimal pl-5 space-y-1">
+                                        <li>Напишите в Telegram‑бот поддержки @boostudy_bot.</li>
+                                        <li>Либо сообщите вашему преподавателю напрямую.</li>
+                                    </ol>
+                                    <p>Постарайтесь приложить скриншот и кратко описать ваши действия перед сбоем.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                        <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
+                            <span>Платформа работает медленно, что делать?</span>
+                            <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
+                        </div>
+                        <div class="faq-grid-wrapper">
+                            <div class="faq-inner-content">
+                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                    <p>Попробуйте выполнить базовые действия:</p>
+                                    <ol class="list-decimal pl-5 space-y-1.5">
+                                        <li>Обновите страницу принудительно (Ctrl + F5 или Cmd + Shift + R)</li>
+                                        <li>Попробуйте войти через другой современный браузер (рекомендуем Chrome, Firefox или Яндекс.Браузер)</li>
+                                        <li>Проверьте стабильность вашего интернет-соединения</li>
+                                    </ol>
+                                    <p>Если проблема не решилась — напишите в поддержку.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </div>
-    </section>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts_extra %}
 <script>
+// Toggle accordion item expand/collapse state
 function toggleFaq(el) {
-    const item = el.parentElement;
-    item.classList.toggle('open');
+    const item = el.closest('.faq-item');
+    
+    // Toggle active state
+    if (item.classList.contains('open')) {
+        item.classList.remove('open');
+        item.querySelector('.ph-caret-down').style.transform = 'rotate(0deg)';
+    } else {
+        item.classList.add('open');
+        item.querySelector('.ph-caret-down').style.transform = 'rotate(180deg)';
+    }
 }
 
+// Live text-based question filtering
+function filterFaq() {
+    const query = document.getElementById('faqSearchInput').value.toLowerCase().trim();
+    const items = document.querySelectorAll('.faq-item');
+    const sections = document.querySelectorAll('.faq-section-block');
+    
+    items.forEach(item => {
+        const questionText = item.querySelector('.faq-question span').textContent.toLowerCase();
+        const answerText = item.querySelector('.faq-inner-content').textContent.toLowerCase();
+        
+        if (questionText.includes(query) || answerText.includes(query)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // Hide sections that have no visible items
+    sections.forEach(section => {
+        const visibleItems = Array.from(section.querySelectorAll('.faq-item')).filter(item => item.style.display !== 'none');
+        if (visibleItems.length === 0) {
+            section.style.display = 'none';
+        } else {
+            section.style.display = 'block';
+        }
+    });
+}
+
+// Active Nav highlight on scroll & click scroll behaviour
 document.addEventListener('DOMContentLoaded', function() {
+    const navCards = document.querySelectorAll('.faq-nav-card');
+    const sections = document.querySelectorAll('.faq-section-block');
+    
+    // Hash routing check
     const hash = window.location.hash;
     if (hash) {
-        const section = document.querySelector(hash);
-        if (section) {
-            section.scrollIntoView({ behavior: 'smooth' });
+        const targetSection = document.querySelector(hash);
+        if (targetSection) {
+            setTimeout(() => {
+                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         }
     }
+
+    // Scroll sync highlighting
+    window.addEventListener('scroll', function() {
+        let currentSectionId = '';
+        sections.forEach(sec => {
+            const rect = sec.getBoundingClientRect();
+            if (rect.top <= 160 && rect.bottom >= 160) {
+                currentSectionId = sec.getAttribute('id');
+            }
+        });
+
+        if (currentSectionId) {
+            navCards.forEach(card => {
+                if (card.getAttribute('href') === `#${currentSectionId}`) {
+                    card.classList.add('active');
+                } else {
+                    card.classList.remove('active');
+                }
+            });
+        }
+    });
 });
 </script>
 {% endblock %}

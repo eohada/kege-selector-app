@@ -351,7 +351,14 @@
                     </div>
                 </div>
                 <div class="public-actions">
-                    <a class="neo-button outline" href="{{ url_for('auth.user_profile') }}" style="text-decoration:none;">Мой профиль</a>
+                    {% if public_user.telegram_link %}
+                        {% set tg_cleaned = public_user.telegram_link.replace('https://t.me/', '').replace('http://t.me/', '').replace('@', '').strip() %}
+                        {% if tg_cleaned %}
+                        <a class="neo-button outline" href="https://t.me/{{ tg_cleaned }}" target="_blank" rel="noopener" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.35rem;">
+                            <i class="ph-bold ph-paper-plane-tilt"></i> Написать в Telegram
+                        </a>
+                        {% endif %}
+                    {% endif %}
                     <a class="neo-button ghost" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
                 </div>
             </div>
@@ -402,6 +409,22 @@
                     <span class="data-label">В системе с</span>
                     <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>
                 </div>
+                {% if tutor_subjects %}
+                <div class="data-row">
+                    <span class="data-label">Предметы</span>
+                    <span class="data-value" style="display: flex; gap: 0.25rem; flex-wrap: wrap; justify-content: flex-end;">
+                        {% for subj in tutor_subjects %}
+                            <span class="status-badge status-info" style="font-size: 0.8em; opacity: 0.95;">{{ subj }}</span>
+                        {% endfor %}
+                    </span>
+                </div>
+                {% endif %}
+                {% if active_students_count is not none and active_students_count > 0 %}
+                <div class="data-row">
+                    <span class="data-label">Учеников</span>
+                    <span class="data-value">{{ active_students_count }}</span>
+                </div>
+                {% endif %}
             </aside>
         </div>
     </div>

@@ -3,265 +3,518 @@
 
 {% block head_css %}
 <style>
-    .parent-grid { display: grid; gap: 1.25rem; }
-    .child-strip { display:flex; flex-wrap:wrap; gap:.75rem; margin: 1rem 0 1.5rem; }
-    .child-chip {
-        display:inline-flex; align-items:center; gap:.5rem;
-        padding:.75rem 1rem; border-radius: 999px;
-        background: var(--surface-2); color: var(--text-primary);
-        text-decoration:none; border:1px solid var(--border-color);
-        font-weight:700; transition: all .2s ease;
+    .bento-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .child-chip.active { background: linear-gradient(135deg, rgba(34,197,94,.18), rgba(14,165,233,.18)); border-color: rgba(14,165,233,.35); }
-    .child-chip.pending { opacity:.72; border-style:dashed; }
-    .section-grid {
-        display:grid; gap:1rem;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    .bento-card:hover {
+        transform: translateY(-2px);
     }
-    .metric-row { display:grid; gap:.75rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-    .metric-card {
-        background: var(--surface-2); border-radius: 12px; padding: 1rem;
-        border: 1px solid var(--border-color);
-    }
-    .metric-label { color: var(--text-muted); font-size: .82rem; margin-bottom: .35rem; }
-    .metric-value { font-size: 1.5rem; font-weight: 800; }
-    .empty-state {
-        padding: 1.5rem; border-radius: 16px;
-        background: var(--surface-2); border: 1px dashed var(--border-color);
-        color: var(--text-muted);
-    }
-    .lesson-list { display:grid; gap:.75rem; }
-    .lesson-item {
-        display:flex; justify-content:space-between; align-items:center; gap:1rem;
-        padding: .95rem 1rem; border-radius: 12px;
-        background: var(--surface-2); border:1px solid var(--border-color);
-    }
-    .lesson-meta { color: var(--text-muted); font-size: .85rem; }
 </style>
 {% endblock %}
 
 {% set active_page = 'parent_dashboard' %}
 
 {% block content %}
-<div class="content-container parent-grid">
-    <section class="glass-panel">
-        <div class="panel-head">
+<div class="max-w-[1400px] mx-auto space-y-8 animate-fade-in py-6">
+    <!-- Hero / Welcome Banner -->
+    <div class="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-violet-600/10 via-purple-600/5 to-transparent dark:from-purple-950/20 dark:via-indigo-950/10 dark:to-transparent border border-slate-200 dark:border-white/[0.06] p-8 sm:p-10 shadow-tactile dark:shadow-glass-dark">
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-purple-500/10 dark:bg-purple-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-500/10 dark:bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-                <p class="eyebrow">Родительский кабинет</p>
-                <h1>Мои дети</h1>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-800 dark:bg-purple-950/50 dark:text-purple-300 mb-3">
+                    <i class="ph ph-shield-check"></i> Родительский кабинет
+                </span>
+                <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-2">
+                    Добро пожаловать в BooStudy!
+                </h1>
+                <p class="text-slate-600 dark:text-zinc-400 max-w-xl">
+                    Управляйте обучением ваших детей, отслеживайте их успеваемость, баланс занятий и планируйте график уроков.
+                </p>
+            </div>
+            
+            <!-- Overall Stats Summary -->
+            <div class="flex flex-wrap gap-4">
+                <div class="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-200/50 dark:border-white/[0.04] shadow-sm min-w-[140px]">
+                    <div class="text-xs text-slate-500 dark:text-zinc-400 font-medium mb-1">Всего детей</div>
+                    <div class="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                        <i class="ph ph-users text-violet-500"></i>
+                        {{ children|length if children else 0 }}
+                    </div>
+                </div>
+                {% if pending_children %}
+                <div class="bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md rounded-2xl p-4 border border-slate-200/50 dark:border-white/[0.04] shadow-sm min-w-[140px]">
+                    <div class="text-xs text-slate-500 dark:text-zinc-400 font-medium mb-1">Ожидают связи</div>
+                    <div class="text-2xl font-extrabold text-amber-500 flex items-center gap-2">
+                        <i class="ph ph-hourglass-high text-amber-500 animate-pulse"></i>
+                        {{ pending_children|length }}
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
+    </div>
 
-        <div class="metric-row" style="margin-top: 1rem;">
-            <div class="metric-card">
-                <div class="metric-label">Детей в связке</div>
-                <div class="metric-value">{{ children|length if children else 0 }}</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Ожидают подтверждения</div>
-                <div class="metric-value">{{ pending_children|length if pending_children else 0 }}</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-label">Открыт профиль</div>
-                <div class="metric-value" style="font-size:1rem;">{{ selected_child_name or '—' }}</div>
-            </div>
-        </div>
-
-        {% if children %}
-            <div class="child-strip">
+    <!-- Children Selector & Setup -->
+    <div class="space-y-4">
+        <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 px-2">
+            <i class="ph ph-student text-violet-500"></i> Выберите профиль ребёнка
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% if children %}
                 {% for child in children %}
-                    <a href="{{ url_for('parents.parent_dashboard', student_id=child.user_id) }}" class="child-chip {% if child.is_selected %}active{% endif %}">
-                        <span>{{ child.student_name }}</span>
-                        <span class="text-xs opacity-75">{{ child.tie_status }}</span>
+                    {% set is_active = child.is_selected %}
+                    <a href="{{ url_for('parents.parent_dashboard', student_id=child.user_id) }}" 
+                       class="bento-card relative block rounded-[32px] bg-surface dark:bg-dark-card border {% if is_active %}border-violet-500 dark:border-violet-500 ring-2 ring-violet-500 dark:ring-violet-500 shadow-tactile-hover{% else %}border-slate-200 dark:border-white/[0.06] shadow-tactile{% endif %} p-5">
+                        
+                        <!-- Top status line -->
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full {% if is_active %}bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300{% else %}bg-slate-100 text-slate-700 dark:bg-zinc-800 dark:text-zinc-400{% endif %}">
+                                <span class="w-1.5 h-1.5 rounded-full {% if is_active %}bg-violet-500{% else %}bg-slate-400{% endif %}"></span>
+                                {{ child.tie_status }}
+                            </span>
+                            
+                            {% if child.telegram_linked %}
+                                <span class="text-sky-500 dark:text-sky-400" title="Telegram уведомления active">
+                                    <i class="ph ph-paper-plane-tilt-fill text-lg"></i>
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- User Info -->
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr {% if is_active %}from-violet-500 to-indigo-500 text-white{% else %}from-slate-100 to-slate-200 dark:from-zinc-800 dark:to-zinc-700 text-slate-700 dark:text-zinc-300{% endif %} flex items-center justify-center font-bold text-lg shadow-sm">
+                                {{ child.student_name[:2] | upper }}
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-900 dark:text-white group-hover:text-violet-500 transition-colors">
+                                    {{ child.student_name }}
+                                </div>
+                                <div class="text-xs text-slate-500 dark:text-zinc-400 font-mono">
+                                    @{{ child.username }}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if is_active %}
+                            <div class="absolute bottom-2 right-4 text-violet-500">
+                                <i class="ph ph-check-circle-fill text-xl"></i>
+                            </div>
+                        {% endif %}
                     </a>
                 {% endfor %}
-            </div>
-        {% endif %}
+            {% endif %}
 
-        {% if pending_children %}
-            <div class="empty-state" style="margin-bottom:1rem;">
-                <strong>Ожидают подтверждения:</strong>
-                <div class="child-strip" style="margin: .85rem 0 0;">
-                    {% for child in pending_children %}
-                        <span class="child-chip pending">
-                            <span>{{ child.student_name }}</span>
-                            <span class="text-xs opacity-75">{{ child.tie_status }}</span>
-                        </span>
-                    {% endfor %}
-                </div>
-            </div>
-        {% endif %}
-
-        {% if not selected_child %}
-            <div class="empty-state">
-                {% if children %}
-                    У вас пока нет подтверждённых детей для просмотра. После подтверждения связи здесь появятся уроки, задания и баланс.
-                {% else %}
-                    У вас ещё нет привязанных детей. Когда связь будет создана и подтверждена, здесь откроется сводка по ребёнку, расписание и уведомления.
-                {% endif %}
-            </div>
-        {% endif %}
-    </section>
-
-    {% if selected_child %}
-        <section class="glass-panel">
-            <div class="panel-head">
-                <div>
-                    <p class="eyebrow">Выбранный ребёнок</p>
-                    <h2>{{ selected_child_name }}</h2>
-                </div>
-            </div>
-            <div class="metric-row">
-                <div class="metric-card">
-                    <div class="metric-label">Баланс уроков</div>
-                    <div class="metric-value">{{ financial_data.lessons_remaining }}</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Уровень доступа</div>
-                    <div class="metric-value" style="font-size:1rem;">{{ access_level or '—' }}</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Telegram</div>
-                    <div class="metric-value" style="font-size:1rem;">
-                        {% if selected_child_user and selected_child_user.profile and selected_child_user.profile.telegram_chat_id %}
-                            Привязан
-                        {% else %}
-                            Не привязан
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <div class="metric-row" style="margin-top: 1rem;">
-                <div class="metric-card">
-                    <div class="metric-label">Связь</div>
-                    <div class="metric-value" style="font-size:1rem;">
-                        {% if selected_tie and selected_tie.is_confirmed %}
-                            Подтверждена
-                        {% elif selected_tie %}
-                            Ожидает подтверждения
-                        {% else %}
-                            — 
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Профиль</div>
-                    <div class="metric-value" style="font-size:1rem;">
-                        {% if selected_child_user and selected_child_user.username %}
-                            @{{ selected_child_user.username }}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Платформа</div>
-                    <div class="metric-value" style="font-size:1rem;">
-                        {% if selected_child and selected_child.student_id %}
-                            ID {{ selected_child.student_id }}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <div class="section-grid" style="margin-top: 1rem;">
-                <a class="child-chip" href="{{ url_for('students.student_profile', student_id=selected_child.student_id) if selected_child else '#' }}">
-                    <span>Открыть профиль ученика</span>
-                    <span class="text-xs opacity-75">карточка и уроки</span>
-                </a>
-                <a class="child-chip" href="{{ url_for('students.student_analytics', student_id=selected_child.student_id) if selected_child else '#' }}">
-                    <span>Статистика</span>
-                    <span class="text-xs opacity-75">прогресс и баланс</span>
-                </a>
-                <a class="child-chip" href="{{ url_for('schedule.schedule') }}">
-                    <span>Расписание</span>
-                    <span class="text-xs opacity-75">весь календарь</span>
-                </a>
-                {% if selected_child_user and selected_child_user.profile and selected_child_user.profile.telegram_chat_id %}
-                <span class="child-chip active">
-                    <span>Telegram подключен</span>
-                    <span class="text-xs opacity-75">@{{ selected_child_user.profile.telegram_id or selected_child_user.username }}</span>
-                </span>
-                {% endif %}
-            </div>
-        </section>
-
-        {% if child_stats and child_stats.metrics %}
-        <section class="glass-panel">
-            <div class="panel-head">
-                <div>
-                    <p class="eyebrow">Прогресс</p>
-                    <h2>Основные показатели</h2>
-                </div>
-            </div>
-            <div class="metric-row">
-                <div class="metric-card"><div class="metric-label">Средний балл (ДЗ)</div><div class="metric-value">{{ child_stats.metrics.hw_gpa|round(1) if child_stats.metrics.hw_gpa else 'N/A' }}</div></div>
-                <div class="metric-card"><div class="metric-label">Средний балл (Экзамены)</div><div class="metric-value">{{ child_stats.metrics.exam_gpa|round(1) if child_stats.metrics.exam_gpa else 'N/A' }}</div></div>
-                <div class="metric-card"><div class="metric-label">Уроков проведено</div><div class="metric-value">{{ child_stats.metrics.completed_lessons }}</div></div>
-                <div class="metric-card"><div class="metric-label">Пропущено</div><div class="metric-value">{{ child_stats.metrics.missed_lessons }}</div></div>
-            </div>
-        </section>
-        {% endif %}
-
-        <div class="section-grid">
-            <section class="glass-panel">
-                <div class="panel-head"><div><p class="eyebrow">Расписание</p><h2>Предстоящие уроки</h2></div></div>
-                {% if upcoming_lessons %}
-                    <div class="lesson-list">
-                        {% for lesson in upcoming_lessons %}
-                            <div class="lesson-item">
-                                <div>
-                                    <div style="font-weight:800;">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата не указана' }}</div>
-                                    <div class="lesson-meta">{{ lesson.topic or 'Занятие' }}</div>
-                                </div>
-                                <div class="lesson-meta">Запланирован</div>
+            <!-- Pending approvals -->
+            {% if pending_children %}
+                {% for child in pending_children %}
+                    <div class="relative block rounded-[32px] bg-slate-50/50 dark:bg-zinc-900/30 border border-dashed border-slate-300 dark:border-white/[0.08] p-5 opacity-80">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                {{ child.tie_status }}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500 flex items-center justify-center font-bold text-lg">
+                                {{ child.student_name[:2] | upper }}
                             </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="empty-state">Ближайших уроков нет.</div>
-                {% endif %}
-            </section>
-
-            <section class="glass-panel">
-                <div class="panel-head"><div><p class="eyebrow">Задания</p><h2>Нужно выполнить</h2></div></div>
-                {% if pending_assignments %}
-                    <div class="lesson-list">
-                        {% for sub in pending_assignments %}
-                            <div class="lesson-item">
-                                <div>
-                                    <div style="font-weight:800;">{{ sub.assignment.title }}</div>
-                                    <div class="lesson-meta">{{ sub.status }}</div>
+                            <div>
+                                <div class="font-bold text-slate-500 dark:text-zinc-500">
+                                    {{ child.student_name }}
                                 </div>
-                                <div class="lesson-meta">{% if sub.assignment.deadline %}{{ sub.assignment.deadline.strftime('%d.%m %H:%M') }}{% endif %}</div>
+                                <div class="text-xs text-slate-400 dark:text-zinc-600 font-mono">
+                                    @{{ child.username }}
+                                </div>
                             </div>
-                        {% endfor %}
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-zinc-500 mt-4 italic">
+                            Связь ожидает подтверждения со стороны ученика.
+                        </p>
                     </div>
-                {% else %}
-                    <div class="empty-state">Активных заданий нет.</div>
-                {% endif %}
-            </section>
+                {% endfor %}
+            {% endif %}
         </div>
 
-        <section class="glass-panel">
-            <div class="panel-head"><div><p class="eyebrow">История</p><h2>Последние уроки</h2></div></div>
-            {% if recent_lessons %}
-                <div class="lesson-list">
-                    {% for lesson in recent_lessons %}
-                        <div class="lesson-item">
-                            <div>
-                                <div style="font-weight:800;">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата не указана' }}</div>
-                                <div class="lesson-meta">{{ lesson.topic or 'Занятие' }}</div>
-                            </div>
-                            <div class="lesson-meta">{{ lesson.status }}</div>
-                        </div>
-                    {% endfor %}
+        {% if not children and not pending_children %}
+            <div class="rounded-[32px] border border-dashed border-slate-300 dark:border-white/[0.08] bg-slate-50/50 dark:bg-zinc-900/10 p-8 text-center max-w-lg mx-auto space-y-4">
+                <div class="w-16 h-16 rounded-full bg-violet-100 dark:bg-purple-950/40 text-violet-600 dark:text-purple-400 flex items-center justify-center mx-auto text-2xl">
+                    <i class="ph ph-users-three"></i>
                 </div>
-            {% else %}
-                <div class="empty-state">Пока нет завершённых уроков.</div>
-            {% endif %}
-        </section>
+                <div class="space-y-1">
+                    <h3 class="font-bold text-slate-900 dark:text-white">Нет привязанных профилей</h3>
+                    <p class="text-sm text-slate-500 dark:text-zinc-400">
+                        У вас пока нет привязанных детей. Передайте ваш e-mail преподавателю или создайте связь в кабинете ученика.
+                    </p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Active Child Dashboard -->
+    {% if selected_child %}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            
+            <!-- LEFT COLUMN: Main Bento cards & Stats -->
+            <div class="lg:col-span-2 space-y-8">
+                
+                <!-- Child Overview Cards (Bento Grid) -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <!-- Lessons Balance -->
+                    <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] p-6 shadow-tactile dark:shadow-glass-dark">
+                        <div class="flex items-center gap-3 text-slate-500 dark:text-zinc-400 mb-3">
+                            <div class="w-8 h-8 rounded-lg bg-violet-100 dark:bg-purple-950/40 text-violet-600 dark:text-purple-400 flex items-center justify-center">
+                                <i class="ph ph-currency-rub text-lg"></i>
+                            </div>
+                            <span class="text-sm font-semibold">Баланс уроков</span>
+                        </div>
+                        <div class="text-3xl font-extrabold text-slate-900 dark:text-white mb-1">
+                            {{ financial_data.lessons_remaining }}
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-zinc-500">
+                            {% if financial_data.lessons_remaining <= 2 %}
+                                <span class="text-rose-500 font-semibold flex items-center gap-1">
+                                    <i class="ph ph-warning"></i> Рекомендуем пополнить
+                                </span>
+                            {% else %}
+                                Достаточно занятий
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Homework completion rate -->
+                    <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] p-6 shadow-tactile dark:shadow-glass-dark">
+                        <div class="flex items-center gap-3 text-slate-500 dark:text-zinc-400 mb-3">
+                            <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                <i class="ph ph-notebook text-lg"></i>
+                            </div>
+                            <span class="text-sm font-semibold">Выполнение ДЗ</span>
+                        </div>
+                        <div class="text-3xl font-extrabold text-slate-900 dark:text-white mb-1">
+                            {% if child_stats and child_stats.metrics and child_stats.metrics.hw_submit_rate is not none %}
+                                {{ child_stats.metrics.hw_submit_rate|round(1) }}%
+                            {% else %}
+                                —
+                            {% endif %}
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-zinc-500">
+                            {% if child_stats and child_stats.metrics and child_stats.metrics.hw_submit_rate is not none %}
+                                {% if child_stats.metrics.hw_submit_rate >= 80 %}
+                                    <span class="text-emerald-500 font-semibold">Отличный темп работы!</span>
+                                {% elif child_stats.metrics.hw_submit_rate >= 50 %}
+                                    <span class="text-amber-500 font-semibold">Нормальный темп сдачи</span>
+                                {% else %}
+                                    <span class="text-rose-500 font-semibold">Требуется сдать долги</span>
+                                {% endif %}
+                            {% else %}
+                                Нет домашних заданий
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Platform info -->
+                    <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] p-6 shadow-tactile dark:shadow-glass-dark">
+                        <div class="flex items-center gap-3 text-slate-500 dark:text-zinc-400 mb-3">
+                            <div class="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                                <i class="ph ph-identification-card text-lg"></i>
+                            </div>
+                            <span class="text-sm font-semibold">Платформа</span>
+                        </div>
+                        <div class="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                            ID {{ selected_child.student_id or '—' }}
+                        </div>
+                        <p class="text-xs text-slate-500 dark:text-zinc-500">
+                            Класс: {{ selected_child.school_class or 11 }} | Цель: {{ selected_child.target_score or 80 }} б.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Academic Progress / Stats -->
+                {% if child_stats and child_stats.metrics %}
+                    <div class="rounded-[32px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] p-6 sm:p-8 shadow-tactile dark:shadow-glass-dark">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Академическая успеваемость</h3>
+                                <p class="text-xs text-slate-500 dark:text-zinc-400">Показатели выполнения домашних заданий и тестов</p>
+                            </div>
+                            <div class="w-10 h-10 rounded-xl bg-violet-100 dark:bg-purple-950/40 text-violet-600 dark:text-purple-400 flex items-center justify-center">
+                                <i class="ph ph-chart-bar text-xl"></i>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                            <!-- HW GPA -->
+                            <div class="space-y-1">
+                                <div class="text-xs text-slate-500 dark:text-zinc-400 font-medium">Средний балл (ДЗ)</div>
+                                <div class="text-3xl font-extrabold text-slate-950 dark:text-white flex items-baseline gap-1">
+                                    {{ child_stats.metrics.hw_gpa|round(1) if child_stats.metrics.hw_gpa else '—' }}
+                                    <span class="text-xs text-slate-400 dark:text-zinc-500 font-normal">/ 100</span>
+                                </div>
+                                <div class="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-1.5 mt-2 overflow-hidden">
+                                    <div class="bg-cyan-400 h-1.5 rounded-full" style="width: {{ child_stats.metrics.hw_gpa or 0 }}%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Exam GPA -->
+                            <div class="space-y-1">
+                                <div class="text-xs text-slate-500 dark:text-zinc-400 font-medium">Ср. балл (Экзамены)</div>
+                                <div class="text-3xl font-extrabold text-slate-950 dark:text-white flex items-baseline gap-1">
+                                    {{ child_stats.metrics.exam_gpa|round(1) if child_stats.metrics.exam_gpa else '—' }}
+                                    <span class="text-xs text-slate-400 dark:text-zinc-500 font-normal">/ 100</span>
+                                </div>
+                                <div class="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-1.5 mt-2 overflow-hidden">
+                                    <div class="bg-violet-500 h-1.5 rounded-full" style="width: {{ child_stats.metrics.exam_gpa or 0 }}%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Lessons Conducted -->
+                            <div class="space-y-1">
+                                <div class="text-xs text-slate-500 dark:text-zinc-400 font-medium">Уроков проведено</div>
+                                <div class="text-3xl font-extrabold text-slate-950 dark:text-white">
+                                    {{ child_stats.metrics.completed_lessons or 0 }}
+                                </div>
+                                <div class="text-xs text-emerald-500 flex items-center gap-0.5 mt-2">
+                                    <i class="ph ph-trend-up"></i> Посещаемость отличная
+                                </div>
+                            </div>
+
+                            <!-- Missed Lessons -->
+                            <div class="space-y-1">
+                                <div class="text-xs text-slate-500 dark:text-zinc-400 font-medium">Пропущено уроков</div>
+                                <div class="text-3xl font-extrabold {% if child_stats.metrics.missed_lessons and child_stats.metrics.missed_lessons > 0 %}text-rose-500{% else %}text-slate-950 dark:text-white{% endif %}">
+                                    {{ child_stats.metrics.missed_lessons or 0 }}
+                                </div>
+                                <div class="text-xs text-slate-400 dark:text-zinc-500 mt-2">
+                                    Без уважительной: 0
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Forecast & Trend Banner -->
+                        {% if child_stats.ai_summary and child_stats.ai_summary.gpa_trend %}
+                            <div class="mt-6 p-4 rounded-2xl bg-gradient-to-r from-violet-500/5 to-indigo-500/5 dark:from-purple-950/10 dark:to-indigo-950/10 border border-violet-500/10 dark:border-purple-500/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-violet-100/80 dark:bg-purple-950/60 text-violet-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                                        <i class="ph ph-brain text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-bold text-slate-900 dark:text-white">AI-Прогноз успеваемости</div>
+                                        <div class="text-xs text-slate-500 dark:text-zinc-400">
+                                            Прогноз балла на экзамене: <span class="font-extrabold text-violet-600 dark:text-purple-400">{{ child_stats.ai_summary.gpa_forecast or '—' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% if child_stats.ai_summary.problem_topic %}
+                                    <div class="text-xs bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 px-3 py-1.5 rounded-lg border border-rose-500/10 dark:border-rose-500/20 font-medium">
+                                        Сложная тема: <span class="font-bold">{{ child_stats.ai_summary.problem_topic }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <!-- Work & Schedule Section Split -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Upcoming lessons -->
+                    <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] p-6 shadow-tactile dark:shadow-glass-dark">
+                        <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                            <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <i class="ph ph-calendar-blank text-violet-500 text-lg"></i> Ближайшие занятия
+                            </h3>
+                        </div>
+                        
+                        {% if upcoming_lessons %}
+                            <div class="space-y-3">
+                                {% for lesson in upcoming_lessons %}
+                                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-white/[0.04] transition-all hover:scale-[1.01]">
+                                        <div class="space-y-1">
+                                            <div class="text-xs font-bold text-violet-600 dark:text-purple-400">
+                                                {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата не указана' }}
+                                            </div>
+                                            <div class="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[180px]">
+                                                {{ lesson.topic or 'Занятие' }}
+                                            </div>
+                                        </div>
+                                        <span class="text-xs font-semibold px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400 border border-cyan-500/10">
+                                            Запланирован
+                                        </span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-6 text-slate-400 dark:text-zinc-500 text-sm italic">
+                                Нет запланированных уроков.
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Pending assignments -->
+                    <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] p-6 shadow-tactile dark:shadow-glass-dark">
+                        <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                            <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <i class="ph ph-clipboard-text text-amber-500 text-lg"></i> Нужно выполнить
+                            </h3>
+                        </div>
+
+                        {% if pending_assignments %}
+                            <div class="space-y-3">
+                                {% for sub in pending_assignments %}
+                                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-white/[0.04] transition-all hover:scale-[1.01]">
+                                        <div class="space-y-1">
+                                            <div class="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[180px]">
+                                                {{ sub.assignment.title }}
+                                            </div>
+                                            <div class="text-xs text-slate-500 dark:text-zinc-400">
+                                                {% if sub.assignment.deadline %}
+                                                    До {{ sub.assignment.deadline.strftime('%d.%m в %H:%M') }}
+                                                {% else %}
+                                                    Без дедлайна
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <span class="text-xs font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-500/10">
+                                            {% if sub.status == 'RETURNED' %}Доработка{% else %}Не сдано{% endif %}
+                                        </span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-6 text-slate-400 dark:text-zinc-500 text-sm italic">
+                                Все домашние задания выполнены!
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Recent lessons history -->
+                <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] p-6 shadow-tactile dark:shadow-glass-dark">
+                    <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="ph ph-clock-counter-clockwise text-indigo-500 text-lg"></i> История недавних занятий
+                        </h3>
+                    </div>
+
+                    {% if recent_lessons %}
+                        <div class="space-y-3">
+                            {% for lesson in recent_lessons %}
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-white/[0.04]">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 flex items-center justify-center shrink-0">
+                                            <i class="ph ph-checks text-xl"></i>
+                                        </div>
+                                        <div>
+                                            <div class="text-sm font-bold text-slate-900 dark:text-white">{{ lesson.topic or 'Занятие' }}</div>
+                                            <div class="text-xs text-slate-500 dark:text-zinc-400">
+                                                {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата не указана' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 sm:mt-0 flex items-center gap-4">
+                                        {% if lesson.homework_status %}
+                                            <span class="text-xs font-medium text-slate-500 dark:text-zinc-400">
+                                                ДЗ: 
+                                                {% if lesson.homework_status == 'assigned_done' %}
+                                                    выполнено
+                                                {% elif lesson.homework_status == 'assigned_not_done' %}
+                                                    не выполнено
+                                                {% elif lesson.homework_status == 'not_assigned' %}
+                                                    не задано
+                                                {% elif lesson.homework_status == 'submitted' %}
+                                                    на проверке
+                                                {% elif lesson.homework_status == 'graded' %}
+                                                    проверено
+                                                {% elif lesson.homework_status == 'returned' %}
+                                                    на доработке
+                                                {% else %}
+                                                    {{ lesson.homework_status }}
+                                                {% endif %}
+                                            </span>
+                                        {% endif %}
+                                        <span class="text-xs font-semibold px-2 py-1 rounded bg-slate-200 text-slate-700 dark:bg-zinc-800 dark:text-zinc-400">
+                                            Проведен
+                                        </span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-6 text-slate-400 dark:text-zinc-500 text-sm italic">
+                            Пока нет завершённых уроков.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Fast Navigation & Settings -->
+            <div class="space-y-6 lg:sticky lg:top-24">
+                
+                <!-- Quick Navigation Box -->
+                <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] p-6 shadow-tactile dark:shadow-glass-dark space-y-4">
+                    <h3 class="font-bold text-slate-900 dark:text-white pb-2 border-b border-slate-100 dark:border-white/[0.06] flex items-center gap-2">
+                        <i class="ph ph-navigation-arrow text-violet-500"></i> Быстрый переход
+                    </h3>
+
+                    <div class="space-y-2">
+                        <!-- Profile -->
+                        <a href="{{ url_for('students.student_profile', student_id=selected_child.student_id) if selected_child else '#' }}" 
+                           class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 hover:bg-violet-500/5 dark:bg-zinc-900 dark:hover:bg-purple-950/20 border border-slate-100 dark:border-white/[0.04] text-slate-700 dark:text-zinc-300 font-bold transition-all group">
+                            <span class="flex items-center gap-2 text-sm">
+                                <i class="ph ph-user-circle text-lg text-violet-500"></i> Профиль ученика
+                            </span>
+                            <i class="ph ph-arrow-right text-slate-400 group-hover:translate-x-1 transition-transform"></i>
+                        </a>
+
+                        <!-- Analytics -->
+                        <a href="{{ url_for('students.student_analytics', student_id=selected_child.student_id) if selected_child else '#' }}" 
+                           class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 hover:bg-violet-500/5 dark:bg-zinc-900 dark:hover:bg-purple-950/20 border border-slate-100 dark:border-white/[0.04] text-slate-700 dark:text-zinc-300 font-bold transition-all group">
+                            <span class="flex items-center gap-2 text-sm">
+                                <i class="ph ph-presentation-chart text-lg text-violet-500"></i> Статистика и аналитика
+                            </span>
+                            <i class="ph ph-arrow-right text-slate-400 group-hover:translate-x-1 transition-transform"></i>
+                        </a>
+
+                        <!-- Schedule -->
+                        <a href="{{ url_for('schedule.schedule') }}" 
+                           class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 hover:bg-violet-500/5 dark:bg-zinc-900 dark:hover:bg-purple-950/20 border border-slate-100 dark:border-white/[0.04] text-slate-700 dark:text-zinc-300 font-bold transition-all group">
+                            <span class="flex items-center gap-2 text-sm">
+                                <i class="ph ph-calendar text-lg text-violet-500"></i> Общее расписание
+                            </span>
+                            <i class="ph ph-arrow-right text-slate-400 group-hover:translate-x-1 transition-transform"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Notifications & Telegram binding -->
+                <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] p-6 shadow-tactile dark:shadow-glass-dark space-y-4">
+                    <h3 class="font-bold text-slate-900 dark:text-white pb-2 border-b border-slate-100 dark:border-white/[0.06] flex items-center gap-2">
+                        <i class="ph ph-bell text-violet-500"></i> Оповещения и Telegram
+                    </h3>
+
+                    <!-- Status Telegram -->
+                    {% if selected_child_user and selected_child_user.profile and selected_child_user.profile.telegram_chat_id %}
+                        <div class="p-4 rounded-xl bg-sky-50 dark:bg-sky-950/20 border border-sky-500/10 dark:border-sky-500/20 text-sky-700 dark:text-sky-400 text-xs flex gap-3">
+                            <i class="ph ph-paper-plane-tilt-fill text-lg shrink-0 mt-0.5"></i>
+                            <div>
+                                <div class="font-bold mb-1">Telegram ученика привязан</div>
+                                Уведомления об уроках и результатах домашних заданий отправляются в мессенджер автоматически.
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="p-4 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200/50 dark:border-white/[0.04] text-slate-500 dark:text-zinc-400 text-xs flex gap-3">
+                            <i class="ph ph-paper-plane-tilt text-lg shrink-0 mt-0.5"></i>
+                            <div>
+                                <div class="font-bold mb-1">Telegram ученика не привязан</div>
+                                Порекомендуйте ребёнку зайти в свой профиль и привязать бота @boostudy_bot, чтобы оперативно получать ДЗ и напоминания.
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     {% endif %}
 </div>
 {% endblock %}
