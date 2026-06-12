@@ -1658,6 +1658,7 @@ async def lesson_call_link_receive(update: Update, context: ContextTypes.DEFAULT
         from app.models import UserProfile
         student_profile = UserProfile.query.filter_by(user_id=int(lesson.student.user_id)).first()
         student_chat_id = getattr(student_profile, 'telegram_chat_id', None)
+        duration = f'{int(getattr(lesson, "duration", 60) or 60)} мин'
         if not student_chat_id:
             await update.message.reply_text('⚠️ У ученика не привязан Telegram, ссылка отправлена только здесь.')
         else:
@@ -1671,7 +1672,9 @@ async def lesson_call_link_receive(update: Update, context: ContextTypes.DEFAULT
             markup = None
             if link:
                 markup = {'inline_keyboard': [[{'text': '🚪 Войти в класс', 'url': link}]]}
-            send_telegram_message(int(student_chat_id), student_msg, parse_mode='HTML', reply_markup=markup)
+            result = send_telegram_message(int(student_chat_id), student_msg, parse_mode='HTML', reply_markup=markup)
+            if not (result and result.get('ok')):
+                raise RuntimeError(f"send_telegram_message failed for student_chat_id={student_chat_id}")
 
         teacher_name = 'Преподаватель'
         if update.effective_user:
