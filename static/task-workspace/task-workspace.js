@@ -70,6 +70,7 @@
     let workspaceRemoteDraftTs = 0;
     let workspaceCursorTimer = null;
     const remoteParticipants = new Map();
+    let inputSnapshot = '';
 
     function csrf() {
         return document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -115,6 +116,16 @@
             line,
             column: safePos - lineStart + 1,
         };
+    }
+
+    function codeCharWidth() {
+        const style = getComputedStyle(code);
+        const font = `${style.fontWeight || '400'} ${style.fontSize || '15px'} ${style.fontFamily || 'monospace'}`;
+        const canvas = codeCharWidth._canvas || (codeCharWidth._canvas = document.createElement('canvas'));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return 8;
+        ctx.font = font;
+        return Math.max(7, ctx.measureText('M').width);
     }
 
     function codeCharWidth() {
@@ -207,7 +218,7 @@
             const visible = top > -lineHeight && top < code.clientHeight + lineHeight * 2 && left > -40 && left < code.clientWidth + 120;
             if (!visible) return '';
             return `
-                <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; opacity:0.18; top:${top}px; height:${height}px; left:${left}px;">
+                <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; opacity:0.08; top:${top}px; height:${height}px; left:${left}px;">
                     <span class="tw-remote-cursor-label">${escapeHtml(item.display_name || item.username || 'user')} · ${escapeHtml(String(startLine))}:${escapeHtml(String(startCol))}</span>
                 </div>
             `;
@@ -256,10 +267,6 @@
             if (Number(payload.sender_id || 0) === Number(CURRENT_USER_ID || 0)) return;
             const remoteTs = Number(payload.updated_at || Date.now()) || Date.now();
             if (remoteTs < workspaceRemoteDraftTs) return;
-            if (document.activeElement === code && dirtySinceAutosave) {
-                workspaceRemoteDraftTs = remoteTs;
-                return;
-            }
             workspaceRemoteDraftTs = remoteTs;
             code.value = String(payload.code || '');
             if (Array.isArray(payload.playback_frames)) {
@@ -269,6 +276,28 @@
             updateEditorChrome();
             saveLocal();
             setStatus('Синхронизировано мгновенно', 'ok');
+        });
+        workspaceSocket.on('workspace_patch', (payload) => {
+            if (!payload) return;
+            if (Number(payload.user_id || 0) === Number(CURRENT_USER_ID || 0)) return;
+            const start = Math.max(0, Number(payload.start || 0));
+            const end = Math.max(start, Number(payload.end || start));
+            const inserted = String(payload.inserted || '');
+            const before = String(code.value || '');
+            const next = before.slice(0, start) + inserted + before.slice(end);
+            const caret = code.selectionStart || 0;
+            const delta = inserted.length - (end - start);
+            code.value = next;
+            if (document.activeElement === code) {
+                if (caret > end) {
+                    code.selectionStart = code.selectionEnd = Math.max(0, caret + delta);
+                } else if (caret >= start) {
+                    code.selectionStart = code.selectionEnd = start + inserted.length;
+                }
+            }
+            updateEditorChrome();
+            saveLocal();
+            setStatus('Совместная правка обновлена', 'ok');
         });
         workspaceSocket.on('workspace_presence', (payload) => {
             if (!payload) return;
@@ -309,6 +338,39 @@
             answer: answer.value,
             playback_frames: playback.frames,
             updated_at: now,
+        });
+    }
+
+    function commonPrefix(a, b) {
+        const limit = Math.min(a.length, b.length);
+        let i = 0;
+        while (i < limit && a[i] === b[i]) i += 1;
+        return i;
+    }
+
+    function commonSuffix(a, b, prefixLimit) {
+        let i = 0;
+        while (a.length - 1 - i >= prefixLimit && b.length - 1 - i >= prefixLimit && a[a.length - 1 - i] === b[b.length - 1 - i]) {
+            i += 1;
+        }
+        return i;
+    }
+
+    function emitWorkspacePatch(prevValue, nextValue) {
+        if (!workspaceSocketReady || !workspaceSocket || ws.context_type === 'demo') return;
+        const before = String(prevValue ?? '');
+        const after = String(nextValue ?? '');
+        if (before === after) return;
+        const prefix = commonPrefix(before, after);
+        const suffix = commonSuffix(before, after, prefix);
+        workspaceSocket.emit('workspace_patch', {
+            context_type: ws.context_type || 'demo',
+            context_id: ws.context_id || null,
+            assignment_task_id: ws.assignment_task_id || null,
+            start: prefix,
+            end: Math.max(prefix, before.length - suffix),
+            inserted: after.slice(prefix, after.length - suffix),
+            updated_at: Date.now(),
         });
     }
 
@@ -1203,10 +1265,12 @@
     });
 
     code.addEventListener('input', () => {
+        const previous = inputSnapshot;
         saveLocal();
         updateEditorChrome();
         setStatus('Есть несохраненные изменения', 'run');
         scheduleAutosave();
+        emitWorkspacePatch(previous, code.value);
         emitWorkspaceDraft(false);
         emitWorkspaceCursor(false);
         if (!isApplyingPlayback) {
@@ -1228,6 +1292,7 @@
     code.addEventListener('focus', () => emitWorkspaceCursor(false));
     code.addEventListener('blur', () => emitWorkspaceCursor(true));
     code.addEventListener('beforeinput', (event) => {
+        inputSnapshot = code.value;
         pendingInputMeta = {
             type: event.inputType || 'input',
             data: event.data || '',

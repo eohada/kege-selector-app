@@ -517,13 +517,13 @@
 .tw-remote-cursor::before {
     content: '';
     position: absolute;
-    left: -5px;
+    left: -4px;
     top: 5px;
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--cursor-color);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cursor-color) 14%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--cursor-color) 10%, transparent);
 }
 
 .tw-remote-cursor-label {
@@ -538,7 +538,7 @@
     font-weight: 900;
     box-shadow: var(--tw-shadow);
     white-space: nowrap;
-    opacity: 0.7;
+    opacity: 0.45;
 }
 
 .tw-active-line,
