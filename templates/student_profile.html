@@ -10,6 +10,7 @@
 {% set completed_lessons = ((lessons|selectattr('status','equalto','completed')|list)|length if lessons is defined and lessons else 0) %}
 {% set progress_pct = ( (completed_lessons * 100 / total_lessons)|round|int if total_lessons > 0 else 0) %}
 {% set mentor = (tutors_list[0] if tutors_list and tutors_list|length > 0 else None) %}
+{% set mentor_online = (mentor.is_online_now() if mentor else false) %}
 {% set upcoming = (upcoming_lessons[0] if upcoming_lessons and upcoming_lessons|length > 0 else None) %}
 {% set active_cnt = (active_submissions|length if active_submissions is defined and active_submissions else 0) %}
 {% set sub_allow_trainer = (student_subscription.allow_trainer if student_subscription and student_subscription.allow_trainer is not none else True) %}
@@ -150,9 +151,9 @@
                     {% if mentor %}
                     <span id="mentor-online-badge"
                           class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors duration-500
-                                 {{ 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' if mentor.is_online_now() else 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400' }}">
-                        <span id="mentor-online-dot" class="w-1.5 h-1.5 rounded-full {{ 'bg-green-500' if mentor.is_online_now() else 'bg-slate-400' }}"></span>
-                        <span id="mentor-online-label">{{ 'В сети' if mentor.is_online_now() else 'Не в сети' }}</span>
+                                 {{ 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' if mentor_online else 'bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-slate-400' }}">
+                        <span id="mentor-online-dot" class="w-1.5 h-1.5 rounded-full {{ 'bg-green-500' if mentor_online else 'bg-slate-400' }}"></span>
+                        <span id="mentor-online-label">{{ 'В сети' if mentor_online else 'Не в сети' }}</span>
                     </span>
                     {% endif %}
                 </div>
@@ -168,8 +169,8 @@
                         {% endif %}
                         <div id="mentor-status-dot"
                              class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-dark-card transition-colors duration-500
-                                    {{ 'bg-green-500' if mentor.is_online_now() else 'bg-slate-400' }}"
-                             title="{{ 'В сети' if mentor.is_online_now() else 'Не в сети' }}"></div>
+                                    {{ 'bg-green-500' if mentor_online else 'bg-slate-400' }}"
+                             title="{{ 'В сети' if mentor_online else 'Не в сети' }}"></div>
                     </div>
                     <div class="min-w-0">
                         <h4 class="text-xl font-black text-primary dark:text-white truncate">
@@ -193,7 +194,7 @@
                     <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Статус преподавателя</div>
                     <div id="mentor-activity-text" class="text-sm font-black text-primary dark:text-boo-primary mt-0.5">
                         {% if mentor %}
-                            {% if mentor.is_online_now() %}
+                            {% if mentor_online %}
                                 {% set live_act = mentor.get_live_activity_text() %}
                                 {% if live_act %}{{ live_act }}{% elif mentor.custom_status %}{{ mentor.custom_status }}{% else %}На платформе{% endif %}
                             {% else %}
