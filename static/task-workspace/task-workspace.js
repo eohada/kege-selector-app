@@ -117,6 +117,16 @@
         };
     }
 
+    function codeCharWidth() {
+        const style = getComputedStyle(code);
+        const font = `${style.fontWeight || '400'} ${style.fontSize || '15px'} ${style.fontFamily || 'monospace'}`;
+        const canvas = codeCharWidth._canvas || (codeCharWidth._canvas = document.createElement('canvas'));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return 8;
+        ctx.font = font;
+        return Math.max(7, ctx.measureText('M').width);
+    }
+
     function emitWorkspaceCursor(force = false) {
         if (!workspaceSocketReady || !workspaceSocket || ws.context_type === 'demo' || !code) return;
         if (!force) {
@@ -183,20 +193,22 @@
         const lineHeight = metrics.lineHeight || 24;
         const paddingTop = metrics.paddingTop || 16;
         const paddingLeft = metrics.paddingLeft || 18;
-        const maxLines = Math.max(1, (code.value || '').split('\n').length);
+        const charWidth = codeCharWidth();
         const layerTop = paddingTop - code.scrollTop;
-        const renderBox = (lineNumber) => Math.max(0, (lineNumber - 1) * lineHeight + layerTop);
         remoteLayer.innerHTML = participants.map((item) => {
             const cursor = item.cursor || {};
             const startLine = Math.max(1, Number(cursor.line || 1));
-            const endLine = Math.max(startLine, Number(lineInfoAtPosition(code.value || '', cursor.end || cursor.start || 0).line || startLine));
-            const top = renderBox(startLine);
+            const startCol = Math.max(1, Number(cursor.column || 1));
+            const endInfo = lineInfoAtPosition(code.value || '', cursor.end || cursor.start || 0);
+            const endLine = Math.max(startLine, Number(endInfo.line || startLine));
+            const top = Math.max(0, (startLine - 1) * lineHeight + layerTop);
             const height = Math.max(lineHeight, (endLine - startLine + 1) * lineHeight);
-            const visible = top > -lineHeight && top < code.clientHeight + lineHeight * 2;
+            const left = paddingLeft + Math.max(0, startCol - 1) * charWidth - code.scrollLeft;
+            const visible = top > -lineHeight && top < code.clientHeight + lineHeight * 2 && left > -40 && left < code.clientWidth + 120;
             if (!visible) return '';
             return `
-                <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; top:${top}px; height:${height}px; left:${paddingLeft}px; right:16px;">
-                    <span class="tw-remote-cursor-label">${escapeHtml(item.display_name || item.username || 'user')} · ${escapeHtml(String(startLine))}:${escapeHtml(String(cursor.column || 1))}</span>
+                <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; opacity:0.18; top:${top}px; height:${height}px; left:${left}px;">
+                    <span class="tw-remote-cursor-label">${escapeHtml(item.display_name || item.username || 'user')} · ${escapeHtml(String(startLine))}:${escapeHtml(String(startCol))}</span>
                 </div>
             `;
         }).join('');
@@ -244,6 +256,10 @@
             if (Number(payload.sender_id || 0) === Number(CURRENT_USER_ID || 0)) return;
             const remoteTs = Number(payload.updated_at || Date.now()) || Date.now();
             if (remoteTs < workspaceRemoteDraftTs) return;
+            if (document.activeElement === code && dirtySinceAutosave) {
+                workspaceRemoteDraftTs = remoteTs;
+                return;
+            }
             workspaceRemoteDraftTs = remoteTs;
             code.value = String(payload.code || '');
             if (Array.isArray(payload.playback_frames)) {
