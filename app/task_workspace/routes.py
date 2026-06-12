@@ -11,7 +11,12 @@ from app.limiter import limiter
 from app.sandbox.python_runner import normalize_leading_tabs_to_spaces, run_python_sandbox
 
 from .error_hints import explain_python_error
-from .service import resolve_workspace_context, save_workspace_code, load_workspace_versions_payload
+from .service import (
+    resolve_workspace_context,
+    save_workspace_code,
+    load_workspace_versions_payload,
+    load_workspace_state_payload,
+)
 
 
 task_workspace_bp = Blueprint("task_workspace", __name__, url_prefix="/task-workspace")
@@ -102,3 +107,13 @@ def workspace_versions_api():
     assignment_task_id = request.args.get("assignment_task_id", type=int)
     ctx = resolve_workspace_context(current_user, context_type, context_id, assignment_task_id)
     return jsonify({"success": True, "versions": load_workspace_versions_payload(ctx)})
+
+
+@task_workspace_bp.route("/api/state")
+@login_required
+def workspace_state_api():
+    context_type = request.args.get("context_type") or "demo"
+    context_id = request.args.get("context_id", type=int)
+    assignment_task_id = request.args.get("assignment_task_id", type=int)
+    ctx = resolve_workspace_context(current_user, context_type, context_id, assignment_task_id)
+    return jsonify({"success": True, "state": load_workspace_state_payload(ctx)})

@@ -56,6 +56,10 @@
     let autosaveTimer = null;
     let dirtySinceAutosave = false;
     let suggestionsEnabled = true;
+    let lastAppliedServerVersionId = null;
+    let lastAppliedServerUpdatedAt = '';
+    let liveSyncTimer = null;
+    let liveSyncBusy = false;
 
     function csrf() {
         return document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -70,6 +74,16 @@
             answer: answer.value,
             playback_frames: playback.frames,
         };
+    }
+
+    function stateFingerprint(state) {
+        if (!state) return '';
+        return [
+            state.version_id || '',
+            state.updated_at || '',
+            state.code || '',
+            state.answer || '',
+        ].join('|');
     }
 
     const pairs = {
@@ -312,6 +326,74 @@
         }
     }
 
+    function applyRemoteState(state, reason) {
+        if (!state) return false;
+        const remoteCode = String(state.code || '');
+        const remoteAnswer = String(state.answer || '');
+        const currentCode = String(code.value || '');
+        const currentAnswer = String(answer.value || '');
+        const changed = remoteCode !== currentCode || remoteAnswer !== currentAnswer;
+        if (!changed) {
+            lastAppliedServerVersionId = state.version_id || lastAppliedServerVersionId;
+            lastAppliedServerUpdatedAt = state.updated_at || lastAppliedServerUpdatedAt;
+            return false;
+        }
+
+        code.value = remoteCode;
+        answer.value = remoteAnswer;
+        if (state.versions?.items) {
+            versionState.items = state.versions.items.slice();
+            renderVersions();
+        }
+        if (state.playback?.frames) {
+            playback.frames = state.playback.frames.map(sanitizeFrame);
+            renderPlayback();
+        }
+        updateEditorChrome();
+        saveLocal();
+        lastAppliedServerVersionId = state.version_id || null;
+        lastAppliedServerUpdatedAt = state.updated_at || '';
+        setStatus(reason || 'Синхронизировано', 'ok');
+        return true;
+    }
+
+    async function pullServerState(force = false) {
+        if (ws.context_type === 'demo') return;
+        if (liveSyncBusy && !force) return;
+        liveSyncBusy = true;
+        try {
+            const params = new URLSearchParams({
+                context_type: ws.context_type || 'demo',
+            });
+            if (ws.context_id != null) params.set('context_id', String(ws.context_id));
+            if (ws.assignment_task_id != null) params.set('assignment_task_id', String(ws.assignment_task_id));
+            const resp = await fetch('/task-workspace/api/state?' + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || !data.success || !data.state) return;
+            const state = data.state;
+            const fingerprint = stateFingerprint(state);
+            const lastFingerprint = stateFingerprint({
+                version_id: lastAppliedServerVersionId,
+                updated_at: lastAppliedServerUpdatedAt,
+                code: code.value,
+                answer: answer.value,
+            });
+            if (fingerprint && fingerprint !== lastFingerprint) {
+                const shouldPull = force || document.activeElement !== code || !dirtySinceAutosave;
+                if (shouldPull) {
+                    applyRemoteState(state, 'Обновлено у второго участника');
+                }
+            }
+        } catch (err) {
+            // transient sync errors are expected on poor connections
+        } finally {
+            liveSyncBusy = false;
+        }
+    }
+
     function restoreLocal() {
         try {
             const raw = localStorage.getItem(storageKey);
@@ -383,6 +465,10 @@
             if (data.versions?.items) {
                 versionState.items = data.versions.items.slice();
                 renderVersions();
+            }
+            if (data.versions?.items?.length) {
+                lastAppliedServerVersionId = data.versions.items[0]?.version_id || lastAppliedServerVersionId;
+                lastAppliedServerUpdatedAt = data.versions.items[0]?.created_at || lastAppliedServerUpdatedAt;
             }
             setStatus(isAutosave ? 'Автосохранено' : 'Сохранено на сервере', 'ok');
         } catch (err) {
@@ -1390,6 +1476,11 @@
     renderVersions();
     updateEditorChrome();
     scheduleAutosave();
+    pullServerState(true);
+    liveSyncTimer = setInterval(() => pullServerState(false), 700);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) pullServerState(true);
+    });
 
     // Инициализация холста рисования
     if (window.BooCanvasOverlay && ws.task_id) {
