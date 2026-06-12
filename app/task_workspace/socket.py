@@ -176,10 +176,31 @@ def register_task_workspace_socket(socketio) -> None:
             start = max(0, int(data.get("start") or 0))
             end = max(start, int(data.get("end") or start))
             inserted = str(data.get("inserted") or "")[:10_000]
+            previous = str(data.get("previous") or "")
+            next_value = str(data.get("next") or "")
         except Exception:
             return
         current = _workspace_state.get(room) or {}
         code = str(current.get("code") or "")
+        if previous and code and previous not in code:
+            if next_value:
+                _set_room_state(room, {"code": next_value, "answer": str(current.get("answer") or "")[:20_000]})
+                socketio.emit(
+                    "workspace_patch",
+                    {
+                        "room": room,
+                        "user_id": current_user.id,
+                        "username": current_user.username,
+                        "start": 0,
+                        "end": len(code),
+                        "inserted": next_value,
+                        "updated_at": _workspace_state.get(room, {}).get("updated_at"),
+                    },
+                    room=room,
+                    namespace="/task-workspace",
+                    include_self=False,
+                )
+                return
         start = min(start, len(code))
         end = min(max(start, end), len(code))
         next_code = code[:start] + inserted + code[end:]

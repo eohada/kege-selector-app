@@ -128,16 +128,6 @@
         return Math.max(7, ctx.measureText('M').width);
     }
 
-    function codeCharWidth() {
-        const style = getComputedStyle(code);
-        const font = `${style.fontWeight || '400'} ${style.fontSize || '15px'} ${style.fontFamily || 'monospace'}`;
-        const canvas = codeCharWidth._canvas || (codeCharWidth._canvas = document.createElement('canvas'));
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return 8;
-        ctx.font = font;
-        return Math.max(7, ctx.measureText('M').width);
-    }
-
     function emitWorkspaceCursor(force = false) {
         if (!workspaceSocketReady || !workspaceSocket || ws.context_type === 'demo' || !code) return;
         if (!force) {
@@ -267,6 +257,10 @@
             if (Number(payload.sender_id || 0) === Number(CURRENT_USER_ID || 0)) return;
             const remoteTs = Number(payload.updated_at || Date.now()) || Date.now();
             if (remoteTs < workspaceRemoteDraftTs) return;
+            if (document.activeElement === code && dirtySinceAutosave) {
+                workspaceRemoteDraftTs = remoteTs;
+                return;
+            }
             workspaceRemoteDraftTs = remoteTs;
             code.value = String(payload.code || '');
             if (Array.isArray(payload.playback_frames)) {
@@ -361,6 +355,7 @@
         const before = String(prevValue ?? '');
         const after = String(nextValue ?? '');
         if (before === after) return;
+        if (!before.length && !after.length) return;
         const prefix = commonPrefix(before, after);
         const suffix = commonSuffix(before, after, prefix);
         workspaceSocket.emit('workspace_patch', {
@@ -370,6 +365,8 @@
             start: prefix,
             end: Math.max(prefix, before.length - suffix),
             inserted: after.slice(prefix, after.length - suffix),
+            previous: before,
+            next: after,
             updated_at: Date.now(),
         });
     }
