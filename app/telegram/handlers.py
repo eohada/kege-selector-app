@@ -17,6 +17,7 @@ import logging
 import os
 import random
 import secrets
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -73,6 +74,9 @@ from app.telegram.role_management import (
 )
 
 logger = logging.getLogger(__name__)
+
+_ACK_REPORT_DEDUP: dict[tuple[int, str, str], float] = {}
+_ACK_REPORT_DEDUP_TTL = 10.0
 
 UNAUTHORIZED_ROLE_OPTIONS = ('student', 'parent', 'tutor', 'designer', 'admin')
 
@@ -1902,6 +1906,17 @@ async def _cb_notification_ack(query, data: str) -> None:
 
     try:
         from app.telegram.user_notify import send_student_notification_ack_report
+
+        dedup_key = (int(from_user.id), kind, notification_text[:500])
+        now_ts = time.time()
+        last_ts = _ACK_REPORT_DEDUP.get(dedup_key)
+        if last_ts and (now_ts - last_ts) < _ACK_REPORT_DEDUP_TTL:
+            logger.info('notification ack deduped chat_id=%s kind=%s', from_user.id, kind)
+            return
+        _ACK_REPORT_DEDUP[dedup_key] = now_ts
+        stale_keys = [key for key, ts in _ACK_REPORT_DEDUP.items() if now_ts - ts > _ACK_REPORT_DEDUP_TTL]
+        for key in stale_keys:
+            _ACK_REPORT_DEDUP.pop(key, None)
 
         sent = send_student_notification_ack_report(
             student_chat_id=int(from_user.id),

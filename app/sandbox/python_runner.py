@@ -1,8 +1,8 @@
 """
 Песочница Python для запуска кода ученика (ЕГЭ информатика).
 
-Раннер в subprocess; файлы задания — в cwd. Доступны только: re, itertools, fnmatch,
-ipaddress, functools, sys (setrecursionlimit/getrecursionlimit), turtle; остальное через __import__ недоступно.
+Раннер в subprocess; файлы задания — в cwd. Доступны только: re, itertools, collections,
+ipaddress, functools, math, sys (setrecursionlimit/getrecursionlimit), turtle; остальное через __import__ недоступно.
 При наличии xvfb-run в PATH — turtle/tkinter.
 """
 from __future__ import annotations
@@ -62,6 +62,7 @@ _sys_stub = _SysStub()
 
 import re
 import itertools
+import collections
 import functools
 import fnmatch
 import ipaddress
@@ -260,6 +261,9 @@ else:
 _ALLOWED_MODULES = {
     're': re,
     'itertools': itertools,
+    'collections': collections,
+    'collection': collections,
+    'math': _math,
     'fnmatch': fnmatch,
     'ipaddress': ipaddress,
     'functools': functools,
@@ -319,6 +323,9 @@ try:
         '__builtins__': safe_builtins,
         're': re,
         'itertools': itertools,
+        'collections': collections,
+        'collection': collections,
+        'math': _math,
         'fnmatch': fnmatch,
         'ipaddress': ipaddress,
         'functools': functools,

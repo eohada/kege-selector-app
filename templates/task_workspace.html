@@ -76,6 +76,21 @@
                     <button id="tw-toggle-suggestions" class="tw-btn tw-btn-primary tw-btn-sm" type="button" title="Показать/скрыть подсказки">
                         <i class="ph-bold ph-lightbulb"></i> Подсказки
                     </button>
+                    <div class="tw-imports">
+                        <button id="tw-imports-toggle" class="tw-btn tw-btn-ghost tw-btn-sm" type="button" title="Быстрые импорты">
+                            <i class="ph-bold ph-stack"></i> Импорты
+                        </button>
+                        <div id="tw-imports-menu" class="tw-imports-menu">
+                            <button type="button" class="tw-import-item" data-import-snippet="import itertools">itertools</button>
+                            <button type="button" class="tw-import-item" data-import-snippet="import math">math</button>
+                            <button type="button" class="tw-import-item" data-import-snippet="import ipaddress">ipaddress</button>
+                            <button type="button" class="tw-import-item" data-import-snippet="import turtle">turtle</button>
+                            <button type="button" class="tw-import-item" data-import-snippet="import functools">functools</button>
+                            <button type="button" class="tw-import-item" data-import-snippet="import sys">sys</button>
+                            <button type="button" class="tw-import-item" data-import-snippet="from collections import Counter, defaultdict, deque">collections</button>
+                            <button type="button" class="tw-import-item" data-import-snippet="import re">re</button>
+                        </div>
+                    </div>
                     <button data-action="format" class="tw-btn tw-btn-ghost tw-btn-sm" type="button" title="Нормализовать отступы">
                         <i class="ph-bold ph-magic-wand"></i> Отступы
                     </button>
@@ -117,7 +132,9 @@
             <div class="tw-tabs" role="tablist">
                 <button class="tw-tab is-active" type="button" data-tab="output">Вывод</button>
                 <button class="tw-tab" type="button" data-tab="canvas">Рисунок</button>
+                {% if workspace.can_review %}
                 <button class="tw-tab" type="button" data-tab="playback">Ход</button>
+                {% endif %}
                 <button class="tw-tab" type="button" data-tab="versions">Версии</button>
                 <button class="tw-tab" type="button" data-tab="notes">Заметки</button>
             </div>
@@ -128,6 +145,7 @@
                 <div id="tw-turtle-empty" class="tw-empty">Если код использует turtle, изображение появится здесь.</div>
                 <img id="tw-turtle" class="tw-turtle" alt="Рисунок turtle" hidden>
             </div>
+            {% if workspace.can_review %}
             <div class="tw-tab-pane" data-pane="playback">
                 <div class="tw-playback">
                     <div class="tw-playback-controls">
@@ -155,6 +173,7 @@
                     <div id="tw-playback-list" class="tw-playback-list"></div>
                 </div>
             </div>
+            {% endif %}
             <div class="tw-tab-pane" data-pane="notes">
                 <textarea id="tw-notes" class="tw-notes" placeholder="Личные заметки к задаче. Пока сохраняются локально."></textarea>
             </div>

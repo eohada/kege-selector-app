@@ -1603,7 +1603,6 @@ def distribute_assignment():
         summary = build_task_number_summary(task_ids)
         task_numbers = build_task_number_counts(task_ids)
         body = f"{label}: {summary}"
-        link_url = url_for('assignments.assignments_list', _external=True)
         for student_id in student_ids:
             student = Student.query.get(student_id)
             if not student:
@@ -1617,12 +1616,25 @@ def distribute_assignment():
                 except Exception:
                     pass
             if user_id:
+                submission = Submission.query.filter_by(
+                    assignment_id=assignment.assignment_id,
+                    student_id=student_id,
+                ).first()
+                student_link = None
+                if submission:
+                    student_link = url_for(
+                        'assignments.submission_view',
+                        submission_id=submission.submission_id,
+                        _external=True,
+                    )
+                elif current_app:
+                    student_link = url_for('assignments.assignments_list', _external=True)
                 notify_user(
                     user_id,
                     kind='assignment_assigned',
                     title=f"Новые задания — {label}",
                     body=body,
-                    link_url=link_url,
+                    link_url=student_link,
                     meta={'assignment_id': assignment.assignment_id, 'assignment_type': (assignment_type or 'homework').strip().lower(), 'tasks_count': len(task_ids), 'task_numbers': task_numbers},
                 )
         try:
@@ -4169,6 +4181,24 @@ def submission_grade_view(submission_id):
                 'time_band': flags.get('time_band'),
                 'mmr_rating_source': 'manual' if flags.get('teacher_adjusted') else 'auto',
             }
+        from app.task_workspace.service import load_workspace_trace_payload, WorkspaceContext
+        try:
+            temp_ctx = WorkspaceContext(
+                context_type="submission_task",
+                context_id=submission.submission_id,
+                task_id=assignment_task.task_id,
+                task=assignment_task.task,
+                title="",
+                subtitle="",
+                source_label="",
+                student_id=submission.student_id,
+                student_user_id=submission.student.user_id,
+                answer_id=answer.answer_id if answer else None,
+            )
+            playback_data = load_workspace_trace_payload(temp_ctx)
+        except Exception:
+            playback_data = {"trace_id": None, "frames": [], "meta": {}, "frame_count": 0}
+
         tasks_data.append({
             'assignment_task': assignment_task,
             'task': assignment_task.task,
@@ -4177,6 +4207,7 @@ def submission_grade_view(submission_id):
             'task_attempts_used': task_attempts_used,
             'rating_meta': rating_meta,
             'difficulty_label': difficulty_label,
+            'playback': playback_data,
         })
 
     tasks_view = build_submission_tasks_view(tasks_data, assignment)

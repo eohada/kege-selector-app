@@ -27,6 +27,8 @@
     const versionCount = document.getElementById('tw-version-count');
     const suggestions = document.getElementById('tw-suggestions');
     const suggestionToggle = document.getElementById('tw-toggle-suggestions');
+    const importsToggle = document.getElementById('tw-imports-toggle');
+    const importsMenu = document.getElementById('tw-imports-menu');
     const statusText = document.getElementById('tw-status-text');
     const statusDot = document.getElementById('tw-status-dot');
     const turtle = document.getElementById('tw-turtle');
@@ -111,9 +113,6 @@
         const currentLine = focus ? (escaped.slice(0, focus.start).match(/\n/g) || []).length : -1;
         const tokenRe = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#.*|\b\d+(?:\.\d+)?\b|\b[A-Za-z_][A-Za-z0-9_]*\b|[()[\]{}.,:+\-*/%=<>!]+)/g;
 
-        const hints = lineContextHints();
-        const isHintLine = suggestionsEnabled && hints.length > 0 && !hints[0][0].includes('Старт') && !hints[0][0].includes('Начни с решения');
-
         return lines.map((line, idx) => {
             const highlighted = line.replace(tokenRe, (token) => {
                 if (token.startsWith('#')) return '<span class="tok-comment">' + token + '</span>';
@@ -125,7 +124,7 @@
                 return token;
             });
             if (idx === currentLine) {
-                return '<span class="tok-line' + (isHintLine ? ' is-hint' : '') + '">' + highlighted + '</span>';
+                return '<span class="tok-line">' + highlighted + '</span>';
             }
             return highlighted;
         }).join('\n');
@@ -210,29 +209,39 @@
         const total = playback.frames.length;
         const index = total ? Math.min(playback.index, total - 1) : 0;
         playback.index = index;
-        playbackRange.max = String(Math.max(0, total - 1));
-        playbackRange.value = String(index);
-        playbackCounter.textContent = total ? `${index + 1} / ${total}` : '0 / 0';
+        if (playbackRange) {
+            playbackRange.max = String(Math.max(0, total - 1));
+            playbackRange.value = String(index);
+        }
+        if (playbackCounter) {
+            playbackCounter.textContent = total ? `${index + 1} / ${total}` : '0 / 0';
+        }
         const current = total ? playback.frames[index] : null;
-        playbackAction.textContent = current
-            ? `${current.action}${current.detail?.data ? `: ${String(current.detail.data).slice(0, 18)}` : ''}`
-            : 'Запись не начата';
-        playbackPlayBtn.textContent = playback.playing ? '⏸' : '▶';
-        playbackList.innerHTML = total
-            ? playback.frames.map((frame, idx) => {
-                const active = idx === index ? ' is-active' : '';
-                const label = frame.action || 'input';
-                const snippet = (frame.code || '').replace(/\n/g, ' ↵ ').slice(0, 72);
-                return `<button type="button" class="tw-playback-item${active}" data-playback-index="${idx}"><div class="tw-playback-item-top"><span>#${idx + 1} ${escapeHtml(label)}</span><span>${new Date(frame.ts).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span></div><small>${escapeHtml(snippet || '(пусто)')}</small></button>`;
-            }).join('')
-            : '<div class="tw-empty">Пока нет записанных шагов. Начни печатать код, и здесь появится лента.</div>';
-        playbackList.querySelectorAll('[data-playback-index]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const idx = Number(btn.dataset.playbackIndex || 0);
-                playback.index = idx;
-                setEditorFromFrame(playback.frames[idx]);
+        if (playbackAction) {
+            playbackAction.textContent = current
+                ? `${current.action}${current.detail?.data ? `: ${String(current.detail.data).slice(0, 18)}` : ''}`
+                : 'Запись не начата';
+        }
+        if (playbackPlayBtn) {
+            playbackPlayBtn.textContent = playback.playing ? '⏸' : '▶';
+        }
+        if (playbackList) {
+            playbackList.innerHTML = total
+                ? playback.frames.map((frame, idx) => {
+                    const active = idx === index ? ' is-active' : '';
+                    const label = frame.action || 'input';
+                    const snippet = (frame.code || '').replace(/\n/g, ' ↵ ').slice(0, 72);
+                    return `<button type="button" class="tw-playback-item${active}" data-playback-index="${idx}"><div class="tw-playback-item-top"><span>#${idx + 1} ${escapeHtml(label)}</span><span>${new Date(frame.ts).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span></div><small>${escapeHtml(snippet || '(пусто)')}</small></button>`;
+                }).join('')
+                : '<div class="tw-empty">Пока нет записанных шагов. Начни печатать код, и здесь появится лента.</div>';
+            playbackList.querySelectorAll('[data-playback-index]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const idx = Number(btn.dataset.playbackIndex || 0);
+                    playback.index = idx;
+                    setEditorFromFrame(playback.frames[idx]);
+                });
             });
-        });
+        }
     }
 
     function stopPlayback() {
@@ -270,9 +279,11 @@
     }
 
     function setStatus(text, kind) {
-        statusText.textContent = text;
-        statusDot.className = 'tw-status-dot';
-        if (kind) statusDot.classList.add('is-' + kind);
+        if (statusText) statusText.textContent = text;
+        if (statusDot) {
+            statusDot.className = 'tw-status-dot';
+            if (kind) statusDot.classList.add('is-' + kind);
+        }
     }
 
     function scheduleAutosave() {
@@ -728,42 +739,68 @@
         if (suggestionToggle) {
             suggestionToggle.classList.toggle('tw-btn-primary', suggestionsEnabled);
             suggestionToggle.classList.toggle('tw-btn-ghost', !suggestionsEnabled);
-            const icon = '<i class="ph-bold ph-lightbulb"></i>';
-            suggestionToggle.innerHTML = `${icon} Подсказки`;
+            suggestionToggle.innerHTML = suggestionsEnabled ? '<i class="ph-bold ph-lightbulb"></i> Подсказки' : '<i class="ph-bold ph-lightbulb-slash"></i> Подсказки: выкл';
         }
         suggestions.classList.toggle('is-hidden', !suggestionsEnabled);
         updateEditorChrome();
     }
 
+    function toggleImportsMenu(force) {
+        if (!importsMenu) return;
+        const open = typeof force === 'boolean' ? force : !importsMenu.classList.contains('is-open');
+        importsMenu.classList.toggle('is-open', open);
+    }
+
+    function insertImportSnippet(snippet) {
+        if (!snippet) return;
+        const normalized = String(snippet).trim();
+        const start = code.selectionStart || 0;
+        const end = code.selectionEnd || 0;
+        const before = code.value.slice(0, start);
+        const after = code.value.slice(end);
+        const needsNewline = before && !before.endsWith('\n') ? '\n' : '';
+        const block = normalized + '\n';
+        code.value = before + needsNewline + block + after;
+        const pos = before.length + needsNewline.length + block.length;
+        code.selectionStart = code.selectionEnd = pos;
+        updateEditorChrome();
+        saveLocal();
+        captureFrame('import-snippet', { snippet: normalized });
+    }
+
     function renderVersions() {
         const items = versionState.items || [];
-        versionCount.textContent = String(items.length);
-        versionList.innerHTML = items.length ? items.map((item) => {
-            const preview = item.preview || item.code || '';
-            return `<div class="tw-version-item">
-                <div class="tw-version-item-top">
-                    <span>#${item.version_id} · ${escapeHtml(item.source || 'autosave')}</span>
-                    <span>${item.created_at ? new Date(item.created_at).toLocaleString('ru-RU') : ''}</span>
-                </div>
-                <pre>${escapeHtml(preview.slice(0, 360) || '(пусто)')}</pre>
-                <div class="tw-version-actions">
-                    <button type="button" class="tw-btn tw-btn-ghost" data-restore-version="${item.version_id}">Открыть</button>
-                </div>
-            </div>`;
-        }).join('') : '<div class="tw-empty">Пока нет серверных версий. Нажми сохранить или подожди автосохранение.</div>';
-        versionList.querySelectorAll('[data-restore-version]').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const id = Number(btn.dataset.restoreVersion || 0);
-                const item = items.find((x) => Number(x.version_id) === id);
-                if (!item) return;
-                code.value = item.code || '';
-                answer.value = item.answer || '';
-                updateEditorChrome();
-                saveLocal();
-                captureFrame('restore-version', { version_id: id });
-                setStatus('Версия открыта в редакторе', 'ok');
+        if (versionCount) {
+            versionCount.textContent = String(items.length);
+        }
+        if (versionList) {
+            versionList.innerHTML = items.length ? items.map((item) => {
+                const preview = item.preview || item.code || '';
+                return `<div class="tw-version-item">
+                    <div class="tw-version-item-top">
+                        <span>#${item.version_id} · ${escapeHtml(item.source || 'autosave')}</span>
+                        <span>${item.created_at ? new Date(item.created_at).toLocaleString('ru-RU') : ''}</span>
+                    </div>
+                    <pre>${escapeHtml(preview.slice(0, 360) || '(пусто)')}</pre>
+                    <div class="tw-version-actions">
+                        <button type="button" class="tw-btn tw-btn-ghost" data-restore-version="${item.version_id}">Открыть</button>
+                    </div>
+                </div>`;
+            }).join('') : '<div class="tw-empty">Пока нет серверных версий. Нажми сохранить или подожди автосохранение.</div>';
+            versionList.querySelectorAll('[data-restore-version]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const id = Number(btn.dataset.restoreVersion || 0);
+                    const item = items.find((x) => Number(x.version_id) === id);
+                    if (!item) return;
+                    code.value = item.code || '';
+                    answer.value = item.answer || '';
+                    updateEditorChrome();
+                    saveLocal();
+                    captureFrame('restore-version', { version_id: id });
+                    setStatus('Версия открыта в редакторе', 'ok');
+                });
             });
-        });
+        }
     }
 
     code.addEventListener('keydown', (event) => {
@@ -918,31 +955,64 @@
     if (suggestionToggle) {
         suggestionToggle.addEventListener('click', toggleSuggestions);
     }
+    if (importsToggle) {
+        importsToggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            toggleImportsMenu();
+        });
+    }
+    if (importsMenu) {
+        importsMenu.querySelectorAll('[data-import-snippet]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                insertImportSnippet(btn.dataset.importSnippet || '');
+                toggleImportsMenu(false);
+            });
+        });
+    }
+    document.addEventListener('click', (event) => {
+        if (!importsMenu) return;
+        if (importsMenu.contains(event.target) || importsToggle?.contains(event.target)) return;
+        toggleImportsMenu(false);
+    });
 
-    playbackStartBtn.addEventListener('click', () => { playback.index = 0; stopPlayback(); setEditorFromFrame(playback.frames[0]); });
-    playbackStepBackBtn.addEventListener('click', () => { stopPlayback(); stepPlayback(-1); });
-    playbackStepForwardBtn.addEventListener('click', () => { stopPlayback(); stepPlayback(1); });
-    playbackEndBtn.addEventListener('click', () => {
-        stopPlayback();
-        if (playback.frames.length) {
-            playback.index = playback.frames.length - 1;
-            setEditorFromFrame(playback.frames[playback.index]);
-        }
-    });
-    playbackPlayBtn.addEventListener('click', playPlayback);
-    playbackSpeedSelect.addEventListener('change', () => {
-        playback.speed = Number(playbackSpeedSelect.value || 1);
-        if (playback.playing) {
+    if (playbackStartBtn) {
+        playbackStartBtn.addEventListener('click', () => { playback.index = 0; stopPlayback(); setEditorFromFrame(playback.frames[0]); });
+    }
+    if (playbackStepBackBtn) {
+        playbackStepBackBtn.addEventListener('click', () => { stopPlayback(); stepPlayback(-1); });
+    }
+    if (playbackStepForwardBtn) {
+        playbackStepForwardBtn.addEventListener('click', () => { stopPlayback(); stepPlayback(1); });
+    }
+    if (playbackEndBtn) {
+        playbackEndBtn.addEventListener('click', () => {
             stopPlayback();
-            playPlayback();
-        }
-    });
-    playbackRange.addEventListener('input', () => {
-        stopPlayback();
-        const idx = Number(playbackRange.value || 0);
-        playback.index = idx;
-        setEditorFromFrame(playback.frames[idx]);
-    });
+            if (playback.frames.length) {
+                playback.index = playback.frames.length - 1;
+                setEditorFromFrame(playback.frames[playback.index]);
+            }
+        });
+    }
+    if (playbackPlayBtn) {
+        playbackPlayBtn.addEventListener('click', playPlayback);
+    }
+    if (playbackSpeedSelect) {
+        playbackSpeedSelect.addEventListener('change', () => {
+            playback.speed = Number(playbackSpeedSelect.value || 1);
+            if (playback.playing) {
+                stopPlayback();
+                playPlayback();
+            }
+        });
+    }
+    if (playbackRange) {
+        playbackRange.addEventListener('input', () => {
+            stopPlayback();
+            const idx = Number(playbackRange.value || 0);
+            playback.index = idx;
+            setEditorFromFrame(playback.frames[idx]);
+        });
+    }
 
     // Свободная раскладка панелей (Floating Window Manager)
     const gridEl = document.getElementById('tw-workspace-grid');

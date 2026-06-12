@@ -132,8 +132,9 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
     if not student or not can_user_access_student(user, student_user_id=student.user_id):
         abort(403)
     is_student_owner = getattr(user, "is_student", lambda: False)() and user.id == student.user_id
-    can_edit = is_student_owner and (lesson_task.status or "pending") in {"pending", "returned"}
     can_review = _has_teacher_scope(user)
+    is_parent = getattr(user, "is_parent", lambda: False)()
+    can_edit = ((is_student_owner and (lesson_task.status or "pending") in {"pending", "returned", "assigned", "in_progress"}) or can_review) and not is_parent
     mmr_policy = "manual_confirm"
     if (lesson_task.assignment_type or "homework") != "classwork":
         mmr_policy = "always"
@@ -152,7 +153,7 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
         code=lesson_task.student_submission or lesson_task.task.starter_code or "",
         plain_answer=lesson_task.student_answer or "",
         mmr_policy=mmr_policy,
-        can_edit=can_edit or can_review,
+        can_edit=can_edit,
         can_review=can_review,
     )
 
@@ -184,7 +185,8 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         None,
     )
     can_review = _has_teacher_scope(user)
-    can_edit = is_owner and submission.status in {"IN_PROGRESS", "RETURNED", "ASSIGNED"}
+    is_parent = getattr(user, "is_parent", lambda: False)()
+    can_edit = ((is_owner and submission.status in {"IN_PROGRESS", "RETURNED", "ASSIGNED", "SUBMITTED", "NEEDS_MANUAL_REVIEW"}) or can_review) and not is_parent
 
     timer_seconds_left = None
     if submission.started_at and submission.assignment.time_limit_minutes:
@@ -210,7 +212,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         code=(answer.student_code if answer else "") or assignment_task.task.starter_code or "",
         plain_answer=(answer.value if answer else "") or "",
         mmr_policy="always",
-        can_edit=can_edit or can_review,
+        can_edit=can_edit,
         can_review=can_review,
         timer_seconds_left=timer_seconds_left,
     )
@@ -248,41 +250,45 @@ def resolve_workspace_context(user, context_type: str, context_id: int | None = 
 def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", frames: list[dict[str, Any]] | None = None) -> None:
     code = (code or "")[:100_000]
     answer = (answer or "")[:20_000]
-    if ctx.context_type == "lesson_task" and ctx.lesson_task_id:
-        lesson_task = LessonTask.query.get_or_404(ctx.lesson_task_id)
-        lesson_task.student_submission = code
-        if answer:
-            lesson_task.student_answer = answer
-        save_workspace_trace(ctx, frames=frames, meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)})
-        save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
-        db.session.commit()
-        return
-    if ctx.context_type == "submission_task" and ctx.submission_id and ctx.assignment_task_id:
-        answer_row = Answer.query.filter_by(
-            submission_id=ctx.submission_id,
-            assignment_task_id=ctx.assignment_task_id,
-        ).first()
-        if not answer_row:
-            assignment_task = AssignmentTask.query.get_or_404(ctx.assignment_task_id)
-            answer_row = Answer(
+    try:
+        if ctx.context_type == "lesson_task" and ctx.lesson_task_id:
+            lesson_task = LessonTask.query.get_or_404(ctx.lesson_task_id)
+            lesson_task.student_submission = code
+            if answer:
+                lesson_task.student_answer = answer
+            save_workspace_trace(ctx, frames=frames, meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)})
+            save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
+            db.session.commit()
+            return
+        if ctx.context_type == "submission_task" and ctx.submission_id and ctx.assignment_task_id:
+            answer_row = Answer.query.filter_by(
                 submission_id=ctx.submission_id,
                 assignment_task_id=ctx.assignment_task_id,
-                max_score=assignment_task.max_score,
-            )
-            db.session.add(answer_row)
-        answer_row.student_code = code
-        if answer:
-            answer_row.value = answer
-        from core.db_models import utc_now
+            ).first()
+            if not answer_row:
+                assignment_task = AssignmentTask.query.get_or_404(ctx.assignment_task_id)
+                answer_row = Answer(
+                    submission_id=ctx.submission_id,
+                    assignment_task_id=ctx.assignment_task_id,
+                    max_score=assignment_task.max_score,
+                )
+                db.session.add(answer_row)
+            answer_row.student_code = code
+            if answer:
+                answer_row.value = answer
+            from core.db_models import utc_now
 
-        answer_row.student_code_saved_at = utc_now()
-        save_workspace_trace(
-            ctx,
-            frames=frames,
-            meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)},
-        )
-        save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
-        db.session.commit()
+            answer_row.student_code_saved_at = utc_now()
+            save_workspace_trace(
+                ctx,
+                frames=frames,
+                meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)},
+            )
+            save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
 
 def _trace_lookup(ctx: WorkspaceContext):

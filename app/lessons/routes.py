@@ -1708,7 +1708,7 @@ def lesson_homework_save(lesson_id):
             lesson=lesson,
             assignment_type='homework',
             task_ids=task_ids,
-            link_url=url_for('assignments.submissions_list'),
+            link_url=url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id),
         )
         try:
             db.session.commit()

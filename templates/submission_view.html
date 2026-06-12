@@ -1789,14 +1789,6 @@
             if (!Number.isFinite(taskId)) return;
             if (!taskTimers[taskId]) taskTimers[taskId] = { elapsedMs: 0, runningSinceMs: null };
         }
-        function pauseAllTaskTimers() {
-            activeTaskId = null;
-            Object.keys(taskTimers).forEach(function(k) {
-                const taskId = parseInt(k, 10);
-                if (Number.isFinite(taskId)) syncTaskTimer(taskId);
-            });
-            persistTaskTimers(true);
-        }
         function persistTaskTimers(force) {
             const now = nowMs();
             if (!force && now - lastTaskTimerPersistAt < 1500) return;
@@ -1843,9 +1835,6 @@
                 });
             } catch (e) { /* ignore */ }
         }
-        function isAppActive() {
-            return SUBMISSION_TASK_TIMERS_ENABLED && document.visibilityState === 'visible';
-        }
         function isTaskRunning(taskId) {
             ensureTaskTimer(taskId);
             const st = taskTimers[taskId];
@@ -1854,7 +1843,7 @@
         function syncTaskTimer(taskId) {
             ensureTaskTimer(taskId);
             const st = taskTimers[taskId];
-            const shouldRun = Number.isFinite(activeTaskId) && taskId === activeTaskId && isAppActive();
+            const shouldRun = SUBMISSION_TASK_TIMERS_ENABLED && Number.isFinite(activeTaskId) && taskId === activeTaskId;
             if (shouldRun && st.runningSinceMs === null) {
                 st.runningSinceMs = nowMs();
             } else if (!shouldRun && st.runningSinceMs !== null) {
@@ -1905,7 +1894,7 @@
         });
         function syncActiveTaskFromDom() {
             if (!SUBMISSION_TASK_TIMERS_ENABLED) {
-                pauseAllTaskTimers();
+                activeTaskId = null;
                 return;
             }
             const activeCard = document.querySelector('.task-card.task-panel-active[data-task-id]');
@@ -1916,15 +1905,7 @@
         window.addEventListener('beforeunload', function() { syncAllTaskTimers(); persistTaskTimers(true); });
         setInterval(syncAllTaskTimers, 1000);
         window.__syncActiveTaskTimer__ = syncActiveTaskFromDom;
-
-        // Перезагрузка таймеров из localStorage при возвращении фокуса/активности вкладки
-        document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'visible') {
-                loadTaskTimersFromStorage();
-            }
-            syncActiveTaskFromDom();
-        });
-        window.addEventListener('focus', function() {
+        window.addEventListener('pageshow', function() {
             loadTaskTimersFromStorage();
             syncActiveTaskFromDom();
         });

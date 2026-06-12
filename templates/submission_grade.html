@@ -238,40 +238,99 @@
             position: fixed;
             left: 50%;
             transform: translateX(-50%);
-            bottom: 16px;
-            width: min(1180px, calc(100% - 32px));
-            max-width: calc(100vw - 32px);
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            bottom: 12px;
+            width: min(1280px, calc(100% - 24px));
+            max-width: calc(100vw - 24px);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--color-stroke, #e2e8f0);
-            border-radius: 1rem;
-            padding: 0.875rem 1.25rem;
+            border-radius: 1.25rem;
+            padding: 0.5rem 0.75rem;
             margin-top: 0;
             box-sizing: border-box;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 1rem;
-            z-index: 60;
-            box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.1);
+            gap: 0.5rem;
+            z-index: 999;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
         }
         [data-theme="dark"] .submit-section {
-            background: rgba(30, 41, 59, 0.94);
-            border-color: rgba(148, 163, 184, 0.25);
+            background: rgba(30, 41, 59, 0.85);
+            border-color: rgba(148, 163, 184, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
         }
-        @media (max-width: 768px) {
-            .submit-section {
-                padding: 0.75rem 1rem;
-                bottom: 8px;
-            }
+        .submit-section-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
-        
-        .total-score {
-            font-size: 1.5em;
+        .submit-section-right {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            flex-wrap: wrap;
+        }
+        .total-score-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            background: rgba(123, 92, 255, 0.1);
+            color: #7b5cff;
+            border: 1px solid rgba(123, 92, 255, 0.2);
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.75rem;
             font-weight: 800;
-            color: var(--accent-1);
+            font-size: 0.95rem;
+        }
+        [data-theme="dark"] .total-score-badge {
+            background: rgba(139, 92, 246, 0.15);
+            color: #a78bfa;
+            border-color: rgba(139, 92, 246, 0.3);
+        }
+        .status-text-note {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin: 0;
+        }
+        /* Компактные кнопки для footer */
+        .submit-section .neo-button {
+            padding: 0.375rem 0.75rem !important;
+            font-size: 0.75rem !important;
+            height: auto !important;
+            min-height: 0 !important;
+            line-height: 1.25 !important;
+            border-radius: 0.65rem !important;
+            gap: 0.25rem !important;
+            font-weight: 700 !important;
+            border-width: 1px !important;
+            border-bottom-width: 2px !important;
+        }
+        .submit-section .neo-button.accent {
+            background: #8b5cf6 !important;
+            color: #fff !important;
+            border-color: #7c3aed !important;
+            border-bottom-color: #6d28d9 !important;
+        }
+        .submit-section .neo-button.accent:hover {
+            background: #9065f7 !important;
+        }
+        .submit-section .neo-button.ghost {
+            background: var(--color-bg-surface, #fff) !important;
+            color: var(--text-secondary, #334155) !important;
+            border-color: var(--color-stroke, #e2e8f0) !important;
+            border-bottom-color: var(--color-stroke-darker, #cbd5e1) !important;
+        }
+        [data-theme="dark"] .submit-section .neo-button.ghost {
+            background: var(--color-bg-surface-alt, #1e293b) !important;
+            color: #e2e8f0 !important;
+            border-color: rgba(148, 163, 184, 0.2) !important;
+            border-bottom-color: rgba(148, 163, 184, 0.35) !important;
+        }
+        .submit-section .neo-button.ghost:hover {
+            background: var(--color-bg-surface-hover, #f1f5f9) !important;
         }
         /* Компактный блок ответа ученика — не растягивать по высоте */
         .student-answer-value {
@@ -637,83 +696,166 @@
                     {% if task_item.is_triplet_19_21 %}
                     <div class="subtask-title">Проверка задания {{ g.task.task_number if g.task else loop.index }}</div>
                     {% endif %}
-                    <div style="font-weight: 600; margin-bottom: 0.25rem;">Ответ ученика:</div>
-                    <div class="student-answer-value">{{ g.answer.value if g.answer and g.answer.value else '(нет ответа)' }}</div>
-                    {% set effective_answer = g.assignment_task.answer_override or (g.task.answer if g.task else '') %}
-                    {% if effective_answer %}
-                    <div style="margin-top: 0.75rem;">
-                        <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Правильный ответ:</div>
-                        <div class="student-answer-value" style="background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.4);">{{ effective_answer }}</div>
-                    </div>
-                    {% endif %}
-                    {% if g.answer and g.answer.student_code %}
-                    <div style="margin-top: 0.75rem;">
-                        <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Код ученика (Python){% if g.answer.student_code_saved_at %} — сохранён {{ g.answer.student_code_saved_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}:</div>
-                        <pre class="student-code-block" style="margin: 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; font-family: 'Consolas', 'Monaco', monospace; white-space: pre-wrap; word-break: break-word; max-height: 20rem; overflow: auto;">{{ g.answer.student_code }}</pre>
-                    </div>
-                    {% endif %}
-                    {% if g.answer and g.answer.files %}
-                    <div style="margin-top: 0.75rem;">
-                        <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem;">Прикреплённые файлы ученика:</div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                            {% for file_info in g.answer.files %}
-                            <a href="{{ file_info.url if file_info is mapping else file_info }}" target="_blank" download class="neo-button outline sm" style="display: inline-flex; align-items: center; gap: 0.35rem; text-decoration: none; font-size: 0.85rem;">
-                                {{ ui_icon('action.backup', 'sm') }}
-                                {{ file_info.name if file_info is mapping and file_info.name else 'Скачать файл' }}
-                            </a>
-                            {% endfor %}
+                    
+                    <div class="answer-grid-cols">
+                        <div class="answer-left-col">
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">Ответ ученика:</div>
+                            <div class="student-answer-value">{{ g.answer.value if g.answer and g.answer.value else '(нет ответа)' }}</div>
+                            {% set effective_answer = g.assignment_task.answer_override or (g.task.answer if g.task else '') %}
+                            {% if effective_answer %}
+                            <div style="margin-top: 0.75rem;">
+                                <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Правильный ответ:</div>
+                                <div class="student-answer-value correct-ans-val">{{ effective_answer }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if g.answer and g.answer.student_code %}
+                            <div class="teacher-code-playback-wrap border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-dark-card/30 p-4 mt-3" data-playback-task-id="{{ g.assignment_task.assignment_task_id }}">
+                                <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/45 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-base">
+                                            <i class="ph-bold ph-code"></i>
+                                        </div>
+                                        <div>
+                                            <span class="text-sm font-black text-primary dark:text-white block">Код ученика (Python)</span>
+                                            {% if g.answer.student_code_saved_at %}
+                                            <small class="text-xs text-muted dark:text-dark-muted block">Сохранён: {{ g.answer.student_code_saved_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    {% if g.playback and g.playback.frame_count > 0 %}
+                                    <div class="teacher-playback-status text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800">
+                                        Запись ввода ({{ g.playback.frame_count }} шагов)
+                                    </div>
+                                    {% endif %}
+                                </div>
+        
+                                <!-- Code display block -->
+                                <div class="relative rounded-xl border border-slate-200 dark:border-white/5 bg-slate-900 text-slate-100 p-4 font-mono text-sm leading-relaxed overflow-hidden">
+                                    <pre class="m-0 overflow-auto whitespace-pre-wrap word-break-all max-h-[24rem]" id="teacher-code-pre-{{ g.assignment_task.assignment_task_id }}">{{ g.answer.student_code }}</pre>
+                                </div>
+        
+                                {% if g.playback and g.playback.frame_count > 0 %}
+                                <!-- Playback Controls -->
+                                <div class="teacher-playback-controls flex flex-col gap-3 mt-3 pt-3 border-t border-slate-200/60 dark:border-white/5">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div class="flex items-center gap-1">
+                                            <button type="button" class="neo-button sm rounded-lg px-2.5 py-1.5" data-action="play-start" title="К первому шагу">⏮</button>
+                                            <button type="button" class="neo-button sm rounded-lg px-2.5 py-1.5" data-action="play-back" title="Назад">◀</button>
+                                            <button type="button" class="neo-button accent sm rounded-lg px-4 py-1.5 font-bold" data-action="play-toggle" style="min-width: 75px;">▶ Старт</button>
+                                            <button type="button" class="neo-button sm rounded-lg px-2.5 py-1.5" data-action="play-forward" title="Вперед">▶</button>
+                                            <button type="button" class="neo-button sm rounded-lg px-2.5 py-1.5" data-action="play-end" title="К последнему шагу">⏭</button>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-xs font-mono text-muted dark:text-dark-muted" data-field="counter">1 / {{ g.playback.frame_count }}</span>
+                                            <label class="flex items-center gap-1.5 text-xs text-muted">
+                                                Скорость
+                                                <select class="neo-input py-1 px-2 text-xs" data-field="speed" style="width: auto;">
+                                                    <option value="0.5">0.5x</option>
+                                                    <option value="1" selected>1x</option>
+                                                    <option value="2">2x</option>
+                                                    <option value="4">4x</option>
+                                                    <option value="8">8x</option>
+                                                </select>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <input type="range" class="flex-1 accent-indigo-600 cursor-pointer h-1.5 bg-slate-200 dark:bg-white/10 rounded-lg appearance-none" data-field="slider" min="0" max="{{ g.playback.frame_count - 1 }}" value="{{ g.playback.frame_count - 1 }}">
+                                        <span class="text-xs font-semibold text-muted dark:text-dark-muted truncate max-w-[200px]" data-field="action">Последнее сохранение</span>
+                                    </div>
+                                    
+                                    <script>
+                                    window.TEACHER_PLAYBACK_DATA_{{ g.assignment_task.assignment_task_id }} = {{ g.playback|tojson }};
+                                    </script>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            {% if g.answer and g.answer.files %}
+                            <div style="margin-top: 0.75rem;">
+                                <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem;">Прикреплённые файлы ученика:</div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                    {% for file_info in g.answer.files %}
+                                    <a href="{{ file_info.url if file_info is mapping else file_info }}" target="_blank" download class="neo-button outline sm" style="display: inline-flex; align-items: center; gap: 0.35rem; text-decoration: none; font-size: 0.85rem;">
+                                        {{ ui_icon('action.backup', 'sm') }}
+                                        {{ file_info.name if file_info is mapping and file_info.name else 'Скачать файл' }}
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if g.answer and g.answer.is_correct is not none %}
+                            <div class="autocheck-status-pill {% if g.answer.is_correct %}is-correct{% else %}is-incorrect{% endif %}">
+                                {% if g.answer.is_correct %}{{ ui_icon('action.check', 'sm') }} Правильно{% else %}{{ ui_icon('action.close', 'sm') }} Неправильно{% endif %}
+                                (Авто-проверка: {{ g.answer.score }}/{{ g.assignment_task.max_score }})
+                            </div>
+                            {% endif %}
                         </div>
-                    </div>
-                    {% endif %}
-                    {% if g.answer and g.answer.is_correct is not none %}
-                    <div style="margin-top: 0.75rem; padding: 0.5rem; background: {% if g.answer.is_correct %}var(--success){% else %}var(--danger){% endif %}; color: white; border-radius: var(--radius-sm); font-weight: 600;">
-                        {% if g.answer.is_correct %}{{ ui_icon('action.check', 'sm') }} Правильно{% else %}{{ ui_icon('action.close', 'sm') }} Неправильно{% endif %}
-                        (Авто-проверка: {{ g.answer.score }}/{{ g.assignment_task.max_score }})
-                    </div>
-                    {% endif %}
-                    {% if submission.student and submission.student.user_id and g.task %}
-                    <div style="margin-top: 0.75rem;">
-                        <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ submission.student.user_id }}, {{ g.task.task_id }}, 'submission', {{ submission.submission_id }}, this)">
-                            <i class="ph-bold ph-pencil-line"></i> Заметки ученика
-                        </button>
-                    </div>
-                    {% endif %}
-                    <div class="score-input-group">
-                        <label style="font-weight: 600;">Балл:</label>
-                        <input
-                            type="number"
-                            class="score-input"
-                            name="score_{{ g.assignment_task.assignment_task_id }}"
-                            value="{% if g.answer and g.answer.score is not none %}{{ g.answer.score }}{% elif g.answer and g.answer.is_correct == true %}{{ g.assignment_task.max_score }}{% else %}{% endif %}"
-                            min="0"
-                            max="{{ g.assignment_task.max_score }}"
-                            data-max="{{ g.assignment_task.max_score }}"
-                            placeholder="nothing"
-                        >
-                        <span class="max-score">/ {{ g.assignment_task.max_score }}</span>
-                    </div>
-                    <div style="margin-top: 0.85rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-                        <button type="button"
-                                class="neo-button sm rounded-xl px-3 py-2 inline-flex items-center gap-1.5 text-xs font-bold return-task-toggle-btn{% if g.answer and g.answer.needs_revision %} is-selected{% endif %}"
-                                data-return-task-toggle="1"
-                                data-assignment-task-id="{{ g.assignment_task.assignment_task_id }}"
-                                aria-pressed="{% if g.answer and g.answer.needs_revision %}true{% else %}false{% endif %}">
-                            <i class="ph-bold ph-arrow-u-up-left"></i>
-                            <span class="return-task-toggle-label">{% if g.answer and g.answer.needs_revision %}Вернется на доработку{% else %}Не возвращать{% endif %}</span>
-                        </button>
-                    </div>
-                    <div style="margin-top: 1rem;">
-                        <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Комментарий к задаче:</label>
-                        <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.5rem 0;">Ученик увидит этот комментарий при выполнении. Можно сохранить кнопкой «Сохранить комментарии» без завершения проверки.</p>
-                        <textarea class="comment-input" name="comment_{{ g.assignment_task.assignment_task_id }}" placeholder="Например: обратите внимание на единицы измерения; подсказка к заданию...">{{ g.answer.teacher_comment if g.answer and g.answer.teacher_comment else '' }}</textarea>
-                    </div>
-                    <div style="margin-top: 1rem; padding: 1rem; border: 1px dashed var(--stroke-1); border-radius: var(--radius-md); background: rgba(123, 92, 255, 0.06);">
-                        <div style="font-weight: 800; margin-bottom: 0.35rem;">Корректировка рейтинга (MMR / Elo)</div>
-                        <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.75rem 0;">Для любого задания, где вы вручную выставляете балл: можно задать изменение рейтинга самостоятельно (например, −N при 0 баллах и +M при засчитанном задании после разбора на уроке). Оставьте пустым — сработает авторасчёт по формуле. Комментарий ниже попадёт в историю аналитики и будет помечен как «вручную».</p>
-                        <label style="font-weight: 600; display: block; margin-bottom: 0.35rem;">Δ MMR (необязательно)</label>
-                        <input type="number" step="any" name="mmr_delta_{{ g.assignment_task.assignment_task_id }}" class="neo-input" placeholder="Авто" style="max-width: 14rem; box-sizing: border-box;">
-                        <label style="font-weight: 600; display: block; margin: 0.75rem 0 0.35rem;">Комментарий к изменению рейтинга</label>
-                        <textarea name="rating_comment_{{ g.assignment_task.assignment_task_id }}" class="comment-input" rows="2" placeholder="Для журнала аналитики (необязателен, если не меняете Δ вручную)"></textarea>
+                        
+                        <div class="answer-right-col">
+                            <!-- Action Toolbar -->
+                            <div class="flex flex-wrap gap-2">
+                                {% if submission.student and submission.student.user_id and g.task %}
+                                <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ submission.student.user_id }}, {{ g.task.task_id }}, 'submission', {{ submission.submission_id }}, this)">
+                                    <i class="ph-bold ph-pencil-line"></i> Заметки ученика
+                                </button>
+                                <a href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=submission.submission_id, assignment_task_id=g.assignment_task.assignment_task_id) }}" target="_blank" rel="noopener noreferrer" class="neo-button outline sm" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem;">
+                                    <i class="ph-bold ph-arrow-square-out"></i> Открыть в Workspace
+                                </a>
+                                {% endif %}
+                                <button type="button"
+                                        class="neo-button sm rounded-xl px-3 py-2 inline-flex items-center gap-1.5 text-xs font-bold return-task-toggle-btn{% if g.answer and g.answer.needs_revision %} is-selected{% endif %}"
+                                        data-return-task-toggle="1"
+                                        data-assignment-task-id="{{ g.assignment_task.assignment_task_id }}"
+                                        aria-pressed="{% if g.answer and g.answer.needs_revision %}true{% else %}false{% endif %}">
+                                    <i class="ph-bold ph-arrow-u-up-left"></i>
+                                    <span class="return-task-toggle-label">{% if g.answer and g.answer.needs_revision %}Вернется на доработку{% else %}Не возвращать{% endif %}</span>
+                                </button>
+                            </div>
+        
+                            <!-- Score Input Group -->
+                            <div class="score-input-group" style="margin-top: 0.5rem;">
+                                <label style="font-weight: 600;">Балл:</label>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input
+                                        type="number"
+                                        class="score-input"
+                                        name="score_{{ g.assignment_task.assignment_task_id }}"
+                                        value="{% if g.answer and g.answer.score is not none %}{{ g.answer.score }}{% elif g.answer and g.answer.is_correct == true %}{{ g.assignment_task.max_score }}{% else %}{% endif %}"
+                                        min="0"
+                                        max="{{ g.assignment_task.max_score }}"
+                                        data-max="{{ g.assignment_task.max_score }}"
+                                        placeholder="0"
+                                    >
+                                    <span class="max-score">/ {{ g.assignment_task.max_score }}</span>
+                                </div>
+                            </div>
+        
+                            <!-- Comment to Task -->
+                            <div style="margin-top: 0.5rem;">
+                                <label style="font-weight: 600; display: block; margin-bottom: 0.25rem;">Комментарий к задаче <span class="text-xs font-normal text-muted">(ученик увидит сразу)</span>:</label>
+                                <textarea class="comment-input" name="comment_{{ g.assignment_task.assignment_task_id }}" placeholder="Например: обратите внимание на единицы измерения; подсказка к заданию...">{{ g.answer.teacher_comment if g.answer and g.answer.teacher_comment else '' }}</textarea>
+                            </div>
+        
+                            <!-- Collapsible MMR Adjustment Details -->
+                            <details class="border border-slate-200 dark:border-white/5 rounded-xl overflow-hidden bg-slate-50/30 dark:bg-dark-card/10" style="margin-top: 0.5rem;">
+                                <summary class="px-4 py-2 text-xs font-bold text-slate-500 dark:text-dark-muted cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 flex items-center justify-between">
+                                    <span>Корректировка MMR</span>
+                                    <i class="ph-bold ph-caret-down text-[10px]"></i>
+                                </summary>
+                                <div class="p-4 border-t border-slate-200 dark:border-white/5 bg-white/40 dark:bg-dark-inner/20">
+                                    <p style="font-size: 0.8em; color: var(--text-muted); margin: 0 0 0.75rem 0;">Задайте изменение рейтинга самостоятельно или оставьте пустым для авторасчёта.</p>
+                                    <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; font-size: 0.85rem;">Δ MMR (необязательно)</label>
+                                    <input type="number" step="any" name="mmr_delta_{{ g.assignment_task.assignment_task_id }}" class="neo-input" placeholder="Авто" style="max-width: 100%; box-sizing: border-box; width: 100%;">
+                                    <label style="font-weight: 600; display: block; margin: 0.75rem 0 0.35rem; font-size: 0.85rem;">Комментарий к изменению рейтинга</label>
+                                    <textarea name="rating_comment_{{ g.assignment_task.assignment_task_id }}" class="comment-input" rows="2" placeholder="Для журнала аналитики"></textarea>
+                                </div>
+                            </details>
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
@@ -757,16 +899,6 @@
                                     {% if it.get('max_score') is not none %}
                                       <span style="color: var(--text-muted);">макс: {{ it.get('max_score') }}</span>
                                     {% endif %}
-                                    <input
-                                      class="neo-input rubric-score-input"
-                                      style="width: 110px;"
-                                      type="number"
-                                      min="0"
-                                      {% if it.get('max_score') is not none %}max="{{ it.get('max_score') }}"{% endif %}
-                                      data-key="{{ key }}"
-                                      data-max="{{ it.get('max_score') if it.get('max_score') is not none else '' }}"
-                                      value="{{ val.get('score') if val and val.get('score') is not none else '' }}"
-                                      placeholder="балл">
                                 </div>
                             </div>
                             <div style="margin-top: .75rem;">
@@ -784,27 +916,28 @@
             {% endif %}
             
             <div class="submit-section">
-                <div>
-                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">Итоговый балл</div>
-                    <div class="total-score" id="total-score">0 / {{ submission.max_score or 0 }}</div>
+                <div class="submit-section-left">
+                    <div class="total-score-badge">
+                        <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; opacity: 0.75; letter-spacing: 0.05em;">Итог:</span>
+                        <span id="total-score">0 / {{ submission.max_score or 0 }}</span>
+                    </div>
+                    {% if not can_submit_grade %}
+                    <p class="status-text-note">
+                        {% if display_status_label %}Время истекло или дедлайн прошёл.{% else %}Работа ещё не сдана учеником.{% endif %}
+                    </p>
+                    {% endif %}
                 </div>
-                {% if not can_submit_grade %}
-                <p style="color: var(--text-muted); margin: 0; align-self: center;">
-                    {% if display_status_label %}Время истекло или дедлайн прошёл. Ученик не нажал «Сдать работу».
-                    {% else %}Работа ещё не сдана учеником.{% endif %}
-                </p>
-                {% endif %}
-                <div class="flex flex-wrap gap-3 items-center justify-end">
-                    <button type="button" id="save-comments-btn" class="neo-button ghost rounded-2xl px-5 py-3 inline-flex items-center gap-2 font-bold border border-slate-200/90 border-b-[3px] border-b-slate-300 dark:border-white/10 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] hover:shadow-tactile-hover transition-shadow active:translate-y-[2px] active:border-b-0" title="Сохранить комментарии к заданиям. Ученик увидит их при выполнении. Проверку завершать не нужно.">
-                        {{ ui_icon('action.edit', 'sm') }} Сохранить комментарии
+                <div class="submit-section-right">
+                    <button type="button" id="save-comments-btn" class="neo-button ghost" title="Сохранить комментарии к заданиям. Ученик увидит их при выполнении. Проверку завершать не нужно.">
+                        {{ ui_icon('action.edit', 'sm') }} Комментарии
                     </button>
-                    <button type="button" id="save-scores-draft-btn" class="neo-button ghost rounded-2xl px-5 py-3 inline-flex items-center gap-2 font-bold border border-slate-200/90 border-b-[3px] border-b-slate-300 dark:border-white/10 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] hover:shadow-tactile-hover transition-shadow active:translate-y-[2px] active:border-b-0" title="Сохранить баллы, общий комментарий и рубрику без смены статуса работы. Рейтинг (MMR) обновится; повторное сохранение пересчитает дельты, не суммируя прошлый вариант.">
+                    <button type="button" id="save-scores-draft-btn" class="neo-button ghost" title="Сохранить баллы, общий комментарий и рубрику без смены статуса работы. Рейтинг (MMR) обновится.">
                         <i class="ph-bold ph-floppy-disk"></i> Сохранить баллы
                     </button>
-                    <button type="button" id="return-btn" class="neo-button ghost rounded-2xl px-5 py-3 inline-flex items-center gap-2 font-bold border border-amber-200/80 text-amber-900 dark:border-amber-800/60 dark:text-amber-100 bg-amber-50/80 dark:bg-amber-950/40 hover:bg-amber-100/90 transition-colors">
-                        {{ ui_icon('action.refresh', 'sm') }} Вернуть на доработку
+                    <button type="button" id="return-btn" class="neo-button ghost text-amber-600 border-amber-200/50 hover:bg-amber-50" title="Вернуть работу на доработку ученику.">
+                        {{ ui_icon('action.refresh', 'sm') }} Вернуть
                     </button>
-                    <button type="button" id="grade-btn" class="neo-button accent rounded-2xl px-8 py-3.5 inline-flex items-center gap-2 font-black shadow-[0_10px_30px_rgba(123,92,255,0.35)] border-b-[3px] border-b-purple-900/80 active:translate-y-px active:border-b-0 transition-transform">
+                    <button type="button" id="grade-btn" class="neo-button accent" title="Завершить проверку и выставить финальную оценку.">
                         {{ ui_icon('action.check', 'sm') }} Завершить проверку
                     </button>
                 </div>
@@ -887,6 +1020,131 @@
     <script>
     var assignmentDeadline = {% if assignment.deadline %}"{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') }}"{% else %}null{% endif %};
     var assignmentMaxAttempts = {{ assignment.max_attempts_default or 1 }};
+    
+    // Инициализация пошагового воспроизведения кода ученика (для преподавателя)
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.teacher-code-playback-wrap').forEach(wrap => {
+            const taskId = wrap.dataset.playbackTaskId;
+            const dataKey = `TEACHER_PLAYBACK_DATA_${taskId}`;
+            const data = window[dataKey];
+            if (!data || !data.frames || !data.frames.length) return;
+
+            const pre = wrap.querySelector(`#teacher-code-pre-${taskId}`);
+            const playBtn = wrap.querySelector('[data-action="play-toggle"]');
+            const startBtn = wrap.querySelector('[data-action="play-start"]');
+            const backBtn = wrap.querySelector('[data-action="play-back"]');
+            const forwardBtn = wrap.querySelector('[data-action="play-forward"]');
+            const endBtn = wrap.querySelector('[data-action="play-end"]');
+            const slider = wrap.querySelector('[data-field="slider"]');
+            const counter = wrap.querySelector('[data-field="counter"]');
+            const actionLabel = wrap.querySelector('[data-field="action"]');
+            const speedSelect = wrap.querySelector('[data-field="speed"]');
+
+            let currentFrameIndex = data.frames.length - 1;
+            let playbackInterval = null;
+
+            function renderFrame(index) {
+                if (index < 0 || index >= data.frames.length) return;
+                currentFrameIndex = index;
+                const frame = data.frames[index];
+                
+                // Обновляем текст кода
+                pre.textContent = frame.code || '';
+                
+                // Обновляем слайдер и счетчик
+                slider.value = index;
+                counter.textContent = `${index + 1} / ${data.frames.length}`;
+                
+                let actionText = '';
+                if (frame.action === 'init') actionText = 'Начало (загрузка задачи)';
+                else if (frame.action === 'change') actionText = 'Ввод текста';
+                else if (frame.action === 'run') actionText = 'Запуск кода';
+                else if (frame.action === 'save') actionText = 'Сохранение черновика';
+                else actionText = frame.action || '';
+                
+                if (frame.timestamp) {
+                    const date = new Date(frame.timestamp * 1000);
+                    const timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                    actionText += ` [${timeStr}]`;
+                }
+                actionLabel.textContent = actionText;
+            }
+
+            function play() {
+                if (playbackInterval) return;
+                if (currentFrameIndex >= data.frames.length - 1) {
+                    currentFrameIndex = 0;
+                }
+                playBtn.textContent = '⏸ Пауза';
+                playBtn.classList.remove('accent');
+                playBtn.classList.add('warning');
+                
+                const speed = parseFloat(speedSelect.value) || 1;
+                const intervalTime = 1000 / speed;
+                
+                playbackInterval = setInterval(() => {
+                    if (currentFrameIndex < data.frames.length - 1) {
+                        renderFrame(currentFrameIndex + 1);
+                    } else {
+                        pause();
+                    }
+                }, intervalTime);
+            }
+
+            function pause() {
+                if (!playbackInterval) return;
+                clearInterval(playbackInterval);
+                playbackInterval = null;
+                playBtn.textContent = '▶ Старт';
+                playBtn.classList.remove('warning');
+                playBtn.classList.add('accent');
+            }
+
+            playBtn.addEventListener('click', () => {
+                if (playbackInterval) pause();
+                else play();
+            });
+
+            startBtn.addEventListener('click', () => {
+                pause();
+                renderFrame(0);
+            });
+
+            backBtn.addEventListener('click', () => {
+                pause();
+                if (currentFrameIndex > 0) {
+                    renderFrame(currentFrameIndex - 1);
+                }
+            });
+
+            forwardBtn.addEventListener('click', () => {
+                pause();
+                if (currentFrameIndex < data.frames.length - 1) {
+                    renderFrame(currentFrameIndex + 1);
+                }
+            });
+
+            endBtn.addEventListener('click', () => {
+                pause();
+                renderFrame(data.frames.length - 1);
+            });
+
+            slider.addEventListener('input', (e) => {
+                pause();
+                renderFrame(parseInt(e.target.value));
+            });
+
+            speedSelect.addEventListener('change', () => {
+                if (playbackInterval) {
+                    pause();
+                    play();
+                }
+            });
+
+            // Рендерим последний кадр изначально
+            renderFrame(currentFrameIndex);
+        });
+    });
     </script>
     
     <script>

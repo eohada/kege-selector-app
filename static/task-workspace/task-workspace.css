@@ -6,7 +6,7 @@
     --tw-muted: var(--color-text-muted, #64748b);
     --tw-border: var(--color-stroke, #dce5f0);
     --tw-border-strong: var(--color-stroke-strong, #c8d5e6);
-    --tw-accent: var(--color-accent, #7b5cff);
+    --tw-accent: var(--color-accent, #8b5cf6);
     --tw-cyan: var(--color-success, #05aec9);
     --tw-danger: var(--color-danger, #ef476f);
     --tw-ok: var(--color-gamification, #18b96c);
@@ -14,7 +14,7 @@
     --tw-code-bg: var(--color-bg-inset, #fbfdff);
     --tw-code-fg: var(--color-text-primary, #182235);
     --tw-code-line: var(--color-text-muted, #8ea1bb);
-    --tw-code-active: var(--color-accent-soft, rgba(123, 92, 255, 0.05));
+    --tw-code-active: var(--color-accent-soft, rgba(139, 92, 246, 0.05));
     max-width: min(1720px, calc(100vw - 56px));
     margin: 22px auto 56px;
     color: var(--tw-text);
@@ -165,7 +165,7 @@
 }
 
 .tw-drag-grip:hover {
-    color: var(--tw-accent, #7b5cff);
+    color: var(--tw-accent, #8b5cf6);
 }
 
 .tw-drag-grip:active {
@@ -209,7 +209,7 @@
 .tw-panel-resizer:hover::after {
     content: '';
     position: absolute;
-    background-color: var(--tw-accent, #7b5cff);
+    background-color: var(--tw-accent, #8b5cf6);
     opacity: 0.6;
 }
 
@@ -243,7 +243,7 @@
 
 .tw-panel-resizer-se:hover::before {
     opacity: 1;
-    border-color: var(--tw-accent, #7b5cff);
+    border-color: var(--tw-accent, #8b5cf6);
 }
 
 /* Таймер в верхнем баре */
@@ -334,6 +334,46 @@
     flex-wrap: wrap;
 }
 
+.tw-imports {
+    position: relative;
+}
+
+.tw-imports-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 8;
+    min-width: 220px;
+    padding: 8px;
+    border: 1px solid var(--tw-border);
+    border-radius: 14px;
+    background: var(--tw-panel);
+    box-shadow: var(--tw-shadow);
+}
+
+.tw-imports-menu.is-open {
+    display: grid;
+    gap: 6px;
+}
+
+.tw-import-item {
+    width: 100%;
+    border: 1px solid var(--tw-border);
+    background: var(--tw-panel-2);
+    color: var(--tw-text);
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.tw-import-item:hover {
+    border-color: var(--tw-border-strong);
+    background: var(--tw-panel);
+}
+
 .tw-muted {
     color: var(--tw-muted);
 }
@@ -417,8 +457,8 @@
 }
 
 .tw-active-line {
-    background: rgba(123, 92, 255, 0.04);
-    border-left: 2px solid rgba(123, 92, 255, 0.35);
+    background: rgba(139, 92, 246, 0.04);
+    border-left: 2px solid rgba(139, 92, 246, 0.35);
     display: none;
 }
 
@@ -434,8 +474,8 @@
 }
 
 .tw-pair-hl.is-secondary {
-    background: rgba(123, 92, 255, 0.05);
-    border-left-color: rgba(123, 92, 255, 0.35);
+    background: rgba(139, 92, 246, 0.05);
+    border-left-color: rgba(139, 92, 246, 0.35);
 }
 
 .tw-code,
@@ -467,14 +507,14 @@
 }
 
 .tw-code::selection {
-    background: rgba(123, 92, 255, 0.28);
+    background: rgba(139, 92, 246, 0.28);
 }
 
 .tw-code[readonly] {
     cursor: default;
 }
 
-.tok-keyword { color: #7b5cff; font-weight: 800; }
+.tok-keyword { color: #8b5cf6; font-weight: 800; }
 .tok-builtin { color: #0d8da6; font-weight: 700; }
 .tok-string { color: #b35f00; }
 .tok-number { color: #0d8f61; }
@@ -482,12 +522,12 @@
 .tok-op { color: #42526b; }
 
 .tok-pair {
-    background: rgba(123, 92, 255, 0.16);
+    background: rgba(139, 92, 246, 0.16);
     border-radius: 4px;
 }
 
 .tok-line {
-    background: rgba(123, 92, 255, 0.04);
+    background: rgba(139, 92, 246, 0.04);
     border-radius: 6px;
 }
 
@@ -571,8 +611,8 @@ body.dark .tok-op { color: #c7d2fe; }
 }
 
 .tw-suggestion[data-tone="accent"] {
-    border-color: rgba(123, 92, 255, 0.28);
-    background: rgba(123, 92, 255, 0.08);
+    border-color: rgba(139, 92, 246, 0.28);
+    background: rgba(139, 92, 246, 0.08);
 }
 
 .tw-suggestion[data-tone="info"] {
@@ -631,52 +671,53 @@ body.dark .tok-op { color: #c7d2fe; }
 }
 
 .tw-btn-primary {
-    background: var(--tw-accent, #7b5cff) !important;
-    border: 1px solid var(--tw-accent, #7b5cff) !important;
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+    border: 1px solid #7c3aed !important;
     color: #fff !important;
-    box-shadow: 0 4px 12px rgba(123, 92, 255, 0.18) !important;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25) !important;
 }
 
 .tw-btn-primary:hover {
-    background: #6a4ce5 !important;
-    border-color: #6a4ce5 !important;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+    border-color: #6d28d9 !important;
     color: #fff !important;
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.35) !important;
 }
 
 [data-theme="dark"] .tw-btn-primary,
 body.dark .tw-btn-primary {
-    background-color: rgba(123, 92, 255, 0.15) !important;
-    border-color: rgba(123, 92, 255, 0.3) !important;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(124, 58, 237, 0.1)) !important;
+    border-color: rgba(139, 92, 246, 0.3) !important;
     color: #c4b5fd !important;
-    box-shadow: 0 4px 12px rgba(123, 92, 255, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.1) !important;
 }
 
 [data-theme="dark"] .tw-btn-primary:hover,
 body.dark .tw-btn-primary:hover {
-    background-color: rgba(123, 92, 255, 0.22) !important;
-    border-color: rgba(123, 92, 255, 0.45) !important;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.26), rgba(124, 58, 237, 0.18)) !important;
+    border-color: rgba(139, 92, 246, 0.45) !important;
     color: #ddd6fe !important;
-    box-shadow: 0 6px 20px rgba(123, 92, 255, 0.18) !important;
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.18) !important;
 }
 
 /* Мягкие стили для активных кнопок-переключателей в шапке */
 .tw-topbar .tw-btn-primary {
-    background: rgba(123, 92, 255, 0.08) !important;
-    border-color: rgba(123, 92, 255, 0.22) !important;
-    color: var(--tw-accent, #7b5cff) !important;
+    background: rgba(139, 92, 246, 0.08) !important;
+    border-color: rgba(139, 92, 246, 0.22) !important;
+    color: #8b5cf6 !important;
     box-shadow: none !important;
 }
 
 .tw-topbar .tw-btn-primary:hover {
-    background: rgba(123, 92, 255, 0.14) !important;
-    border-color: rgba(123, 92, 255, 0.35) !important;
-    color: var(--tw-accent, #7b5cff) !important;
+    background: rgba(139, 92, 246, 0.14) !important;
+    border-color: rgba(139, 92, 246, 0.32) !important;
+    color: #7c3aed !important;
 }
 
 [data-theme="dark"] .tw-topbar .tw-btn-primary,
 body.dark .tw-topbar .tw-btn-primary {
-    background: rgba(123, 92, 255, 0.15) !important;
-    border-color: rgba(123, 92, 255, 0.3) !important;
+    background: rgba(139, 92, 246, 0.15) !important;
+    border-color: rgba(139, 92, 246, 0.3) !important;
     color: #c4b5fd !important;
 }
 
@@ -704,7 +745,7 @@ body.dark .tw-topbar .tw-btn-primary {
     border-radius: 999px;
     padding: 8px 12px;
     color: var(--tw-accent);
-    background: rgba(123, 92, 255, 0.12);
+    background: rgba(139, 92, 246, 0.12);
     font-weight: 900;
     font-size: 0.82rem;
 }
@@ -885,7 +926,7 @@ body.dark .tw-topbar .tw-btn-primary {
 
 .tw-playback-item.is-active {
     border-color: var(--tw-accent);
-    box-shadow: inset 0 0 0 1px rgba(123, 92, 255, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.2);
 }
 
 .tw-playback-item-top {
