@@ -3,6 +3,7 @@
     if (!root) return;
 
     const ws = window.TASK_WORKSPACE || {};
+    const CURRENT_USER_ID = Number(window.TASK_WORKSPACE_USER_ID || 0);
     const code = document.getElementById('tw-code');
     const highlight = document.getElementById('tw-highlight');
     const activeLine = document.getElementById('tw-active-line');
@@ -60,6 +61,11 @@
     let lastAppliedServerUpdatedAt = '';
     let liveSyncTimer = null;
     let liveSyncBusy = false;
+    let workspaceSocket = null;
+    let workspaceSocketReady = false;
+    let workspaceDraftTimer = null;
+    let workspaceLocalDraftTs = 0;
+    let workspaceRemoteDraftTs = 0;
 
     function csrf() {
         return document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -84,6 +90,90 @@
             state.code || '',
             state.answer || '',
         ].join('|');
+    }
+
+    function socketNamespace() {
+        if (typeof io === 'undefined') return null;
+        try {
+            return io('/task-workspace', { path: '/socket.io', transports: ['websocket', 'polling'] });
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function joinWorkspaceSocket() {
+        if (workspaceSocket || workspaceSocketReady) return;
+        workspaceSocket = socketNamespace();
+        if (!workspaceSocket) return;
+
+        const emitJoin = () => {
+            if (!workspaceSocket || !ws.context_type) return;
+            workspaceSocket.emit('join_workspace', {
+                context_type: ws.context_type || 'demo',
+                context_id: ws.context_id || null,
+                assignment_task_id: ws.assignment_task_id || null,
+            });
+        };
+
+        workspaceSocket.on('connect', () => {
+            workspaceSocketReady = true;
+            emitJoin();
+        });
+        workspaceSocket.on('disconnect', () => {
+            workspaceSocketReady = false;
+        });
+        workspaceSocket.on('workspace_snapshot', (payload) => {
+            const state = payload?.state || {};
+            const snapshotTs = Date.now();
+            if (payload?.saved_by && Number(payload.saved_by) === Number(CURRENT_USER_ID || 0)) return;
+            workspaceRemoteDraftTs = Math.max(workspaceRemoteDraftTs, snapshotTs);
+            if (state && typeof state === 'object') {
+                applyRemoteState({
+                    code: state.code || '',
+                    answer: state.answer || state.plain_answer || '',
+                    versions: state.versions || {},
+                    playback: state.playback || {},
+                    version_id: state.version_id || null,
+                    updated_at: state.updated_at || '',
+                }, 'Обновлено мгновенно');
+            }
+        });
+        workspaceSocket.on('workspace_draft_updated', (payload) => {
+            if (!payload) return;
+            if (Number(payload.sender_id || 0) === Number(CURRENT_USER_ID || 0)) return;
+            const remoteTs = Number(payload.updated_at || Date.now()) || Date.now();
+            if (remoteTs < workspaceRemoteDraftTs) return;
+            workspaceRemoteDraftTs = remoteTs;
+            code.value = String(payload.code || '');
+            answer.value = String(payload.answer || '');
+            if (Array.isArray(payload.playback_frames)) {
+                playback.frames = payload.playback_frames.map(sanitizeFrame);
+                renderPlayback();
+            }
+            updateEditorChrome();
+            saveLocal();
+            setStatus('Синхронизировано мгновенно', 'ok');
+        });
+    }
+
+    function emitWorkspaceDraft(force = false) {
+        if (!workspaceSocketReady || !workspaceSocket || ws.context_type === 'demo') return;
+        const now = Date.now();
+        if (!force) {
+            if (workspaceDraftTimer) clearTimeout(workspaceDraftTimer);
+            workspaceDraftTimer = setTimeout(() => emitWorkspaceDraft(true), 120);
+            return;
+        }
+        workspaceLocalDraftTs = now;
+        workspaceSocket.emit('workspace_draft_update', {
+            context_type: ws.context_type || 'demo',
+            context_id: ws.context_id || null,
+            assignment_task_id: ws.assignment_task_id || null,
+            code: code.value,
+            answer: answer.value,
+            playback_frames: playback.frames,
+            updated_at: now,
+        });
     }
 
     const pairs = {
@@ -980,6 +1070,7 @@
         updateEditorChrome();
         setStatus('Есть несохраненные изменения', 'run');
         scheduleAutosave();
+        emitWorkspaceDraft(false);
         if (!isApplyingPlayback) {
             captureFrame(pendingInputMeta?.type || 'input', {
                 data: pendingInputMeta?.data || '',
@@ -1002,7 +1093,10 @@
         gutter.scrollTop = code.scrollTop;
         renderLineAndPairFocus();
     });
-    answer.addEventListener('input', saveLocal);
+    answer.addEventListener('input', () => {
+        saveLocal();
+        emitWorkspaceDraft(false);
+    });
     notes.addEventListener('input', saveLocal);
 
     document.querySelectorAll('.tw-tab').forEach((tab) => {
@@ -1459,6 +1553,7 @@
     
     // Инициализация оконного менеджера
     restoreLocal();
+    joinWorkspaceSocket();
     if (!loadWindowStates()) {
         resetWindowsToDefault();
     } else {
@@ -1477,7 +1572,7 @@
     updateEditorChrome();
     scheduleAutosave();
     pullServerState(true);
-    liveSyncTimer = setInterval(() => pullServerState(false), 700);
+    liveSyncTimer = setInterval(() => pullServerState(false), 5000);
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) pullServerState(true);
     });

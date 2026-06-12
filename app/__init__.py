@@ -426,6 +426,8 @@ def create_app(config_name=None):
         app.socketio = socketio
         from app.lessons.lesson_socket import register_lesson_socket
         register_lesson_socket(socketio)
+        from app.task_workspace.socket import register_task_workspace_socket
+        register_task_workspace_socket(socketio)
         from app.main.presence_socket import register_presence_socket
         register_presence_socket(socketio)
     except ImportError as e:

@@ -192,6 +192,7 @@
 </main>
 <script>
 window.TASK_WORKSPACE = {{ workspace|tojson }};
+window.TASK_WORKSPACE_USER_ID = {{ current_user.id if current_user.is_authenticated else 'null' }};
 </script>
 
 {% include '_partials/canvas_overlay.html' %}

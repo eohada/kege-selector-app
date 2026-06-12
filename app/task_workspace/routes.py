@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import base64
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import current_user, login_required
 
 from app.assignments.routes import _collect_sandbox_files
@@ -17,6 +17,7 @@ from .service import (
     load_workspace_versions_payload,
     load_workspace_state_payload,
 )
+from .socket import emit_workspace_snapshot
 
 
 task_workspace_bp = Blueprint("task_workspace", __name__, url_prefix="/task-workspace")
@@ -96,6 +97,10 @@ def workspace_save_api():
     frames = data.get("playback_frames") or []
     save_workspace_code(ctx, data.get("code") or "", data.get("answer") or "", frames=frames)
     versions = load_workspace_versions_payload(ctx)
+    try:
+        emit_workspace_snapshot(current_app.socketio, ctx, saved_by=current_user.id)
+    except Exception:
+        pass
     return jsonify({"success": True, "saved": "server", "versions": versions})
 
 
