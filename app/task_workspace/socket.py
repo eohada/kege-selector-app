@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from time import time
 
 logger = logging.getLogger(__name__)
 
-_workspace_rooms: dict[str, set[int]] = {}
+_workspace_rooms: dict[str, dict[int, dict[str, Any]]] = {}
 
 
 def _room_key(context_type: str, context_id: int | None, assignment_task_id: int | None) -> str:
@@ -15,7 +16,7 @@ def _room_key(context_type: str, context_id: int | None, assignment_task_id: int
 def register_task_workspace_socket(socketio) -> None:
     from flask import request
     from flask_login import current_user
-    from flask_socketio import join_room, leave_room
+    from flask_socketio import join_room
 
     def _resolve_room(data: dict[str, Any]) -> tuple[str, Any] | tuple[None, None]:
         from .service import resolve_workspace_context
@@ -28,6 +29,27 @@ def register_task_workspace_socket(socketio) -> None:
         except Exception:
             return None, None
         return _room_key(ctx.context_type, ctx.context_id, ctx.assignment_task_id), ctx
+
+    def _participant_payload() -> dict[str, Any]:
+        display_name = getattr(current_user, "display_name", None) or getattr(current_user, "full_name", None) or getattr(current_user, "username", "user")
+        role = "creator" if getattr(current_user, "is_creator", False) else "admin" if getattr(current_user, "is_admin", False) else "teacher" if getattr(current_user, "is_teacher", False) else "student"
+        return {
+            "user_id": current_user.id,
+            "username": current_user.username,
+            "display_name": display_name,
+            "role": role,
+            "color": "#8b5cf6" if role in {"creator", "admin"} else "#05aec9" if role == "teacher" else "#18b96c",
+            "cursor": {"start": 0, "end": 0, "line": 0, "column": 0, "panel": "editor", "ts": int(time() * 1000)},
+        }
+
+    def _emit_presence(room: str) -> None:
+        participants = list(_workspace_rooms.get(room, {}).values())
+        socketio.emit(
+            "workspace_presence",
+            {"room": room, "participants": participants, "ts": int(time() * 1000)},
+            room=room,
+            namespace="/task-workspace",
+        )
 
     @socketio.on("connect", namespace="/task-workspace")
     def _on_connect():
@@ -42,7 +64,8 @@ def register_task_workspace_socket(socketio) -> None:
         sid = getattr(request, "sid", None)
         for room, members in list(_workspace_rooms.items()):
             if sid in members:
-                members.discard(sid)
+                members.pop(sid, None)
+                _emit_presence(room)
                 if not members:
                     del _workspace_rooms[room]
                 break
@@ -55,7 +78,10 @@ def register_task_workspace_socket(socketio) -> None:
         if not room or not ctx:
             return
         join_room(room)
-        _workspace_rooms.setdefault(room, set()).add(getattr(request, "sid", 0))
+        sid = getattr(request, "sid", 0)
+        participants = _workspace_rooms.setdefault(room, {})
+        participants[sid] = {**_participant_payload(), "cursor": {**_participant_payload()["cursor"]}}
+        _emit_presence(room)
         socketio.emit(
             "workspace_snapshot",
             {
@@ -64,6 +90,41 @@ def register_task_workspace_socket(socketio) -> None:
             },
             room=request.sid,
             namespace="/task-workspace",
+        )
+
+    @socketio.on("workspace_cursor_update", namespace="/task-workspace")
+    def _on_workspace_cursor_update(data):
+        if not current_user.is_authenticated:
+            return
+        room, ctx = _resolve_room(data or {})
+        if not room or not ctx:
+            return
+        sid = getattr(request, "sid", 0)
+        participants = _workspace_rooms.setdefault(room, {})
+        payload = participants.get(sid) or _participant_payload()
+        payload["cursor"] = {
+            "start": int(data.get("start") or 0),
+            "end": int(data.get("end") or 0),
+            "line": int(data.get("line") or 0),
+            "column": int(data.get("column") or 0),
+            "panel": str(data.get("panel") or "editor"),
+            "ts": int(time() * 1000),
+        }
+        participants[sid] = payload
+        socketio.emit(
+            "workspace_cursor_update",
+            {
+                "room": room,
+                "user_id": payload["user_id"],
+                "username": payload["username"],
+                "display_name": payload["display_name"],
+                "role": payload["role"],
+                "color": payload["color"],
+                "cursor": payload["cursor"],
+            },
+            room=room,
+            namespace="/task-workspace",
+            include_self=False,
         )
 
     @socketio.on("workspace_draft_update", namespace="/task-workspace")

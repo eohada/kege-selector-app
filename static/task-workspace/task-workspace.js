@@ -30,6 +30,8 @@
     const suggestionToggle = document.getElementById('tw-toggle-suggestions');
     const importsToggle = document.getElementById('tw-imports-toggle');
     const importsMenu = document.getElementById('tw-imports-menu');
+    const presence = document.getElementById('tw-presence');
+    const remoteLayer = document.getElementById('tw-remote-layer');
     const statusText = document.getElementById('tw-status-text');
     const statusDot = document.getElementById('tw-status-dot');
     const turtle = document.getElementById('tw-turtle');
@@ -66,6 +68,8 @@
     let workspaceDraftTimer = null;
     let workspaceLocalDraftTs = 0;
     let workspaceRemoteDraftTs = 0;
+    let workspaceCursorTimer = null;
+    const remoteParticipants = new Map();
 
     function csrf() {
         return document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -99,6 +103,103 @@
         } catch (err) {
             return null;
         }
+    }
+
+    function lineInfoAtPosition(source, pos) {
+        const text = String(source || '');
+        const safePos = Math.max(0, Math.min(text.length, Number(pos) || 0));
+        const before = text.slice(0, safePos);
+        const line = before.split('\n').length;
+        const lineStart = before.lastIndexOf('\n') + 1;
+        return {
+            line,
+            column: safePos - lineStart + 1,
+        };
+    }
+
+    function emitWorkspaceCursor(force = false) {
+        if (!workspaceSocketReady || !workspaceSocket || ws.context_type === 'demo' || !code) return;
+        if (!force) {
+            if (workspaceCursorTimer) clearTimeout(workspaceCursorTimer);
+            workspaceCursorTimer = setTimeout(() => emitWorkspaceCursor(true), 80);
+            return;
+        }
+        const start = code.selectionStart || 0;
+        const end = code.selectionEnd || 0;
+        const info = lineInfoAtPosition(code.value || '', start);
+        workspaceSocket.emit('workspace_cursor_update', {
+            context_type: ws.context_type || 'demo',
+            context_id: ws.context_id || null,
+            assignment_task_id: ws.assignment_task_id || null,
+            start,
+            end,
+            line: info.line,
+            column: info.column,
+            panel: document.querySelector('.tw-tab.is-active')?.dataset.tab || 'editor',
+        });
+    }
+
+    function presenceLabel(participant) {
+        const role = String(participant?.role || '').toLowerCase();
+        if (role === 'creator') return 'Создатель';
+        if (role === 'admin') return 'Админ';
+        if (role === 'teacher') return 'Преподаватель';
+        return 'Ученик';
+    }
+
+    function renderPresenceBar(participants) {
+        if (!presence) return;
+        const items = Array.isArray(participants) ? participants : [];
+        if (!items.length) {
+            presence.innerHTML = '<span class="tw-presence-empty">Ворскпейс пока открыт только у вас</span>';
+            return;
+        }
+        presence.innerHTML = items.map((item) => {
+            const mine = Number(item.user_id || 0) === Number(CURRENT_USER_ID || 0);
+            const color = item.color || '#8b5cf6';
+            const cursor = item.cursor || {};
+            const status = cursor.panel === 'editor' ? `строка ${cursor.line || 0}, столбец ${cursor.column || 0}` : `панель ${cursor.panel || 'editor'}`;
+            return `
+                <span class="tw-presence-chip${mine ? ' is-self' : ''}" style="--chip-color:${escapeHtml(color)}">
+                    <span class="tw-presence-dot"></span>
+                    <span class="tw-presence-text">
+                        <strong>${escapeHtml(item.display_name || item.username || 'user')}</strong>
+                        <small>${escapeHtml(presenceLabel(item))} · ${escapeHtml(status)}</small>
+                    </span>
+                </span>
+            `;
+        }).join('');
+    }
+
+    function renderRemoteCursors() {
+        if (!remoteLayer) return;
+        const participants = Array.from(remoteParticipants.values())
+            .filter((item) => Number(item.user_id || 0) !== Number(CURRENT_USER_ID || 0));
+        if (!participants.length) {
+            remoteLayer.innerHTML = '';
+            return;
+        }
+        const metrics = editorMetrics();
+        const lineHeight = metrics.lineHeight || 24;
+        const paddingTop = metrics.paddingTop || 16;
+        const paddingLeft = metrics.paddingLeft || 18;
+        const maxLines = Math.max(1, (code.value || '').split('\n').length);
+        const layerTop = paddingTop - code.scrollTop;
+        const renderBox = (lineNumber) => Math.max(0, (lineNumber - 1) * lineHeight + layerTop);
+        remoteLayer.innerHTML = participants.map((item) => {
+            const cursor = item.cursor || {};
+            const startLine = Math.max(1, Number(cursor.line || 1));
+            const endLine = Math.max(startLine, Number(lineInfoAtPosition(code.value || '', cursor.end || cursor.start || 0).line || startLine));
+            const top = renderBox(startLine);
+            const height = Math.max(lineHeight, (endLine - startLine + 1) * lineHeight);
+            const visible = top > -lineHeight && top < code.clientHeight + lineHeight * 2;
+            if (!visible) return '';
+            return `
+                <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; top:${top}px; height:${height}px; left:${paddingLeft}px; right:16px;">
+                    <span class="tw-remote-cursor-label">${escapeHtml(item.display_name || item.username || 'user')} · ${escapeHtml(String(startLine))}:${escapeHtml(String(cursor.column || 1))}</span>
+                </div>
+            `;
+        }).join('');
     }
 
     function joinWorkspaceSocket() {
@@ -153,6 +254,26 @@
             updateEditorChrome();
             saveLocal();
             setStatus('Синхронизировано мгновенно', 'ok');
+        });
+        workspaceSocket.on('workspace_presence', (payload) => {
+            if (!payload) return;
+            const participants = Array.isArray(payload.participants) ? payload.participants : [];
+            remoteParticipants.clear();
+            participants.forEach((participant) => {
+                if (!participant || participant.user_id == null) return;
+                remoteParticipants.set(Number(participant.user_id), participant);
+            });
+            renderPresenceBar(participants);
+            renderRemoteCursors();
+        });
+        workspaceSocket.on('workspace_cursor_update', (payload) => {
+            if (!payload || payload.user_id == null) return;
+            remoteParticipants.set(Number(payload.user_id), {
+                ...(remoteParticipants.get(Number(payload.user_id)) || {}),
+                ...payload,
+            });
+            renderPresenceBar(Array.from(remoteParticipants.values()));
+            renderRemoteCursors();
         });
     }
 
@@ -246,6 +367,7 @@
         suggestions.classList.toggle('is-hidden', !suggestionsEnabled);
         renderLineAndPairFocus();
         renderSuggestions();
+        renderRemoteCursors();
     }
 
     function sanitizeFrame(frame) {
@@ -1071,6 +1193,7 @@
         setStatus('Есть несохраненные изменения', 'run');
         scheduleAutosave();
         emitWorkspaceDraft(false);
+        emitWorkspaceCursor(false);
         if (!isApplyingPlayback) {
             captureFrame(pendingInputMeta?.type || 'input', {
                 data: pendingInputMeta?.data || '',
@@ -1079,8 +1202,16 @@
         }
         pendingInputMeta = null;
     });
-    code.addEventListener('keyup', updateEditorChrome);
-    code.addEventListener('mouseup', updateEditorChrome);
+    code.addEventListener('keyup', () => {
+        updateEditorChrome();
+        emitWorkspaceCursor(false);
+    });
+    code.addEventListener('mouseup', () => {
+        updateEditorChrome();
+        emitWorkspaceCursor(false);
+    });
+    code.addEventListener('focus', () => emitWorkspaceCursor(false));
+    code.addEventListener('blur', () => emitWorkspaceCursor(true));
     code.addEventListener('beforeinput', (event) => {
         pendingInputMeta = {
             type: event.inputType || 'input',
@@ -1092,6 +1223,7 @@
         highlight.scrollLeft = code.scrollLeft;
         gutter.scrollTop = code.scrollTop;
         renderLineAndPairFocus();
+        renderRemoteCursors();
     });
     answer.addEventListener('input', () => {
         saveLocal();
@@ -1193,6 +1325,12 @@
             setEditorFromFrame(playback.frames[idx]);
         });
     }
+
+    document.addEventListener('selectionchange', () => {
+        if (document.activeElement === code) {
+            emitWorkspaceCursor(false);
+        }
+    });
 
     // Свободная раскладка панелей (Floating Window Manager)
     const gridEl = document.getElementById('tw-workspace-grid');

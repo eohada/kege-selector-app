@@ -447,6 +447,98 @@
     overflow: hidden;
 }
 
+.tw-presence {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 12px 14px 14px;
+    border-top: 1px solid var(--tw-border);
+    background: var(--tw-panel);
+}
+
+.tw-presence-empty {
+    color: var(--tw-muted);
+    font-weight: 800;
+}
+
+.tw-presence-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--chip-color) 28%, var(--tw-border));
+    background: color-mix(in srgb, var(--chip-color) 10%, var(--tw-panel));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-color) 12%, transparent);
+}
+
+.tw-presence-chip.is-self {
+    border-color: color-mix(in srgb, var(--chip-color) 55%, var(--tw-border));
+}
+
+.tw-presence-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--chip-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--chip-color) 18%, transparent);
+    flex-shrink: 0;
+}
+
+.tw-presence-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+}
+
+.tw-presence-text strong {
+    font-size: 0.84rem;
+}
+
+.tw-presence-text small {
+    color: var(--tw-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.tw-remote-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.tw-remote-cursor {
+    position: absolute;
+    border-left: 3px solid var(--cursor-color);
+}
+
+.tw-remote-cursor::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 6px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--cursor-color);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--cursor-color) 18%, transparent);
+}
+
+.tw-remote-cursor-label {
+    position: absolute;
+    left: 10px;
+    top: -11px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--cursor-color) 18%, var(--tw-panel));
+    color: var(--tw-text);
+    font-size: 0.72rem;
+    font-weight: 900;
+    box-shadow: var(--tw-shadow);
+    white-space: nowrap;
+}
+
 .tw-active-line,
 .tw-pair-hl {
     position: absolute;

@@ -3,7 +3,7 @@
 {% block title %}Task Workspace · BooStudy{% endblock %}
 
 {% block head_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260611-6">
+<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260612-1">
 {% endblock %}
 
 {% block content %}
@@ -66,13 +66,13 @@
         </aside>
 
         <section class="tw-panel tw-editor-panel" id="tw-editor-panel">
-            <div class="tw-panel-head">
-                <div>
-                    <span class="tw-drag-grip"><i class="ph-bold ph-dots-six-vertical"></i></span>
-                    <span>Python IDE</span>
-                    <small class="tw-head-note">автоскобки, отступы, подсветка, turtle без системного окна</small>
-                </div>
-                <div class="tw-editor-tools">
+                <div class="tw-panel-head">
+                    <div>
+                        <span class="tw-drag-grip"><i class="ph-bold ph-dots-six-vertical"></i></span>
+                        <span>Python IDE</span>
+                        <small class="tw-head-note">автоскобки, отступы, подсветка, turtle без системного окна</small>
+                    </div>
+                    <div class="tw-editor-tools">
                     <button id="tw-toggle-suggestions" class="tw-btn tw-btn-primary tw-btn-sm" type="button" title="Показать/скрыть подсказки">
                         <i class="ph-bold ph-lightbulb"></i> Подсказки
                     </button>
@@ -95,10 +95,12 @@
                         <i class="ph-bold ph-magic-wand"></i> Отступы
                     </button>
                 </div>
+                <div id="tw-presence" class="tw-presence" aria-live="polite"></div>
             </div>
             <div class="tw-ide">
                 <div class="tw-gutter" id="tw-gutter">1</div>
                 <div class="tw-editor-surface">
+                    <div id="tw-remote-layer" class="tw-remote-layer" aria-hidden="true"></div>
                     <div id="tw-active-line" class="tw-active-line" aria-hidden="true"></div>
                     <div id="tw-pair-hl-1" class="tw-pair-hl" aria-hidden="true"></div>
                     <div id="tw-pair-hl-2" class="tw-pair-hl" aria-hidden="true"></div>
@@ -200,5 +202,5 @@ window.TASK_WORKSPACE_USER_ID = {{ current_user.id if current_user.is_authentica
 
 {% block scripts_extra %}
 {{ super() }}
-<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260611-6"></script>
+<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260612-1"></script>
 {% endblock %}
