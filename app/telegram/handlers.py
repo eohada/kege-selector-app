@@ -1663,17 +1663,18 @@ async def lesson_call_link_receive(update: Update, context: ContextTypes.DEFAULT
             await update.message.reply_text('⚠️ У ученика не привязан Telegram, ссылка отправлена только здесь.')
         else:
             student_msg = (
-                '▶️ <b>Урок начался</b>\n\n'
-                f'📚 {_esc(lesson.topic or "Занятие")}\n'
-                f'⏱ Длительность: <b>{esc(duration)}</b>\n'
+                '▶️ Урок начался\n\n'
+                f'📚 {lesson.topic or "Занятие"}\n'
+                f'⏱ Длительность: {duration}\n'
             )
             if link:
-                student_msg += f'\n🔗 {esc(link)}'
+                student_msg += f'\n🔗 {link}'
             markup = None
             if link:
                 markup = {'inline_keyboard': [[{'text': '🚪 Войти в класс', 'url': link}]]}
-            result = send_telegram_message(int(student_chat_id), student_msg, parse_mode='HTML', reply_markup=markup)
+            result = send_telegram_message(int(student_chat_id), student_msg, parse_mode=None, reply_markup=markup)
             if not (result and result.get('ok')):
+                logger.warning('lesson_call_link: send to student failed lesson_id=%s chat_id=%s result=%s', lesson.lesson_id, student_chat_id, result)
                 raise RuntimeError(f"send_telegram_message failed for student_chat_id={student_chat_id}")
 
         teacher_name = 'Преподаватель'
