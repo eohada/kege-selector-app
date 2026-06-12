@@ -1,4 +1,4 @@
-"""Напоминания за 30 минут до урока (Celery beat, каждые 5 мин)."""
+"""Напоминания за 30 минут до урока (Celery beat, часто и с узким окном)."""
 from __future__ import annotations
 
 import logging
@@ -83,15 +83,15 @@ def send_lesson_30min_reminder(lesson, *, force: bool = False) -> bool:
 @celery.task(name='app.tasks.telegram_lesson_reminders.telegram_lesson_reminders_task')
 def telegram_lesson_reminders_task() -> dict:
     """
-    Проверяет все запланированные уроки в окне [20 мин, 40 мин] от начала.
+    Проверяет все запланированные уроки в окне примерно [29м20с, 30м40с] от начала.
     Если напоминание ещё не отправлено — отправляет и ставит флаг.
     """
     from app.models import Lesson, Student, db
     from core.db_models import moscow_now
 
-    now = moscow_now().replace(second=0, microsecond=0)
-    window_start = (now + timedelta(minutes=20)).replace(tzinfo=None)
-    window_end = (now + timedelta(minutes=40)).replace(tzinfo=None)
+    now = moscow_now().replace(microsecond=0)
+    window_start = (now + timedelta(minutes=29, seconds=20)).replace(tzinfo=None)
+    window_end = (now + timedelta(minutes=30, seconds=40)).replace(tzinfo=None)
     sent = 0
 
     try:

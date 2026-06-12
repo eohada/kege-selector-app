@@ -59,13 +59,13 @@ def make_celery(app=None):
             },
         )
 
-    # Lesson reminders (каждые 5 мин)
+    # Lesson reminders (почти каждую минуту, узкое окно вокруг 30 минут)
     if os.environ.get('TELEGRAM_LESSON_REMINDERS_DISABLED', '').strip().lower() not in ('1', 'true', 'yes'):
         beat.setdefault(
             'telegram-lesson-reminders-30min',
             {
                 'task': 'app.tasks.telegram_lesson_reminders.telegram_lesson_reminders_task',
-                'schedule': float(os.environ.get('TELEGRAM_LESSON_BEAT_SECONDS', '300')),
+                'schedule': float(os.environ.get('TELEGRAM_LESSON_BEAT_SECONDS', '30')),
             },
         )
 

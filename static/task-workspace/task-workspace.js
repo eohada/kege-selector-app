@@ -246,7 +246,6 @@
             if (remoteTs < workspaceRemoteDraftTs) return;
             workspaceRemoteDraftTs = remoteTs;
             code.value = String(payload.code || '');
-            answer.value = String(payload.answer || '');
             if (Array.isArray(payload.playback_frames)) {
                 playback.frames = payload.playback_frames.map(sanitizeFrame);
                 renderPlayback();

@@ -142,7 +142,6 @@ def register_task_workspace_socket(socketio) -> None:
             "student_user_id": ctx.student_user_id,
             "student_id": ctx.student_id,
             "code": (data.get("code") or "")[:100_000],
-            "answer": (data.get("answer") or "")[:20_000],
             "playback_frames": data.get("playback_frames") or [],
             "updated_at": data.get("updated_at"),
             "sender_id": current_user.id,

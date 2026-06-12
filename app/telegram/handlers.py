@@ -1647,7 +1647,7 @@ async def lesson_call_link_receive(update: Update, context: ContextTypes.DEFAULT
 
     try:
         from app.models import Lesson, db
-        from app.telegram.notifications import notify_lesson_started_to_student, send_telegram_message
+        from app.telegram.notifications import send_telegram_message, _esc
 
         lesson = Lesson.query.get(int(lesson_id))
         if not lesson or not lesson.student or not lesson.student.user_id:
@@ -1655,13 +1655,23 @@ async def lesson_call_link_receive(update: Update, context: ContextTypes.DEFAULT
             return ConversationHandler.END
 
         db.session.commit()
-
-        notify_lesson_started_to_student(
-            student_user_id=int(lesson.student.user_id),
-            lesson_id=int(lesson.lesson_id),
-            topic=lesson.topic or 'Занятие',
-            room_url=link,
-        )
+        from app.models import UserProfile
+        student_profile = UserProfile.query.filter_by(user_id=int(lesson.student.user_id)).first()
+        student_chat_id = getattr(student_profile, 'telegram_chat_id', None)
+        if not student_chat_id:
+            await update.message.reply_text('⚠️ У ученика не привязан Telegram, ссылка отправлена только здесь.')
+        else:
+            student_msg = (
+                '▶️ <b>Урок начался</b>\n\n'
+                f'📚 {_esc(lesson.topic or "Занятие")}\n'
+                f'⏱ Длительность: <b>{esc(duration)}</b>\n'
+            )
+            if link:
+                student_msg += f'\n🔗 {esc(link)}'
+            markup = None
+            if link:
+                markup = {'inline_keyboard': [[{'text': '🚪 Войти в класс', 'url': link}]]}
+            send_telegram_message(int(student_chat_id), student_msg, parse_mode='HTML', reply_markup=markup)
 
         teacher_name = 'Преподаватель'
         if update.effective_user:

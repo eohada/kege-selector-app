@@ -163,6 +163,14 @@ def enqueue_assignment_notification(*, lesson: Lesson, assignment_type: str, tas
     """Ставит уведомление о заданиях в очередь (дебаунс 5 минут)."""
     if not lesson or not lesson.lesson_id or not lesson.student_id:
         return
+    try:
+        if lesson.lesson_date:
+            cutoff = moscow_now() - timedelta(hours=18)
+            if lesson.lesson_date < cutoff:
+                logger.info('Skip assignment notification for stale lesson_id=%s lesson_date=%s', lesson.lesson_id, lesson.lesson_date)
+                return
+    except Exception:
+        pass
 
     atype = (assignment_type or 'homework').strip().lower()
     if atype not in {'homework', 'classwork', 'exam'}:
@@ -217,6 +225,12 @@ def process_pending_assignment_notifications(*, debounce_seconds: int | None = N
             if not lesson or not lesson.student:
                 db.session.delete(pending)
                 continue
+            try:
+                if lesson.lesson_date and lesson.lesson_date < (now - timedelta(hours=18)):
+                    db.session.delete(pending)
+                    continue
+            except Exception:
+                pass
 
             task_ids = [int(tid) for tid in (pending.task_ids or []) if tid]
             if not task_ids:
