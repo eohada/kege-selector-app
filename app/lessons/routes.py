@@ -310,7 +310,7 @@ def lesson_start(lesson_id):
         raise
     try:
         from app.telegram.notifications import notify_lesson_started_for_lesson
-        notify_lesson_started_for_lesson(int(lesson.lesson_id))
+        notify_lesson_started_for_lesson(int(lesson.lesson_id), actor_user_id=current_user.id)
     except Exception:
         logger.warning('notify_lesson_started_for_lesson after lesson_start failed', exc_info=True)
     flash(f'Урок начат! Используй зеленую панель сверху для управления уроком.', 'success')
@@ -456,7 +456,17 @@ def lesson_classwork_view(lesson_id):
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.attempts),
     ).get_or_404(lesson_id)
     student = lesson.student
-    if not can_user_access_student(current_user, student_user_id=student.user_id):
+    can_access = can_user_access_student(
+        current_user,
+        student_user_id=getattr(student, 'user_id', None),
+        student_platform_id=getattr(student, 'platform_id', None),
+    )
+    if not can_access and current_user.is_student():
+        try:
+            can_access = int(current_user.id) == int(getattr(student, 'user_id', None) or getattr(student, 'student_id', None))
+        except Exception:
+            can_access = False
+    if not can_access:
         from flask import abort
         abort(403)
     content_blocks = []

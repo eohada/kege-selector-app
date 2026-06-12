@@ -277,31 +277,44 @@ def notify_new_gradebook_entry(
 # Lesson notifications
 # ---------------------------------------------------------------------------
 
-def notify_lesson_started_for_lesson(lesson_id: int) -> None:
-    """Уведомить ученика «урок начался» по lesson_id (вызывается после commit)."""
+def notify_lesson_started_for_lesson(lesson_id: int, *, actor_user_id: int | None = None) -> None:
+    """Уведомить ученика и, если есть, преподавателя о старте урока."""
     try:
-        from app.models import Lesson
+        from app.models import Lesson, UserProfile
         lesson = Lesson.query.get(lesson_id)
         if not lesson:
             return
         st = lesson.student
-        if not st or not st.user_id:
-            return
-        notify_lesson_started_to_student(
-            student_user_id=int(st.user_id),
-            lesson_id=int(lesson.lesson_id),
-            topic=lesson.topic or 'Занятие',
-        )
+        if actor_user_id:
+            prof = UserProfile.query.filter_by(user_id=int(actor_user_id)).first()
+            if prof and prof.telegram_chat_id:
+                teacher_name = ' '.join(part for part in [
+                    getattr(st.user, 'first_name', None) if getattr(st, 'user', None) else None,
+                    getattr(st.user, 'last_name', None) if getattr(st, 'user', None) else None,
+                ] if part).strip() or getattr(st, 'name', None) or 'Ученик'
+                lesson_topic = lesson.topic or 'Занятие'
+                duration = f'{int(lesson.duration or 60)} мин'
+                msg = (
+                    '▶️ <b>Урок начался</b>\n\n'
+                    f'👤 Ученик: {_esc(teacher_name)}\n'
+                    f'📚 Тема: {_esc(lesson_topic)}\n'
+                    f'⏱ Длительность: {duration}\n\n'
+                    'Пришли ссылку на видеосозвон одним сообщением.\n'
+                    'После этого я отправлю её ученику вместе с сообщением о начале урока.'
+                )
+                markup = {'inline_keyboard': [[{'text': '📎 Отправить ссылку', 'callback_data': f'lesson_call_link:{lesson.lesson_id}'}]]}
+                send_telegram_message(int(prof.telegram_chat_id), msg, reply_markup=markup)
     except Exception as e:
         logger.warning('notify_lesson_started_for_lesson %s: %s', lesson_id, e, exc_info=True)
 
 
-def notify_lesson_started_to_student(*, student_user_id: int, lesson_id: int, topic: str) -> bool:
+def notify_lesson_started_to_student(*, student_user_id: int, lesson_id: int, topic: str, room_url: str | None = None) -> bool:
     """Урок переведён в статус in_progress — уведомление ученику."""
     from app.telegram.user_notify import notify_user_by_id
 
-    base = (APP_URL or '').rstrip('/')
-    room_url = f'{base}/lesson/{lesson_id}/classwork-tasks' if base else ''
+    if room_url is None:
+        base = (APP_URL or '').rstrip('/')
+        room_url = f'{base}/lesson/{lesson_id}/classwork-tasks' if base else ''
     msg = f'▶️ <b>Урок начался</b>\n\n{_esc(topic or "Занятие")}\n'
     if room_url:
         msg += f'\n🔗 {room_url}'

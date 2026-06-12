@@ -6,7 +6,7 @@ import os
 
 from telegram import Update
 from telegram.error import Conflict
-from telegram.ext import CallbackQueryHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 
 from app.telegram.webhook import _build_application
 from wsgi import app as flask_app
@@ -47,6 +47,24 @@ def main() -> None:
     drop_pending = _truthy(os.environ.get('TELEGRAM_POLLING_DROP_PENDING_UPDATES'))
     with flask_app.app_context():
         application = _build_application(with_updater=True)
+        from app.telegram.handlers import lesson_call_link_start, lesson_call_link_receive, lesson_call_link_cancel, LESSON_CALL_LINK_TEXT
+        lesson_call_link_conv = ConversationHandler(
+            entry_points=[
+                CallbackQueryHandler(lesson_call_link_start, pattern=r'^lesson_call_link:\d+$'),
+            ],
+            states={
+                LESSON_CALL_LINK_TEXT: [
+                    MessageHandler(
+                        filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND,
+                        lesson_call_link_receive,
+                    ),
+                ],
+            },
+            fallbacks=[CommandHandler('cancel', lesson_call_link_cancel)],
+            allow_reentry=True,
+            conversation_timeout=300,
+        )
+        application.add_handler(lesson_call_link_conv)
         application.add_handler(MessageHandler(filters.ALL, _log_update, block=False), group=-1000)
         application.add_handler(CallbackQueryHandler(_log_update, block=False), group=-1000)
         application.add_error_handler(_log_error)

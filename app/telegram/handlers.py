@@ -85,10 +85,12 @@ UNAUTHORIZED_ROLE_OPTIONS = ('student', 'parent', 'tutor', 'designer', 'admin')
 # ---------------------------------------------------------------------------
 BUG_REPORT_TEXT = 1
 CREATOR_REPLY_TEXT = 2
+LESSON_CALL_LINK_TEXT = 3
 
 # context.user_data key for storing report_id while creator types reply
 _CTX_REPLY_REPORT_ID = 'bug_reply_report_id'
 _CTX_REPLY_STUDENT_CHAT_ID = 'bug_reply_student_chat_id'
+_CTX_LESSON_CALL_LINK_LESSON_ID = 'lesson_call_link_lesson_id'
 
 
 # ---------------------------------------------------------------------------
@@ -1576,6 +1578,121 @@ async def creator_reply_receive(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def creator_reply_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text('❌ Ответ отменён.')
+    return ConversationHandler.END
+
+
+# ===========================================================================
+# Lesson call link FSM
+# ===========================================================================
+
+async def lesson_call_link_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await _answer_callback_query(query)
+
+    try:
+        lesson_id = int((query.data or '').split(':', 1)[1])
+    except Exception:
+        await query.message.reply_text('⚠️ Не удалось определить урок.')
+        return ConversationHandler.END
+
+    context.user_data[_CTX_LESSON_CALL_LINK_LESSON_ID] = lesson_id
+
+    try:
+        from app.models import Lesson
+        lesson = Lesson.query.get(lesson_id)
+    except Exception:
+        lesson = None
+
+    lesson_title = getattr(lesson, 'topic', None) or 'Занятие'
+    student_name = 'Ученик'
+    duration = f'{int(getattr(lesson, "duration", 60) or 60)} мин'
+    try:
+        if lesson and lesson.student:
+            student_name = getattr(lesson.student, 'name', None) or student_name
+            if getattr(lesson.student, 'user', None):
+                student_name = (
+                    f"{lesson.student.user.first_name or ''} {lesson.student.user.last_name or ''}".strip()
+                    or getattr(lesson.student, 'name', None)
+                    or student_name
+                )
+    except Exception:
+        pass
+
+    await query.message.reply_text(
+        '📎 <b>Ссылка на видеосозвон</b>\n\n'
+        f'👤 Ученик: <b>{esc(student_name)}</b>\n'
+        f'📚 Урок: <b>{esc(lesson_title)}</b>\n'
+        f'⏱ Длительность: <b>{esc(duration)}</b>\n\n'
+        'Пришли ссылку одним сообщением.\n'
+        'Например: https://meet.google.com/xxx-xxxx-xxx',
+        parse_mode='HTML',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return LESSON_CALL_LINK_TEXT
+
+
+async def lesson_call_link_receive(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    link = (update.message.text or '').strip()
+    if not link:
+        await update.message.reply_text('⚠️ Ссылка не может быть пустой. Пришли ссылку на видеосозвон.')
+        return LESSON_CALL_LINK_TEXT
+    if not (link.startswith('http://') or link.startswith('https://')):
+        await update.message.reply_text('⚠️ Ссылка должна начинаться с http:// или https://')
+        return LESSON_CALL_LINK_TEXT
+
+    lesson_id = context.user_data.get(_CTX_LESSON_CALL_LINK_LESSON_ID)
+    if not lesson_id:
+        await update.message.reply_text('⚠️ Не нашел активный урок. Повтори запуск из кнопки в сообщении.')
+        return ConversationHandler.END
+
+    try:
+        from app.models import Lesson, db
+        from app.telegram.notifications import notify_lesson_started_to_student, send_telegram_message
+
+        lesson = Lesson.query.get(int(lesson_id))
+        if not lesson or not lesson.student or not lesson.student.user_id:
+            await update.message.reply_text('⚠️ Не удалось найти ученика для этого урока.')
+            return ConversationHandler.END
+
+        db.session.commit()
+
+        notify_lesson_started_to_student(
+            student_user_id=int(lesson.student.user_id),
+            lesson_id=int(lesson.lesson_id),
+            topic=lesson.topic or 'Занятие',
+            room_url=link,
+        )
+
+        teacher_name = 'Преподаватель'
+        if update.effective_user:
+            teacher_name = (
+                f"{update.effective_user.first_name or ''} {update.effective_user.last_name or ''}".strip()
+                or update.effective_user.username
+                or teacher_name
+            )
+        send_telegram_message(
+            int(update.effective_chat.id),
+            (
+                '✅ <b>Ссылка отправлена ученику</b>\n\n'
+                f'👤 Ученик: <b>{esc(getattr(lesson.student, "name", None) or "Ученик")}</b>\n'
+                f'📚 Урок: <b>{esc(lesson.topic or "Занятие")}</b>\n'
+                f'🔗 {esc(link)}'
+            ),
+            parse_mode='HTML',
+        )
+    except Exception as e:
+        logger.error('lesson_call_link_receive error: %s', e, exc_info=True)
+        await update.message.reply_text('⚠️ Не удалось отправить ссылку ученику.')
+        return ConversationHandler.END
+    finally:
+        context.user_data.pop(_CTX_LESSON_CALL_LINK_LESSON_ID, None)
+
+    return ConversationHandler.END
+
+
+async def lesson_call_link_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data.pop(_CTX_LESSON_CALL_LINK_LESSON_ID, None)
+    await update.message.reply_text('❌ Отправка ссылки отменена.')
     return ConversationHandler.END
 
 

@@ -679,6 +679,8 @@ def student_profile(student_id):
             if current_user.is_student():
                 if getattr(student, 'user_id', None) == current_user.id:
                     scope = {'can_see_all': False, 'student_ids': [current_user.id]}
+                elif student.student_id == current_user.id:
+                    scope = {'can_see_all': False, 'student_ids': [current_user.id]}
                 else:
                     scope = get_user_scope(current_user)
             else:

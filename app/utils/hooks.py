@@ -671,6 +671,8 @@ def register_hooks(app):
         if current_user.is_authenticated and current_user.is_student():
             try:
                 current_student = Student.query.filter_by(user_id=current_user.id).first()
+                if not current_student:
+                    current_student = Student.query.get(current_user.id)
             except Exception:
                 try:
                     db.session.rollback()

@@ -104,7 +104,8 @@ def _register_handlers(app: Application) -> None:
         # FSM
         bug_report_start, bug_report_receive, bug_report_cancel,
         creator_reply_start, creator_reply_receive, creator_reply_cancel,
-        BUG_REPORT_TEXT, CREATOR_REPLY_TEXT,
+        lesson_call_link_start, lesson_call_link_receive, lesson_call_link_cancel,
+        BUG_REPORT_TEXT, CREATOR_REPLY_TEXT, LESSON_CALL_LINK_TEXT,
         # Callbacks / text
         callback_handler, handle_private_text,
     )
@@ -148,9 +149,27 @@ def _register_handlers(app: Application) -> None:
         conversation_timeout=300,
     )
 
+    lesson_call_link_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(lesson_call_link_start, pattern=r'^lesson_call_link:\d+$'),
+        ],
+        states={
+            LESSON_CALL_LINK_TEXT: [
+                MessageHandler(
+                    filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND,
+                    lesson_call_link_receive,
+                ),
+            ],
+        },
+        fallbacks=[CommandHandler('cancel', lesson_call_link_cancel)],
+        allow_reentry=True,
+        conversation_timeout=300,
+    )
+
     # Register ConversationHandlers FIRST (highest priority)
     app.add_handler(bug_report_conv)
     app.add_handler(creator_reply_conv)
+    app.add_handler(lesson_call_link_conv)
 
     # Regular commands
     app.add_handler(CommandHandler('start', cmd_start))
