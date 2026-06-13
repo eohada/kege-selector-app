@@ -175,7 +175,7 @@
                     <span class="tw-presence-dot"></span>
                     <span class="tw-presence-text">
                         <strong>${escapeHtml(item.display_name || item.username || 'user')}</strong>
-                        <small>${escapeHtml(presenceLabel(item))} · ${escapeHtml(status)}</small>
+                        <small>${escapeHtml(status)}</small>
                     </span>
                 </span>
             `;
@@ -208,9 +208,7 @@
                 const visible = top > -lineHeight && top < code.clientHeight + lineHeight * 2 && left > -40 && left < code.clientWidth + 120;
                 if (!visible) return '';
                 return `
-                    <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; top:${top}px; height:${height}px; left:${left}px;">
-                        <span class="tw-remote-cursor-label">${escapeHtml(item.display_name || item.username || 'user')}</span>
-                    </div>
+                    <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; top:${top}px; height:${height}px; left:${left}px;"></div>
                 `;
             }).join('');
         }, 40);
@@ -654,7 +652,7 @@
                 code: code.value,
             });
             if (fingerprint && fingerprint !== lastFingerprint) {
-                const shouldPull = force || document.activeElement !== code || (!dirtySinceAutosave && (Date.now() - lastLocalEditAt > 1800));
+                const shouldPull = force || document.activeElement !== code || (!dirtySinceAutosave && (Date.now() - lastLocalEditAt > 4500));
                 if (shouldPull) {
                     applyRemoteState(state, 'Обновлено у второго участника');
                 }
@@ -1774,7 +1772,7 @@
     updateEditorChrome();
     scheduleAutosave();
     pullServerState(true);
-    liveSyncTimer = setInterval(() => pullServerState(false), 5000);
+    liveSyncTimer = setInterval(() => pullServerState(false), 15000);
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) pullServerState(true);
     });
