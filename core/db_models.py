@@ -1003,6 +1003,26 @@ class LessonMessage(db.Model):
     author = db.relationship('User', foreign_keys=[author_user_id])
 
 
+class LessonTeacherHomeworkNote(db.Model):
+    """Приватная заметка преподавателя по итогам урока с отложенным напоминанием."""
+    __tablename__ = 'LessonTeacherHomeworkNotes'
+
+    note_id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, index=True)
+    teacher_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+
+    homework_text = db.Column(db.Text, nullable=False)
+    remind_at = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
+    reminder_sent_at = db.Column(db.DateTime(timezone=True), nullable=True, index=True)
+    is_sent = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('teacher_homework_notes', lazy=True, cascade='all, delete-orphan'))
+    teacher = db.relationship('User', foreign_keys=[teacher_user_id])
+
+
 class CallRequest(db.Model):
     """Заявка ученика на созвон/консультацию."""
     __tablename__ = 'CallRequests'

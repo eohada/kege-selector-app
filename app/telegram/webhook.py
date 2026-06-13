@@ -99,13 +99,14 @@ def _ensure_event_loop() -> asyncio.AbstractEventLoop:
 def _register_handlers(app: Application) -> None:
     from app.telegram.handlers import (
         # Commands
-        cmd_start, cmd_link, cmd_linkforce, cmd_menu, cmd_help, cmd_status, cmd_random, cmd_settings, cmd_findstudent, cmd_whatsnew,
+        cmd_start, cmd_link, cmd_linkforce, cmd_menu, cmd_help, cmd_status, cmd_random, cmd_settings, cmd_findstudent, cmd_whatsnew, cmd_lessonnotes,
         cmd_claim_creator, cmd_testnotify, cmd_broadcast,
         # FSM
         bug_report_start, bug_report_receive, bug_report_cancel,
         creator_reply_start, creator_reply_receive, creator_reply_cancel,
         lesson_call_link_start, lesson_call_link_receive, lesson_call_link_cancel,
-        BUG_REPORT_TEXT, CREATOR_REPLY_TEXT, LESSON_CALL_LINK_TEXT,
+        lesson_hw_note_start, lesson_hw_note_receive_text, lesson_hw_note_receive_remind, lesson_hw_note_cancel,
+        BUG_REPORT_TEXT, CREATOR_REPLY_TEXT, LESSON_CALL_LINK_TEXT, LESSON_HW_NOTE_TEXT, LESSON_HW_NOTE_REMIND,
         # Callbacks / text
         callback_handler, handle_private_text,
     )
@@ -166,10 +167,34 @@ def _register_handlers(app: Application) -> None:
         conversation_timeout=300,
     )
 
+    lesson_hw_note_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(lesson_hw_note_start, pattern=r'^lesson_hw_note:\d+$'),
+        ],
+        states={
+            LESSON_HW_NOTE_TEXT: [
+                MessageHandler(
+                    filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND,
+                    lesson_hw_note_receive_text,
+                ),
+            ],
+            LESSON_HW_NOTE_REMIND: [
+                MessageHandler(
+                    filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND,
+                    lesson_hw_note_receive_remind,
+                ),
+            ],
+        },
+        fallbacks=[CommandHandler('cancel', lesson_hw_note_cancel)],
+        allow_reentry=True,
+        conversation_timeout=900,
+    )
+
     # Register ConversationHandlers FIRST (highest priority)
     app.add_handler(bug_report_conv)
     app.add_handler(creator_reply_conv)
     app.add_handler(lesson_call_link_conv)
+    app.add_handler(lesson_hw_note_conv)
 
     # Regular commands
     app.add_handler(CommandHandler('start', cmd_start))
@@ -180,6 +205,7 @@ def _register_handlers(app: Application) -> None:
     app.add_handler(CommandHandler('status', cmd_status))
     app.add_handler(CommandHandler('random', cmd_random))
     app.add_handler(CommandHandler('settings', cmd_settings))
+    app.add_handler(CommandHandler('lessonnotes', cmd_lessonnotes))
     app.add_handler(CommandHandler('findstudent', cmd_findstudent))
     app.add_handler(CommandHandler('whatsnew', cmd_whatsnew))
     app.add_handler(CommandHandler('claimcreator', cmd_claim_creator))

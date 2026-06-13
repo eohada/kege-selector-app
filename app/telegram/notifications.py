@@ -324,6 +324,72 @@ def notify_lesson_started_to_student(*, student_user_id: int, lesson_id: int, to
     return notify_user_by_id(int(student_user_id), msg, kind=None, reply_markup=markup)
 
 
+def notify_lesson_finished_for_teacher(
+    *,
+    lesson_id: int,
+    teacher_user_id: int | None = None,
+    actor_chat_id: int | None = None,
+) -> bool:
+    """Попросить преподавателя оставить ДЗ после завершения урока."""
+    from app.telegram.user_notify import user_allows_telegram_notification, get_profile_for_user
+    from app.models import Lesson, UserProfile
+
+    lesson = Lesson.query.get(int(lesson_id))
+    if not lesson:
+        return False
+
+    st = lesson.student
+    student_name = (
+        getattr(st, 'name', None)
+        or (
+            f"{getattr(getattr(st, 'user', None), 'first_name', '')} {getattr(getattr(st, 'user', None), 'last_name', '')}".strip()
+            if st and getattr(st, 'user', None) else None
+        )
+        or 'Ученик'
+    )
+    msg = (
+        '✅ <b>Урок завершен</b>\n\n'
+        f'👤 Ученик: <b>{_esc(student_name)}</b>\n'
+        f'📚 Урок: <b>{_esc(lesson.topic or "Занятие")}</b>\n'
+        f'⏱ Длительность: <b>{int(lesson.duration or 60)} мин</b>\n\n'
+        'Напиши следующим сообщением, какое ДЗ нужно оставить ученику.\n'
+        'Потом я спрошу, когда напомнить об этом.'
+    )
+    markup = {'inline_keyboard': [[{'text': '📝 Оставить ДЗ', 'callback_data': f'lesson_hw_note:{lesson.lesson_id}'}]]}
+
+    targets: list[int] = []
+    if teacher_user_id:
+        profile = UserProfile.query.filter_by(user_id=int(teacher_user_id)).first()
+        if profile and profile.telegram_chat_id:
+            targets.append(int(profile.telegram_chat_id))
+    elif actor_chat_id:
+        targets.append(int(actor_chat_id))
+
+    if not targets:
+        # Фолбэк: всем создателям/админам с Telegram, если урок завершился автоматом.
+        from app.models import User, UserProfile
+        creator_rows = (
+            User.query
+            .join(UserProfile, UserProfile.user_id == User.id)
+            .filter(UserProfile.telegram_chat_id.isnot(None))
+            .filter(User.role.in_(('creator', 'chief_admin', 'tutor')))
+            .all()
+        )
+        for creator in creator_rows:
+            profile = get_profile_for_user(int(creator.id))
+            if not profile or not user_allows_telegram_notification(profile, None):
+                continue
+            chat_id = getattr(profile, 'telegram_chat_id', None)
+            if chat_id:
+                targets.append(int(chat_id))
+
+    sent = False
+    for chat_id in dict.fromkeys(targets):
+        result = send_telegram_message(int(chat_id), msg, reply_markup=markup)
+        sent = bool(result and result.get('ok')) or sent
+    return sent
+
+
 # ---------------------------------------------------------------------------
 # Subscription expiry notification
 # ---------------------------------------------------------------------------
@@ -529,6 +595,48 @@ def notify_lesson_balance_changed(
     if extra_text:
         return notify_user_by_id(int(student_user_id), extra_text, kind=extra_kind)
     return True
+
+
+def notify_teacher_homework_note_reminder(note_id: int) -> bool:
+    """Напоминание преподавателю о сохраненной заметке по ДЗ."""
+    from app.models import LessonTeacherHomeworkNote, UserProfile
+    from app.telegram.user_notify import user_allows_telegram_notification
+
+    note = LessonTeacherHomeworkNote.query.get(int(note_id))
+    if not note or note.is_sent:
+        return False
+
+    profile = UserProfile.query.filter_by(user_id=int(note.teacher_user_id)).first()
+    if not profile or not profile.telegram_chat_id or not user_allows_telegram_notification(profile, None):
+        return False
+
+    lesson = note.lesson
+    student_name = getattr(lesson.student, 'name', None) if lesson and lesson.student else 'Ученик'
+    msg = (
+        '⏰ <b>Напоминание по ДЗ после урока</b>\n\n'
+        f'👤 Ученик: <b>{_esc(student_name or "Ученик")}</b>\n'
+        f'📚 Урок: <b>{_esc(lesson.topic or "Занятие" if lesson else "Занятие")}</b>\n\n'
+        '<b>Что нужно скинуть:</b>\n'
+        f'<pre>{html.escape((note.homework_text or "").strip())}</pre>'
+    )
+    if lesson:
+        try:
+            from app.utils.lesson_time import lesson_storage_to_local
+            from app.utils.datetime_utc import effective_timezone_name
+            tz_name = effective_timezone_name(getattr(lesson.student, 'user', None)) if getattr(lesson.student, 'user', None) else 'Europe/Moscow'
+            dt_local = lesson_storage_to_local(lesson.lesson_date, tz_name)
+            if dt_local:
+                msg += f'\n🕐 Урок: {dt_local.strftime("%d.%m.%Y %H:%M")}'
+        except Exception:
+            pass
+
+    result = send_telegram_message(int(profile.telegram_chat_id), msg)
+    if result and result.get('ok'):
+        note.is_sent = True
+        from core.db_models import moscow_now
+        note.reminder_sent_at = moscow_now()
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------

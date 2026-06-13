@@ -86,11 +86,15 @@ UNAUTHORIZED_ROLE_OPTIONS = ('student', 'parent', 'tutor', 'designer', 'admin')
 BUG_REPORT_TEXT = 1
 CREATOR_REPLY_TEXT = 2
 LESSON_CALL_LINK_TEXT = 3
+LESSON_HW_NOTE_TEXT = 4
+LESSON_HW_NOTE_REMIND = 5
 
 # context.user_data key for storing report_id while creator types reply
 _CTX_REPLY_REPORT_ID = 'bug_reply_report_id'
 _CTX_REPLY_STUDENT_CHAT_ID = 'bug_reply_student_chat_id'
 _CTX_LESSON_CALL_LINK_LESSON_ID = 'lesson_call_link_lesson_id'
+_CTX_LESSON_HW_NOTE_LESSON_ID = 'lesson_hw_note_lesson_id'
+_CTX_LESSON_HW_NOTE_TEXT = 'lesson_hw_note_text'
 
 
 # ---------------------------------------------------------------------------
@@ -1223,6 +1227,57 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await _send_settings(update.message.reply_text, chat_id)
 
 
+async def cmd_lessonnotes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать сохранённые личные заметки преподавателя по ДЗ."""
+    chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
+    user = _get_linked_user(
+        chat_id,
+        tg_username=update.effective_user.username,
+        first_name=update.effective_user.first_name,
+        last_name=update.effective_user.last_name,
+    )
+    if not user:
+        await update.message.reply_text('🔗 Привяжи аккаунт командой /start')
+        return
+    if user.get('role') not in {'tutor', 'creator', 'chief_admin'}:
+        await update.message.reply_text('⛔ Эта команда доступна только преподавателю и создателю.')
+        return
+
+    from app.models import LessonTeacherHomeworkNote
+    from app.utils.lesson_time import lesson_storage_to_local
+    from app.utils.datetime_utc import effective_timezone_name
+
+    notes = (
+        LessonTeacherHomeworkNote.query
+        .filter(LessonTeacherHomeworkNote.teacher_user_id == int(user['id']))
+        .order_by(LessonTeacherHomeworkNote.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    if not notes:
+        await update.message.reply_text('Пока нет сохранённых заметок по ДЗ.')
+        return
+
+    lines = ['📝 <b>Твои заметки по ДЗ</b>', '']
+    for note in notes:
+        lesson = note.lesson
+        student = getattr(lesson, 'student', None) if lesson else None
+        student_name = getattr(student, 'name', None) if student else 'Ученик'
+        lesson_title = getattr(lesson, 'topic', None) if lesson else 'Занятие'
+        try:
+            tz_name = effective_timezone_name(getattr(student, 'user', None)) if getattr(student, 'user', None) else 'Europe/Moscow'
+            lesson_dt = lesson_storage_to_local(getattr(lesson, 'lesson_date', None), tz_name) if lesson else None
+            lesson_dt_str = lesson_dt.strftime('%d.%m.%Y %H:%M') if lesson_dt else '—'
+        except Exception:
+            lesson_dt_str = '—'
+        lines.append(f'• <b>{esc(student_name)}</b> · {esc(lesson_title)} · {esc(lesson_dt_str)}')
+        lines.append(f'  Напомнить: {note.remind_at.strftime("%d.%m.%Y %H:%M") if note.remind_at else "—"}')
+        lines.append(f'  {esc((note.homework_text or "")[:220])}')
+        lines.append('')
+    await update.message.reply_text('\n'.join(lines), parse_mode='HTML')
+
+
 async def cmd_claim_creator(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Принудительно активировать автономную creator-привязку."""
     chat_id = update.effective_chat.id
@@ -1707,6 +1762,117 @@ async def lesson_call_link_receive(update: Update, context: ContextTypes.DEFAULT
 async def lesson_call_link_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop(_CTX_LESSON_CALL_LINK_LESSON_ID, None)
     await update.message.reply_text('❌ Отправка ссылки отменена.')
+    return ConversationHandler.END
+
+
+# ===========================================================================
+# Lesson homework note FSM
+# ===========================================================================
+
+async def lesson_hw_note_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await _answer_callback_query(query)
+    try:
+        lesson_id = int((query.data or '').split(':', 1)[1])
+    except Exception:
+        await query.message.reply_text('⚠️ Не удалось определить урок.')
+        return ConversationHandler.END
+
+    context.user_data[_CTX_LESSON_HW_NOTE_LESSON_ID] = lesson_id
+    context.user_data.pop(_CTX_LESSON_HW_NOTE_TEXT, None)
+
+    try:
+        from app.models import Lesson
+        lesson = Lesson.query.get(lesson_id)
+    except Exception:
+        lesson = None
+
+    student_name = 'Ученик'
+    if lesson and lesson.student:
+        student_name = getattr(lesson.student, 'name', None) or student_name
+    await query.message.reply_text(
+        '📝 <b>Заметка по ДЗ</b>\n\n'
+        f'👤 Ученик: <b>{esc(student_name)}</b>\n'
+        f'📚 Урок: <b>{esc(getattr(lesson, "topic", None) or "Занятие")}</b>\n\n'
+        'Пришли текст ДЗ одним сообщением.\n'
+        'Я сохраню его только для тебя.',
+        parse_mode='HTML',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    return LESSON_HW_NOTE_TEXT
+
+
+async def lesson_hw_note_receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = (update.message.text or '').strip()
+    if not text:
+        await update.message.reply_text('⚠️ Текст не может быть пустым. Пришли текст ДЗ.')
+        return LESSON_HW_NOTE_TEXT
+
+    context.user_data[_CTX_LESSON_HW_NOTE_TEXT] = text
+    await update.message.reply_text(
+        '⏰ Через сколько минут напомнить?\n'
+        'Напиши число минут, например: 60',
+    )
+    return LESSON_HW_NOTE_REMIND
+
+
+async def lesson_hw_note_receive_remind(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    raw = (update.message.text or '').strip()
+    try:
+        minutes = int(raw)
+    except Exception:
+        await update.message.reply_text('⚠️ Нужны только минуты, например 60. Попробуй ещё раз.')
+        return LESSON_HW_NOTE_REMIND
+
+    if minutes < 5 or minutes > 10080:
+        await update.message.reply_text('⚠️ Выбери интервал от 5 минут до 10080 минут.')
+        return LESSON_HW_NOTE_REMIND
+
+    lesson_id = context.user_data.get(_CTX_LESSON_HW_NOTE_LESSON_ID)
+    homework_text = context.user_data.get(_CTX_LESSON_HW_NOTE_TEXT)
+    if not lesson_id or not homework_text:
+        await update.message.reply_text('⚠️ Потерял контекст урока. Запусти заметку ещё раз.')
+        return ConversationHandler.END
+
+    try:
+        from datetime import timedelta
+        from app.models import db, Lesson, LessonTeacherHomeworkNote
+        from core.db_models import moscow_now
+        from app.telegram.notifications import notify_lesson_finished_for_teacher
+
+        lesson = Lesson.query.get(int(lesson_id))
+        if not lesson:
+            await update.message.reply_text('⚠️ Урок не найден.')
+            return ConversationHandler.END
+
+        remind_at = moscow_now() + timedelta(minutes=minutes)
+        note = LessonTeacherHomeworkNote(
+            lesson_id=int(lesson_id),
+            teacher_user_id=int(update.effective_user.id),
+            homework_text=homework_text,
+            remind_at=remind_at,
+        )
+        db.session.add(note)
+        db.session.commit()
+        await update.message.reply_text(
+            '✅ Заметка сохранена.\n'
+            f'Напомню через {minutes} минут. Ты всегда сможешь посмотреть её командой /lessonnotes.',
+        )
+    except Exception as e:
+        logger.error('lesson_hw_note_receive_remind error: %s', e, exc_info=True)
+        await update.message.reply_text('⚠️ Не удалось сохранить заметку.')
+        return ConversationHandler.END
+    finally:
+        context.user_data.pop(_CTX_LESSON_HW_NOTE_LESSON_ID, None)
+        context.user_data.pop(_CTX_LESSON_HW_NOTE_TEXT, None)
+
+    return ConversationHandler.END
+
+
+async def lesson_hw_note_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data.pop(_CTX_LESSON_HW_NOTE_LESSON_ID, None)
+    context.user_data.pop(_CTX_LESSON_HW_NOTE_TEXT, None)
+    await update.message.reply_text('❌ Создание заметки отменено.')
     return ConversationHandler.END
 
 

@@ -6,6 +6,7 @@ import os
 import json
 import uuid
 from datetime import timezone as dt_timezone
+from math import ceil
 from werkzeug.utils import secure_filename
 from app.uploads.service import save_uploaded_file
 from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
@@ -52,6 +53,14 @@ def _record_lesson_task_attempt(lesson_task: LessonTask) -> None:
         status=(lesson_task.status or 'submitted'),
     )
     db.session.add(attempt)
+
+
+def _lesson_balance_units(duration_minutes: int | None) -> int:
+    try:
+        duration = int(duration_minutes or 60)
+    except Exception:
+        duration = 60
+    return max(1, ceil(duration / 60))
 
 def _upsert_gradebook_from_lesson_review(lesson: Lesson, assignment_type: str, payload: dict, actor_user_id: int | None = None) -> None:
     """
@@ -356,8 +365,12 @@ def lesson_complete(lesson_id):
             balance_notice = None
             if active_sub and active_sub.lessons_remaining is not None and active_sub.lessons_remaining > 0:
                 before = active_sub.lessons_remaining
-                active_sub.lessons_remaining -= 1
-                logger.info(f"Decreased lessons_remaining for user {lesson.student.user_id}: {before} -> {active_sub.lessons_remaining}")
+                spent = _lesson_balance_units(lesson.duration)
+                active_sub.lessons_remaining = max(0, active_sub.lessons_remaining - spent)
+                logger.info(
+                    f"Decreased lessons_remaining for user {lesson.student.user_id}: "
+                    f"{before} -> {active_sub.lessons_remaining} (spent={spent})"
+                )
                 balance_notice = (before, active_sub.lessons_remaining, f'Списание после завершения урока #{lesson.lesson_id}')
     except Exception as e:
         logger.warning(f"Could not decrease lessons_remaining for lesson {lesson_id}: {e}")
@@ -376,7 +389,15 @@ def lesson_complete(lesson_id):
                     source='lesson',
                 )
             except Exception:
-                logger.warning('Could not notify lesson balance change after commit for lesson %s', lesson_id, exc_info=True)
+                    logger.warning('Could not notify lesson balance change after commit for lesson %s', lesson_id, exc_info=True)
+        try:
+            from app.telegram.notifications import notify_lesson_finished_for_teacher
+            notify_lesson_finished_for_teacher(
+                lesson_id=int(lesson.lesson_id),
+                teacher_user_id=int(current_user.id) if current_user and getattr(current_user, 'id', None) else None,
+            )
+        except Exception:
+            logger.warning('Could not notify teacher about homework note for lesson %s', lesson_id, exc_info=True)
     except Exception as e:
         db.session.rollback()
         raise
@@ -384,12 +405,11 @@ def lesson_complete(lesson_id):
     return redirect(url_for('students.student_profile', student_id=lesson.student_id))
 
 def auto_complete_overdue_lessons():
-    """Завершает уроки со статусом in_progress, у которых прошёл 1 час с started_at."""
+    """Завершает уроки со статусом in_progress, когда прошла их длительность."""
     from core.db_models import moscow_now
     from datetime import timedelta
     now = moscow_now()
     now_naive = now.replace(tzinfo=None) if getattr(now, 'tzinfo', None) else now
-    threshold = now_naive - timedelta(hours=1)
     q = Lesson.query.filter(
         Lesson.status == 'in_progress',
         Lesson.started_at.isnot(None)
@@ -399,7 +419,10 @@ def auto_complete_overdue_lessons():
         try:
             st = lesson.started_at
             st_naive = st.replace(tzinfo=None) if getattr(st, 'tzinfo', None) else st
-            if st_naive is None or st_naive > threshold:
+            if st_naive is None:
+                continue
+            threshold = st_naive + timedelta(minutes=int(lesson.duration or 60))
+            if now_naive < threshold:
                 continue
             lesson.status = 'completed'
             balance_notice = None
@@ -411,8 +434,12 @@ def auto_complete_overdue_lessons():
                 ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
                 if active_sub and active_sub.lessons_remaining is not None and active_sub.lessons_remaining > 0:
                     before = active_sub.lessons_remaining
-                    active_sub.lessons_remaining -= 1
-                    logger.info(f"Auto-completed lesson {lesson.lesson_id}, decreased lessons_remaining for user {lesson.student.user_id}: {before} -> {active_sub.lessons_remaining}")
+                    spent = _lesson_balance_units(lesson.duration)
+                    active_sub.lessons_remaining = max(0, active_sub.lessons_remaining - spent)
+                    logger.info(
+                        f"Auto-completed lesson {lesson.lesson_id}, decreased lessons_remaining for user {lesson.student.user_id}: "
+                        f"{before} -> {active_sub.lessons_remaining} (spent={spent})"
+                    )
                     balance_notice = (before, active_sub.lessons_remaining, f'Списание после авто-завершения урока #{lesson.lesson_id}')
             db.session.commit()
             if balance_notice and lesson.student and lesson.student.user_id:
@@ -428,6 +455,11 @@ def auto_complete_overdue_lessons():
                     )
                 except Exception:
                     logger.warning('Could not notify auto-complete lesson balance change for lesson %s', lesson.lesson_id, exc_info=True)
+            try:
+                from app.telegram.notifications import notify_lesson_finished_for_teacher
+                notify_lesson_finished_for_teacher(lesson_id=int(lesson.lesson_id))
+            except Exception:
+                logger.warning('Could not notify teacher about auto-complete homework note for lesson %s', lesson.lesson_id, exc_info=True)
             count += 1
         except Exception as e:
             db.session.rollback()

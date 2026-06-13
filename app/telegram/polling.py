@@ -47,7 +47,12 @@ def main() -> None:
     drop_pending = _truthy(os.environ.get('TELEGRAM_POLLING_DROP_PENDING_UPDATES'))
     with flask_app.app_context():
         application = _build_application(with_updater=True)
-        from app.telegram.handlers import lesson_call_link_start, lesson_call_link_receive, lesson_call_link_cancel, LESSON_CALL_LINK_TEXT
+        from app.telegram.handlers import (
+            lesson_call_link_start, lesson_call_link_receive, lesson_call_link_cancel, LESSON_CALL_LINK_TEXT,
+            lesson_hw_note_start, lesson_hw_note_receive_text, lesson_hw_note_receive_remind, lesson_hw_note_cancel,
+            LESSON_HW_NOTE_TEXT, LESSON_HW_NOTE_REMIND,
+            cmd_lessonnotes,
+        )
         lesson_call_link_conv = ConversationHandler(
             entry_points=[
                 CallbackQueryHandler(lesson_call_link_start, pattern=r'^lesson_call_link:\d+$'),
@@ -65,6 +70,24 @@ def main() -> None:
             conversation_timeout=300,
         )
         application.add_handler(lesson_call_link_conv)
+        lesson_hw_note_conv = ConversationHandler(
+            entry_points=[
+                CallbackQueryHandler(lesson_hw_note_start, pattern=r'^lesson_hw_note:\d+$'),
+            ],
+            states={
+                LESSON_HW_NOTE_TEXT: [
+                    MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, lesson_hw_note_receive_text),
+                ],
+                LESSON_HW_NOTE_REMIND: [
+                    MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, lesson_hw_note_receive_remind),
+                ],
+            },
+            fallbacks=[CommandHandler('cancel', lesson_hw_note_cancel)],
+            allow_reentry=True,
+            conversation_timeout=900,
+        )
+        application.add_handler(lesson_hw_note_conv)
+        application.add_handler(CommandHandler('lessonnotes', cmd_lessonnotes))
         application.add_handler(MessageHandler(filters.ALL, _log_update, block=False), group=-1000)
         application.add_handler(CallbackQueryHandler(_log_update, block=False), group=-1000)
         application.add_error_handler(_log_error)

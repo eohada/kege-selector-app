@@ -13,6 +13,7 @@ CELERY_TASK_MODULES = [
     'app.tasks.telegram_dispatch',
     'app.tasks.telegram_deadlines',
     'app.tasks.telegram_lesson_reminders',
+    'app.tasks.telegram_homework_notes',
     'app.tasks.telegram_daily_digest',
     'app.tasks.telegram_subscription_expiry',
     'app.tasks.telegram_broadcast',
@@ -66,6 +67,15 @@ def make_celery(app=None):
             {
                 'task': 'app.tasks.telegram_lesson_reminders.telegram_lesson_reminders_task',
                 'schedule': float(os.environ.get('TELEGRAM_LESSON_BEAT_SECONDS', '30')),
+            },
+        )
+
+    if os.environ.get('TELEGRAM_HOMEWORK_NOTES_DISABLED', '').strip().lower() not in ('1', 'true', 'yes'):
+        beat.setdefault(
+            'telegram-homework-notes',
+            {
+                'task': 'app.tasks.telegram_homework_notes.telegram_homework_notes_task',
+                'schedule': float(os.environ.get('TELEGRAM_HOMEWORK_NOTES_BEAT_SECONDS', '30')),
             },
         )
 

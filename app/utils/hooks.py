@@ -186,7 +186,7 @@ def register_hooks(app):
                         SET status = 'completed', updated_at = :now
                         WHERE status = 'in_progress' 
                         AND started_at IS NOT NULL 
-                        AND (started_at + interval '60 minutes') <= :now
+                        AND (started_at + (COALESCE(duration, 60) || ' minutes')::interval) <= :now
                     """), {'now': now_naive})
                 else:
                     result = db.session.execute(text("""
@@ -201,7 +201,7 @@ def register_hooks(app):
                         SET status = 'completed', updated_at = :now
                         WHERE status = 'in_progress' 
                         AND started_at IS NOT NULL 
-                        AND datetime(started_at, '+60 minutes') <= :now
+                        AND datetime(started_at, '+' || COALESCE(duration, 60) || ' minutes') <= :now
                     """), {'now': now_naive})
                 
                 updated_count = result.rowcount + result_ip.rowcount
@@ -241,7 +241,7 @@ def register_hooks(app):
                             if started_at_with_tz.tzinfo is None:
                                 started_at_with_tz = started_at_with_tz.replace(tzinfo=MOSCOW_TZ)
                             
-                            if now_with_tz >= started_at_with_tz + timedelta(minutes=60):
+                            if now_with_tz >= started_at_with_tz + timedelta(minutes=int(lesson.duration or 60)):
                                 lesson.status = 'completed'
                                 lesson.updated_at = now_naive
                                 updated_count += 1
