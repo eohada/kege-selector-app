@@ -93,7 +93,6 @@
             state.version_id || '',
             state.updated_at || '',
             state.code || '',
-            state.answer || '',
         ].join('|');
     }
 
@@ -200,15 +199,13 @@
             const cursor = item.cursor || {};
             const startLine = Math.max(1, Number(cursor.line || 1));
             const startCol = Math.max(1, Number(cursor.column || 1));
-            const endInfo = lineInfoAtPosition(code.value || '', cursor.end || cursor.start || 0);
-            const endLine = Math.max(startLine, Number(endInfo.line || startLine));
             const top = Math.max(0, (startLine - 1) * lineHeight + layerTop);
-            const height = Math.max(lineHeight, (endLine - startLine + 1) * lineHeight);
+            const height = lineHeight;
             const left = paddingLeft + Math.max(0, startCol - 1) * charWidth - code.scrollLeft;
             const visible = top > -lineHeight && top < code.clientHeight + lineHeight * 2 && left > -40 && left < code.clientWidth + 120;
             if (!visible) return '';
             return `
-                <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; opacity:0.28; top:${top}px; height:${height}px; left:${left}px;">
+                <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; top:${top}px; height:${height}px; left:${left}px;">
                     <span class="tw-remote-cursor-label">${escapeHtml(item.display_name || item.username || 'user')} · ${escapeHtml(String(startLine))}:${escapeHtml(String(startCol))}</span>
                 </div>
             `;
@@ -244,7 +241,6 @@
             if (state && typeof state === 'object') {
                 applyRemoteState({
                     code: state.code || '',
-                    answer: state.answer || state.plain_answer || '',
                     versions: state.versions || {},
                     playback: state.playback || {},
                     version_id: state.version_id || null,
@@ -606,10 +602,8 @@
     function applyRemoteState(state, reason) {
         if (!state) return false;
         const remoteCode = String(state.code || '');
-        const remoteAnswer = String(state.answer || '');
         const currentCode = String(code.value || '');
-        const currentAnswer = String(answer.value || '');
-        const changed = remoteCode !== currentCode || remoteAnswer !== currentAnswer;
+        const changed = remoteCode !== currentCode;
         if (!changed) {
             lastAppliedServerVersionId = state.version_id || lastAppliedServerVersionId;
             lastAppliedServerUpdatedAt = state.updated_at || lastAppliedServerUpdatedAt;
@@ -617,7 +611,6 @@
         }
 
         code.value = remoteCode;
-        answer.value = remoteAnswer;
         if (state.versions?.items) {
             versionState.items = state.versions.items.slice();
             renderVersions();
@@ -656,7 +649,6 @@
                 version_id: lastAppliedServerVersionId,
                 updated_at: lastAppliedServerUpdatedAt,
                 code: code.value,
-                answer: answer.value,
             });
             if (fingerprint && fingerprint !== lastFingerprint) {
                 const shouldPull = force || document.activeElement !== code || !dirtySinceAutosave;
@@ -1156,7 +1148,6 @@
                     const item = items.find((x) => Number(x.version_id) === id);
                     if (!item) return;
                     code.value = item.code || '';
-                    answer.value = item.answer || '';
                     updateEditorChrome();
                     saveLocal();
                     captureFrame('restore-version', { version_id: id });
