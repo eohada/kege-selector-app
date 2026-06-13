@@ -175,7 +175,7 @@
                     <span class="tw-presence-dot"></span>
                     <span class="tw-presence-text">
                         <strong>${escapeHtml(item.display_name || item.username || 'user')}</strong>
-                        <small>${escapeHtml(status)}</small>
+                        <small><span class="tw-presence-color" style="background:${escapeHtml(color)}"></span>${escapeHtml(status)}</small>
                     </span>
                 </span>
             `;
@@ -310,7 +310,7 @@
         const now = Date.now();
         if (!force) {
             if (workspaceDraftTimer) clearTimeout(workspaceDraftTimer);
-            workspaceDraftTimer = setTimeout(() => emitWorkspaceDraft(true), 120);
+            workspaceDraftTimer = setTimeout(() => emitWorkspaceDraft(true), 35);
             return;
         }
         workspaceLocalDraftTs = now;
@@ -344,6 +344,10 @@
         const before = String(prevValue ?? '');
         const after = String(nextValue ?? '');
         if (before === after) return;
+        if (after.length < before.length) {
+            emitWorkspaceDraft(true);
+            return;
+        }
         if (!before.length && !after.length) return;
         const prefix = commonPrefix(before, after);
         const suffix = commonSuffix(before, after, prefix);
