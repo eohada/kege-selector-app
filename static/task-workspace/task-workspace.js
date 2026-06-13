@@ -257,6 +257,12 @@
             const remoteTs = Number(payload.updated_at || Date.now()) || Date.now();
             if (remoteTs < workspaceRemoteDraftTs) return;
             workspaceRemoteDraftTs = remoteTs;
+            const incomingCode = String(payload.code || '');
+            if (incomingCode !== String(code.value || '')) {
+                code.value = incomingCode;
+                updateEditorChrome();
+                saveLocal();
+            }
             if (Array.isArray(payload.playback_frames)) {
                 playback.frames = payload.playback_frames.map(sanitizeFrame);
                 renderPlayback();

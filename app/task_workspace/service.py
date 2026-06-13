@@ -8,6 +8,7 @@ from flask import abort
 from app.models import db
 from app.auth.rbac_utils import get_user_scope
 from app.utils.relationship_scope import can_user_access_student
+from app.utils.jinja_filters import prepare_task_content_html
 from core.db_models import (
     Answer,
     CodePlaybackTrace,
@@ -70,7 +71,7 @@ class WorkspaceContext:
             "code": self.code,
             "plain_answer": self.plain_answer,
             "starter_code": self.task.starter_code or "",
-            "content_html": self.task.content_html or "",
+            "content_html": prepare_task_content_html(self.task.content_html or ""),
             "mmr_policy": self.mmr_policy,
             "mmr_policy_label": MMR_POLICY_LABELS.get(self.mmr_policy, MMR_POLICY_LABELS["manual_confirm"]),
             "can_edit": self.can_edit,
