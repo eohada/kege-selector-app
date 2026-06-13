@@ -69,6 +69,8 @@
     let workspaceLocalDraftTs = 0;
     let workspaceRemoteDraftTs = 0;
     let workspaceCursorTimer = null;
+    let remoteCursorRenderTimer = null;
+    let lastLocalEditAt = 0;
     const remoteParticipants = new Map();
     let inputSnapshot = '';
 
@@ -82,7 +84,6 @@
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             code: code.value,
-            answer: answer.value,
             playback_frames: playback.frames,
         };
     }
@@ -182,34 +183,37 @@
     }
 
     function renderRemoteCursors() {
-        if (!remoteLayer) return;
-        const participants = Array.from(remoteParticipants.values())
-            .filter((item) => Number(item.user_id || 0) !== Number(CURRENT_USER_ID || 0));
-        if (!participants.length) {
-            remoteLayer.innerHTML = '';
-            return;
-        }
-        const metrics = editorMetrics();
-        const lineHeight = metrics.lineHeight || 24;
-        const paddingTop = metrics.paddingTop || 16;
-        const paddingLeft = metrics.paddingLeft || 18;
-        const charWidth = codeCharWidth();
-        const layerTop = paddingTop - code.scrollTop;
-        remoteLayer.innerHTML = participants.map((item) => {
-            const cursor = item.cursor || {};
-            const startLine = Math.max(1, Number(cursor.line || 1));
-            const startCol = Math.max(1, Number(cursor.column || 1));
-            const top = Math.max(0, (startLine - 1) * lineHeight + layerTop);
-            const height = lineHeight;
-            const left = paddingLeft + Math.max(0, startCol - 1) * charWidth - code.scrollLeft;
-            const visible = top > -lineHeight && top < code.clientHeight + lineHeight * 2 && left > -40 && left < code.clientWidth + 120;
-            if (!visible) return '';
-            return `
-                <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; top:${top}px; height:${height}px; left:${left}px;">
-                    <span class="tw-remote-cursor-label">${escapeHtml(item.display_name || item.username || 'user')} · ${escapeHtml(String(startLine))}:${escapeHtml(String(startCol))}</span>
-                </div>
-            `;
-        }).join('');
+        if (remoteCursorRenderTimer) clearTimeout(remoteCursorRenderTimer);
+        remoteCursorRenderTimer = setTimeout(() => {
+            if (!remoteLayer) return;
+            const participants = Array.from(remoteParticipants.values())
+                .filter((item) => Number(item.user_id || 0) !== Number(CURRENT_USER_ID || 0));
+            if (!participants.length) {
+                remoteLayer.innerHTML = '';
+                return;
+            }
+            const metrics = editorMetrics();
+            const lineHeight = metrics.lineHeight || 24;
+            const paddingTop = metrics.paddingTop || 16;
+            const paddingLeft = metrics.paddingLeft || 18;
+            const charWidth = codeCharWidth();
+            const layerTop = paddingTop - code.scrollTop;
+            remoteLayer.innerHTML = participants.map((item) => {
+                const cursor = item.cursor || {};
+                const startLine = Math.max(1, Number(cursor.line || 1));
+                const startCol = Math.max(1, Number(cursor.column || 1));
+                const top = Math.max(0, (startLine - 1) * lineHeight + layerTop);
+                const height = lineHeight;
+                const left = paddingLeft + Math.max(0, startCol - 1) * charWidth - code.scrollLeft;
+                const visible = top > -lineHeight && top < code.clientHeight + lineHeight * 2 && left > -40 && left < code.clientWidth + 120;
+                if (!visible) return '';
+                return `
+                    <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; top:${top}px; height:${height}px; left:${left}px;">
+                        <span class="tw-remote-cursor-label">${escapeHtml(item.display_name || item.username || 'user')}</span>
+                    </div>
+                `;
+            }).join('');
+        }, 40);
     }
 
     function joinWorkspaceSocket() {
@@ -589,7 +593,6 @@
         try {
             localStorage.setItem(storageKey, JSON.stringify({
                 code: code.value,
-                answer: answer.value,
                 notes: notes.value,
                 playback_frames: playback.frames,
                 updated_at: new Date().toISOString()
@@ -651,7 +654,7 @@
                 code: code.value,
             });
             if (fingerprint && fingerprint !== lastFingerprint) {
-                const shouldPull = force || document.activeElement !== code || !dirtySinceAutosave;
+                const shouldPull = force || document.activeElement !== code || (!dirtySinceAutosave && (Date.now() - lastLocalEditAt > 1800));
                 if (shouldPull) {
                     applyRemoteState(state, 'Обновлено у второго участника');
                 }
@@ -669,7 +672,6 @@
             if (!raw) return;
             const data = JSON.parse(raw);
             if (data.code && (!code.value || ws.context_type === 'demo')) code.value = data.code;
-            if (data.answer && !answer.value) answer.value = data.answer;
             if (data.notes) notes.value = data.notes;
             if (Array.isArray(data.playback_frames) && data.playback_frames.length) {
                 playback.frames = data.playback_frames.map(sanitizeFrame);
@@ -1245,6 +1247,7 @@
 
     code.addEventListener('input', () => {
         const previous = inputSnapshot;
+        lastLocalEditAt = Date.now();
         saveLocal();
         updateEditorChrome();
         setStatus('Есть несохраненные изменения', 'run');
@@ -1261,10 +1264,12 @@
         pendingInputMeta = null;
     });
     code.addEventListener('keyup', () => {
+        lastLocalEditAt = Date.now();
         updateEditorChrome();
         emitWorkspaceCursor(false);
     });
     code.addEventListener('mouseup', () => {
+        lastLocalEditAt = Date.now();
         updateEditorChrome();
         emitWorkspaceCursor(false);
     });

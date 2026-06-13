@@ -510,41 +510,42 @@
 
 .tw-remote-cursor {
     position: absolute;
-    border-left: 4px solid var(--cursor-color);
-    background: color-mix(in srgb, var(--cursor-color) 14%, transparent);
+    border-left: 3px solid var(--cursor-color);
+    background: color-mix(in srgb, var(--cursor-color) 10%, transparent);
     box-shadow:
-        0 0 0 1px color-mix(in srgb, var(--cursor-color) 38%, transparent),
-        0 0 18px color-mix(in srgb, var(--cursor-color) 24%, transparent);
-    border-radius: 4px;
+        0 0 0 1px color-mix(in srgb, var(--cursor-color) 20%, transparent);
+    border-radius: 3px;
     overflow: visible;
     z-index: 4;
+    opacity: 0.16;
+    mix-blend-mode: multiply;
 }
 
 .tw-remote-cursor::before {
     content: '';
     position: absolute;
-    left: -8px;
+    left: -6px;
     top: 2px;
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: var(--cursor-color);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cursor-color) 12%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--cursor-color) 8%, transparent);
 }
 
 .tw-remote-cursor-label {
     position: absolute;
-    left: 12px;
-    top: -16px;
-    padding: 4px 8px;
+    left: 10px;
+    top: -14px;
+    padding: 3px 7px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--cursor-color) 22%, var(--tw-panel));
+    background: color-mix(in srgb, var(--cursor-color) 10%, var(--tw-panel));
     color: var(--tw-text);
     font-size: 0.68rem;
-    font-weight: 900;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+    font-weight: 800;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.10);
     white-space: nowrap;
-    opacity: 0.95;
+    opacity: 0.55;
 }
 
 .tw-active-line,
@@ -557,25 +558,25 @@
 }
 
 .tw-active-line {
-    background: rgba(139, 92, 246, 0.08);
-    border-left: 3px solid rgba(139, 92, 246, 0.45);
+    background: rgba(139, 92, 246, 0.05);
+    border-left: 2px solid rgba(139, 92, 246, 0.28);
     display: none;
 }
 
 .tw-active-line.is-hint {
-    background: rgba(5, 174, 201, 0.09);
-    border-left-color: rgba(5, 174, 201, 0.45);
+    background: rgba(5, 174, 201, 0.06);
+    border-left-color: rgba(5, 174, 201, 0.28);
 }
 
 .tw-pair-hl {
     display: none;
-    background: rgba(5, 174, 201, 0.10);
-    border-left: 3px solid rgba(5, 174, 201, 0.42);
+    background: rgba(5, 174, 201, 0.06);
+    border-left: 2px solid rgba(5, 174, 201, 0.25);
 }
 
 .tw-pair-hl.is-secondary {
-    background: rgba(139, 92, 246, 0.10);
-    border-left-color: rgba(139, 92, 246, 0.42);
+    background: rgba(139, 92, 246, 0.06);
+    border-left-color: rgba(139, 92, 246, 0.25);
 }
 
 .tw-code,
