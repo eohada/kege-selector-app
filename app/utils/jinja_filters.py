@@ -579,6 +579,24 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
             stripped_inner = _LEADING_HTML_AUTHOR_RE.sub('', stripped_inner, count=1)
             stripped_inner = _strip_leading_author_parenthesized(stripped_inner)
             stripped_inner = _AUTHOR_SIGNATURE_RE.sub('', stripped_inner, count=1)
+            stripped_inner = re.sub(
+                r'^\s*\(\s*[А-ЯЁA-Z]\.\s*[А-ЯЁA-Z]\.\s*[А-ЯЁA-Z][а-яёa-z-]+\s*\)\s*',
+                '',
+                stripped_inner,
+                count=1,
+            )
+            stripped_inner = re.sub(
+                r'^\s*\(\s*[А-ЯЁA-Z][а-яёa-z-]+\s*[А-ЯЁA-Z]\.\s*\)\s*',
+                '',
+                stripped_inner,
+                count=1,
+            )
+            stripped_inner = re.sub(
+                r'^\s*\(\s*[А-ЯЁA-Z][а-яёa-z-]+\s*\)\s*',
+                '',
+                stripped_inner,
+                count=1,
+            )
             if stripped_inner != inner:
                 block.clear()
                 frag = BeautifulSoup(stripped_inner, 'html.parser')

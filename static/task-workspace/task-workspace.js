@@ -71,6 +71,7 @@
     let workspaceCursorTimer = null;
     let remoteCursorRenderTimer = null;
     let lastLocalEditAt = 0;
+    let forceDraftSyncOnInput = false;
     const remoteParticipants = new Map();
     let inputSnapshot = '';
 
@@ -1244,6 +1245,10 @@
                 saveLocal();
                 captureFrame('backspace-pair', {});
             }
+            forceDraftSyncOnInput = true;
+        }
+        if (event.key === 'Delete') {
+            forceDraftSyncOnInput = true;
         }
     });
 
@@ -1254,8 +1259,13 @@
         updateEditorChrome();
         setStatus('Есть несохраненные изменения', 'run');
         scheduleAutosave();
-        emitWorkspacePatch(previous, code.value);
-        emitWorkspaceDraft(false);
+        if (forceDraftSyncOnInput || code.value.length < previous.length) {
+            emitWorkspaceDraft(true);
+        } else {
+            emitWorkspacePatch(previous, code.value);
+            emitWorkspaceDraft(false);
+        }
+        forceDraftSyncOnInput = false;
         emitWorkspaceCursor(false);
         if (!isApplyingPlayback) {
             captureFrame(pendingInputMeta?.type || 'input', {
