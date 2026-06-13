@@ -156,7 +156,7 @@ def register_task_workspace_socket(socketio) -> None:
             "sender_id": current_user.id,
             "sender_username": current_user.username,
         }
-        _set_room_state(room, {"code": payload["code"], "answer": (data.get("answer") or "")[:20_000]})
+        _set_room_state(room, {"code": payload["code"]})
         socketio.emit(
             "workspace_draft_updated",
             payload,
@@ -184,7 +184,7 @@ def register_task_workspace_socket(socketio) -> None:
         code = str(current.get("code") or "")
         if previous and code and previous not in code:
             if next_value:
-                _set_room_state(room, {"code": next_value, "answer": str(current.get("answer") or "")[:20_000]})
+                _set_room_state(room, {"code": next_value})
                 socketio.emit(
                     "workspace_patch",
                     {
@@ -204,7 +204,7 @@ def register_task_workspace_socket(socketio) -> None:
         start = min(start, len(code))
         end = min(max(start, end), len(code))
         next_code = code[:start] + inserted + code[end:]
-        _set_room_state(room, {"code": next_code, "answer": str(current.get("answer") or "")[:20_000]})
+        _set_room_state(room, {"code": next_code})
         socketio.emit(
             "workspace_patch",
             {

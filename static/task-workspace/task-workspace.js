@@ -208,7 +208,7 @@
             const visible = top > -lineHeight && top < code.clientHeight + lineHeight * 2 && left > -40 && left < code.clientWidth + 120;
             if (!visible) return '';
             return `
-                <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; opacity:0.08; top:${top}px; height:${height}px; left:${left}px;">
+                <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; opacity:0.28; top:${top}px; height:${height}px; left:${left}px;">
                     <span class="tw-remote-cursor-label">${escapeHtml(item.display_name || item.username || 'user')} · ${escapeHtml(String(startLine))}:${escapeHtml(String(startCol))}</span>
                 </div>
             `;
@@ -257,19 +257,11 @@
             if (Number(payload.sender_id || 0) === Number(CURRENT_USER_ID || 0)) return;
             const remoteTs = Number(payload.updated_at || Date.now()) || Date.now();
             if (remoteTs < workspaceRemoteDraftTs) return;
-            if (document.activeElement === code && dirtySinceAutosave) {
-                workspaceRemoteDraftTs = remoteTs;
-                return;
-            }
             workspaceRemoteDraftTs = remoteTs;
-            code.value = String(payload.code || '');
             if (Array.isArray(payload.playback_frames)) {
                 playback.frames = payload.playback_frames.map(sanitizeFrame);
                 renderPlayback();
             }
-            updateEditorChrome();
-            saveLocal();
-            setStatus('Синхронизировано мгновенно', 'ok');
         });
         workspaceSocket.on('workspace_patch', (payload) => {
             if (!payload) return;
@@ -329,7 +321,6 @@
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             code: code.value,
-            answer: answer.value,
             playback_frames: playback.frames,
             updated_at: now,
         });
