@@ -304,7 +304,9 @@
             const remoteTs = Number(payload.updated_at || Date.now()) || Date.now();
             if (remoteTs < workspaceRemoteDraftTs) return;
             workspaceRemoteDraftTs = remoteTs;
-            workspaceServerVersion = Math.max(workspaceServerVersion, Number(payload.version || 0) || 0);
+            if (payload.force_code_snapshot) {
+                workspaceServerVersion = Math.max(workspaceServerVersion, Number(payload.version || 0) || 0);
+            }
             if (answer && typeof payload.answer === 'string' && document.activeElement !== answer) {
                 answer.value = payload.answer;
                 saveLocal();
@@ -1387,7 +1389,6 @@
             data: pendingInputMeta?.data || '',
             length: code.value.length,
         });
-        emitWorkspaceDraft(false);
         emitWorkspaceCursor(false);
         pendingInputMeta = null;
     });
