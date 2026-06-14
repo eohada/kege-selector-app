@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 _workspace_rooms: dict[str, dict[int, dict[str, Any]]] = {}
 _workspace_state: dict[str, dict[str, Any]] = {}
+_workspace_history_limit = 250
 
 
 def _room_key(context_type: str, context_id: int | None, assignment_task_id: int | None) -> str:
@@ -33,7 +34,10 @@ def register_task_workspace_socket(socketio) -> None:
 
     def _participant_payload() -> dict[str, Any]:
         display_name = getattr(current_user, "display_name", None) or getattr(current_user, "full_name", None) or getattr(current_user, "username", "user")
-        role = "creator" if getattr(current_user, "is_creator", False) else "admin" if getattr(current_user, "is_admin", False) else "teacher" if getattr(current_user, "is_teacher", False) else "student"
+        is_creator = getattr(current_user, "is_creator", lambda: False)()
+        is_admin = getattr(current_user, "is_admin", lambda: False)()
+        is_teacher = getattr(current_user, "is_teacher", lambda: False)() or getattr(current_user, "is_tutor", lambda: False)()
+        role = "creator" if is_creator else "admin" if is_admin else "teacher" if is_teacher else "student"
         return {
             "user_id": current_user.id,
             "username": current_user.username,
@@ -57,6 +61,48 @@ def register_task_workspace_socket(socketio) -> None:
         current.update(payload or {})
         current["updated_at"] = int(time() * 1000)
         _workspace_state[room] = current
+
+    def _ensure_room_state(room: str, ctx) -> dict[str, Any]:
+        state = _workspace_state.setdefault(
+            room,
+            {
+                "code": getattr(ctx, "code", "") or "",
+                "answer": getattr(ctx, "plain_answer", "") or "",
+                "version": 0,
+                "history": [],
+                "updated_at": int(time() * 1000),
+            },
+        )
+        state.setdefault("code", getattr(ctx, "code", "") or "")
+        state.setdefault("answer", getattr(ctx, "plain_answer", "") or "")
+        state.setdefault("version", 0)
+        state.setdefault("history", [])
+        state.setdefault("updated_at", int(time() * 1000))
+        return state
+
+    def _transform_position(pos: int, op: dict[str, Any]) -> int:
+        start = int(op.get("start") or 0)
+        end = int(op.get("end") or start)
+        inserted_len = len(str(op.get("inserted") or ""))
+        removed_len = max(0, end - start)
+        delta = inserted_len - removed_len
+        if pos <= start:
+            return pos
+        if pos >= end:
+            return max(0, pos + delta)
+        return start + inserted_len
+
+    def _transform_range(start: int, end: int, history: list[dict[str, Any]], base_version: int) -> tuple[int, int]:
+        next_start = max(0, int(start or 0))
+        next_end = max(next_start, int(end or next_start))
+        for op in history:
+            if int(op.get("version") or 0) <= base_version:
+                continue
+            next_start = _transform_position(next_start, op)
+            next_end = _transform_position(next_end, op)
+            if next_end < next_start:
+                next_end = next_start
+        return next_start, next_end
 
     @socketio.on("connect", namespace="/task-workspace")
     def _on_connect():
@@ -88,14 +134,13 @@ def register_task_workspace_socket(socketio) -> None:
         sid = getattr(request, "sid", 0)
         participants = _workspace_rooms.setdefault(room, {})
         participants[sid] = {**_participant_payload(), "cursor": {**_participant_payload()["cursor"]}}
-        if room not in _workspace_state:
-            _workspace_state[room] = {"code": getattr(ctx, "code", "") or "", "answer": getattr(ctx, "plain_answer", "") or ""}
+        state = _ensure_room_state(room, ctx)
         _emit_presence(room)
         socketio.emit(
             "workspace_snapshot",
             {
                 "room": room,
-                "state": {**ctx.as_payload(), **_workspace_state.get(room, {})},
+                "state": {**ctx.as_payload(), **state},
             },
             room=request.sid,
             namespace="/task-workspace",
@@ -143,6 +188,26 @@ def register_task_workspace_socket(socketio) -> None:
         room, ctx = _resolve_room(data or {})
         if not room or not ctx:
             return
+        state = _ensure_room_state(room, ctx)
+        incoming_code = (data.get("code") or "")[:100_000]
+        incoming_answer = (data.get("answer") or "")[:20_000]
+        playback_frames = data.get("playback_frames") or []
+        changed = False
+        if incoming_answer != str(state.get("answer") or ""):
+            state["answer"] = incoming_answer
+            changed = True
+        if playback_frames:
+            state["playback_frames"] = playback_frames
+        # Full drafts are now a recovery path only. Code collaboration goes through
+        # workspace_patch so old full snapshots do not overwrite newer typing.
+        if data.get("force_code_snapshot"):
+            state["code"] = incoming_code
+            state["version"] = int(state.get("version") or 0) + 1
+            state["history"] = []
+            changed = True
+        if changed:
+            state["updated_at"] = int(data.get("updated_at") or int(time() * 1000))
+            _workspace_state[room] = state
         payload = {
             "room": room,
             "context_type": ctx.context_type,
@@ -150,13 +215,14 @@ def register_task_workspace_socket(socketio) -> None:
             "assignment_task_id": ctx.assignment_task_id,
             "student_user_id": ctx.student_user_id,
             "student_id": ctx.student_id,
-            "code": (data.get("code") or "")[:100_000],
-            "playback_frames": data.get("playback_frames") or [],
+            "code": state.get("code") or "",
+            "answer": state.get("answer") or "",
+            "playback_frames": state.get("playback_frames") or [],
+            "version": int(state.get("version") or 0),
             "updated_at": data.get("updated_at"),
             "sender_id": current_user.id,
             "sender_username": current_user.username,
         }
-        _set_room_state(room, {"code": payload["code"]})
         socketio.emit(
             "workspace_draft_updated",
             payload,
@@ -180,37 +246,39 @@ def register_task_workspace_socket(socketio) -> None:
             next_value = str(data.get("next") or "")
         except Exception:
             return
-        current = _workspace_state.get(room) or {}
+        current = _ensure_room_state(room, ctx)
         code = str(current.get("code") or "")
-        if previous and code and previous not in code:
-            if next_value:
-                _set_room_state(room, {"code": next_value})
-                socketio.emit(
-                    "workspace_patch",
-                    {
-                        "room": room,
-                        "user_id": current_user.id,
-                        "username": current_user.username,
-                        "start": 0,
-                        "end": len(code),
-                        "inserted": next_value,
-                        "updated_at": _workspace_state.get(room, {}).get("updated_at"),
-                    },
-                    room=room,
-                    namespace="/task-workspace",
-                    include_self=False,
-                )
-                return
+        base_version = max(0, int(data.get("base_version") or current.get("version") or 0))
+        op_id = str(data.get("op_id") or "")
+        history = list(current.get("history") or [])
+        if base_version < int(current.get("version") or 0):
+            start, end = _transform_range(start, end, history, base_version)
         start = min(start, len(code))
         end = min(max(start, end), len(code))
         next_code = code[:start] + inserted + code[end:]
-        _set_room_state(room, {"code": next_code})
+        next_version = int(current.get("version") or 0) + 1
+        op = {
+            "version": next_version,
+            "op_id": op_id,
+            "user_id": current_user.id,
+            "start": start,
+            "end": end,
+            "inserted": inserted,
+            "updated_at": int(data.get("updated_at") or int(time() * 1000)),
+        }
+        history.append(op)
+        if len(history) > _workspace_history_limit:
+            history = history[-_workspace_history_limit:]
+        _set_room_state(room, {"code": next_code, "version": next_version, "history": history})
         socketio.emit(
             "workspace_patch",
             {
                 "room": room,
                 "user_id": current_user.id,
                 "username": current_user.username,
+                "op_id": op_id,
+                "version": next_version,
+                "base_version": base_version,
                 "start": start,
                 "end": end,
                 "inserted": inserted,
@@ -218,7 +286,7 @@ def register_task_workspace_socket(socketio) -> None:
             },
             room=room,
             namespace="/task-workspace",
-            include_self=False,
+            include_self=True,
         )
 
     @socketio.on("workspace_saved", namespace="/task-workspace")
@@ -228,11 +296,12 @@ def register_task_workspace_socket(socketio) -> None:
         room, ctx = _resolve_room(data or {})
         if not room or not ctx:
             return
+        state = _ensure_room_state(room, ctx)
         socketio.emit(
             "workspace_snapshot",
             {
                 "room": room,
-                "state": ctx.as_payload(),
+                "state": {**ctx.as_payload(), **state},
                 "saved_by": current_user.id,
             },
             room=room,

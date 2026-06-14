@@ -71,9 +71,11 @@
     let workspaceCursorTimer = null;
     let remoteCursorRenderTimer = null;
     let lastLocalEditAt = 0;
-    let forceDraftSyncOnInput = false;
     const remoteParticipants = new Map();
     let inputSnapshot = '';
+    let workspaceServerVersion = Number(ws.version || 0) || 0;
+    let workspaceOpSeq = 0;
+    const pendingWorkspaceOps = [];
 
     function csrf() {
         return document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -201,14 +203,33 @@
             const layerTop = paddingTop - code.scrollTop;
             remoteLayer.innerHTML = participants.map((item) => {
                 const cursor = item.cursor || {};
-                const startLine = Math.max(1, Number(cursor.line || 1));
-                const startCol = Math.max(1, Number(cursor.column || 1));
+                const startPos = Math.max(0, Number(cursor.start || 0));
+                const endPos = Math.max(startPos, Number(cursor.end || startPos));
+                const startInfo = lineInfoAtPosition(code.value || '', startPos);
+                const endInfo = lineInfoAtPosition(code.value || '', endPos);
+                const startLine = Math.max(1, Number(startInfo.line || cursor.line || 1));
+                const startCol = Math.max(1, Number(startInfo.column || cursor.column || 1));
                 const top = Math.max(0, (startLine - 1) * lineHeight + layerTop);
                 const height = lineHeight;
                 const left = paddingLeft + Math.max(0, startCol - 1) * charWidth - code.scrollLeft;
                 const visible = top > -lineHeight && top < code.clientHeight + lineHeight * 2 && left > -40 && left < code.clientWidth + 120;
                 if (!visible) return '';
+                const selectionParts = [];
+                if (endPos > startPos) {
+                    for (let line = startInfo.line; line <= endInfo.line; line += 1) {
+                        const lineText = (code.value || '').split('\n')[line - 1] || '';
+                        const colStart = line === startInfo.line ? startInfo.column : 1;
+                        const colEnd = line === endInfo.line ? endInfo.column : lineText.length + 1;
+                        const width = Math.max(charWidth, (Math.max(colStart, colEnd) - colStart) * charWidth);
+                        const selTop = (line - 1) * lineHeight + layerTop;
+                        const selLeft = paddingLeft + Math.max(0, colStart - 1) * charWidth - code.scrollLeft;
+                        if (selTop > -lineHeight && selTop < code.clientHeight + lineHeight) {
+                            selectionParts.push(`<div class="tw-remote-selection" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; top:${selTop}px; left:${selLeft}px; width:${width}px; height:${height}px;"></div>`);
+                        }
+                    }
+                }
                 return `
+                    ${selectionParts.join('')}
                     <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; top:${top}px; height:${height}px; left:${left}px;"></div>
                 `;
             }).join('');
@@ -240,13 +261,16 @@
             const state = payload?.state || {};
             const snapshotTs = Date.now();
             if (payload?.saved_by && Number(payload.saved_by) === Number(CURRENT_USER_ID || 0)) return;
+            workspaceServerVersion = Math.max(workspaceServerVersion, Number(state.version || 0) || 0);
             workspaceRemoteDraftTs = Math.max(workspaceRemoteDraftTs, snapshotTs);
             if (state && typeof state === 'object') {
+                if (document.activeElement === code && pendingWorkspaceOps.length) return;
                 applyRemoteState({
                     code: state.code || '',
                     versions: state.versions || {},
                     playback: state.playback || {},
                     version_id: state.version_id || null,
+                    version: state.version || 0,
                     updated_at: state.updated_at || '',
                 }, 'Обновлено мгновенно');
             }
@@ -257,10 +281,9 @@
             const remoteTs = Number(payload.updated_at || Date.now()) || Date.now();
             if (remoteTs < workspaceRemoteDraftTs) return;
             workspaceRemoteDraftTs = remoteTs;
-            const incomingCode = String(payload.code || '');
-            if (incomingCode !== String(code.value || '')) {
-                code.value = incomingCode;
-                updateEditorChrome();
+            workspaceServerVersion = Math.max(workspaceServerVersion, Number(payload.version || 0) || 0);
+            if (answer && typeof payload.answer === 'string' && document.activeElement !== answer) {
+                answer.value = payload.answer;
                 saveLocal();
             }
             if (Array.isArray(payload.playback_frames)) {
@@ -270,24 +293,18 @@
         });
         workspaceSocket.on('workspace_patch', (payload) => {
             if (!payload) return;
-            if (Number(payload.user_id || 0) === Number(CURRENT_USER_ID || 0)) return;
-            const start = Math.max(0, Number(payload.start || 0));
-            const end = Math.max(start, Number(payload.end || start));
-            const inserted = String(payload.inserted || '');
-            const before = String(code.value || '');
-            const next = before.slice(0, start) + inserted + before.slice(end);
-            const caret = code.selectionStart || 0;
-            const delta = inserted.length - (end - start);
-            code.value = next;
-            if (document.activeElement === code) {
-                if (caret > end) {
-                    code.selectionStart = code.selectionEnd = Math.max(0, caret + delta);
-                } else if (caret >= start) {
-                    code.selectionStart = code.selectionEnd = start + inserted.length;
-                }
+            const version = Number(payload.version || 0) || 0;
+            if (version && version <= workspaceServerVersion) return;
+            workspaceServerVersion = Math.max(workspaceServerVersion, version);
+            if (Number(payload.user_id || 0) === Number(CURRENT_USER_ID || 0)) {
+                const opId = String(payload.op_id || '');
+                const idx = pendingWorkspaceOps.findIndex((op) => op.op_id === opId);
+                if (idx !== -1) pendingWorkspaceOps.splice(idx, 1);
+                setStatus('Правка синхронизирована', 'ok');
+                return;
             }
-            updateEditorChrome();
-            saveLocal();
+            const transformed = transformPatchThroughOps(payload, pendingWorkspaceOps);
+            applyCodePatchToEditor(transformed, { preserveSelection: true });
             setStatus('Совместная правка обновлена', 'ok');
         });
         workspaceSocket.on('workspace_presence', (payload) => {
@@ -325,7 +342,7 @@
             context_type: ws.context_type || 'demo',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
-            code: code.value,
+            answer: answer ? answer.value : '',
             playback_frames: playback.frames,
             updated_at: now,
         });
@@ -351,24 +368,98 @@
         const before = String(prevValue ?? '');
         const after = String(nextValue ?? '');
         if (before === after) return;
-        if (after.length < before.length) {
-            emitWorkspaceDraft(true);
-            return;
-        }
         if (!before.length && !after.length) return;
         const prefix = commonPrefix(before, after);
         const suffix = commonSuffix(before, after, prefix);
+        const op = {
+            op_id: `${CURRENT_USER_ID || 'u'}:${Date.now()}:${++workspaceOpSeq}`,
+            base_version: workspaceServerVersion,
+            start: prefix,
+            end: Math.max(prefix, before.length - suffix),
+            inserted: after.slice(prefix, after.length - suffix),
+        };
+        pendingWorkspaceOps.push(op);
         workspaceSocket.emit('workspace_patch', {
             context_type: ws.context_type || 'demo',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
-            start: prefix,
-            end: Math.max(prefix, before.length - suffix),
-            inserted: after.slice(prefix, after.length - suffix),
+            op_id: op.op_id,
+            base_version: op.base_version,
+            start: op.start,
+            end: op.end,
+            inserted: op.inserted,
             previous: before,
             next: after,
             updated_at: Date.now(),
         });
+    }
+
+    function transformPositionThroughOp(pos, op) {
+        const start = Math.max(0, Number(op?.start || 0));
+        const end = Math.max(start, Number(op?.end || start));
+        const inserted = String(op?.inserted || '');
+        const delta = inserted.length - (end - start);
+        if (pos <= start) return pos;
+        if (pos >= end) return Math.max(0, pos + delta);
+        return start + inserted.length;
+    }
+
+    function transformPatchThroughOps(patch, ops) {
+        const next = {
+            ...patch,
+            start: Math.max(0, Number(patch.start || 0)),
+            end: Math.max(0, Number(patch.end || patch.start || 0)),
+        };
+        ops.forEach((op) => {
+            next.start = transformPositionThroughOp(next.start, op);
+            next.end = transformPositionThroughOp(next.end, op);
+            if (next.end < next.start) next.end = next.start;
+        });
+        return next;
+    }
+
+    function applyCodePatchToEditor(patch, options = {}) {
+        const start = Math.max(0, Number(patch.start || 0));
+        const end = Math.max(start, Number(patch.end || start));
+        const inserted = String(patch.inserted || '');
+        const before = String(code.value || '');
+        const boundedStart = Math.min(start, before.length);
+        const boundedEnd = Math.min(Math.max(boundedStart, end), before.length);
+        const caretStart = code.selectionStart || 0;
+        const caretEnd = code.selectionEnd || caretStart;
+        const next = before.slice(0, boundedStart) + inserted + before.slice(boundedEnd);
+        const delta = inserted.length - (boundedEnd - boundedStart);
+        code.value = next;
+        if (document.activeElement === code || options.preserveSelection) {
+            const mapCaret = (pos) => {
+                if (pos > boundedEnd) return Math.max(0, pos + delta);
+                if (pos >= boundedStart) return boundedStart + inserted.length;
+                return pos;
+            };
+            code.selectionStart = mapCaret(caretStart);
+            code.selectionEnd = mapCaret(caretEnd);
+        }
+        updateEditorChrome();
+        saveLocal();
+    }
+
+    function applyLocalCodeChange(previous, next, action, detail) {
+        const before = String(previous ?? '');
+        const after = String(next ?? '');
+        if (before === after) return;
+        saveLocal();
+        updateEditorChrome();
+        setStatus('Есть несохраненные изменения', 'run');
+        scheduleAutosave();
+        emitWorkspacePatch(before, after);
+        emitWorkspaceCursor(false);
+        if (!isApplyingPlayback) {
+            captureFrame(action || pendingInputMeta?.type || 'input', {
+                ...(detail || {}),
+                data: pendingInputMeta?.data || '',
+                length: after.length,
+            });
+        }
     }
 
     const pairs = {
@@ -619,6 +710,7 @@
         if (!changed) {
             lastAppliedServerVersionId = state.version_id || lastAppliedServerVersionId;
             lastAppliedServerUpdatedAt = state.updated_at || lastAppliedServerUpdatedAt;
+            workspaceServerVersion = Math.max(workspaceServerVersion, Number(state.version || 0) || 0);
             return false;
         }
 
@@ -635,12 +727,15 @@
         saveLocal();
         lastAppliedServerVersionId = state.version_id || null;
         lastAppliedServerUpdatedAt = state.updated_at || '';
+        workspaceServerVersion = Math.max(workspaceServerVersion, Number(state.version || 0) || 0);
         setStatus(reason || 'Синхронизировано', 'ok');
         return true;
     }
 
     async function pullServerState(force = false) {
         if (ws.context_type === 'demo') return;
+        if (workspaceSocketReady && !force) return;
+        if (pendingWorkspaceOps.length && !force) return;
         if (liveSyncBusy && !force) return;
         liveSyncBusy = true;
         try {
@@ -759,12 +854,11 @@
     function insertText(text, selectionOffset, action, detail) {
         const start = code.selectionStart;
         const end = code.selectionEnd;
+        const previous = code.value;
         code.value = code.value.slice(0, start) + text + code.value.slice(end);
         const pos = start + (typeof selectionOffset === 'number' ? selectionOffset : text.length);
         code.selectionStart = code.selectionEnd = pos;
-        updateEditorChrome();
-        saveLocal();
-        captureFrame(action || 'insert', detail || { text, offset: selectionOffset });
+        applyLocalCodeChange(previous, code.value, action || 'insert', detail || { text, offset: selectionOffset });
     }
 
     function currentLineBeforeCursor() {
@@ -1086,14 +1180,13 @@
                     if (current && current !== replacement) {
                         const start = code.selectionStart;
                         const value = code.value;
+                        const previous = code.value;
                         const lineStart = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
                         const lineEndIdx = value.indexOf('\n', start);
                         const lineEnd = lineEndIdx === -1 ? value.length : lineEndIdx;
                         code.value = value.slice(0, lineStart) + replacement + value.slice(lineEnd);
                         code.selectionStart = code.selectionEnd = lineStart + replacement.length;
-                        updateEditorChrome();
-                        saveLocal();
-                        captureFrame('suggestion', { title });
+                        applyLocalCodeChange(previous, code.value, 'suggestion', { title });
                     }
                 }
             });
@@ -1122,6 +1215,7 @@
         const normalized = String(snippet).trim();
         const start = code.selectionStart || 0;
         const end = code.selectionEnd || 0;
+        const previous = code.value;
         const before = code.value.slice(0, start);
         const after = code.value.slice(end);
         const needsNewline = before && !before.endsWith('\n') ? '\n' : '';
@@ -1129,9 +1223,7 @@
         code.value = before + needsNewline + block + after;
         const pos = before.length + needsNewline.length + block.length;
         code.selectionStart = code.selectionEnd = pos;
-        updateEditorChrome();
-        saveLocal();
-        captureFrame('import-snippet', { snippet: normalized });
+        applyLocalCodeChange(previous, code.value, 'import-snippet', { snippet: normalized });
     }
 
     function renderVersions() {
@@ -1158,10 +1250,11 @@
                     const id = Number(btn.dataset.restoreVersion || 0);
                     const item = items.find((x) => Number(x.version_id) === id);
                     if (!item) return;
+                    const previous = code.value;
                     code.value = item.code || '';
                     updateEditorChrome();
                     saveLocal();
-                    captureFrame('restore-version', { version_id: id });
+                    applyLocalCodeChange(previous, code.value, 'restore-version', { version_id: id });
                     setStatus('Версия открыта в редакторе', 'ok');
                 });
             });
@@ -1184,6 +1277,7 @@
             const start = code.selectionStart;
             const end = code.selectionEnd;
             const selected = code.value.slice(start, end);
+            const previous = code.value;
             if (event.shiftKey) {
                 const lineStart = code.value.lastIndexOf('\n', start - 1) + 1;
                 const lineEnd = code.value.indexOf('\n', end);
@@ -1192,7 +1286,7 @@
                 code.value = code.value.slice(0, lineStart) + block + code.value.slice(actualEnd);
                 code.selectionStart = lineStart;
                 code.selectionEnd = lineStart + block.length;
-                captureFrame('outdent', { selected: selected.length });
+                applyLocalCodeChange(previous, code.value, 'outdent', { selected: selected.length });
             } else if (selected.includes('\n')) {
                 const lineStart = code.value.lastIndexOf('\n', start - 1) + 1;
                 const lineEnd = code.value.indexOf('\n', end);
@@ -1201,12 +1295,10 @@
                 code.value = code.value.slice(0, lineStart) + block + code.value.slice(actualEnd);
                 code.selectionStart = lineStart;
                 code.selectionEnd = lineStart + block.length;
-                captureFrame('indent', { selected: selected.length });
+                applyLocalCodeChange(previous, code.value, 'indent', { selected: selected.length });
             } else {
                 insertText('    ', 4, 'indent', { selected: 0 });
             }
-            updateEditorChrome();
-            saveLocal();
             return;
         }
         if (event.key === 'Enter') {
@@ -1245,40 +1337,23 @@
             const end = code.selectionEnd;
             if (start === end && start > 0 && pairs[code.value[start - 1]] === code.value[start]) {
                 event.preventDefault();
+                const previous = code.value;
                 code.value = code.value.slice(0, start - 1) + code.value.slice(start + 1);
                 code.selectionStart = code.selectionEnd = start - 1;
-                updateEditorChrome();
-                saveLocal();
-                captureFrame('backspace-pair', {});
+                applyLocalCodeChange(previous, code.value, 'backspace-pair', {});
             }
-            forceDraftSyncOnInput = true;
-        }
-        if (event.key === 'Delete') {
-            forceDraftSyncOnInput = true;
         }
     });
 
     code.addEventListener('input', () => {
         const previous = inputSnapshot;
         lastLocalEditAt = Date.now();
-        saveLocal();
-        updateEditorChrome();
-        setStatus('Есть несохраненные изменения', 'run');
-        scheduleAutosave();
-        if (forceDraftSyncOnInput || code.value.length < previous.length) {
-            emitWorkspaceDraft(true);
-        } else {
-            emitWorkspacePatch(previous, code.value);
-            emitWorkspaceDraft(false);
-        }
-        forceDraftSyncOnInput = false;
+        applyLocalCodeChange(previous, code.value, pendingInputMeta?.type || 'input', {
+            data: pendingInputMeta?.data || '',
+            length: code.value.length,
+        });
+        emitWorkspaceDraft(false);
         emitWorkspaceCursor(false);
-        if (!isApplyingPlayback) {
-            captureFrame(pendingInputMeta?.type || 'input', {
-                data: pendingInputMeta?.data || '',
-                length: code.value.length,
-            });
-        }
         pendingInputMeta = null;
     });
     code.addEventListener('keyup', () => {
@@ -1327,6 +1402,7 @@
             if (button.dataset.action === 'format') {
                 const start = code.selectionStart;
                 const end = code.selectionEnd;
+                const previous = code.value;
                 if (start !== end) {
                     const before = code.value.slice(0, start);
                     const selected = code.value.slice(start, end);
@@ -1338,10 +1414,8 @@
                 } else {
                     code.value = formatCodeSmart(code.value);
                 }
-                saveLocal();
-                updateEditorChrome();
                 setStatus('Отступы приведены к 4 пробелам', 'ok');
-                captureFrame('format', { scope: start !== end ? 'selection' : 'document' });
+                applyLocalCodeChange(previous, code.value, 'format', { scope: start !== end ? 'selection' : 'document' });
             }
         });
     });

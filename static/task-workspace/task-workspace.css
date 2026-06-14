@@ -520,13 +520,13 @@
 
 .tw-remote-cursor {
     position: absolute;
-    border-left: 3px solid var(--cursor-color);
-    background: color-mix(in srgb, var(--cursor-color) 18%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cursor-color) 28%, transparent);
+    border-left: 2px solid var(--cursor-color);
+    background: color-mix(in srgb, var(--cursor-color) 12%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cursor-color) 18%, transparent);
     border-radius: 3px;
     overflow: visible;
     z-index: 4;
-    opacity: 0.32;
+    opacity: 0.62;
     mix-blend-mode: multiply;
 }
 
@@ -540,6 +540,24 @@
     border-radius: 50%;
     background: var(--cursor-color);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--cursor-color) 8%, transparent);
+}
+
+.tw-remote-selection {
+    position: absolute;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--cursor-color) 18%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cursor-color) 22%, transparent);
+    opacity: 0.75;
+    z-index: 3;
+    mix-blend-mode: multiply;
+}
+
+[data-theme="dark"] .tw-remote-cursor,
+body.dark .tw-remote-cursor,
+[data-theme="dark"] .tw-remote-selection,
+body.dark .tw-remote-selection {
+    mix-blend-mode: screen;
+    opacity: 0.78;
 }
 
 .tw-active-line,

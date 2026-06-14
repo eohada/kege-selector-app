@@ -3,7 +3,7 @@
 {% block title %}Task Workspace · BooStudy{% endblock %}
 
 {% block head_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260612-1">
+<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260614-live-1">
 {% endblock %}
 
 {% block content %}
@@ -202,5 +202,5 @@ window.TASK_WORKSPACE_USER_ID = {{ current_user.id if current_user.is_authentica
 
 {% block scripts_extra %}
 {{ super() }}
-<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260612-1"></script>
+<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260614-live-1"></script>
 {% endblock %}
