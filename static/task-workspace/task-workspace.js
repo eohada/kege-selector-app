@@ -347,13 +347,9 @@
             const hasCanonicalText = typeof payload.code_after === 'string';
             const shouldApplyCanonical = hasCanonicalText && (pendingWorkspaceOps.length === 0 || document.activeElement !== code);
             if (shouldApplyCanonical) {
-                code.value = String(payload.code_after || '');
-                updateEditorChrome();
-                saveLocal();
+                applyCanonicalWorkspaceText(payload.code_after, { rebaseSnapshot: true });
             } else if (hasCanonicalText) {
-                code.value = String(payload.code_after || '');
-                updateEditorChrome();
-                saveLocal();
+                applyCanonicalWorkspaceText(payload.code_after, { rebaseSnapshot: true });
             } else {
                 const transformed = transformPatchThroughOps(payload, pendingWorkspaceOps);
                 applyCodePatchToEditor(transformed, { preserveSelection: true });
@@ -493,6 +489,18 @@
             };
             code.selectionStart = mapCaret(caretStart);
             code.selectionEnd = mapCaret(caretEnd);
+        }
+        updateEditorChrome();
+        saveLocal();
+    }
+
+    function applyCanonicalWorkspaceText(nextValue, options = {}) {
+        const value = String(nextValue ?? '');
+        code.value = value;
+        if (options.rebaseSnapshot !== false) {
+            inputSnapshot = value;
+            pendingInputMeta = null;
+            lastLocalEditAt = Date.now();
         }
         updateEditorChrome();
         saveLocal();
@@ -768,7 +776,7 @@
             return false;
         }
 
-        code.value = remoteCode;
+        applyCanonicalWorkspaceText(remoteCode, { rebaseSnapshot: true });
         if (state.versions?.items) {
             versionState.items = state.versions.items.slice();
             renderVersions();
@@ -777,8 +785,6 @@
             playback.frames = state.playback.frames.map(sanitizeFrame);
             renderPlayback();
         }
-        updateEditorChrome();
-        saveLocal();
         lastAppliedServerVersionId = state.version_id || null;
         lastAppliedServerUpdatedAt = state.updated_at || '';
         workspaceServerVersion = Math.max(workspaceServerVersion, Number(state.version || 0) || 0);
