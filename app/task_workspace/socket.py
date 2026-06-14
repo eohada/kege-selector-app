@@ -261,6 +261,7 @@ def register_task_workspace_socket(socketio) -> None:
             inserted = str(data.get("inserted") or "")[:10_000]
             previous = str(data.get("previous") or "")
             next_value = str(data.get("next") or "")
+            full_code = str(data.get("full_code") or "")[:100_000]
         except Exception:
             return
         sid = getattr(request, "sid", 0)
@@ -270,11 +271,28 @@ def register_task_workspace_socket(socketio) -> None:
         base_version = max(0, int(data.get("base_version") or current.get("version") or 0))
         op_id = str(data.get("op_id") or "")
         history = list(current.get("history") or [])
-        if base_version < int(current.get("version") or 0):
-            start, end = _transform_range(start, end, history, base_version)
-        start = min(start, len(code))
-        end = min(max(start, end), len(code))
-        next_code = code[:start] + inserted + code[end:]
+        if full_code:
+            next_code = full_code
+            prefix_len = 0
+            limit = min(len(code), len(full_code))
+            while prefix_len < limit and code[prefix_len] == full_code[prefix_len]:
+                prefix_len += 1
+            suffix_len = 0
+            while (
+                len(code) - 1 - suffix_len >= prefix_len
+                and len(full_code) - 1 - suffix_len >= prefix_len
+                and code[len(code) - 1 - suffix_len] == full_code[len(full_code) - 1 - suffix_len]
+            ):
+                suffix_len += 1
+            start = prefix_len
+            end = max(prefix_len, len(code) - suffix_len)
+            inserted = full_code[prefix_len:len(full_code) - suffix_len]
+        else:
+            if base_version < int(current.get("version") or 0):
+                start, end = _transform_range(start, end, history, base_version)
+            start = min(start, len(code))
+            end = min(max(start, end), len(code))
+            next_code = code[:start] + inserted + code[end:]
         next_version = int(current.get("version") or 0) + 1
         op = {
             "version": next_version,

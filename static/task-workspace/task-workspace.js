@@ -439,6 +439,7 @@
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             client_id: workspaceClientId,
+            full_code: after,
             op_id: op.op_id,
             base_version: op.base_version,
             start: op.start,
