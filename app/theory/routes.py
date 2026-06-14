@@ -13,6 +13,8 @@ from flask import render_template, request, redirect, url_for, flash, abort, jso
 from markupsafe import Markup
 from flask_login import login_required, current_user
 from sqlalchemy import func
+from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 from app.theory import theory_bp
 from app.models import (
@@ -442,6 +444,36 @@ def _render_theory_content_html(content_value):
         text = _md(text, extensions=['extra', 'tables', 'fenced_code'])
     except Exception:
         pass
+    try:
+        soup = BeautifulSoup(text, 'html.parser')
+        for block in soup.find_all(['p', 'div']):
+            if not isinstance(block, Tag):
+                continue
+            inner = (block.get_text(' ', strip=True) or '').strip()
+            if not inner:
+                continue
+            if not re.fullmatch(r'(?i)[\w.\-/() ]+\.(?:png|jpe?g|gif|webp|bmp|svg)', inner):
+                continue
+            resolved = _resolve_theory_uploaded_asset_by_name(inner)
+            if not resolved:
+                continue
+            try:
+                storage_root = current_app.config.get('THEORY_UPLOAD_ROOT')
+                if storage_root and os.path.abspath(resolved).startswith(os.path.abspath(storage_root)):
+                    url = url_for('theory.theory_uploaded_file', rel_path=os.path.relpath(resolved, os.path.abspath(storage_root)).replace('\\', '/'))
+                else:
+                    static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+                    url = url_for('static', filename=os.path.relpath(resolved, static_root).replace('\\', '/'))
+            except Exception:
+                continue
+            img = soup.new_tag('img')
+            img['src'] = url
+            img['alt'] = os.path.basename(inner)
+            img['loading'] = 'lazy'
+            img['style'] = 'max-width: min(100%, 920px); height: auto; border-radius: 16px; border: 1px solid rgba(148,163,184,.35); display:block; margin: .35rem 0;'
+            block.replace_with(img)
+    except Exception:
+        pass
     text = text.replace('<p>__THEORY_SPACER__</p>', '<div class="theory-spacer"></div>')
     text = text.replace('__THEORY_SPACER__', '<div class="theory-spacer"></div>')
     text = text.replace('<p>THEORY_SPACER</p>', '<div class="theory-spacer"></div>')
@@ -783,6 +815,46 @@ def _build_theory_public_url(abs_path: str, base_root: str, persistent: bool):
         # Served via auth-protected route from persistent volume.
         return url_for('theory.theory_uploaded_file', rel_path=rel)
     return url_for('static', filename=rel)
+
+
+def _resolve_theory_uploaded_asset_by_name(file_name: str) -> str | None:
+    base_name = os.path.basename((file_name or '').strip())
+    if not base_name:
+        return None
+
+    roots = []
+    persistent_root = current_app.config.get('THEORY_UPLOAD_ROOT')
+    if persistent_root:
+        roots.append(os.path.abspath(persistent_root))
+    static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+    roots.extend([
+        os.path.join(static_root, 'uploads', 'theory_files'),
+        os.path.join(current_app.root_path, 'static', 'uploads', 'theory_files'),
+        os.path.join(current_app.root_path, 'uploads', 'theory_files'),
+    ])
+
+    allowed_exts = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg')
+    stem, ext = os.path.splitext(base_name)
+    search_names = [base_name]
+    if ext.lower() not in allowed_exts:
+        search_names.extend([stem + candidate_ext for candidate_ext in allowed_exts])
+
+    for root in roots:
+        if not root:
+            continue
+        root_abs = os.path.abspath(root)
+        for candidate_name in search_names:
+            candidate_path = os.path.join(root_abs, candidate_name)
+            if os.path.isfile(candidate_path):
+                return candidate_path
+        for dirpath, _dirnames, filenames in os.walk(root_abs):
+            if base_name in filenames:
+                return os.path.join(dirpath, base_name)
+            if ext.lower() not in allowed_exts:
+                for candidate_name in search_names[1:]:
+                    if candidate_name in filenames:
+                        return os.path.join(dirpath, candidate_name)
+    return None
 
 
 @theory_bp.route('/theory/manage', methods=['GET', 'POST'])
