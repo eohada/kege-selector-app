@@ -284,7 +284,7 @@
         workspaceSocket.on('workspace_snapshot', (payload) => {
             const state = payload?.state || {};
             const snapshotTs = Date.now();
-            if (payload?.saved_by && Number(payload.saved_by) === Number(CURRENT_USER_ID || 0)) return;
+            if (payload?.saved_by && Number(payload.saved_by) === Number(CURRENT_USER_ID || 0) && !state?.code) return;
             workspaceServerVersion = Math.max(workspaceServerVersion, Number(state.version || 0) || 0);
             workspaceRemoteDraftTs = Math.max(workspaceRemoteDraftTs, snapshotTs);
             if (state && typeof state === 'object') {
@@ -1419,7 +1419,10 @@
         updateEditorChrome();
         emitWorkspaceCursor(false);
     });
-    code.addEventListener('focus', () => emitWorkspaceCursor(false));
+    code.addEventListener('focus', () => {
+        pullServerState(true);
+        emitWorkspaceCursor(false);
+    });
     code.addEventListener('blur', () => emitWorkspaceCursor(true));
     code.addEventListener('beforeinput', (event) => {
         inputSnapshot = code.value;

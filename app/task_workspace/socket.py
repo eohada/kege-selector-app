@@ -309,6 +309,16 @@ def register_task_workspace_socket(socketio) -> None:
             namespace="/task-workspace",
             include_self=True,
         )
+        socketio.emit(
+            "workspace_snapshot",
+            {
+                "room": room,
+                "state": {**ctx.as_payload(), **_workspace_state.get(room, {})},
+                "saved_by": current_user.id,
+            },
+            room=room,
+            namespace="/task-workspace",
+        )
 
     @socketio.on("workspace_saved", namespace="/task-workspace")
     def _on_workspace_saved(data):
