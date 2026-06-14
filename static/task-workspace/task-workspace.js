@@ -332,7 +332,6 @@
             if (opId && seenWorkspaceOpIds.has(opId)) return;
             if (!opId && version && version <= workspaceServerVersion) return;
             if (opId) seenWorkspaceOpIds.add(opId);
-            workspaceServerVersion = Math.max(workspaceServerVersion, version);
             if (payload.cursor) {
                 remoteParticipants.set(Number(payload.user_id), {
                     ...(remoteParticipants.get(Number(payload.user_id)) || {}),
@@ -345,8 +344,21 @@
                 });
                 renderPresenceBar(Array.from(remoteParticipants.values()));
             }
-            const transformed = transformPatchThroughOps(payload, pendingWorkspaceOps);
-            applyCodePatchToEditor(transformed, { preserveSelection: true });
+            const hasCanonicalText = typeof payload.code_after === 'string';
+            const shouldApplyCanonical = hasCanonicalText && (pendingWorkspaceOps.length === 0 || document.activeElement !== code);
+            if (shouldApplyCanonical) {
+                code.value = String(payload.code_after || '');
+                updateEditorChrome();
+                saveLocal();
+            } else if (hasCanonicalText) {
+                code.value = String(payload.code_after || '');
+                updateEditorChrome();
+                saveLocal();
+            } else {
+                const transformed = transformPatchThroughOps(payload, pendingWorkspaceOps);
+                applyCodePatchToEditor(transformed, { preserveSelection: true });
+            }
+            workspaceServerVersion = Math.max(workspaceServerVersion, version);
             setStatus('Совместная правка обновлена', 'ok');
         });
         workspaceSocket.on('workspace_presence', (payload) => {
