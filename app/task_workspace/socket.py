@@ -118,6 +118,7 @@ def register_task_workspace_socket(socketio) -> None:
             "line": int(data.get("cursor_line", data.get("line", 0)) or 0),
             "column": int(data.get("cursor_column", data.get("column", 0)) or 0),
             "panel": str(data.get("cursor_panel", data.get("panel", "editor")) or "editor"),
+            "client_id": str(data.get("client_id") or ""),
             "ts": int(time() * 1000),
         }
 
@@ -189,6 +190,7 @@ def register_task_workspace_socket(socketio) -> None:
                 "role": payload["role"],
                 "color": payload["color"],
                 "cursor": payload["cursor"],
+                "client_id": payload["cursor"].get("client_id"),
             },
             room=room,
             namespace="/task-workspace",
@@ -236,6 +238,7 @@ def register_task_workspace_socket(socketio) -> None:
             "updated_at": data.get("updated_at"),
             "sender_id": current_user.id,
             "sender_username": current_user.username,
+            "client_id": str(data.get("client_id") or ""),
         }
         socketio.emit(
             "workspace_draft_updated",
@@ -292,6 +295,7 @@ def register_task_workspace_socket(socketio) -> None:
                 "room": room,
                 "user_id": current_user.id,
                 "username": current_user.username,
+                "client_id": str(data.get("client_id") or ""),
                 "op_id": op_id,
                 "version": next_version,
                 "base_version": base_version,
@@ -315,6 +319,7 @@ def register_task_workspace_socket(socketio) -> None:
                 "room": room,
                 "state": {**ctx.as_payload(), **_workspace_state.get(room, {})},
                 "saved_by": current_user.id,
+                "client_id": str(data.get("client_id") or ""),
             },
             room=room,
             namespace="/task-workspace",
@@ -334,6 +339,7 @@ def register_task_workspace_socket(socketio) -> None:
                 "room": room,
                 "state": {**ctx.as_payload(), **state},
                 "saved_by": current_user.id,
+                "client_id": str(data.get("client_id") or ""),
             },
             room=room,
             namespace="/task-workspace",

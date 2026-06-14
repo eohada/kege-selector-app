@@ -77,6 +77,7 @@
     let workspaceOpSeq = 0;
     const pendingWorkspaceOps = [];
     const seenWorkspaceOpIds = new Set();
+    const workspaceClientId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     function csrf() {
         return document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -143,6 +144,7 @@
             context_type: ws.context_type || 'demo',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
+            client_id: workspaceClientId,
             ...localCursorPayload(),
         });
     }
@@ -284,11 +286,11 @@
         workspaceSocket.on('workspace_snapshot', (payload) => {
             const state = payload?.state || {};
             const snapshotTs = Date.now();
-            if (payload?.saved_by && Number(payload.saved_by) === Number(CURRENT_USER_ID || 0)) return;
+            if (payload?.client_id && payload.client_id === workspaceClientId) return;
             workspaceServerVersion = Math.max(workspaceServerVersion, Number(state.version || 0) || 0);
             workspaceRemoteDraftTs = Math.max(workspaceRemoteDraftTs, snapshotTs);
             if (state && typeof state === 'object') {
-                if (document.activeElement === code && pendingWorkspaceOps.length) return;
+                if (document.activeElement === code && pendingWorkspaceOps.length && payload?.client_id !== workspaceClientId) return;
                 applyRemoteState({
                     code: state.code || '',
                     versions: state.versions || {},
@@ -301,7 +303,7 @@
         });
         workspaceSocket.on('workspace_draft_updated', (payload) => {
             if (!payload) return;
-            if (Number(payload.sender_id || 0) === Number(CURRENT_USER_ID || 0)) return;
+            if (payload?.client_id && payload.client_id === workspaceClientId) return;
             const remoteTs = Number(payload.updated_at || Date.now()) || Date.now();
             if (remoteTs < workspaceRemoteDraftTs) return;
             workspaceRemoteDraftTs = remoteTs;
@@ -321,7 +323,7 @@
             if (!payload) return;
             const version = Number(payload.version || 0) || 0;
             const opId = String(payload.op_id || '');
-            if (Number(payload.user_id || 0) === Number(CURRENT_USER_ID || 0)) {
+            if (payload?.client_id && payload.client_id === workspaceClientId) {
                 const idx = pendingWorkspaceOps.findIndex((op) => op.op_id === opId);
                 if (idx !== -1) pendingWorkspaceOps.splice(idx, 1);
                 if (opId) seenWorkspaceOpIds.add(opId);
@@ -370,6 +372,7 @@
         });
         workspaceSocket.on('workspace_cursor_update', (payload) => {
             if (!payload || payload.user_id == null) return;
+            if (payload?.client_id && payload.client_id === workspaceClientId) return;
             remoteParticipants.set(Number(payload.user_id), {
                 ...(remoteParticipants.get(Number(payload.user_id)) || {}),
                 ...payload,
@@ -392,6 +395,7 @@
             context_type: ws.context_type || 'demo',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
+            client_id: workspaceClientId,
             answer: answer ? answer.value : '',
             playback_frames: playback.frames,
             updated_at: now,
@@ -433,6 +437,7 @@
             context_type: ws.context_type || 'demo',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
+            client_id: workspaceClientId,
             op_id: op.op_id,
             base_version: op.base_version,
             start: op.start,
