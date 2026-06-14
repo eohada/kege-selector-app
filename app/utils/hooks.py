@@ -240,6 +240,8 @@ def register_hooks(app):
                             started_at_with_tz = lesson.started_at
                             if started_at_with_tz.tzinfo is None:
                                 started_at_with_tz = started_at_with_tz.replace(tzinfo=MOSCOW_TZ)
+                            else:
+                                started_at_with_tz = started_at_with_tz.astimezone(MOSCOW_TZ)
                             
                             if now_with_tz >= started_at_with_tz + timedelta(minutes=int(lesson.duration or 60)):
                                 lesson.status = 'completed'

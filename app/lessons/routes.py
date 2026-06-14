@@ -290,11 +290,11 @@ def lesson_delete(lesson_id):
 @login_required
 def lesson_start(lesson_id):
     """Начало урока: фиксируем started_at, опционально отмечаем опоздание."""
-    from core.db_models import utc_now
+    from core.db_models import moscow_now
     lesson = Lesson.query.get_or_404(lesson_id)
     lesson.status = 'in_progress'
-    now = utc_now()
-    lesson.started_at = now
+    now = moscow_now()
+    lesson.started_at = now.replace(tzinfo=None)
     mark_late = request.form.get('student_late') in ('1', 'true', 'on', 'yes')
     if mark_late:
         lesson.student_late = True
@@ -418,7 +418,10 @@ def auto_complete_overdue_lessons():
     for lesson in q.all():
         try:
             st = lesson.started_at
-            st_naive = st.replace(tzinfo=None) if getattr(st, 'tzinfo', None) else st
+            if getattr(st, 'tzinfo', None):
+                st_naive = st.astimezone(MOSCOW_TZ).replace(tzinfo=None)
+            else:
+                st_naive = st
             if st_naive is None:
                 continue
             threshold = st_naive + timedelta(minutes=int(lesson.duration or 60))
