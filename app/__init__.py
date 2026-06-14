@@ -462,7 +462,7 @@ def create_app(config_name=None):
     def _start_lesson_auto_complete_worker() -> None:
         if app.config.get('_LESSON_AUTO_COMPLETE_WORKER_STARTED'):
             return
-        poll_seconds = int(os.environ.get('LESSON_AUTO_COMPLETE_POLL_SECONDS', '300'))
+        poll_seconds = int(os.environ.get('LESSON_AUTO_COMPLETE_POLL_SECONDS', '10'))
 
         def worker():
             while True:

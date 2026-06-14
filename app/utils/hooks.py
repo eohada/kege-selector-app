@@ -49,7 +49,7 @@ def _skip_periodic_db_maintenance() -> bool:
 _schema_initialized = False
 
 _last_lesson_check = None
-_lesson_check_interval = timedelta(minutes=15)
+_lesson_check_interval = timedelta(seconds=10)
 
 _last_subscription_check = None
 _subscription_check_interval = timedelta(minutes=10)

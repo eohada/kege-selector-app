@@ -1838,17 +1838,30 @@ async def lesson_hw_note_receive_remind(update: Update, context: ContextTypes.DE
         from datetime import timedelta
         from app.models import db, Lesson, LessonTeacherHomeworkNote
         from core.db_models import moscow_now
-        from app.telegram.notifications import notify_lesson_finished_for_teacher
+        from app.telegram.compat import get_user_by_chat_id
 
         lesson = Lesson.query.get(int(lesson_id))
         if not lesson:
             await update.message.reply_text('⚠️ Урок не найден.')
             return ConversationHandler.END
 
+        session = get_session()
+        try:
+            linked_user = get_user_by_chat_id(session, int(update.effective_chat.id))
+        finally:
+            close_session(session)
+
+        teacher_user_id = int(linked_user['id']) if linked_user and linked_user.get('id') else None
+        if not teacher_user_id:
+            await update.message.reply_text(
+                '⚠️ Не удалось определить твой аккаунт на платформе. Сначала привяжи Telegram к профилю.',
+            )
+            return ConversationHandler.END
+
         remind_at = moscow_now() + timedelta(minutes=minutes)
         note = LessonTeacherHomeworkNote(
             lesson_id=int(lesson_id),
-            teacher_user_id=int(update.effective_user.id),
+            teacher_user_id=teacher_user_id,
             homework_text=homework_text,
             remind_at=remind_at,
         )
