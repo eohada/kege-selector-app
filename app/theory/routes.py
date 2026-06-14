@@ -446,6 +446,33 @@ def _render_theory_content_html(content_value):
         pass
     try:
         soup = BeautifulSoup(text, 'html.parser')
+        for img in soup.find_all('img'):
+            if not isinstance(img, Tag):
+                continue
+            src = (img.get('src') or '').strip()
+            if not src:
+                continue
+            if re.match(r'(?i)^(?:https?:)?//|^data:|^/static/|^/theory/uploads/', src):
+                continue
+            if not re.fullmatch(r'(?i)[\w.\-/() %]+\.(?:png|jpe?g|gif|webp|bmp|svg)(?:[?#].*)?', src):
+                continue
+            resolved = _resolve_theory_uploaded_asset_by_name(src)
+            if not resolved:
+                continue
+            try:
+                storage_root = current_app.config.get('THEORY_UPLOAD_ROOT')
+                if storage_root and os.path.abspath(resolved).startswith(os.path.abspath(storage_root)):
+                    url = url_for('theory.theory_uploaded_file', rel_path=os.path.relpath(resolved, os.path.abspath(storage_root)).replace('\\', '/'))
+                else:
+                    static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+                    url = url_for('static', filename=os.path.relpath(resolved, static_root).replace('\\', '/'))
+            except Exception:
+                continue
+            img['src'] = url
+            img['loading'] = img.get('loading') or 'lazy'
+            if not img.get('style'):
+                img['style'] = 'max-width: min(100%, 920px); height: auto; border-radius: 16px; border: 1px solid rgba(148,163,184,.35); display:block; margin: .35rem 0;'
+
         for block in soup.find_all(['p', 'div']):
             if not isinstance(block, Tag):
                 continue
@@ -818,7 +845,9 @@ def _build_theory_public_url(abs_path: str, base_root: str, persistent: bool):
 
 
 def _resolve_theory_uploaded_asset_by_name(file_name: str) -> str | None:
-    base_name = os.path.basename((file_name or '').strip())
+    raw_name = (file_name or '').strip().strip('"\'')
+    raw_name = raw_name.split('?', 1)[0].split('#', 1)[0]
+    base_name = os.path.basename(raw_name)
     if not base_name:
         return None
 
@@ -827,10 +856,18 @@ def _resolve_theory_uploaded_asset_by_name(file_name: str) -> str | None:
     if persistent_root:
         roots.append(os.path.abspath(persistent_root))
     static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+    upload_subfolders = ('theory', 'theory_files', 'theory_images')
     roots.extend([
-        os.path.join(static_root, 'uploads', 'theory_files'),
-        os.path.join(current_app.root_path, 'static', 'uploads', 'theory_files'),
-        os.path.join(current_app.root_path, 'uploads', 'theory_files'),
+        os.path.join(static_root, 'uploads', subfolder)
+        for subfolder in upload_subfolders
+    ])
+    roots.extend([
+        os.path.join(current_app.root_path, 'static', 'uploads', subfolder)
+        for subfolder in upload_subfolders
+    ])
+    roots.extend([
+        os.path.join(current_app.root_path, 'uploads', subfolder)
+        for subfolder in upload_subfolders
     ])
 
     allowed_exts = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg')
@@ -843,6 +880,12 @@ def _resolve_theory_uploaded_asset_by_name(file_name: str) -> str | None:
         if not root:
             continue
         root_abs = os.path.abspath(root)
+        if not os.path.isdir(root_abs):
+            continue
+        if raw_name and raw_name != base_name:
+            candidate_path = os.path.join(root_abs, raw_name.replace('\\', '/').lstrip('/'))
+            if os.path.isfile(candidate_path):
+                return candidate_path
         for candidate_name in search_names:
             candidate_path = os.path.join(root_abs, candidate_name)
             if os.path.isfile(candidate_path):
