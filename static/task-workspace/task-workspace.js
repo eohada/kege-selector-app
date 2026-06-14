@@ -76,6 +76,7 @@
     let workspaceServerVersion = Number(ws.version || 0) || 0;
     let workspaceOpSeq = 0;
     const pendingWorkspaceOps = [];
+    const seenWorkspaceOpIds = new Set();
 
     function csrf() {
         return document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -319,15 +320,19 @@
         workspaceSocket.on('workspace_patch', (payload) => {
             if (!payload) return;
             const version = Number(payload.version || 0) || 0;
-            if (version && version <= workspaceServerVersion) return;
-            workspaceServerVersion = Math.max(workspaceServerVersion, version);
+            const opId = String(payload.op_id || '');
             if (Number(payload.user_id || 0) === Number(CURRENT_USER_ID || 0)) {
-                const opId = String(payload.op_id || '');
                 const idx = pendingWorkspaceOps.findIndex((op) => op.op_id === opId);
                 if (idx !== -1) pendingWorkspaceOps.splice(idx, 1);
+                if (opId) seenWorkspaceOpIds.add(opId);
+                workspaceServerVersion = Math.max(workspaceServerVersion, version);
                 setStatus('Правка синхронизирована', 'ok');
                 return;
             }
+            if (opId && seenWorkspaceOpIds.has(opId)) return;
+            if (!opId && version && version <= workspaceServerVersion) return;
+            if (opId) seenWorkspaceOpIds.add(opId);
+            workspaceServerVersion = Math.max(workspaceServerVersion, version);
             if (payload.cursor) {
                 remoteParticipants.set(Number(payload.user_id), {
                     ...(remoteParticipants.get(Number(payload.user_id)) || {}),
