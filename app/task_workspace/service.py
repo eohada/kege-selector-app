@@ -382,6 +382,12 @@ def load_workspace_versions_payload(ctx: WorkspaceContext) -> dict[str, Any]:
 
 def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
     """Return the latest authoritative workspace snapshot for live collaboration."""
+    try:
+        from .socket import get_workspace_live_state
+        live_state = get_workspace_live_state(ctx)
+    except Exception:
+        live_state = {}
+
     latest_version = None
     try:
         latest_version = _version_lookup(ctx).first()
@@ -390,16 +396,21 @@ def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
 
     trace_payload = load_workspace_trace_payload(ctx)
 
-    code = ctx.code or ""
+    code = live_state.get("code") or ctx.code or ""
     updated_at = None
     version_id = None
     source = None
+    version = int(live_state.get("version") or 0)
 
     if latest_version:
         code = latest_version.code or code
         updated_at = latest_version.created_at.isoformat() if latest_version.created_at else None
         version_id = latest_version.version_id
         source = latest_version.source
+    if live_state:
+        version = max(version, int(live_state.get("version") or 0))
+        updated_at = live_state.get("updated_at") or updated_at
+        source = live_state.get("source") or source
 
     return {
         "context_type": ctx.context_type,
@@ -409,6 +420,7 @@ def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
         "updated_at": updated_at,
         "version_id": version_id,
         "source": source,
+        "version": version,
         "versions": load_workspace_versions_payload(ctx),
         "playback": trace_payload,
     }

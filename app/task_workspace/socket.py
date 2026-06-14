@@ -15,6 +15,13 @@ def _room_key(context_type: str, context_id: int | None, assignment_task_id: int
     return f"{(context_type or 'demo').strip().lower()}:{context_id if context_id is not None else 'none'}:{assignment_task_id if assignment_task_id is not None else 'none'}"
 
 
+def get_workspace_live_state(ctx) -> dict[str, Any]:
+    room = _room_key(ctx.context_type, ctx.context_id, ctx.assignment_task_id)
+    state = dict(_workspace_state.get(room, {}) or {})
+    state.pop("history", None)
+    return state
+
+
 def register_task_workspace_socket(socketio) -> None:
     from flask import request
     from flask_login import current_user
