@@ -397,20 +397,22 @@ def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
     trace_payload = load_workspace_trace_payload(ctx)
 
     code = live_state.get("code") or ctx.code or ""
-    updated_at = None
-    version_id = None
-    source = None
+    updated_at = live_state.get("updated_at")
+    version_id = live_state.get("version_id")
+    source = live_state.get("source")
     version = int(live_state.get("version") or 0)
 
-    if latest_version:
+    if latest_version and not live_state:
         code = latest_version.code or code
         updated_at = latest_version.created_at.isoformat() if latest_version.created_at else None
         version_id = latest_version.version_id
         source = latest_version.source
+    elif latest_version:
+        version_id = version_id or latest_version.version_id
+        source = source or latest_version.source
+
     if live_state:
         version = max(version, int(live_state.get("version") or 0))
-        updated_at = live_state.get("updated_at") or updated_at
-        source = live_state.get("source") or source
 
     return {
         "context_type": ctx.context_type,
