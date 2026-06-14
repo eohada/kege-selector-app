@@ -78,6 +78,7 @@
     const pendingWorkspaceOps = [];
     const seenWorkspaceOpIds = new Set();
     const workspaceClientId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    let workspaceLocalCode = '';
 
     function csrf() {
         return document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -502,6 +503,7 @@
     function applyCanonicalWorkspaceText(nextValue, options = {}) {
         const value = String(nextValue ?? '');
         code.value = value;
+        workspaceLocalCode = value;
         if (options.rebaseSnapshot !== false) {
             inputSnapshot = value;
             pendingInputMeta = null;
@@ -520,6 +522,7 @@
         setStatus('Есть несохраненные изменения', 'run');
         scheduleAutosave();
         emitWorkspacePatch(before, after);
+        workspaceLocalCode = after;
         if (!isApplyingPlayback) {
             captureFrame(action || pendingInputMeta?.type || 'input', {
                 ...(detail || {}),
@@ -654,6 +657,7 @@
         if (!frame) return;
         isApplyingPlayback = true;
         code.value = frame.code || '';
+        workspaceLocalCode = code.value || '';
         const caret = Array.isArray(frame.caret) ? frame.caret : [0, 0];
         code.selectionStart = Math.max(0, caret[0] || 0);
         code.selectionEnd = Math.max(0, caret[1] || 0);
@@ -841,6 +845,7 @@
             if (!raw) return;
             const data = JSON.parse(raw);
             if (data.code && (!code.value || ws.context_type === 'demo')) code.value = data.code;
+            workspaceLocalCode = code.value || '';
             if (data.notes) notes.value = data.notes;
             if (Array.isArray(data.playback_frames) && data.playback_frames.length) {
                 playback.frames = data.playback_frames.map(sanitizeFrame);
@@ -1411,7 +1416,7 @@
     });
 
     code.addEventListener('input', () => {
-        const previous = inputSnapshot;
+        const previous = workspaceLocalCode || inputSnapshot;
         lastLocalEditAt = Date.now();
         applyLocalCodeChange(previous, code.value, pendingInputMeta?.type || 'input', {
             data: pendingInputMeta?.data || '',
@@ -1419,6 +1424,7 @@
         });
         emitWorkspaceCursor(false);
         pendingInputMeta = null;
+        inputSnapshot = code.value;
     });
     code.addEventListener('keyup', () => {
         lastLocalEditAt = Date.now();
@@ -1928,6 +1934,7 @@
     if (!playback.frames.length) {
         playback.frames.push(sanitizeFrame({ ts: Date.now(), action: 'init', code: code.value, caret: [0, 0], detail: {} }));
     }
+    workspaceLocalCode = code.value || '';
     renderPlayback();
     renderVersions();
     updateEditorChrome();
