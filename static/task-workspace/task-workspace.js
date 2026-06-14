@@ -135,22 +135,33 @@
         if (!workspaceSocketReady || !workspaceSocket || ws.context_type === 'demo' || !code) return;
         if (!force) {
             if (workspaceCursorTimer) clearTimeout(workspaceCursorTimer);
-            workspaceCursorTimer = setTimeout(() => emitWorkspaceCursor(true), 80);
+            workspaceCursorTimer = setTimeout(() => emitWorkspaceCursor(true), 16);
             return;
         }
-        const start = code.selectionStart || 0;
-        const end = code.selectionEnd || 0;
-        const info = lineInfoAtPosition(code.value || '', start);
         workspaceSocket.emit('workspace_cursor_update', {
             context_type: ws.context_type || 'demo',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
+            ...localCursorPayload(),
+        });
+    }
+
+    function localCursorPayload() {
+        const start = code.selectionStart || 0;
+        const end = code.selectionEnd || 0;
+        const info = lineInfoAtPosition(code.value || '', start);
+        return {
             start,
             end,
             line: info.line,
             column: info.column,
+            cursor_start: start,
+            cursor_end: end,
+            cursor_line: info.line,
+            cursor_column: info.column,
+            cursor_panel: document.querySelector('.tw-tab.is-active')?.dataset.tab || 'editor',
             panel: document.querySelector('.tw-tab.is-active')?.dataset.tab || 'editor',
-        });
+        };
     }
 
     function presenceLabel(participant) {
@@ -186,8 +197,15 @@
     }
 
     function renderRemoteCursors() {
-        if (remoteCursorRenderTimer) clearTimeout(remoteCursorRenderTimer);
-        remoteCursorRenderTimer = setTimeout(() => {
+        if (remoteCursorRenderTimer) {
+            if (typeof cancelAnimationFrame === 'function') {
+                cancelAnimationFrame(remoteCursorRenderTimer);
+            } else {
+                clearTimeout(remoteCursorRenderTimer);
+            }
+        }
+        const draw = () => {
+            remoteCursorRenderTimer = null;
             if (!remoteLayer) return;
             const participants = Array.from(remoteParticipants.values())
                 .filter((item) => Number(item.user_id || 0) !== Number(CURRENT_USER_ID || 0));
@@ -233,7 +251,12 @@
                     <div class="tw-remote-cursor" style="--cursor-color:${escapeHtml(item.color || '#8b5cf6')}; top:${top}px; height:${height}px; left:${left}px;"></div>
                 `;
             }).join('');
-        }, 40);
+        };
+        if (typeof requestAnimationFrame === 'function') {
+            remoteCursorRenderTimer = requestAnimationFrame(draw);
+        } else {
+            remoteCursorRenderTimer = setTimeout(draw, 0);
+        }
     }
 
     function joinWorkspaceSocket() {
@@ -302,6 +325,18 @@
                 if (idx !== -1) pendingWorkspaceOps.splice(idx, 1);
                 setStatus('Правка синхронизирована', 'ok');
                 return;
+            }
+            if (payload.cursor) {
+                remoteParticipants.set(Number(payload.user_id), {
+                    ...(remoteParticipants.get(Number(payload.user_id)) || {}),
+                    user_id: payload.user_id,
+                    username: payload.username,
+                    display_name: payload.display_name || payload.username,
+                    role: payload.role,
+                    color: payload.color,
+                    cursor: payload.cursor,
+                });
+                renderPresenceBar(Array.from(remoteParticipants.values()));
             }
             const transformed = transformPatchThroughOps(payload, pendingWorkspaceOps);
             applyCodePatchToEditor(transformed, { preserveSelection: true });
@@ -388,6 +423,7 @@
             start: op.start,
             end: op.end,
             inserted: op.inserted,
+            ...localCursorPayload(),
             previous: before,
             next: after,
             updated_at: Date.now(),
@@ -452,7 +488,6 @@
         setStatus('Есть несохраненные изменения', 'run');
         scheduleAutosave();
         emitWorkspacePatch(before, after);
-        emitWorkspaceCursor(false);
         if (!isApplyingPlayback) {
             captureFrame(action || pendingInputMeta?.type || 'input', {
                 ...(detail || {}),

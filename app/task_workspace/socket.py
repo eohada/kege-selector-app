@@ -104,6 +104,23 @@ def register_task_workspace_socket(socketio) -> None:
                 next_end = next_start
         return next_start, next_end
 
+    def _cursor_payload(data: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "start": int(data.get("cursor_start", data.get("start", 0)) or 0),
+            "end": int(data.get("cursor_end", data.get("end", data.get("cursor_start", 0))) or 0),
+            "line": int(data.get("cursor_line", data.get("line", 0)) or 0),
+            "column": int(data.get("cursor_column", data.get("column", 0)) or 0),
+            "panel": str(data.get("cursor_panel", data.get("panel", "editor")) or "editor"),
+            "ts": int(time() * 1000),
+        }
+
+    def _update_participant_cursor(room: str, sid, data: dict[str, Any]) -> dict[str, Any]:
+        participants = _workspace_rooms.setdefault(room, {})
+        payload = participants.get(sid) or _participant_payload()
+        payload["cursor"] = _cursor_payload(data)
+        participants[sid] = payload
+        return payload
+
     @socketio.on("connect", namespace="/task-workspace")
     def _on_connect():
         if not current_user.is_authenticated:
@@ -154,17 +171,7 @@ def register_task_workspace_socket(socketio) -> None:
         if not room or not ctx:
             return
         sid = getattr(request, "sid", 0)
-        participants = _workspace_rooms.setdefault(room, {})
-        payload = participants.get(sid) or _participant_payload()
-        payload["cursor"] = {
-            "start": int(data.get("start") or 0),
-            "end": int(data.get("end") or 0),
-            "line": int(data.get("line") or 0),
-            "column": int(data.get("column") or 0),
-            "panel": str(data.get("panel") or "editor"),
-            "ts": int(time() * 1000),
-        }
-        participants[sid] = payload
+        payload = _update_participant_cursor(room, sid, data or {})
         socketio.emit(
             "workspace_cursor_update",
             {
@@ -246,6 +253,8 @@ def register_task_workspace_socket(socketio) -> None:
             next_value = str(data.get("next") or "")
         except Exception:
             return
+        sid = getattr(request, "sid", 0)
+        participant = _update_participant_cursor(room, sid, data or {})
         current = _ensure_room_state(room, ctx)
         code = str(current.get("code") or "")
         base_version = max(0, int(data.get("base_version") or current.get("version") or 0))
@@ -282,6 +291,10 @@ def register_task_workspace_socket(socketio) -> None:
                 "start": start,
                 "end": end,
                 "inserted": inserted,
+                "cursor": participant.get("cursor") or {},
+                "display_name": participant.get("display_name"),
+                "role": participant.get("role"),
+                "color": participant.get("color"),
                 "updated_at": _workspace_state.get(room, {}).get("updated_at"),
             },
             room=room,
