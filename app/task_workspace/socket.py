@@ -106,7 +106,21 @@ def register_task_workspace_socket(socketio) -> None:
         }
 
     def _emit_presence(room: str) -> None:
-        participants = list(_workspace_rooms.get(room, {}).values())
+        participants_by_user: dict[int, dict[str, Any]] = {}
+        for participant in _workspace_rooms.get(room, {}).values():
+            user_id = participant.get("user_id")
+            if user_id is None:
+                continue
+            try:
+                user_key = int(user_id)
+            except (TypeError, ValueError):
+                continue
+            current = participants_by_user.get(user_key)
+            current_ts = int((current or {}).get("cursor", {}).get("ts") or (current or {}).get("ts") or 0)
+            participant_ts = int((participant.get("cursor") or {}).get("ts") or participant.get("ts") or 0)
+            if current is None or participant_ts >= current_ts:
+                participants_by_user[user_key] = participant
+        participants = list(participants_by_user.values())
         socketio.emit(
             "workspace_presence",
             {"room": room, "participants": participants, "ts": int(time() * 1000)},

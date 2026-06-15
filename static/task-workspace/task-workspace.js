@@ -199,9 +199,26 @@
         return 'Ученик';
     }
 
+    function normalizeParticipants(participants) {
+        const items = Array.isArray(participants) ? participants : [];
+        const byUser = new Map();
+        items.forEach((item) => {
+            if (!item || item.user_id == null) return;
+            const userId = Number(item.user_id);
+            if (!Number.isFinite(userId)) return;
+            const prev = byUser.get(userId);
+            const prevTs = Number(prev?.cursor?.ts || prev?.ts || 0) || 0;
+            const nextTs = Number(item?.cursor?.ts || item?.ts || 0) || 0;
+            if (!prev || nextTs >= prevTs) {
+                byUser.set(userId, item);
+            }
+        });
+        return Array.from(byUser.values());
+    }
+
     function renderPresenceBar(participants) {
         if (!presence) return;
-        const items = Array.isArray(participants) ? participants : [];
+        const items = normalizeParticipants(participants);
         if (!items.length) {
             presence.innerHTML = '<span class="tw-presence-empty">Ворскпейс пока открыт только у вас</span>';
             return;
@@ -385,7 +402,7 @@
         });
         workspaceSocket.on('workspace_presence', (payload) => {
             if (!payload) return;
-            const participants = Array.isArray(payload.participants) ? payload.participants : [];
+            const participants = normalizeParticipants(payload.participants);
             remoteParticipants.clear();
             participants.forEach((participant) => {
                 if (!participant || participant.user_id == null) return;

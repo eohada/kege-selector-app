@@ -108,11 +108,11 @@
     --tw-editor-font-size: 15px;
     --tw-editor-line-height: 1.58;
     --tw-editor-pad-y: 16px;
-    --tw-editor-pad-left: 12px;
+    --tw-editor-pad-left: 8px;
     --tw-editor-pad-right: 16px;
-    --tw-gutter-width: 46px;
+    --tw-gutter-width: 42px;
     --tw-gutter-pad-left: 0;
-    --tw-gutter-pad-right: 6px;
+    --tw-gutter-pad-right: 2px;
     grid-template-columns: var(--tw-gutter-width) minmax(0, 1fr);
     background: var(--tw-code-bg);
     border-bottom: 1px solid var(--tw-border);
@@ -436,7 +436,7 @@
     padding: var(--tw-editor-pad-y) var(--tw-gutter-pad-right) var(--tw-editor-pad-y) var(--tw-gutter-pad-left);
     background: var(--tw-panel-2);
     color: var(--tw-code-line);
-    border-right: 1px solid var(--tw-border);
+    border-right: 2px solid var(--tw-border-strong);
     font: var(--tw-editor-font-size)/var(--tw-editor-line-height) "JetBrains Mono", "Monaspace Neon", Consolas, monospace;
     text-align: right;
     user-select: none;
