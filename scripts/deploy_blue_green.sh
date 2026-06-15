@@ -71,11 +71,18 @@ wait_ready() {
     local port
     port="$(port_for_color "$color")"
     local url="http://127.0.0.1:${port}/ready"
+    local response_file="/tmp/boostudy-ready-${color}.json"
     echo "Waiting for $color readiness at $url"
-    for _ in $(seq 1 60); do
-        if curl -fsS --max-time 5 "$url" >/dev/null; then
+    for attempt in $(seq 1 60); do
+        local code
+        code="$(curl -sS -o "$response_file" -w '%{http_code}' --max-time 5 "$url" || true)"
+        if [[ "$code" == "200" ]]; then
             echo "$color is ready"
             return 0
+        fi
+        echo "Readiness attempt $attempt failed with HTTP $code"
+        if [[ -s "$response_file" ]]; then
+            sed -n '1,8p' "$response_file"
         fi
         sleep 2
     done
