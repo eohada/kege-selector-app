@@ -105,7 +105,15 @@
 .tw-ide {
     flex-grow: 1;
     display: grid;
-    grid-template-columns: 52px minmax(0, 1fr);
+    --tw-editor-font-size: 15px;
+    --tw-editor-line-height: 1.58;
+    --tw-editor-pad-y: 16px;
+    --tw-editor-pad-left: 12px;
+    --tw-editor-pad-right: 16px;
+    --tw-gutter-width: 46px;
+    --tw-gutter-pad-left: 0;
+    --tw-gutter-pad-right: 6px;
+    grid-template-columns: var(--tw-gutter-width) minmax(0, 1fr);
     background: var(--tw-code-bg);
     border-bottom: 1px solid var(--tw-border);
     min-height: 0 !important;
@@ -425,11 +433,11 @@
 }
 
 .tw-gutter {
-    padding: 16px 10px 16px 0;
+    padding: var(--tw-editor-pad-y) var(--tw-gutter-pad-right) var(--tw-editor-pad-y) var(--tw-gutter-pad-left);
     background: var(--tw-panel-2);
     color: var(--tw-code-line);
     border-right: 1px solid var(--tw-border);
-    font: 14px/1.58 "JetBrains Mono", Consolas, monospace;
+    font: var(--tw-editor-font-size)/var(--tw-editor-line-height) "JetBrains Mono", "Monaspace Neon", Consolas, monospace;
     text-align: right;
     user-select: none;
     overflow: hidden;
@@ -437,7 +445,8 @@
 
 .tw-gutter span {
     display: block;
-    min-height: 22px;
+    min-height: 0;
+    line-height: inherit;
 }
 
 .tw-editor-surface {
@@ -596,11 +605,11 @@ body.dark .tw-remote-selection {
     position: absolute;
     inset: 0;
     margin: 0;
-    padding: 16px 18px;
+    padding: var(--tw-editor-pad-y) var(--tw-editor-pad-right) var(--tw-editor-pad-y) var(--tw-editor-pad-left);
     border: 0;
     outline: 0;
     overflow: auto;
-    font: 15px/1.58 "JetBrains Mono", "Monaspace Neon", Consolas, monospace;
+    font: var(--tw-editor-font-size)/var(--tw-editor-line-height) "JetBrains Mono", "Monaspace Neon", Consolas, monospace;
     tab-size: 4;
     white-space: pre;
 }
