@@ -95,6 +95,7 @@ _CTX_REPLY_STUDENT_CHAT_ID = 'bug_reply_student_chat_id'
 _CTX_LESSON_CALL_LINK_LESSON_ID = 'lesson_call_link_lesson_id'
 _CTX_LESSON_HW_NOTE_LESSON_ID = 'lesson_hw_note_lesson_id'
 _CTX_LESSON_HW_NOTE_TEXT = 'lesson_hw_note_text'
+_CTX_NOTIFICATION_MULTI_FEEDBACK = 'notification_multi_feedback'
 
 
 # ---------------------------------------------------------------------------
@@ -1905,6 +1906,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data.startswith('notif_ack:'):
         await _cb_notification_ack(query, data)
         return
+    if data.startswith('notif_fb:'):
+        await _cb_notification_feedback(query, data, context)
+        return
 
     if data.startswith('lesson_rsvp:'):
         await _cb_lesson_rsvp(query, data)
@@ -2205,18 +2209,50 @@ async def _cb_bug_close(query, data: str) -> None:
         await query.answer('Ошибка', show_alert=True)
 
 
+def _notification_feedback_title(code: str) -> str:
+    from app.telegram.user_notify import STUDENT_NOTIFICATION_FEEDBACK_OPTIONS
+    return STUDENT_NOTIFICATION_FEEDBACK_OPTIONS.get(code, 'Другая проблема с уведомлением')
+
+
+def _extract_notification_text(message) -> str:
+    if not message:
+        return ''
+    return getattr(message, 'text', None) or getattr(message, 'caption', None) or ''
+
+
+async def _send_notification_feedback_report(
+    *,
+    from_user,
+    notification_text: str,
+    kind: str,
+    feedback_title: str | None = None,
+    feedback_details: str | None = None,
+) -> int:
+    from app.telegram.user_notify import send_student_notification_ack_report
+
+    sent = send_student_notification_ack_report(
+        student_chat_id=int(from_user.id),
+        student_username=getattr(from_user, 'username', None),
+        student_first_name=getattr(from_user, 'first_name', None),
+        student_last_name=getattr(from_user, 'last_name', None),
+        notification_text=notification_text,
+        kind=kind,
+        feedback_title=feedback_title,
+        feedback_details=feedback_details,
+    )
+    if not sent:
+        logger.warning('notification feedback report had no creator recipients chat_id=%s kind=%s', from_user.id, kind)
+    return sent
+
+
 async def _cb_notification_ack(query, data: str) -> None:
     parts = data.split(':', 2)
     kind = parts[2] if len(parts) >= 3 else 'generic'
     from_user = query.from_user
     message = query.message
-    notification_text = ''
-    if message:
-        notification_text = getattr(message, 'text', None) or getattr(message, 'caption', None) or ''
+    notification_text = _extract_notification_text(message)
 
     try:
-        from app.telegram.user_notify import send_student_notification_ack_report
-
         dedup_key = (int(from_user.id), kind, notification_text[:500])
         now_ts = time.time()
         last_ts = _ACK_REPORT_DEDUP.get(dedup_key)
@@ -2228,16 +2264,11 @@ async def _cb_notification_ack(query, data: str) -> None:
         for key in stale_keys:
             _ACK_REPORT_DEDUP.pop(key, None)
 
-        sent = send_student_notification_ack_report(
-            student_chat_id=int(from_user.id),
-            student_username=getattr(from_user, 'username', None),
-            student_first_name=getattr(from_user, 'first_name', None),
-            student_last_name=getattr(from_user, 'last_name', None),
+        await _send_notification_feedback_report(
+            from_user=from_user,
             notification_text=notification_text,
             kind=kind,
         )
-        if not sent:
-            logger.warning('notification ack report had no creator recipients chat_id=%s kind=%s', from_user.id, kind)
     except Exception as e:
         logger.error('_cb_notification_ack error: %s', e, exc_info=True)
         return
@@ -2260,6 +2291,45 @@ async def _cb_notification_ack(query, data: str) -> None:
             await message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_rows))
     except Exception:
         logger.debug('notification ack markup update skipped', exc_info=True)
+
+
+async def _cb_notification_feedback(query, data: str, context: ContextTypes.DEFAULT_TYPE) -> None:
+    parts = data.split(':', 4)
+    feedback_code = parts[2] if len(parts) >= 3 else ''
+    kind = parts[3] if len(parts) >= 4 else 'generic'
+    from_user = query.from_user
+    message = query.message
+    notification_text = _extract_notification_text(message)
+
+    if feedback_code == 'multi':
+        context.user_data[_CTX_NOTIFICATION_MULTI_FEEDBACK] = {
+            'kind': kind,
+            'notification_text': notification_text,
+            'created_at': time.time(),
+        }
+        await query.message.reply_text(
+            '🧩 Напиши следующим сообщением номера подходящих пунктов:\n\n'
+            '1 — уведомление продублировалось\n'
+            '2 — уведомление пришло с опозданием\n'
+            '3 — этого уведомления не должно быть\n'
+            '4 — уведомление содержит некорректную ссылку\n\n'
+            'Можно так: <code>1 4</code> или <code>1,2,4</code>.',
+            parse_mode='HTML',
+        )
+        return
+
+    feedback_title = _notification_feedback_title(feedback_code)
+    try:
+        await _send_notification_feedback_report(
+            from_user=from_user,
+            notification_text=notification_text,
+            kind=kind,
+            feedback_title=feedback_title,
+        )
+        await query.answer('Спасибо, передал обратную связь.', show_alert=False)
+    except Exception as e:
+        logger.error('_cb_notification_feedback error: %s', e, exc_info=True)
+        await query.answer('Не удалось отправить обратную связь', show_alert=True)
 
 
 async def _cb_lesson_rsvp(query, data: str) -> None:
@@ -4030,6 +4100,10 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not update.message or update.message.chat.type != 'private':
         return
     touch_telegram_activity(update.effective_chat.id)
+    pending_feedback = context.user_data.get(_CTX_NOTIFICATION_MULTI_FEEDBACK)
+    if pending_feedback:
+        await _handle_notification_multi_feedback_text(update, context, pending_feedback)
+        return
     pending_tg_link = context.user_data.get('admin_tg_link_target')
     if pending_tg_link:
         await _handle_admin_tg_link_username(update, context, pending_tg_link)
@@ -4038,6 +4112,47 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
         'Используй /menu для навигации или /help для справки.\n'
         'Для баг-репорта: /report или кнопка в меню.',
     )
+
+
+async def _handle_notification_multi_feedback_text(update: Update, context: ContextTypes.DEFAULT_TYPE, pending: dict):
+    raw = (update.message.text or '').strip()
+    from app.telegram.user_notify import STUDENT_NOTIFICATION_FEEDBACK_NUMBER_TO_CODE
+
+    numbers = []
+    for chunk in raw.replace(',', ' ').replace(';', ' ').split():
+        cleaned = ''.join(ch for ch in chunk if ch.isdigit())
+        if cleaned:
+            numbers.append(cleaned)
+
+    codes = []
+    for number in numbers:
+        code = STUDENT_NOTIFICATION_FEEDBACK_NUMBER_TO_CODE.get(number)
+        if code and code not in codes:
+            codes.append(code)
+
+    if not codes:
+        await update.message.reply_text(
+            '⚠️ Не понял номера. Напиши, например: <code>1 4</code>.\n'
+            'Доступны пункты: 1, 2, 3, 4.',
+            parse_mode='HTML',
+        )
+        return
+
+    titles = [_notification_feedback_title(code) for code in codes]
+    details = '; '.join(f'{idx + 1}. {title}' for idx, title in enumerate(titles))
+    try:
+        await _send_notification_feedback_report(
+            from_user=update.effective_user,
+            notification_text=str(pending.get('notification_text') or ''),
+            kind=str(pending.get('kind') or 'generic'),
+            feedback_title='Несколько вариантов',
+            feedback_details=details,
+        )
+        context.user_data.pop(_CTX_NOTIFICATION_MULTI_FEEDBACK, None)
+        await update.message.reply_text('✅ Спасибо, передал обратную связь.')
+    except Exception as e:
+        logger.error('_handle_notification_multi_feedback_text error: %s', e, exc_info=True)
+        await update.message.reply_text('⚠️ Не удалось отправить обратную связь. Попробуй позже.')
 
 
 async def _handle_admin_tg_link_username(update: Update, context: ContextTypes.DEFAULT_TYPE, target: dict):

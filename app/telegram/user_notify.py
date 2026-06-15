@@ -35,6 +35,19 @@ _QUIET_HOURS_BYPASS = {'system_errors', 'bug_report_reply', 'lesson_scheduled', 
 _STUDENT_ACK_PROMPT = 'Уведомление пришло?(уведомления тестируются, это - временная мера)'
 _STUDENT_ACK_BUTTON = '✅ Пришло'
 _STUDENT_ACK_CALLBACK_PREFIX = 'notif_ack'
+_STUDENT_FEEDBACK_CALLBACK_PREFIX = 'notif_fb'
+STUDENT_NOTIFICATION_FEEDBACK_OPTIONS: dict[str, str] = {
+    'dup': 'Это уведомление продублировалось',
+    'late': 'Это уведомление пришло с опозданием',
+    'bad': 'Этого уведомления не должно быть',
+    'link': 'Это уведомление содержит некорректную ссылку',
+}
+STUDENT_NOTIFICATION_FEEDBACK_NUMBER_TO_CODE: dict[str, str] = {
+    '1': 'dup',
+    '2': 'late',
+    '3': 'bad',
+    '4': 'link',
+}
 
 
 def _truthy(v) -> bool:
@@ -126,6 +139,34 @@ def _with_student_ack_controls(
     keyboard = _copy_inline_keyboard(reply_markup)
     callback_kind = (kind or 'generic')[:24]
     callback_data = f'{_STUDENT_ACK_CALLBACK_PREFIX}:{profile.user_id}:{callback_kind}'
+    feedback_rows = [
+        [
+            {
+                'text': '🔁 Продублировалось',
+                'callback_data': f'{_STUDENT_FEEDBACK_CALLBACK_PREFIX}:{profile.user_id}:dup:{callback_kind}',
+            },
+            {
+                'text': '⏰ С опозданием',
+                'callback_data': f'{_STUDENT_FEEDBACK_CALLBACK_PREFIX}:{profile.user_id}:late:{callback_kind}',
+            },
+        ],
+        [
+            {
+                'text': '🚫 Не должно быть',
+                'callback_data': f'{_STUDENT_FEEDBACK_CALLBACK_PREFIX}:{profile.user_id}:bad:{callback_kind}',
+            },
+            {
+                'text': '🔗 Некорректная ссылка',
+                'callback_data': f'{_STUDENT_FEEDBACK_CALLBACK_PREFIX}:{profile.user_id}:link:{callback_kind}',
+            },
+        ],
+        [
+            {
+                'text': '🧩 Несколько вариантов',
+                'callback_data': f'{_STUDENT_FEEDBACK_CALLBACK_PREFIX}:{profile.user_id}:multi:{callback_kind}',
+            },
+        ],
+    ]
 
     has_ack = any(
         str(button.get('callback_data') or '').startswith(f'{_STUDENT_ACK_CALLBACK_PREFIX}:')
@@ -134,6 +175,13 @@ def _with_student_ack_controls(
     )
     if not has_ack:
         keyboard.append([{'text': _STUDENT_ACK_BUTTON, 'callback_data': callback_data}])
+    has_feedback = any(
+        str(button.get('callback_data') or '').startswith(f'{_STUDENT_FEEDBACK_CALLBACK_PREFIX}:')
+        for row in keyboard
+        for button in row
+    )
+    if not has_feedback:
+        keyboard.extend(feedback_rows)
 
     return text_with_prompt, {'inline_keyboard': keyboard}
 
@@ -146,8 +194,10 @@ def send_student_notification_ack_report(
     student_last_name: str | None,
     notification_text: str,
     kind: str | None = None,
+    feedback_title: str | None = None,
+    feedback_details: str | None = None,
 ) -> int:
-    """Сообщить создателям, что ученик подтвердил тестовое уведомление."""
+    """Сообщить создателям, что ученик дал обратную связь по тестовому уведомлению."""
     from app.telegram.notifications import send_telegram_message
     from core.db_models import moscow_now
 
@@ -165,11 +215,22 @@ def send_student_notification_ack_report(
     if len(text_plain) > 2600:
         text_plain = f'{text_plain[:2600].rstrip()}\n...'
 
+    header = '✅ <b>Ученик подтвердил получение уведомления</b>'
+    if feedback_title:
+        header = '⚠️ <b>Ученик отметил проблему с уведомлением</b>'
+
+    feedback_block = ''
+    if feedback_title:
+        feedback_block = f'🧪 Обратная связь: <b>{html.escape(feedback_title)}</b>\n'
+        if feedback_details:
+            feedback_block += f'📝 Детали: <b>{html.escape(feedback_details)}</b>\n'
+
     report = (
-        '✅ <b>Ученик подтвердил получение уведомления</b>\n\n'
+        f'{header}\n\n'
         f'👤 Telegram ученика: <b>{html.escape(student_tag)}</b>\n'
         f'🆔 Chat ID: <code>{int(student_chat_id)}</code>\n'
         f'🔔 Тип: <code>{html.escape(kind or "generic")}</code>\n'
+        f'{feedback_block}'
         f'🕒 Подтверждено: <b>{html.escape(confirmed_at)} МСК</b>\n\n'
         '<b>Текст уведомления:</b>\n'
         f'<pre>{html.escape(text_plain)}</pre>'
@@ -235,6 +296,7 @@ def notify_user_by_chat_id(
         profile = UserProfile.query.filter_by(telegram_chat_id=chat_id).first()
         if not user_allows_telegram_notification(profile, kind):
             return False
+        text, reply_markup = _with_student_ack_controls(profile, text, kind, reply_markup)
         result = send_telegram_message(int(chat_id), text, reply_markup=reply_markup)
         return bool(result and result.get('ok'))
     except Exception as e:
