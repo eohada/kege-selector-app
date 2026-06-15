@@ -74,6 +74,8 @@ STOP_OLD_AFTER_DRAIN=1 scripts/deploy_blue_green.sh deploy
 PRUNE_IMAGES_AFTER_DEPLOY=1 scripts/deploy_blue_green.sh deploy
 ```
 
+Если `flask db upgrade` упал из-за внутренней ошибки Flask-Migrate/Alembic, скрипт не переключает трафик вслепую. Он поднимает целевой web и продолжает только если строгий `/ready` возвращает HTTP `200` и подтверждает `migrations:true`.
+
 ## Rollback
 
 ```bash
