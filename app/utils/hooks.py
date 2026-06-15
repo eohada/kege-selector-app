@@ -31,7 +31,7 @@ def _is_asset_request() -> bool:
 def _is_lightweight_api_request() -> bool:
     """Частые служебные API и health — без тяжёлых периодических хуков (уроки, подписки)."""
     path = request.path or ''
-    if path == '/health' or path.startswith('/health/'):
+    if path == '/health' or path.startswith('/health/') or path == '/ready' or path.startswith('/ready/'):
         return True
     return path.startswith('/api/audit-log') or path.startswith('/api/telemetry') or path.startswith('/api/presence/')
 
@@ -508,8 +508,8 @@ def register_hooks(app):
         if is_demo and request.path in ('/demo', '/demo/start'):
             return
 
-        excluded_endpoints = ('auth.login', 'auth.logout', 'static', 'main.favicon', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.landing', 'main.index', 'main.legal_offer', 'main.legal_privacy', 'main.faq', 'billing.billing_plans_public')
-        excluded_paths = ('/', '/landing', '/index', '/home', '/legal/offer', '/legal/privacy', '/faq', '/billing/plans/public', '/favicon.ico')
+        excluded_endpoints = ('auth.login', 'auth.logout', 'static', 'main.favicon', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.readiness_check', 'main.landing', 'main.index', 'main.legal_offer', 'main.legal_privacy', 'main.faq', 'billing.billing_plans_public')
+        excluded_paths = ('/', '/landing', '/index', '/home', '/legal/offer', '/legal/privacy', '/faq', '/billing/plans/public', '/favicon.ico', '/ready')
         
         if (request.endpoint in excluded_endpoints or 
             request.path in excluded_paths or 
