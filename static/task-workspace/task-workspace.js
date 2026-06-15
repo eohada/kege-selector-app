@@ -51,6 +51,7 @@
         timer: null,
         speed: 1,
     };
+    const initialUiState = ws.ui_state || {};
     const versionState = {
         items: Array.isArray(ws.versions?.items) ? ws.versions.items.slice() : [],
     };
@@ -91,6 +92,7 @@
             assignment_task_id: ws.assignment_task_id || null,
             code: code.value,
             playback_frames: playback.frames,
+            ui_state: localUiState(),
         };
     }
 
@@ -154,6 +156,7 @@
         const start = code.selectionStart || 0;
         const end = code.selectionEnd || 0;
         const info = lineInfoAtPosition(code.value || '', start);
+        const activeTab = document.querySelector('.tw-tab.is-active')?.dataset.tab || 'editor';
         return {
             start,
             end,
@@ -163,8 +166,28 @@
             cursor_end: end,
             cursor_line: info.line,
             cursor_column: info.column,
-            cursor_panel: document.querySelector('.tw-tab.is-active')?.dataset.tab || 'editor',
-            panel: document.querySelector('.tw-tab.is-active')?.dataset.tab || 'editor',
+            cursor_panel: activeTab,
+            panel: activeTab,
+            active_tab: activeTab,
+            scroll_top: code.scrollTop || 0,
+            scroll_left: code.scrollLeft || 0,
+            playback_index: playback.index || 0,
+            playback_speed: playback.speed || 1,
+        };
+    }
+
+    function localUiState() {
+        const focus = lineInfoAtPosition(code.value || '', code.selectionStart || 0);
+        return {
+            active_tab: document.querySelector('.tw-tab.is-active')?.dataset.tab || 'editor',
+            scroll_top: code.scrollTop || 0,
+            scroll_left: code.scrollLeft || 0,
+            playback_index: playback.index || 0,
+            playback_speed: playback.speed || 1,
+            cursor_start: code.selectionStart || 0,
+            cursor_end: code.selectionEnd || 0,
+            cursor_line: focus.line,
+            cursor_column: focus.column,
         };
     }
 
@@ -767,11 +790,35 @@
                 code: code.value,
                 notes: notes.value,
                 playback_frames: playback.frames,
+                ui_state: localUiState(),
                 updated_at: new Date().toISOString()
             }));
         } catch (err) {
             // localStorage can be disabled; server save still works.
         }
+    }
+
+    function restoreUiState(uiState) {
+        const state = uiState && typeof uiState === 'object' ? uiState : {};
+        const activeTab = String(state.active_tab || 'editor');
+        const tab = document.querySelector(`.tw-tab[data-tab="${activeTab}"]`);
+        if (tab) tab.click();
+        if (typeof state.scroll_top === 'number' || typeof state.scroll_left === 'number') {
+            code.scrollTop = Math.max(0, Number(state.scroll_top || 0));
+            code.scrollLeft = Math.max(0, Number(state.scroll_left || 0));
+            highlight.scrollTop = code.scrollTop;
+            highlight.scrollLeft = code.scrollLeft;
+            gutter.scrollTop = code.scrollTop;
+        }
+        if (typeof state.playback_speed === 'number' && playbackSpeedSelect) {
+            playback.speed = Math.max(0.25, Number(state.playback_speed || 1));
+            playbackSpeedSelect.value = String(playback.speed);
+        }
+        if (typeof state.playback_index === 'number' && playback.frames.length) {
+            playback.index = Math.max(0, Math.min(playback.frames.length - 1, Number(state.playback_index || 0)));
+            renderPlayback();
+        }
+        renderLineAndPairFocus();
     }
 
     function applyRemoteState(state, reason) {
@@ -795,6 +842,7 @@
             playback.frames = state.playback.frames.map(sanitizeFrame);
             renderPlayback();
         }
+        restoreUiState(state.ui_state || {});
         lastAppliedServerVersionId = state.version_id || null;
         lastAppliedServerUpdatedAt = state.updated_at || '';
         workspaceServerVersion = Math.max(workspaceServerVersion, Number(state.version || 0) || 0);
@@ -1455,6 +1503,8 @@
         gutter.scrollTop = code.scrollTop;
         renderLineAndPairFocus();
         renderRemoteCursors();
+        saveLocal();
+        emitWorkspaceCursor(false);
     });
     answer.addEventListener('input', () => {
         saveLocal();
@@ -1468,6 +1518,8 @@
             document.querySelectorAll('.tw-tab-pane').forEach((item) => item.classList.remove('is-active'));
             tab.classList.add('is-active');
             document.querySelector('[data-pane="' + tab.dataset.tab + '"]')?.classList.add('is-active');
+            saveLocal();
+            emitWorkspaceCursor(true);
         });
     });
 
@@ -1545,6 +1597,8 @@
                 stopPlayback();
                 playPlayback();
             }
+            saveLocal();
+            emitWorkspaceCursor(true);
         });
     }
     if (playbackRange) {
@@ -1553,6 +1607,8 @@
             const idx = Number(playbackRange.value || 0);
             playback.index = idx;
             setEditorFromFrame(playback.frames[idx]);
+            saveLocal();
+            emitWorkspaceCursor(true);
         });
     }
 
@@ -1939,6 +1995,7 @@
     renderPlayback();
     renderVersions();
     updateEditorChrome();
+    restoreUiState(initialUiState);
     scheduleAutosave();
     pullServerState(true);
     liveSyncTimer = setInterval(() => pullServerState(false), 15000);

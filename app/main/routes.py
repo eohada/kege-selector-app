@@ -21,6 +21,7 @@ from datetime import timedelta
 from core.audit_logger import audit_logger
 from flask_login import current_user
 from app import csrf
+from app.runtime_state import db_is_ready, migrations_are_ready, redis_ping, socketio_is_ready
 
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
@@ -205,6 +206,26 @@ def health_check():
             'status': 'ERROR',
             'error': str(e)
         }), 200
+
+
+@main_bp.route('/ready')
+def readiness_check():
+    """
+    Readiness probe: only returns OK when the app can accept traffic.
+    """
+    checks = {
+        'db': db_is_ready(),
+        'redis': redis_ping(),
+        'migrations': migrations_are_ready(),
+        'socketio': socketio_is_ready(),
+    }
+    ok = all(checks.values())
+    return jsonify({
+        'status': 'OK' if ok else 'NOT_READY',
+        'checks': checks,
+        'environment': os.environ.get('ENVIRONMENT', 'unknown'),
+        'timestamp': datetime.now().isoformat(),
+    }), (200 if ok else 503)
 
 
 @main_bp.route('/parent/dashboard')

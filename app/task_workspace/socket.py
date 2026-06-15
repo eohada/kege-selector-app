@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 from time import time
 
@@ -9,6 +10,8 @@ logger = logging.getLogger(__name__)
 _workspace_rooms: dict[str, dict[int, dict[str, Any]]] = {}
 _workspace_state: dict[str, dict[str, Any]] = {}
 _workspace_history_limit = 250
+_workspace_autosave_timers: dict[str, threading.Timer] = {}
+_workspace_autosave_lock = threading.Lock()
 
 
 def _room_key(context_type: str, context_id: int | None, assignment_task_id: int | None) -> str:
@@ -20,6 +23,54 @@ def get_workspace_live_state(ctx) -> dict[str, Any]:
     state = dict(_workspace_state.get(room, {}) or {})
     state.pop("history", None)
     return state
+
+
+def _workspace_autosave_key(ctx) -> str:
+    return _room_key(ctx.context_type, ctx.context_id, ctx.assignment_task_id)
+
+
+def _schedule_workspace_autosave(ctx, code: str, answer: str = "", frames: list[dict[str, Any]] | None = None) -> None:
+    from .service import autosave_workspace_snapshot, WORKSPACE_AUTOSAVE_DEBOUNCE_SECONDS
+
+    key = _workspace_autosave_key(ctx)
+
+    def _flush():
+        with _workspace_autosave_lock:
+            _workspace_autosave_timers.pop(key, None)
+        try:
+            autosave_workspace_snapshot(ctx, code, answer, frames=frames, source="autosave")
+        except Exception as exc:
+            logger.warning("workspace autosave failed for %s: %s", key, exc)
+
+    with _workspace_autosave_lock:
+        old = _workspace_autosave_timers.pop(key, None)
+        if old is not None:
+            try:
+                old.cancel()
+            except Exception:
+                pass
+        timer = threading.Timer(WORKSPACE_AUTOSAVE_DEBOUNCE_SECONDS, _flush)
+        timer.daemon = True
+        _workspace_autosave_timers[key] = timer
+        timer.start()
+
+
+def _cache_workspace_snapshot(
+    ctx,
+    code: str,
+    answer: str = "",
+    frames: list[dict[str, Any]] | None = None,
+    *,
+    version: int | None = None,
+    source: str = "live",
+    ui_state: dict[str, Any] | None = None,
+) -> None:
+    from .service import cache_workspace_snapshot
+
+    try:
+        cache_workspace_snapshot(ctx, code, answer, frames=frames, source=source, version=version, ui_state=ui_state)
+    except Exception as exc:
+        logger.warning("workspace snapshot cache failed for %s: %s", _workspace_autosave_key(ctx), exc)
 
 
 def register_task_workspace_socket(socketio) -> None:
@@ -70,14 +121,19 @@ def register_task_workspace_socket(socketio) -> None:
         _workspace_state[room] = current
 
     def _ensure_room_state(room: str, ctx) -> dict[str, Any]:
+        from .service import load_cached_workspace_snapshot
+
+        cached = load_cached_workspace_snapshot(ctx) or {}
         state = _workspace_state.setdefault(
             room,
             {
-                "code": getattr(ctx, "code", "") or "",
-                "answer": getattr(ctx, "plain_answer", "") or "",
-                "version": 0,
+                "code": cached.get("code") or getattr(ctx, "code", "") or "",
+                "answer": cached.get("answer") or getattr(ctx, "plain_answer", "") or "",
+                "version": int(cached.get("version") or 0),
                 "history": [],
-                "updated_at": int(time() * 1000),
+                "updated_at": int(cached.get("updated_at") or int(time() * 1000)),
+                "playback_frames": cached.get("frames") or [],
+                "ui_state": cached.get("ui_state") or {},
             },
         )
         state.setdefault("code", getattr(ctx, "code", "") or "")
@@ -85,6 +141,8 @@ def register_task_workspace_socket(socketio) -> None:
         state.setdefault("version", 0)
         state.setdefault("history", [])
         state.setdefault("updated_at", int(time() * 1000))
+        state.setdefault("playback_frames", [])
+        state.setdefault("ui_state", {})
         return state
 
     def _transform_position(pos: int, op: dict[str, Any]) -> int:
@@ -122,10 +180,37 @@ def register_task_workspace_socket(socketio) -> None:
             "ts": int(time() * 1000),
         }
 
+    def _ui_payload(data: dict[str, Any], current_state: dict[str, Any] | None = None) -> dict[str, Any]:
+        current_state = current_state or {}
+        current_ui = dict(current_state.get("ui_state") or {})
+        incoming = dict(data.get("ui_state") or {})
+        if "active_tab" in data:
+            incoming["active_tab"] = str(data.get("active_tab") or "editor")
+        if "scroll_top" in data:
+            incoming["scroll_top"] = max(0, int(data.get("scroll_top") or 0))
+        if "scroll_left" in data:
+            incoming["scroll_left"] = max(0, int(data.get("scroll_left") or 0))
+        if "playback_index" in data:
+            incoming["playback_index"] = max(0, int(data.get("playback_index") or 0))
+        if "playback_speed" in data:
+            incoming["playback_speed"] = max(0.25, float(data.get("playback_speed") or 1))
+        if "cursor_start" in data or "start" in data:
+            incoming["cursor_start"] = int(data.get("cursor_start", data.get("start", 0)) or 0)
+        if "cursor_end" in data or "end" in data:
+            incoming["cursor_end"] = int(data.get("cursor_end", data.get("end", data.get("cursor_start", 0))) or 0)
+        if "cursor_line" in data or "line" in data:
+            incoming["cursor_line"] = int(data.get("cursor_line", data.get("line", 0)) or 0)
+        if "cursor_column" in data or "column" in data:
+            incoming["cursor_column"] = int(data.get("cursor_column", data.get("column", 0)) or 0)
+        current_ui.update({k: v for k, v in incoming.items() if v is not None})
+        current_ui["ts"] = int(time() * 1000)
+        return current_ui
+
     def _update_participant_cursor(room: str, sid, data: dict[str, Any]) -> dict[str, Any]:
         participants = _workspace_rooms.setdefault(room, {})
         payload = participants.get(sid) or _participant_payload()
         payload["cursor"] = _cursor_payload(data)
+        payload["ui_state"] = _ui_payload(data, _workspace_state.get(room, {}))
         participants[sid] = payload
         return payload
 
@@ -160,6 +245,15 @@ def register_task_workspace_socket(socketio) -> None:
         participants = _workspace_rooms.setdefault(room, {})
         participants[sid] = {**_participant_payload(), "cursor": {**_participant_payload()["cursor"]}}
         state = _ensure_room_state(room, ctx)
+        _cache_workspace_snapshot(
+            ctx,
+            state.get("code") or "",
+            state.get("answer") or "",
+            frames=state.get("playback_frames") or [],
+            version=int(state.get("version") or 0),
+            source="join",
+            ui_state=state.get("ui_state") or {},
+        )
         _emit_presence(room)
         socketio.emit(
             "workspace_snapshot",
@@ -180,6 +274,18 @@ def register_task_workspace_socket(socketio) -> None:
             return
         sid = getattr(request, "sid", 0)
         payload = _update_participant_cursor(room, sid, data or {})
+        state = _ensure_room_state(room, ctx)
+        state["ui_state"] = _ui_payload(data or {}, state)
+        _workspace_state[room] = state
+        _cache_workspace_snapshot(
+            ctx,
+            state.get("code") or "",
+            state.get("answer") or "",
+            frames=state.get("playback_frames") or [],
+            version=int(state.get("version") or 0),
+            source="cursor",
+            ui_state=state.get("ui_state") or {},
+        )
         socketio.emit(
             "workspace_cursor_update",
             {
@@ -214,6 +320,7 @@ def register_task_workspace_socket(socketio) -> None:
             changed = True
         if playback_frames:
             state["playback_frames"] = playback_frames
+        state["ui_state"] = _ui_payload(data or {}, state)
         # Full drafts are now a recovery path only. Code collaboration goes through
         # workspace_patch so old full snapshots do not overwrite newer typing.
         if data.get("force_code_snapshot"):
@@ -224,6 +331,21 @@ def register_task_workspace_socket(socketio) -> None:
         if changed:
             state["updated_at"] = int(data.get("updated_at") or int(time() * 1000))
             _workspace_state[room] = state
+            _cache_workspace_snapshot(
+                ctx,
+                state.get("code") or "",
+                state.get("answer") or "",
+                frames=state.get("playback_frames") or [],
+                version=int(state.get("version") or 0),
+                source="draft",
+                ui_state=state.get("ui_state") or {},
+            )
+            _schedule_workspace_autosave(
+                ctx,
+                state.get("code") or "",
+                state.get("answer") or "",
+                frames=state.get("playback_frames") or [],
+            )
         payload = {
             "room": room,
             "context_type": ctx.context_type,
@@ -234,6 +356,7 @@ def register_task_workspace_socket(socketio) -> None:
             "code": state.get("code") or "",
             "answer": state.get("answer") or "",
             "playback_frames": state.get("playback_frames") or [],
+            "ui_state": state.get("ui_state") or {},
             "version": int(state.get("version") or 0),
             "updated_at": data.get("updated_at"),
             "sender_id": current_user.id,
@@ -306,7 +429,22 @@ def register_task_workspace_socket(socketio) -> None:
         history.append(op)
         if len(history) > _workspace_history_limit:
             history = history[-_workspace_history_limit:]
-        _set_room_state(room, {"code": next_code, "version": next_version, "history": history})
+        _set_room_state(room, {"code": next_code, "version": next_version, "history": history, "ui_state": _ui_payload(data or {}, current)})
+        _cache_workspace_snapshot(
+            ctx,
+            next_code,
+            current.get("answer") or "",
+            frames=current.get("playback_frames") or [],
+            version=next_version,
+            source="patch",
+            ui_state=_workspace_state.get(room, {}).get("ui_state") or {},
+        )
+        _schedule_workspace_autosave(
+            ctx,
+            next_code,
+            current.get("answer") or "",
+            frames=current.get("playback_frames") or [],
+        )
         socketio.emit(
             "workspace_patch",
             {
@@ -326,6 +464,7 @@ def register_task_workspace_socket(socketio) -> None:
                 "role": participant.get("role"),
                 "color": participant.get("color"),
                 "updated_at": _workspace_state.get(room, {}).get("updated_at"),
+                "ui_state": _workspace_state.get(room, {}).get("ui_state") or {},
             },
             room=room,
             namespace="/task-workspace",

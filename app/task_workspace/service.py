@@ -9,6 +9,7 @@ from app.models import db
 from app.auth.rbac_utils import get_user_scope
 from app.utils.relationship_scope import can_user_access_student
 from app.utils.jinja_filters import prepare_task_content_html
+from app.runtime_state import get_json, set_json, delete as redis_delete
 from core.db_models import (
     Answer,
     CodePlaybackTrace,
@@ -27,6 +28,90 @@ MMR_POLICY_LABELS = {
     "always": "Учитывается в ммр",
     "never": "Не учитывать в ммр",
 }
+
+WORKSPACE_AUTOSAVE_DEBOUNCE_SECONDS = 2.0
+WORKSPACE_CACHE_TTL_SECONDS = 24 * 60 * 60
+
+
+def _workspace_cache_key(ctx: "WorkspaceContext") -> str:
+    return f"workspace:snapshot:{ctx.context_type}:{ctx.context_id or 'none'}:{ctx.task_id}:{ctx.student_user_id or 'none'}:{ctx.assignment_task_id or 'none'}"
+
+
+def _workspace_lock_key(ctx: "WorkspaceContext") -> str:
+    return f"workspace:autosave:{ctx.context_type}:{ctx.context_id or 'none'}:{ctx.task_id}:{ctx.student_user_id or 'none'}:{ctx.assignment_task_id or 'none'}"
+
+
+def _workspace_db_state_key(ctx: "WorkspaceContext") -> tuple:
+    return (
+        ctx.context_type,
+        ctx.context_id,
+        ctx.task_id,
+        ctx.student_user_id,
+        ctx.student_id,
+        ctx.assignment_task_id,
+        ctx.answer_id,
+    )
+
+
+def _workspace_snapshot_payload(
+    ctx: "WorkspaceContext",
+    code: str,
+    answer: str,
+    frames=None,
+    *,
+    source: str = "autosave",
+    version: int | None = None,
+    ui_state: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "context_type": ctx.context_type,
+        "context_id": ctx.context_id,
+        "task_id": ctx.task_id,
+        "student_user_id": ctx.student_user_id,
+        "student_id": ctx.student_id,
+        "lesson_task_id": ctx.lesson_task_id,
+        "submission_id": ctx.submission_id,
+        "assignment_task_id": ctx.assignment_task_id,
+        "answer_id": ctx.answer_id,
+        "code": code or "",
+        "answer": answer or "",
+        "frames": frames or [],
+        "source": source,
+        "version": int(version or 0),
+        "ui_state": ui_state or {},
+    }
+
+
+def cache_workspace_snapshot(
+    ctx: "WorkspaceContext",
+    code: str,
+    answer: str = "",
+    frames: list[dict[str, Any]] | None = None,
+    *,
+    source: str = "autosave",
+    version: int | None = None,
+    ui_state: dict[str, Any] | None = None,
+) -> None:
+    try:
+        payload = _workspace_snapshot_payload(ctx, code, answer, frames, source=source, version=version, ui_state=ui_state)
+        set_json(_workspace_cache_key(ctx), payload, ttl_seconds=WORKSPACE_CACHE_TTL_SECONDS)
+    except Exception:
+        return
+
+
+def load_cached_workspace_snapshot(ctx: "WorkspaceContext") -> dict[str, Any] | None:
+    try:
+        data = get_json(_workspace_cache_key(ctx))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def clear_cached_workspace_snapshot(ctx: "WorkspaceContext") -> None:
+    try:
+        redis_delete(_workspace_cache_key(ctx))
+    except Exception:
+        return
 
 
 @dataclass
@@ -259,6 +344,7 @@ def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", fram
                 lesson_task.student_answer = answer
             save_workspace_trace(ctx, frames=frames, meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)})
             save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
+            cache_workspace_snapshot(ctx, code, answer, frames=frames, source="manual" if frames else "autosave")
             db.session.commit()
             return
         if ctx.context_type == "submission_task" and ctx.submission_id and ctx.assignment_task_id:
@@ -286,6 +372,7 @@ def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", fram
                 meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)},
             )
             save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
+            cache_workspace_snapshot(ctx, code, answer, frames=frames, source="manual" if frames else "autosave")
             db.session.commit()
     except Exception:
         db.session.rollback()
@@ -395,15 +482,19 @@ def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
         latest_version = None
 
     trace_payload = load_workspace_trace_payload(ctx)
+    cached_state = load_cached_workspace_snapshot(ctx) or {}
 
-    code = live_state.get("code") or ctx.code or ""
-    updated_at = live_state.get("updated_at")
-    version_id = live_state.get("version_id")
-    source = live_state.get("source")
-    version = int(live_state.get("version") or 0)
+    code = live_state.get("code") or cached_state.get("code") or ctx.code or ""
+    answer = live_state.get("answer") or cached_state.get("answer") or ctx.plain_answer or ""
+    ui_state = live_state.get("ui_state") or cached_state.get("ui_state") or {}
+    updated_at = live_state.get("updated_at") or cached_state.get("updated_at")
+    version_id = live_state.get("version_id") or cached_state.get("version_id")
+    source = live_state.get("source") or cached_state.get("source")
+    version = max(int(live_state.get("version") or 0), int(cached_state.get("version") or 0))
 
     if latest_version and not live_state:
         code = latest_version.code or code
+        answer = latest_version.answer or answer
         updated_at = latest_version.created_at.isoformat() if latest_version.created_at else None
         version_id = latest_version.version_id
         source = latest_version.source
@@ -411,18 +502,17 @@ def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
         version_id = version_id or latest_version.version_id
         source = source or latest_version.source
 
-    if live_state:
-        version = max(version, int(live_state.get("version") or 0))
-
     return {
         "context_type": ctx.context_type,
         "context_id": ctx.context_id,
         "task_id": ctx.task_id,
         "code": code,
+        "answer": answer,
         "updated_at": updated_at,
         "version_id": version_id,
         "source": source,
         "version": version,
+        "ui_state": ui_state,
         "versions": load_workspace_versions_payload(ctx),
         "playback": trace_payload,
     }
@@ -450,3 +540,24 @@ def save_workspace_version(ctx: WorkspaceContext, code: str, answer: str = "", s
         return version
     except Exception:
         return None
+
+
+def autosave_workspace_snapshot(
+    ctx: WorkspaceContext,
+    code: str,
+    answer: str = "",
+    frames: list[dict[str, Any]] | None = None,
+    *,
+    source: str = "autosave",
+    ui_state: dict[str, Any] | None = None,
+) -> None:
+    """
+    Best-effort autosave. Writes to Redis immediately and to PostgreSQL via the
+    existing save path. Callers may debounce this helper.
+    """
+    cache_workspace_snapshot(ctx, code, answer, frames=frames, source=source, ui_state=ui_state)
+    try:
+        save_workspace_code(ctx, code, answer=answer, frames=frames)
+    except Exception:
+        # The caller already has Redis state; DB flush can be retried later.
+        return

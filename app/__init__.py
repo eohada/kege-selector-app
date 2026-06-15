@@ -106,6 +106,12 @@ def create_app(config_name=None):
     app.config['WTF_CSRF_TIME_LIMIT'] = None
     app.config['TRAINER_URL'] = (os.environ.get('TRAINER_URL') or '').strip() or None
     app.config['TRAINER_SHARED_SECRET'] = (os.environ.get('TRAINER_SHARED_SECRET') or '').strip() or None
+    app.config['REDIS_URL'] = (
+        os.environ.get('REDIS_URL')
+        or os.environ.get('CELERY_BROKER_URL')
+        or os.environ.get('CELERY_RESULT_BACKEND')
+        or ''
+    ).strip() or None
     
     app.config['MIRO_ACCESS_TOKEN'] = (os.environ.get('MIRO_ACCESS_TOKEN') or '').strip() or None
     app.config['MIRO_CLIENT_ID'] = (os.environ.get('MIRO_CLIENT_ID') or '').strip() or None
@@ -281,6 +287,8 @@ def create_app(config_name=None):
 
     logger.info(f"SECRET_KEY set: {'YES' if os.environ.get('SECRET_KEY') else 'NO'}")
     logger.info(f"=== Initialization Complete ===")
+
+    app.config['_WORKSPACE_AUTOSAVE_STARTED'] = False
 
     @app.before_request
     def _attach_request_id():

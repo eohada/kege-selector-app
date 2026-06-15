@@ -153,5 +153,20 @@ Sandbox deploy описан в `.github/workflows/deploy_sandbox.yml`.
 
 - `docs/setup/environment-variables.md`
 - `docs/operations/diagnostics-and-maintenance.md`
+- `docs/operations/blue-green-deploy.md`
 - `docs/modules/side-services.md`
 - профильным специализированным runbook из `docs/`
+
+## 11. Blue-Green направление
+
+Новая production-схема должна двигаться к модели:
+
+- `web_blue` / `web_green` поднимаются рядом;
+- `/ready` проверяет PostgreSQL, Redis, миграции и Socket.IO;
+- Nginx переключает новые входящие запросы на готовый цвет;
+- старому web дают короткое drain-окно;
+- PostgreSQL остаётся source of truth, Redis хранит быстрый workspace snapshot;
+- Celery worker/beat обновляются осторожно после web-switch, без запуска двух beat одновременно;
+- rollback выполняется переключением Nginx на предыдущий готовый цвет.
+
+Практический runbook: `docs/operations/blue-green-deploy.md`.
