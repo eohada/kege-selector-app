@@ -28,6 +28,8 @@ NGINX_RELOAD_CMD="${NGINX_RELOAD_CMD:-nginx -s reload}"
 BLUE_PORT="${BLUE_PORT:-8001}"
 GREEN_PORT="${GREEN_PORT:-8002}"
 DRAIN_SECONDS="${DRAIN_SECONDS:-90}"
+STOP_OLD_AFTER_DRAIN="${STOP_OLD_AFTER_DRAIN:-0}"
+PRUNE_IMAGES_AFTER_DEPLOY="${PRUNE_IMAGES_AFTER_DEPLOY:-0}"
 RUN_MIGRATIONS="${RUN_MIGRATIONS:-1}"
 UPDATE_CELERY="${UPDATE_CELERY:-1}"
 
@@ -133,10 +135,19 @@ deploy() {
         compose up -d --build celery-worker celery-beat
     fi
 
-    echo "Letting old $current connections drain for ${DRAIN_SECONDS}s"
+    echo "Letting old $current connections drain/reconnect for ${DRAIN_SECONDS}s"
     sleep "$DRAIN_SECONDS"
-    compose stop "$current_service" || true
-    docker image prune -f || true
+    if [[ "$STOP_OLD_AFTER_DRAIN" == "1" ]]; then
+        compose stop "$current_service" || true
+        echo "Stopped old $current service"
+    else
+        echo "Keeping old $current service running for fast rollback"
+    fi
+    if [[ "$PRUNE_IMAGES_AFTER_DEPLOY" == "1" ]]; then
+        docker image prune -f || true
+    else
+        echo "Skipping image prune; keep old images for rollback"
+    fi
     echo "Deploy complete: $target is active"
 }
 

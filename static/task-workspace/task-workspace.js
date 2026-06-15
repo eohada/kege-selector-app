@@ -970,6 +970,27 @@
         }
     }
 
+    function flushWorkspaceBeforeExit() {
+        saveLocal();
+        if (ws.context_type === 'demo') return;
+        try {
+            if (workspaceSocketReady && workspaceSocket) {
+                emitWorkspaceDraft(true);
+                emitWorkspaceCursor(true);
+            }
+        } catch (err) {}
+        try {
+            const body = JSON.stringify(payload());
+            fetch('/task-workspace/api/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                body,
+                credentials: 'same-origin',
+                keepalive: body.length < 60000,
+            }).catch(() => {});
+        } catch (err) {}
+    }
+
     function insertText(text, selectionOffset, action, detail) {
         const start = code.selectionStart;
         const end = code.selectionEnd;
@@ -2000,8 +2021,14 @@
     pullServerState(true);
     liveSyncTimer = setInterval(() => pullServerState(false), 15000);
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) pullServerState(true);
+        if (document.hidden) {
+            flushWorkspaceBeforeExit();
+        } else {
+            pullServerState(true);
+        }
     });
+    window.addEventListener('pagehide', flushWorkspaceBeforeExit);
+    window.addEventListener('beforeunload', flushWorkspaceBeforeExit);
 
     // Инициализация холста рисования
     if (window.BooCanvasOverlay && ws.task_id) {
