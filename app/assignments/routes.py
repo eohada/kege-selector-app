@@ -460,7 +460,9 @@ def _can_student_edit_submission_task(submission: Submission, assignment_task_id
     status = normalize_legacy_status(getattr(submission, 'status', None))
     if status in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW', 'GRADED', 'REVOKED'}:
         return False
-    if status in {'ASSIGNED', 'IN_PROGRESS'}:
+    if status == 'ASSIGNED':
+        return False
+    if status == 'IN_PROGRESS':
         return True
     if status != 'RETURNED':
         return False
@@ -3564,10 +3566,8 @@ def upload_answer_file(submission_id):
     answer.files = files_list
     answer.updated_at = utc_now()
 
-    if normalize_legacy_status(submission.status) in ['ASSIGNED', 'RETURNED']:
+    if normalize_legacy_status(submission.status) == 'RETURNED':
         transition_submission_status(submission, 'IN_PROGRESS')
-        if not submission.started_at:
-            submission.started_at = utc_now()
 
     try:
         db.session.commit()
@@ -3697,10 +3697,8 @@ def submission_autosave(submission_id):
             answer.value = value
             answer.updated_at = utc_now()
         
-        if normalize_legacy_status(submission.status) in ['ASSIGNED', 'RETURNED']:
+        if normalize_legacy_status(submission.status) == 'RETURNED':
             transition_submission_status(submission, 'IN_PROGRESS')
-            if not submission.started_at:
-                submission.started_at = utc_now()
         
         db.session.commit()
         

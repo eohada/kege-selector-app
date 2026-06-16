@@ -1486,8 +1486,8 @@
         var SUBMISSION_AUTOSAVE_URL = `{{ url_for('assignments.submission_autosave', submission_id=submission.submission_id) }}`;
         var SUBMISSION_SAVE_CODE_URL = `{{ url_for('assignments.submission_save_code', submission_id=submission.submission_id) }}`;
         var SUBMISSION_DRAFT_KEY = 'kege_submission_draft_{{ submission.submission_id }}';
-        var SUBMISSION_CAN_EDIT = {{ 'true' if submission.status in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED'] else 'false' }};
-        var SUBMISSION_TASK_TIMERS_ENABLED = {{ 'true' if submission.status not in ['RETURNED', 'GRADED', 'SUBMITTED', 'NEEDS_MANUAL_REVIEW'] else 'false' }};
+        var SUBMISSION_CAN_EDIT = {{ 'true' if (submission.status in ['IN_PROGRESS', 'RETURNED'] and not awaiting_work_start) else 'false' }};
+        var SUBMISSION_TASK_TIMERS_ENABLED = {{ 'true' if (submission.status == 'IN_PROGRESS' and not awaiting_work_start) else 'false' }};
         
         function collectAnswers() {
             const answers = [];
@@ -1791,6 +1791,7 @@
         // Сдача одного задания (при allow_separate_submission)
         const taskTimers = Object.create(null); // { [taskId]: { elapsedMs, runningSinceMs } }
         const TASK_TIMER_STORAGE_KEY = 'kege_submission_task_timers_{{ submission.submission_id }}';
+        const SUBMISSION_STARTED_AT_MS = {% if submission.started_at %}{{ (submission.started_at.timestamp() * 1000)|int }}{% else %}null{% endif %};
         let activeTaskId = null;
         const nowMs = () => Date.now();
         let lastTaskTimerPersistAt = 0;
@@ -1803,7 +1804,7 @@
             if (!force && now - lastTaskTimerPersistAt < 1500) return;
             lastTaskTimerPersistAt = now;
             try {
-                const out = { activeTaskId: activeTaskId, savedAt: now, timers: {} };
+                const out = { activeTaskId: activeTaskId, startedAtMs: SUBMISSION_STARTED_AT_MS, savedAt: now, timers: {} };
                 Object.keys(taskTimers).forEach(function(k) {
                     const tid = parseInt(k, 10);
                     if (!Number.isFinite(tid)) return;
@@ -1823,7 +1824,11 @@
                 if (!raw) return;
                 const parsed = JSON.parse(raw);
                 if (!parsed || !parsed.timers) return;
-                const savedAt = parseInt(parsed.savedAt, 10) || nowMs();
+                const parsedStartedAt = parsed.startedAtMs == null ? null : parseInt(parsed.startedAtMs, 10);
+                if (SUBMISSION_STARTED_AT_MS !== parsedStartedAt) {
+                    localStorage.removeItem(TASK_TIMER_STORAGE_KEY);
+                    return;
+                }
                 Object.keys(parsed.timers).forEach(function(k) {
                     const tid = parseInt(k, 10);
                     if (!Number.isFinite(tid)) return;
@@ -1831,11 +1836,9 @@
                     const src = parsed.timers[k] || {};
                     const elapsedMs = Math.max(0, Math.floor(src.elapsedMs || 0));
                     let runningSinceMs = (typeof src.runningSinceMs === 'number') ? src.runningSinceMs : null;
-                    // Ограничиваем "офлайн-добор" после перезагрузки небольшим окном, чтобы не накручивать.
                     if (runningSinceMs !== null) {
-                        const offlineDelta = Math.max(0, nowMs() - Math.max(runningSinceMs, savedAt));
-                        const graceDelta = Math.min(offlineDelta, 30000);
-                        taskTimers[tid].elapsedMs = elapsedMs + graceDelta;
+                        const offlineDelta = Math.max(0, nowMs() - runningSinceMs);
+                        taskTimers[tid].elapsedMs = elapsedMs + offlineDelta;
                         taskTimers[tid].runningSinceMs = null;
                     } else {
                         taskTimers[tid].elapsedMs = elapsedMs;
@@ -1852,7 +1855,7 @@
         function syncTaskTimer(taskId) {
             ensureTaskTimer(taskId);
             const st = taskTimers[taskId];
-            const shouldRun = SUBMISSION_TASK_TIMERS_ENABLED && Number.isFinite(activeTaskId) && taskId === activeTaskId;
+            const shouldRun = SUBMISSION_TASK_TIMERS_ENABLED && SUBMISSION_CAN_EDIT && Number.isFinite(activeTaskId) && taskId === activeTaskId;
             if (shouldRun && st.runningSinceMs === null) {
                 st.runningSinceMs = nowMs();
             } else if (!shouldRun && st.runningSinceMs !== null) {
@@ -1914,6 +1917,7 @@
         window.addEventListener('beforeunload', function() { syncAllTaskTimers(); persistTaskTimers(true); });
         setInterval(syncAllTaskTimers, 1000);
         window.__syncActiveTaskTimer__ = syncActiveTaskFromDom;
+        syncActiveTaskFromDom();
         window.addEventListener('pageshow', function() {
             loadTaskTimersFromStorage();
             syncActiveTaskFromDom();
@@ -2073,6 +2077,7 @@
                     if (!isFinite(timeDiff) || isNaN(timeDiff)) timeDiff = 0;
                     totalSeconds -= timeDiff;
                     if (!isFinite(totalSeconds) || isNaN(totalSeconds)) totalSeconds = 0;
+                    const limitEndMs = (startTime ? startTime.getTime() : Date.now()) + ({{ assignment.time_limit_minutes * 60 }} * 1000);
 
                     if (totalSeconds < 0) {
                         // Если уже просрочено — показываем 00:00:00, но не оставляем отрицательные значения
@@ -2080,6 +2085,7 @@
                     }
 
                     function updateTimer() {
+                totalSeconds = Math.max(0, Math.ceil((limitEndMs - Date.now()) / 1000));
                 if (totalSeconds <= 0) {
                     timerElement.textContent = '00:00:00';
                     timerElement.style.color = '#ef4444';
@@ -2127,8 +2133,6 @@
                     timerContainer.style.borderColor = '#ef4444';
                     timerContainer.style.background = 'rgba(239, 68, 68, 0.1)';
                 }
-                
-                totalSeconds--;
             }
             
             updateTimer();
