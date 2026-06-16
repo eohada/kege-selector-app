@@ -35,7 +35,18 @@ from werkzeug.utils import secure_filename
 
 from app.limiter import limiter
 from app.storage.s3_service import storage
-from core.db_models import db, StudentWorkspaceFile, TaskCanvasDrawing, Tasks
+from app.utils.relationship_scope import can_user_access_student
+from core.db_models import (
+    Assignment,
+    db,
+    AssignmentTask,
+    Lesson,
+    LessonTask,
+    StudentWorkspaceFile,
+    Submission,
+    TaskCanvasDrawing,
+    Tasks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +79,82 @@ CODEMIRROR_MODES = {
 }
 
 _workspace_tables_ok: bool | None = None
+
+
+def _is_parent_user() -> bool:
+    return bool(getattr(current_user, 'is_parent', lambda: False)())
+
+
+def _workspace_context_scope(task_id: int, context_type: str | None, context_id: int | None) -> dict:
+    """Resolve shared student-owned workspace scope for submission/lesson contexts."""
+    context_type = (context_type or 'submission').strip().lower()
+    if context_type == 'submission':
+        if not context_id:
+            abort(400, description='context_id required')
+        submission = (
+            Submission.query
+            .options(
+                sa.orm.joinedload(Submission.student),
+                sa.orm.joinedload(Submission.assignment).joinedload(Assignment.tasks),
+            )
+            .filter_by(submission_id=int(context_id))
+            .first_or_404()
+        )
+        student = submission.student
+        if not student or not student.user_id:
+            abort(404)
+        assignment_tasks = list(getattr(submission.assignment, 'tasks', None) or [])
+        if not any(int(getattr(item, 'task_id', 0) or 0) == int(task_id) for item in assignment_tasks):
+            abort(403)
+        if not can_user_access_student(current_user, student_user_id=int(student.user_id)):
+            abort(403)
+        if submission.assignment and not submission.assignment.is_active:
+            abort(403)
+        return {
+            'owner_user_id': int(student.user_id),
+            'context_type': 'submission',
+            'context_id': int(context_id),
+            'can_write': not _is_parent_user(),
+        }
+
+    if context_type == 'lesson':
+        if not context_id:
+            abort(400, description='context_id required')
+        lesson_task = (
+            LessonTask.query
+            .options(sa.orm.joinedload(LessonTask.lesson).joinedload(Lesson.student))
+            .filter_by(lesson_task_id=int(context_id))
+            .first_or_404()
+        )
+        lesson = lesson_task.lesson
+        student = lesson.student if lesson else None
+        if not student or not student.user_id:
+            abort(404)
+        if int(lesson_task.task_id or 0) != int(task_id):
+            abort(403)
+        if not can_user_access_student(current_user, student_user_id=int(student.user_id)):
+            abort(403)
+        return {
+            'owner_user_id': int(student.user_id),
+            'context_type': 'lesson',
+            'context_id': int(context_id),
+            'can_write': not _is_parent_user(),
+        }
+
+    task = Tasks.query.filter_by(task_id=int(task_id)).first()
+    if not task:
+        abort(404)
+    return {
+        'owner_user_id': int(current_user.id),
+        'context_type': context_type,
+        'context_id': context_id,
+        'can_write': not _is_parent_user(),
+    }
+
+
+def _require_workspace_write(scope: dict) -> None:
+    if not scope.get('can_write'):
+        abort(403)
 
 
 def _ensure_workspace_tables() -> None:
@@ -338,13 +425,14 @@ def list_files():
     context_id = request.args.get('context_id', type=int)
     if not task_id:
         return jsonify({'success': False, 'error': 'task_id required'}), 400
+    scope = _workspace_context_scope(task_id, context_type, context_id)
     files = StudentWorkspaceFile.query.filter_by(
-        user_id=current_user.id,
+        user_id=scope['owner_user_id'],
         task_id=task_id,
-        context_type=context_type,
+        context_type=scope['context_type'],
     )
-    if context_id is not None:
-        files = files.filter_by(context_id=context_id)
+    if scope['context_id'] is not None:
+        files = files.filter_by(context_id=scope['context_id'])
     files = files.order_by(StudentWorkspaceFile.created_at.desc()).all()
     return jsonify({'success': True, 'files': [f.to_dict() for f in files]})
 
@@ -363,9 +451,16 @@ def copy_from_task():
 
     if task_id is None or file_index is None:
         return jsonify({'success': False, 'error': 'task_id and file_index required'}), 400
+    try:
+        file_index = int(file_index)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'file_index must be integer'}), 400
+    scope = _workspace_context_scope(int(task_id), context_type, context_id)
+    _require_workspace_write(scope)
 
     existing_count = StudentWorkspaceFile.query.filter_by(
-        user_id=current_user.id, task_id=task_id, context_type=context_type,
+        user_id=scope['owner_user_id'], task_id=task_id, context_type=scope['context_type'],
+        context_id=scope['context_id'],
     ).count()
     if existing_count >= MAX_FILES_PER_TASK:
         return jsonify({'success': False, 'error': f'Максимум {MAX_FILES_PER_TASK} файлов'}), 400
@@ -406,7 +501,7 @@ def copy_from_task():
 
     try:
         storage_key = _write_workspace_bytes(
-            file_bytes, current_user.id, task_id, safe_name,
+            file_bytes, scope['owner_user_id'], task_id, safe_name,
         )
     except Exception as e:
         logger.error(f"Storage upload failed: {e}", exc_info=True)
@@ -414,10 +509,10 @@ def copy_from_task():
 
     mime = mimetypes.guess_type(safe_name)[0] or 'application/octet-stream'
     ws_file = StudentWorkspaceFile(
-        user_id=current_user.id,
+        user_id=scope['owner_user_id'],
         task_id=task_id,
-        context_type=context_type,
-        context_id=context_id,
+        context_type=scope['context_type'],
+        context_id=scope['context_id'],
         original_filename=safe_name,
         current_filename=safe_name,
         storage_path=storage_key,
@@ -447,6 +542,8 @@ def upload_file():
     context_id = request.form.get('context_id', type=int)
     if not task_id:
         return jsonify({'success': False, 'error': 'task_id required'}), 400
+    scope = _workspace_context_scope(task_id, context_type, context_id)
+    _require_workspace_write(scope)
 
     ext = _ext(f.filename)
     if ext not in ALLOWED_EXTENSIONS:
@@ -459,7 +556,8 @@ def upload_file():
         return jsonify({'success': False, 'error': 'Файл слишком большой (макс. 10 МБ)'}), 400
 
     existing_count = StudentWorkspaceFile.query.filter_by(
-        user_id=current_user.id, task_id=task_id, context_type=context_type,
+        user_id=scope['owner_user_id'], task_id=task_id, context_type=scope['context_type'],
+        context_id=scope['context_id'],
     ).count()
     if existing_count >= MAX_FILES_PER_TASK:
         return jsonify({'success': False, 'error': f'Максимум {MAX_FILES_PER_TASK} файлов'}), 400
@@ -467,7 +565,7 @@ def upload_file():
     safe_name = secure_filename(f.filename) or 'file'
     try:
         storage_key = storage.upload_file(
-            f, folder=f'workspace/{current_user.id}/{task_id}', filename=safe_name,
+            f, folder=f'workspace/{scope["owner_user_id"]}/{task_id}', filename=safe_name,
         )
     except Exception as e:
         logger.error(f"Workspace upload failed: {e}", exc_info=True)
@@ -475,10 +573,10 @@ def upload_file():
 
     mime = mimetypes.guess_type(safe_name)[0] or 'application/octet-stream'
     ws_file = StudentWorkspaceFile(
-        user_id=current_user.id,
+        user_id=scope['owner_user_id'],
         task_id=task_id,
-        context_type=context_type,
-        context_id=context_id,
+        context_type=scope['context_type'],
+        context_id=scope['context_id'],
         original_filename=safe_name,
         current_filename=safe_name,
         storage_path=storage_key,
@@ -496,7 +594,9 @@ def upload_file():
 def rename_file(file_id):
     _ensure_workspace_tables()
     ws_file = StudentWorkspaceFile.query.get_or_404(file_id)
-    if ws_file.user_id != current_user.id:
+    scope = _workspace_context_scope(ws_file.task_id, ws_file.context_type, ws_file.context_id)
+    _require_workspace_write(scope)
+    if ws_file.user_id != scope['owner_user_id']:
         abort(403)
     data = request.get_json(silent=True) or {}
     new_name = (data.get('new_name') or '').strip()
@@ -514,7 +614,9 @@ def rename_file(file_id):
 def delete_file(file_id):
     _ensure_workspace_tables()
     ws_file = StudentWorkspaceFile.query.get_or_404(file_id)
-    if ws_file.user_id != current_user.id:
+    scope = _workspace_context_scope(ws_file.task_id, ws_file.context_type, ws_file.context_id)
+    _require_workspace_write(scope)
+    if ws_file.user_id != scope['owner_user_id']:
         abort(403)
     try:
         storage.delete_file(ws_file.storage_path)
@@ -531,10 +633,9 @@ def file_content(file_id):
     """Return file content: text as plain text, Excel as JSON with sheets."""
     _ensure_workspace_tables()
     ws_file = StudentWorkspaceFile.query.get_or_404(file_id)
-    if ws_file.user_id != current_user.id:
-        if not (hasattr(current_user, 'is_tutor') and current_user.is_tutor()) and \
-           not (hasattr(current_user, 'is_admin') and current_user.is_admin()):
-            abort(403)
+    scope = _workspace_context_scope(ws_file.task_id, ws_file.context_type, ws_file.context_id)
+    if ws_file.user_id != scope['owner_user_id']:
+        abort(403)
 
     data = _read_file_bytes(ws_file)
     if data is None:
@@ -588,10 +689,9 @@ def file_content(file_id):
 def download_file(file_id):
     _ensure_workspace_tables()
     ws_file = StudentWorkspaceFile.query.get_or_404(file_id)
-    if ws_file.user_id != current_user.id:
-        if not (hasattr(current_user, 'is_tutor') and current_user.is_tutor()) and \
-           not (hasattr(current_user, 'is_admin') and current_user.is_admin()):
-            abort(403)
+    scope = _workspace_context_scope(ws_file.task_id, ws_file.context_type, ws_file.context_id)
+    if ws_file.user_id != scope['owner_user_id']:
+        abort(403)
 
     local = _resolve_local_path(ws_file.storage_path)
     if local:
@@ -620,6 +720,8 @@ def create_file():
 
     if not task_id or not filename:
         return jsonify({'success': False, 'error': 'task_id и filename обязательны'}), 400
+    scope = _workspace_context_scope(int(task_id), context_type, context_id)
+    _require_workspace_write(scope)
     if len(filename) > 255 or re.search(r'[/\\<>:"|?*\x00-\x1f]', filename):
         return jsonify({'success': False, 'error': 'Некорректное имя файла'}), 400
 
@@ -628,7 +730,8 @@ def create_file():
         return jsonify({'success': False, 'error': f'Недопустимый формат: .{ext}'}), 400
 
     existing_count = StudentWorkspaceFile.query.filter_by(
-        user_id=current_user.id, task_id=task_id, context_type=context_type,
+        user_id=scope['owner_user_id'], task_id=task_id, context_type=scope['context_type'],
+        context_id=scope['context_id'],
     ).count()
     if existing_count >= MAX_FILES_PER_TASK:
         return jsonify({'success': False, 'error': f'Максимум {MAX_FILES_PER_TASK} файлов'}), 400
@@ -638,7 +741,7 @@ def create_file():
 
     try:
         storage_key = _write_workspace_bytes(
-            initial_content, current_user.id, task_id, safe_name,
+            initial_content, scope['owner_user_id'], task_id, safe_name,
         )
     except Exception as e:
         logger.error("Workspace create failed: %s", e, exc_info=True)
@@ -646,10 +749,10 @@ def create_file():
 
     mime = mimetypes.guess_type(safe_name)[0] or 'text/plain'
     ws_file = StudentWorkspaceFile(
-        user_id=current_user.id,
+        user_id=scope['owner_user_id'],
         task_id=task_id,
-        context_type=context_type,
-        context_id=context_id,
+        context_type=scope['context_type'],
+        context_id=scope['context_id'],
         original_filename=safe_name,
         current_filename=safe_name,
         storage_path=storage_key,
@@ -669,7 +772,9 @@ def save_content(file_id):
     """Save updated text content for a workspace file."""
     _ensure_workspace_tables()
     ws_file = StudentWorkspaceFile.query.get_or_404(file_id)
-    if ws_file.user_id != current_user.id:
+    scope = _workspace_context_scope(ws_file.task_id, ws_file.context_type, ws_file.context_id)
+    _require_workspace_write(scope)
+    if ws_file.user_id != scope['owner_user_id']:
         abort(403)
 
     data = request.get_json(silent=True) or {}
@@ -683,7 +788,7 @@ def save_content(file_id):
 
     try:
         new_key = _write_workspace_bytes(
-            content_bytes, current_user.id, ws_file.task_id,
+            content_bytes, scope['owner_user_id'], ws_file.task_id,
             secure_filename(ws_file.current_filename) or 'file',
         )
     except Exception as e:
@@ -716,6 +821,13 @@ def task_file_content():
 
     if task_id is None or file_index is None:
         return jsonify({'success': False, 'error': 'task_id and file_index required'}), 400
+    try:
+        file_index = int(file_index)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'file_index must be integer'}), 400
+    context_type = request.args.get('context_type', 'submission')
+    context_id = request.args.get('context_id', type=int)
+    _workspace_context_scope(task_id, context_type, context_id)
 
     task = Tasks.query.filter_by(task_id=task_id).first()
     if not task or not task.attached_files:
@@ -828,6 +940,8 @@ def canvas_save():
         return jsonify({'success': False, 'error': 'task_id required'}), 400
     context_type = data.get('context_type', 'submission')
     context_id = data.get('context_id')
+    scope = _workspace_context_scope(int(task_id), context_type, context_id)
+    _require_workspace_write(scope)
     strokes = data.get('strokes', '[]')
     if isinstance(strokes, (list, dict)):
         strokes = json.dumps(strokes)
@@ -835,10 +949,10 @@ def canvas_save():
     thumbnail = data.get('thumbnail')
 
     drawing = TaskCanvasDrawing.query.filter_by(
-        user_id=current_user.id,
+        user_id=scope['owner_user_id'],
         task_id=task_id,
-        context_type=context_type,
-        context_id=context_id,
+        context_type=scope['context_type'],
+        context_id=scope['context_id'],
     ).first()
 
     if drawing:
@@ -847,10 +961,10 @@ def canvas_save():
             drawing.thumbnail_url = thumbnail
     else:
         drawing = TaskCanvasDrawing(
-            user_id=current_user.id,
+            user_id=scope['owner_user_id'],
             task_id=task_id,
-            context_type=context_type,
-            context_id=context_id,
+            context_type=scope['context_type'],
+            context_id=scope['context_id'],
             strokes_json=strokes,
             thumbnail_url=thumbnail,
         )
@@ -870,12 +984,13 @@ def canvas_load():
         return jsonify({'success': False, 'error': 'task_id required'}), 400
     context_type = request.args.get('context_type', 'submission')
     context_id = request.args.get('context_id', type=int)
+    scope = _workspace_context_scope(task_id, context_type, context_id)
 
     drawing = TaskCanvasDrawing.query.filter_by(
-        user_id=current_user.id,
+        user_id=scope['owner_user_id'],
         task_id=task_id,
-        context_type=context_type,
-        context_id=context_id,
+        context_type=scope['context_type'],
+        context_id=scope['context_id'],
     ).first()
 
     if not drawing:
@@ -895,21 +1010,20 @@ def canvas_load():
 def canvas_view(target_user_id):
     """Teacher views student's canvas or user views own canvas."""
     _ensure_workspace_tables()
-    can_view_other = current_user.is_tutor() or current_user.is_admin()
-    if not can_view_other and int(current_user.id) != int(target_user_id):
-        abort(403)
-
     task_id = request.args.get('task_id', type=int)
     if not task_id:
         return jsonify({'success': False, 'error': 'task_id required'}), 400
     context_type = request.args.get('context_type', 'submission')
     context_id = request.args.get('context_id', type=int)
+    scope = _workspace_context_scope(task_id, context_type, context_id)
+    if int(target_user_id) != int(scope['owner_user_id']):
+        abort(403)
 
     drawing = TaskCanvasDrawing.query.filter_by(
-        user_id=target_user_id,
+        user_id=scope['owner_user_id'],
         task_id=task_id,
-        context_type=context_type,
-        context_id=context_id,
+        context_type=scope['context_type'],
+        context_id=scope['context_id'],
     ).first()
 
     if not drawing:
@@ -929,13 +1043,12 @@ def canvas_view(target_user_id):
 def canvas_list():
     """Teacher lists all canvases for a student (optionally filtered by task)."""
     _ensure_workspace_tables()
-    if not (current_user.is_tutor() or current_user.is_admin()):
-        abort(403)
-
     student_user_id = request.args.get('student_user_id', type=int)
     task_id = request.args.get('task_id', type=int)
     if not student_user_id:
         return jsonify({'success': False, 'error': 'student_user_id required'}), 400
+    if not can_user_access_student(current_user, student_user_id=student_user_id):
+        abort(403)
 
     q = TaskCanvasDrawing.query.filter_by(user_id=student_user_id)
     if task_id:

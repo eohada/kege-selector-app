@@ -197,7 +197,7 @@ document.addEventListener('alpine:init', () => {
 
     viewTaskFile(fileIndex) {
       if (window.BooFileViewer) {
-        window.BooFileViewer.openTaskFile(this.taskId, fileIndex, this.taskFiles[fileIndex]);
+        window.BooFileViewer.openTaskFile(this.taskId, fileIndex, this.taskFiles[fileIndex], this.contextType, this.contextId);
       }
     },
 

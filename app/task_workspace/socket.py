@@ -474,6 +474,7 @@ def register_task_workspace_socket(socketio) -> None:
                 "start": start,
                 "end": end,
                 "inserted": inserted,
+                "code_after": next_code,
                 "cursor": participant.get("cursor") or {},
                 "display_name": participant.get("display_name"),
                 "role": participant.get("role"),

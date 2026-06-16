@@ -334,7 +334,7 @@
                   <div class="flex flex-wrap gap-2" data-role="attachments"></div>
                 </div>
                 {% endif %}
-                <div class="text-secondary leading-relaxed" data-role="content-html">{{ (t.content_html or 'Текст отсутствует') | normalize_task_content_urls | sanitize_html }}</div>
+                <div class="text-secondary leading-relaxed" data-role="content-html">{{ (t.content_html or 'Текст отсутствует') | prepare_task_content_html | normalize_task_content_urls | sanitize_html }}</div>
               </div>
             </div>
             {% endfor %}
@@ -551,11 +551,11 @@
                 const ids = sel ? Array.from(sel.selectedOptions).map((o) => o.value).join(',') : '';
                 const cSel = document.getElementById('probnikCourseSelect');
                 const cid = cSel && cSel.value ? String(cSel.value) : '';
-                const randomMode = !!PROBNIK_RANDOM_MODE;
+                const randomMode = !!variantRandomEnabled;
                 let url = '/assignments/create?source=probnik&assignment_type=exam';
                 if (ids) url += '&recipient_ids=' + encodeURIComponent(ids);
                 if (cid) url += '&exam_course_id=' + encodeURIComponent(cid);
-                if (randomMode) url += '&probnik_random=1';
+                url += '&probnik_random=' + (randomMode ? '1' : '0');
                 window.location.href = url;
             }
 

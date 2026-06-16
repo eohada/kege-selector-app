@@ -21,11 +21,13 @@ from core.db_models import SubmissionComment, SubmissionCommentThreadRead, MOSCO
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import utc_now
 from app.utils.datetime_utc import deadline_from_form_to_utc
+from app.utils.relationship_scope import can_user_access_student
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, notify_user, build_task_number_summary, build_task_number_counts
 from app.telegram.user_notify import notify_user_by_id
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
 from app.utils.course_tasks import get_task_numbers
+from app.utils.jinja_filters import normalize_task_content_assets, normalize_task_content_urls
 from app.assignments.submission_lifecycle_service import (
     normalize_legacy_status,
     transition_submission_status,
@@ -911,6 +913,23 @@ def get_student_by_user_id(user_id):
     return None
 
 
+def _can_current_user_access_submission(submission: Submission | None) -> bool:
+    if not submission or not getattr(submission, 'student', None):
+        return False
+    student_user_id = getattr(submission.student, 'user_id', None)
+    if not student_user_id:
+        return False
+    return can_user_access_student(current_user, student_user_id=int(student_user_id))
+
+
+def _can_current_user_comment_submission(submission: Submission | None) -> bool:
+    if not _can_current_user_access_submission(submission):
+        return False
+    if getattr(current_user, 'is_parent', lambda: False)():
+        return False
+    return True
+
+
 def get_students_for_tutor(tutor_user_id):
     """Получить список Student для тьютора"""
     enrollments = Enrollment.query.filter_by(
@@ -1062,6 +1081,17 @@ def _pick_probnik_tasks_one_per_exam_number(course_id: int, *, random_mode: bool
                 pass
         out.append(t)
     return out
+
+
+def _probnik_random_enabled_from_request() -> bool:
+    """
+    Fast probnik should feel fresh by default.
+    Explicit ?probnik_random=0 keeps the old deterministic pick for debugging/repeatability.
+    """
+    raw = request.args.get('probnik_random')
+    if raw is None:
+        return True
+    return str(raw).strip().lower() not in {'0', 'false', 'off', 'no'}
 
 
 def _task_difficulty_rank_for_cycle(task: Tasks | None) -> int:
@@ -1410,7 +1440,10 @@ def assignment_task_preview():
                 'kege_tier_label_ru': getattr(task, 'kege_tier_label_ru', None),
                 'bank_origin': getattr(task, 'bank_origin', None),
                 'source_prototype': getattr(task, 'source_prototype', None),
-                'content_html': getattr(task, 'content_html', '') or '',
+                'content_html': normalize_task_content_assets(
+                    getattr(task, 'content_html', '') or '',
+                    getattr(task, 'attached_files', None),
+                ),
                 'attached_files': files,
             },
         }
@@ -2187,7 +2220,7 @@ def assignment_create():
     if source == 'probnik':
         probnik_mode = True
         assignment_type = _normalize_assignment_type(request.args.get('assignment_type')) or 'exam'
-        probnik_random_mode = request.args.get('probnik_random', type=int) == 1
+        probnik_random_mode = _probnik_random_enabled_from_request()
         exam_course_id_pb = request.args.get('exam_course_id', type=int)
         if not exam_course_id_pb:
             try:
@@ -3060,21 +3093,11 @@ def submission_view(submission_id):
         return redirect(url_for('assignments.submissions_list'))
     
     try:
-        student = get_student_by_user_id(current_user.id)
-        is_parent_view = False
-        if not student:
-            if current_user.is_parent():
-                from app.utils.relationship_scope import get_family_tie_between
-                tie = get_family_tie_between(current_user.id, submission.student.user_id, include_pending=False)
-                if tie:
-                    is_parent_view = True
-                    student = submission.student
-            if not is_parent_view:
-                flash('Доступ запрещен', 'danger')
-                return redirect(url_for('assignments.submissions_list'))
-        elif submission.student_id != student.student_id:
+        if not _can_current_user_access_submission(submission):
             flash('Доступ запрещен', 'danger')
             return redirect(url_for('assignments.submissions_list'))
+        student = submission.student
+        is_parent_view = bool(getattr(current_user, 'is_parent', lambda: False)())
         if (submission.status or '').upper() == 'REVOKED':
             flash('Эта работа была отозвана преподавателем.', 'info')
             return redirect(url_for('assignments.submissions_list'))
@@ -3323,12 +3346,59 @@ def _attachment_fallback_url_from_db(task_id: int, filename: str):
     return None
 
 
+def _can_current_user_access_task_attachment(task_id: int) -> bool:
+    """Allow task attachments only through assignments/lessons visible to the user."""
+    try:
+        scope = get_user_scope(current_user)
+        if scope.get('can_see_all'):
+            return True
+        visible_user_ids = [int(v) for v in (scope.get('student_ids') or []) if v is not None]
+        if not visible_user_ids:
+            return False
+        student_ids = [
+            sid for (sid,) in db.session.query(Student.student_id)
+            .filter(Student.user_id.in_(visible_user_ids))
+            .all()
+        ]
+        if not student_ids:
+            return False
+        assigned_exists = (
+            db.session.query(Submission.submission_id)
+            .join(Assignment, Submission.assignment_id == Assignment.assignment_id)
+            .join(AssignmentTask, AssignmentTask.assignment_id == Assignment.assignment_id)
+            .filter(
+                Submission.student_id.in_(student_ids),
+                AssignmentTask.task_id == int(task_id),
+                Assignment.is_active == True,  # noqa: E712
+                func.upper(func.coalesce(Submission.status, '')) != 'REVOKED',
+            )
+            .first()
+        )
+        if assigned_exists:
+            return True
+        lesson_exists = (
+            db.session.query(LessonTask.lesson_task_id)
+            .join(Lesson, LessonTask.lesson_id == Lesson.lesson_id)
+            .filter(
+                Lesson.student_id.in_(student_ids),
+                LessonTask.task_id == int(task_id),
+            )
+            .first()
+        )
+        return bool(lesson_exists)
+    except Exception as exc:
+        logger.warning('task attachment access check failed for task %s: %s', task_id, exc)
+        return False
+
+
 @assignments_bp.route('/attachments/task/<int:task_id>/<path:filename>')
 @login_required
 def attached_task_local(task_id: int, filename: str):
     """Раздача локально скачанных вложений заданий. Если файла нет на диске — пробуем отдать через proxy по URL из БД."""
     import os
     from flask import send_from_directory, redirect
+    if not _can_current_user_access_task_attachment(task_id):
+        abort(403)
     custom_root = current_app.config.get('TASK_ATTACHMENTS_ROOT')
     if custom_root and os.path.isdir(custom_root):
         root = custom_root
@@ -3343,7 +3413,8 @@ def attached_task_local(task_id: int, filename: str):
         download_name = request.args.get('download_name', '').strip()
         if not download_name or '..' in download_name or '/' in download_name:
             download_name = safe_name
-        return send_from_directory(task_dir, safe_name, as_attachment=True, download_name=download_name)
+        inline = request.args.get('inline', type=int) == 1
+        return send_from_directory(task_dir, safe_name, as_attachment=not inline, download_name=download_name)
     # Файла нет на диске — пробуем взять url из БД и отдать через proxy
     fallback_url = _attachment_fallback_url_from_db(task_id, safe_name)
     if fallback_url:
@@ -3368,10 +3439,22 @@ def attached_proxy():
         abort(400)
 
     try:
-        upstream = requests.get(url, stream=True, timeout=15)
+        upstream = requests.get(
+            url,
+            stream=True,
+            timeout=15,
+            headers={
+                'User-Agent': 'BooStudy/1.0 (+https://boostudy.ru)',
+                'Referer': 'https://kompege.ru/',
+            },
+        )
     except Exception as e:
         logger.error(f'Error fetching upstream attachment {url}: {e}')
         abort(502)
+    if upstream.status_code >= 400:
+        status_code = upstream.status_code
+        upstream.close()
+        abort(status_code if status_code in {400, 401, 403, 404, 410, 429, 500, 502, 503, 504} else 502)
 
     def generate():
         try:
@@ -3384,7 +3467,8 @@ def attached_proxy():
     content_type = upstream.headers.get('content-type', 'application/octet-stream')
     filename = url.split('/')[-1].split('?')[0]
     resp = Response(stream_with_context(generate()), content_type=content_type)
-    resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    disposition = 'inline' if str(content_type).lower().startswith('image/') else 'attachment'
+    resp.headers['Content-Disposition'] = f'{disposition}; filename="{filename}"'
     return resp
 
 
@@ -4664,15 +4748,10 @@ def submission_grade_save(submission_id):
 def submission_comment_create(submission_id):
     """Добавление комментария к сдаче"""
     submission = Submission.query.get_or_404(submission_id)
-    
-    scope = get_user_scope(current_user)
-    student = get_student_by_user_id(current_user.id)
-    
-    is_author = student and submission.student_id == student.student_id
-    is_teacher = scope['can_see_all'] or submission.assignment.created_by_id == current_user.id
-    
-    if not (is_author or is_teacher):
+
+    if not _can_current_user_comment_submission(submission):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    scope = get_user_scope(current_user)
         
     try:
         data = request.get_json() or {}
@@ -4702,7 +4781,7 @@ def submission_comment_create(submission_id):
 
         try:
             author = current_user
-            is_teacher = (scope.get('can_see_all') or submission.assignment.created_by_id == current_user.id)
+            is_teacher = not getattr(current_user, 'is_student', lambda: False)()
             if is_teacher and submission.student and submission.student.user_id:
                 notify_user_by_id(
                     int(submission.student.user_id),
@@ -4765,13 +4844,7 @@ def submission_comments_list(submission_id):
         joinedload(Submission.assignment),
     ).get_or_404(submission_id)
 
-    scope = get_user_scope(current_user)
-    student = get_student_by_user_id(current_user.id)
-
-    is_author = student and submission.student_id == student.student_id
-    is_teacher = scope['can_see_all'] or submission.assignment.created_by_id == current_user.id
-
-    if not (is_author or is_teacher):
+    if not _can_current_user_access_submission(submission):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
     legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(submission.assignment)

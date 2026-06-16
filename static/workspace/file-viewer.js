@@ -2,7 +2,7 @@
  * BooFileViewer — модальный просмотрщик файлов (текстовые через CodeMirror, Excel через таблицу).
  *
  * Глобальный API:
- *   window.BooFileViewer.openTaskFile(taskId, fileIndex, fileMeta)
+ *   window.BooFileViewer.openTaskFile(taskId, fileIndex, fileMeta, contextType, contextId)
  *   window.BooFileViewer.openWorkspaceFile(fileId, filename)
  *   window.BooFileViewer.openInEditor(fileId)
  *   window.BooFileViewer.editWorkspaceFile(fileId, filename)
@@ -343,27 +343,11 @@
   /* ---- Public API ---- */
 
   window.BooFileViewer = {
-    openTaskFile: function (taskId, fileIndex, fileMeta) {
+    openTaskFile: function (taskId, fileIndex, fileMeta, contextType, contextId) {
       var filename = fileNameFromMeta(fileMeta);
-      var ext = extOf(filename);
       var backendUrl = '/workspace/task-file-content?task_id=' + encodeURIComponent(taskId) + '&file_index=' + encodeURIComponent(fileIndex);
-
-      if (TEXT_EXTENSIONS.has(ext)) {
-        show();
-        setTitle(filename || 'Файл');
-        setLoading(true);
-        _updateHeaderButtons(null);
-
-        fetchTextDirect(taskId, fileMeta)
-          .then(function (data) {
-            setLoading(false);
-            renderText(data, false);
-          })
-          .catch(function () {
-            fetchAndRender(backendUrl);
-          });
-        return;
-      }
+      if (contextType) backendUrl += '&context_type=' + encodeURIComponent(contextType);
+      if (contextId) backendUrl += '&context_id=' + encodeURIComponent(contextId);
 
       fetchAndRender(backendUrl);
     },

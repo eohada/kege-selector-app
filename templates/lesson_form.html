@@ -671,7 +671,7 @@
                             </div>
                             {% if hw_task.task.content_html %}
                             <div class="lf-task-body">
-                                {{ hw_task.task.content_html|normalize_task_content_urls|sanitize_html }}
+                                {{ hw_task.task.content_html|prepare_task_content_html|normalize_task_content_assets(hw_task.task.attached_files)|sanitize_html }}
                             </div>
                             {% endif %}
                             {% if hw_task.student_answer %}
@@ -726,7 +726,7 @@
                             </div>
                             {% if cw_task.task.content_html %}
                             <div class="lf-task-body">
-                                {{ cw_task.task.content_html|normalize_task_content_urls|sanitize_html }}
+                                {{ cw_task.task.content_html|prepare_task_content_html|normalize_task_content_assets(cw_task.task.attached_files)|sanitize_html }}
                             </div>
                             {% endif %}
                         </div>

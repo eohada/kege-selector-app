@@ -27,11 +27,11 @@
                 <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] no-underline">
                     <i class="ph-bold ph-plus text-base"></i> Создать работу
                 </a>
-                <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam') }}" data-quick-probnik-link="1" class="h-11 px-5 py-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700/50 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow-[0_4px_12px_rgba(16,185,129,0.12)] no-underline">
+                <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam', probnik_random=1) }}" data-quick-probnik-link="1" class="h-11 px-5 py-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700/50 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow-[0_4px_12px_rgba(16,185,129,0.12)] no-underline">
                     <i class="ph-bold ph-scroll text-base"></i> Быстрый пробник
                 </a>
                 <button type="button" data-quick-probnik-random-toggle="1" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
-                    <i class="ph-bold ph-shuffle text-base"></i> Рандом: ВЫКЛ
+                    <i class="ph-bold ph-shuffle text-base"></i> Рандом: ВКЛ
                 </button>
                 {% endif %}
                 <a href="{{ url_for('task_generator.task_generator') }}" class="h-11 px-5 py-2.5 bg-white/40 dark:bg-zinc-900/40 border border-purple-200 dark:border-purple-500/20 text-purple-750 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-zinc-800/60 hover:border-purple-300 dark:hover:border-purple-500/40 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.06)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.12)] no-underline">
@@ -250,11 +250,11 @@
             <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] no-underline">
                 <i class="ph-bold ph-plus text-base"></i> Создать работу
             </a>
-            <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam') }}" data-quick-probnik-link="1" class="h-11 px-5 py-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700/50 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow-[0_4px_12px_rgba(16,185,129,0.12)] no-underline">
+            <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam', probnik_random=1) }}" data-quick-probnik-link="1" class="h-11 px-5 py-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700/50 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow-[0_4px_12px_rgba(16,185,129,0.12)] no-underline">
                 <i class="ph-bold ph-scroll text-base"></i> Быстрый пробник
             </a>
             <button type="button" data-quick-probnik-random-toggle="1" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
-                <i class="ph-bold ph-shuffle text-base"></i> Рандом: ВЫКЛ
+                <i class="ph-bold ph-shuffle text-base"></i> Рандом: ВКЛ
             </button>
             {% endif %}
             <a href="{{ url_for('task_generator.task_generator') }}" class="h-11 px-5 py-2.5 bg-white/40 dark:bg-zinc-900/40 border border-purple-200 dark:border-purple-500/20 text-purple-750 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-zinc-800/60 hover:border-purple-300 dark:hover:border-purple-500/40 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.06)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.12)] no-underline">
@@ -351,10 +351,10 @@
     const QUICK_PROBNIK_RANDOM_KEY = 'assignments.quickProbnikRandom';
     const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') || { getAttribute: () => null }).getAttribute('content') || '';
     function quickProbnikRandomEnabled() {
-        try { return localStorage.getItem(QUICK_PROBNIK_RANDOM_KEY) === '1'; } catch (e) { return false; }
+        return true;
     }
     function setQuickProbnikRandomEnabled(v) {
-        try { localStorage.setItem(QUICK_PROBNIK_RANDOM_KEY, v ? '1' : '0'); } catch (e) {}
+        try { localStorage.setItem(QUICK_PROBNIK_RANDOM_KEY, '1'); } catch (e) {}
     }
     function applyQuickProbnikRandom() {
         const enabled = quickProbnikRandomEnabled();
@@ -363,8 +363,7 @@
             if (!raw) return;
             try {
                 const u = new URL(raw, window.location.origin);
-                if (enabled) u.searchParams.set('probnik_random', '1');
-                else u.searchParams.delete('probnik_random');
+                u.searchParams.set('probnik_random', enabled ? '1' : '0');
                 a.setAttribute('href', u.pathname + u.search + u.hash);
             } catch (e) {}
         });
@@ -384,7 +383,7 @@
             if (btn.dataset.qpBound === '1') return;
             btn.dataset.qpBound = '1';
             btn.addEventListener('click', function () {
-                setQuickProbnikRandomEnabled(!quickProbnikRandomEnabled());
+                setQuickProbnikRandomEnabled(true);
                 applyQuickProbnikRandom();
             });
         });

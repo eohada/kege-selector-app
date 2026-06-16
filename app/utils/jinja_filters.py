@@ -4,7 +4,7 @@ Jinja2 фильтры для шаблонов
 import html as html_lib
 import json
 import re
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from typing import Optional
 
 from bs4 import BeautifulSoup
@@ -200,6 +200,54 @@ def _normalize_root_media_url(raw: str, site_base: str) -> str:
     return _KOMPEGE_ORIGIN + v
 
 
+def _maybe_proxy_kompege_media_url(raw: str) -> str:
+    v = (raw or '').strip()
+    if not v:
+        return v
+    low = v.lower()
+    if not (low.startswith('https://kompege.ru/') or low.startswith('http://kompege.ru/')):
+        return v
+    try:
+        return url_for("assignments.attached_proxy") + "?url=" + quote(v, safe="")
+    except Exception:
+        return v
+
+
+def _basename_from_url_or_path(raw: str) -> str:
+    v = (raw or '').strip()
+    if not v:
+        return ''
+    try:
+        if '://' in v or v.startswith('//'):
+            path = urlsplit(v if not v.startswith('//') else 'https:' + v).path
+        else:
+            path = v.split('?', 1)[0]
+    except Exception:
+        path = v.split('?', 1)[0]
+    return path.replace('\\', '/').rstrip('/').split('/')[-1].strip().lower()
+
+
+def _build_attachment_src_map(attached_files) -> dict[str, str]:
+    mapped: dict[str, str] = {}
+    for item in normalize_task_attachments(attached_files):
+        if not isinstance(item, dict):
+            continue
+        target = str(item.get('preview_url') or item.get('download_url') or item.get('url') or item.get('source_url') or '').strip()
+        if not target:
+            continue
+        for key in (
+            item.get('name'),
+            item.get('path'),
+            item.get('url'),
+            item.get('source_url'),
+            item.get('download_url'),
+        ):
+            base = _basename_from_url_or_path(str(key or ''))
+            if base and base not in mapped:
+                mapped[base] = target
+    return mapped
+
+
 def normalize_task_content_urls(html, site_base: Optional[str] = None):
     """
     Нормализует src у img/source/iframe/video в HTML задания:
@@ -209,6 +257,7 @@ def normalize_task_content_urls(html, site_base: Optional[str] = None):
     """
     if not html or not isinstance(html, str):
         return html
+    html = strip_task_author_signatures(html)
     # Полноширинный обратный слэш U+FF3C — KaTeX не распознаёт как начало \\(, \\).
     html = html.replace("\uFF3C", "\\")
     sb = _resolve_site_base(site_base)
@@ -216,10 +265,38 @@ def normalize_task_content_urls(html, site_base: Optional[str] = None):
         soup = BeautifulSoup(html, "html.parser")
         for tag in soup.find_all(["img", "source", "iframe", "video"]):
             if tag.get("src"):
-                tag["src"] = _normalize_root_media_url(tag["src"], sb)
+                normalized_src = _normalize_root_media_url(tag["src"], sb)
+                tag["src"] = _maybe_proxy_kompege_media_url(normalized_src)
         return str(soup)
     except Exception:
         return html
+
+
+def normalize_task_content_assets(html, attached_files=None, site_base: Optional[str] = None):
+    """
+    Normalize media inside a task condition using task attachments too.
+    Fixes legacy HTML like <img src="step-02.png"> when step-02.png lives in attached_files.
+    """
+    if not html or not isinstance(html, str):
+        return html
+    html = strip_task_author_signatures(html)
+    attachment_map = _build_attachment_src_map(attached_files)
+    sb = _resolve_site_base(site_base)
+    try:
+        soup = BeautifulSoup(html.replace("\uFF3C", "\\"), "html.parser")
+        for tag in soup.find_all(["img", "source", "iframe", "video"]):
+            src = str(tag.get("src") or "").strip()
+            if not src:
+                continue
+            base = _basename_from_url_or_path(src)
+            if base and base in attachment_map:
+                tag["src"] = attachment_map[base]
+            else:
+                tag["src"] = _normalize_root_media_url(src, sb)
+            tag["src"] = _maybe_proxy_kompege_media_url(str(tag.get("src") or ""))
+        return str(soup)
+    except Exception:
+        return normalize_task_content_urls(html, site_base=site_base)
 
 
 def task_content_absolute_urls(html):
@@ -430,6 +507,67 @@ _FORCE_REMOVE_AUTHOR_NAMES_RE = re.compile(
     r'(?:\s*</a>)?\s*\)\s*',
     re.IGNORECASE,
 )
+_LEADING_AUTHOR_TEXT_RE = re.compile(
+    r'^\s*\(\s*'
+    r'(?:'
+    r'[А-ЯЁA-Z]\.?\s*(?:[А-ЯЁA-Z]\.?\s*)?[А-ЯЁA-Z][а-яёa-z-]{2,}'
+    r'|'
+    r'[А-ЯЁA-Z][а-яёa-z-]{2,}\s+[А-ЯЁA-Z]\.?\s*(?:[А-ЯЁA-Z]\.?)?'
+    r')'
+    r'\s*\)\s*',
+    re.IGNORECASE,
+)
+_INLINE_OPEN_TAGS_RE = r'(?:<(?:strong|b|em|i|span|a)\b[^>]*>\s*)+'
+_INLINE_CLOSE_TAGS_RE = r'(?:</(?:strong|b|em|i|span|a)>\s*)+'
+_LEADING_AUTHOR_WRAPPED_RE = re.compile(
+    r'^\s*'
+    + _INLINE_OPEN_TAGS_RE
+    + r'\s*\(\s*'
+    + r'(?:'
+    + r'[А-ЯЁA-Z]\.?\s*(?:[А-ЯЁA-Z]\.?\s*)?[А-ЯЁA-Z][а-яёa-z-]{2,}'
+    + r'|'
+    + r'[А-ЯЁA-Z][а-яёa-z-]{2,}\s+[А-ЯЁA-Z]\.?\s*(?:[А-ЯЁA-Z]\.?)?'
+    + r')'
+    + r'\s*\)\s*'
+    + _INLINE_CLOSE_TAGS_RE,
+    re.IGNORECASE,
+)
+
+
+def _strip_leading_author_from_fragment(fragment_html: str) -> str:
+    """Remove a leading author signature even when it is wrapped in inline tags."""
+    if not fragment_html:
+        return fragment_html
+    out = str(fragment_html)
+    for _ in range(4):
+        prev = out
+        out = _LEADING_AUTHOR_WRAPPED_RE.sub('', out, count=1)
+        out = _FORCE_REMOVE_AUTHOR_RE.sub('', out, count=1)
+        out = _FORCE_REMOVE_AUTHOR_SIMPLE_RE.sub('', out, count=1)
+        out = _FORCE_REMOVE_KARPACHEV_RE.sub('', out, count=1)
+        out = _FORCE_REMOVE_AUTHOR_NAMES_RE.sub('', out, count=1)
+        out = _LEADING_AUTHOR_TEXT_RE.sub('', out, count=1)
+        if out == prev:
+            break
+    return out
+
+
+def _strip_leading_empty_inline_tags(fragment_html: str) -> str:
+    if not fragment_html:
+        return fragment_html
+    out = str(fragment_html)
+    for _ in range(4):
+        prev = out
+        out = re.sub(
+            r'^\s*<(strong|b|em|i|span|a)\b[^>]*>\s*</\1>\s*',
+            '',
+            out,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        if out == prev:
+            break
+    return out
 
 
 def _looks_like_author_signature(text_inside_parens: str) -> bool:
@@ -557,7 +695,8 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
     """
     if not decoded_html:
         return decoded_html
-    text_first = _FORCE_REMOVE_AUTHOR_RE.sub('', decoded_html)
+    text_first = _strip_leading_author_from_fragment(decoded_html)
+    text_first = _FORCE_REMOVE_AUTHOR_RE.sub('', text_first)
     text_first = _FORCE_REMOVE_AUTHOR_SIMPLE_RE.sub('', text_first)
     text_first = _FORCE_REMOVE_KARPACHEV_RE.sub('', text_first)
     text_first = _FORCE_REMOVE_AUTHOR_NAMES_RE.sub('', text_first)
@@ -573,7 +712,8 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
             inner = block.decode_contents() or ''
             if not inner.strip():
                 continue
-            stripped_inner = _FORCE_REMOVE_AUTHOR_RE.sub('', inner)
+            stripped_inner = _strip_leading_author_from_fragment(inner)
+            stripped_inner = _FORCE_REMOVE_AUTHOR_RE.sub('', stripped_inner)
             stripped_inner = _FORCE_REMOVE_AUTHOR_SIMPLE_RE.sub('', stripped_inner)
             stripped_inner = _FORCE_REMOVE_KARPACHEV_RE.sub('', stripped_inner)
             stripped_inner = _FORCE_REMOVE_AUTHOR_NAMES_RE.sub('', stripped_inner)
@@ -598,6 +738,7 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
                 stripped_inner,
                 count=1,
             )
+            stripped_inner = _strip_leading_empty_inline_tags(stripped_inner)
             if stripped_inner != inner:
                 block.clear()
                 frag = BeautifulSoup(stripped_inner, 'html.parser')
@@ -606,6 +747,13 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
         return str(soup)
     except Exception:
         return text_first
+
+
+def strip_task_author_signatures(html_content: Optional[str]) -> str:
+    """Public Jinja/API helper: remove leading author/surname signatures from task text."""
+    if not html_content:
+        return html_content or ''
+    return _strip_author_signatures_from_html(str(html_content))
 
 
 def _strip_known_authors_raw(html_text: str) -> str:
@@ -677,11 +825,14 @@ def _normalize_attachment_entry(item) -> Optional[dict]:
         if not name:
             name = fallback_name or "file"
         download_url = path + (f"?download_name={name}" if name else "")
+        preview_sep = "&" if "?" in path else "?"
+        preview_url = path + f"{preview_sep}inline=1"
         return {
             "name": name,
             "path": path,
             "url": raw_url or path,
             "download_url": download_url,
+            "preview_url": preview_url,
             "source_url": raw_url or path,
             "is_local": True,
         }
@@ -708,6 +859,7 @@ def _normalize_attachment_entry(item) -> Optional[dict]:
         "name": name,
         "url": raw_url,
         "download_url": str(download_url),
+        "preview_url": str(download_url),
         "source_url": raw_url,
         "is_local": False,
     }
@@ -742,9 +894,11 @@ def init_jinja_filters(app):
     app.jinja_env.filters['deduplicate_formulas'] = deduplicate_formulas
     app.jinja_env.filters['task_content_absolute_urls'] = task_content_absolute_urls
     app.jinja_env.filters['normalize_task_content_urls'] = normalize_task_content_urls
+    app.jinja_env.filters['normalize_task_content_assets'] = normalize_task_content_assets
     app.jinja_env.filters['strip_attachment_links'] = strip_attachment_links
     app.jinja_env.filters['sanitize_html'] = sanitize_html
     app.jinja_env.filters['prepare_task_content_html'] = prepare_task_content_html
+    app.jinja_env.filters['strip_task_author_signatures'] = strip_task_author_signatures
     app.jinja_env.filters['convert_text_tables_to_html'] = convert_text_tables_to_html
     app.jinja_env.filters['normalize_task_plain_text_to_html'] = normalize_task_plain_text_to_html
     app.jinja_env.filters['normalize_task_attachments'] = normalize_task_attachments

@@ -13,6 +13,7 @@ from sqlalchemy.orm import joinedload
 
 from app.utils.jinja_filters import (
     normalize_task_attachments,
+    normalize_task_content_assets,
     normalize_task_content_urls,
     normalize_task_plain_text_to_html,
 )
@@ -737,7 +738,7 @@ def _task_to_payload(task: Tasks, target_user_id: int | None = None):
         'task_number': task.task_number,
         'site_task_id': task.site_task_id,
         'source_url': task.source_url,
-        'content_html': normalize_task_content_urls(task.content_html or ''),
+        'content_html': normalize_task_content_assets(task.content_html or '', task.attached_files),
         'answer': task.answer,
         'attached_files': task.attached_files,
         'bank_origin': task.bank_origin,
@@ -980,7 +981,7 @@ def task_generator_bank_picker_list():
             'kege_tier_label_ru': t.kege_tier_label_ru,
             'difficulty_label_ru': _difficulty_label_ru(t),
             'student_task_mmr': _get_user_task_mmr(target_user_id, t.task_number),
-            'content_html': (normalize_task_content_urls(t.content_html or ''))[:12000],
+            'content_html': (normalize_task_content_assets(t.content_html or '', t.attached_files))[:12000],
             'already_added': fully,
         })
 
