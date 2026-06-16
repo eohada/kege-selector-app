@@ -335,7 +335,7 @@ def _task_to_payload(task: Tasks):
         'task_number': task.task_number,
         'site_task_id': task.site_task_id,
         'source_url': task.source_url,
-        'content_html': normalize_task_content_assets(task.content_html or '', task.attached_files),
+        'content_html': normalize_task_content_assets(task.content_html or '', task.attached_files, task.source_url),
         'answer': task.answer,
         'attached_files': task.attached_files,
     }

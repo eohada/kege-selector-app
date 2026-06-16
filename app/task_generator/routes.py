@@ -738,7 +738,7 @@ def _task_to_payload(task: Tasks, target_user_id: int | None = None):
         'task_number': task.task_number,
         'site_task_id': task.site_task_id,
         'source_url': task.source_url,
-        'content_html': normalize_task_content_assets(task.content_html or '', task.attached_files),
+        'content_html': normalize_task_content_assets(task.content_html or '', task.attached_files, task.source_url),
         'answer': task.answer,
         'attached_files': task.attached_files,
         'bank_origin': task.bank_origin,
@@ -981,7 +981,7 @@ def task_generator_bank_picker_list():
             'kege_tier_label_ru': t.kege_tier_label_ru,
             'difficulty_label_ru': _difficulty_label_ru(t),
             'student_task_mmr': _get_user_task_mmr(target_user_id, t.task_number),
-            'content_html': (normalize_task_content_assets(t.content_html or '', t.attached_files))[:12000],
+            'content_html': (normalize_task_content_assets(t.content_html or '', t.attached_files, t.source_url))[:12000],
             'already_added': fully,
         })
 

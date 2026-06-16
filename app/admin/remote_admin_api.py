@@ -1045,7 +1045,7 @@ def remote_admin_api_task_formator_task(task_id: int):
             'source_url': effective_source,
             'source_url_kind': 'db' if (task.source_url or '').strip() else ('html' if derived else None),
             'last_scraped': task.last_scraped.isoformat() if task.last_scraped else None,
-            'content_html': normalize_task_content_assets(task.content_html or '', task.attached_files),
+            'content_html': normalize_task_content_assets(task.content_html or '', task.attached_files, task.source_url),
             'answer': task.answer or '',
         },
         'review': {
@@ -2304,7 +2304,7 @@ def remote_admin_api_task_solution_get(task_id: int):
         source_url = (task.source_url or '').strip()
         if not source_url and (task.site_task_id or '').strip():
             source_url = f"https://kompege.ru/task?id={task.site_task_id}"
-        content_html = normalize_task_content_assets(task.content_html or '', task.attached_files)
+        content_html = normalize_task_content_assets(task.content_html or '', task.attached_files, task.source_url)
         return jsonify({
             'success': True,
             'task_id': task_id,

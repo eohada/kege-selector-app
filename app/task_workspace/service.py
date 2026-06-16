@@ -159,6 +159,7 @@ class WorkspaceContext:
             "content_html": normalize_task_content_assets(
                 prepare_task_content_html(self.task.content_html or ""),
                 self.task.attached_files,
+                self.task.source_url,
             ),
             "mmr_policy": self.mmr_policy,
             "mmr_policy_label": MMR_POLICY_LABELS.get(self.mmr_policy, MMR_POLICY_LABELS["manual_confirm"]),

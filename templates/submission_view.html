@@ -1464,21 +1464,30 @@
         });
         
         // Автосохранение (не вызывать, если работа уже сдана)
-        let autosaveTimer = null;
-        let draftPersistTimer = null;
-        let autosaveInFlight = false;
-        let autosavePending = false;
-        let lastAutosaveSignature = '';
-        const saveCodeInFlight = new Set();
-        const pendingSaveCodeTaskIds = new Set();
-        const lastSavedCodeByTask = new Map();
-        const autosaveDelay = 2000; // 2 секунды после последнего изменения
-        const AUTOSAVE_INTERVAL_MS = 60000; // дополнительно — раз в минуту, даже без новых нажатий
-        const SUBMISSION_AUTOSAVE_URL = `{{ url_for('assignments.submission_autosave', submission_id=submission.submission_id) }}`;
-        const SUBMISSION_SAVE_CODE_URL = `{{ url_for('assignments.submission_save_code', submission_id=submission.submission_id) }}`;
-        const SUBMISSION_DRAFT_KEY = 'kege_submission_draft_{{ submission.submission_id }}';
-        const SUBMISSION_CAN_EDIT = {{ 'true' if submission.status in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED'] else 'false' }};
-        const SUBMISSION_TASK_TIMERS_ENABLED = {{ 'true' if submission.status not in ['RETURNED', 'GRADED', 'SUBMITTED', 'NEEDS_MANUAL_REVIEW'] else 'false' }};
+        var submissionAutosaveState = window.submissionAutosaveState || (window.submissionAutosaveState = {});
+        submissionAutosaveState.autosaveTimer = submissionAutosaveState.autosaveTimer || null;
+        submissionAutosaveState.draftPersistTimer = submissionAutosaveState.draftPersistTimer || null;
+        submissionAutosaveState.autosaveInFlight = Boolean(submissionAutosaveState.autosaveInFlight);
+        submissionAutosaveState.autosavePending = Boolean(submissionAutosaveState.autosavePending);
+        submissionAutosaveState.lastAutosaveSignature = submissionAutosaveState.lastAutosaveSignature || '';
+        submissionAutosaveState.saveCodeInFlight = submissionAutosaveState.saveCodeInFlight || new Set();
+        submissionAutosaveState.pendingSaveCodeTaskIds = submissionAutosaveState.pendingSaveCodeTaskIds || new Set();
+        submissionAutosaveState.lastSavedCodeByTask = submissionAutosaveState.lastSavedCodeByTask || new Map();
+        var autosaveTimer = submissionAutosaveState.autosaveTimer;
+        var draftPersistTimer = submissionAutosaveState.draftPersistTimer;
+        var autosaveInFlight = submissionAutosaveState.autosaveInFlight;
+        var autosavePending = submissionAutosaveState.autosavePending;
+        var lastAutosaveSignature = submissionAutosaveState.lastAutosaveSignature;
+        var saveCodeInFlight = submissionAutosaveState.saveCodeInFlight;
+        var pendingSaveCodeTaskIds = submissionAutosaveState.pendingSaveCodeTaskIds;
+        var lastSavedCodeByTask = submissionAutosaveState.lastSavedCodeByTask;
+        var autosaveDelay = 2000; // 2 секунды после последнего изменения
+        var AUTOSAVE_INTERVAL_MS = 60000; // дополнительно — раз в минуту, даже без новых нажатий
+        var SUBMISSION_AUTOSAVE_URL = `{{ url_for('assignments.submission_autosave', submission_id=submission.submission_id) }}`;
+        var SUBMISSION_SAVE_CODE_URL = `{{ url_for('assignments.submission_save_code', submission_id=submission.submission_id) }}`;
+        var SUBMISSION_DRAFT_KEY = 'kege_submission_draft_{{ submission.submission_id }}';
+        var SUBMISSION_CAN_EDIT = {{ 'true' if submission.status in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED'] else 'false' }};
+        var SUBMISSION_TASK_TIMERS_ENABLED = {{ 'true' if submission.status not in ['RETURNED', 'GRADED', 'SUBMITTED', 'NEEDS_MANUAL_REVIEW'] else 'false' }};
         
         function collectAnswers() {
             const answers = [];
@@ -1682,7 +1691,7 @@
             saveCodeDraftsSilent();
             persistLocalDraft();
         }
-        let periodicAutosaveId = null;
+        var periodicAutosaveId = null;
         if (SUBMISSION_CAN_EDIT) {
             restoreLocalDraftOnLoad();
             periodicAutosaveId = window.setInterval(runPeriodicSave, AUTOSAVE_INTERVAL_MS);

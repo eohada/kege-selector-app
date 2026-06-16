@@ -4,7 +4,7 @@ Jinja2 фильтры для шаблонов
 import html as html_lib
 import json
 import re
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, urljoin, urlsplit
 from typing import Optional
 
 from bs4 import BeautifulSoup
@@ -204,13 +204,29 @@ def _maybe_proxy_kompege_media_url(raw: str) -> str:
     v = (raw or '').strip()
     if not v:
         return v
-    low = v.lower()
-    if not (low.startswith('https://kompege.ru/') or low.startswith('http://kompege.ru/')):
+    # Inline task images should be loaded by the browser directly. Proxying them through
+    # BooStudy makes page rendering depend on server -> kompege.ru connectivity; on prod
+    # that path can time out while the user's browser can still open the image normally.
+    return v
+
+
+def _resolve_task_media_url(raw: str, source_url: Optional[str], site_base: str) -> str:
+    v = (raw or "").strip()
+    if not v:
         return v
-    try:
-        return url_for("assignments.attached_proxy") + "?url=" + quote(v, safe="")
-    except Exception:
+    if v.startswith(("data:", "blob:", "mailto:", "tel:")):
         return v
+    if v.startswith("//") or re.match(r"^[a-z][a-z0-9+.-]*://", v, re.I):
+        return _normalize_root_media_url(v, site_base)
+    if v.startswith("/"):
+        return _normalize_root_media_url(v, site_base)
+    src_base = (source_url or "").strip()
+    if src_base:
+        try:
+            return urljoin(src_base, v)
+        except Exception:
+            pass
+    return v
 
 
 def _basename_from_url_or_path(raw: str) -> str:
@@ -272,7 +288,12 @@ def normalize_task_content_urls(html, site_base: Optional[str] = None):
         return html
 
 
-def normalize_task_content_assets(html, attached_files=None, site_base: Optional[str] = None):
+def normalize_task_content_assets(
+    html,
+    attached_files=None,
+    source_url: Optional[str] = None,
+    site_base: Optional[str] = None,
+):
     """
     Normalize media inside a task condition using task attachments too.
     Fixes legacy HTML like <img src="step-02.png"> when step-02.png lives in attached_files.
@@ -292,7 +313,7 @@ def normalize_task_content_assets(html, attached_files=None, site_base: Optional
             if base and base in attachment_map:
                 tag["src"] = attachment_map[base]
             else:
-                tag["src"] = _normalize_root_media_url(src, sb)
+                tag["src"] = _resolve_task_media_url(src, source_url, sb)
             tag["src"] = _maybe_proxy_kompege_media_url(str(tag.get("src") or ""))
         return str(soup)
     except Exception:
@@ -497,6 +518,7 @@ _FORCE_REMOVE_AUTHOR_NAMES_RE = re.compile(
     r'Е\.\s*Джобс|'
     r'А\.\s*Калинин|'
     r'В\.\s*Лашин|'
+    r'О\.?\s*Лысенков|'
     r'Лысенков\s*О\.?|'
     r'Л\.\s*Шастин|'
     r'М\.\s*Попков|'
@@ -505,6 +527,16 @@ _FORCE_REMOVE_AUTHOR_NAMES_RE = re.compile(
     r'Д\.\s*Статный'
     r')'
     r'(?:\s*</a>)?\s*\)\s*',
+    re.IGNORECASE,
+)
+_VISIBLE_AUTHOR_PREFIX_RE = re.compile(
+    r'^\s*\(\s*'
+    r'(?:'
+    r'[А-ЯЁA-Z]\.?\s*(?:[А-ЯЁA-Z]\.?\s*)?[А-ЯЁA-Z][а-яёa-z-]{2,}'
+    r'|'
+    r'[А-ЯЁA-Z][а-яёa-z-]{2,}\s+[А-ЯЁA-Z]\.?\s*(?:[А-ЯЁA-Z]\.?)?'
+    r')'
+    r'\s*\)\s*',
     re.IGNORECASE,
 )
 _LEADING_AUTHOR_TEXT_RE = re.compile(
@@ -568,6 +600,34 @@ def _strip_leading_empty_inline_tags(fragment_html: str) -> str:
         if out == prev:
             break
     return out
+
+
+def _strip_visible_author_prefix_from_block(block: Tag) -> bool:
+    visible = block.get_text("", strip=False).replace("\xa0", " ")
+    match = _VISIBLE_AUTHOR_PREFIX_RE.match(visible)
+    if not match:
+        return False
+    chars_left = match.end()
+    changed = False
+    for text_node in list(block.find_all(string=True)):
+        raw = str(text_node)
+        raw_visible = raw.replace("\xa0", " ")
+        if chars_left <= 0:
+            break
+        if len(raw_visible) <= chars_left:
+            chars_left -= len(raw_visible)
+            text_node.extract()
+            changed = True
+            continue
+        text_node.replace_with(raw[chars_left:])
+        chars_left = 0
+        changed = True
+        break
+    if changed:
+        for inline in list(block.find_all(["strong", "b", "em", "i", "span", "a"])):
+            if not inline.get_text(strip=True) and not inline.find(["img", "source", "iframe", "video"]):
+                inline.decompose()
+    return changed
 
 
 def _looks_like_author_signature(text_inside_parens: str) -> bool:
@@ -744,6 +804,8 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
                 frag = BeautifulSoup(stripped_inner, 'html.parser')
                 for child in list(frag.contents):
                     block.append(child)
+                continue
+            _strip_visible_author_prefix_from_block(block)
         return str(soup)
     except Exception:
         return text_first

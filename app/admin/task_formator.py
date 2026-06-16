@@ -241,7 +241,7 @@ def admin_task_formator_task(task_id: int):
             'site_task_id': task.site_task_id,
             'source_url': effective_source,
             'last_scraped': task.last_scraped.isoformat() if task.last_scraped else None,
-            'content_html': normalize_task_content_assets(task.content_html or '', task.attached_files),
+            'content_html': normalize_task_content_assets(task.content_html or '', task.attached_files, task.source_url),
             'answer': task.answer or '',
         },
         'review': {

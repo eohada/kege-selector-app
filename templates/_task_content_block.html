@@ -5,9 +5,9 @@
 {% set files = (task.attached_files | normalize_task_attachments) if task else [] %}
 <div class="{{ content_class }}">
     {% if files %}
-    {{ prepared_task_content|convert_text_tables_to_html(task_number)|normalize_task_content_assets(task.attached_files)|strip_attachment_links|sanitize_html }}
+    {{ prepared_task_content|convert_text_tables_to_html(task_number)|normalize_task_content_assets(task.attached_files, task.source_url)|strip_attachment_links|sanitize_html }}
     {% else %}
-    {{ prepared_task_content|convert_text_tables_to_html(task_number)|normalize_task_content_assets|sanitize_html }}
+    {{ prepared_task_content|convert_text_tables_to_html(task_number)|normalize_task_content_assets(none, task.source_url if task else none)|sanitize_html }}
     {% endif %}
 
     {% if show_attachments and task and task.attached_files %}

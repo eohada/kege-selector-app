@@ -1443,6 +1443,7 @@ def assignment_task_preview():
                 'content_html': normalize_task_content_assets(
                     getattr(task, 'content_html', '') or '',
                     getattr(task, 'attached_files', None),
+                    getattr(task, 'source_url', None),
                 ),
                 'attached_files': files,
             },

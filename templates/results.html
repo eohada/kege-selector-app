@@ -145,7 +145,7 @@
             </div>
 
             <div class="task-content" style="line-height: 1.8; font-size: 1.05em; color: var(--color-text-primary); margin-bottom: 1.5rem;">
-                {{ task.content_html | prepare_task_content_html | normalize_task_content_assets(task.attached_files) | sanitize_html }}
+                {{ task.content_html | prepare_task_content_html | normalize_task_content_assets(task.attached_files, task.source_url) | sanitize_html }}
             </div>
 
             {% if task.attached_files %}

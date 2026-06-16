@@ -83,7 +83,7 @@
                 </div>
 
                 <div class="prose dark:prose-invert max-w-none text-secondary dark:text-slate-100 leading-relaxed text-sm">
-                    {{ task.content_html|prepare_task_content_html|normalize_task_content_assets(task.attached_files)|sanitize_html }}
+                    {{ task.content_html|prepare_task_content_html|normalize_task_content_assets(task.attached_files, task.source_url)|sanitize_html }}
                 </div>
 
                 {% if task.answer %}
