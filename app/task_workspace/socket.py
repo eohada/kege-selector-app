@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from typing import Any
-from time import time
+from time import monotonic, time
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,13 @@ _workspace_state: dict[str, dict[str, Any]] = {}
 _workspace_history_limit = 250
 _workspace_autosave_timers: dict[str, threading.Timer] = {}
 _workspace_autosave_lock = threading.Lock()
+_workspace_cursor_emit_at: dict[str, float] = {}
+_workspace_cursor_min_interval = 0.08
+
+
+def _live_sync_enabled() -> bool:
+    raw = os.environ.get("TASK_WORKSPACE_LIVE_SYNC_ENABLED", "1").strip().lower()
+    return raw not in {"0", "false", "no", "off"}
 
 
 def _room_key(context_type: str, context_id: int | None, assignment_task_id: int | None) -> str:
@@ -281,25 +289,19 @@ def register_task_workspace_socket(socketio) -> None:
 
     @socketio.on("workspace_cursor_update", namespace="/task-workspace")
     def _on_workspace_cursor_update(data):
-        if not current_user.is_authenticated:
+        if not current_user.is_authenticated or not _live_sync_enabled():
             return
         room, ctx = _resolve_room(data or {})
         if not room or not ctx:
             return
         sid = getattr(request, "sid", 0)
+        throttle_key = f"{room}:{sid}"
+        now = monotonic()
+        last = _workspace_cursor_emit_at.get(throttle_key, 0.0)
+        if now - last < _workspace_cursor_min_interval:
+            return
+        _workspace_cursor_emit_at[throttle_key] = now
         payload = _update_participant_cursor(room, sid, data or {})
-        state = _ensure_room_state(room, ctx)
-        state["ui_state"] = _ui_payload(data or {}, state)
-        _workspace_state[room] = state
-        _cache_workspace_snapshot(
-            ctx,
-            state.get("code") or "",
-            state.get("answer") or "",
-            frames=state.get("playback_frames") or [],
-            version=int(state.get("version") or 0),
-            source="cursor",
-            ui_state=state.get("ui_state") or {},
-        )
         socketio.emit(
             "workspace_cursor_update",
             {
@@ -319,7 +321,7 @@ def register_task_workspace_socket(socketio) -> None:
 
     @socketio.on("workspace_draft_update", namespace="/task-workspace")
     def _on_workspace_draft_update(data):
-        if not current_user.is_authenticated:
+        if not current_user.is_authenticated or not _live_sync_enabled():
             return
         room, ctx = _resolve_room(data or {})
         if not room or not ctx:
@@ -387,7 +389,7 @@ def register_task_workspace_socket(socketio) -> None:
 
     @socketio.on("workspace_patch", namespace="/task-workspace")
     def _on_workspace_patch(data):
-        if not current_user.is_authenticated:
+        if not current_user.is_authenticated or not _live_sync_enabled():
             return
         room, ctx = _resolve_room(data or {})
         if not room or not ctx:
@@ -472,7 +474,6 @@ def register_task_workspace_socket(socketio) -> None:
                 "start": start,
                 "end": end,
                 "inserted": inserted,
-                "code_after": next_code,
                 "cursor": participant.get("cursor") or {},
                 "display_name": participant.get("display_name"),
                 "role": participant.get("role"),
@@ -483,17 +484,6 @@ def register_task_workspace_socket(socketio) -> None:
             room=room,
             namespace="/task-workspace",
             include_self=True,
-        )
-        socketio.emit(
-            "workspace_snapshot",
-            {
-                "room": room,
-                "state": {**ctx.as_payload(), **_workspace_state.get(room, {})},
-                "saved_by": current_user.id,
-                "client_id": str(data.get("client_id") or ""),
-            },
-            room=room,
-            namespace="/task-workspace",
         )
 
     @socketio.on("workspace_saved", namespace="/task-workspace")

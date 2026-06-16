@@ -140,7 +140,7 @@
         if (!workspaceSocketReady || !workspaceSocket || ws.context_type === 'demo' || !code) return;
         if (!force) {
             if (workspaceCursorTimer) clearTimeout(workspaceCursorTimer);
-            workspaceCursorTimer = setTimeout(() => emitWorkspaceCursor(true), 16);
+            workspaceCursorTimer = setTimeout(() => emitWorkspaceCursor(true), 80);
             return;
         }
         workspaceSocket.emit('workspace_cursor_update', {
@@ -428,7 +428,7 @@
         const now = Date.now();
         if (!force) {
             if (workspaceDraftTimer) clearTimeout(workspaceDraftTimer);
-            workspaceDraftTimer = setTimeout(() => emitWorkspaceDraft(true), 35);
+            workspaceDraftTimer = setTimeout(() => emitWorkspaceDraft(true), 500);
             return;
         }
         workspaceLocalDraftTs = now;
@@ -479,7 +479,7 @@
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             client_id: workspaceClientId,
-            full_code: after,
+            full_code: Math.abs(after.length - before.length) > 5000 ? after : '',
             op_id: op.op_id,
             base_version: op.base_version,
             start: op.start,
