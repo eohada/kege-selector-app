@@ -5,11 +5,13 @@
 from __future__ import annotations
 
 import html
+import hashlib
 import logging
 from datetime import timezone
 from typing import Optional
 
 from app.models import User, UserProfile
+from app.runtime_state import get_json, set_json
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,7 @@ _KIND_TO_ATTR: dict[str, str] = {
     'homework_submitted':        'tg_notify_homework_submitted',
     'lesson_reminder':           'tg_notify_lesson_reminder',
     'lesson_scheduled':          'tg_notify_lesson_scheduled',
+    'assignment_deadline':       'tg_notify_homework_submitted',
     'new_message':               'tg_notify_new_message',
     'news':                      'tg_notify_news',
     'referral_used':             'tg_notify_referral_used',
@@ -32,6 +35,7 @@ _KIND_TO_ATTR: dict[str, str] = {
 
 # Kinds that bypass quiet hours (urgent or time-sensitive)
 _QUIET_HOURS_BYPASS = {'system_errors', 'bug_report_reply', 'lesson_scheduled', 'lesson_reminder'}
+_TELEGRAM_DEDUPE_SECONDS = 120
 _STUDENT_ACK_PROMPT = 'Уведомление пришло?(уведомления тестируются, это - временная мера)'
 _STUDENT_ACK_BUTTON = '✅ Пришло'
 _STUDENT_ACK_CALLBACK_PREFIX = 'notif_ack'
@@ -110,6 +114,36 @@ def _is_student_profile(profile: UserProfile | None) -> bool:
     except Exception:
         pass
     return getattr(user, 'role', None) == 'student'
+
+
+def _telegram_dedupe_key(profile: UserProfile | None, text: str, kind: Optional[str]) -> str | None:
+    if not profile or not getattr(profile, 'telegram_chat_id', None):
+        return None
+    raw = f'{int(profile.telegram_chat_id)}|{kind or "generic"}|{text or ""}'
+    digest = hashlib.sha1(raw.encode('utf-8')).hexdigest()
+    return f'telegram:dedupe:{digest}'
+
+
+def _telegram_dedupe_hit(profile: UserProfile | None, text: str, kind: Optional[str]) -> bool:
+    key = _telegram_dedupe_key(profile, text, kind)
+    if not key:
+        return False
+    try:
+        if get_json(key):
+            return True
+    except Exception:
+        return False
+    return False
+
+
+def _mark_telegram_dedupe(profile: UserProfile | None, text: str, kind: Optional[str]) -> None:
+    key = _telegram_dedupe_key(profile, text, kind)
+    if not key:
+        return
+    try:
+        set_json(key, {'seen': True}, ttl_seconds=_TELEGRAM_DEDUPE_SECONDS)
+    except Exception:
+        return
 
 
 def _copy_inline_keyboard(reply_markup: Optional[dict]) -> list[list[dict]]:
@@ -273,10 +307,17 @@ def notify_user_by_id(
         profile = UserProfile.query.filter_by(user_id=user_id).first()
         if not user_allows_telegram_notification(profile, kind):
             return False
+        dedupe_text = text
+        if _telegram_dedupe_hit(profile, dedupe_text, kind):
+            logger.info('Skipped duplicate Telegram notification user_id=%s kind=%s', user_id, kind)
+            return True
         cid = int(profile.telegram_chat_id)
         text, reply_markup = _with_student_ack_controls(profile, text, kind, reply_markup)
         result = send_telegram_message(cid, text, reply_markup=reply_markup)
-        return bool(result and result.get('ok'))
+        ok = bool(result and result.get('ok'))
+        if ok:
+            _mark_telegram_dedupe(profile, dedupe_text, kind)
+        return ok
     except Exception as e:
         logger.warning('notify_user_by_id failed user_id=%s: %s', user_id, e, exc_info=True)
         return False
@@ -296,9 +337,16 @@ def notify_user_by_chat_id(
         profile = UserProfile.query.filter_by(telegram_chat_id=chat_id).first()
         if not user_allows_telegram_notification(profile, kind):
             return False
+        dedupe_text = text
+        if _telegram_dedupe_hit(profile, dedupe_text, kind):
+            logger.info('Skipped duplicate Telegram notification chat_id=%s kind=%s', chat_id, kind)
+            return True
         text, reply_markup = _with_student_ack_controls(profile, text, kind, reply_markup)
         result = send_telegram_message(int(chat_id), text, reply_markup=reply_markup)
-        return bool(result and result.get('ok'))
+        ok = bool(result and result.get('ok'))
+        if ok:
+            _mark_telegram_dedupe(profile, dedupe_text, kind)
+        return ok
     except Exception as e:
         logger.warning('notify_user_by_chat_id failed chat_id=%s: %s', chat_id, e, exc_info=True)
         return False

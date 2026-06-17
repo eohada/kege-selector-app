@@ -276,7 +276,8 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
     )
     can_review = _has_teacher_scope(user)
     is_parent = getattr(user, "is_parent", lambda: False)()
-    can_edit = ((is_owner and submission.status in {"IN_PROGRESS", "RETURNED", "ASSIGNED", "SUBMITTED", "NEEDS_MANUAL_REVIEW"}) or can_review) and not is_parent
+    normalized_status = (submission.status or "").strip().upper()
+    can_edit = ((is_owner and normalized_status in {"IN_PROGRESS", "RETURNED"}) or can_review) and not is_parent
 
     timer_seconds_left = None
     if submission.started_at and submission.assignment.time_limit_minutes:
@@ -383,6 +384,20 @@ def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", fram
         raise
 
 
+def save_workspace_draft(ctx: WorkspaceContext, code: str, answer: str = "", frames: list[dict[str, Any]] | None = None) -> None:
+    """Persist workspace draft/history without changing the student's submitted answer."""
+    code = (code or "")[:100_000]
+    answer = (answer or "")[:20_000]
+    try:
+        save_workspace_trace(ctx, frames=frames, meta={"source": "workspace-draft", "code_length": len(code), "answer_length": len(answer)})
+        save_workspace_version(ctx, code=code, answer=answer, source="draft")
+        cache_workspace_snapshot(ctx, code, answer, frames=frames, source="draft")
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+
 def _trace_lookup(ctx: WorkspaceContext):
     query = CodePlaybackTrace.query.filter_by(
         context_type=ctx.context_type,
@@ -390,7 +405,7 @@ def _trace_lookup(ctx: WorkspaceContext):
         task_id=ctx.task_id,
     )
     if ctx.context_type == "submission_task" and ctx.answer_id:
-        query = query.filter_by(answer_id=ctx.answer_id)
+        query = query.filter(db.or_(CodePlaybackTrace.answer_id == ctx.answer_id, CodePlaybackTrace.answer_id.is_(None)))
     if ctx.student_id:
         query = query.filter_by(student_id=ctx.student_id)
     return query.order_by(CodePlaybackTrace.updated_at.desc(), CodePlaybackTrace.trace_id.desc())
@@ -447,7 +462,7 @@ def _version_lookup(ctx: WorkspaceContext):
         task_id=ctx.task_id,
     )
     if ctx.context_type == "submission_task" and ctx.answer_id:
-        query = query.filter_by(answer_id=ctx.answer_id)
+        query = query.filter(db.or_(CodeWorkspaceVersion.answer_id == ctx.answer_id, CodeWorkspaceVersion.answer_id.is_(None)))
     if ctx.student_id:
         query = query.filter_by(student_id=ctx.student_id)
     return query.order_by(CodeWorkspaceVersion.created_at.desc(), CodeWorkspaceVersion.version_id.desc())
@@ -556,12 +571,13 @@ def autosave_workspace_snapshot(
     ui_state: dict[str, Any] | None = None,
 ) -> None:
     """
-    Best-effort autosave. Writes to Redis immediately and to PostgreSQL via the
-    existing save path. Callers may debounce this helper.
+    Best-effort autosave. Writes to Redis immediately and to PostgreSQL as a
+    workspace draft. It must not silently turn collaborative code into a
+    submitted lesson/submission answer.
     """
     cache_workspace_snapshot(ctx, code, answer, frames=frames, source=source, ui_state=ui_state)
     try:
-        save_workspace_code(ctx, code, answer=answer, frames=frames)
+        save_workspace_draft(ctx, code, answer=answer, frames=frames)
     except Exception:
         # The caller already has Redis state; DB flush can be retried later.
         return

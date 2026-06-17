@@ -77,7 +77,7 @@ def telegram_deadline_reminders_task() -> dict:
                     reply_markup = {'inline_keyboard': [[{'text': '📄 К работе', 'url': link}]]}
 
                 uid = int(sub.student.user_id)
-                if notify_user_by_id(int(uid), msg, kind='lesson_reminder', reply_markup=reply_markup):
+                if notify_user_by_id(int(uid), msg, kind='assignment_deadline', reply_markup=reply_markup):
                     db.session.add(
                         SubmissionTelegramDeadlineSent(
                             submission_id=sub.submission_id,

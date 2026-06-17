@@ -1,16 +1,63 @@
 from __future__ import annotations
 
 import html
+import hashlib
+import json
 import logging
+import os
 from typing import Iterable
 from datetime import timedelta
+from urllib.parse import urljoin
+
+from flask import current_app, has_app_context
 
 from app.models import db, User, Student, UserNotification, FamilyTie, Tasks, PendingAssignmentNotification, Lesson, moscow_now, BotAdmin
+from app.runtime_state import get_json, set_json
 from app.utils.relationship_scope import get_parent_user_ids_for_student
 
 logger = logging.getLogger(__name__)
 
 ASSIGNMENT_NOTIFY_DEBOUNCE_SECONDS = 300
+NOTIFICATION_DEDUPE_SECONDS = 120
+
+
+def _absolute_link_url(link_url: str | None) -> str | None:
+    raw = (link_url or '').strip()
+    if not raw:
+        return None
+    if raw.startswith(('http://', 'https://')):
+        return raw
+    base = (os.environ.get('APP_URL') or '').strip()
+    if not base and has_app_context():
+        base = (current_app.config.get('APP_URL') or current_app.config.get('BASE_URL') or '').strip()
+    if not base:
+        return raw
+    return urljoin(base.rstrip('/') + '/', raw.lstrip('/'))
+
+
+def _notification_dedupe_key(user_id: int, kind: str, title: str, body: str | None, link_url: str | None, meta: dict | None) -> str:
+    payload = {
+        'user_id': int(user_id),
+        'kind': kind or 'generic',
+        'title': title or '',
+        'body': body or '',
+        'link_url': link_url or '',
+        'meta': meta or {},
+    }
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+    digest = hashlib.sha1(raw.encode('utf-8')).hexdigest()
+    return f'notification:dedupe:{digest}'
+
+
+def _recent_duplicate_notification(user_id: int, kind: str, title: str, body: str | None, link_url: str | None, meta: dict | None) -> bool:
+    key = _notification_dedupe_key(user_id, kind, title, body, link_url, meta)
+    try:
+        if get_json(key):
+            return True
+        set_json(key, {'seen': True}, ttl_seconds=NOTIFICATION_DEDUPE_SECONDS)
+    except Exception:
+        pass
+    return False
 
 
 def _get_student_user(student: Student) -> User | None:
@@ -38,6 +85,11 @@ def _get_parent_user_ids_for_student_user(student_user_id: int) -> list[int]:
 
 
 def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None, link_url: str | None = None, meta: dict | None = None) -> None:
+    link_url = _absolute_link_url(link_url)
+    if _recent_duplicate_notification(user_id, kind, title, body, link_url, meta):
+        logger.info('Skipped duplicate notification user_id=%s kind=%s title=%s', user_id, kind, title)
+        return
+
     n = UserNotification(
         user_id=user_id,
         kind=kind or 'generic',

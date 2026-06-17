@@ -1473,11 +1473,6 @@
         submissionAutosaveState.saveCodeInFlight = submissionAutosaveState.saveCodeInFlight || new Set();
         submissionAutosaveState.pendingSaveCodeTaskIds = submissionAutosaveState.pendingSaveCodeTaskIds || new Set();
         submissionAutosaveState.lastSavedCodeByTask = submissionAutosaveState.lastSavedCodeByTask || new Map();
-        var autosaveTimer = submissionAutosaveState.autosaveTimer;
-        var draftPersistTimer = submissionAutosaveState.draftPersistTimer;
-        var autosaveInFlight = submissionAutosaveState.autosaveInFlight;
-        var autosavePending = submissionAutosaveState.autosavePending;
-        var lastAutosaveSignature = submissionAutosaveState.lastAutosaveSignature;
         var saveCodeInFlight = submissionAutosaveState.saveCodeInFlight;
         var pendingSaveCodeTaskIds = submissionAutosaveState.pendingSaveCodeTaskIds;
         var lastSavedCodeByTask = submissionAutosaveState.lastSavedCodeByTask;
@@ -1649,12 +1644,12 @@
             const answers = collectAnswers();
             if (answers.length === 0) return;
             const signature = getAnswersSignature(answers);
-            if (signature === lastAutosaveSignature) return;
-            if (autosaveInFlight) {
-                autosavePending = true;
+            if (signature === submissionAutosaveState.lastAutosaveSignature) return;
+            if (submissionAutosaveState.autosaveInFlight) {
+                submissionAutosaveState.autosavePending = true;
                 return;
             }
-            autosaveInFlight = true;
+            submissionAutosaveState.autosaveInFlight = true;
             fetch(SUBMISSION_AUTOSAVE_URL, {
                 method: 'PUT',
                 headers: {
@@ -1666,11 +1661,11 @@
             .then(response => response.json().catch(() => ({})).then(data => ({ status: response.status, data: data })))
             .then(({ status, data }) => {
                 if (status === 400 && data.error && (String(data.error).indexOf('уже сдана') !== -1 || String(data.error).indexOf('Нельзя сохранять') !== -1)) {
-                    autosaveTimer = null;
+                    submissionAutosaveState.autosaveTimer = null;
                     return;
                 }
                 if (data.success) {
-                    lastAutosaveSignature = signature;
+                    submissionAutosaveState.lastAutosaveSignature = signature;
                     persistLocalDraft();
                 }
             })
@@ -1678,9 +1673,9 @@
                 console.error('Ошибка автосохранения:', error);
             })
             .then(function() {
-                autosaveInFlight = false;
-                if (autosavePending) {
-                    autosavePending = false;
+                submissionAutosaveState.autosaveInFlight = false;
+                if (submissionAutosaveState.autosavePending) {
+                    submissionAutosaveState.autosavePending = false;
                     autosave();
                 }
             });
@@ -1774,10 +1769,10 @@
         // Автосохранение и сдача (назначено с уже начатым временем, в процессе, на доработку или повторная попытка)
         document.querySelectorAll('.answer-input').forEach(input => {
             input.addEventListener('input', function() {
-                clearTimeout(autosaveTimer);
-                autosaveTimer = setTimeout(autosave, autosaveDelay);
-                clearTimeout(draftPersistTimer);
-                draftPersistTimer = setTimeout(persistLocalDraft, 3000);
+                clearTimeout(submissionAutosaveState.autosaveTimer);
+                submissionAutosaveState.autosaveTimer = setTimeout(autosave, autosaveDelay);
+                clearTimeout(submissionAutosaveState.draftPersistTimer);
+                submissionAutosaveState.draftPersistTimer = setTimeout(persistLocalDraft, 3000);
             });
         });
         
@@ -2166,8 +2161,8 @@
             showConfirmDialog(
                 confirmMessage,
                 () => {
-                    clearTimeout(autosaveTimer);
-                    autosaveTimer = null;
+                    clearTimeout(submissionAutosaveState.autosaveTimer);
+                    submissionAutosaveState.autosaveTimer = null;
                     const submitBtn = document.getElementById('submit-btn');
                     submitBtn.disabled = true;
                     const originalText = submitBtn.textContent;

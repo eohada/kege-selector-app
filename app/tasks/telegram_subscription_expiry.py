@@ -15,6 +15,8 @@ def telegram_subscription_expiry_task() -> dict:
     Раз в сутки проверяет подписки, которые истекают ровно через 3 дня или 1 день.
     Отправляет предупреждение ученику с кнопкой продления.
     """
+    return {'ok': True, 'sent': 0, 'disabled': 'lesson_balance_is_source_of_truth'}
+
     from app.models import db
     from core.db_models import MOSCOW_TZ, moscow_now
     from sqlalchemy import text
