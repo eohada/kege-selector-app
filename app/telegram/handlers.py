@@ -98,6 +98,8 @@ _CTX_LESSON_CALL_LINK_LESSON_ID = 'lesson_call_link_lesson_id'
 _CTX_LESSON_HW_NOTE_LESSON_ID = 'lesson_hw_note_lesson_id'
 _CTX_LESSON_HW_NOTE_TEXT = 'lesson_hw_note_text'
 _CTX_NOTIFICATION_MULTI_FEEDBACK = 'notification_multi_feedback'
+_NOTIFICATION_FEEDBACK_CODES = {'dup', 'late', 'bad', 'link', 'multi'}
+_NOTIFICATION_ACK_CALLBACKS = {'ack', 'received', 'notif_ack', 'notification_ack', 'notification_received'}
 
 
 def _notification_multi_feedback_key(chat_id: int | str) -> str:
@@ -118,6 +120,70 @@ def _load_notification_multi_feedback(chat_id: int | str) -> dict | None:
     except Exception:
         logger.debug('Failed to load notification multi-feedback state', exc_info=True)
         return None
+
+
+def _is_notification_ack_callback(data: str) -> bool:
+    raw = (data or '').strip()
+    if raw in _NOTIFICATION_ACK_CALLBACKS:
+        return True
+    return raw.startswith(('notif_ack:', 'notif_ack_', 'notification_ack:', 'notification_ack_', 'notification_received:', 'notification_received_'))
+
+
+def _is_notification_feedback_callback(data: str) -> bool:
+    raw = (data or '').strip()
+    if raw in _NOTIFICATION_FEEDBACK_CODES:
+        return True
+    return raw.startswith((
+        'notif_fb:',
+        'notif_fb_',
+        'notif_feedback:',
+        'notif_feedback_',
+        'notification_feedback:',
+        'notification_feedback_',
+    ))
+
+
+def _parse_notification_ack_kind(data: str) -> str:
+    raw = (data or '').strip()
+    if ':' in raw:
+        parts = raw.split(':')
+        if len(parts) >= 3 and parts[1].isdigit():
+            return parts[2] or 'generic'
+        if len(parts) >= 2:
+            return parts[-1] or 'generic'
+    if '_' in raw:
+        for prefix in ('notification_received_', 'notification_ack_', 'notif_ack_'):
+            if raw.startswith(prefix):
+                tail = raw[len(prefix):]
+                bits = [part for part in tail.split('_') if part]
+                if len(bits) >= 2 and bits[0].isdigit():
+                    return '_'.join(bits[1:]) or 'generic'
+                return '_'.join(bits) or 'generic'
+    return 'generic'
+
+
+def _parse_notification_feedback_payload(data: str) -> tuple[str, str]:
+    raw = (data or '').strip()
+    if raw in _NOTIFICATION_FEEDBACK_CODES:
+        return raw, 'generic'
+    if ':' in raw:
+        parts = raw.split(':')
+        if len(parts) >= 4 and parts[1].isdigit():
+            return parts[2] or '', parts[3] or 'generic'
+        if len(parts) >= 3:
+            return parts[-2] or '', parts[-1] or 'generic'
+        if len(parts) >= 2:
+            return parts[-1] or '', 'generic'
+    for prefix in ('notification_feedback_', 'notif_feedback_', 'notif_fb_'):
+        if raw.startswith(prefix):
+            tail = raw[len(prefix):]
+            bits = [part for part in tail.split('_') if part]
+            if not bits:
+                return '', 'generic'
+            if bits[0].isdigit() and len(bits) >= 2:
+                return bits[1], '_'.join(bits[2:]) or 'generic'
+            return bits[0], '_'.join(bits[1:]) or 'generic'
+    return '', 'generic'
 
 
 # ---------------------------------------------------------------------------
@@ -1925,10 +1991,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     touch_telegram_activity(chat_id)
 
     # Student confirms that a test notification arrived
-    if data.startswith('notif_ack:'):
+    if _is_notification_ack_callback(data):
         await _cb_notification_ack(query, data)
         return
-    if data.startswith('notif_fb:'):
+    if _is_notification_feedback_callback(data):
         await _cb_notification_feedback(query, data, context)
         return
 
@@ -2062,6 +2128,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if handler_fn:
             await handler_fn(query, session, user)
         else:
+            logger.warning('Unknown Telegram callback data=%r chat_id=%s user_id=%s', data, chat_id, getattr(user, 'id', None))
             await query.edit_message_text('⚠️ Неизвестная команда.', reply_markup=_back_keyboard())
     except Exception as e:
         logger.error('Callback %s error: %s', data, e, exc_info=True)
@@ -2268,12 +2335,7 @@ async def _send_notification_feedback_report(
 
 
 async def _cb_notification_ack(query, data: str) -> None:
-    parts = data.split(':')
-    kind = 'generic'
-    if len(parts) >= 3 and parts[1].isdigit():
-        kind = parts[2] or 'generic'
-    elif len(parts) >= 2:
-        kind = parts[1] or 'generic'
+    kind = _parse_notification_ack_kind(data)
     from_user = query.from_user
     message = query.message
     notification_text = _extract_notification_text(message)
@@ -2343,17 +2405,7 @@ async def _mark_notification_feedback_button(query, feedback_title: str) -> None
 
 
 async def _cb_notification_feedback(query, data: str, context: ContextTypes.DEFAULT_TYPE) -> None:
-    parts = data.split(':')
-    feedback_code = ''
-    kind = 'generic'
-    if len(parts) >= 4 and parts[1].isdigit():
-        feedback_code = parts[2] or ''
-        kind = parts[3] or 'generic'
-    elif len(parts) >= 3:
-        feedback_code = parts[1] or ''
-        kind = parts[2] or 'generic'
-    elif len(parts) >= 2:
-        feedback_code = parts[1] or ''
+    feedback_code, kind = _parse_notification_feedback_payload(data)
     from_user = query.from_user
     message = query.message
     notification_text = _extract_notification_text(message)
