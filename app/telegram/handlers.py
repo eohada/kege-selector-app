@@ -2381,27 +2381,27 @@ async def _cb_notification_ack(query, data: str) -> None:
         logger.debug('notification ack markup update skipped', exc_info=True)
 
 
-async def _mark_notification_feedback_button(query, feedback_title: str) -> None:
+async def _mark_notification_feedback_submitted(query, label: str) -> None:
     message = query.message
     try:
         markup = getattr(message, 'reply_markup', None) if message else None
         rows = getattr(markup, 'inline_keyboard', None) or []
-        pressed_data = query.data or ''
         new_rows = []
         for row in rows:
             new_row = []
             for button in row:
                 callback_data = getattr(button, 'callback_data', None) or ''
-                if callback_data == pressed_data:
-                    new_row.append(InlineKeyboardButton('✅ Передано', callback_data='noop'))
+                if _is_notification_feedback_callback(callback_data):
+                    continue
                 else:
                     new_row.append(button)
             if new_row:
                 new_rows.append(new_row)
+        new_rows.append([InlineKeyboardButton(label, callback_data='noop')])
         if message and new_rows:
             await message.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_rows))
     except Exception:
-        logger.debug('notification feedback markup update skipped: %s', feedback_title, exc_info=True)
+        logger.debug('notification feedback markup update skipped: %s', label, exc_info=True)
 
 
 async def _cb_notification_feedback(query, data: str, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2418,6 +2418,7 @@ async def _cb_notification_feedback(query, data: str, context: ContextTypes.DEFA
         }
         context.user_data[_CTX_NOTIFICATION_MULTI_FEEDBACK] = payload
         _save_notification_multi_feedback(query.message.chat_id if query.message else from_user.id, payload)
+        await _mark_notification_feedback_submitted(query, '🧩 Жду номера пунктов')
         await query.message.reply_text(
             '🧩 Напиши следующим сообщением номера подходящих пунктов:\n\n'
             '1 — уведомление продублировалось\n'
@@ -2437,7 +2438,7 @@ async def _cb_notification_feedback(query, data: str, context: ContextTypes.DEFA
             kind=kind,
             feedback_title=feedback_title,
         )
-        await _mark_notification_feedback_button(query, feedback_title)
+        await _mark_notification_feedback_submitted(query, '✅ Обратная связь передана')
     except Exception as e:
         logger.error('_cb_notification_feedback error: %s', e, exc_info=True)
         await query.message.reply_text('⚠️ Не удалось отправить обратную связь. Попробуй позже.')
