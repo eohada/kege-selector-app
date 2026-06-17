@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 from flask import abort
@@ -31,6 +32,14 @@ MMR_POLICY_LABELS = {
 
 WORKSPACE_AUTOSAVE_DEBOUNCE_SECONDS = 2.0
 WORKSPACE_CACHE_TTL_SECONDS = 24 * 60 * 60
+
+
+def _to_aware_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _workspace_cache_key(ctx: "WorkspaceContext") -> str:
@@ -283,7 +292,8 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
     if submission.started_at and submission.assignment.time_limit_minutes:
         from core.db_models import utc_now
         limit_sec = submission.assignment.time_limit_minutes * 60
-        elapsed = (utc_now() - submission.started_at).total_seconds()
+        started_at = _to_aware_utc(submission.started_at)
+        elapsed = (_to_aware_utc(utc_now()) - started_at).total_seconds() if started_at else 0
         timer_seconds_left = max(0, int(limit_sec - elapsed))
 
     return WorkspaceContext(
