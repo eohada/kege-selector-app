@@ -541,10 +541,10 @@
                 <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 first:pl-0 flex flex-col">
                     <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Статус</div>
                     <div class="min-h-11 flex items-center">
-                        <span class="status-pill status-{{ submission.status.lower() }}{% if timer_expired and time_limit_strict %} status-overdue-timer{% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %} status-overdue-deadline{% endif %} inline-flex items-center gap-1.5 leading-none">
+                        <span class="status-pill status-{{ submission.status.lower() }}{% if timer_expired and time_limit_strict %} status-overdue-timer{% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS'] %} status-overdue-deadline{% endif %} inline-flex items-center gap-1.5 leading-none">
                             <i class="ph-bold {% if submission.status == 'ASSIGNED' %}ph-lock{% elif submission.status == 'IN_PROGRESS' %}ph-circle{% elif submission.status == 'SUBMITTED' %}ph-check-circle{% else %}ph-clock{% endif %} text-base shrink-0"></i>
                             {% if timer_expired and time_limit_strict %}Просрочено по таймеру
-                            {% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}Просрочено по дедлайну
+                            {% elif is_deadline_passed and submission.status in ['ASSIGNED', 'IN_PROGRESS'] %}Просрочено по дедлайну
                             {% elif submission.status == 'ASSIGNED' %}Назначено
                             {% elif submission.status == 'IN_PROGRESS' %}В процессе
                             {% elif submission.status == 'SUBMITTED' %}Сдано
@@ -557,7 +557,7 @@
                 </div>
                 <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 flex flex-col">
                     <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Дедлайн</div>
-                    <div class="min-h-11 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none"><i class="ph-bold ph-calendar-blank text-boo-coral shrink-0"></i>{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
+                    <div class="min-h-11 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none"><i class="ph-bold ph-calendar-blank text-boo-coral shrink-0"></i>{{ deadline_display if deadline_display is defined else assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
                 <div class="w-1/2 lg:flex-1 {% if submission.started_at %}lg:border-r border-slate-100 dark:border-white/10{% endif %} px-2 lg:px-4 flex flex-col">
                     <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Попытки</div>
@@ -566,7 +566,7 @@
                 {% if submission.started_at %}
                 <div class="w-1/2 lg:flex-1 px-2 lg:px-4 flex flex-col">
                     <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Начато</div>
-                    <div class="min-h-11 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none"><i class="ph-bold ph-clock text-boo-cyan shrink-0"></i>{{ submission.started_at.strftime('%d.%m.%Y %H:%M') }}</div>
+                    <div class="min-h-11 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none"><i class="ph-bold ph-clock text-boo-cyan shrink-0"></i>{{ started_at_display if started_at_display is defined and started_at_display else submission.started_at.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
                 {% endif %}
             </div>
@@ -871,7 +871,7 @@
                             <div id="timer" style="font-size: 1.35em; font-weight: 800; color: var(--accent-1); font-family: 'Monaco', 'Menlo', monospace;">{{ '%02d:%02d:%02d' % (assignment.time_limit_minutes // 60, assignment.time_limit_minutes % 60, 0) }}</div>
                         </div>
                     </div>
-                    {% elif assignment.time_limit_minutes and not submission.started_at and submission.status != 'RETURNED' %}
+                    {% elif assignment.time_limit_minutes and not submission.started_at and submission.status == 'ASSIGNED' %}
                     <div id="timer-container" style="display: flex; align-items: center; min-height: 2.75rem; padding: 0.5rem 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1); color: var(--text-muted); font-style: italic;">
                         Таймер будет запущен после начала выполнения.
                     </div>
@@ -2025,7 +2025,7 @@
         let totalSeconds = 0;
         
         if (timerElement && timerContainer) {
-                    {% if assignment.time_limit_minutes and submission.started_at %}
+                    {% if assignment.time_limit_minutes and submission.started_at and submission.status != 'RETURNED' %}
                     totalSeconds = {{ assignment.time_limit_minutes * 60 }};
                     const startTimeRaw = '{{ submission.started_at.isoformat() }}';
 
@@ -2138,7 +2138,7 @@
         // Сдача работы (при time_limit_strict и истёкшем таймере кнопка уже отключена)
         document.getElementById('submit-btn')?.addEventListener('click', function(e) {
             e.preventDefault();
-            if (timeLimitStrict && totalSeconds <= 0) return;
+            if (timeLimitStrict && timerElement && totalSeconds <= 0) return;
             
             const emptyTaskNumbers = [];
             document.querySelectorAll('.task-card').forEach(function(card) {

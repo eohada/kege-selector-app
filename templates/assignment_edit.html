@@ -41,7 +41,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="space-y-1.5">
                         <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="edit_deadline">Дедлайн <span class="text-boo-coral">*</span></label>
-                        <input id="edit_deadline" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input cursor-pointer" type="datetime-local" required name="deadline" value="{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') if assignment.deadline else '' }}">
+                        <input id="edit_deadline" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-input cursor-pointer" type="datetime-local" required name="deadline" value="{{ deadline_input_value if deadline_input_value is defined else (assignment.deadline.strftime('%Y-%m-%dT%H:%M') if assignment.deadline else '') }}">
                     </div>
                     <div class="space-y-1.5">
                         <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1" for="edit_time_limit">Время (Мин)</label>

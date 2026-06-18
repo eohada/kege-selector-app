@@ -20,7 +20,7 @@ from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment, SubmissionCommentThreadRead, MOSCOW_TZ
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import utc_now
-from app.utils.datetime_utc import deadline_from_form_to_utc
+from app.utils.datetime_utc import deadline_from_form_to_utc, effective_timezone_name
 from app.utils.relationship_scope import can_user_access_student
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, notify_user, build_task_number_summary, build_task_number_counts
@@ -44,6 +44,7 @@ import os
 import time
 import random
 from typing import Any
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,76 @@ def _started_at_to_utc(dt):
     else:
         dt = dt.astimezone(timezone.utc)
     return dt
+
+
+def _datetime_for_user(dt: datetime | None, user=None) -> datetime | None:
+    """Return datetime in the viewer's timezone for assignment UI."""
+    if dt is None:
+        return None
+    try:
+        zone_name = effective_timezone_name(user or current_user)
+        zone = ZoneInfo(zone_name)
+    except Exception:
+        zone = MOSCOW_TZ
+    base = _ensure_aware_datetime(dt)
+    return base.astimezone(zone) if base else None
+
+
+def _datetime_local_value_for_user(dt: datetime | None, user=None) -> str:
+    local_dt = _datetime_for_user(dt, user)
+    return local_dt.strftime('%Y-%m-%dT%H:%M') if local_dt else ''
+
+
+def _display_datetime_for_user(dt: datetime | None, user=None) -> str:
+    local_dt = _datetime_for_user(dt, user)
+    return local_dt.strftime('%d.%m.%Y %H:%M') if local_dt else 'без дедлайна'
+
+
+def _deadline_payload_to_utc(raw_value) -> datetime:
+    dt = datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
+    if dt.tzinfo is None:
+        try:
+            dt = dt.replace(tzinfo=ZoneInfo(effective_timezone_name(current_user)))
+        except Exception:
+            dt = dt.replace(tzinfo=MOSCOW_TZ)
+    return deadline_from_form_to_utc(dt)
+
+
+def _is_revision_status(submission: Submission) -> bool:
+    return normalize_legacy_status(getattr(submission, 'status', None)) == 'RETURNED'
+
+
+def _mark_submission_returned_for_revision(submission: Submission) -> None:
+    """
+    Возврат на доработку открывает новый учебный заход.
+    Старый started_at не должен дальше блокировать таймером редактор и сдачу.
+    """
+    transition_submission_status(submission, 'RETURNED', force=True)
+    submission.started_at = None
+    submission.is_overtime = False
+
+
+def _submission_deadline_passed(assignment: Assignment, now: datetime | None = None) -> bool:
+    deadline = _ensure_aware_datetime(getattr(assignment, 'deadline', None))
+    return bool(deadline and (now or utc_now()) > deadline)
+
+
+def _submission_hard_deadline_blocks(submission: Submission, assignment: Assignment, now: datetime | None = None) -> bool:
+    if _is_revision_status(submission):
+        return False
+    return bool(getattr(assignment, 'hard_deadline', False) and _submission_deadline_passed(assignment, now))
+
+
+def _submission_timer_expired(submission: Submission, assignment: Assignment, now: datetime | None = None) -> bool:
+    if _is_revision_status(submission):
+        return False
+    if not (getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None)):
+        return False
+    started_utc = _started_at_to_utc(submission.started_at)
+    now_utc = _ensure_aware_datetime(now or utc_now())
+    if not started_utc or not now_utc:
+        return False
+    return now_utc > started_utc + timedelta(minutes=assignment.time_limit_minutes)
 
 
 def _assignment_uses_ege_nav_numbering(assignment) -> bool:
@@ -432,15 +503,11 @@ def _submission_display_status(submission, assignment, now):
     canonical_status = normalize_legacy_status(submission.status)
     if canonical_status not in ('ASSIGNED', 'IN_PROGRESS', 'RETURNED'):
         return None
-    if getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None):
-        started_utc = _started_at_to_utc(submission.started_at)
-        now_utc = _to_utc(now)
-        limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
-        if now_utc and started_utc and now_utc > limit_end_utc:
-            return 'Просрочено по таймеру'
-    dl_utc = _to_utc(getattr(assignment, 'deadline', None))
-    now_utc = _to_utc(now)
-    if dl_utc and now_utc and now_utc > dl_utc:
+    if _submission_timer_expired(submission, assignment, now):
+        return 'Просрочено по таймеру'
+    if canonical_status == 'RETURNED':
+        return None
+    if _submission_deadline_passed(assignment, now):
         return 'Просрочено по дедлайну'
     return None
 
@@ -643,7 +710,7 @@ def assignment_review_bulk_update(assignment_id: int):
     skipped = 0
     for sub in subs:
         if action == 'mark_returned':
-            transition_submission_status(sub, 'RETURNED', force=True)
+            _mark_submission_returned_for_revision(sub)
             _set_submission_task_revision_flags(sub, mark_all=True)
         else:
             if sub.total_score is None or sub.max_score is None:
@@ -749,7 +816,7 @@ def submission_quick_return(submission_id: int):
         flash('Эту сдачу нельзя вернуть из текущего статуса.', 'warning')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
-    transition_submission_status(submission, 'RETURNED', force=True)
+    _mark_submission_returned_for_revision(submission)
     _set_submission_task_revision_flags(submission, mark_all=True)
     try:
         _record_submission_attempt(submission)
@@ -1505,8 +1572,7 @@ def distribute_assignment():
             return jsonify({'success': False, 'error': 'Дедлайн обязателен'}), 400
         
         try:
-            deadline = datetime.fromisoformat(deadline_str.replace('Z', '+00:00'))
-            deadline = deadline_from_form_to_utc(deadline)
+            deadline = _deadline_payload_to_utc(deadline_str)
         except Exception as e:
             return jsonify({'success': False, 'error': f'Некорректный формат дедлайна: {e}'}), 400
         
@@ -2496,6 +2562,7 @@ def assignment_edit(assignment_id: int):
         active_page='assignments',
         assignment=assignment,
         assignment_tasks=assignment_tasks,
+        deadline_input_value=_datetime_local_value_for_user(assignment.deadline),
     )
 
 
@@ -2518,8 +2585,7 @@ def assignment_update(assignment_id: int):
         deadline_str = data.get('deadline')
         if deadline_str:
             try:
-                deadline = datetime.fromisoformat(deadline_str.replace('Z', '+00:00'))
-                assignment.deadline = deadline_from_form_to_utc(deadline)
+                assignment.deadline = _deadline_payload_to_utc(deadline_str)
             except Exception:
                 pass
         assignment.hard_deadline = bool(data.get('hard_deadline', assignment.hard_deadline))
@@ -2748,8 +2814,7 @@ def assignment_duplicate(assignment_id: int):
     new_deadline = now + timedelta(days=7)
     if requested_deadline:
         try:
-            parsed_deadline = datetime.fromisoformat(str(requested_deadline).replace('Z', '+00:00'))
-            new_deadline = deadline_from_form_to_utc(parsed_deadline)
+            new_deadline = _deadline_payload_to_utc(requested_deadline)
         except Exception:
             return jsonify({'success': False, 'error': 'Некорректный дедлайн'}), 400
 
@@ -2999,6 +3064,8 @@ def assignment_view(assignment_id):
             can_manage=can_manage,
             submission_display_status=submission_display_status,
             duplicate_recipient_options=_duplicate_recipient_options_for_current_user(),
+            assignment_deadline_display=_display_datetime_for_user(assignment.deadline),
+            assignment_deadline_input_value=_datetime_local_value_for_user(assignment.deadline),
         )
     except Exception as e:
         logger.error(f"Error processing assignment_view for assignment {assignment_id}: {e}", exc_info=True)
@@ -3120,14 +3187,9 @@ def submission_view(submission_id):
     
     try:
         now = utc_now()
-        deadline = _ensure_aware_datetime(assignment.deadline)
-        
-        if deadline:
-            is_deadline_passed = now > deadline
-        else:
-            is_deadline_passed = False
-        can_submit = not (is_deadline_passed and assignment.hard_deadline)
         normalized_submission_status = normalize_legacy_status(submission.status)
+        is_deadline_passed = _submission_deadline_passed(assignment, now)
+        can_submit = not _submission_hard_deadline_blocks(submission, assignment, now)
         if normalized_submission_status in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW', 'GRADED', 'REVOKED'}:
             can_submit = False
         
@@ -3139,13 +3201,7 @@ def submission_view(submission_id):
         attempts_left = max(0, effective_max_attempts - attempts_used)
         
         attempts_per_task = getattr(assignment, 'attempts_per_task', False)
-        timer_expired = False
-        if assignment.time_limit_strict and assignment.time_limit_minutes and submission.started_at:
-            if normalized_submission_status != 'RETURNED':
-                started_utc = _started_at_to_utc(submission.started_at)
-                now_utc = now.astimezone(timezone.utc)
-                limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
-                timer_expired = now_utc > limit_end_utc
+        timer_expired = _submission_timer_expired(submission, assignment, now)
         events = (
             AnalyticsEvent.query
             .filter(AnalyticsEvent.submission_id == submission_id)
@@ -3245,6 +3301,8 @@ def submission_view(submission_id):
                              attempts_per_task=attempts_per_task,
                              time_limit_strict=assignment.time_limit_strict,
                              timer_expired=timer_expired,
+                             deadline_display=_display_datetime_for_user(assignment.deadline),
+                             started_at_display=_display_datetime_for_user(submission.started_at) if submission.started_at else None,
                              is_parent_view=is_parent_view,
                              chat_default_assignment_task_id=chat_default_assignment_task_id)
     except Exception as e:
@@ -3299,10 +3357,10 @@ def submission_start(submission_id):
             }
         )
         
-        if deadline and now > deadline and submission.assignment.hard_deadline:
+        if _submission_hard_deadline_blocks(submission, submission.assignment, now):
             logger.warning(f"Deadline passed for submission {submission_id}")
             _agent_debug_log('H2', 'submission_start_rejected_deadline')
-            return jsonify({'success': False, 'error': 'Дедлайн истек'}), 400
+            return jsonify({'success': False, 'error': 'Срок выполнения работы истёк. Обратись к преподавателю, чтобы открыть работу снова.'}), 400
         
         transition_submission_status(submission, 'IN_PROGRESS')
         submission.started_at = now
@@ -3566,9 +3624,6 @@ def upload_answer_file(submission_id):
     answer.files = files_list
     answer.updated_at = utc_now()
 
-    if normalize_legacy_status(submission.status) == 'RETURNED':
-        transition_submission_status(submission, 'IN_PROGRESS')
-
     try:
         db.session.commit()
     except Exception as e:
@@ -3697,9 +3752,6 @@ def submission_autosave(submission_id):
             answer.value = value
             answer.updated_at = utc_now()
         
-        if normalize_legacy_status(submission.status) == 'RETURNED':
-            transition_submission_status(submission, 'IN_PROGRESS')
-        
         db.session.commit()
         
         return jsonify({'success': True}), 200
@@ -3731,13 +3783,17 @@ def submission_submit_task(submission_id):
             return jsonify({'success': False, 'error': 'Задание архивировано'}), 403
         if not assignment.allow_separate_submission or not getattr(assignment, 'attempts_per_task', False):
             return jsonify({'success': False, 'error': 'Сдача по одному заданию не разрешена для этой работы'}), 400
-        if normalize_legacy_status(submission.status) != 'RETURNED' and getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None):
-            now = utc_now()
-            started_utc = _started_at_to_utc(submission.started_at)
-            now_utc = now.astimezone(timezone.utc)
-            limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
-            if now_utc > limit_end_utc:
-                return jsonify({'success': False, 'error': 'Время на выполнение истекло. Сдача заблокирована.'}), 403
+        now = utc_now()
+        if _submission_hard_deadline_blocks(submission, assignment, now):
+            return jsonify({
+                'success': False,
+                'error': 'Срок выполнения работы истёк, поэтому сдача закрыта. Напиши преподавателю, чтобы он вернул работу на доработку или изменил дедлайн.'
+            }), 403
+        if _submission_timer_expired(submission, assignment, now):
+            return jsonify({
+                'success': False,
+                'error': 'Время на выполнение вышло, поэтому сдача закрыта. Если преподаватель вернёт работу на доработку, появится новая попытка.'
+            }), 403
         data = request.get_json() or {}
         assignment_task_id = data.get('assignment_task_id')
         value = data.get('value', '')
@@ -3820,7 +3876,7 @@ def submission_submit_task(submission_id):
             except Exception as anal_err:
                 logger.warning("Analytics process_submission (submit_task) failed: %s", anal_err)
                 details = None
-        if normalize_legacy_status(submission.status) in ['ASSIGNED', 'RETURNED']:
+        if normalize_legacy_status(submission.status) == 'ASSIGNED':
             transition_submission_status(submission, 'IN_PROGRESS')
             if not submission.started_at:
                 submission.started_at = utc_now()
@@ -3854,7 +3910,8 @@ def submission_submit(submission_id):
     try:
         submission = Submission.query.options(
             joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
-            joinedload(Submission.answers)
+            joinedload(Submission.answers),
+            joinedload(Submission.student)
         ).get_or_404(submission_id)
         
         student = get_student_by_user_id(current_user.id)
@@ -3890,22 +3947,29 @@ def submission_submit(submission_id):
         if not attempts_per_task and attempts_used >= effective_max and normalize_legacy_status(submission.status) != 'RETURNED':
             return jsonify({'success': False, 'error': f'Исчерпан лимит попыток ({attempts_used}/{effective_max})'}), 403
         
+        was_revision = _is_revision_status(submission)
         is_late = deadline and now > deadline
-        if is_late and assignment.hard_deadline:
-            return jsonify({'success': False, 'error': 'Дедлайн истек, сдача невозможна'}), 403
+        if _submission_hard_deadline_blocks(submission, assignment, now):
+            return jsonify({
+                'success': False,
+                'error': 'Срок выполнения работы истёк, поэтому сдача закрыта. Напиши преподавателю, чтобы он вернул работу на доработку или изменил дедлайн.'
+            }), 403
         
         is_overtime = False
-        if normalize_legacy_status(submission.status) != 'RETURNED' and assignment.time_limit_minutes and submission.started_at:
+        if not was_revision and assignment.time_limit_minutes and submission.started_at:
             started_utc = _started_at_to_utc(submission.started_at)
             now_utc = now.astimezone(timezone.utc)
             limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
             if now_utc > limit_end_utc:
                 if assignment.time_limit_strict:
-                    return jsonify({'success': False, 'error': 'Время на выполнение истекло. Сдача заблокирована.'}), 403
+                    return jsonify({
+                        'success': False,
+                        'error': 'Время на выполнение вышло, поэтому сдача закрыта. Если преподаватель вернёт работу на доработку, появится новая попытка.'
+                    }), 403
                 is_overtime = True
         transition_submission_status(submission, 'SUBMITTED')
         submission.submitted_at = now
-        submission.is_late = is_late
+        submission.is_late = bool(is_late and not was_revision)
         submission.is_overtime = is_overtime
         
         all_auto_graded = True
@@ -3988,6 +4052,13 @@ def submission_submit(submission_id):
                 _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
             submission.graded_at = now
 
+        # Collect notification info before commit to avoid DetachedInstanceError after commit
+        student_name = getattr(submission.student, 'name', None) or 'Ученик'
+        student_id = submission.student_id
+        assignment_id = assignment.assignment_id
+        assignment_title = assignment.title
+        creator_id = getattr(assignment, 'created_by_id', None) or (assignment.created_by.id if getattr(assignment, 'created_by', None) else None)
+
         try:
             _record_submission_attempt(submission)
         except Exception as e:
@@ -4001,16 +4072,14 @@ def submission_submit(submission_id):
         except Exception:
             logger.warning('on_submission_status_changed after submission_submit failed', exc_info=True)
 
-        creator_id = getattr(assignment, 'created_by_id', None) or (assignment.created_by.id if getattr(assignment, 'created_by', None) else None)
-        if creator_id and assignment.created_by_id:
-            student_name = getattr(submission.student, 'name', None) or 'Ученик'
+        if creator_id:
             notify_user(
-                assignment.created_by_id,
+                creator_id,
                 kind='teacher_homework_submitted',
                 title='📤 Ученик сдал работу',
-                body=f'{student_name} сдал(а) работу «{assignment.title}»',
+                body=f'{student_name} сдал(а) работу «{assignment_title}»',
                 link_url=url_for('assignments.submission_view', submission_id=submission_id) if current_app else None,
-                meta={'submission_id': submission_id, 'assignment_id': assignment.assignment_id, 'student_id': submission.student_id}
+                meta={'submission_id': submission_id, 'assignment_id': assignment_id, 'student_id': student_id}
             )
         
         audit_logger.log(
@@ -4599,7 +4668,10 @@ def submission_grade_save(submission_id):
 
         if not scores_only:
             try:
-                transition_submission_status(submission, status, force=True)
+                if status == 'RETURNED':
+                    _mark_submission_returned_for_revision(submission)
+                else:
+                    transition_submission_status(submission, status, force=True)
             except SubmissionLifecycleError as e:
                 return jsonify({'success': False, 'error': str(e)}), 400
             submission.graded_at = utc_now()
@@ -4611,8 +4683,7 @@ def submission_grade_save(submission_id):
             if status == 'RETURNED':
                 if new_deadline_str:
                     try:
-                        deadline_dt = datetime.fromisoformat(new_deadline_str.replace('Z', '+00:00'))
-                        assignment.deadline = deadline_from_form_to_utc(deadline_dt)
+                        assignment.deadline = _deadline_payload_to_utc(new_deadline_str)
                     except (ValueError, TypeError) as e:
                         logger.warning(f"Invalid new_deadline for submission {submission_id}: {e}")
                 if new_max_attempts is not None:

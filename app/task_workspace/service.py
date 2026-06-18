@@ -289,7 +289,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
     can_edit = ((is_owner and normalized_status in {"IN_PROGRESS", "RETURNED"}) or can_review) and not is_parent
 
     timer_seconds_left = None
-    if submission.started_at and submission.assignment.time_limit_minutes:
+    if normalized_status != "RETURNED" and submission.started_at and submission.assignment.time_limit_minutes:
         from core.db_models import utc_now
         limit_sec = submission.assignment.time_limit_minutes * 60
         started_at = _to_aware_utc(submission.started_at)
