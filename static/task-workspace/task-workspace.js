@@ -495,7 +495,7 @@
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             client_id: workspaceClientId,
-            full_code: Math.abs(after.length - before.length) > 5000 ? after : '',
+            full_code: after,
             op_id: op.op_id,
             base_version: op.base_version,
             start: op.start,
@@ -2050,7 +2050,6 @@
     renderVersions();
     updateEditorChrome();
     restoreUiState(initialUiState);
-    scheduleAutosave();
     pullServerState(false);
     liveSyncTimer = setInterval(() => pullServerState(false), 15000);
     document.addEventListener('visibilitychange', () => {

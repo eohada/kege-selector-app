@@ -191,6 +191,32 @@ def register_task_workspace_socket(socketio) -> None:
                 next_end = next_start
         return next_start, next_end
 
+    def _active_user_count(room: str) -> int:
+        user_ids = set()
+        for participant in _workspace_rooms.get(room, {}).values():
+            try:
+                user_ids.add(int(participant.get("user_id")))
+            except (TypeError, ValueError):
+                continue
+        return len(user_ids)
+
+    def _diff_snapshot(before: str, after: str) -> tuple[int, int, str]:
+        prefix_len = 0
+        limit = min(len(before), len(after))
+        while prefix_len < limit and before[prefix_len] == after[prefix_len]:
+            prefix_len += 1
+        suffix_len = 0
+        while (
+            len(before) - 1 - suffix_len >= prefix_len
+            and len(after) - 1 - suffix_len >= prefix_len
+            and before[len(before) - 1 - suffix_len] == after[len(after) - 1 - suffix_len]
+        ):
+            suffix_len += 1
+        start = prefix_len
+        end = max(prefix_len, len(before) - suffix_len)
+        inserted = after[prefix_len:len(after) - suffix_len]
+        return start, end, inserted
+
     def _cursor_payload(data: dict[str, Any]) -> dict[str, Any]:
         return {
             "start": int(data.get("cursor_start", data.get("start", 0)) or 0),
@@ -399,7 +425,8 @@ def register_task_workspace_socket(socketio) -> None:
             end = max(start, int(data.get("end") or start))
             inserted = str(data.get("inserted") or "")[:10_000]
             previous = str(data.get("previous") or "")
-            next_value = str(data.get("next") or "")
+            has_next_value = "next" in data
+            next_value = str(data.get("next") or "")[:100_000]
             full_code = str(data.get("full_code") or "")[:100_000]
         except Exception:
             return
@@ -410,22 +437,12 @@ def register_task_workspace_socket(socketio) -> None:
         base_version = max(0, int(data.get("base_version") or current.get("version") or 0))
         op_id = str(data.get("op_id") or "")
         history = list(current.get("history") or [])
-        if full_code:
+        if _active_user_count(room) <= 1 and has_next_value:
+            next_code = next_value
+            start, end, inserted = _diff_snapshot(code, next_code)
+        elif full_code:
             next_code = full_code
-            prefix_len = 0
-            limit = min(len(code), len(full_code))
-            while prefix_len < limit and code[prefix_len] == full_code[prefix_len]:
-                prefix_len += 1
-            suffix_len = 0
-            while (
-                len(code) - 1 - suffix_len >= prefix_len
-                and len(full_code) - 1 - suffix_len >= prefix_len
-                and code[len(code) - 1 - suffix_len] == full_code[len(full_code) - 1 - suffix_len]
-            ):
-                suffix_len += 1
-            start = prefix_len
-            end = max(prefix_len, len(code) - suffix_len)
-            inserted = full_code[prefix_len:len(full_code) - suffix_len]
+            start, end, inserted = _diff_snapshot(code, next_code)
         else:
             if base_version < int(current.get("version") or 0):
                 start, end = _transform_range(start, end, history, base_version)
