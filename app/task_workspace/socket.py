@@ -508,7 +508,7 @@ def register_task_workspace_socket(socketio) -> None:
         )
 
 
-def emit_workspace_snapshot(socketio, ctx, *, saved_by: int | None = None) -> None:
+def emit_workspace_snapshot(socketio, ctx, *, saved_by: int | None = None, client_id: str | None = None) -> None:
     try:
         room = _room_key(ctx.context_type, ctx.context_id, ctx.assignment_task_id)
         socketio.emit(
@@ -517,6 +517,7 @@ def emit_workspace_snapshot(socketio, ctx, *, saved_by: int | None = None) -> No
                 "room": room,
                 "state": {**ctx.as_payload(), **_workspace_state.get(room, {})},
                 "saved_by": saved_by,
+                "client_id": str(client_id or ""),
             },
             room=room,
             namespace="/task-workspace",

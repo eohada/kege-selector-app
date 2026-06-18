@@ -98,7 +98,12 @@ def workspace_save_api():
     save_workspace_draft(ctx, data.get("code") or "", data.get("answer") or "", frames=frames)
     versions = load_workspace_versions_payload(ctx)
     try:
-        emit_workspace_snapshot(current_app.socketio, ctx, saved_by=current_user.id)
+        emit_workspace_snapshot(
+            current_app.socketio,
+            ctx,
+            saved_by=current_user.id,
+            client_id=str(data.get("client_id") or ""),
+        )
     except Exception:
         pass
     return jsonify({"success": True, "saved": "server", "versions": versions})

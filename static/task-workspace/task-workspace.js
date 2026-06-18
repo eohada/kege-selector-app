@@ -90,6 +90,7 @@
             context_type: ws.context_type || 'demo',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
+            client_id: workspaceClientId,
             code: code.value,
             playback_frames: playback.frames,
             ui_state: localUiState(),
@@ -216,6 +217,21 @@
         return Array.from(byUser.values());
     }
 
+    function hasActiveWorkspaceEdits() {
+        if (pendingWorkspaceOps.length > 0) return true;
+        if (dirtySinceAutosave) return true;
+        if (document.activeElement !== code) return false;
+        return (Date.now() - lastLocalEditAt) < 1200;
+    }
+
+    function shouldAcceptRemoteWorkspaceText(state) {
+        if (!state || typeof state !== 'object') return false;
+        if (hasActiveWorkspaceEdits()) return false;
+        const remoteVersion = Number(state.version || 0) || 0;
+        if (remoteVersion && remoteVersion < workspaceServerVersion) return false;
+        return true;
+    }
+
     function renderPresenceBar(participants) {
         if (!presence) return;
         const items = normalizeParticipants(participants);
@@ -331,7 +347,7 @@
             workspaceServerVersion = Math.max(workspaceServerVersion, Number(state.version || 0) || 0);
             workspaceRemoteDraftTs = Math.max(workspaceRemoteDraftTs, snapshotTs);
             if (state && typeof state === 'object') {
-                if (document.activeElement === code && pendingWorkspaceOps.length && payload?.client_id !== workspaceClientId) return;
+                if (!shouldAcceptRemoteWorkspaceText(state)) return;
                 applyRemoteState({
                     code: state.code || '',
                     versions: state.versions || {},
@@ -388,12 +404,12 @@
                 renderPresenceBar(Array.from(remoteParticipants.values()));
             }
             const hasCanonicalText = typeof payload.code_after === 'string';
-            const shouldApplyCanonical = hasCanonicalText && (pendingWorkspaceOps.length === 0 || document.activeElement !== code);
+            const shouldApplyCanonical = hasCanonicalText && !hasActiveWorkspaceEdits();
             if (shouldApplyCanonical) {
                 applyCanonicalWorkspaceText(payload.code_after, { rebaseSnapshot: true });
             } else if (hasCanonicalText) {
-                applyCanonicalWorkspaceText(payload.code_after, { rebaseSnapshot: true });
-            } else {
+                return;
+            } else if (!hasActiveWorkspaceEdits()) {
                 const transformed = transformPatchThroughOps(payload, pendingWorkspaceOps);
                 applyCodePatchToEditor(transformed, { preserveSelection: true });
             }
@@ -1524,7 +1540,7 @@
         emitWorkspaceCursor(false);
     });
     code.addEventListener('focus', () => {
-        pullServerState(true);
+        pullServerState(false);
         emitWorkspaceCursor(false);
     });
     code.addEventListener('blur', () => emitWorkspaceCursor(true));
@@ -2035,13 +2051,13 @@
     updateEditorChrome();
     restoreUiState(initialUiState);
     scheduleAutosave();
-    pullServerState(true);
+    pullServerState(false);
     liveSyncTimer = setInterval(() => pullServerState(false), 15000);
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             flushWorkspaceBeforeExit();
         } else {
-            pullServerState(true);
+            pullServerState(false);
         }
     });
     window.addEventListener('pagehide', flushWorkspaceBeforeExit);
