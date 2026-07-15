@@ -33,6 +33,68 @@ def utc_now():
     """Aware UTC «now» for DB defaults and business logic (timestamptz)."""
     return datetime.now(timezone.utc)
 
+class QATestCase(db.Model):
+    """Тест-кейсы для QA-отдела."""
+    __tablename__ = 'QATestCases'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(300), nullable=False)
+    area = db.Column(db.String(100), nullable=False, index=True)
+    role = db.Column(db.String(100), nullable=True)
+    steps = db.Column(JSONBCompat, nullable=True) # Массив строк (шагов)
+    expected_result = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+class QAReport(db.Model):
+    """Баг-репорты или результаты прохождения тест-кейсов."""
+    __tablename__ = 'QAReports'
+    id = db.Column(db.Integer, primary_key=True)
+    test_id = db.Column(db.Integer, db.ForeignKey('QATestCases.id', ondelete='SET NULL'), nullable=True, index=True)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True, index=True)
+
+    # Спринт/цикл тестирования (для разделения данных между спринтами)
+    cycle_id = db.Column(db.Integer, nullable=True, index=True, default=1)
+
+    area = db.Column(db.String(100), nullable=True, index=True)
+    # Статусы: pending -> in_progress -> retest -> resolved (rejected скрытый)
+    status = db.Column(db.String(50), default='pending', nullable=False, index=True)
+    verdict = db.Column(db.String(50), nullable=True)  # success, minor, critical
+
+    # Иммутабельное первичное описание проблемы (заполняется один раз при создании)
+    description = db.Column(db.Text, nullable=True)
+    # Системные логи: HAR, консольные ошибки, сетевые ошибки (JSON-массив строк)
+    logs = db.Column(JSONBCompat, nullable=True)
+
+    failed_steps = db.Column(JSONBCompat, nullable=True)  # Массив индексов шагов с багом
+
+    page_url = db.Column(db.String(500), nullable=True)
+    user_agent = db.Column(db.String(500), nullable=True)
+    screen_size = db.Column(db.String(50), nullable=True)   # "1920x1080"
+    attachments = db.Column(JSONBCompat, nullable=True)  # [{url, type, filename}]
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    test_case = db.relationship('QATestCase', backref=db.backref('reports', lazy='dynamic', cascade='all, delete-orphan'))
+    reporter = db.relationship('User', foreign_keys=[reporter_id])
+
+class QAReportHistory(db.Model):
+    """История переписки и смены статусов по баг-репорту."""
+    __tablename__ = 'QAReportHistory'
+    id = db.Column(db.Integer, primary_key=True)
+    report_id = db.Column(db.Integer, db.ForeignKey('QAReports.id', ondelete='CASCADE'), nullable=False, index=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    
+    old_status = db.Column(db.String(50), nullable=True)
+    new_status = db.Column(db.String(50), nullable=True)
+    comment = db.Column(db.Text, nullable=True)
+    
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    report = db.relationship('QAReport', backref=db.backref('history', lazy='dynamic', cascade='all, delete-orphan'))
+    author = db.relationship('User', foreign_keys=[author_id])
+
 task_topics = Table('task_topics',
     db.metadata,
     Column('task_id', Integer, ForeignKey('Tasks.task_id'), primary_key=True),
@@ -259,6 +321,15 @@ class Student(db.Model):
     goal_text = db.Column(db.Text, nullable=True)  # Текстовая цель для программирования и ЛЕВЕЛАП
     programming_language = db.Column(db.String(100), nullable=True)  # Основной язык программирования ученика
     school_class = db.Column(db.Integer, nullable=True)  # Храним школьный класс ученика (1-11 или None)
+    
+    # Ежедневная активность (Стрики)
+    streak_days = db.Column(db.Integer, default=0, nullable=False)
+    last_activity_date = db.Column(db.Date, nullable=True)
+    streak_frozen = db.Column(db.Boolean, default=False, nullable=False)
+    
+    # Опыт и Уровни
+    xp = db.Column(db.Integer, default=0, nullable=False)
+    level = db.Column(db.Integer, default=1, nullable=False)
 
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
@@ -308,6 +379,10 @@ class StudentLearningPlanItem(db.Model):
     priority = db.Column(db.Integer, default=0, nullable=False, index=True)  # чем больше — тем выше
     notes = db.Column(db.Text, nullable=True)
 
+    x = db.Column(db.Integer, nullable=True)  # Координата X на карте
+    y = db.Column(db.Integer, nullable=True)  # Координата Y на карте
+    parent_id = db.Column(db.Integer, db.ForeignKey('StudentLearningPlanItems.item_id'), nullable=True, index=True)
+
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
@@ -316,6 +391,7 @@ class StudentLearningPlanItem(db.Model):
     topic = db.relationship('Topic', foreign_keys=[topic_id])
     course_module = db.relationship('TrajectoryModule', foreign_keys=[course_module_id])
     created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+    parent = db.relationship('StudentLearningPlanItem', remote_side=[item_id], backref='children')
 
 
 class StudentDiagnosticCheckpoint(db.Model):
@@ -769,6 +845,9 @@ class User(db.Model):
     timezone_mode = db.Column(db.String(16), nullable=False, default='auto')
     timezone_iana = db.Column(db.String(64), nullable=True)
 
+    tg_auth_key = db.Column(db.String(120), unique=True, nullable=True)
+    tg_id = db.Column(db.BigInteger, nullable=True)
+
     def get_id(self):
         return str(self.id)
     
@@ -1116,6 +1195,53 @@ class ReferralUsage(db.Model):
 
     def __repr__(self):
         return f'<ReferralUsage code_id={self.referral_code_id} user_id={self.user_id}>'
+
+
+class PromoCode(db.Model):
+    """Промокод для скидок, бонусных уроков или бесплатного доступа."""
+    __tablename__ = 'PromoCodes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    
+    discount_percent = db.Column(db.Integer, nullable=True)     # Скидка в процентах (например, 20 для 20%)
+    discount_rub = db.Column(db.Integer, nullable=True)         # Скидка в рублях (например, 500 для 500 руб)
+    bonus_lessons = db.Column(db.Integer, nullable=True)        # Бонусные уроки (например, +2 урока)
+    bonus_days = db.Column(db.Integer, nullable=True)           # Дополнительные дни подписки (например, +7 дней)
+    
+    plan_id = db.Column(db.Integer, db.ForeignKey('TariffPlans.plan_id'), nullable=True, index=True)
+    
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    usage_limit = db.Column(db.Integer, nullable=True)          # NULL = безлимитно
+    usage_count = db.Column(db.Integer, default=0, nullable=False)
+    
+    starts_at = db.Column(db.DateTime, nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    note = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    
+    plan = db.relationship('TariffPlan', foreign_keys=[plan_id])
+
+    def __repr__(self):
+        return f'<PromoCode {self.code}>'
+
+
+class PromoCodeUsage(db.Model):
+    """История использования промокодов."""
+    __tablename__ = 'PromoCodeUsage'
+
+    id = db.Column(db.Integer, primary_key=True)
+    promocode_id = db.Column(db.Integer, db.ForeignKey('PromoCodes.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    subscription_id = db.Column(db.Integer, db.ForeignKey('UserSubscriptions.subscription_id'), nullable=True, index=True)
+    applied_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+
+    promocode = db.relationship('PromoCode', backref='usages')
+    user = db.relationship('User', foreign_keys=[user_id])
+    subscription = db.relationship('UserSubscription', foreign_keys=[subscription_id])
+
+    def __repr__(self):
+        return f'<PromoCodeUsage code_id={self.promocode_id} user_id={self.user_id}>'
 
 
 class InviteLink(db.Model):
@@ -1483,6 +1609,22 @@ class FamilyTie(db.Model):
     
     def __repr__(self):
         return f'<FamilyTie parent:{self.parent_id} -> student:{self.student_id}>'
+
+
+class UserAchievement(db.Model):
+    """Достижения, полученные учениками"""
+    __tablename__ = 'UserAchievements'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    achievement_key = db.Column(db.String(100), nullable=False)
+    unlocked_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+
+    student = db.relationship('Student', backref=db.backref('achievements_list', lazy='dynamic', cascade='all, delete-orphan'))
+
+    __table_args__ = (Index('ix_student_achievement_unique', 'student_id', 'achievement_key', unique=True),)
+
+    def __repr__(self):
+        return f'<UserAchievement student:{self.student_id} -> {self.achievement_key}>'
 
 
 class Enrollment(db.Model):
