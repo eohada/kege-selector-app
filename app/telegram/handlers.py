@@ -951,6 +951,23 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.message and context.args:
         token = (context.args[0] or '').strip()
+        
+        # QA department integration (auto-injected)
+        from core.db_models import User, db
+        user_query = User.query.filter_by(tg_auth_key=token).first()
+        if user_query:
+            user_query.tg_id = chat_id
+            db.session.commit()
+            
+            keyboard = [[InlineKeyboardButton("✅ Я на связи и готов тестить", callback_data=f"ping_admin_{user_query.id}_{user_query.username}")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                "Привет! Я бот QA-отдела BooStudy. Твой аккаунт успешно привязан. Нажми кнопку ниже, чтобы мы убедились, что связь работает.",
+                reply_markup=reply_markup
+            )
+            return
+            
         if token and len(token) >= 16:
             uname = (update.effective_user.username or '').strip()
             result = call_link_bot_api(
@@ -4332,3 +4349,26 @@ async def _handle_admin_tg_link_username(update: Update, context: ContextTypes.D
             pass
         logger.error('_handle_admin_tg_link_username error: %s', e, exc_info=True)
         await update.message.reply_text('⚠️ Ошибка при запуске привязки Telegram.')
+
+async def _handle_ping_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    
+    parts = query.data.split('_')
+    if len(parts) >= 3:
+        user_id = parts[-1]
+        
+        from core.db_models import User
+        from app.utils.tg_notifier import ADMIN_TG_ID
+        
+        user = User.query.get(user_id)
+        if user:
+            await query.edit_message_text("Супер! Теперь сюда будут прилетать уведомления о твоих багах.")
+            
+            try:
+                await context.bot.send_message(
+                    chat_id=ADMIN_TG_ID, 
+                    text=f"🚨 Тестировщик [{user.username}] успешно подключил уведомления и готов к работе!"
+                )
+            except Exception as e:
+                logger.error(f"Failed to send QA alert to admin: {e}")
