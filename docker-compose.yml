@@ -1,0 +1,178 @@
+services:
+  # === БАЗА ДАННЫХ ===
+  db:
+    image: postgres:17-alpine
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: boostudy_user
+      POSTGRES_PASSWORD: boostudy_password
+      POSTGRES_DB: boostudy_prod
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U boostudy_user -d boostudy_prod"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # === REDIS (Почтовое отделение для фоновых задач) ===
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # === CELERY WORKER (Рабочий, рассылающий уведомления) ===
+  celery-worker:
+    build: .
+    command: >
+      celery -A celery_app.celery worker
+      --loglevel=info
+      --concurrency=2
+    env_file: .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+
+  telegram-poller:
+    build: .
+    command: python -m app.telegram.polling
+    env_file: .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod
+      - TELEGRAM_POLLING_DROP_PENDING_UPDATES=false
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # === CELERY BEAT (Часы, следящие за дедлайнами) ===
+  celery-beat:
+    build: .
+    command: >
+      celery -A celery_app.celery beat
+      --loglevel=info
+    env_file: .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # === PRODUCTION (Основной сайт) ===
+  web_prod:
+    build: .
+    restart: always
+    command: gunicorn wsgi:app --bind 0.0.0.0:8000 --worker-class eventlet --workers 1 --timeout 120
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod
+      - FLASK_ENV=production
+      - ENVIRONMENT=production
+      - ADMIN_SECRET=${ADMIN_SECRET}
+      # Переменные для связи сайта с фоновыми задачами
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+
+  # === SANDBOX (Тестовый полигон) ===
+  web_sandbox:
+    build: .
+    restart: always
+    command: gunicorn wsgi:app --bind 0.0.0.0:9000 -k eventlet --workers 1 --timeout 120
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_sandbox
+      - FLASK_ENV=development
+      - ENVIRONMENT=sandbox
+      - ADMIN_SECRET=${ADMIN_SECRET}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - USE_EVENTLET=true
+      - EVENTLET_NO_GREENDNS=yes
+
+  # === ADMIN PANEL ===
+  web_admin:
+    build: .
+    restart: always
+    command: gunicorn wsgi:app --bind 0.0.0.0:7000 --workers 2 --threads 2 --timeout 120
+    ports:
+      - "7000:7000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_admin
+      - FLASK_ENV=production
+      - ENVIRONMENT=${ADMIN_ENV}
+      - ADMIN_SECRET=${ADMIN_SECRET}
+
+  trainer:
+    build: .
+    restart: always
+    command: streamlit run trainer_app/app.py --server.port 8501 --server.address 0.0.0.0 --server.baseUrlPath /trainer-core
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      - web_prod
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+  boostudy_demo_default:
+    external: true
