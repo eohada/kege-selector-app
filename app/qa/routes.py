@@ -479,7 +479,10 @@ def ad_hoc_bug():
         tester_name = current_user.username or "Неизвестный"
         area_name = test.area or "Общая зона"
         test_title = test.title or f"Тест #{test.id}"
-        send_tg_message(ADMIN_TG_ID, f"🐛 Новый баг от {tester_name} в зоне {area_name}: {test_title}")
+        send_tg_message(ADMIN_TG_ID, f"🐛 НОВЫЙ БАГ!
+От: {tester_name}
+Зона: {area_name}
+Суть: {test_title}")
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'tab': 'attention'})

@@ -4211,6 +4211,100 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not update.message or update.message.chat.type != 'private':
         return
     touch_telegram_activity(update.effective_chat.id)
+
+    chat_id = update.effective_chat.id
+    text_val = (update.message.text or "").strip()
+
+    QA_TESTERS = {
+        "QA_Misha_Auth_901": {"name": "Миша", "category": "Вход и деньги"},
+        "QA_Max_Admin_552": {"name": "Максим", "category": "Админка и управление"},
+        "QA_Vika_Mobile_883": {"name": "Вика", "category": "Мобильный инспектор"},
+        "QA_Alina_Lib_104": {"name": "Алина", "category": "Библиотека знаний"},
+        "QA_Roma_Tasks_775": {"name": "Рома", "category": "Задачи, домашка, генератор"},
+        "QA_David_Code_226": {"name": "Давид", "category": "Кодерская"},
+        "QA_Olya_Notif_447": {"name": "Оля", "category": "Тг, уведомления, родители"},
+        "test": {"name": "Тестовый Юзер", "category": "Тестовая зона"}
+    }
+
+    if text_val in QA_TESTERS:
+        tester_info = QA_TESTERS[text_val]
+        tester_name = tester_info["name"]
+        tester_category = tester_info["category"]
+        
+        with get_session() as session:
+            from sqlalchemy import text as sa_text
+            user_query = session.execute(
+                sa_text("SELECT id, username FROM \"Users\" WHERE tg_auth_key = :k LIMIT 1"),
+                {"k": text_val}
+            ).fetchone()
+            
+            if user_query:
+                user_id = user_query.id
+                username = user_query.username
+                tg_tag = update.effective_user.username or username
+                
+                session.execute(
+                    sa_text("UPDATE \"Users\" SET tg_id = :chat_id WHERE id = :uid"),
+                    {"chat_id": chat_id, "uid": user_id}
+                )
+                session.commit()
+                
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                callback_str = f"ping_admin_{user_id}_{tg_tag}"[:64]
+                keyboard = [[InlineKeyboardButton("✅ Я на связи и готов тестить", callback_data=callback_str)]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                msg_text = (
+                    f"Привет, {tester_name}! 👾
+"
+                    f"Я — боевой бот QA-отдела BooStudy. Я создан, чтобы оперативно доставлять тебе уведомления о новых багах, ретестах и задачах, чтобы мы вместе делали платформу идеальной!
+
+"
+                    f"Твоя категория тестирования: 🎯 {tester_category}
+"
+                    f"Твой аккаунт успешно привязан. Нажми кнопку ниже, чтобы я убедился, что связь работает!"
+                )
+                
+                context.user_data["qa_category"] = tester_category
+                context.user_data["qa_name"] = tester_name
+                
+                await update.message.reply_text(msg_text, reply_markup=reply_markup)
+                return
+
+    touch_telegram_activity(update.effective_chat.id)
+
+    chat_id = update.effective_chat.id
+    text_val = (update.message.text or "").strip()
+
+    # QA Department check
+    if text_val:
+        with get_session() as session:
+            from sqlalchemy import text as sa_text
+            user_query = session.execute(
+                sa_text('SELECT id, username FROM "Users" WHERE tg_auth_key = :k LIMIT 1'),
+                {"k": text_val}
+            ).fetchone()
+            
+            if user_query:
+                user_id = user_query.id
+                username = user_query.username
+                
+                session.execute(
+                    sa_text('UPDATE "Users" SET tg_id = :chat_id WHERE id = :uid'),
+                    {"chat_id": chat_id, "uid": user_id}
+                )
+                session.commit()
+                
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                keyboard = [[InlineKeyboardButton("✅ Я на связи и готов тестить", callback_data=f"ping_admin_{user_id}_{username}")]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(
+                    "Привет! Я бот QA-отдела BooStudy. Твой аккаунт успешно привязан. Нажми кнопку ниже, чтобы мы убедились, что связь работает.",
+                    reply_markup=reply_markup
+                )
+                return
+
     pending_feedback = context.user_data.get(_CTX_NOTIFICATION_MULTI_FEEDBACK) or _load_notification_multi_feedback(update.effective_chat.id)
     if pending_feedback:
         await _handle_notification_multi_feedback_text(update, context, pending_feedback)
@@ -4356,19 +4450,30 @@ async def _handle_ping_admin(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     parts = query.data.split('_')
     if len(parts) >= 3:
-        user_id = parts[-1]
+        user_id = parts[2]
+        tg_tag = parts[3] if len(parts) > 3 else "Unknown"
+        
+        tester_name = context.user_data.get("qa_name", "Тестировщик")
+        tester_category = context.user_data.get("qa_category", "Общая")
         
         from core.db_models import User
         from app.utils.tg_notifier import ADMIN_TG_ID
         
         user = User.query.get(user_id)
         if user:
-            await query.edit_message_text("Супер! Теперь сюда будут прилетать уведомления о твоих багах.")
+            await query.edit_message_text("Супер! Связь установлена 🚀
+Теперь сюда будут прилетать уведомления о багах из твоей зоны ответственности.")
             
             try:
-                await context.bot.send_message(
-                    chat_id=ADMIN_TG_ID, 
-                    text=f"🚨 Тестировщик [{user.username}] успешно подключил уведомления и готов к работе!"
+                msg = (
+                    f"🚨 QA ALERT!
+"
+                    f"Тестировщик @{tg_tag} ({tester_name}) успешно подключил уведомления и готов к работе!
+"
+                    f"Категория: {tester_category}"
                 )
+                await context.bot.send_message(chat_id=ADMIN_TG_ID, text=msg)
             except Exception as e:
-                logger.error(f"Failed to send QA alert to admin: {e}")
+                import logging
+                logging.getLogger(__name__).error(f"Failed to send QA alert to admin: {e}")
+
