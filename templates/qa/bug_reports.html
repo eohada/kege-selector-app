@@ -37,7 +37,7 @@
             <a href="{{ return_to }}" class="neo-button ghost">← Вернуться в QA кабинет</a>
             {% endif %}
             <a href="{{ url_for('qa.bug_report', return_to=return_to) }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать баг-репорт</a>
-            <a href="{{ url_for('qa_tester.board') }}" class="neo-button ghost">Канбан</a>
+            <a href="{{ url_for('chief_tester.dashboard') }}" class="neo-button ghost">Канбан</a>
         </div>
     </div>
 
