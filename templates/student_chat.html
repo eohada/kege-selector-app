@@ -2,16 +2,23 @@
 {% block title %}Чат · {{ student.name }} · BooStudy{% endblock %}
 {% set active_page = 'student_profile' %}
 
-{% block content %}
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
 
-    <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
-        <i class="ph-fill ph-chat-circle-text absolute -right-10 -bottom-10 text-[220px] text-slate-50 pointer-events-none"></i>
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .min-h-520px { min-height: 520px; }
+    .text-220px { font-size: 220px; }
+    .max-w-85 { max-width: 85%; }
+</style>
+{% block content %}
+<div class="flex flex-col gap-6 w-full">
+
+    <div class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
+        <i class="ph-fill ph-chat-circle-text absolute -right-10 -bottom-10 text-220px text-slate-50 pointer-events-none"></i>
         <div class="relative z-10">
             <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="inline-flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary transition-colors no-underline">
                 <i class="ph-bold ph-arrow-left"></i> В комнату
             </a>
-            <h1 class="text-4xl font-black text-primary tracking-tight mt-3 mb-2">Чат с наставником</h1>
+            <h1 class="text-lg font-bold text-primary tracking-tight mt-3 mb-2">Чат с наставником</h1>
             <p class="text-muted font-medium text-lg">
                 Диалог привязан к уроку: <span class="font-bold text-secondary">{{ lesson.topic or 'Урок' }}</span>
                 {% if lesson.lesson_date %} · {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}{% endif %}
@@ -26,7 +33,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <div class="lg:col-span-2 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-0 overflow-hidden flex flex-col min-h-[520px]">
+        <div class="lg:col-span-2 bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-0 overflow-hidden flex flex-col min-h-520px">
             <div id="chatList" class="flex-1 p-6 space-y-3 overflow-y-auto bg-slate-50/40"></div>
 
             <form id="chatForm" class="p-5 border-t border-slate-200 bg-surface flex items-end gap-3">
@@ -42,8 +49,8 @@
             </form>
         </div>
 
-        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
-            <h3 class="text-xl font-black text-primary mb-3">Подсказки</h3>
+        <div class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6">
+            <h3 class="text-base font-bold text-primary mb-3">Подсказки</h3>
             <div class="space-y-3 text-sm font-medium text-muted leading-relaxed">
                 <div class="p-4 rounded-2xl bg-surface-alt border border-slate-200/60">
                     Пиши конкретно: что сделал, где застрял, что ожидал получить.
@@ -51,7 +58,7 @@
                 <div class="p-4 rounded-2xl bg-surface-alt border border-slate-200/60">
                     Если вопрос по задаче — приложи номер задания или ссылку на работу.
                 </div>
-                <a href="{{ url_for('assignments.submissions_list') }}" class="w-full py-3 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
+                <a href="{{ url_for('assignments.submissions_list') }}" class="w-full py-2 bg-surface text-secondary border border-slate-200 rounded-xl font-bold hover:bg-surface-alt transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none dark:shadow-none text-sm no-underline">
                     Перейти к заданиям <i class="ph-bold ph-arrow-right"></i>
                 </a>
             </div>
@@ -86,9 +93,9 @@
     const wrap = document.createElement('div');
     wrap.className = `flex ${mine ? 'justify-end' : 'justify-start'}`;
     wrap.innerHTML = `
-      <div class="${mine ? 'bg-boo-primary text-white border-purple-300/20' : 'bg-surface text-primary border-slate-200'} max-w-[85%] rounded-2xl border px-4 py-3 shadow-sm dark:shadow-none dark:shadow-none">
+      <div class="${mine ? 'bg-boo-primary text-white border-purple-300/20' : 'bg-surface text-primary border-slate-200'} max-w-85 rounded-2xl border px-4 py-3 shadow-sm dark:shadow-none dark:shadow-none">
         <div class="text-sm font-semibold leading-relaxed whitespace-pre-wrap break-words">${esc(m.body)}</div>
-        <div class="${mine ? 'text-purple-100/80' : 'text-muted'} text-[10px] font-extrabold uppercase tracking-widest mt-2">${esc(fmtTime(m.created_at))}</div>
+        <div class="${mine ? 'text-purple-100/80' : 'text-muted'} text-tiny font-extrabold uppercase tracking-widest mt-2">${esc(fmtTime(m.created_at))}</div>
       </div>
     `;
     return wrap;

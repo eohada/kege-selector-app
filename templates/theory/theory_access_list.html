@@ -6,21 +6,28 @@
 {% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
 {% block head_css %}
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .shadow-0-4px-12px-rgba139-92-246-005 { box-shadow: 0 4px 12px rgba(139,92,246,0.05); }
+    .active-scale-098:active { transform: scale(0.98); }
+    .text-15px { font-size: 15px; }
+</style>
+
 <style>
     .access-container { max-width: 1600px; margin: 0 auto; width: 100%; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="access-container pt-6 pb-12 px-4 lg:px-8">
-    <section class="mb-6 flex flex-col gap-2">
+<div class="access-container pt-6 pb-8 w-full">
+    <section class="mb-3 flex flex-col gap-2">
         <div class="back-link">
             <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" class="text-sm font-bold text-muted hover:text-boo-primary no-underline flex items-center gap-1.5 transition-colors">
               <i class="ph-bold ph-arrow-left"></i> Управление теорией
             </a>
         </div>
         <div class="mt-2">
-            <h1 class="text-3xl font-black text-primary">Доступ к теории по ученикам</h1>
+            <h1 class="text-2xl font-bold text-primary">Доступ к теории по ученикам</h1>
             <p class="text-sm font-semibold text-muted">Выберите ученика, чтобы открыть или закрыть просмотр теории по конкретным номерам заданий (1–27).</p>
         </div>
     </section>
@@ -28,22 +35,22 @@
     {% if students %}
     <div class="space-y-3">
         {% for s in students %}
-        <div class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.08] rounded-2xl p-5 flex justify-between items-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+        <div class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-avatar rounded-2xl p-5 flex justify-between items-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-100 dark:border-purple-900/40">
                     <i class="ph-bold ph-user text-lg"></i>
                 </div>
-                <span class="font-extrabold text-secondary dark:text-slate-200 text-[15px]">{{ s.name or 'Ученик #' ~ s.student_id }}</span>
+                <span class="font-extrabold text-secondary dark:text-slate-200 text-15px">{{ s.name or 'Ученик #' ~ s.student_id }}</span>
             </div>
-            <a href="{{ url_for('theory.manage_access_student', student_id=s.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=s.student_id) }}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-xs transition-all duration-150 active:scale-[0.98] select-none cursor-pointer shadow-[0_4px_12px_rgba(139,92,246,0.05)] no-underline">
+            <a href="{{ url_for('theory.manage_access_student', student_id=s.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=s.student_id) }}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-xs transition-all duration-150 active-scale-098 select-none cursor-pointer shadow-0-4px-12px-rgba139-92-246-005 no-underline">
                 Настроить доступ <i class="ph-bold ph-arrow-right"></i>
             </a>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.08] border-dashed rounded-[32px] p-12 text-center text-muted font-bold">
-        <i class="ph-bold ph-users-three text-4xl text-muted/40 mb-3 block"></i>
+    <div class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-avatar border-dashed rounded-2xl p-5 text-center text-muted font-bold">
+        <i class="ph-bold ph-users-three text-2xl text-muted/40 mb-3 block"></i>
         Нет учеников в вашей зоне видимости.
     </div>
     {% endif %}

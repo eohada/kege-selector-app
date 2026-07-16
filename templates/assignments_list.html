@@ -10,83 +10,104 @@
 </style>
 {% endblock %}
 
-{% block content %}
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 -mt-2">
 
-    <div class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-[32px] p-8 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden flex flex-col">
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .active-scale-098:active { transform: scale(0.98); }
+    .shadow-0-0-12px-rgba244-63-94-012 { box-shadow: 0 0 12px rgba(244,63,94,0.12); }
+    .hover-shadow-0-6px-16px-rgba139-92-246-015:hover { box-shadow: 0 6px 16px rgba(139,92,246,0.15); }
+    .bg-length-16px { background-color: length:16px; }
+    .shadow-0-0-12px-rgba16-185-129-012 { box-shadow: 0 0 12px rgba(16,185,129,0.12); }
+    .hover-shadow-0-6px-20px-rgba139-92-246-015:hover { box-shadow: 0 6px 20px rgba(139,92,246,0.15); }
+    .shadow-0-0-12px-rgba100-116-139-012 { box-shadow: 0 0 12px rgba(100,116,139,0.12); }
+    .bg-right-12px-center { background-color: right 12px center; }
+    .shadow-0-0-12px-rgba245-158-11-012 { box-shadow: 0 0 12px rgba(245,158,11,0.12); }
+    .shadow-0-0-12px-rgba139-92-246-012 { box-shadow: 0 0 12px rgba(139,92,246,0.12); }
+    .shadow-0-0-12px-rgba6-182-212-012 { box-shadow: 0 0 12px rgba(6,182,212,0.12); }
+    .bg-urldata-image-svgxmlcharsetutf-8-3Csvg { background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg; }
+    .hover-shadow-0-4px-12px-rgba139-92-246-01:hover { box-shadow: 0 4px 12px rgba(139,92,246,0.1); }
+    .hover-shadow-0-4px-12px-rgba16-185-129-012:hover { box-shadow: 0 4px 12px rgba(16,185,129,0.12); }
+    .shadow-0-4px-12px-rgba139-92-246-008 { box-shadow: 0 4px 12px rgba(139,92,246,0.08); }
+    .shadow-0-4px-12px-rgba139-92-246-006 { box-shadow: 0 4px 12px rgba(139,92,246,0.06); }
+    .hover-shadow-0-6px-16px-rgba139-92-246-012:hover { box-shadow: 0 6px 16px rgba(139,92,246,0.12); }
+</style>
+{% block content %}
+<div class="flex flex-col gap-6 -mt-2 w-full">
+
+    <div class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-2xl p-6 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden flex flex-col">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-boo-primary/10 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute right-40 bottom-[-50px] w-60 h-60 bg-purple-200/20 dark:bg-indigo-900/10 rounded-full blur-2xl pointer-events-none"></div>
         <div class="relative z-10">
-            <div class="text-[10px] font-extrabold text-indigo-500 dark:text-purple-400 uppercase tracking-widest mb-1">Учёба</div>
-            <h1 class="text-4xl font-black text-primary tracking-tight mb-3">Работы</h1>
-            <p class="text-muted font-medium text-sm max-w-3xl leading-relaxed mb-6">
+            <div class="text-tiny font-extrabold text-indigo-500 dark:text-purple-400 uppercase tracking-widest mb-1">Учёба</div>
+            <h1 class="text-lg font-bold text-primary tracking-tight mb-3">Работы</h1>
+            <p class="text-muted font-medium text-sm max-w-3xl leading-relaxed mb-3">
                 Работы с дедлайном: создаёшь, раздаёшь ученикам, проверяешь. Задачи по урокам (ДЗ, классная, проверочная) проверяются на странице занятия и в разделе «Проверка».
             </p>
-            <div class="flex flex-wrap items-center gap-3 mb-8">
+            <div class="flex flex-wrap items-center gap-3 mb-3">
                 {% if can_create %}
-                <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] no-underline">
+                <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="h-9 px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-008 hover-shadow-0-6px-16px-rgba139-92-246-015 no-underline">
                     <i class="ph-bold ph-plus text-base"></i> Создать работу
                 </a>
-                <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam', probnik_random=1) }}" data-quick-probnik-link="1" class="h-11 px-5 py-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700/50 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow-[0_4px_12px_rgba(16,185,129,0.12)] no-underline">
+                <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam', probnik_random=1) }}" data-quick-probnik-link="1" class="h-9 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700/50 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover-shadow-0-4px-12px-rgba16-185-129-012 no-underline">
                     <i class="ph-bold ph-scroll text-base"></i> Быстрый пробник
                 </a>
-                <button type="button" data-quick-probnik-random-toggle="1" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+                <button type="button" data-quick-probnik-random-toggle="1" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
                     <i class="ph-bold ph-shuffle text-base"></i> Рандом: ВКЛ
                 </button>
                 {% endif %}
-                <a href="{{ url_for('task_generator.task_generator') }}" class="h-11 px-5 py-2.5 bg-white/40 dark:bg-zinc-900/40 border border-purple-200 dark:border-purple-500/20 text-purple-750 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-zinc-800/60 hover:border-purple-300 dark:hover:border-purple-500/40 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.06)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.12)] no-underline">
+                <a href="{{ url_for('task_generator.task_generator') }}" class="h-9 px-4 py-2.5 bg-white/40 dark:bg-zinc-900/40 border border-purple-200 dark:border-purple-500/20 text-purple-750 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-zinc-800/60 hover:border-purple-300 dark:hover:border-purple-500/40 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-006 hover-shadow-0-6px-16px-rgba139-92-246-012 no-underline">
                     <i class="ph-bold ph-magic-wand text-base"></i> Открыть генератор
                 </a>
-                <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-550 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-350 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
+                <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-550 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-350 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
                     <i class="ph-bold ph-check-square text-base"></i> Очередь проверки
                 </a>
             </div>
-            <div class="flex items-center gap-2.5 text-sm font-bold text-slate-600 dark:text-zinc-300 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 max-w-3xl mt-2 mb-6">
+            <div class="flex items-center gap-2.5 text-sm font-bold text-slate-600 dark:text-zinc-300 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 max-w-3xl mt-2 mb-3">
                 <i class="ph-fill ph-lightbulb text-boo-accent shrink-0 text-lg"></i>
                 <span>Совет: сначала прими задания в генераторе → затем создай работу из «Принятых».</span>
             </div>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 relative z-10 mt-auto">
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='active') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-[20px] p-4 border {% if filters.status == 'active' %}border-purple-500 dark:border-purple-400 shadow-[0_0_12px_rgba(139,92,246,0.12)]{% else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 no-underline">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 relative z-10 mt-auto">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='active') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-2xl p-4 border {% if filters.status == 'active' %}border-purple-500 dark:border-purple-400 shadow-0-0-12px-rgba139-92-246-012 else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 no-underline">
                 <div class="text-xs font-extrabold text-muted mb-2">Активные</div>
-                <div class="text-3xl font-black text-primary">{{ kpis.active if kpis else 0 }}</div>
+                <div class="text-2xl font-bold text-primary">{{ kpis.active if kpis else 0 }}</div>
             </a>
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='needs_grading') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-[20px] p-4 border {% if filters.status == 'needs_grading' %}border-cyan-500 dark:border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.12)]{% else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 no-underline">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='needs_grading') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-2xl p-4 border {% if filters.status == 'needs_grading' %}border-cyan-500 dark:border-cyan-400 shadow-0-0-12px-rgba6-182-212-012 else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 no-underline">
                 <div class="text-xs font-extrabold text-primary mb-2">Нужно проверить</div>
-                <div class="text-3xl font-black text-primary">{{ kpis.needs_grading if kpis else 0 }}</div>
+                <div class="text-2xl font-bold text-primary">{{ kpis.needs_grading if kpis else 0 }}</div>
             </a>
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='returned') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-[20px] p-4 border {% if filters.status == 'returned' %}border-amber-500 dark:border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.12)]{% else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 no-underline">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='returned') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-2xl p-4 border {% if filters.status == 'returned' %}border-amber-500 dark:border-amber-400 shadow-0-0-12px-rgba245-158-11-012 else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 no-underline">
                 <div class="text-xs font-extrabold text-muted mb-2">На доработке</div>
-                <div class="text-3xl font-black text-primary">{{ kpis.returned if kpis else 0 }}</div>
+                <div class="text-2xl font-bold text-primary">{{ kpis.returned if kpis else 0 }}</div>
             </a>
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='overdue') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-[20px] p-4 border {% if filters.status == 'overdue' %}border-rose-500 dark:border-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.12)]{% else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 no-underline">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='overdue') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-2xl p-4 border {% if filters.status == 'overdue' %}border-rose-500 dark:border-rose-400 shadow-0-0-12px-rgba244-63-94-012 else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 no-underline">
                 <div class="text-xs font-extrabold text-muted mb-2">Просрочено</div>
-                <div class="text-3xl font-black text-primary">{{ kpis.overdue if kpis else 0 }}</div>
+                <div class="text-2xl font-bold text-primary">{{ kpis.overdue if kpis else 0 }}</div>
             </a>
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='completed') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-[20px] p-4 border {% if filters.status == 'completed' %}border-emerald-500 dark:border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.12)]{% else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 no-underline">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status='completed') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-2xl p-4 border {% if filters.status == 'completed' %}border-emerald-500 dark:border-emerald-400 shadow-0-0-12px-rgba16-185-129-012 else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 no-underline">
                 <div class="text-xs font-extrabold text-muted mb-2">Готово</div>
-                <div class="text-3xl font-black text-primary">{{ kpis.completed if kpis else 0 }}</div>
+                <div class="text-2xl font-bold text-primary">{{ kpis.completed if kpis else 0 }}</div>
             </a>
-            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived='1', status='archived') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-[20px] p-4 border {% if filters.status == 'archived' %}border-slate-500 dark:border-slate-400 shadow-[0_0_12px_rgba(100,116,139,0.12)]{% else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 opacity-90 no-underline">
+            <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived='1', status='archived') }}" class="bg-white/40 dark:bg-zinc-900/30 backdrop-blur-md rounded-2xl p-4 border {% if filters.status == 'archived' %}border-slate-500 dark:border-slate-400 shadow-0-0-12px-rgba100-116-139-012 else %}border-slate-200/50 dark:border-zinc-800/80{% endif %} shadow-sm flex flex-col justify-between hover:bg-white/60 dark:hover:bg-zinc-800/40 transition-all duration-200 hover:-translate-y-0.5 opacity-90 no-underline">
                 <div class="text-xs font-extrabold text-muted mb-2">Архив</div>
-                <div class="text-3xl font-black text-primary">{{ kpis.archived if kpis else 0 }}</div>
+                <div class="text-2xl font-bold text-primary">{{ kpis.archived if kpis else 0 }}</div>
             </a>
         </div>
     </div>
 
-    <div class="bg-surface dark:bg-dark-card rounded-[24px] p-5 border border-slate-200 dark:border-zinc-800/80 border-b-[4px] border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile flex flex-col gap-4">
+    <div class="bg-surface dark:bg-dark-card rounded-xl p-5 border border-slate-200 dark:border-zinc-800/80 border-b-4 border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile flex flex-col gap-4">
         <form method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 items-end" id="assignmentsFilterForm">
             <div class="lg:col-span-4 w-full space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="q">Поиск</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1" for="q">Поиск</label>
                 <div class="relative">
                     <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted text-lg"></i>
-                    <input id="q" name="q" value="{{ filters.q if filters else '' }}" type="text" placeholder="Название работы..." class="w-full h-11 bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
+                    <input id="q" name="q" value="{{ filters.q if filters else '' }}" type="text" placeholder="Название работы..." class="w-full h-9 bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input">
                 </div>
             </div>
             <div class="lg:col-span-2 w-full space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="type">Тип</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1" for="type">Тип</label>
                 <div class="relative">
-                    <select id="type" name="type" class="no-tomselect w-full h-11 pl-4 pr-10 bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat cursor-pointer">
+                    <select id="type" name="type" class="no-tomselect w-full h-9 pl-4 pr-10 bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary appearance-none bg-urldata-image-svgxmlcharsetutf-8-3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-length-16px bg-right-12px-center bg-no-repeat cursor-pointer">
                         <option value="" {% if not filters.type %}selected{% endif %}>Все</option>
                         <option value="homework" {% if filters.type == 'homework' %}selected{% endif %}>ДЗ</option>
                         <option value="classwork" {% if filters.type == 'classwork' %}selected{% endif %}>КР</option>
@@ -96,9 +117,9 @@
                 </div>
             </div>
             <div class="lg:col-span-2 w-full space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="sort">Сортировка</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1" for="sort">Сортировка</label>
                 <div class="relative">
-                    <select id="sort" name="sort" class="no-tomselect w-full h-11 pl-4 pr-10 bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat cursor-pointer">
+                    <select id="sort" name="sort" class="no-tomselect w-full h-9 pl-4 pr-10 bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary appearance-none bg-urldata-image-svgxmlcharsetutf-8-3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-length-16px bg-right-12px-center bg-no-repeat cursor-pointer">
                         <option value="created_desc" {% if (filters.sort if filters else '') == 'created_desc' %}selected{% endif %}>Сначала новые</option>
                         <option value="deadline_asc" {% if (filters.sort if filters else '') == 'deadline_asc' %}selected{% endif %}>Дедлайн ближе</option>
                         <option value="deadline_desc" {% if (filters.sort if filters else '') == 'deadline_desc' %}selected{% endif %}>Дедлайн дальше</option>
@@ -106,16 +127,16 @@
                     </select>
                 </div>
             </div>
-            <div class="lg:col-span-2 w-full flex items-center h-11 pb-1.5 px-2">
+            <div class="lg:col-span-2 w-full flex items-center h-9 pb-1.5 px-2">
                 <label class="flex items-center gap-2 cursor-pointer group select-none">
                     <input id="archivedToggle" type="checkbox" name="archived" value="1" {% if (filters.archived if filters else '0') == '1' %}checked{% endif %} class="w-4 h-4 rounded border-slate-350 dark:border-zinc-700 text-boo-primary focus:ring-boo-primary dark:bg-zinc-900">
                     <span class="text-sm font-bold text-secondary dark:text-zinc-300">Показывать архив</span>
                 </label>
             </div>
             <input type="hidden" name="status" value="{{ filters.status if filters else 'all' }}">
-            <div class="lg:col-span-2 w-full flex gap-2 h-11">
-                <button type="submit" class="flex-1 h-full bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_20px_rgba(139,92,246,0.15)]">Применить</button>
-                <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 h-full bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center no-underline">Сброс</a>
+            <div class="lg:col-span-2 w-full flex gap-2 h-9">
+                <button type="submit" class="flex-1 h-full bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-008 hover-shadow-0-6px-20px-rgba139-92-246-015">Применить</button>
+                <a href="{{ url_for('assignments.assignments_list') }}" class="px-4 h-full bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center no-underline">Сброс</a>
             </div>
         </form>
 
@@ -132,7 +153,7 @@
                  ] %}
                     {% if stat != 'archived' or (filters.archived if filters else '0') == '1' %}
                         <a href="{{ url_for('assignments.assignments_list', q=filters.q, type=filters.type, sort=filters.sort, archived=filters.archived, status=stat) }}" class="flex items-center justify-center px-4 py-2 text-xs font-bold transition-all no-underline {% if filters.status == stat %}bg-white dark:bg-zinc-800 text-primary dark:text-white rounded-lg shadow-sm border border-slate-200/50 dark:border-zinc-700/50{% else %}text-slate-500 hover:text-primary dark:text-zinc-400 dark:hover:text-white rounded-lg{% endif %}">
-                            {{ label }} <span class="ml-1.5 text-[10px] opacity-75 font-semibold">({{ count }})</span>
+                            {{ label }} <span class="ml-1.5 text-tiny opacity-75 font-semibold">({{ count }})</span>
                         </a>
                     {% endif %}
                 {% endfor %}
@@ -148,17 +169,17 @@
         {% set graded = item.graded %}
         {% set submitted_pct = ( (submitted * 100 / total) if total else 0 ) %}
         {% set graded_pct = ( (graded * 100 / total) if total else 0 ) %}
-        <article class="bg-surface dark:bg-dark-card rounded-[28px] border border-slate-200 dark:border-zinc-800/80 border-b-[4px] border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300" data-assignment-id="{{ item.assignment.assignment_id }}">
-            <h3 class="text-lg font-black text-primary mb-3 leading-tight truncate" title="{{ item.assignment.title }}">
+        <article class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-zinc-800/80 border-b-4 border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-6 flex flex-col hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300" data-assignment-id="{{ item.assignment.assignment_id }}">
+            <h3 class="text-sm font-bold text-primary mb-3 leading-tight truncate" title="{{ item.assignment.title }}">
                 <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="text-inherit no-underline hover:text-boo-primary transition-colors">{{ item.assignment.title }}</a>
             </h3>
             <div class="flex flex-wrap gap-2 mb-5">
-                <span class="bg-slate-50 dark:bg-zinc-900/40 text-slate-500 dark:text-zinc-400 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-slate-200/60 dark:border-zinc-800/80">Тип: {{ item.type_short }}</span>
-                {% if item.is_archived %}<span class="bg-slate-50 dark:bg-zinc-900/40 text-slate-500 dark:text-zinc-400 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-slate-200/60 dark:border-zinc-800/80">Архив</span>{% endif %}
-                {% if item.is_overdue %}<span class="bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-rose-500/20">Просрочено</span>{% endif %}
-                {% if item.to_grade and item.to_grade > 0 %}<span class="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-cyan-500/20">Нужно проверить: {{ item.to_grade }}</span>{% endif %}
-                {% if item.returned and item.returned > 0 %}<span class="bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-amber-500/20">На доработке: {{ item.returned }}</span>{% endif %}
-                {% if item.is_completed %}<span class="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-emerald-500/20">Готово</span>{% endif %}
+                <span class="bg-slate-50 dark:bg-zinc-900/40 text-slate-500 dark:text-zinc-400 text-tiny font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-slate-200/60 dark:border-zinc-800/80">Тип: {{ item.type_short }}</span>
+                {% if item.is_archived %}<span class="bg-slate-50 dark:bg-zinc-900/40 text-slate-500 dark:text-zinc-400 text-tiny font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-slate-200/60 dark:border-zinc-800/80">Архив</span>{% endif %}
+                {% if item.is_overdue %}<span class="bg-rose-500/10 text-rose-600 dark:text-rose-400 text-tiny font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-rose-500/20">Просрочено</span>{% endif %}
+                {% if item.to_grade and item.to_grade > 0 %}<span class="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-tiny font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-cyan-500/20">Нужно проверить: {{ item.to_grade }}</span>{% endif %}
+                {% if item.returned and item.returned > 0 %}<span class="bg-amber-500/10 text-amber-600 dark:text-amber-400 text-tiny font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-amber-500/20">На доработке: {{ item.returned }}</span>{% endif %}
+                {% if item.is_completed %}<span class="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-tiny font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md border border-emerald-500/20">Готово</span>{% endif %}
             </div>
             <div class="space-y-2 mb-5 text-sm text-muted">
                 <div class="flex flex-wrap items-center gap-2">
@@ -168,22 +189,22 @@
                 <div class="inline-flex items-center gap-2"><i class="ph-fill ph-file-text text-indigo-400 dark:text-purple-400"></i> Задач: <b class="text-primary font-bold">{{ item.tasks_count }}</b></div>
             </div>
             {% if item.student_submissions %}
-            <div class="flex flex-wrap gap-1.5 mb-6">
+            <div class="flex flex-wrap gap-1.5 mb-3">
                 {% for ss in item.student_submissions %}
-                <a href="{{ url_for('students.student_profile', student_id=ss.student_id) }}" class="bg-purple-500/5 hover:bg-purple-500/10 text-boo-primary dark:text-purple-400 border border-purple-500/10 dark:border-purple-500/20 text-[11px] font-bold px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm dark:shadow-none no-underline hover:bg-purple-100/50" title="{{ ss.status }}">
+                <a href="{{ url_for('students.student_profile', student_id=ss.student_id) }}" class="bg-purple-500/5 hover:bg-purple-500/10 text-boo-primary dark:text-purple-400 border border-purple-500/10 dark:border-purple-500/20 text-small font-bold px-2 py-1 rounded-md flex items-center gap-1.5 shadow-sm dark:shadow-none no-underline hover:bg-purple-100/50" title="{{ ss.status }}">
                     <span class="w-1.5 h-1.5 rounded-full {% if ss.status == 'GRADED' %}bg-emerald-500{% elif ss.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] %}bg-boo-primary{% elif ss.status == 'RETURNED' %}bg-amber-400{% elif ss.status == 'IN_PROGRESS' %}bg-slate-400{% else %}bg-slate-350{% endif %}"></span>
                     {{ ss.name }}
                 </a>
                 {% endfor %}
             </div>
             {% endif %}
-            <div class="flex gap-2 mb-6 mt-auto">
+            <div class="flex gap-2 mb-3 mt-auto">
                 {% if item.to_grade and item.to_grade > 0 %}
-                <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="flex-1 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 text-sm font-extrabold px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-[0_4px_12px_rgba(139,92,246,0.1)] active:scale-[0.98] no-underline text-center">Проверить ({{ item.to_grade }})</a>
+                <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="flex-1 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 text-sm font-extrabold px-4 py-2.5 rounded-xl transition-all shadow-sm hover-shadow-0-4px-12px-rgba139-92-246-01 active-scale-098 no-underline text-center">Проверить ({{ item.to_grade }})</a>
                 {% endif %}
-                <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="bg-slate-50 dark:bg-zinc-900/40 hover:bg-slate-100 dark:hover:bg-zinc-800/60 border border-slate-200 dark:border-zinc-800/80 text-secondary dark:text-zinc-350 text-sm font-extrabold px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-[0.98] no-underline text-center {% if not item.to_grade %}flex-1{% endif %}">Открыть</a>
+                <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" class="bg-slate-50 dark:bg-zinc-900/40 hover:bg-slate-100 dark:hover:bg-zinc-800/60 border border-slate-200 dark:border-zinc-800/80 text-secondary dark:text-zinc-350 text-sm font-extrabold px-4 py-2.5 rounded-xl transition-all shadow-sm active-scale-098 no-underline text-center {% if not item.to_grade %}flex-1{% endif %}">Открыть</a>
             </div>
-            <div class="mb-4">
+            <div class="mb-3">
                 <div class="w-full h-1.5 bg-slate-100 dark:bg-zinc-900/60 rounded-full overflow-hidden mb-2 relative">
                     <div class="h-full bg-cyan-500/60 dark:bg-cyan-400/50 rounded-full absolute left-0 top-0" style="width: {{ submitted_pct }}%;"></div>
                     <div class="h-full bg-boo-primary rounded-full absolute left-0 top-0" style="width: {{ graded_pct }}%;"></div>
@@ -223,15 +244,15 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="bg-surface rounded-[32px] border-2 border-slate-200 border-dashed p-12 lg:p-16 text-center shadow-tactile">
-        <div class="w-20 h-20 bg-surface-alt rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-100">
-            <i class="ph-fill ph-tray text-4xl text-slate-300"></i>
+    <div class="bg-surface rounded-2xl border-2 border-slate-200 border-dashed p-5 lg:p-16 text-center shadow-tactile">
+        <div class="w-20 h-20 bg-surface-alt rounded-2xl flex items-center justify-center mx-auto mb-3 border border-slate-100">
+            <i class="ph-fill ph-tray text-2xl text-slate-300"></i>
         </div>
-        <div class="text-2xl font-black text-primary mb-2">Пока нет работ</div>
-        <p class="text-muted font-medium text-sm max-w-xl mx-auto leading-relaxed mb-8">
+        <div class="text-lg font-bold text-primary mb-2">Пока нет работ</div>
+        <p class="text-muted font-medium text-sm max-w-xl mx-auto leading-relaxed mb-3">
             Работы создаются из набора задач (обычно — из генератора). После создания здесь появится контроль прогресса и быстрые переходы к проверке.
         </p>
-        <div class="max-w-xl mx-auto text-left space-y-3 mb-8">
+        <div class="max-w-xl mx-auto text-left space-y-3 mb-3">
             <div class="flex gap-3 items-start p-4 bg-surface-alt rounded-2xl border border-slate-100">
                 <div class="w-8 h-8 rounded-lg bg-cyan-100 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 font-black flex items-center justify-center shrink-0 text-sm">1</div>
                 <div><div class="font-black text-primary">Подбери задания</div><div class="text-muted text-sm mt-0.5">В генераторе собери набор и нажми «Принять».</div></div>
@@ -247,20 +268,20 @@
         </div>
         <div class="flex gap-3 justify-center flex-wrap">
             {% if can_create %}
-            <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] no-underline">
+            <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="h-9 px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-008 hover-shadow-0-6px-16px-rgba139-92-246-015 no-underline">
                 <i class="ph-bold ph-plus text-base"></i> Создать работу
             </a>
-            <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam', probnik_random=1) }}" data-quick-probnik-link="1" class="h-11 px-5 py-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700/50 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover:shadow-[0_4px_12px_rgba(16,185,129,0.12)] no-underline">
+            <a href="{{ url_for('assignments.assignment_create', source='probnik', assignment_type='exam', probnik_random=1) }}" data-quick-probnik-link="1" class="h-9 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-700/50 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm hover-shadow-0-4px-12px-rgba16-185-129-012 no-underline">
                 <i class="ph-bold ph-scroll text-base"></i> Быстрый пробник
             </a>
-            <button type="button" data-quick-probnik-random-toggle="1" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+            <button type="button" data-quick-probnik-random-toggle="1" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
                 <i class="ph-bold ph-shuffle text-base"></i> Рандом: ВКЛ
             </button>
             {% endif %}
-            <a href="{{ url_for('task_generator.task_generator') }}" class="h-11 px-5 py-2.5 bg-white/40 dark:bg-zinc-900/40 border border-purple-200 dark:border-purple-500/20 text-purple-750 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-zinc-800/60 hover:border-purple-300 dark:hover:border-purple-500/40 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.06)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.12)] no-underline">
+            <a href="{{ url_for('task_generator.task_generator') }}" class="h-9 px-4 py-2.5 bg-white/40 dark:bg-zinc-900/40 border border-purple-200 dark:border-purple-500/20 text-purple-750 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-zinc-800/60 hover:border-purple-300 dark:hover:border-purple-500/40 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-006 hover-shadow-0-6px-16px-rgba139-92-246-012 no-underline">
                 <i class="ph-bold ph-magic-wand text-base"></i> Открыть генератор
             </a>
-            <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-550 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-350 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
+            <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-550 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-350 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
                 <i class="ph-bold ph-check-square text-base"></i> Очередь проверки
             </a>
         </div>

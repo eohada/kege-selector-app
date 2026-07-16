@@ -37,20 +37,18 @@
 {% set active_page = 'admin' %}
 
 {% block content %}
-<section class="glass-panel mb-5">
-    <div class="panel-head">
+<section class="glass-panel mb-5 w-full">
+    <div class="panel-head flex justify-between items-start mb-4">
         <div>
-            <p class="hero-eyebrow">админка · банк заданий</p>
-            <h1 class="hero-title mb-1">Формироватор базы заданий</h1>
-            <div class="text-text-muted max-w-[900px]">
-                Быстрая проверка спаршенных заданий: условие/ответ + статус ревью. Сейчас это фундамент: дальше сюда можно нарастить редактор, генератор, мультипредметность и ML.
-            </div>
+            <h1 class="hero-title mb-1">Панель управления</h1>
         </div>
         <div class="hero-actions mt-0">
-            <a class="neo-button ghost" href="{{ config.ADMIN_URL or url_for('main.dashboard') }}">← Админ панель</a>
+            <a class="neo-button ghost" href="{{ url_for('main.dashboard') }}" style="text-decoration: none;">← На главную</a>
         </div>
     </div>
-    <div class="flex gap-3 flex-wrap mt-4">
+
+    {% include 'admin/_admin_nav.html' %}
+    <div class="flex gap-3 flex-wrap mt-3">
         <span class="status-badge status-info">Новые: {{ summary.new }}</span>
         <span class="status-badge status-success">ОК: {{ summary.ok }}</span>
         <span class="status-badge status-warning">Нужно править: {{ summary.needs_fix }}</span>
@@ -60,14 +58,14 @@
 
 <section class="tf-grid">
     <div class="glass-panel">
-        <div class="panel-head mb-4">
+        <div class="panel-head mb-3">
             <div>
                 <p class="eyebrow">поиск и фильтры</p>
                 <h2 class="m-0">Список заданий</h2>
                 <div class="text-text-muted mt-1">Найдено: <strong class="text-text-primary">{{ total }}</strong></div>
             </div>
         </div>
-        <form method="GET" action="{{ url_for('admin.admin_task_formator') }}" class="filters-grid mb-4" style="align-items:end;">
+        <form method="GET" action="{{ url_for('admin.admin_task_formator') }}" class="filters-grid mb-3" style="align-items:end;">
             <div class="neo-field">
                 <label class="neo-label">Поиск</label>
                 <input class="neo-input" name="q" value="{{ q }}" placeholder="текст, ответ, source_url, site_task_id">
@@ -113,7 +111,7 @@
             {% endfor %}
         </div>
 
-        <div class="flex justify-between items-center mt-4 gap-3 flex-wrap">
+        <div class="flex justify-between items-center mt-3 gap-3 flex-wrap">
             <div class="text-text-muted text-sm">
                 Стр. {{ page }} · {{ per_page }} / стр.
             </div>
@@ -129,7 +127,7 @@
     </div>
 
     <div class="glass-panel">
-        <div class="panel-head mb-4">
+        <div class="panel-head mb-3">
             <div>
                 <p class="eyebrow">карточка проверки</p>
                 <h2 class="m-0" id="taskTitle">Выберите задание</h2>
@@ -155,7 +153,7 @@
                     <h3 class="m-0">Быстрая проверка</h3>
                     <span class="status-badge status-info" id="reviewBadge">Ревью: новое</span>
                 </div>
-                <div id="checks" class="flex flex-col gap-3 mt-4"></div>
+                <div id="checks" class="flex flex-col gap-3 mt-3"></div>
             </div>
 
             <div>

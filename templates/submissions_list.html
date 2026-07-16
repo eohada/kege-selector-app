@@ -4,6 +4,13 @@
 {% block html_attrs %}data-student-assignments="1"{% endblock %}
 {% block body_attrs %}data-cinema-scene="submissions"{% endblock %}
 
+
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .text-64px { font-size: 64px; }
+    .shadow-0-8px-24px--4px-rgba251-113-133-028 { box-shadow: 0 8px 24px -4px rgba(251,113,133,0.28); }
+    .shadow-0-8px-24px--4px-rgba15-23-42-005 { box-shadow: 0 8px 24px -4px rgba(15,23,42,0.05); }
+</style>
 {% block content %}
 {% set in_work_statuses = ['ASSIGNED','IN_PROGRESS','RETURNED'] %}
 {% set on_review_statuses = ['SUBMITTED','NEEDS_MANUAL_REVIEW'] %}
@@ -12,31 +19,31 @@
 {% set on_review_count = (submissions|selectattr('status','in',on_review_statuses)|list)|length if submissions else 0 %}
 {% set completed_count = (submissions|selectattr('status','in',completed_statuses)|list)|length if submissions else 0 %}
 
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
+<div class="flex flex-col gap-6 w-full">
 
   <!-- ШАПКА И ФИЛЬТРЫ -->
-  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-surface dark:bg-dark-card rounded-[32px] p-8 lg:p-10 border border-slate-200 dark:border-white/5 shadow-tactile dark:shadow-glass-dark">
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-surface dark:bg-dark-card rounded-2xl p-6 lg:p-6 border border-slate-200 dark:border-white/5 shadow-tactile dark:shadow-glass-dark">
     <div class="min-w-0">
-      <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] font-black text-primary dark:text-white tracking-tight leading-tight mb-2">Твои задания</h1>
+      <h1 class="text-3xl sm:text-2xl lg:text-[2.5rem] font-black text-primary dark:text-white tracking-tight leading-tight mb-2">Твои задания</h1>
       <p class="text-muted dark:text-dark-muted font-medium text-sm sm:text-base leading-relaxed">Решай задачи, получай баллы и повышай свой скилл.</p>
     </div>
 
-    <div class="bg-slate-100/80 dark:bg-dark-inner/60 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50 dark:border-white/[0.08]">
-      <button type="button" class="task-tab px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 dark:bg-white/10 dark:text-white dark:border-white/[0.08] flex items-center gap-2 whitespace-nowrap transition-all" data-filter="in_work">
-        В работе <span class="bg-boo-coral text-white px-2 py-0.5 rounded-md text-xs shadow-[0_8px_24px_-4px_rgba(251,113,133,0.28)]">{{ in_work_count }}</span>
+    <div class="bg-slate-100/80 dark:bg-dark-inner/60 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50 dark:border-dark-avatar">
+      <button type="button" class="task-tab px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2 border border-transparent" data-filter="in_work">
+        В работе <span class="bg-boo-coral text-white px-2 py-0.5 rounded-md text-xs shadow-0-8px-24px--4px-rgba251-113-133-028">{{ in_work_count }}</span>
       </button>
-      <button type="button" class="task-tab px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white rounded-lg font-bold text-sm transition-colors whitespace-nowrap flex items-center gap-2" data-filter="on_review">
+      <button type="button" class="task-tab px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2 border border-transparent" data-filter="on_review">
         На проверке <span class="bg-purple-100 text-boo-primary dark:bg-purple-500/15 dark:text-purple-300 px-2 py-0.5 rounded-md text-xs border border-purple-200/50 dark:border-purple-500/25">{{ on_review_count }}</span>
       </button>
-      <button type="button" class="task-tab px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white rounded-lg font-bold text-sm transition-colors whitespace-nowrap flex items-center gap-2" data-filter="completed">
-        Завершённые <span class="bg-slate-200 text-secondary dark:bg-white/10 dark:text-white/85 px-2 py-0.5 rounded-md text-xs border border-slate-200/50 dark:border-white/[0.08]">{{ completed_count }}</span>
+      <button type="button" class="task-tab px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2 border border-transparent" data-filter="completed">
+        Завершённые <span class="bg-slate-200 text-secondary dark:bg-white/10 dark:text-white/85 px-2 py-0.5 rounded-md text-xs border border-slate-200/50 dark:border-dark-avatar">{{ completed_count }}</span>
       </button>
     </div>
   </div>
 
   <!-- СЕКЦИЯ 1: РАБОТЫ С ДЕДЛАЙНОМ -->
   <div>
-    <h3 class="text-base sm:text-lg font-extrabold text-primary dark:text-white mb-4 flex items-center gap-2">
+    <h3 class="text-base sm:text-lg font-extrabold text-primary dark:text-white mb-3 flex items-center gap-2">
       <i class="ph-fill ph-clock-countdown text-boo-accent dark:text-boo-cyan text-lg sm:text-xl"></i> Работы с дедлайном
     </h3>
 
@@ -48,7 +55,7 @@
       {% set display_status = (submission_display_status.get(submission.submission_id) if submission_display_status and submission_display_status.get(submission.submission_id) else None) %}
       {% set is_burning = (submission.is_late if submission.is_late is defined else False) or (display_status and 'сегодня' in display_status|lower) %}
 
-      <div class="task-card bg-surface dark:bg-dark-card rounded-[24px] border shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-0.5 dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.45)] transition-all duration-300 group relative {% if is_burning %}border-red-200 dark:border-red-500/25 dark:shadow-[0_0_22px_rgba(248,113,113,0.14)]{% else %}border-slate-200 dark:border-white/5{% endif %}"
+      <div class="assignment-card tactile-card bg-surface p-6 flex flex-col hover:-translate-y-0.5 transition-all duration-300 group relative {% if is_burning %}tactile-card--alert border-red-200 dark:border-red-500/25{% endif %}"
            data-filter-group="{{ filter_group }}"
            data-status="{{ status }}">
         {% if is_burning %}
@@ -56,8 +63,8 @@
         {% endif %}
 
         <div class="relative z-10 flex-1 flex flex-col">
-          <div class="flex justify-between items-start mb-4 gap-3">
-            <span class="px-2.5 py-1 {% if submission.assignment and submission.assignment.assignment_type == 'exam' %}bg-boo-cyanLight text-boo-cyan border-cyan-100/50 dark:bg-boo-cyan/10 dark:text-boo-cyan dark:border-boo-cyan/25{% elif submission.assignment and submission.assignment.assignment_type == 'classwork' %}bg-surface-alt text-muted border-slate-200/60 dark:bg-white/5 dark:text-dark-muted dark:border-white/[0.08]{% elif submission.assignment and submission.assignment.assignment_type == 'manual_review' %}bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30{% else %}bg-red-50 text-boo-coral border-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/25{% endif %} text-[10px] font-extrabold rounded-lg uppercase tracking-wider border">
+          <div class="flex justify-between items-start mb-3 gap-3 flex-wrap">
+            <span class="px-2.5 py-1 {% if submission.assignment and submission.assignment.assignment_type == 'exam' %}bg-boo-cyanLight text-boo-cyan border-cyan-100/50 dark:bg-boo-cyan/10 dark:text-boo-cyan dark:border-boo-cyan/25{% elif submission.assignment and submission.assignment.assignment_type == 'classwork' %}bg-surface-alt text-muted border-slate-200/60 dark:bg-white/5 dark:text-dark-muted dark:border-dark-avatar{% elif submission.assignment and submission.assignment.assignment_type == 'manual_review' %}bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30{% else %}bg-red-50 text-boo-coral border-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/25{% endif %} text-tiny font-extrabold rounded-lg uppercase tracking-wider border">
               {% if submission.assignment %}
                 {% if submission.assignment.assignment_type == 'homework' %}Домашнее задание
                 {% elif submission.assignment.assignment_type == 'classwork' %}Классная работа
@@ -70,7 +77,7 @@
             </span>
 
             {% if display_status %}
-            <div class="flex items-center gap-1.5 {% if is_burning %}text-boo-coral dark:text-red-400{% else %}text-muted dark:text-white/85{% endif %} text-xs font-bold bg-surface dark:bg-dark-inner/80 px-2 py-1 rounded-lg border {% if is_burning %}border-red-100 dark:border-red-500/25{% else %}border-slate-200 dark:border-white/[0.08]{% endif %} shadow-sm dark:shadow-none">
+            <div class="flex items-center gap-1.5 {% if is_burning %}text-boo-coral dark:text-red-400{% else %}text-muted dark:text-white/85{% endif %} text-xs font-bold bg-surface dark:bg-dark-inner/80 px-2 py-1 rounded-lg border {% if is_burning %}border-red-100 dark:border-red-500/25{% else %}border-slate-200 dark:border-dark-avatar{% endif %} shadow-sm dark:shadow-none">
               <i class="ph-fill {% if is_burning %}ph-fire animate-pulse{% else %}ph-hourglass-high{% endif %}"></i> {{ display_status }}
             </div>
             {% else %}
@@ -80,11 +87,11 @@
             {% endif %}
           </div>
 
-          <h4 class="text-lg sm:text-xl font-black text-primary dark:text-white leading-tight mb-2 group-hover:{% if is_burning %}text-boo-coral{% else %}text-boo-primary{% endif %} dark:group-hover:{% if is_burning %}text-red-400{% else %}text-purple-300{% endif %} transition-colors">
+          <h4 class="text-lg sm:text-base font-bold text-primary dark:text-white leading-tight mb-2 group-hover:{% if is_burning %}text-boo-coral{% else %}text-boo-primary{% endif %} dark:group-hover:{% if is_burning %}text-red-400{% else %}text-purple-300{% endif %} transition-colors">
             {{ submission.assignment.title if submission.assignment else ('Работа #' ~ submission.submission_id) }}
           </h4>
 
-          <p class="text-sm font-medium text-muted dark:text-white/80 mb-6 flex-1 line-clamp-2">
+          <p class="text-sm font-medium text-muted dark:text-white/80 mb-3 flex-1 line-clamp-2">
             {% if submission.assignment and submission.assignment.description %}
               {{ submission.assignment.description }}
             {% else %}
@@ -100,28 +107,28 @@
               <span class="text-xs font-bold text-muted dark:text-dark-muted">Прогресс выполнения</span>
               <span class="text-sm font-black text-secondary dark:text-white">{{ done_tasks }} / {{ total_tasks }}</span>
             </div>
-            <div class="w-full h-1.5 bg-surface-alt dark:bg-black/40 rounded-full overflow-hidden border border-transparent dark:border-white/[0.06]">
+            <div class="w-full h-1.5 bg-surface-alt dark:bg-black/40 rounded-full overflow-hidden border border-transparent dark:border-dark-light">
               {% set pct = ((done_tasks * 100 / total_tasks)|round|int if total_tasks > 0 else 0) %}
-              <div class="h-full {% if is_burning %}bg-boo-coral{% else %}bg-gradient-to-r from-[#22D3EE] to-[#8B5CF6]{% endif %} rounded-full" style="width: {{ pct }}%"></div>
+              <div class="h-full {% if is_burning %}bg-boo-coral{% else %}bg-gradient-to-r from-cyan-400 to-accent{% endif %} rounded-full" style="width: {{ pct }}%"></div>
             </div>
           </div>
           {% endif %}
         </div>
 
-        <div class="relative z-10 pt-4 border-t {% if is_burning %}border-red-100 dark:border-white/[0.06]{% else %}border-slate-100 dark:border-white/[0.06]{% endif %}">
+        <div class="relative z-10 pt-4 border-t {% if is_burning %}border-red-100 dark:border-dark-light{% else %}border-slate-100 dark:border-dark-light{% endif %}">
           {% if status == 'ASSIGNED' %}
           <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}"
-             class="w-full py-3.5 {% if is_burning %}bg-boo-coral hover:bg-red-500 border-b-red-700 shadow-[0_8px_24px_-4px_rgba(251,113,133,0.28)]{% else %}bg-boo-primary hover:bg-boo-primaryHover border-b-purple-800 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)]{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 dark:shadow-none text-sm border-b-[3px] active:translate-y-[2px] active:border-b-0 active:shadow-none no-underline">
+             class="neo-button {% if is_burning %}danger{% else %}accent{% endif %} w-full no-underline">
             Открыть работу <i class="ph-bold ph-arrow-right"></i>
           </a>
           {% elif status in ['IN_PROGRESS','RETURNED'] %}
           <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}"
-             class="w-full py-3.5 {% if is_burning %}bg-boo-coral hover:bg-red-500 border-b-red-700 shadow-[0_8px_24px_-4px_rgba(251,113,133,0.28)]{% else %}bg-boo-primary hover:bg-boo-primaryHover border-b-purple-800 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)]{% endif %} text-white rounded-xl font-bold transition-all flex justify-center items-center gap-2 dark:shadow-none text-sm border-b-[3px] active:translate-y-[2px] active:border-b-0 active:shadow-none no-underline">
+             class="neo-button {% if is_burning %}danger{% else %}accent{% endif %} w-full no-underline">
             Продолжить решение <i class="ph-bold ph-arrow-right"></i>
           </a>
           {% else %}
           <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}"
-             class="w-full py-3 bg-surface dark:bg-white/5 text-boo-primary dark:text-purple-300 border border-purple-200 dark:border-purple-500/30 rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline hover:bg-slate-50 dark:hover:bg-white/10">
+             class="neo-button w-full no-underline">
             <i class="ph-bold ph-eye"></i> Посмотреть
           </a>
           {% endif %}
@@ -130,12 +137,12 @@
       {% endfor %}
     </div>
     {% else %}
-    <div class="w-full bg-surface dark:bg-dark-card rounded-[32px] border-2 border-slate-200 dark:border-white/[0.08] border-dashed p-12 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
+    <div class="w-full bg-surface dark:bg-dark-card rounded-2xl border-2 border-slate-200 dark:border-dark-avatar border-dashed p-5 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
       <div class="absolute inset-0 bg-slate-50/50 dark:bg-white/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-      <div class="relative z-10 w-28 h-28 bg-cyan-50 dark:bg-boo-cyan/10 rounded-[32px] rotate-3 flex items-center justify-center mb-6 border-4 border-white dark:border-white/[0.08] shadow-tactile dark:shadow-glass-dark group-hover:-translate-y-2 group-hover:rotate-6 transition-all duration-500">
-        <i class="ph-fill ph-ghost text-[64px] text-boo-cyan dark:text-boo-cyan"></i>
+      <div class="relative z-10 w-28 h-28 bg-cyan-50 dark:bg-boo-cyan/10 rounded-2xl rotate-3 flex items-center justify-center mb-3 border-4 border-white dark:border-dark-avatar shadow-tactile dark:shadow-glass-dark group-hover:-translate-y-2 group-hover:rotate-6 transition-all duration-500">
+        <i class="ph-fill ph-ghost text-64px text-boo-cyan dark:text-boo-cyan"></i>
       </div>
-      <h2 class="relative z-10 text-2xl font-black text-primary dark:text-white tracking-tight mb-3">Здесь пока абсолютно чисто!</h2>
+      <h2 class="relative z-10 text-lg font-bold text-primary dark:text-white tracking-tight mb-3">Здесь пока абсолютно чисто!</h2>
       <p class="relative z-10 text-muted dark:text-dark-muted font-medium max-w-md mx-auto leading-relaxed">
         Нет назначенных работ с дедлайном. Задания по занятиям — ниже.
       </p>
@@ -144,8 +151,8 @@
   </div>
 
   <!-- СЕКЦИЯ 2: ЗАДАНИЯ ПО ЗАНЯТИЯМ -->
-  <div class="mt-4">
-    <h3 class="text-base sm:text-lg font-extrabold text-primary dark:text-white mb-4 flex items-center gap-2 {% if not lesson_workspaces or lesson_workspaces|length == 0 %}opacity-50 dark:opacity-40{% endif %}">
+  <div class="mt-3">
+    <h3 class="text-base sm:text-lg font-extrabold text-primary dark:text-white mb-3 flex items-center gap-2 {% if not lesson_workspaces or lesson_workspaces|length == 0 %}opacity-50 dark:opacity-40{% endif %}">
       <i class="ph-fill ph-chalkboard-teacher text-muted dark:text-dark-muted text-lg sm:text-xl"></i> Задания по занятиям (Классные работы)
     </h3>
 
@@ -153,17 +160,17 @@
     <div class="grid grid-cols-1 gap-4">
       {% for item in lesson_workspaces %}
       <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=item.lesson.lesson_id) }}"
-         class="group bg-surface dark:bg-dark-card rounded-[24px] border border-slate-200 dark:border-white/5 shadow-tactile dark:shadow-glass-dark p-6 hover:-translate-y-0.5 dark:hover:shadow-[0_8px_32px_rgba(0,0,0,0.45)] transition-all duration-300 no-underline">
+         class="group tactile-card bg-surface p-6 hover:-translate-y-0.5 transition-all duration-300 no-underline">
         <div class="flex items-center justify-between gap-4 flex-wrap">
           <div class="min-w-0">
-            <div class="text-lg font-black text-primary dark:text-white truncate">{{ item.lesson.topic or 'Урок' }}</div>
+            <div class="text-sm font-bold text-primary dark:text-white truncate">{{ item.lesson.topic or 'Урок' }}</div>
             <div class="text-sm font-bold text-muted dark:text-white/85 dark:group-hover:text-dark-muted mt-1 transition-colors">
               {{ item.lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if item.lesson.lesson_date else '—' }}
             </div>
           </div>
           <div class="flex items-center gap-2 flex-wrap justify-end">
             {% if item.has_draft %}
-            <span class="px-3 py-1 bg-surface-alt text-secondary text-xs font-extrabold rounded-lg border border-slate-200/60 dark:bg-white/5 dark:text-white/90 dark:border-white/[0.08]">Черновик</span>
+            <span class="px-3 py-1 bg-surface-alt text-secondary text-xs font-extrabold rounded-lg border border-slate-200/60 dark:bg-white/5 dark:text-white/90 dark:border-dark-avatar">Черновик</span>
             {% endif %}
             <span class="px-3 py-1 bg-purple-100 text-boo-primary text-xs font-extrabold rounded-lg border border-purple-200/50 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/25">{{ item.done }}/{{ item.total }} выполнено</span>
             <i class="ph-bold ph-arrow-right text-slate-300 dark:text-white/80 dark:group-hover:text-dark-muted transition-colors"></i>
@@ -173,15 +180,15 @@
       {% endfor %}
     </div>
     {% else %}
-    <div class="w-full bg-surface dark:bg-dark-card rounded-[32px] border-2 border-slate-200 dark:border-white/[0.08] border-dashed p-12 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
+    <div class="w-full bg-surface dark:bg-dark-card rounded-2xl border-2 border-slate-200 dark:border-dark-avatar border-dashed p-5 lg:p-16 flex flex-col items-center justify-center text-center relative overflow-hidden group">
       <div class="absolute inset-0 bg-slate-50/50 dark:bg-white/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-      <div class="relative z-10 w-28 h-28 bg-cyan-50 dark:bg-boo-cyan/10 rounded-[32px] rotate-3 flex items-center justify-center mb-6 border-4 border-white dark:border-white/[0.08] shadow-tactile dark:shadow-glass-dark group-hover:-translate-y-2 group-hover:rotate-6 transition-all duration-500">
-        <i class="ph-fill ph-ghost text-[64px] text-boo-cyan dark:text-boo-cyan"></i>
-        <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-surface dark:bg-dark-inner rounded-full flex items-center justify-center shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] border border-white/[0.06]">
+      <div class="relative z-10 w-28 h-28 bg-cyan-50 dark:bg-boo-cyan/10 rounded-2xl rotate-3 flex items-center justify-center mb-3 border-4 border-white dark:border-dark-avatar shadow-tactile dark:shadow-glass-dark group-hover:-translate-y-2 group-hover:rotate-6 transition-all duration-500">
+        <i class="ph-fill ph-ghost text-64px text-boo-cyan dark:text-boo-cyan"></i>
+        <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-surface dark:bg-dark-inner rounded-full flex items-center justify-center shadow-0-8px-24px--4px-rgba15-23-42-005 border border-slate-200 dark:border-dark-light">
           <i class="ph-fill ph-check-circle text-green-500 dark:text-green-400 text-3xl"></i>
         </div>
       </div>
-      <h2 class="relative z-10 text-2xl font-black text-primary dark:text-white tracking-tight mb-3">Здесь пока абсолютно чисто!</h2>
+      <h2 class="relative z-10 text-lg font-bold text-primary dark:text-white tracking-tight mb-3">Здесь пока абсолютно чисто!</h2>
       <p class="relative z-10 text-muted dark:text-dark-muted font-medium max-w-md mx-auto leading-relaxed">
         Ты выполнил все задания по прошедшим урокам. Новые задания появятся здесь после следующего занятия.
       </p>
@@ -196,18 +203,21 @@
 <script>
 (function() {
   const tabs = Array.from(document.querySelectorAll('.task-tab'));
-  const cards = Array.from(document.querySelectorAll('.task-card'));
+  const cards = Array.from(document.querySelectorAll('.assignment-card'));
 
-  const tabActiveDark = ['dark:bg-white/10', 'dark:text-white', 'dark:border-white/[0.08]'];
+  const tabActiveLight = ['bg-surface', 'text-primary', 'shadow-sm', 'border-slate-200/50'];
+  const tabActiveDark = ['dark:bg-white/10', 'dark:text-white', 'dark:border-dark-avatar', 'dark:shadow-none'];
+  const tabInactiveLight = ['text-muted', 'hover:text-primary', 'border-transparent'];
+  const tabInactiveDark = ['dark:text-dark-muted', 'dark:hover:text-white', 'dark:border-transparent'];
 
   function setActiveTab(filter) {
     tabs.forEach(t => {
       if (t.dataset.filter === filter) {
-        t.classList.add('bg-surface', 'text-primary', 'shadow-sm', 'dark:shadow-none', 'border', 'border-slate-200/50', ...tabActiveDark);
-        t.classList.remove('text-muted', 'dark:text-dark-muted');
+        t.classList.add(...tabActiveLight, ...tabActiveDark);
+        t.classList.remove(...tabInactiveLight, ...tabInactiveDark);
       } else {
-        t.classList.remove('bg-surface', 'text-primary', 'shadow-sm', 'dark:shadow-none', 'border', 'border-slate-200/50', ...tabActiveDark);
-        t.classList.add('text-muted', 'dark:text-dark-muted');
+        t.classList.remove(...tabActiveLight, ...tabActiveDark);
+        t.classList.add(...tabInactiveLight, ...tabInactiveDark);
       }
     });
   }

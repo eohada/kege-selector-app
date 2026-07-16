@@ -1,9 +1,10 @@
-{# Mobile bottom navigation dock + bottom sheet slide-up menu - Tactile Premium Style #}
+{# Премиальный мобильный TabBar и выдвижная шторка Bottom Sheet #}
 {% from '_spa_main_nav_attrs.html' import spa_main_nav_attrs %}
 
 {% if current_user and current_user.is_authenticated %}
+<!-- Нижний таббар навигации (TabBar) -->
 <div class="mobile-bottom-dock md:hidden" data-mobile-dock>
-    {# === PARENT role === #}
+    {# === РОЛЬ: РОДИТЕЛЬ === #}
     {% if current_user.is_parent() %}
         <a {{ spa_main_nav_attrs(url_for('parents.parent_dashboard'), 'parent_dashboard') }} class="mobile-tab {% if active_page == 'parent_dashboard' %}active{% endif %}">
             <i class="ph-bold ph-baby"></i>
@@ -17,12 +18,12 @@
             <i class="ph-bold ph-question"></i>
             <span>FAQ</span>
         </a>
-        <button class="mobile-tab" type="button" data-sheet-trigger>
+        <button class="mobile-tab" type="button" data-sheet-trigger aria-label="Открыть меню">
             <i class="ph-bold ph-squares-four"></i>
             <span>Ещё</span>
         </button>
 
-    {# === STUDENT role === #}
+    {# === РОЛЬ: УЧЕНИК === #}
     {% elif current_user.is_student() %}
         {% if current_student %}
             <a {{ spa_main_nav_attrs(url_for('main.student_dashboard'), 'student_dashboard') }} class="mobile-tab {% if active_page in ['student_dashboard','dashboard'] %}active{% endif %}">
@@ -30,26 +31,27 @@
                 <span>Главная</span>
             </a>
             <a {{ spa_main_nav_attrs(url_for('students.student_profile', student_id=current_student.student_id), 'student_profile') }} class="mobile-tab {% if active_page == 'student_profile' %}active{% endif %}">
-                <i class="ph-bold ph-house-line"></i>
+                <i class="ph-bold ph-door"></i>
                 <span>Комната</span>
             </a>
             <a {{ spa_main_nav_attrs(url_for('assignments.submissions_list'), 'assignments') }} class="mobile-tab {% if active_page == 'assignments' %}active{% endif %}">
                 <i class="ph-bold ph-tray"></i>
                 <span>Задания</span>
             </a>
-            {% if has_permission(current_user, 'theory.view') %}
-            <a {{ spa_main_nav_attrs(url_for('theory.theory_index'), 'theory') }} class="mobile-tab {% if active_page == 'theory' %}active{% endif %}">
-                <i class="ph-bold ph-book-open"></i>
-                <span>Теория</span>
-            </a>
+            {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
+            {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
+                <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="mobile-tab {% if active_page == 'trainer' %}active{% endif %}">
+                    <i class="ph-bold ph-game-controller"></i>
+                    <span>Тренажёр</span>
+                </a>
             {% endif %}
-            <button class="mobile-tab" type="button" data-sheet-trigger>
+            <button class="mobile-tab" type="button" data-sheet-trigger aria-label="Открыть меню">
                 <i class="ph-bold ph-squares-four"></i>
                 <span>Ещё</span>
             </button>
         {% endif %}
 
-    {# === TEACHER / ADMIN / CREATOR role === #}
+    {# === РОЛИ: ПРЕПОДАВАТЕЛЬ / АДМИН / СОЗДАТЕЛЬ === #}
     {% else %}
         <a {{ spa_main_nav_attrs(url_for('main.dashboard'), 'dashboard') }} class="mobile-tab {% if active_page == 'dashboard' %}active{% endif %}">
             <i class="ph-bold ph-users-three"></i>
@@ -60,126 +62,136 @@
             <span>График</span>
         </a>
         {% if has_permission(current_user, 'assignment.grade') %}
-        <a {{ spa_main_nav_attrs(url_for('lessons.review_queue'), 'review_queue') }} class="mobile-tab {% if active_page == 'review_queue' %}active{% endif %}">
-            <i class="ph-bold ph-tray"></i>
-            <span>Проверка</span>
-        </a>
+            <a {{ spa_main_nav_attrs(url_for('lessons.review_queue'), 'review_queue') }} class="mobile-tab {% if active_page == 'review_queue' %}active{% endif %}">
+                <i class="ph-bold ph-tray"></i>
+                <span>Проверка</span>
+            </a>
         {% endif %}
         {% if has_permission(current_user, 'trainer.use') %}
-        <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="mobile-tab {% if active_page == 'trainer' %}active{% endif %}">
-            <i class="ph-bold ph-game-controller"></i>
-            <span>Тренажёр</span>
-        </a>
+            <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="mobile-tab {% if active_page == 'trainer' %}active{% endif %}">
+                <i class="ph-bold ph-game-controller"></i>
+                <span>Тренажёр</span>
+            </a>
         {% endif %}
-        <button class="mobile-tab" type="button" data-sheet-trigger>
+        <button class="mobile-tab" type="button" data-sheet-trigger aria-label="Открыть меню">
             <i class="ph-bold ph-squares-four"></i>
             <span>Ещё</span>
         </button>
     {% endif %}
 </div>
 
-<!-- Bottom Sheet Slide-up Panel -->
+<!-- Полупрозрачный задний фон-оверлей для шторки -->
 <div class="bottom-sheet-overlay" data-sheet-overlay></div>
+
+<!-- Премиальная шторка Bottom Sheet (iOS style) -->
 <div class="bottom-sheet-panel md:hidden" data-sheet-panel>
     <div class="bottom-sheet-handle"></div>
     <div class="bottom-sheet-header">
-        <span class="bottom-sheet-title">BooStudy Меню</span>
+        <span class="bottom-sheet-title">Разделы BooStudy</span>
         <button class="bottom-sheet-close" type="button" data-sheet-close aria-label="Закрыть">
             <i class="ph-bold ph-x text-xl"></i>
         </button>
     </div>
 
-    <!-- Дополнительные разделы в зависимости от роли -->
-    <div class="bottom-sheet-section-title">Разделы системы</div>
+    <!-- Раздел: Инструменты (сетка 3x3) -->
+    <div class="bottom-sheet-section-title">Быстрый доступ</div>
     <div class="bottom-sheet-grid">
-        {# === STUDENT tools === #}
+        {# === Разделы ученика === #}
         {% if current_user.is_student() %}
-            {% if has_permission(current_user, 'trainer.use') %}
-            <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="bottom-sheet-item">
-                <i class="ph-bold ph-game-controller"></i>
-                <span>Тренажёр</span>
-            </a>
+            {% if has_permission(current_user, 'theory.view') %}
+                <a {{ spa_main_nav_attrs(url_for('theory.theory_index'), 'theory') }} class="bottom-sheet-item">
+                    <i class="ph-bold ph-book-open"></i>
+                    <span>Теория</span>
+                </a>
             {% endif %}
             {% if current_student %}
-            <a {{ spa_main_nav_attrs(url_for('students.student_analytics', student_id=current_student.student_id), 'student_analytics') }} class="bottom-sheet-item">
-                <i class="ph-bold ph-chart-line-up"></i>
-                <span>Статистика</span>
-            </a>
+                <a {{ spa_main_nav_attrs(url_for('students.student_analytics', student_id=current_student.student_id), 'student_analytics') }} class="bottom-sheet-item">
+                    <i class="ph-bold ph-chart-line-up"></i>
+                    <span>Статистика</span>
+                </a>
             {% endif %}
 
-        {# === TEACHER / ADMIN tools === #}
+        {# === Разделы преподавателя / админа === #}
         {% elif not current_user.is_parent() and not current_user.is_student() %}
             {% if has_permission(current_user, 'assignment.view') %}
-            <a {{ spa_main_nav_attrs(url_for('assignments.assignments_list'), 'assignments') }} class="bottom-sheet-item">
-                <i class="ph-bold ph-file-text"></i>
-                <span>Работы</span>
-            </a>
+                <a {{ spa_main_nav_attrs(url_for('assignments.assignments_list'), 'assignments') }} class="bottom-sheet-item">
+                    <i class="ph-bold ph-file-text"></i>
+                    <span>Работы</span>
+                </a>
             {% endif %}
             <a {{ spa_main_nav_attrs(url_for('task_generator.task_generator'), 'generator') }} class="bottom-sheet-item">
                 <i class="ph-bold ph-magic-wand"></i>
                 <span>Генератор</span>
             </a>
             {% if has_permission(current_user, 'task.manage') %}
-            <a {{ spa_main_nav_attrs(url_for('templates.templates_list'), 'templates') }} class="bottom-sheet-item">
-                <i class="ph-bold ph-file-dashed"></i>
-                <span>Шаблоны</span>
-            </a>
+                <a {{ spa_main_nav_attrs(url_for('templates.templates_list'), 'templates') }} class="bottom-sheet-item">
+                    <i class="ph-bold ph-file-dashed"></i>
+                    <span>Шаблоны</span>
+                </a>
             {% endif %}
             {% if has_permission(current_user, 'groups.view') %}
-            <a {{ spa_main_nav_attrs(url_for('groups.groups_list'), 'groups') }} class="bottom-sheet-item">
-                <i class="ph-bold ph-users"></i>
-                <span>Группы</span>
-            </a>
+                <a {{ spa_main_nav_attrs(url_for('groups.groups_list'), 'groups') }} class="bottom-sheet-item">
+                    <i class="ph-bold ph-users"></i>
+                    <span>Группы</span>
+                </a>
             {% endif %}
             {% if has_permission(current_user, 'theory.manage') %}
-            <a {{ spa_main_nav_attrs(url_for('theory.manage_list'), 'theory_manage') }} class="bottom-sheet-item">
-                <i class="ph-bold ph-book-open"></i>
-                <span>Теория</span>
-            </a>
+                <a {{ spa_main_nav_attrs(url_for('theory.manage_list'), 'theory_manage') }} class="bottom-sheet-item">
+                    <i class="ph-bold ph-book-open"></i>
+                    <span>Теория</span>
+                </a>
             {% endif %}
             {% if has_permission(current_user, 'lesson.edit') %}
-            <a {{ spa_main_nav_attrs(url_for('library.materials_library'), 'library') }} class="bottom-sheet-item">
-                <i class="ph-bold ph-books"></i>
-                <span>Библиотека</span>
-            </a>
+                <a {{ spa_main_nav_attrs(url_for('library.materials_library'), 'library') }} class="bottom-sheet-item">
+                    <i class="ph-bold ph-books"></i>
+                    <span>Библиотека</span>
+                </a>
             {% endif %}
             {% if current_user.is_creator() or current_user.is_chief_tester() or current_user.is_tester() %}
-            <a {{ spa_main_nav_attrs(url_for('chief_tester.dashboard'), 'chief_tester_dashboard') }} class="bottom-sheet-item">
-                <i class="ph-bold ph-radar"></i>
-                <span>QA Отдел</span>
-            </a>
+                <a {{ spa_main_nav_attrs(url_for('chief_tester.dashboard'), 'chief_tester_dashboard') }} class="bottom-sheet-item">
+                    <i class="ph-bold ph-radar"></i>
+                    <span>QA Отдел</span>
+                </a>
             {% endif %}
             {% if has_permission(current_user, 'billing.manage') %}
-            <a {{ spa_main_nav_attrs(url_for('billing.billing_plans'), 'billing') }} class="bottom-sheet-item">
-                <i class="ph-bold ph-credit-card"></i>
-                <span>Тарифы</span>
-            </a>
+                <a {{ spa_main_nav_attrs(url_for('billing.billing_plans'), 'billing') }} class="bottom-sheet-item">
+                    <i class="ph-bold ph-credit-card"></i>
+                    <span>Тарифы</span>
+                </a>
             {% endif %}
         {% endif %}
     </div>
 
-    <!-- Раздел аккаунта -->
+    <!-- Раздел: Настройки и Аккаунт -->
     <div class="bottom-sheet-section-title">Кабинет и Настройки</div>
     <div class="bottom-sheet-list">
-        <div style="padding: 0.25rem 0.85rem 0.75rem;">
-            <div style="font-size:0.75rem;font-weight:900;text-transform:uppercase;color:#94A3B8;letter-spacing:0.05em;margin-bottom:8px;">Тема оформления</div>
-            <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления" style="display:flex;width:100%;">
-                <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false" style="flex:1;">Auto</button>
-                <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false" style="flex:1;">Dark</button>
-                <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false" style="flex:1;">Light</button>
+        <!-- Свитчер темы прямо в шторке -->
+        <div class="theme-switcher-box">
+            <span class="theme-switcher-title">Тема оформления</span>
+            <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления">
+                <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
+                <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
+                <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
             </div>
         </div>
         
         <a {{ spa_main_nav_attrs(url_for('auth.user_profile'), 'profile') }} class="bottom-sheet-list-item">
-            <i class="ph-bold ph-user"></i>
+            <i class="ph-bold ph-user-circle"></i>
             <span>Мой профиль</span>
         </a>
         <a {{ spa_main_nav_attrs(url_for('notifications.notifications_list'), 'notifications') }} class="bottom-sheet-list-item">
-            <i class="ph-bold ph-bell"></i>
+            <i class="ph-bold ph-bell-ringing"></i>
             <span>Уведомления</span>
         </a>
-        <a href="{{ url_for('auth.logout') }}" class="bottom-sheet-list-item" style="color: #EF4444;">
-            <i class="ph-bold ph-sign-out" style="color: #EF4444;"></i>
+        {% if current_user.is_admin() or current_user.is_creator() %}
+            <a {{ spa_main_nav_attrs(url_for('admin.admin_panel'), 'admin_panel') }} class="bottom-sheet-list-item">
+                <i class="ph-bold ph-gear-six"></i>
+                <span>Панель управления</span>
+            </a>
+        {% endif %}
+        <div class="bottom-sheet-divider"></div>
+        <a href="{{ url_for('auth.logout') }}" class="bottom-sheet-list-item logout-btn">
+            <i class="ph-bold ph-sign-out"></i>
             <span>Выйти из аккаунта</span>
         </a>
     </div>

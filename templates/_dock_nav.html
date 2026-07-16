@@ -1,10 +1,32 @@
 {% from '_ui_icon.html' import ui_icon %}
 {% from '_spa_main_nav_attrs.html' import spa_main_nav_attrs %}
 
-<div class="dock-wrapper">
-    <header class="dock">
+{# ── Компактная мобильная шапка (десктопный dock скрыт) ── #}
+{% if current_user and current_user.is_authenticated %}
+<div class="mobile-topbar md:hidden">
+    <a {{ spa_main_nav_attrs(url_for('main.index'), '', false) }} class="mobile-topbar-brand">
+        <i class="ph-fill ph-ghost"></i>
+        <span>BooStudy</span>
+    </a>
+    <div class="mobile-topbar-actions">
+        <a {{ spa_main_nav_attrs(url_for('notifications.notifications_list'), 'notifications') }} class="mobile-topbar-btn" aria-label="Уведомления">
+            <i class="ph-bold ph-bell-ringing"></i>
+        </a>
+        <a {{ spa_main_nav_attrs(url_for('auth.user_profile'), 'profile') }} class="mobile-topbar-btn" aria-label="Профиль">
+            <i class="ph-bold ph-user-circle"></i>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{# ── Плавающий навбар-островок ── #}
+<div class="fixed top-6 left-0 right-0 z-50 w-full hidden md:flex justify-center pointer-events-none">
+    <!-- Ограничитель ширины через инлайн-стиль (запрещено w-[1440px]) -->
+    <div class="w-full px-4 md:px-8 pointer-events-auto" style="max-width: 1440px;">
+        <header class="w-full bg-zinc-950/90 backdrop-blur-xl border border-white/10 rounded-2xl h-16 px-6 flex items-center justify-between shadow-2xl">
+
         {# ── Brand ── #}
-        <a {{ spa_main_nav_attrs(url_for('main.index'), '', false) }} class="dock-brand">
+        <a {{ spa_main_nav_attrs(url_for('main.index'), '', false) }} class="dock-brand pl-0">
             <div class="dock-brand-icon">
                 <i class="ph-fill ph-ghost text-xl"></i>
             </div>
@@ -139,11 +161,9 @@
                             {% endif %}
                             {% if current_user.is_admin() or current_user.is_creator() %}
                             <div class="dock-mega-group-title mt-3">Админ</div>
-                            {% if config.ADMIN_URL %}
-                            <a href="{{ config.ADMIN_URL }}" class="dock-mega-link" target="_blank" rel="noopener">
+                            <a {{ spa_main_nav_attrs(url_for('admin.admin_panel'), 'admin_panel') }} class="dock-mega-link">
                                 <i class="ph-bold ph-gear text-base text-muted"></i> Панель
                             </a>
-                            {% endif %}
                             {% endif %}
                         </div>
                     </div>
@@ -190,8 +210,8 @@
                             <i class="ph-bold ph-bell text-base text-muted"></i>
                             <span>Уведомления</span>
                         </a>
-                        {% if (current_user.is_admin() or current_user.is_creator()) and config.ADMIN_URL %}
-                        <a href="{{ config.ADMIN_URL }}" class="profile-item" target="_blank" rel="noopener">
+                        {% if current_user.is_admin() or current_user.is_creator() %}
+                        <a {{ spa_main_nav_attrs(url_for('admin.admin_panel'), 'admin_panel') }} class="profile-item">
                             <i class="ph-bold ph-gear text-base text-muted"></i>
                             <span>Админ панель</span>
                         </a>
@@ -214,7 +234,10 @@
             </div>
             {% endif %}
         </div>
-    </header>
+
+        </header>
+
+    </div>
 </div>
 <script>
 (function() {

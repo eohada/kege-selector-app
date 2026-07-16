@@ -4,9 +4,29 @@
 {% block html_attrs %}data-student-room="1"{% endblock %}
 {% block body_class %}layout-student{% endblock %}
 {% block head_css %}
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .shadow-0-4px-16px-rgba139-92-246-035 { box-shadow: 0 4px 16px rgba(139,92,246,0.35); }
+    .shadow-0-4px-12px-rgba0-0-0-002 { box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+    .shadow-0-0-0-6px-FFFFFF-0-8px-24px--4px-rgba123-92-255-02 { box-shadow: 0 0 0 6px #FFFFFF,0 8px 24px -4px rgba(123,92,255,0.2); }
+    .min-h-220px { min-height: 220px; }
+    .min-h-100px { min-height: 100px; }
+    .shadow-0-8px-24px--4px-rgba15-23-42-005 { box-shadow: 0 8px 24px -4px rgba(15,23,42,0.05); }
+    .z-9999 { z-index: 9999; }
+    .bg-DCE1EA { background-color: #DCE1EA; }
+    html[data-theme="dark"] .dark-shadow-0-0-0-6px-131316-0-8px-24px--4px-rgba139-92-246-028 { box-shadow: 0 0 0 6px #131316,0 8px 24px -4px rgba(139,92,246,0.28); }
+    .max-w-1200px { max-width: 1200px; }
+    .bg-length-1rem-1rem { background-color: length:1rem 1rem; }
+    .bg-linear-gradient45deg-rgba255-255-255-015-25-transparent-25-transparent-50-rgba255-255-255-015-50-rgba255-255-255-015-75-transparent-75-transparent { background-color: linear-gradient(45deg,rgba(255,255,255,0.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,0.15) 50%,rgba(255,255,255,0.15) 75%,transparent 75%,transparent); }
+    .text-8px { font-size: 8px; }
+    .shadow-0-8px-24px--4px-rgba139-92-246-028 { box-shadow: 0 8px 24px -4px rgba(139,92,246,0.28); }
+    .bg-radial-gradientcircle-at-top-right-rgba148-163-184-012-transparent-45 { background-color: radial-gradient(circle at top right,rgba(148,163,184,0.12),transparent 45%); }
+    .min-h-170px { min-height: 170px; }
+</style>
+
 <style>
 @media (max-width: 768px) {
-    .px-8, .sm\:px-12, .p-8 { padding-left: 1rem !important; padding-right: 1rem !important; }
+    .px-6, .sm\:px-6, .p-6 { padding-left: 1rem !important; padding-right: 1rem !important; }
 }
 </style>
 {% endblock %}
@@ -18,16 +38,16 @@
 {% set planned = lesson_counts.planned if lesson_counts else 0 %}
 {% set student_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
 
-<div class="w-full max-w-[1200px] mx-auto flex flex-col gap-6 pb-16 pt-6 px-4 sm:px-6 lg:px-8">
+<div class="w-full flex flex-col gap-6 pb-16 pt-6">
 
     <!-- КНОПКА НАЗАД И БЕЙДЖ -->
     <div class="flex items-center justify-between">
-        <a href="{{ request.referrer or url_for('main.index') }}" class="student-surface-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none">
+        <a href="{{ request.referrer or url_for('main.index') }}" class="student-surface-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-2 py-0.5 rounded-md backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none">
             <i class="ph-bold ph-arrow-left"></i> Назад
         </a>
         
         <!-- Тариф -->
-        <div class="hidden sm:flex items-center gap-2 bg-gradient-to-r from-fuchsia-50 to-purple-50 dark:from-fuchsia-500/10 dark:to-purple-500/10 px-4 py-2 rounded-xl border border-purple-200/50 dark:border-white/[0.1] shadow-sm dark:shadow-none">
+        <div class="hidden sm:flex items-center gap-2 bg-gradient-to-r from-fuchsia-50 to-purple-50 dark:from-fuchsia-500/10 dark:to-purple-500/10 px-2 py-0.5 rounded-md border border-purple-200/50 dark:border-white/[0.1] shadow-sm dark:shadow-none">
             <i class="ph-fill ph-crown text-fuchsia-500 dark:text-fuchsia-400 text-lg"></i>
             <span class="text-xs font-extrabold text-fuchsia-700 dark:text-fuchsia-200 uppercase tracking-widest">
                 Тариф: {{ subscription_access.label if subscription_access and subscription_access.label else 'не задан' }}
@@ -36,10 +56,10 @@
     </div>
 
     <!-- HERO-БЛОК УЧЕНИКА (Строго по изначальному эталону) -->
-    <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden relative">
+    <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden relative">
         
         <!-- Баннер (Светлый градиент + Паттерн) -->
-        <div class="w-full h-56 sm:h-72 bg-[#DCE1EA] dark:bg-slate-900 relative overflow-hidden group flex items-center justify-center">
+        <div class="w-full h-56 sm:h-72 bg-DCE1EA dark:bg-slate-900 relative overflow-hidden group flex items-center justify-center">
             {% if student_cover %}
             <div class="absolute inset-0 z-10 overflow-hidden">
                 <img src="{{ student_cover }}" alt="Cover" class="w-full h-full object-cover opacity-90 transition-transform duration-700 ease-out will-change-transform transform-gpu group-hover:scale-105" style="transform-origin:center center;">
@@ -55,26 +75,26 @@
         </div>
 
         <!-- Блок с аватаром и инфо -->
-        <div class="px-8 sm:px-12 pb-8 relative bg-surface dark:bg-dark-card">
-            <div class="-mt-14 sm:-mt-16 min-h-[170px] sm:min-h-[190px] flex flex-col md:flex-row md:justify-between md:items-end gap-6 relative z-30">
+        <div class="px-6 sm:px-6 pb-8 relative bg-surface dark:bg-dark-card">
+            <div class="-mt-14 sm:-mt-16 min-h-170px sm:min-h-[190px] flex flex-col md:flex-row md:justify-between md:items-end gap-6 relative z-30">
                 <div class="flex-1 min-w-0 flex items-end gap-5">
-                    <div class="w-28 h-28 sm:w-36 sm:h-36 rounded-full shadow-[0_0_0_6px_#FFFFFF,0_8px_24px_-4px_rgba(123,92,255,0.2)] dark:shadow-[0_0_0_6px_#131316,0_8px_24px_-4px_rgba(139,92,246,0.28)] bg-surface dark:bg-dark-card flex items-center justify-center shrink-0 ring-4 ring-white dark:ring-dark-inner overflow-hidden">
+                    <div class="w-28 h-28 sm:w-36 sm:h-36 rounded-full shadow-0-0-0-6px-FFFFFF-0-8px-24px--4px-rgba123-92-255-02 dark-shadow-0-0-0-6px-131316-0-8px-24px--4px-rgba139-92-246-028 bg-surface dark:bg-dark-card flex items-center justify-center shrink-0 ring-4 ring-white dark:ring-dark-inner overflow-hidden">
                         {% if current_user.avatar_url %}
                             <img src="{{ current_user.avatar_url }}" alt="Аватар Ученика" class="w-full h-full object-cover object-center">
                         {% else %}
-                            <span class="text-4xl sm:text-5xl font-black text-boo-primary">{{ current_user.username[0]|upper }}</span>
+                            <span class="text-2xl sm:text-2xl font-bold text-boo-primary">{{ current_user.username[0]|upper }}</span>
                         {% endif %}
                     </div>
                     <div class="min-w-0 pb-1">
-                    <h1 class="text-3xl sm:text-4xl font-black text-primary dark:text-white tracking-tight leading-normal py-1">
+                    <h1 class="text-3xl sm:text-lg font-bold text-primary dark:text-white tracking-tight leading-normal py-1">
                         {{ (current_user.profile.first_name ~ ' ' ~ current_user.profile.last_name)|trim if current_user.profile and (current_user.profile.first_name or current_user.profile.last_name) else current_user.username }}
                     </h1>
                     <p class="text-muted dark:text-dark-muted font-bold text-sm mt-1">@{{ current_user.username }}</p>
                     
                     <!-- Теги ученика (по эталону: класс + категория) -->
-                    <div class="flex flex-wrap items-center gap-2 mt-4">
+                    <div class="flex flex-wrap items-center gap-2 mt-3">
                         {% if student and student.school_class %}
-                            <span class="px-3 py-1.5 bg-surface-alt text-muted text-xs font-extrabold rounded-lg border border-slate-200 dark:bg-dark-inner/60 dark:border-white/[0.08] dark:text-dark-muted">
+                            <span class="px-3 py-1.5 bg-surface-alt text-muted text-xs font-extrabold rounded-lg border border-slate-200 dark:bg-dark-inner/60 dark:border-dark-avatar dark:text-dark-muted">
                                 <i class="ph-bold ph-graduation-cap"></i> {{ student.school_class }} класс
                             </span>
                         {% endif %}
@@ -89,7 +109,7 @@
 
                 <!-- Действия (Пропорциональные кнопки) -->
                 <div class="shrink-0 pt-2 flex gap-3">
-                    <button class="px-6 py-3 h-12 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none border border-slate-200 border-b-[3px] border-b-slate-300 dark:border-white/[0.1] hover:shadow-tactile-hover active:translate-y-[2px] active:border-b-0 text-sm" onclick="openEditProfileModal()" type="button">
+                    <button class="px-4 py-2 h-9 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none border border-slate-200 border-b-2 border-b-slate-300 dark:border-white/[0.1] hover:shadow-tactile-hover active:translate-y-[2px] active:border-b-0 text-sm" onclick="openEditProfileModal()" type="button">
                         <i class="ph-bold ph-pencil-simple text-lg"></i> Редактировать
                     </button>
                 </div>
@@ -100,64 +120,267 @@
     <!-- ГРИД МЕТРИК (Реальные данные) -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
         <!-- Стрик -->
-        <div class="bg-surface dark:bg-dark-card rounded-[24px] border border-slate-200/80 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 bg-slate-50/60 dark:bg-transparent shadow-tactile dark:shadow-glass-dark p-6 flex flex-col transition-transform group relative overflow-hidden opacity-95">
+        <style>
+            .streak-flame {
+                font-size: 1.5rem;
+                transition: all 0.3s ease-in-out;
+            }
+            .streak-flame-0 { color: #f97316; } /* Orange */
+            .streak-flame-10 {
+                color: #f59e0b; /* Amber */
+                filter: drop-shadow(0 0 6px #f59e0b);
+                animation: streak-pulse 2s infinite alternate;
+            }
+            .streak-flame-30 {
+                color: #8b5cf6; /* Purple */
+                filter: drop-shadow(0 0 10px #8b5cf6);
+                animation: streak-pulse 1.5s infinite alternate;
+            }
+            .streak-flame-60 {
+                color: #06b6d4; /* Cyan */
+                filter: drop-shadow(0 0 12px #06b6d4);
+                animation: streak-pulse 1.2s infinite alternate;
+            }
+            .streak-flame-90 {
+                color: #10b981; /* Emerald */
+                filter: drop-shadow(0 0 14px #10b981);
+                animation: streak-pulse 1s infinite alternate;
+            }
+            .streak-flame-120 {
+                color: #ec4899; /* Pink */
+                filter: drop-shadow(0 0 16px #ec4899);
+                animation: streak-bounce-glow 1.2s infinite ease-in-out;
+            }
+            .streak-flame-150 {
+                color: #ef4444; /* Red */
+                filter: drop-shadow(0 0 18px #ef4444);
+                animation: streak-bounce-glow 1.0s infinite ease-in-out;
+            }
+            .streak-flame-180 {
+                color: #d946ef; /* Magenta */
+                filter: drop-shadow(0 0 20px #d946ef);
+                animation: streak-bounce-glow 0.8s infinite ease-in-out;
+            }
+            .streak-flame-210 {
+                color: #6366f1; /* Indigo */
+                filter: drop-shadow(0 0 22px #6366f1);
+                animation: streak-super-fire 1s infinite linear;
+            }
+            .streak-flame-240 {
+                color: #cbd5e1; /* Silver / Platinum */
+                filter: drop-shadow(0 0 24px #cbd5e1);
+                animation: streak-super-fire 0.8s infinite linear;
+            }
+            .streak-flame-270 {
+                color: #eab308; /* Golden Legendary */
+                filter: drop-shadow(0 0 32px #facc15);
+                animation: streak-legendary 0.6s infinite ease-in-out;
+            }
+
+            @keyframes streak-pulse {
+                0% { transform: scale(1); }
+                100% { transform: scale(1.2); }
+            }
+            @keyframes streak-bounce-glow {
+                0%, 100% { transform: translateY(0) scale(1); }
+                50% { transform: translateY(-5px) scale(1.25); }
+            }
+            @keyframes streak-super-fire {
+                0%, 100% { transform: scale(1) rotate(-5deg); }
+                50% { transform: scale(1.3) rotate(5deg); }
+            }
+            @keyframes streak-legendary {
+                0%, 100% { transform: scale(1.15) rotate(0deg); }
+                50% { transform: scale(1.45) rotate(8deg); }
+            }
+            @keyframes progress-bar-stripes {
+                0% { background-position: 1rem 0; }
+                100% { background-position: 0 0; }
+            }
+        </style>
+        <div class="bg-surface dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 transition-transform group relative overflow-hidden">
+            {% set streak = student.streak_days if student and student.streak_days else 0 %}
             <div class="flex justify-between items-start mb-2">
-                <div class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Дней подряд</div>
-                <span class="px-2 py-1 rounded-lg bg-slate-900 text-white dark:bg-white/10 dark:text-dark-muted text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">В активной разработке</span>
+                <div class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-1.5">
+                    Дней подряд
+                    {% if student and student.streak_frozen %}
+                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-500 text-8px font-bold uppercase tracking-wider border border-blue-500/20">
+                        <i class="ph-bold ph-snowflake"></i> Заморожен
+                    </span>
+                    {% endif %}
+                </div>
+                
+                {% if streak < 10 %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-0" title="Обычный огонёк"></i>
+                {% elif streak < 30 %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-10" title="Янтарное пламя"></i>
+                {% elif streak < 60 %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-30" title="Пурпурное пламя"></i>
+                {% elif streak < 90 %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-60" title="Голубое пламя"></i>
+                {% elif streak < 120 %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-90" title="Изумрудное пламя"></i>
+                {% elif streak < 150 %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-120" title="Розовое пламя"></i>
+                {% elif streak < 180 %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-150" title="Алое пламя"></i>
+                {% elif streak < 210 %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-180" title="Маджента пламя"></i>
+                {% elif streak < 240 %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-210" title="Индиго пламя"></i>
+                {% elif streak < 270 %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-240" title="Платиновое пламя"></i>
+                {% else %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-270" title="Легендарный золотой огонь!"></i>
+                {% endif %}
             </div>
-            <div class="w-full py-3.5 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-white/[0.06] dark:to-white/[0.04] text-muted dark:text-dark-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-300 dark:border-white/[0.1] cursor-not-allowed select-none mt-auto">
-                <i class="ph-bold ph-lock-key"></i> Раздел скоро появится
+            
+            <div class="text-2xl font-bold text-primary dark:text-white mt-auto">
+                {{ streak | pluralize_days }}
             </div>
-            <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.12),transparent_45%)]"></div>
+
+            <!-- Отладочный пульт (только для тестирования/админа) -->
+            <div class="debug-only-control mt-3 pt-3 border-t border-slate-200/50 dark:border-dark-avatar flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5">
+                    <input type="number" id="debug-streak-input" class="w-14 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs font-bold text-center text-primary dark:text-white" value="{{ streak }}">
+                    <button onclick="overrideStreak()" class="px-2 py-1 bg-boo-primary hover:bg-purple-600 text-white rounded-lg text-micro font-extrabold transition-all">Установить</button>
+                </div>
+                <label class="flex items-center gap-1 cursor-pointer select-none">
+                    <input type="checkbox" id="debug-streak-freeze" class="rounded border-slate-300 text-boo-primary focus:ring-boo-primary" {% if student and student.streak_frozen %}checked{% endif %} onchange="overrideStreak()">
+                    <span class="text-micro font-bold text-muted">Заморозка</span>
+                </label>
+            </div>
+            <script>
+                async function overrideStreak() {
+                    const days = document.getElementById('debug-streak-input').value;
+                    const frozen = document.getElementById('debug-streak-freeze').checked;
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    try {
+                        const resp = await fetch('/api/student/{{ student.student_id }}/debug-streak', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken
+                            },
+                            body: JSON.stringify({ streak_days: days, streak_frozen: frozen })
+                        });
+                        const res = await resp.json();
+                        if (res.success) {
+                            window.location.reload();
+                        } else {
+                            alert('Ошибка: ' + res.error);
+                        }
+                    } catch(e) {
+                        console.error(e);
+                    }
+                }
+            </script>
         </div>
 
         <!-- Опыт (XP) -->
-        <div class="bg-surface dark:bg-dark-card rounded-[24px] border border-slate-200/80 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 bg-slate-50/60 dark:bg-transparent shadow-tactile dark:shadow-glass-dark p-6 flex flex-col transition-transform group relative overflow-hidden opacity-95">
+        <div class="bg-surface dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 transition-transform group relative overflow-hidden">
+            {% set current_xp = student.xp if student and student.xp else 0 %}
+            {% set current_lvl = student.level if student and student.level else 1 %}
+            {% set cur_lvl_xp = get_xp_for_level(current_lvl) %}
+            {% set next_lvl_xp = get_xp_for_level(current_lvl + 1) %}
+            {% set needed_xp_diff = next_lvl_xp - cur_lvl_xp %}
+            {% set earned_xp_diff = current_xp - cur_lvl_xp %}
+            
+            {% if needed_xp_diff > 0 %}
+                {% set progress_pct = (earned_xp_diff / needed_xp_diff) * 100 %}
+            {% else %}
+                {% set progress_pct = 100 %}
+            {% endif %}
+            
+            {% if progress_pct > 100 %}{% set progress_pct = 100 %}{% endif %}
+            {% if progress_pct < 0 %}{% set progress_pct = 0 %}{% endif %}
+
             <div class="flex justify-between items-start mb-2">
-                <div class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Накоплено опыта</div>
-                <span class="px-2 py-1 rounded-lg bg-slate-900 text-white dark:bg-white/10 dark:text-dark-muted text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">В активной разработке</span>
+                <div class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Уровень {{ current_lvl }}</div>
+                <i class="ph-fill ph-sparkles text-boo-primary text-xl group-hover:scale-110 transition-transform animate-pulse"></i>
             </div>
-            <div class="w-full py-3.5 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-white/[0.06] dark:to-white/[0.04] text-muted dark:text-dark-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-300 dark:border-white/[0.1] cursor-not-allowed select-none mt-auto">
-                <i class="ph-bold ph-lock-key"></i> Раздел скоро появится
+            
+            <div class="text-xs font-extrabold text-purple-600 dark:text-purple-400 mb-2 truncate" title="{{ current_lvl | get_rank_title }}">
+                {{ current_lvl | get_rank_title }}
             </div>
-            <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.12),transparent_45%)]"></div>
+            
+            <!-- Прогресс-бар -->
+            <div class="w-full bg-slate-100 dark:bg-white/[0.06] h-3 rounded-full overflow-hidden border border-slate-200 dark:border-dark-avatar relative mb-1 mt-auto">
+                <div class="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500 relative" style="width: {{ progress_pct }}%">
+                    <div class="absolute inset-0 bg-linear-gradient45deg-rgba255-255-255-015-25-transparent-25-transparent-50-rgba255-255-255-015-50-rgba255-255-255-015-75-transparent-75-transparent bg-length-1rem-1rem animate-[progress-bar-stripes_1s_linear_infinite]"></div>
+                </div>
+            </div>
+            <div class="flex justify-between text-tiny font-bold text-muted dark:text-dark-muted">
+                <span>{{ current_xp }} XP</span>
+                <span>{{ next_lvl_xp }} XP</span>
+            </div>
+
+            <!-- Отладочный пульт (только для тестирования/админа) -->
+            <div class="debug-only-control mt-3 pt-3 border-t border-slate-200/50 dark:border-dark-avatar flex items-center gap-1.5">
+                <input type="number" id="debug-xp-input" class="w-16 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs font-bold text-center text-primary dark:text-white" value="{{ current_xp }}">
+                <button onclick="overrideXP()" class="px-2 py-1 bg-boo-primary hover:bg-purple-600 text-white rounded-lg text-micro font-extrabold transition-all">Установить XP</button>
+            </div>
+            <script>
+                async function overrideXP() {
+                    const xpVal = document.getElementById('debug-xp-input').value;
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    try {
+                        const resp = await fetch('/api/student/{{ student.student_id }}/debug-xp', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken
+                            },
+                            body: JSON.stringify({ xp: xpVal })
+                        });
+                        const res = await resp.json();
+                        if (res.success) {
+                            window.location.reload();
+                        } else {
+                            alert('Ошибка: ' + res.error);
+                        }
+                    } catch(e) {
+                        console.error(e);
+                    }
+                }
+            </script>
         </div>
 
         <!-- GPA -->
-        <div class="bg-surface dark:bg-dark-card rounded-[24px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 transition-transform group">
+        <div class="bg-surface dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 transition-transform group">
             <div class="flex justify-between items-start mb-2">
-                <div class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Средний балл</div>
+                <div class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Средний балл</div>
                 <i class="ph-fill ph-chart-line-up text-boo-cyan text-xl group-hover:scale-110 transition-transform"></i>
             </div>
-            <div class="text-3xl font-black text-primary dark:text-white mt-auto">{{ student.overall_rating if student and student.overall_rating else '-' }} <span class="text-lg text-muted dark:text-dark-muted font-bold">/5</span></div>
+            <div class="text-2xl font-bold text-primary dark:text-white mt-auto">{{ student.overall_rating if student and student.overall_rating else '-' }} <span class="text-lg text-muted dark:text-dark-muted font-bold">/5</span></div>
         </div>
 
         <!-- Цель -->
-        <div class="bg-surface dark:bg-dark-card rounded-[24px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 transition-transform group">
+        <div class="bg-surface dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col hover:-translate-y-1 transition-transform group">
             <div class="flex justify-between items-start mb-2">
-                <div class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Траектория</div>
+                <div class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Траектория</div>
                 <i class="ph-fill ph-target text-green-500 text-xl group-hover:scale-110 transition-transform"></i>
             </div>
-            <div class="text-3xl font-black text-primary dark:text-white mt-auto">{{ student.target_score if student and student.target_score else '0' }} <span class="text-sm text-muted dark:text-dark-muted font-bold">баллов</span></div>
+            <div class="text-2xl font-bold text-primary dark:text-white mt-auto">{{ student.target_score if student and student.target_score else '0' }} <span class="text-sm text-muted dark:text-dark-muted font-bold">баллов</span></div>
         </div>
     </div>
 
     <!-- СПЛИТ КОНТЕНТА -->
-    <div class="flex flex-col lg:flex-row gap-6">
+    <div class="flex flex-col lg:flex-row gap-6 items-start">
         
         <!-- ЛЕВАЯ КОЛОНКА (О себе + Наставник) -->
         <div class="w-full lg:w-1/3 flex flex-col gap-6">
             
             <!-- Блок О себе -->
-            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8 flex-1">
-                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex-1">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                     <i class="ph-fill ph-identification-card text-lg"></i> Информация
                 </h2>
-                <div class="text-sm text-muted dark:text-dark-muted font-medium leading-relaxed bg-surface-alt dark:bg-dark-inner/50 p-5 rounded-[20px] border border-slate-100 dark:border-white/[0.08] min-h-[100px]">
+                <div class="text-sm text-muted dark:text-dark-muted font-medium leading-relaxed bg-surface-alt dark:bg-dark-inner/50 p-5 rounded-2xl border border-slate-100 dark:border-dark-avatar min-h-100px">
                     {{ current_user.about_me or 'Расскажите немного о себе. Какая ваша цель? В какой вуз планируете поступать?' }}
                 </div>
                 
-                <div class="mt-6 flex flex-col gap-3">
+                <div class="mt-3 flex flex-col gap-3">
                     <!-- Заглушки заменены на реальные данные профиля -->
                     {% if current_user.profile and current_user.profile.telegram_id %}
                     <div class="flex items-center gap-3 text-sm font-bold text-secondary dark:text-white bg-surface dark:bg-dark-inner/40 border border-slate-200 dark:border-white/[0.1] px-4 py-2.5 rounded-xl shadow-sm dark:shadow-none">
@@ -170,6 +393,59 @@
                         <i class="ph-fill ph-telegram-logo text-blue-500 text-lg"></i> {{ current_user.telegram_link }}
                     </div>
                     {% endif %}
+
+                    <div class="mt-3 pt-4 border-t border-slate-200/50 dark:border-dark-avatar flex flex-col gap-3">
+                        <h4 class="text-tiny font-extrabold text-muted uppercase tracking-widest">Ссылки и приглашения</h4>
+                        
+                        <!-- Пригласить родителя -->
+                        <button type="button" onclick="copyParentInvite()" class="w-full flex items-center justify-between px-4 py-2.5 bg-surface dark:bg-dark-inner/40 border border-slate-200 dark:border-white/[0.1] rounded-xl shadow-sm dark:shadow-none text-xs font-bold text-secondary dark:text-white hover:bg-slate-50 dark:hover:bg-white/[0.05] transition-colors cursor-pointer text-left">
+                            <span class="flex items-center gap-2">
+                                <i class="ph-bold ph-users-three text-base text-indigo-500"></i>
+                                <span id="parent-invite-text">Привязать родителя</span>
+                            </span>
+                            <i class="ph-bold ph-copy text-muted"></i>
+                        </button>
+                        
+                        <!-- Реферальная ссылка -->
+                        <button type="button" onclick="copyReferralLink()" class="w-full flex items-center justify-between px-4 py-2.5 bg-surface dark:bg-dark-inner/40 border border-slate-200 dark:border-white/[0.1] rounded-xl shadow-sm dark:shadow-none text-xs font-bold text-secondary dark:text-white hover:bg-slate-50 dark:hover:bg-white/[0.05] transition-colors cursor-pointer text-left">
+                            <span class="flex items-center gap-2">
+                                <i class="ph-bold ph-sparkles text-base text-amber-500"></i>
+                                <span id="referral-link-text">Пригласить друга</span>
+                            </span>
+                            <i class="ph-bold ph-copy text-muted"></i>
+                        </button>
+                    </div>
+
+                    <script>
+                        function copyParentInvite() {
+                            const link = window.location.origin + "{{ url_for('auth.register') }}?invite_parent_to={{ current_user.id }}";
+                            navigator.clipboard.writeText(link).then(() => {
+                                const el = document.getElementById('parent-invite-text');
+                                const orig = el.innerText;
+                                el.innerText = 'Ссылка скопирована!';
+                                el.style.color = '#6366F1';
+                                setTimeout(() => {
+                                    el.innerText = orig;
+                                    el.style.color = '';
+                                    el.style.color = '';
+                                }, 2000);
+                            });
+                        }
+                        function copyReferralLink() {
+                            const link = window.location.origin + "{{ url_for('auth.register') }}?ref={{ current_user.username }}";
+                            navigator.clipboard.writeText(link).then(() => {
+                                const el = document.getElementById('referral-link-text');
+                                const orig = el.innerText;
+                                el.innerText = 'Ссылка скопирована!';
+                                el.style.color = '#F59E0B';
+                                setTimeout(() => {
+                                    el.innerText = orig;
+                                    el.style.color = '';
+                                    el.style.color = '';
+                                }, 2000);
+                            });
+                        }
+                    </script>
                 </div>
             </section>
 
@@ -177,8 +453,8 @@
             {% include 'partials/student_telegram_bot_bind.html' %}
 
             <!-- Карточка Наставника (Динамическая) -->
-            <section class="student-mentor-gradient bg-gradient-to-b from-[#F9F7FF] to-white dark:from-dark-card dark:to-dark-inner rounded-[32px] border border-purple-200 dark:border-white/[0.08] border-b-[4px] border-b-purple-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
-                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-6 flex items-center gap-2">
+            <section class="student-mentor-gradient bg-gradient-to-b from-[#F9F7FF] to-white dark:from-dark-card dark:to-dark-inner rounded-2xl border border-purple-200 dark:border-dark-avatar border-b-4 border-b-purple-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                     <i class="ph-fill ph-chalkboard-teacher text-lg"></i> Твой наставник
                 </h2>
                 
@@ -186,30 +462,30 @@
                 {% set active_tutor = enrollments[0].tutor if enrollments else none %}
                 
                 {% if active_tutor %}
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="relative w-14 h-14 rounded-[16px] border-2 border-white dark:border-dark-card shadow-sm dark:shadow-none bg-slate-900 overflow-hidden shrink-0">
+                <div class="flex items-center gap-4 mb-3">
+                    <div class="relative w-10 h-10 rounded-2xl border-2 border-white dark:border-dark-card shadow-sm dark:shadow-none bg-slate-900 overflow-hidden shrink-0">
                         {% if active_tutor.avatar_url %}
                             <img src="{{ active_tutor.avatar_url }}" class="w-full h-full object-cover">
                         {% else %}
-                            <div class="w-full h-full flex items-center justify-center text-white font-black text-xl">
+                            <div class="w-full h-full flex items-center justify-center text-white font-bold text-base">
                                 {{ active_tutor.username[0]|upper }}
                             </div>
                         {% endif %}
                         <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white dark:border-dark-card z-10"></div>
                     </div>
                     <div class="min-w-0">
-                        <h4 class="text-lg font-black text-primary dark:text-white truncate">
+                        <h4 class="text-sm font-bold text-primary dark:text-white truncate">
                             {{ (active_tutor.profile.first_name ~ ' ' ~ active_tutor.profile.last_name)|trim if active_tutor.profile and (active_tutor.profile.first_name or active_tutor.profile.last_name) else active_tutor.username }}
                         </h4>
-                        <span class="px-2 py-0.5 bg-slate-900 text-white text-[10px] font-bold rounded mt-1 inline-block truncate max-w-full">@{{ active_tutor.username }}</span>
+                        <span class="px-2 py-0.5 bg-slate-900 text-white text-tiny font-bold rounded mt-1 inline-block truncate max-w-full">@{{ active_tutor.username }}</span>
                     </div>
                 </div>
                 
-                <button class="w-full py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] dark:shadow-none border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm">
+                <button class="w-full py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-0-8px-24px--4px-rgba139-92-246-028 dark:shadow-none border-b-2 border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm">
                     <i class="ph-bold ph-chat-teardrop-dots text-lg"></i> Написать сообщение
                 </button>
                 {% else %}
-                <div class="text-center py-6 text-muted dark:text-dark-muted font-medium text-sm border-2 border-dashed border-slate-200 dark:border-white/[0.12] rounded-2xl dark:bg-white/[0.03]">
+                <div class="text-center py-3 text-muted dark:text-dark-muted font-medium text-sm border-2 border-dashed border-slate-200 dark:border-white/[0.12] rounded-2xl dark:bg-white/[0.03]">
                     Наставник пока не назначен
                 </div>
                 {% endif %}
@@ -221,35 +497,303 @@
         <div class="w-full lg:w-2/3 flex flex-col gap-6">
             
             <!-- Витрина Достижений -->
-            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200/80 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 bg-slate-50/60 dark:bg-transparent shadow-tactile dark:shadow-glass-dark p-8 relative overflow-hidden opacity-95">
-                <div class="flex justify-between items-center mb-6">
+            <style>
+                .streak-flame {
+                    font-size: 1.5rem;
+                    transition: all 0.3s ease-in-out;
+                }
+                .streak-flame-0 { color: #f97316; } /* Orange */
+                .streak-flame-10 {
+                    color: #f59e0b; /* Amber */
+                    filter: drop-shadow(0 0 6px #f59e0b);
+                    animation: streak-pulse 2s infinite alternate;
+                }
+                .streak-flame-30 {
+                    color: #8b5cf6; /* Purple */
+                    filter: drop-shadow(0 0 10px #8b5cf6);
+                    animation: streak-pulse 1.5s infinite alternate;
+                }
+                .streak-flame-60 {
+                    color: #06b6d4; /* Cyan */
+                    filter: drop-shadow(0 0 12px #06b6d4);
+                    animation: streak-pulse 1.2s infinite alternate;
+                }
+                .streak-flame-90 {
+                    color: #10b981; /* Emerald */
+                    filter: drop-shadow(0 0 14px #10b981);
+                    animation: streak-pulse 1s infinite alternate;
+                }
+                .streak-flame-120 {
+                    color: #ec4899; /* Pink */
+                    filter: drop-shadow(0 0 16px #ec4899);
+                    animation: streak-bounce-glow 1.2s infinite ease-in-out;
+                }
+                .streak-flame-150 {
+                    color: #ef4444; /* Red */
+                    filter: drop-shadow(0 0 18px #ef4444);
+                    animation: streak-bounce-glow 1.0s infinite ease-in-out;
+                }
+                .streak-flame-180 {
+                    color: #d946ef; /* Magenta */
+                    filter: drop-shadow(0 0 20px #d946ef);
+                    animation: streak-bounce-glow 0.8s infinite ease-in-out;
+                }
+                .streak-flame-210 {
+                    color: #6366f1; /* Indigo */
+                    filter: drop-shadow(0 0 22px #6366f1);
+                    animation: streak-super-fire 1s infinite linear;
+                }
+                .streak-flame-240 {
+                    color: #cbd5e1; /* Silver / Platinum */
+                    filter: drop-shadow(0 0 24px #cbd5e1);
+                    animation: streak-super-fire 0.8s infinite linear;
+                }
+                .streak-flame-270 {
+                    color: #eab308; /* Golden Legendary */
+                    filter: drop-shadow(0 0 32px #facc15);
+                    animation: streak-legendary 0.6s infinite ease-in-out;
+                }
+
+                @keyframes streak-pulse {
+                    0% { transform: scale(1); }
+                    100% { transform: scale(1.2); }
+                }
+                @keyframes streak-bounce-glow {
+                    0%, 100% { transform: translateY(0) scale(1); }
+                    50% { transform: translateY(-5px) scale(1.25); }
+                }
+                @keyframes streak-super-fire {
+                    0%, 100% { transform: scale(1) rotate(-5deg); }
+                    50% { transform: scale(1.3) rotate(5deg); }
+                }
+                @keyframes streak-legendary {
+                    0%, 100% { transform: scale(1.15) rotate(0deg); }
+                    50% { transform: scale(1.45) rotate(8deg); }
+                }
+
+                /* Стили для ачивок */
+                .ach-card {
+                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                .ach-card-streak.ach-unlocked {
+                    background: rgba(59, 130, 246, 0.05) !important;
+                    border-color: rgba(59, 130, 246, 0.3) !important;
+                }
+                .ach-icon-streak.ach-unlocked {
+                    background: rgba(59, 130, 246, 0.15) !important;
+                    color: #3b82f6 !important;
+                    border-color: rgba(59, 130, 246, 0.25) !important;
+                }
+                .ach-card-level.ach-unlocked {
+                    background: rgba(168, 85, 247, 0.05) !important;
+                    border-color: rgba(168, 85, 247, 0.3) !important;
+                }
+                .ach-icon-level.ach-unlocked {
+                    background: rgba(168, 85, 247, 0.15) !important;
+                    color: #a855f7 !important;
+                    border-color: rgba(168, 85, 247, 0.25) !important;
+                }
+                .ach-card-tasks.ach-unlocked {
+                    background: rgba(16, 185, 129, 0.05) !important;
+                    border-color: rgba(16, 185, 129, 0.3) !important;
+                }
+                .ach-icon-tasks.ach-unlocked {
+                    background: rgba(16, 185, 129, 0.15) !important;
+                    color: #10b981 !important;
+                    border-color: rgba(16, 185, 129, 0.25) !important;
+                }
+                .ach-card-ege.ach-unlocked {
+                    background: rgba(245, 158, 11, 0.05) !important;
+                    border-color: rgba(245, 158, 11, 0.3) !important;
+                }
+                .ach-icon-ege.ach-unlocked {
+                    background: rgba(245, 158, 11, 0.15) !important;
+                    color: #f59e0b !important;
+                    border-color: rgba(245, 158, 11, 0.25) !important;
+                }
+                .ach-card-secret.ach-unlocked {
+                    background: rgba(244, 63, 94, 0.05) !important;
+                    border-color: rgba(244, 63, 94, 0.3) !important;
+                }
+                .ach-icon-secret.ach-unlocked {
+                    background: rgba(244, 63, 94, 0.15) !important;
+                    color: #f43f5e !important;
+                    border-color: rgba(244, 63, 94, 0.25) !important;
+                }
+                
+                .ach-tab-btn.active {
+                    background-color: #8b5cf6 !important;
+                    color: white !important;
+                    border-color: #8b5cf6 !important;
+                }
+                .debug-only-control {
+                    display: none !important;
+                }
+                body.debug-mode-active .debug-only-control {
+                    display: flex !important;
+                }
+                body.debug-mode-active input.debug-only-control {
+                    display: inline-block !important;
+                }
+            </style>
+            {% set unlocked_keys = get_student_unlocked_achievement_keys(student.student_id) if student else [] %}
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col">
+                <div class="flex justify-between items-center mb-3">
                     <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
                         <i class="ph-fill ph-medal text-lg"></i> Витрина достижений
                     </h2>
-                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-white/10 dark:text-dark-muted text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">В активной разработке</span>
+                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-white/10 dark:text-dark-muted text-tiny font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">
+                        Раскрыто: {{ unlocked_keys | length }} / {{ ACHIEVEMENTS_REGISTRY | length }}
+                    </span>
                 </div>
 
-                <div class="w-full py-4 bg-gradient-to-r from-slate-100 to-slate-200 dark:from-white/[0.06] dark:to-white/[0.04] text-muted dark:text-dark-muted rounded-xl font-bold flex justify-center items-center gap-2 text-sm border border-slate-300 dark:border-white/[0.1] cursor-not-allowed select-none">
-                    <i class="ph-bold ph-lock-key"></i> Витрина достижений в активной разработке
+                <!-- Фильтр-табы -->
+                <div class="flex flex-wrap gap-1.5 mb-5 pb-2 border-b border-slate-200/50 dark:border-dark-avatar">
+                    <button onclick="filterAchievements('all', event)" class="ach-tab-btn active px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-white/[0.03] text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">Все</button>
+                    <button onclick="filterAchievements('streak', event)" class="ach-tab-btn px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-white/[0.03] text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">Стрики</button>
+                    <button onclick="filterAchievements('level', event)" class="ach-tab-btn px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-white/[0.03] text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">Уровни</button>
+                    <button onclick="filterAchievements('tasks', event)" class="ach-tab-btn px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-white/[0.03] text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">Задачи</button>
+                    <button onclick="filterAchievements('ege', event)" class="ach-tab-btn px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-white/[0.03] text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">ЕГЭ</button>
+                    <button onclick="filterAchievements('secret', event)" class="ach-tab-btn px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-white/[0.03] text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-white/[0.12] transition-all">Секретные</button>
                 </div>
-                <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.12),transparent_45%)]"></div>
-            </section>
+
+                <!-- Скролл-контейнер с ачивками -->
+                <div id="achievements-wrapper" style="max-height: 220px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
+                    <div id="achievements-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 pr-1">
+                    {% for key, meta in ACHIEVEMENTS_REGISTRY.items() %}
+                        {% set has_it = key in unlocked_keys %}
+                        {% set is_secret = meta.category == 'secret' %}
+                        <div data-category="{{ meta.category }}" class="ach-card ach-card-{{ meta.category }} p-3.5 rounded-2xl border flex items-start gap-3 relative overflow-hidden
+                            {% if has_it %}
+                                ach-unlocked shadow-0-4px-12px-rgba0-0-0-002
+                            {% else %}
+                                bg-slate-100/40 dark:bg-white/[0.01] border-slate-200/60 dark:border-dark-faint opacity-50 hover:opacity-75
+                            {% endif %}">
+                            
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ach-icon-{{ meta.category }}
+                                {% if has_it %}
+                                    ach-unlocked
+                                {% else %}
+                                    bg-slate-200/50 dark:bg-white/[0.03] text-slate-400 border-slate-300/40 dark:border-white/[0.05]
+                                {% endif %}">
+                                {% if is_secret and not has_it %}
+                                    <i class="ph-fill ph-lock-key text-xl"></i>
+                                {% else %}
+                                    <i class="ph-fill {{ meta.icon }} text-xl"></i>
+                                {% endif %}
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-1.5 mb-0.5">
+                                    <span class="text-small font-black truncate {% if has_it %}text-slate-800 dark:text-white{% else %}text-slate-500 dark:text-slate-400{% endif %}">
+                                        {% if is_secret and not has_it %}
+                                            Секретное достижение
+                                        {% else %}
+                                            {{ meta.title }}
+                                        {% endif %}
+                                    </span>
+                                    <input type="checkbox" class="debug-only-control rounded border-slate-300 text-boo-primary focus:ring-boo-primary w-3.5 h-3.5 cursor-pointer shrink-0" 
+                                           {% if has_it %}checked{% endif %} 
+                                           onchange="toggleAchievement('{{ key }}', this)"
+                                           title="Выдать/забрать (Создатель)">
+                                </div>
+                                <p class="text-micro text-muted dark:text-dark-muted leading-relaxed">
+                                    {% if is_secret and not has_it %}
+                                        Условия получения скрыты...
+                                    {% else %}
+                                        {{ meta.desc }}
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Кнопка раскрытия/сворачивания -->
+            <button id="achievements-toggle-btn" onclick="toggleAchievementsExpand()" class="mt-3 w-full py-2.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-dark-light hover:bg-slate-200 dark:hover:bg-white/[0.08] text-muted dark:text-dark-muted rounded-xl text-tiny font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 z-10 relative">
+                <i class="ph-bold ph-caret-double-down"></i> Показать все достижения
+            </button>
+        </section>
+
+        <script>
+            function toggleAchievementsExpand() {
+                const wrapper = document.getElementById('achievements-wrapper');
+                const btn = document.getElementById('achievements-toggle-btn');
+                if (wrapper.style.maxHeight === '220px' || wrapper.style.maxHeight === '') {
+                    wrapper.style.maxHeight = '500px';
+                    wrapper.style.overflowY = 'auto';
+                    btn.innerHTML = '<i class="ph-bold ph-caret-double-up"></i> Свернуть список';
+                } else {
+                    wrapper.style.maxHeight = '220px';
+                    wrapper.style.overflowY = 'hidden';
+                    btn.innerHTML = '<i class="ph-bold ph-caret-double-down"></i> Показать все достижения';
+                    wrapper.scrollTop = 0;
+                }
+            }
+
+                function filterAchievements(cat, event) {
+                    // Переключаем активную кнопку
+                    document.querySelectorAll('.ach-tab-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    if (event && event.target) {
+                        event.target.classList.add('active');
+                    }
+
+                    // Фильтруем карточки
+                    document.querySelectorAll('.ach-card').forEach(card => {
+                        if (cat === 'all' || card.getAttribute('data-category') === cat) {
+                            card.style.display = 'flex';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                }
+            </script>
+
+            <script>
+                async function toggleAchievement(key, checkbox) {
+                    const action = checkbox.checked ? 'grant' : 'revoke';
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    try {
+                        const resp = await fetch('/api/student/{{ student.student_id }}/debug-achievements', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken
+                            },
+                            body: JSON.stringify({ achievement_key: key, action: action })
+                        });
+                        const res = await resp.json();
+                        if (res.success) {
+                            window.location.reload();
+                        } else {
+                            alert('Ошибка: ' + res.error);
+                            checkbox.checked = !checkbox.checked;
+                        }
+                    } catch(e) {
+                        console.error(e);
+                        checkbox.checked = !checkbox.checked;
+                    }
+                }
+            </script>
 
             <!-- Карта Активности -->
-            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200/80 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 bg-slate-50/60 dark:bg-transparent shadow-tactile dark:shadow-glass-dark p-8 flex-1 flex flex-col relative overflow-hidden opacity-95">
-                <div class="flex justify-between items-center mb-6">
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200/80 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 bg-slate-50/60 dark:bg-transparent shadow-tactile dark:shadow-glass-dark p-6 flex-1 flex flex-col relative overflow-hidden opacity-95">
+                <div class="flex justify-between items-center mb-3">
                     <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
                         <i class="ph-fill ph-calendar-check text-lg"></i> Активность за месяц
                     </h2>
-                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-white/10 dark:text-dark-muted text-[10px] font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">В активной разработке</span>
+                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-white/10 dark:text-dark-muted text-tiny font-extrabold uppercase tracking-wider shadow-sm dark:shadow-none">В активной разработке</span>
                 </div>
 
-                <div class="flex-1 flex items-center justify-center bg-gradient-to-r from-slate-100 to-slate-200 dark:from-white/[0.05] dark:to-white/[0.03] rounded-[20px] border border-slate-300 dark:border-white/[0.1] p-6 min-h-[220px] text-muted dark:text-dark-muted">
+                <div class="flex-1 flex items-center justify-center bg-gradient-to-r from-slate-100 to-slate-200 dark:from-white/[0.05] dark:to-white/[0.03] rounded-2xl border border-slate-300 dark:border-white/[0.1] p-6 min-h-220px text-muted dark:text-dark-muted">
                     <div class="inline-flex items-center gap-2 font-bold text-sm cursor-not-allowed select-none">
                         <i class="ph-bold ph-lock-key"></i> Активность в активной разработке
                     </div>
                 </div>
-                <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(148,163,184,0.12),transparent_45%)]"></div>
+                <div class="absolute inset-0 pointer-events-none bg-radial-gradientcircle-at-top-right-rgba148-163-184-012-transparent-45"></div>
             </section>
 
         </div>
@@ -258,11 +802,11 @@
 </div>
 
 <!-- ИНТЕГРИРОВАННОЕ МОДАЛЬНОЕ ОКНО В СТИЛЕ TACTILE BENTO -->
-<div class="fixed inset-0 z-[9999] bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300" id="editProfileModal">
-    <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.1] shadow-tactile-hover dark:shadow-glass-dark w-full max-w-md p-8 transform scale-95 transition-transform duration-300" id="editProfileBox">
+<div class="fixed inset-0 z-9999 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300" id="editProfileModal">
+    <div class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-white/[0.1] shadow-tactile-hover dark:shadow-glass-dark w-full max-w-md p-6 transform scale-95 transition-transform duration-300" id="editProfileBox">
         
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-black text-primary dark:text-white tracking-tight">Настройки профиля</h2>
+        <div class="flex justify-between items-center mb-3">
+            <h2 class="text-lg font-bold text-primary dark:text-white tracking-tight">Настройки профиля</h2>
             <button class="w-8 h-8 rounded-full bg-surface-alt hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-muted dark:text-white flex items-center justify-center transition-colors" onclick="closeEditProfileModal()">
                 <i class="ph-bold ph-x"></i>
             </button>
@@ -271,7 +815,7 @@
         <form id="editProfileForm" onsubmit="submitProfileEdit(event)" enctype="multipart/form-data" class="space-y-5">
             
             <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="avatar_file">Аватарка</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1" for="avatar_file">Аватарка</label>
                 <div class="relative">
                     <i class="ph-bold ph-upload-simple absolute left-4 top-1/2 -translate-y-1/2 text-muted text-lg pointer-events-none"></i>
                     <input type="file" id="avatar_file" name="avatar_file" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl pl-11 pr-4 py-3 font-medium text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/25 transition-all shadow-input file:hidden text-muted cursor-pointer" accept="image/*">
@@ -279,7 +823,7 @@
             </div>
 
             <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="cover_file">Обложка</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1" for="cover_file">Обложка</label>
                 <div class="relative">
                     <i class="ph-bold ph-image absolute left-4 top-1/2 -translate-y-1/2 text-muted text-lg pointer-events-none"></i>
                     <input type="file" id="cover_file" name="cover_file" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl pl-11 pr-4 py-3 font-medium text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/25 transition-all shadow-input file:hidden text-muted cursor-pointer" accept="image/*">
@@ -287,7 +831,7 @@
             </div>
 
             <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="custom_status">Статус</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1" for="custom_status">Статус</label>
                 <div class="relative">
                     <i class="ph-bold ph-text-t absolute left-4 top-1/2 -translate-y-1/2 text-muted text-lg pointer-events-none"></i>
                     <input type="text" id="custom_status" name="custom_status" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl pl-11 pr-4 py-3 font-bold text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/25 transition-all shadow-input" value="{{ current_user.custom_status or '' }}" placeholder="Например: Готовлюсь к сотке">
@@ -295,13 +839,13 @@
             </div>
 
             <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="about_me">О себе</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1" for="about_me">О себе</label>
                 <textarea id="about_me" name="about_me" rows="3" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-medium text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/25 transition-all shadow-input resize-none" placeholder="Расскажите о своих целях...">{{ current_user.about_me or '' }}</textarea>
             </div>
 
             {% set student_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
             <div class="space-y-1.5" id="student-timezone-panel">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-iana-student">Часовой пояс</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-iana-student">Часовой пояс</label>
                 <select id="tz-iana-student" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white focus:outline-none focus:border-boo-primary transition-all">
                     <option value="Europe/Moscow" {% if student_tz == 'Europe/Moscow' %}selected{% endif %}>Москва</option>
                     <option value="Asia/Tomsk" {% if student_tz == 'Asia/Tomsk' %}selected{% endif %}>Томск</option>
@@ -314,15 +858,15 @@
                     <option value="UTC" {% if student_tz == 'UTC' %}selected{% endif %}>UTC</option>
                 </select>
                 <div class="flex items-center justify-between gap-3">
-                    <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Сейчас в выбранном поясе</span>
+                    <span class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1">Сейчас в выбранном поясе</span>
                     <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.12] text-xs font-bold text-boo-primary hover:bg-surface-alt dark:hover:bg-white/[0.06]" id="tz-now-student-btn">Какая у меня сейчас дата и время</button>
                 </div>
                 <div id="tz-now-student-preview" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">—</div>
-                <button type="button" class="w-full py-3 rounded-xl border border-slate-200 dark:border-white/[0.12] font-bold text-sm text-boo-primary bg-white/70 dark:bg-white/[0.04] hover:bg-surface-alt dark:hover:bg-white/[0.08] transition-colors" id="tz-save-student">Сохранить часовой пояс</button>
+                <button type="button" class="w-full py-2 rounded-xl border border-slate-200 dark:border-white/[0.12] font-bold text-sm text-boo-primary bg-white/70 dark:bg-white/[0.04] hover:bg-surface-alt dark:hover:bg-white/[0.08] transition-colors" id="tz-save-student">Сохранить часовой пояс</button>
             </div>
 
             <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="telegram_link">Telegram</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1" for="telegram_link">Telegram</label>
                 <div class="relative">
                     <i class="ph-fill ph-telegram-logo absolute left-4 top-1/2 -translate-y-1/2 text-blue-400 text-lg pointer-events-none"></i>
                     <input type="text" id="telegram_link" name="telegram_link" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl pl-11 pr-4 py-3 font-bold text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/25 transition-all shadow-input" value="{{ current_user.telegram_link or '' }}" placeholder="@username">
@@ -333,7 +877,7 @@
                 <button type="button" class="flex-1 py-3.5 bg-surface-alt dark:bg-dark-inner text-muted dark:text-dark-muted border border-slate-200 dark:border-white/[0.12] rounded-xl font-bold hover:bg-surface-alt dark:hover:bg-white/[0.08] transition-colors shadow-sm dark:shadow-none text-sm" onclick="closeEditProfileModal()">
                     Отмена
                 </button>
-                <button type="submit" class="flex-1 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm">
+                <button type="submit" class="flex-1 py-3.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center gap-2 shadow-0-8px-24px--4px-rgba139-92-246-028 border-b-2 border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm">
                     Сохранить
                 </button>
             </div>
@@ -471,4 +1015,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 </script>
+
+<!-- Плавающая кнопка переключения отладки -->
+<button id="floating-debug-toggle" onclick="toggleDebugMode()" class="fixed bottom-6 right-6 w-12 h-9 bg-boo-primary hover:bg-purple-600 text-white rounded-full shadow-0-4px-16px-rgba139-92-246-035 flex items-center justify-center transition-all active:scale-95 z-50 border border-purple-400/30" style="transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" title="Включить/выключить режим отладки геймификации">
+    <i class="ph-fill ph-wrench text-xl"></i>
+</button>
+<script>
+    function applyDebugState() {
+        const isActive = localStorage.getItem('gaming-debug-active') === 'true';
+        const btn = document.getElementById('floating-debug-toggle');
+        if (isActive) {
+            document.body.classList.add('debug-mode-active');
+            if (btn) {
+                btn.style.backgroundColor = '#f43f5e';
+                btn.style.transform = 'rotate(45deg)';
+                btn.innerHTML = '<i class="ph-bold ph-x text-xl"></i>';
+            }
+        } else {
+            document.body.classList.remove('debug-mode-active');
+            if (btn) {
+                btn.style.backgroundColor = '#8b5cf6';
+                btn.style.transform = 'rotate(0deg)';
+                btn.innerHTML = '<i class="ph-fill ph-wrench text-xl"></i>';
+            }
+        }
+    }
+
+    function toggleDebugMode() {
+        const current = localStorage.getItem('gaming-debug-active') === 'true';
+        localStorage.setItem('gaming-debug-active', (!current).toString());
+        applyDebugState();
+        if (window.toast) {
+            window.toast.success(!current ? 'Режим настройки активен' : 'Режим настройки скрыт');
+        }
+    }
+
+    // Применяем состояние при загрузке страницы
+    applyDebugState();
+</script>
+
 {% endblock %}

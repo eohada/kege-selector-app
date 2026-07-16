@@ -1,3 +1,12 @@
+
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .shadow-inset-0-2px-4px-rgba0-0-0-002 { box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+    .shadow-inset-0-2px-8px-rgba0-0-0-004 { box-shadow: inset 0 2px 8px rgba(0,0,0,0.04); }
+    .text-15px { font-size: 15px; }
+    .min-h-275rem { min-height: 2.75rem; }
+    .shadow-0-8px-24px--4px-rgba15-23-42-005 { box-shadow: 0 8px 24px -4px rgba(15,23,42,0.05); }
+</style>
 {% from '_task_content_block.html' import render_task_content %}
 {# Эталон generator_light.html: фильтры, заголовок, карточки #}
 <div id="gen-bank-panel" class="flex flex-col gap-6 w-full"
@@ -10,7 +19,7 @@
      {% elif generator_recipient_ids and generator_recipient_ids|length > 0 %}
      data-bank-add-session-work="1"
      {% endif %}>
-    <div class="bg-white rounded-[24px] border border-slate-200 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] p-6">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-0-8px-24px--4px-rgba15-23-42-005 p-6">
         <form method="get" action="{% if lesson_id %}{{ url_for('task_generator.task_generator', lesson_id=lesson_id) }}{% else %}{{ url_for('task_generator.task_generator') }}{% endif %}" class="w-full min-w-0 flex flex-col gap-4">
             {% if lesson_id %}<input type="hidden" name="lesson_id" value="{{ lesson_id }}">{% endif %}
             <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
@@ -26,15 +35,15 @@
             <input type="hidden" name="bank_per_page" value="{{ bank_per_page }}">
             <input type="hidden" name="gen_tab" value="bank">
 
-            <p class="text-[11px] text-slate-500 font-medium m-0 w-full leading-snug order-1">
+            <p class="text-small text-slate-500 font-medium m-0 w-full leading-snug order-1">
                 Если введён <strong class="text-slate-700">ID</strong>, показывается только эта строка; выбранная программа и номер задания для фильтра не используются.
             </p>
 
             <div class="order-2 grid grid-cols-1 md:grid-cols-12 gap-4 w-full min-w-0 items-end">
                 <div class="md:col-span-6 lg:col-span-5 min-w-0 space-y-1.5">
-                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_course_id">Программа</label>
+                    <label class="text-tiny font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_course_id">Программа</label>
                     <div class="relative min-w-0 isolate">
-                        <select class="w-full min-w-0 block box-border bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm appearance-none cursor-pointer shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" id="bank_filter_course_id" name="bank_course_id">
+                        <select class="w-full min-w-0 block box-border bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm appearance-none cursor-pointer shadow-inset-0-2px-4px-rgba0-0-0-002" id="bank_filter_course_id" name="bank_course_id">
                             <option value="">Все программы</option>
                             {% for c in all_courses %}
                             <option value="{{ c.id }}" {% if bank_filter_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
@@ -44,22 +53,22 @@
                     </div>
                 </div>
                 <div class="md:col-span-3 lg:col-span-2 min-w-0 space-y-1.5">
-                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_task_number">№ задания</label>
+                    <label class="text-tiny font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_task_number">№ задания</label>
                     <input type="number" min="1" name="bank_task_number" id="bank_filter_task_number" placeholder="—" value="{{ bank_filter_task_number or '' }}"
-                           class="w-full min-w-0 box-border bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 font-bold text-slate-800 text-sm text-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
+                           class="w-full min-w-0 box-border bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 font-bold text-slate-800 text-sm text-center shadow-inset-0-2px-4px-rgba0-0-0-002"
                            title="Номер задания в билете для выбранной программы">
                 </div>
                 <div class="md:col-span-3 lg:col-span-2 min-w-0 space-y-1.5">
-                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_task_id">ID в базе</label>
+                    <label class="text-tiny font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_filter_task_id">ID в базе</label>
                     <input type="number" min="1" name="bank_task_id" id="bank_filter_task_id" placeholder="—" value="{{ bank_filter_task_id or '' }}"
-                           class="w-full min-w-0 box-border bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 font-bold text-slate-800 text-sm text-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
+                           class="w-full min-w-0 box-border bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 font-bold text-slate-800 text-sm text-center shadow-inset-0-2px-4px-rgba0-0-0-002"
                            title="Tasks.task_id из уведомления после сохранения. Если заполнен — программа и № не учитываются.">
                 </div>
                 <div class="md:col-span-12 lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
                     <div class="space-y-1.5">
-                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_origin_filter">Источник</label>
+                        <label class="text-tiny font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_origin_filter">Источник</label>
                         <div class="relative min-w-0 isolate">
-                            <select class="w-full min-w-0 block box-border bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm appearance-none cursor-pointer shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" id="bank_origin_filter" name="bank_origin_filter">
+                            <select class="w-full min-w-0 block box-border bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm appearance-none cursor-pointer shadow-inset-0-2px-4px-rgba0-0-0-002" id="bank_origin_filter" name="bank_origin_filter">
                                 <option value="" {% if not bank_origin_filter %}selected{% endif %}>Все</option>
                                 <option value="author" {% if bank_origin_filter == 'author' %}selected{% endif %}>Авторские</option>
                                 <option value="manual" {% if bank_origin_filter == 'manual' %}selected{% endif %}>Созданные вручную</option>
@@ -69,9 +78,9 @@
                         </div>
                     </div>
                     <div class="space-y-1.5">
-                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_difficulty">Сложность</label>
+                        <label class="text-tiny font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank_difficulty">Сложность</label>
                         <div class="relative min-w-0 isolate">
-                            <select class="w-full min-w-0 block box-border bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm appearance-none cursor-pointer shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" id="bank_difficulty" name="bank_difficulty">
+                            <select class="w-full min-w-0 block box-border bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 font-bold text-slate-800 text-sm appearance-none cursor-pointer shadow-inset-0-2px-4px-rgba0-0-0-002" id="bank_difficulty" name="bank_difficulty">
                                 <option value="" {% if bank_filter_difficulty is none %}selected{% endif %}>Все</option>
                                 <option value="1" {% if bank_filter_difficulty == 1 %}selected{% endif %}>База</option>
                                 <option value="2" {% if bank_filter_difficulty == 2 %}selected{% endif %}>Стандарт</option>
@@ -86,7 +95,7 @@
                         <input type="checkbox" name="bank_show_inactive" value="1" class="w-5 h-5 shrink-0 rounded border border-slate-300 accent-boo-primary cursor-pointer m-0" {% if bank_show_inactive %}checked{% endif %}>
                         <span class="text-sm font-bold text-slate-600 whitespace-nowrap">Неактивные</span>
                     </label>
-                    <button type="submit" class="neo-button accent w-full sm:w-auto min-h-[2.75rem] shrink-0">
+                    <button type="submit" class="neo-button accent w-full sm:w-auto min-h-275rem shrink-0">
                         Показать
                     </button>
                 </div>
@@ -96,7 +105,7 @@
 
     <div class="flex flex-col gap-2 px-2">
         <div class="flex justify-between items-end flex-wrap gap-2">
-            <h2 class="text-2xl font-black text-slate-900 tracking-tight m-0">Банк заданий</h2>
+            <h2 class="text-lg font-bold text-slate-900 tracking-tight m-0">Банк заданий</h2>
             <span class="text-sm font-bold text-slate-500">Всего записей: <span class="text-slate-900 font-black">{{ bank_total }}</span></span>
         </div>
         {% if lesson_id or template_id or return_edit or (generator_recipient_ids and generator_recipient_ids|length > 0) %}
@@ -108,15 +117,15 @@
 
     {% if bank_tasks %}
     {% for t in bank_tasks %}
-    <article class="bank-task-card bg-white rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] p-8 flex flex-col gap-6 group"
+    <article class="bank-task-card bg-white rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-0-8px-24px--4px-rgba15-23-42-005 p-6 flex flex-col gap-6 group"
              data-task-id="{{ t.task_id }}"
              data-task-number="{{ t.task_number }}"
              data-difficulty-level="{{ t.difficulty_level if t.difficulty_level in [1,2,3] else 2 }}">
         <div class="flex flex-wrap items-center justify-between pb-4 border-b border-slate-100 gap-3">
             <div class="flex flex-wrap items-center gap-3 min-w-0">
-                <span class="text-lg font-black text-boo-primary">#{{ t.task_id }}</span>
-                <span class="text-sm font-extrabold text-slate-700 truncate max-w-[200px] md:max-w-md" title="{{ t.course.title if t.course else '' }}">{{ t.course.title if t.course else '—' }}</span>
-                <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-black border border-slate-200 uppercase">№ {{ t.task_number }}</span>
+                <span class="text-sm font-bold text-boo-primary">#{{ t.task_id }}</span>
+                <span class="text-sm font-extrabold text-slate-700 truncate max-w-xs md:max-w-md" title="{{ t.course.title if t.course else '' }}">{{ t.course.title if t.course else '—' }}</span>
+                <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-tiny font-black border border-slate-200 uppercase">№ {{ t.task_number }}</span>
                 {% if not t.is_active %}
                 <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200">Неактивна</span>
                 {% endif %}
@@ -137,7 +146,7 @@
                 <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">MMR ученика: {{ t.student_task_mmr|round(0)|int }}</span>
                 {% endif %}
                 {% if t.site_task_id %}
-                <span class="text-xs font-bold text-slate-400 ml-1 truncate max-w-[200px]" title="{{ t.site_task_id }}">{{ t.site_task_id }}</span>
+                <span class="text-xs font-bold text-slate-400 ml-1 truncate max-w-xs" title="{{ t.site_task_id }}">{{ t.site_task_id }}</span>
                 {% endif %}
                 {% if lesson_id or template_id or return_edit or (generator_recipient_ids and generator_recipient_ids|length > 0) %}
                     {% if t.bank_target_already_added %}
@@ -166,8 +175,8 @@
         </div>
 
         <div>
-            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Условие</label>
-            <div class="bank-task-preview task-content bg-slate-50/50 border border-slate-200 rounded-2xl p-6 text-[15px] leading-relaxed text-slate-800 shadow-[inset_0_2px_8px_rgba(0,0,0,0.04)] max-h-96 overflow-y-auto [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-xl">
+            <label class="text-tiny font-extrabold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Условие</label>
+            <div class="bank-task-preview task-content bg-slate-50/50 border border-slate-200 rounded-2xl p-6 text-15px leading-relaxed text-slate-800 shadow-inset-0-2px-8px-rgba0-0-0-004 max-h-96 overflow-y-auto [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-xl">
                 {{ render_task_content(t, true, 'task-content') }}
             </div>
         </div>
@@ -194,12 +203,12 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
             <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank-answer-{{ t.task_id }}">Ответ в банке</label>
+                <label class="text-tiny font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank-answer-{{ t.task_id }}">Ответ в банке</label>
                 <textarea id="bank-answer-{{ t.task_id }}" rows="3" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 text-sm md:text-base focus:outline-none focus:border-boo-primary shadow-sm bank-task-answer resize-y">{{ t.answer or '' }}</textarea>
             </div>
             <div class="space-y-1.5 flex flex-col justify-between">
                 <div>
-                    <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank-diff-{{ t.task_id }}">Сложность (1–3)</label>
+                    <label class="text-tiny font-extrabold text-slate-400 uppercase tracking-widest ml-1 block" for="bank-diff-{{ t.task_id }}">Сложность (1–3)</label>
                     <div class="relative mt-1.5">
                         <select id="bank-diff-{{ t.task_id }}" class="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 font-bold text-slate-700 text-sm appearance-none cursor-pointer shadow-sm bank-task-difficulty">
                             <option value="" {% if t.difficulty_level is none %}selected{% endif %}>Не указана</option>
@@ -210,8 +219,8 @@
                         <i class="ph-bold ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" aria-hidden="true"></i>
                     </div>
                 </div>
-                <div class="flex flex-col gap-2 mt-4 md:mt-0">
-                    <button type="button" class="bank-task-save-btn neo-button accent w-full py-3.5">
+                <div class="flex flex-col gap-2 mt-3 md:mt-0">
+                    <button type="button" class="bank-task-save-btn neo-button accent w-full py-2.5">
                         Сохранить ответ и сложность
                     </button>
                     <span class="bank-task-save-status text-xs font-medium hidden text-center" aria-live="polite"></span>
@@ -221,7 +230,7 @@
     </article>
     {% endfor %}
     {% else %}
-    <div class="bg-white rounded-[24px] border border-dashed border-slate-200 py-14 text-center text-slate-500 font-medium">
+    <div class="bg-white rounded-xl border border-dashed border-slate-200 py-14 text-center text-slate-500 font-medium">
         Нет записей по выбранным фильтрам.
     </div>
     {% endif %}

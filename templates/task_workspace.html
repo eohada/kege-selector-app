@@ -2,12 +2,14 @@
 
 {% block title %}Task Workspace · BooStudy{% endblock %}
 
+{% block body_class %}tw-page-workspace{% endblock %}
+
 {% block head_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260618-live-9">
+<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260715-mobile-v1">
 {% endblock %}
 
 {% block content %}
-<main class="tw-shell" data-context-type="{{ workspace.context_type }}" data-context-id="{{ workspace.context_id or '' }}" data-assignment-task-id="{{ workspace.assignment_task_id or '' }}">
+<main class="tw-shell w-full" data-context-type="{{ workspace.context_type }}" data-context-id="{{ workspace.context_id or '' }}" data-assignment-task-id="{{ workspace.assignment_task_id or '' }}">
     <header class="tw-topbar">
         <div>
             <div class="tw-kicker">{{ workspace.source_label }}</div>
@@ -73,6 +75,9 @@
                         <small class="tw-head-note">автоскобки, отступы, подсветка, turtle без системного окна</small>
                     </div>
                     <div class="tw-editor-tools">
+                    <button id="tw-toggle-canvas" class="tw-btn tw-btn-ghost tw-btn-sm" type="button" title="Рисовать поверх условия" onclick="if(window.BooCanvasOverlay) window.BooCanvasOverlay.toggle();">
+                        <i class="ph-bold ph-pencil-line"></i> Холст
+                    </button>
                     <button id="tw-toggle-suggestions" class="tw-btn tw-btn-primary tw-btn-sm" type="button" title="Показать/скрыть подсказки">
                         <i class="ph-bold ph-lightbulb"></i> Подсказки
                     </button>

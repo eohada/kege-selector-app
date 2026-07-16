@@ -79,6 +79,14 @@
         align-items: end;
         background: var(--color-bg-app);
     }
+    @media (max-width: 768px) {
+        .graph-toolbar {
+            grid-template-columns: 1fr;
+        }
+        .graph-columns {
+            min-width: 640px;
+        }
+    }
     .graph-stage {
         position: relative;
         padding: 1rem;
@@ -156,19 +164,21 @@
 {% set active_page = 'admin' %}
 
 {% block content %}
-<section class="glass-panel">
-    <div class="flex items-center justify-between mb-6">
+<section class="glass-panel w-full">
+    <div class="flex items-center justify-between mb-5">
         <div class="flex items-center gap-4">
-            <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}" class="neo-button ghost">
-                ← К админ панели
+            <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+                ← На главную
             </a>
-            <h1 class="m-0">Управление пользователями</h1>
+            <h1 class="m-0">Панель управления</h1>
         </div>
-        <a href="{{ url_for('admin.admin_user_new') }}" class="neo-button accent">
+        <a href="{{ url_for('admin.admin_user_new') }}" class="neo-button accent" style="text-decoration: none;">
             {{ ui_icon('action.plus', 'sm', decorative=true) }}
             Создать пользователя
         </a>
     </div>
+
+    {% include 'admin/_admin_nav.html' %}
 
     <div class="stats-grid">
         <div class="stat-card">
@@ -204,7 +214,7 @@
 
     <div id="tab-list" role="tabpanel">
 
-    <form method="GET" class="filters-grid mb-6">
+    <form method="GET" class="filters-grid mb-3">
         <div class="neo-field">
             <label class="neo-label" for="role-filter">Роль</label>
             <select id="role-filter" name="role" class="neo-input">
@@ -230,11 +240,12 @@
             </select>
         </div>
         <div class="filters-actions">
-            <button type="submit" class="neo-button outline">Применить фильтры</button>
-            <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost">Сбросить</a>
+            <button type="submit" class="neo-button accent" style="text-decoration: none;">Применить фильтры</button>
+            <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost" style="text-decoration: none;">Сбросить</a>
         </div>
     </form>
 
+    <div class="table-responsive">
     <table class="users-table">
         <thead>
             <tr>
@@ -275,10 +286,10 @@
                 </td>
                 <td>
                     <div class="flex gap-2">
-                        <a href="{{ url_for('auth.user_public_profile', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="Профиль">
+                        <a href="{{ url_for('auth.user_public_profile', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem; text-decoration: none;" title="Профиль">
                             {{ ui_icon('profile.user', 'sm', decorative=true) }}
                         </a>
-                        <a href="{{ url_for('admin.admin_user_edit', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="Редактировать">
+                        <a href="{{ url_for('admin.admin_user_edit', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem; text-decoration: none;" title="Редактировать">
                             {{ ui_icon('action.edit', 'sm', decorative=true) }}
                         </a>
                         {% if not user.is_creator() %}
@@ -303,7 +314,7 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="6" class="text-center p-8 text-text-muted">
+                <td colspan="6" class="text-center p-6 text-text-muted">
                     Пользователи не найдены
                 </td>
             </tr>
@@ -311,20 +322,25 @@
         </tbody>
     </table>
     </div>
+    </div>
 
     <div id="tab-graph" role="tabpanel" class="hidden">
-        <p class="text-text-muted mt-4">
+        <p class="text-text-muted mt-3">
             Наглядно показывает связи: <strong>преподаватель → ученик</strong> (Enrollment) и <strong>родитель → ученик</strong> (FamilyTie).
             Клик по стрелке — редактирование "настройки" связи.
         </p>
-        <div id="rel-graph-admin"
-             data-graph-url="{{ url_for('admin.admin_users_graph_data') }}"
-             data-ft-prefix="{{ url_for('admin.admin_api_family_tie_manage', tie_id=1).replace('/1', '/') }}"
-             data-enr-prefix="{{ url_for('admin.admin_api_enrollment_manage', enrollment_id=1).replace('/1', '/') }}"
-             data-ft-create="{{ url_for('admin.admin_api_family_tie_create') }}"
-             data-enr-create="{{ url_for('admin.admin_api_enrollment_create') }}"
-             data-user-edit-prefix="{{ url_for('admin.admin_user_edit', user_id=0).replace('/0/edit', '') }}"
-             data-storage-key="relationshipGraph:admin">
+        <div class="graph-shell mt-4">
+            <div class="graph-stage" style="min-height: 600px; position: relative; background: var(--color-bg-app);">
+                <div id="rel-graph-admin"
+                     data-graph-url="{{ url_for('admin.admin_users_graph_data') }}"
+                     data-ft-prefix="{{ url_for('admin.admin_api_family_tie_manage', tie_id=1).replace('/1', '/') }}"
+                     data-enr-prefix="{{ url_for('admin.admin_api_enrollment_manage', enrollment_id=1).replace('/1', '/') }}"
+                     data-ft-create="{{ url_for('admin.admin_api_family_tie_create') }}"
+                     data-enr-create="{{ url_for('admin.admin_api_enrollment_create') }}"
+                     data-user-edit-prefix="{{ url_for('admin.admin_user_edit', user_id=0).replace('/0/edit', '') }}"
+                     data-storage-key="relationshipGraph:admin">
+                </div>
+            </div>
         </div>
     </div>
 </section>

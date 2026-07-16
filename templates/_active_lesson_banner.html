@@ -173,13 +173,13 @@
 <div class="lesson-menu" id="lessonMenu">
     <div class="lesson-menu-header">Текущий урок</div>
     <form id="lessonDataForm" method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-        <div class="lesson-menu-info mb-4"><strong>Ученик:</strong> {{ active_student.name }}</div>
+        <div class="lesson-menu-info mb-3"><strong>Ученик:</strong> {{ active_student.name }}</div>
         {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
         {% set active_local = (active_lesson.lesson_date|to_tz(tz_name)) %}
         <div class="lesson-menu-info mb-2"><strong>Дата:</strong> {{ active_local.strftime('%d.%m.%Y %H:%M') if active_local else '—' }}</div>
-        <div class="lesson-menu-info mb-4"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</div>
+        <div class="lesson-menu-info mb-3"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</div>
 
-        <div class="mt-4 pt-4" style="border-top: 1px solid rgba(16, 185, 129, 0.3);">
+        <div class="mt-3 pt-4" style="border-top: 1px solid rgba(16, 185, 129, 0.3);">
             <div class="mb-3">
                 <label class="block text-sm mb-1" style="color: #6ee7b7;">Дата урока:</label>
                 <input type="date" name="lesson_date" value="{{ active_local.strftime('%Y-%m-%d') if active_local else '' }}" 

@@ -10,7 +10,7 @@
     <link rel="icon" href="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}">
     {% include '_boo_select_head.html' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20260604-v29">
-    <link rel="stylesheet" href="{{ url_for('static', filename='mobile-overrides.css') }}?v=20260528-v26">
+    <link rel="stylesheet" href="{{ url_for('static', filename='mobile-overrides.css') }}?v=20260715-mobile-v1">
     <link rel="stylesheet" href="{{ url_for('static', filename='motion.css') }}?v=20260528-v26">
     <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}?v=20260528-v26">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -95,8 +95,8 @@
     </style>
     {% block head_extra %}{% endblock %}
 </head>
-<body class="{% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student{% endif %} {% block body_class %}{% endblock %}" 
-      hx-boost="true" 
+<body class="bg-zinc-950 text-zinc-100 min-h-screen font-sans overflow-x-hidden {% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student{% endif %} {% block body_class %}{% endblock %}"
+      hx-boost="true"
       hx-indicator=".htmx-indicator"
       {% block body_attrs %}{% endblock %}>
     <div class="htmx-indicator"></div>
@@ -106,21 +106,18 @@
     {% include '_active_lesson_banner.html' %}
     {% endif %}
 
-    <div class="app-layout">
-        {% set active_page = active_page | default('') %}
-        {% set mega_active_pages = ['assignments','templates','theory_manage','reminders','groups','generator','library','billing'] %}
+    {% set active_page = active_page | default('') %}
+    {% set mega_active_pages = ['assignments','templates','theory_manage','reminders','groups','generator','library','billing'] %}
 
-        {# Floating Navigation Dock #}
-        {% include '_dock_nav.html' %}
+    {% include '_dock_nav.html' %}
 
-        <main class="app-main"
-              data-active-page="{{ active_page }}"
-              data-mega-active-pages="{{ mega_active_pages | join(',') }}">
-            <div class="app-content">
-                {% block content %}{% endblock %}
-            </div>
-        </main>
-    </div>
+    <!-- Ограничитель ширины ИДЕНТИЧЕН шапке. Адаптивные отступы pt и pb защищают от нахлеста навбара и мобильного дока -->
+    <main class="w-full mx-auto px-4 md:px-8 pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-24 md:pt-32 md:pb-12"
+          style="max-width: 1440px;"
+          data-active-page="{{ active_page }}"
+          data-mega-active-pages="{{ mega_active_pages | join(',') }}">
+        {% block content %}{% endblock %}
+    </main>
     {% endblock %}
 
     <script src="{{ url_for('static', filename='toast.js') }}?v=20260528-v26"></script>
@@ -164,16 +161,15 @@
 
     {% if current_user is defined and current_user.is_authenticated %}
         {% set _qa_widget_allowed = (
-            (current_user.is_tester() if current_user.is_tester is defined else false)
-            or (current_user.is_chief_tester() if current_user.is_chief_tester is defined else false)
-            or (current_user.is_creator() if current_user.is_creator is defined else false)
-            or (current_user.is_admin() if current_user.is_admin is defined else false)
-            or (current_user.is_chief_admin() if current_user.is_chief_admin is defined else false)
-            or (current_user.is_qa_pool if current_user.is_qa_pool is defined else false)
-            or (session.get('impersonator_id') is not none)
+            (session.get('impersonator_id') is not none)
         ) %}
 
-        {% if _qa_widget_allowed %}
+        {% set _is_qa_role = current_user.role in ['tester', 'chief_tester', 'admin', 'creator', 'chief_admin'] %}
+        {% if _is_qa_role %}
+            {% include 'qa/_qa_widget.html' %}
+        {% endif %}
+
+        {% if session.get('impersonator_id') is not none %}
             {% include 'qa/_floating_widget.html' %}
         {% endif %}
     {% endif %}

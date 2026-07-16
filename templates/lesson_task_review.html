@@ -5,6 +5,20 @@
 {% block body_class %}layout-teacher{% endblock %}
 
 {% block head_css %}
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .shadow-0-0-10px-rgba244-63-94-05 { box-shadow: 0 0 10px rgba(244,63,94,0.5); }
+    .min-h-3rem { min-height: 3rem; }
+    .active-scale-098:active { transform: scale(0.98); }
+    .bg-length-16px { background-color: length:16px; }
+    .hover-shadow-0-6px-16px-rgba139-92-246-015:hover { box-shadow: 0 6px 16px rgba(139,92,246,0.15); }
+    .shadow-0-0-10px-rgba16-185-129-05 { box-shadow: 0 0 10px rgba(16,185,129,0.5); }
+    .bg-urldata-image-svgxmlcharsetutf-8-3Csvg { background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg; }
+    .bg-right-12px-center { background-color: right 12px center; }
+    .shadow-0-4px-12px-rgba139-92-246-008 { box-shadow: 0 4px 12px rgba(139,92,246,0.08); }
+    .shadow-0-0-10px-rgba245-158-11-05 { box-shadow: 0 0 10px rgba(245,158,11,0.5); }
+</style>
+
 <style>
         .page-hero {
             position: relative;
@@ -108,7 +122,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
+<div class="flex flex-col gap-6 w-full">
         {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
         {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) if lesson and lesson.lesson_date else None %}
         {% set tnum = (lesson_task.task.task_number if lesson_task and lesson_task.task and lesson_task.task.task_number else None) %}
@@ -128,9 +142,9 @@
                         </div>
                         <h1 class="hero-title flex items-center gap-3">
                             <span id="header-status-dot" class="w-3 h-3 rounded-full 
-                            {% if task_status == 'graded' %}bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]
-                            {% elif task_status == 'submitted' %}bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]
-                            {% elif task_status == 'returned' %}bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]
+                            {% if task_status == 'graded' %}bg-emerald-500 shadow-0-0-10px-rgba16-185-129-05
+                            {% elif task_status == 'submitted' %}bg-amber-500 shadow-0-0-10px-rgba245-158-11-05
+                            {% elif task_status == 'returned' %}bg-rose-500 shadow-0-0-10px-rgba244-63-94-05
                             {% else %}bg-slate-400
                             {% endif %} mt-1"></span>
                             Проверка задачи {% if tnum %}№{{ tnum }}{% else %}#{{ lesson_task.lesson_task_id }}{% endif %}
@@ -147,7 +161,7 @@
                         </div>
                     </div>
                     <div class="flex gap-2 items-center justify-end">
-                        <button type="button" class="flex items-center gap-2 px-5 py-2.5 bg-white/40 dark:bg-zinc-900/40 hover:bg-white/60 dark:hover:bg-zinc-800/60 backdrop-blur-md border border-purple-500/20 hover:border-purple-500/40 dark:border-purple-500/30 dark:hover:border-purple-500/50 text-boo-primary dark:text-purple-400 font-extrabold text-sm rounded-xl shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] transition-all duration-150 active:scale-[0.98] select-none cursor-pointer" onclick="saveFeedback()">
+                        <button type="button" class="flex items-center gap-2 px-4 py-2.5 bg-white/40 dark:bg-zinc-900/40 hover:bg-white/60 dark:hover:bg-zinc-800/60 backdrop-blur-md border border-purple-500/20 hover:border-purple-500/40 dark:border-purple-500/30 dark:hover:border-purple-500/50 text-boo-primary dark:text-purple-400 font-extrabold text-sm rounded-xl shadow-0-4px-12px-rgba139-92-246-008 hover-shadow-0-6px-16px-rgba139-92-246-015 transition-all duration-150 active-scale-098 select-none cursor-pointer" onclick="saveFeedback()">
                             <i class="ph-bold ph-floppy-disk text-base"></i> Сохранить изменения
                         </button>
                     </div>
@@ -159,7 +173,7 @@
                 <section class="glass-card flex flex-col gap-6">
                     <div>
                         <h2 class="card-title text-primary"><i class="ph-bold ph-info text-boo-primary dark:text-purple-400"></i> Условие</h2>
-                        <div class="task-content mt-4 text-secondary dark:text-zinc-300">
+                        <div class="task-content mt-3 text-secondary dark:text-zinc-300">
                             {% if lesson_task and lesson_task.task %}
                             {{ render_task_content(lesson_task.task, true, 'task-content') }}
                             {% endif %}
@@ -170,7 +184,7 @@
                         <h2 class="card-title text-primary"><i class="ph-bold ph-code text-boo-primary dark:text-purple-400"></i> Ответ ученика</h2>
                         
                         <!-- Terminal Code-editor style block for Student Answer -->
-                        <div class="mt-3 p-4 bg-slate-900 text-slate-100 rounded-2xl font-mono text-sm border border-slate-800 shadow-inner relative group overflow-x-auto min-h-[3rem] flex items-center justify-between">
+                        <div class="mt-3 p-4 bg-slate-900 text-slate-100 rounded-2xl font-mono text-sm border border-slate-800 shadow-inner relative group overflow-x-auto min-h-3rem flex items-center justify-between">
                             <span class="whitespace-pre-wrap select-all font-semibold tracking-wide text-boo-cyan dark:text-cyan-400">{{ lesson_task.student_submission or '—' }}</span>
                             {% if lesson_task.student_submission %}
                             <button type="button" onclick="navigator.clipboard.writeText('{{ lesson_task.student_submission|e }}'); toastOk('Ответ скопирован');" class="opacity-0 group-hover:opacity-100 absolute right-3 top-3 p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-opacity text-xs flex items-center gap-1 shadow" title="Скопировать">
@@ -182,13 +196,13 @@
                         {% set correct_val = lesson_task.student_answer if lesson_task.student_answer else (lesson_task.task.answer if lesson_task.task and lesson_task.task.answer else '') %}
                         {% if correct_val %}
                         <!-- Side-by-side or comparison correct answer panel -->
-                        <div class="mt-4 p-4 bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-500/30 rounded-2xl flex items-center justify-between shadow-sm">
+                        <div class="mt-3 p-4 bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 dark:border-emerald-500/30 rounded-2xl flex items-center justify-between shadow-sm">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                                     <i class="ph-bold ph-check text-base"></i>
                                 </div>
                                 <div>
-                                    <div class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Правильный ответ</div>
+                                    <div class="text-tiny font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Правильный ответ</div>
                                     <div class="font-mono text-sm font-bold text-primary dark:text-dark-text mt-0.5">{{ correct_val }}</div>
                                 </div>
                             </div>
@@ -206,9 +220,9 @@
                         <h2 class="card-title text-primary"><i class="ph-bold ph-check-square text-boo-primary dark:text-purple-400"></i> Проверка</h2>
 
                         <!-- Large correctness cards for verdict -->
-                        <div class="mt-4">
+                        <div class="mt-3">
                             <div class="flex items-center justify-between">
-                                <label class="block text-[10px] font-bold text-muted uppercase tracking-wider">Вердикт</label>
+                                <label class="block text-tiny font-bold text-muted uppercase tracking-wider">Вердикт</label>
                                 <span class="px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider" id="correctness-label"></span>
                             </div>
                             <div class="grid grid-cols-3 gap-2.5 mt-2">
@@ -218,7 +232,7 @@
                                     <div class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-zinc-800 text-muted group-hover:bg-emerald-500/10 group-hover:text-emerald-500 transition-colors flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50">
                                         <i class="ph-bold ph-check text-lg"></i>
                                     </div>
-                                    <span class="text-[10px] font-black uppercase tracking-wider text-muted mt-2 group-hover:text-emerald-500 transition-colors">Верно</span>
+                                    <span class="text-tiny font-black uppercase tracking-wider text-muted mt-2 group-hover:text-emerald-500 transition-colors">Верно</span>
                                 </button>
 
                                 <!-- None/Neutral Card -->
@@ -227,7 +241,7 @@
                                     <div class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-zinc-800 text-muted group-hover:bg-slate-200 group-hover:text-primary transition-colors flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50">
                                         <i class="ph-bold ph-minus text-lg"></i>
                                     </div>
-                                    <span class="text-[10px] font-black uppercase tracking-wider text-muted mt-2 group-hover:text-primary transition-colors">Не задано</span>
+                                    <span class="text-tiny font-black uppercase tracking-wider text-muted mt-2 group-hover:text-primary transition-colors">Не задано</span>
                                 </button>
 
                                 <!-- Incorrect Card -->
@@ -236,15 +250,15 @@
                                     <div class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-zinc-800 text-muted group-hover:bg-rose-500/10 group-hover:text-rose-500 transition-colors flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50">
                                         <i class="ph-bold ph-x text-lg"></i>
                                     </div>
-                                    <span class="text-[10px] font-black uppercase tracking-wider text-muted mt-2 group-hover:text-rose-500 transition-colors">Неверно</span>
+                                    <span class="text-tiny font-black uppercase tracking-wider text-muted mt-2 group-hover:text-rose-500 transition-colors">Неверно</span>
                                 </button>
                             </div>
                         </div>
 
                         <!-- Dropdowns styled like panel filters -->
-                        <div class="mt-4">
-                            <label class="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2" for="status">Статус выполнения</label>
-                            <select class="no-tomselect w-full h-11 pl-4 pr-10 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 text-secondary dark:text-dark-text rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat cursor-pointer" id="status">
+                        <div class="mt-3">
+                            <label class="block text-tiny font-bold text-muted uppercase tracking-wider mb-2" for="status">Статус выполнения</label>
+                            <select class="no-tomselect w-full h-9 pl-4 pr-10 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 text-secondary dark:text-dark-text rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary appearance-none bg-urldata-image-svgxmlcharsetutf-8-3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-length-16px bg-right-12px-center bg-no-repeat cursor-pointer" id="status">
                                 <option value="pending" {% if task_status == 'pending' %}selected{% endif %} class="bg-surface dark:bg-zinc-800 text-primary dark:text-dark-text">Не начато</option>
                                 <option value="submitted" {% if task_status == 'submitted' %}selected{% endif %} class="bg-surface dark:bg-zinc-800 text-primary dark:text-dark-text">Сдано</option>
                                 <option value="graded" {% if task_status == 'graded' %}selected{% endif %} class="bg-surface dark:bg-zinc-800 text-primary dark:text-dark-text">Проверено</option>
@@ -252,34 +266,34 @@
                             </select>
                         </div>
 
-                        <div class="mt-4">
-                            <label class="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2" for="difficulty_level">Уровень сложности</label>
-                            <select class="no-tomselect w-full h-11 pl-4 pr-10 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 text-secondary dark:text-dark-text rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat cursor-pointer" id="difficulty_level">
+                        <div class="mt-3">
+                            <label class="block text-tiny font-bold text-muted uppercase tracking-wider mb-2" for="difficulty_level">Уровень сложности</label>
+                            <select class="no-tomselect w-full h-9 pl-4 pr-10 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 text-secondary dark:text-dark-text rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary appearance-none bg-urldata-image-svgxmlcharsetutf-8-3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-length-16px bg-right-12px-center bg-no-repeat cursor-pointer" id="difficulty_level">
                                 <option value="" class="bg-surface dark:bg-zinc-800 text-primary dark:text-dark-text">— не задан</option>
                                 <option value="1" {% if lesson_task.difficulty_level == 1 %}selected{% endif %} class="bg-surface dark:bg-zinc-800 text-primary dark:text-dark-text">Лёгкий</option>
                                 <option value="2" {% if lesson_task.difficulty_level == 2 %}selected{% endif %} class="bg-surface dark:bg-zinc-800 text-primary dark:text-dark-text">Средний</option>
                                 <option value="3" {% if lesson_task.difficulty_level == 3 %}selected{% endif %} class="bg-surface dark:bg-zinc-800 text-primary dark:text-dark-text">Сложный</option>
                             </select>
-                            <div class="flex items-center gap-1.5 text-[10px] font-semibold text-muted mt-2">
+                            <div class="flex items-center gap-1.5 text-tiny font-semibold text-muted mt-2">
                                 <i class="ph-bold ph-info text-xs text-boo-primary dark:text-purple-400"></i>
                                 <span>Влияет на рейтинг в аналитике (Elo).</span>
                             </div>
                         </div>
 
-                        <div class="mt-4">
-                            <label class="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2" for="answer_key">Ключ (переопределение)</label>
-                            <input class="w-full h-11 px-4 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 rounded-xl text-sm font-semibold text-secondary dark:text-dark-text focus:outline-none focus:border-boo-primary placeholder-slate-400 dark:placeholder-zinc-500 transition-colors" id="answer_key" value="{{ lesson_task.student_answer or '' }}" placeholder="Если нужен отдельный ключ для урока">
+                        <div class="mt-3">
+                            <label class="block text-tiny font-bold text-muted uppercase tracking-wider mb-2" for="answer_key">Ключ (переопределение)</label>
+                            <input class="w-full h-9 px-4 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 rounded-xl text-sm font-semibold text-secondary dark:text-dark-text focus:outline-none focus:border-boo-primary placeholder-slate-400 dark:placeholder-zinc-500 transition-colors" id="answer_key" value="{{ lesson_task.student_answer or '' }}" placeholder="Если нужен отдельный ключ для урока">
                         </div>
 
-                        <div class="mt-4">
-                            <label class="block text-[10px] font-bold text-muted uppercase tracking-wider mb-2" for="teacher_comment">Комментарий преподавателя (последний)</label>
+                        <div class="mt-3">
+                            <label class="block text-tiny font-bold text-muted uppercase tracking-wider mb-2" for="teacher_comment">Комментарий преподавателя (последний)</label>
                             <textarea class="w-full h-24 p-4 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 rounded-xl text-sm font-semibold text-secondary dark:text-dark-text focus:outline-none focus:border-boo-primary placeholder-slate-400 dark:placeholder-zinc-500 transition-colors resize-none" id="teacher_comment" placeholder="Коротко: что поправить, на что обратить внимание...">{{ lesson_task.teacher_comment or '' }}</textarea>
                         </div>
                     </div>
 
                     <!-- Dynamic message style comments timeline thread -->
-                    <div class="mt-6 pt-5 border-t border-slate-100 dark:border-zinc-800/80">
-                        <label class="block text-[10px] font-bold text-muted uppercase tracking-wider mb-3">История комментариев</label>
+                    <div class="mt-3 pt-5 border-t border-slate-100 dark:border-zinc-800/80">
+                        <label class="block text-tiny font-bold text-muted uppercase tracking-wider mb-3">История комментариев</label>
                         
                         <div id="comments_timeline" class="space-y-3 max-h-60 overflow-y-auto pr-2 mb-3">
                             {% set tcomments = lesson_task.teacher_comments or [] %}
@@ -288,11 +302,11 @@
                                     <div id="comment-node-{{ c.comment_id }}" class="p-3 bg-slate-50 dark:bg-zinc-800/30 border border-slate-200/50 dark:border-zinc-800/60 rounded-2xl transition-all duration-200 group relative">
                                         <div class="flex justify-between items-center mb-1.5">
                                             <div class="flex items-center gap-1.5">
-                                                <div class="w-5 h-5 rounded-md bg-boo-primary/10 text-boo-primary dark:text-purple-400 flex items-center justify-center text-[10px] font-black uppercase">П</div>
-                                                <span class="text-[10px] font-black text-primary dark:text-dark-text">Преподаватель</span>
+                                                <div class="w-5 h-5 rounded-md bg-boo-primary/10 text-boo-primary dark:text-purple-400 flex items-center justify-center text-tiny font-black uppercase">П</div>
+                                                <span class="text-tiny font-black text-primary dark:text-dark-text">Преподаватель</span>
                                             </div>
                                             <div class="flex items-center gap-2">
-                                                <span class="text-[9px] font-bold text-muted">{{ c.created_at.strftime('%d.%m.%Y %H:%M') if c.created_at else '' }}</span>
+                                                <span class="text-micro font-bold text-muted">{{ c.created_at.strftime('%d.%m.%Y %H:%M') if c.created_at else '' }}</span>
                                                 {% if c.author_user_id == current_user.id %}
                                                 <div class="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
                                                     <button type="button" onclick="editComment({{ c.comment_id }})" class="text-slate-400 hover:text-primary dark:hover:text-purple-400 p-0.5" title="Редактировать">
@@ -311,8 +325,8 @@
                                         <div id="comment-edit-{{ c.comment_id }}" class="hidden space-y-2 mt-2">
                                             <textarea id="comment-textarea-{{ c.comment_id }}" class="w-full p-2 bg-surface dark:bg-dark-inner border border-slate-300 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:border-boo-primary" rows="2">{{ c.body }}</textarea>
                                             <div class="flex gap-2">
-                                                <button type="button" onclick="submitEditComment({{ c.comment_id }})" class="px-3 py-1.5 bg-boo-primary text-white rounded-lg text-[10px] font-bold shadow-sm">Сохранить</button>
-                                                <button type="button" onclick="cancelEditComment({{ c.comment_id }})" class="px-3 py-1.5 bg-slate-200 dark:bg-zinc-800 text-secondary dark:text-zinc-400 rounded-lg text-[10px] font-bold border border-slate-300 dark:border-zinc-700">Отмена</button>
+                                                <button type="button" onclick="submitEditComment({{ c.comment_id }})" class="px-3 py-1.5 bg-boo-primary text-white rounded-lg text-tiny font-bold shadow-sm">Сохранить</button>
+                                                <button type="button" onclick="cancelEditComment({{ c.comment_id }})" class="px-3 py-1.5 bg-slate-200 dark:bg-zinc-800 text-secondary dark:text-zinc-400 rounded-lg text-tiny font-bold border border-slate-300 dark:border-zinc-700">Отмена</button>
                                             </div>
                                         </div>
                                     </div>
@@ -325,14 +339,14 @@
                         <!-- Add Comment Box -->
                         <div class="relative">
                             <textarea class="w-full h-20 p-3 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 rounded-xl text-xs font-semibold text-secondary dark:text-dark-text focus:outline-none focus:border-boo-primary placeholder-slate-400 dark:placeholder-zinc-500 transition-colors resize-none" id="comment_new" placeholder="Добавить новый комментарий в историю..."></textarea>
-                            <button type="button" class="mt-2 w-full py-2 bg-slate-100 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700/80 border border-slate-200 dark:border-zinc-700 text-secondary dark:text-zinc-300 hover:text-primary rounded-xl font-bold text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5" onclick="addComment()">
+                            <button type="button" class="mt-2 w-full py-2 bg-slate-100 dark:bg-zinc-800/80 hover:bg-slate-200 dark:hover:bg-zinc-700/80 border border-slate-200 dark:border-zinc-700 text-secondary dark:text-zinc-300 hover:text-primary rounded-xl font-bold text-tiny uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5" onclick="addComment()">
                                 <i class="ph-bold ph-plus text-xs"></i> Добавить в историю
                             </button>
                         </div>
                     </div>
 
                     <!-- Bottom panel actions -->
-                    <div class="mt-6 pt-5 border-t border-slate-100 dark:border-zinc-800/80 flex items-center justify-center">
+                    <div class="mt-3 pt-5 border-t border-slate-100 dark:border-zinc-800/80 flex items-center justify-center">
                         <a class="flex items-center justify-center gap-1.5 px-4 py-2.5 w-full text-slate-500 hover:text-primary dark:text-zinc-400 dark:hover:text-white bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/30 dark:hover:bg-zinc-800/60 border border-slate-200/50 dark:border-zinc-800/80 rounded-xl font-bold text-xs transition-all no-underline shadow-inner" href="{{ back_queue_url }}">
                             <i class="ph-bold ph-arrow-u-down-left text-sm"></i> Вернуться в очередь проверок
                         </a>
@@ -377,34 +391,34 @@
             // Reset correct classes
             btnC.className = "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 group relative border-slate-200 dark:border-zinc-800 bg-surface dark:bg-dark-card hover:border-emerald-500/50 hover:bg-emerald-500/[0.02]";
             btnC.querySelector('div').className = "w-8 h-8 rounded-xl bg-slate-100 dark:bg-zinc-800 text-muted group-hover:bg-emerald-500/10 group-hover:text-emerald-500 transition-colors flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50";
-            btnC.querySelector('span').className = "text-[10px] font-black uppercase tracking-wider text-muted mt-2 group-hover:text-emerald-500 transition-colors";
+            btnC.querySelector('span').className = "text-tiny font-black uppercase tracking-wider text-muted mt-2 group-hover:text-emerald-500 transition-colors";
 
             // Reset none classes
             btnN.className = "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 group relative border-slate-200 dark:border-zinc-800 bg-surface dark:bg-dark-card hover:border-slate-400 hover:bg-slate-500/[0.02]";
             btnN.querySelector('div').className = "w-8 h-8 rounded-xl bg-slate-100 dark:bg-zinc-800 text-muted group-hover:bg-slate-200 group-hover:text-primary transition-colors flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50";
-            btnN.querySelector('span').className = "text-[10px] font-black uppercase tracking-wider text-muted mt-2 group-hover:text-primary transition-colors";
+            btnN.querySelector('span').className = "text-tiny font-black uppercase tracking-wider text-muted mt-2 group-hover:text-primary transition-colors";
 
             // Reset incorrect classes
             btnI.className = "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 group relative border-slate-200 dark:border-zinc-800 bg-surface dark:bg-dark-card hover:border-rose-500/50 hover:bg-rose-500/[0.02]";
             btnI.querySelector('div').className = "w-8 h-8 rounded-xl bg-slate-100 dark:bg-zinc-800 text-muted group-hover:bg-rose-500/10 group-hover:text-rose-500 transition-colors flex items-center justify-center border border-slate-200/50 dark:border-zinc-700/50";
-            btnI.querySelector('span').className = "text-[10px] font-black uppercase tracking-wider text-muted mt-2 group-hover:text-rose-500 transition-colors";
+            btnI.querySelector('span').className = "text-tiny font-black uppercase tracking-wider text-muted mt-2 group-hover:text-rose-500 transition-colors";
 
             if (currentCorrectness === 'correct') {
                 btnC.className = "flex flex-col items-center justify-center p-3 rounded-2xl border border-emerald-500 bg-emerald-500/[0.04] dark:bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,0.15)] transition-all duration-200 group relative";
                 btnC.querySelector('div').className = "w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/30";
-                btnC.querySelector('span').className = "text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mt-2";
+                btnC.querySelector('span').className = "text-tiny font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mt-2";
                 label.textContent = 'Верно';
                 label.className = "px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20";
             } else if (currentCorrectness === 'incorrect') {
                 btnI.className = "flex flex-col items-center justify-center p-3 rounded-2xl border border-rose-500 bg-rose-500/[0.04] dark:bg-rose-500/10 shadow-[0_0_12px_rgba(244,63,94,0.15)] transition-all duration-200 group relative";
                 btnI.querySelector('div').className = "w-8 h-8 rounded-xl bg-rose-500/20 text-boo-coral flex items-center justify-center border border-rose-500/30";
-                btnI.querySelector('span').className = "text-[10px] font-black uppercase tracking-wider text-boo-coral mt-2";
+                btnI.querySelector('span').className = "text-tiny font-black uppercase tracking-wider text-boo-coral mt-2";
                 label.textContent = 'Неверно';
                 label.className = "px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider bg-rose-500/10 text-boo-coral border border-rose-500/20";
             } else {
                 btnN.className = "flex flex-col items-center justify-center p-3 rounded-2xl border border-slate-400 dark:border-zinc-600 bg-slate-100/50 dark:bg-zinc-800/50 shadow-inner transition-all duration-200 group relative";
                 btnN.querySelector('div').className = "w-8 h-8 rounded-xl bg-slate-200 dark:bg-zinc-700 text-primary dark:text-dark-text flex items-center justify-center border border-slate-300 dark:border-zinc-600";
-                btnN.querySelector('span').className = "text-[10px] font-black uppercase tracking-wider text-primary dark:text-dark-text mt-2";
+                btnN.querySelector('span').className = "text-tiny font-black uppercase tracking-wider text-primary dark:text-dark-text mt-2";
                 label.textContent = 'Не задано';
                 label.className = "px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider bg-slate-100 dark:bg-zinc-800 text-muted border border-slate-200 dark:border-zinc-700";
             }
@@ -462,11 +476,11 @@
                 if (dot) {
                     dot.className = "w-3 h-3 rounded-full mt-1 ";
                     if (status === 'graded') {
-                        dot.className += "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]";
+                        dot.className += "bg-emerald-500 shadow-0-0-10px-rgba16-185-129-05";
                     } else if (status === 'submitted') {
-                        dot.className += "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]";
+                        dot.className += "bg-amber-500 shadow-0-0-10px-rgba245-158-11-05";
                     } else if (status === 'returned') {
-                        dot.className += "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]";
+                        dot.className += "bg-rose-500 shadow-0-0-10px-rgba244-63-94-05";
                     } else {
                         dot.className += "bg-slate-400";
                     }
@@ -556,11 +570,11 @@
                     div.innerHTML = `
                         <div class="flex justify-between items-center mb-1.5">
                             <div class="flex items-center gap-1.5">
-                                <div class="w-5 h-5 rounded-md bg-boo-primary/10 text-boo-primary dark:text-purple-400 flex items-center justify-center text-[10px] font-black uppercase">П</div>
-                                <span class="text-[10px] font-black text-primary dark:text-dark-text">Преподаватель</span>
+                                <div class="w-5 h-5 rounded-md bg-boo-primary/10 text-boo-primary dark:text-purple-400 flex items-center justify-center text-tiny font-black uppercase">П</div>
+                                <span class="text-tiny font-black text-primary dark:text-dark-text">Преподаватель</span>
                             </div>
                             <div class="flex items-center gap-2">
-                                <span class="text-[9px] font-bold text-muted">${dateStr}</span>
+                                <span class="text-micro font-bold text-muted">${dateStr}</span>
                                 <div class="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
                                     <button type="button" onclick="editComment(${cid})" class="text-slate-400 hover:text-primary dark:hover:text-purple-400 p-0.5" title="Редактировать">
                                         <i class="ph-bold ph-pencil-simple text-xs"></i>
@@ -575,8 +589,8 @@
                         <div id="comment-edit-${cid}" class="hidden space-y-2 mt-2">
                             <textarea id="comment-textarea-${cid}" class="w-full p-2 bg-surface dark:bg-dark-inner border border-slate-300 dark:border-zinc-700 rounded-xl text-xs font-semibold focus:outline-none focus:border-boo-primary" rows="2">${escapeHtml(val.trim())}</textarea>
                             <div class="flex gap-2">
-                                <button type="button" onclick="submitEditComment(${cid})" class="px-3 py-1.5 bg-boo-primary text-white rounded-lg text-[10px] font-bold shadow-sm">Сохранить</button>
-                                <button type="button" onclick="cancelEditComment(${cid})" class="px-3 py-1.5 bg-slate-200 dark:bg-zinc-800 text-secondary dark:text-zinc-400 rounded-lg text-[10px] font-bold border border-slate-300 dark:border-zinc-700">Отмена</button>
+                                <button type="button" onclick="submitEditComment(${cid})" class="px-3 py-1.5 bg-boo-primary text-white rounded-lg text-tiny font-bold shadow-sm">Сохранить</button>
+                                <button type="button" onclick="cancelEditComment(${cid})" class="px-3 py-1.5 bg-slate-200 dark:bg-zinc-800 text-secondary dark:text-zinc-400 rounded-lg text-tiny font-bold border border-slate-300 dark:border-zinc-700">Отмена</button>
                             </div>
                         </div>
                     `;

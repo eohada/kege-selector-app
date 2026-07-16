@@ -1,0 +1,500 @@
+<!-- QA Floating Widget — Плавающая шторка баг-репорта для тестировщиков -->
+<!-- Видна только ролям: tester, chief_tester, admin, creator, chief_admin -->
+
+<style>
+/* ---- QA FAB (круглая кнопка) ---- */
+#qaFab {
+    position: fixed; bottom: 1.25rem; right: 1.25rem;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--color-accent, #7B5CFF); color: #fff;
+    border: none; cursor: grab; z-index: 10000;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    transition: background 0.2s, box-shadow 0.2s;
+    font-size: 1.5rem; user-select: none; touch-action: none;
+}
+#qaFab:active { cursor: grabbing; }
+#qaFab:hover { box-shadow: 0 6px 28px rgba(0,0,0,0.35); }
+#qaFab.qa-fab-active { background: #f43f5e; }
+
+/* ---- QA Sheet (шторка) ---- */
+#qaSheet {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(420px, 95vw);
+    background: var(--color-bg-surface, #1a1a2e);
+    border-left: 1px solid var(--color-stroke, #333);
+    z-index: 10001; display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -8px 0 40px rgba(0,0,0,0.4);
+}
+#qaSheet.qa-sheet-open { transform: translateX(0); }
+
+/* Backdrop */
+#qaBackdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 10000;
+    display: none; backdrop-filter: blur(2px);
+}
+#qaBackdrop.qa-backdrop-show { display: block; }
+
+/* Sheet header */
+.qa-sheet-header {
+    padding: 1rem 1.25rem; border-bottom: 1px solid var(--color-stroke, #333);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--color-bg-surface-alt, #16162a);
+}
+.qa-sheet-header h3 { font-size: 1rem; font-weight: 700; color: var(--color-text-primary, #fff); margin: 0; }
+.qa-sheet-close {
+    background: none; border: none; color: var(--color-text-muted, #888); cursor: pointer;
+    font-size: 1.25rem; padding: 4px 8px; border-radius: 6px;
+}
+.qa-sheet-close:hover { color: var(--color-text-primary, #fff); background: rgba(255,255,255,0.06); }
+
+/* Body */
+.qa-sheet-body { flex: 1; overflow-y: auto; padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.875rem; }
+
+/* Inputs */
+.qa-field label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted, #888); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.qa-field select, .qa-field input[type="text"], .qa-field textarea {
+    width: 100%; padding: 0.6rem 0.75rem; border-radius: 10px; border: 1px solid var(--color-stroke, #333);
+    background: var(--color-bg-surface-alt, #16162a); color: var(--color-text-primary, #fff);
+    font-size: 0.875rem; outline: none; font-family: inherit; box-sizing: border-box;
+}
+.qa-field select:focus, .qa-field textarea:focus { border-color: var(--color-accent, #7B5CFF); box-shadow: 0 0 0 2px rgba(123,92,255,0.15); }
+.qa-field textarea { resize: vertical; min-height: 80px; }
+
+/* Verdict radio grid */
+.qa-verdict-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.qa-verdict-option { position: relative; }
+.qa-verdict-option input { position: absolute; opacity: 0; }
+.qa-verdict-option .qa-verdict-card {
+    display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.75rem; border-radius: 10px;
+    border: 2px solid var(--color-stroke, #333); cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    font-size: 0.8rem; font-weight: 600; color: var(--color-text-primary, #fff);
+}
+.qa-verdict-option input:checked + .qa-verdict-card[data-v="minor"] { border-color: #f59e0b; background: rgba(245,158,11,0.08); }
+.qa-verdict-option input:checked + .qa-verdict-card[data-v="critical"] { border-color: #f43f5e; background: rgba(244,63,94,0.08); }
+
+/* Toolbar */
+.qa-tools-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.qa-tool-btn {
+    display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.65rem; border-radius: 8px;
+    border: 1px solid var(--color-stroke, #333); background: var(--color-bg-surface-alt, #16162a);
+    color: var(--color-text-primary, #fff); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: border-color 0.15s, background 0.15s; white-space: nowrap;
+}
+.qa-tool-btn:hover { border-color: var(--color-accent, #7B5CFF); background: rgba(123,92,255,0.08); }
+.qa-tool-btn.qa-recording { border-color: #f43f5e; background: rgba(244,63,94,0.1); animation: qa-pulse 1.2s infinite; }
+@keyframes qa-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(244,63,94,0.3); } 50% { box-shadow: 0 0 0 6px rgba(244,63,94,0); } }
+
+/* Attachments */
+.qa-attachments { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.qa-attachment-badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.6rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; text-decoration: none; transition: opacity 0.15s; }
+.qa-attachment-badge:hover { opacity: 0.8; }
+.qa-attachment-badge.qa-att-img { background: rgba(99,102,241,0.1); color: #6366f1; border: 1px solid rgba(99,102,241,0.2); }
+.qa-attachment-badge.qa-att-vid { background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
+.qa-att-remove { cursor: pointer; margin-left: 0.15rem; opacity: 0.6; padding: 2px; }
+.qa-att-remove:hover { opacity: 1; }
+
+/* Send button */
+.qa-submit-btn { width: 100%; padding: 0.75rem; border-radius: 12px; border: none; background: var(--color-accent, #7B5CFF); color: #fff; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; display: flex; align-items: center; justify-content: center; }
+.qa-submit-btn:hover { opacity: 0.92; }
+.qa-submit-btn:active { transform: scale(0.98); }
+.qa-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Meta info */
+.qa-meta-line { font-size: 0.7rem; color: var(--color-text-muted, #666); display: flex; align-items: center; gap: 0.35rem; word-break: break-all; }
+
+/* Status message */
+.qa-status-msg { padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600; text-align: center; display: none; }
+.qa-status-msg.qa-msg-success { display: block; background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
+.qa-status-msg.qa-msg-error { display: block; background: rgba(244,63,94,0.1); color: #f43f5e; border: 1px solid rgba(244,63,94,0.2); }
+
+@media (max-width: 640px) { #qaSheet { width: 100vw; } }
+</style>
+
+<!-- FAB -->
+<div id="qaFab" title="QA: Отправить баг (Ctrl+Shift+E)">
+    <i class="ph-bold ph-bug"></i>
+</div>
+
+<!-- Backdrop -->
+<div id="qaBackdrop"></div>
+
+<!-- Sheet -->
+<div id="qaSheet">
+    <div class="qa-sheet-header">
+        <h3><i class="ph-bold ph-bug" style="margin-right:6px;"></i>Репорт бага</h3>
+        <button class="qa-sheet-close" id="qaSheetClose" aria-label="Закрыть"><i class="ph-bold ph-x"></i></button>
+    </div>
+    <div class="qa-sheet-body">
+        <!-- Meta -->
+        <div class="qa-meta-line" id="qaMetaUrl">
+            <i class="ph-bold ph-link"></i>
+            <span id="qaPageUrlDisplay"></span>
+        </div>
+        <div class="qa-meta-line" style="margin-top: -0.25rem;">
+            <i class="ph-bold ph-monitor"></i>
+            <span id="qaScreenSizeDisplay"></span>
+        </div>
+
+        <!-- Zone -->
+        <div class="qa-field">
+            <label>Зона</label>
+            <select id="qaArea">
+                {% for a in qa_widget_areas %}
+                <option value="{{ a }}">{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Verdict -->
+        <div class="qa-field">
+            <label>Серьезность</label>
+            <div class="qa-verdict-grid">
+                <label class="qa-verdict-option">
+                    <input type="radio" name="qaVerdict" value="minor" checked>
+                    <div class="qa-verdict-card" data-v="minor">
+                        <i class="ph-fill ph-warning-circle" style="color:#f59e0b;font-size:1.1rem;"></i>
+                        Минорный
+                    </div>
+                </label>
+                <label class="qa-verdict-option">
+                    <input type="radio" name="qaVerdict" value="critical">
+                    <div class="qa-verdict-card" data-v="critical">
+                        <i class="ph-fill ph-x-circle" style="color:#f43f5e;font-size:1.1rem;"></i>
+                        Критичный
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Comment -->
+        <div class="qa-field">
+            <label>Описание бага</label>
+            <textarea id="qaComment" placeholder="Что пошло не так? Ctrl+V — вставить скриншот..." rows="4"></textarea>
+            <div style="font-size: 0.65rem; color: var(--color-text-muted); margin-top: 6px; display: flex; flex-direction: column; gap: 2px;">
+                <span><i class="ph-bold ph-check" style="color:#10b981;"></i> Логи консоли собираются автоматически</span>
+                <span><i class="ph-bold ph-check" style="color:#10b981;"></i> Ошибки сети (4xx/5xx) перехватываются</span>
+            </div>
+        </div>
+
+        <!-- Tools bar -->
+        <div class="qa-tools-bar">
+            <button type="button" class="qa-tool-btn" id="qaBtnScreenshot" title="Авто-скриншот страницы (html2canvas)">
+                <i class="ph-bold ph-camera"></i> Скриншот
+            </button>
+            <button type="button" class="qa-tool-btn" id="qaBtnRecord" title="Записать экран 15 секунд">
+                <i class="ph-bold ph-record"></i> Запись (15с)
+            </button>
+        </div>
+
+        <!-- Attachments -->
+        <div class="qa-attachments" id="qaAttachments"></div>
+
+        <!-- Status -->
+        <div class="qa-status-msg" id="qaStatusMsg"></div>
+
+        <!-- Submit -->
+        <button type="button" class="qa-submit-btn" id="qaSubmitBtn">
+            <i class="ph-bold ph-paper-plane-tilt" style="margin-right:6px;"></i> Отправить репорт
+        </button>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    var sheet = document.getElementById('qaSheet');
+    var backdrop = document.getElementById('qaBackdrop');
+    var fab = document.getElementById('qaFab');
+    var closeBtn = document.getElementById('qaSheetClose');
+    var submitBtn = document.getElementById('qaSubmitBtn');
+    var commentEl = document.getElementById('qaComment');
+    var areaEl = document.getElementById('qaArea');
+    var statusMsg = document.getElementById('qaStatusMsg');
+    var attachmentsEl = document.getElementById('qaAttachments');
+    var pageUrlDisplay = document.getElementById('qaPageUrlDisplay');
+    var screenSizeDisplay = document.getElementById('qaScreenSizeDisplay');
+
+    var attachments = [];
+    var mediaRecorder = null;
+    var recordedChunks = [];
+
+    // ---- Network Spy (перехватчик fetch для логирования ошибок 4xx/5xx) ----
+    var _networkErrors = [];
+    var origFetch = window.fetch;
+    window.fetch = function() {
+        var args = arguments;
+        var url = args[0] instanceof Request ? args[0].url : args[0];
+        var method = args[1] && args[1].method ? args[1].method : 'GET';
+        
+        return origFetch.apply(this, args).then(function(res) {
+            if (!res.ok && res.status >= 400) {
+                _networkErrors.push({
+                    ts: new Date().toLocaleTimeString(),
+                    msg: `${method} ${url} -> ${res.status} ${res.statusText}`
+                });
+                if (_networkErrors.length > 20) _networkErrors.shift();
+            }
+            return res;
+        }).catch(function(err) {
+            _networkErrors.push({
+                ts: new Date().toLocaleTimeString(),
+                msg: `${method} ${url} -> FETCH ERROR: ${err.message}`
+            });
+            if (_networkErrors.length > 20) _networkErrors.shift();
+            throw err;
+        });
+    };
+
+    // ---- Console spy (ошибки JS и Promise) ----
+    var _consoleErrors = [];
+    var _origConsoleError = console.error;
+    console.error = function() {
+        try {
+            var msg = Array.prototype.slice.call(arguments).map(function(a) { return typeof a === 'string' ? a : JSON.stringify(a); }).join(' ');
+            _consoleErrors.push({ ts: new Date().toLocaleTimeString(), msg: msg.substring(0, 300) });
+            if (_consoleErrors.length > 20) _consoleErrors.shift();
+        } catch(e) {}
+        return _origConsoleError.apply(console, arguments);
+    };
+
+    window.addEventListener('error', function(ev) {
+        try {
+            _consoleErrors.push({ ts: new Date().toLocaleTimeString(), msg: (ev.message || '') + ' @ ' + (ev.filename || '') + ':' + (ev.lineno || '') });
+            if (_consoleErrors.length > 20) _consoleErrors.shift();
+        } catch(e) {}
+    });
+
+    window.addEventListener('unhandledrejection', function(ev) {
+        try {
+            var msg = ev.reason ? (ev.reason.message || String(ev.reason)) : 'Promise rejected';
+            _consoleErrors.push({ ts: new Date().toLocaleTimeString(), msg: "Unhandled Promise: " + msg.substring(0, 300) });
+            if (_consoleErrors.length > 20) _consoleErrors.shift();
+        } catch(e) {}
+    });
+
+    // ---- Dragging FAB ----
+    var isDragging = false, startX, startY, initialLeft, initialTop, hasMoved = false;
+    var savedLeft = localStorage.getItem('qaFabLeft');
+    var savedTop = localStorage.getItem('qaFabTop');
+    if (savedLeft && savedTop) { fab.style.right = 'auto'; fab.style.bottom = 'auto'; fab.style.left = savedLeft; fab.style.top = savedTop; }
+
+    fab.addEventListener('mousedown', dragStart);
+    fab.addEventListener('touchstart', dragStart, {passive: false});
+
+    function dragStart(e) {
+        if (e.target.closest('i') && e.type !== 'touchstart') e.preventDefault();
+        var clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+        var clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+        startX = clientX; startY = clientY;
+        var rect = fab.getBoundingClientRect();
+        initialLeft = rect.left; initialTop = rect.top;
+        isDragging = true; hasMoved = false;
+        document.addEventListener('mousemove', dragMove);
+        document.addEventListener('mouseup', dragEnd);
+        document.addEventListener('touchmove', dragMove, {passive: false});
+        document.addEventListener('touchend', dragEnd);
+    }
+
+    function dragMove(e) {
+        if (!isDragging) return;
+        var clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+        var clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+        var dx = clientX - startX; var dy = clientY - startY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            hasMoved = true;
+            if (e.type === 'touchmove') e.preventDefault();
+            fab.style.right = 'auto'; fab.style.bottom = 'auto';
+            fab.style.left = (initialLeft + dx) + 'px';
+            fab.style.top = (initialTop + dy) + 'px';
+        }
+    }
+
+    function dragEnd() {
+        isDragging = false;
+        document.removeEventListener('mousemove', dragMove); document.removeEventListener('mouseup', dragEnd);
+        document.removeEventListener('touchmove', dragMove); document.removeEventListener('touchend', dragEnd);
+        if (hasMoved) { localStorage.setItem('qaFabLeft', fab.style.left); localStorage.setItem('qaFabTop', fab.style.top); }
+        else { toggleSheet(); }
+    }
+
+    function openSheet() {
+        pageUrlDisplay.textContent = window.location.href;
+        screenSizeDisplay.textContent = window.innerWidth + ' x ' + window.innerHeight;
+        sheet.classList.add('qa-sheet-open');
+        backdrop.classList.add('qa-backdrop-show');
+        fab.style.display = 'none';
+        commentEl.focus();
+    }
+    function closeSheet() {
+        sheet.classList.remove('qa-sheet-open');
+        backdrop.classList.remove('qa-backdrop-show');
+        fab.style.display = 'flex';
+    }
+    function toggleSheet() { sheet.classList.contains('qa-sheet-open') ? closeSheet() : openSheet(); }
+
+    closeBtn.addEventListener('click', closeSheet);
+    backdrop.addEventListener('click', closeSheet);
+
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.shiftKey && (e.key === 'E' || e.key === 'e' || e.key === 'У' || e.key === 'у')) {
+            e.preventDefault(); toggleSheet();
+        }
+        if (e.key === 'Escape' && sheet.classList.contains('qa-sheet-open')) closeSheet();
+    });
+
+    function getCsrf() { var m = document.querySelector('meta[name="csrf-token"]'); return m ? m.getAttribute('content') : ''; }
+    function showStatus(type, msg) {
+        statusMsg.className = 'qa-status-msg qa-msg-' + type; statusMsg.textContent = msg;
+        if (type === 'success') setTimeout(function() { statusMsg.className = 'qa-status-msg'; }, 3000);
+    }
+    function clearStatus() { statusMsg.className = 'qa-status-msg'; statusMsg.textContent = ''; }
+
+    function uploadFile(formData, endpoint) {
+        return origFetch(endpoint, { method: 'POST', body: formData, credentials: 'same-origin' }).then(function(r) { return r.json(); });
+    }
+
+    function renderAttachments() {
+        attachmentsEl.innerHTML = '';
+        attachments.forEach(function(att, idx) {
+            if (!att) return;
+            var badge = document.createElement('div');
+            badge.className = 'qa-attachment-badge ' + (att.type === 'video' ? 'qa-att-vid' : 'qa-att-img');
+            var icon = att.type === 'video' ? 'ph-video-camera' : 'ph-image';
+            var label = att.type === 'video' ? 'Видео' : 'Скриншот';
+            badge.innerHTML = '<a href="' + att.url + '" target="_blank" style="color:inherit;text-decoration:none;display:flex;align-items:center;gap:4px;"><i class="ph-bold ' + icon + '"></i> ' + label + '</a>' +
+                '<span class="qa-att-remove" data-idx="' + idx + '" title="Удалить">&times;</span>';
+            attachmentsEl.appendChild(badge);
+            badge.querySelector('.qa-att-remove').addEventListener('click', function(ev) {
+                ev.preventDefault(); ev.stopPropagation(); attachments[idx] = null; renderAttachments();
+            });
+        });
+    }
+
+    // Ctrl+V paste screenshot
+    commentEl.addEventListener('paste', function(e) {
+        var items = (e.clipboardData || e.originalEvent.clipboardData || {}).items;
+        if (!items) return;
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file' && items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+                var blob = items[i].getAsFile();
+                var fd = new FormData();
+                fd.append('image', blob, 'paste.png'); fd.append('csrf_token', getCsrf());
+                showStatus('success', 'Загрузка скриншота...');
+                uploadFile(fd, '{{ url_for("qa_tester.upload_screenshot") }}').then(function(res) {
+                    if (res.success) { attachments.push({url: res.url, type: 'image', filename: res.filename}); renderAttachments(); showStatus('success', 'Скриншот загружен'); }
+                    else showStatus('error', res.error || 'Ошибка загрузки');
+                }).catch(function() { showStatus('error', 'Ошибка сети'); });
+                break;
+            }
+        }
+    });
+
+    // html2canvas auto-screenshot
+    var html2canvasLoaded = false;
+    document.getElementById('qaBtnScreenshot').addEventListener('click', function() {
+        showStatus('success', 'Делаю скриншот страницы...');
+        sheet.style.display = 'none'; backdrop.style.display = 'none'; fab.style.display = 'none';
+        var cb = function() {
+            window.html2canvas(document.body, {
+                useCORS: true, allowTaint: true, scale: 1, logging: false,
+                ignoreElements: function(el) { return el.id === 'qaFab' || el.id === 'qaSheet' || el.id === 'qaBackdrop'; }
+            }).then(function(canvas) {
+                sheet.style.display = ''; backdrop.style.display = ''; fab.style.display = 'flex';
+                canvas.toBlob(function(blob) {
+                    var fd = new FormData(); fd.append('image', blob, 'auto_screenshot.png'); fd.append('csrf_token', getCsrf());
+                    uploadFile(fd, '{{ url_for("qa_tester.upload_screenshot") }}').then(function(res) {
+                        if (res.success) { attachments.push({url: res.url, type: 'image', filename: res.filename}); renderAttachments(); showStatus('success', 'Авто-скриншот сделан'); }
+                        else showStatus('error', res.error || 'Ошибка загрузки');
+                    }).catch(function() { showStatus('error', 'Ошибка сети'); });
+                }, 'image/png');
+            }).catch(function(err) {
+                sheet.style.display = ''; backdrop.style.display = ''; fab.style.display = 'flex';
+                showStatus('error', 'Ошибка html2canvas: ' + (err.message || err));
+            });
+        };
+        if (html2canvasLoaded && window.html2canvas) { cb(); } else {
+            var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            s.onload = function() { html2canvasLoaded = true; cb(); }; s.onerror = function() { showStatus('error', 'Не удалось загрузить html2canvas'); };
+            document.head.appendChild(s);
+        }
+    });
+
+    // Screen recording
+    var recordBtn = document.getElementById('qaBtnRecord');
+    recordBtn.addEventListener('click', function() {
+        if (mediaRecorder && mediaRecorder.state === 'recording') { mediaRecorder.stop(); return; }
+        closeSheet();
+        navigator.mediaDevices.getDisplayMedia({ video: { mediaSource: 'screen', frameRate: 15 }, audio: false }).then(function(stream) {
+            recordedChunks = []; mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+            mediaRecorder.ondataavailable = function(e) { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
+            mediaRecorder.onstop = function() {
+                stream.getTracks().forEach(function(t) { t.stop(); });
+                recordBtn.classList.remove('qa-recording'); recordBtn.innerHTML = '<i class="ph-bold ph-record"></i> Запись (15с)';
+                var blob = new Blob(recordedChunks, { type: 'video/webm' });
+                var fd = new FormData(); fd.append('video', blob, 'screen_record.webm'); fd.append('csrf_token', getCsrf());
+                openSheet(); showStatus('success', 'Загрузка видео...');
+                uploadFile(fd, '{{ url_for("qa_tester.upload_video") }}').then(function(res) {
+                    if (res.success) { attachments.push({url: res.url, type: 'video', filename: res.filename}); renderAttachments(); showStatus('success', 'Видео загружено'); }
+                    else showStatus('error', res.error || 'Ошибка загрузки');
+                }).catch(function() { showStatus('error', 'Ошибка сети при загрузке видео'); });
+            };
+            mediaRecorder.start(); recordBtn.classList.add('qa-recording'); recordBtn.innerHTML = '<i class="ph-bold ph-stop-circle"></i> Остановить';
+            setTimeout(function() { if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); }, 15000);
+            stream.getVideoTracks()[0].addEventListener('ended', function() { if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); });
+        }).catch(function(err) {
+            openSheet(); if (err.name !== 'NotAllowedError') showStatus('error', 'Ошибка захвата экрана: ' + (err.message || err));
+        });
+    });
+
+    // Submit
+    submitBtn.addEventListener('click', function(e) {
+        if (e) e.preventDefault(); // Предотвращаем дубли отправки, если это каким-то чудом кнопка внутри формы
+
+        var description = commentEl.value.trim();
+        if (!description) { showStatus('error', 'Описание бага обязательно'); commentEl.focus(); return; }
+
+        var verdict = 'minor';
+        var checked = document.querySelector('input[name="qaVerdict"]:checked');
+        if (checked) verdict = checked.value;
+
+        submitBtn.disabled = true; submitBtn.innerHTML = '<i class="ph-bold ph-spinner" style="animation:qa-pulse 1s infinite;margin-right:6px;"></i>Отправка...';
+        clearStatus();
+
+        var netErrorsStr = _networkErrors.map(function(e) { return '[' + e.ts + '] ' + e.msg; });
+        var consErrorsStr = _consoleErrors.map(function(e) { return '[' + e.ts + '] ' + e.msg; });
+
+        origFetch('{{ url_for("qa_tester.api_quick_bug") }}', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+            body: JSON.stringify({
+                description: description,
+                area: areaEl.value,
+                verdict: verdict,
+                page_url: window.location.href,
+                screen_size: window.innerWidth + 'x' + window.innerHeight,
+                user_agent: navigator.userAgent,
+                attachments: attachments.filter(function(a) { return a !== null; }),
+                network_errors: netErrorsStr,
+                console_errors: consErrorsStr
+            })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            submitBtn.disabled = false; submitBtn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt" style="margin-right:6px;"></i>Отправить репорт';
+            if (data.success) {
+                showStatus('success', 'Баг #' + data.report_id + ' отправлен!');
+                commentEl.value = ''; attachments = []; renderAttachments();
+                var minorRadio = document.querySelector('input[name="qaVerdict"][value="minor"]');
+                if (minorRadio) minorRadio.checked = true;
+                _consoleErrors = []; _networkErrors = [];
+                setTimeout(closeSheet, 1500);
+            } else { showStatus('error', data.error || 'Ошибка отправки'); }
+        }).catch(function(err) {
+            submitBtn.disabled = false; submitBtn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt" style="margin-right:6px;"></i>Отправить репорт';
+            showStatus('error', 'Ошибка сети: ' + (err.message || err));
+        });
+    });
+
+})();
+</script>

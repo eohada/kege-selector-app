@@ -26,8 +26,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4 px-4">
-    <div class="flex justify-between items-center mb-8 pb-4">
+<div class="container-fluid mt-3 w-full">
+    <div class="flex justify-between items-center mb-3 pb-4">
         <div>
             <div class="text-xs text-muted uppercase tracking-widest">QA</div>
             <h1 class="text-2xl font-bold">Управление тестерами</h1>
@@ -36,12 +36,12 @@
             {% if return_to %}
             <a href="{{ return_to }}" class="neo-button ghost">← Вернуться в QA кабинет</a>
             {% endif %}
-            <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Канбан</a>
+            <a href="{{ url_for('qa_tester.board') }}" class="neo-button ghost">Канбан</a>
         </div>
     </div>
 
     <div class="glass-panel">
-        <h3 class="mb-4 text-base font-semibold">Создать тестировщика</h3>
+        <h3 class="mb-3 text-base font-semibold">Создать тестировщика</h3>
         <form action="{{ url_for('qa.testers_create') }}" method="POST" class="create-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="username" placeholder="Логин" required>
@@ -52,7 +52,7 @@
     </div>
 
     <div class="glass-panel">
-        <h3 class="mb-4 text-base font-semibold">Список тестировщиков и права</h3>
+        <h3 class="mb-3 text-base font-semibold">Список тестировщиков и права</h3>
         {% for u in testers_list %}
         <div class="tester-row">
             <div>

@@ -5,120 +5,143 @@
 {% block body_class %}layout-teacher{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
-
+<div class="flex flex-col gap-4 pb-8 pt-6 w-full">
 
     {# ── HERO + BENTO STATS ── #}
-    {# ── HERO + BENTO STATS ── #}
-    <div class="flex flex-col lg:flex-row gap-6">
-        <div class="lg:w-1/3 bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] shadow-sm dark:shadow-glass-dark flex flex-col justify-between">
+    <div class="flex flex-col lg:flex-row gap-4">
+        <div class="lg:w-1/3 bg-zinc-900 border border-white/5 border-t-white/10 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
             <div>
-                <h1 class="text-3xl font-black text-primary dark:text-white tracking-tight mb-2">Ученики</h1>
-                <p class="text-muted dark:text-dark-muted font-medium text-sm leading-relaxed mb-0">
+                <h1 class="text-xl font-bold text-white tracking-tight mb-2">Ученики</h1>
+                <p class="text-zinc-400 font-medium text-sm leading-relaxed mb-0">
                     Управление потоком. У вас {{ total_students }} активн{{ 'ых' if total_students != 1 else 'ый' }} ученик{{ 'ов' if total_students != 1 else '' }} в этом месяце.
                 </p>
             </div>
 
-            <div class="mt-6 pt-6 border-t border-slate-100 dark:border-white/[0.06]">
-                <h4 class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-wider mb-3">Быстрый переход</h4>
+            <div class="mt-3 pt-4 border-t border-white/5">
+                <h4 class="text-xs font-extrabold text-zinc-400 uppercase tracking-wider mb-2">Быстрый переход</h4>
                 <div class="flex flex-col gap-2">
                     {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
-                    <a href="{{ url_for('students.student_new') }}" class="flex items-center justify-between p-3 rounded-xl bg-boo-primary text-white border border-purple-500/20 hover:bg-boo-primaryHover transition-colors group">
+                    <a href="{{ url_for('students.student_new') }}" class="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-white/5 text-sm font-semibold text-white hover:bg-white/5 transition-colors group">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
-                                <i class="ph-bold ph-user-plus"></i>
+                            <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                                <i class="ph-bold ph-user-plus text-lg"></i>
                             </div>
-                            <span class="text-sm font-bold">Новый ученик</span>
+                            <span class="text-sm font-semibold">Новый ученик</span>
                         </div>
-                        <i class="ph-bold ph-arrow-right text-white/70 group-hover:translate-x-0.5 transition-transform"></i>
+                        <i class="ph-bold ph-arrow-right text-zinc-400 group-hover:translate-x-0.5 transition-transform"></i>
                     </a>
                     {% endif %}
 
-                    <a href="{{ url_for('schedule.schedule') }}" class="flex items-center justify-between p-3 rounded-xl bg-surface-alt dark:bg-dark-inner border border-slate-200/40 dark:border-white/[0.04] text-sm font-semibold text-primary dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors group">
+                    <button type="button" onclick="copyInviteLink()" class="w-full flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-white/5 text-sm font-semibold text-white hover:bg-white/5 transition-colors group cursor-pointer text-left">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-7 h-7 rounded-lg bg-cyan-500/10 text-boo-cyan flex items-center justify-center">
-                                <i class="ph-bold ph-calendar-blank"></i>
+                            <div class="w-8 h-8 rounded-lg bg-green-500/10 text-green-400 flex items-center justify-center">
+                                <i class="ph-bold ph-link text-lg"></i>
+                            </div>
+                            <span id="invite-btn-text" class="font-semibold text-sm">Пригласить ученика</span>
+                        </div>
+                        <i class="ph-bold ph-copy text-zinc-400 group-hover:scale-105 transition-transform"></i>
+                    </button>
+                    <script>
+                        function copyInviteLink() {
+                            const link = window.location.origin + "{{ url_for('auth.register') }}?tutor_id={{ current_user.id }}";
+                            navigator.clipboard.writeText(link).then(() => {
+                                const btnText = document.getElementById('invite-btn-text');
+                                const original = btnText.innerText;
+                                btnText.innerText = 'Ссылка скопирована!';
+                                btnText.style.color = '#10B981';
+                                setTimeout(() => {
+                                    btnText.innerText = original;
+                                    btnText.style.color = '';
+                                }, 2000);
+                            });
+                        }
+                    </script>
+
+                    <a href="{{ url_for('schedule.schedule') }}" class="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-white/5 text-sm font-semibold text-white hover:bg-white/5 transition-colors group">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
+                                <i class="ph-bold ph-calendar-blank text-lg"></i>
                             </div>
                             <span>Расписание занятий</span>
                         </div>
-                        <i class="ph-bold ph-arrow-right text-muted group-hover:translate-x-0.5 transition-transform"></i>
+                        <i class="ph-bold ph-arrow-right text-zinc-400 group-hover:translate-x-0.5 transition-transform"></i>
                     </a>
 
-                    <a href="{{ url_for('lessons.review_queue') }}" class="flex items-center justify-between p-3 rounded-xl bg-surface-alt dark:bg-dark-inner border border-slate-200/40 dark:border-white/[0.04] text-sm font-semibold text-primary dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors group">
+                    <a href="{{ url_for('lessons.review_queue') }}" class="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-white/5 text-sm font-semibold text-white hover:bg-white/5 transition-colors group">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-7 h-7 rounded-lg bg-purple-500/10 text-boo-primary dark:text-[#A78BFA] flex items-center justify-center">
-                                <i class="ph-bold ph-clipboard-text"></i>
+                            <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                                <i class="ph-bold ph-clipboard-text text-lg"></i>
                             </div>
                             <span>Очередь проверки</span>
                         </div>
-                        <i class="ph-bold ph-arrow-right text-muted group-hover:translate-x-0.5 transition-transform"></i>
+                        <i class="ph-bold ph-arrow-right text-zinc-400 group-hover:translate-x-0.5 transition-transform"></i>
                     </a>
 
-                    <a href="{{ url_for('main.dashboard', show_archive='true') }}" class="flex items-center justify-between p-3 rounded-xl bg-surface-alt dark:bg-dark-inner border border-slate-200/40 dark:border-white/[0.04] text-sm font-semibold text-primary dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors group">
+                    <a href="{{ url_for('main.dashboard', show_archive='true') }}" class="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-white/5 text-sm font-semibold text-white hover:bg-white/5 transition-colors group">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-7 h-7 rounded-lg bg-slate-500/10 text-muted flex items-center justify-center">
-                                <i class="ph-bold ph-archive"></i>
+                            <div class="w-8 h-8 rounded-lg bg-zinc-500/10 text-zinc-400 flex items-center justify-center">
+                                <i class="ph-bold ph-archive text-lg"></i>
                             </div>
                             <span>Архив учеников</span>
                         </div>
-                        <i class="ph-bold ph-arrow-right text-muted group-hover:translate-x-0.5 transition-transform"></i>
+                        <i class="ph-bold ph-arrow-right text-zinc-400 group-hover:translate-x-0.5 transition-transform"></i>
                     </a>
                 </div>
             </div>
         </div>
 
-        <div class="lg:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div class="lg:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-            {# Очередь ревью — как в макете #}
+            {# Очередь ревью ── #}
             <a href="{{ url_for('lessons.review_queue') }}"
-               class="bg-purple-50/50 dark:bg-purple-950/15 rounded-[28px] p-6 border border-purple-100 dark:border-purple-500/20 shadow-sm dark:shadow-[0_8px_32px_rgba(139,92,246,0.15)] flex flex-col justify-between group cursor-pointer hover:shadow-md dark:hover:shadow-[0_12px_40px_rgba(139,92,246,0.25)] hover:translate-y-[-2px] transition-all relative overflow-hidden">
-                <div class="absolute right-0 top-0 w-64 h-64 bg-purple-500/5 dark:bg-purple-500/10 rounded-full blur-3xl pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
+               class="bg-zinc-900 border border-white/5 border-t-white/10 rounded-2xl p-5 shadow-xl flex flex-col justify-between group cursor-pointer hover:border-white/10 hover:-translate-y-0.5 transition-all relative overflow-hidden">
+                <div class="absolute right-0 top-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
                 <div class="relative z-10 flex justify-between items-center">
-                    <div class="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-3 py-1.5 rounded-xl border border-purple-200/50 dark:border-purple-500/30 shadow-sm">
+                    <div class="flex items-center gap-2 bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded-md border border-purple-500/20 shadow-sm">
                         <span class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
-                        <span class="text-[10px] font-extrabold tracking-widest uppercase">Очередь ревью</span>
+                        <span class="text-xs font-bold uppercase tracking-wider">Очередь ревью</span>
                     </div>
-                    <div class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-200/30 dark:border-purple-500/20">
-                        <i class="ph-fill ph-files text-xl"></i>
+                    <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                        <i class="ph-fill ph-files text-lg"></i>
                     </div>
                 </div>
-                <div class="relative z-10 mt-6">
+                <div class="relative z-10 mt-3">
                     <div class="flex items-baseline gap-2 mb-2">
-                        <span class="text-5xl font-black tracking-tight text-slate-900 dark:text-white">{{ (review_lesson_tasks_count|default(0)) + (review_submissions_count|default(0)) }}</span>
-                        <span class="text-sm font-bold text-slate-500 dark:text-purple-300/80">работ ждут проверки</span>
+                        <span class="text-3xl font-bold tracking-tight text-white">{{ (review_lesson_tasks_count|default(0)) + (review_submissions_count|default(0)) }}</span>
+                        <span class="text-sm font-bold text-purple-300/80">работ ждут проверки</span>
                     </div>
                     <div class="flex items-center justify-between">
-                        <div class="text-xs font-semibold text-slate-500 dark:text-dark-muted">
+                        <div class="text-xs font-semibold text-zinc-400">
                             {{ review_lesson_tasks_count|default(0) }} классных · {{ review_submissions_count|default(0) }} самостоятельных
                         </div>
-                        <div class="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center border border-purple-200/50 dark:border-purple-500/30 group-hover:bg-purple-200 dark:group-hover:bg-purple-800/40 transition-colors">
+                        <div class="w-8 h-8 rounded-full bg-purple-500/10 text-purple-300 flex items-center justify-center border border-purple-500/20 group-hover:bg-purple-500/20 transition-colors">
                             <i class="ph-bold ph-arrow-right text-lg group-hover:translate-x-0.5 transition-transform"></i>
                         </div>
                     </div>
                 </div>
             </a>
 
-            {# Ближайший урок — как в макете (fallback без данных) #}
+            {# Ближайший урок ── #}
             <a href="{{ url_for('schedule.schedule') }}"
-               class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] shadow-sm dark:shadow-glass-dark flex flex-col justify-between cursor-pointer hover:shadow-md hover:translate-y-[-2px] transition-all group">
-                <div class="flex justify-between items-center mb-4">
-                    <span class="text-xs font-bold text-muted bg-surface-alt dark:bg-white/5 dark:text-dark-muted px-3 py-1.5 rounded-xl uppercase tracking-wide">Ближайший урок</span>
-                    <div class="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 text-boo-cyan flex items-center justify-center border border-cyan-100/30 dark:border-cyan-800/20">
-                        <i class="ph-fill ph-video-camera text-xl group-hover:scale-110 transition-transform"></i>
+               class="bg-zinc-900 border border-white/5 border-t-white/10 rounded-2xl p-5 shadow-xl flex flex-col justify-between cursor-pointer hover:border-white/10 hover:-translate-y-0.5 transition-all group">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-bold text-zinc-400 bg-white/5 px-2 py-0.5 rounded-md uppercase tracking-wide">Ближайший урок</span>
+                    <div class="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center border border-cyan-500/20">
+                        <i class="ph-fill ph-video-camera text-lg group-hover:scale-110 transition-transform"></i>
                     </div>
                 </div>
                 <div class="flex-1 flex flex-col justify-center">
                     {% if next_lesson is defined and next_lesson %}
-                        <div class="bg-surface-alt dark:bg-dark-inner rounded-2xl p-4 border border-slate-200/40 dark:border-white/[0.04] transition-colors group-hover:border-boo-cyan/30">
-                            <h3 class="text-lg font-black text-primary dark:text-white mb-1.5 group-hover:text-boo-cyan transition-colors">{{ next_lesson.title }}</h3>
-                            <p class="text-sm font-semibold text-muted dark:text-dark-muted flex items-center gap-1.5">
-                                <i class="ph-bold ph-clock text-boo-accent"></i> {{ next_lesson.time_display }}
+                        <div class="bg-zinc-950 rounded-2xl p-4 border border-white/5 transition-colors group-hover:border-cyan-500/30">
+                            <h3 class="text-sm font-bold text-white mb-1.5 group-hover:text-cyan-400 transition-colors">{{ next_lesson.title }}</h3>
+                            <p class="text-sm font-semibold text-zinc-400 flex items-center gap-1.5">
+                                <i class="ph-bold ph-clock text-amber-400"></i> {{ next_lesson.time_display }}
                             </p>
                         </div>
                     {% else %}
-                        <div class="border border-dashed border-slate-200 dark:border-white/[0.08] rounded-2xl p-4 text-center">
-                            <h3 class="text-base font-bold text-primary dark:text-white mb-1">Нет ближайших уроков</h3>
-                            <p class="text-xs font-semibold text-muted dark:text-dark-muted">
+                        <div class="border border-dashed border-white/10 rounded-2xl p-4 text-center">
+                            <h3 class="text-base font-bold text-white mb-1">Нет ближайших уроков</h3>
+                            <p class="text-xs font-semibold text-zinc-400">
                                 Запланируйте занятие в расписании
                             </p>
                         </div>
@@ -126,35 +149,35 @@
                 </div>
             </a>
 
-            {# KPI: Активные ученики (как отдельная карточка) #}
-            <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] shadow-sm dark:shadow-glass-dark flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 flex items-center justify-center border border-cyan-100/30 dark:border-cyan-800/20">
-                        <i class="ph-fill ph-users-three text-xl text-boo-cyan"></i>
+            {# KPI: Активные ученики ── #}
+            <div class="bg-zinc-900 border border-white/5 border-t-white/10 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-8 h-8 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                        <i class="ph-fill ph-users-three text-lg text-cyan-400"></i>
                     </div>
                     {% if students_delta_30d is defined %}
-                    <span class="text-[10px] font-extrabold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 rounded-lg border border-cyan-100 dark:border-cyan-800/30">+{{ students_delta_30d }} за месяц</span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wider text-cyan-400 bg-cyan-500/10 border border-cyan-500/20">+{{ students_delta_30d }} за месяц</span>
                     {% endif %}
                 </div>
                 <div>
-                    <div class="text-4xl font-black tracking-tight text-primary dark:text-white">{{ total_students }}</div>
-                    <div class="text-[11px] font-bold text-muted dark:text-dark-muted uppercase tracking-wider mt-1">активных учеников</div>
+                    <div class="text-3xl font-bold tracking-tight text-white">{{ total_students }}</div>
+                    <div class="text-xs font-bold text-zinc-400 uppercase tracking-wider mt-1">активных учеников</div>
                 </div>
             </div>
 
-            {# KPI: Проведено уроков (как отдельная карточка) #}
-            <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] shadow-sm dark:shadow-glass-dark flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center border border-amber-100/30 dark:border-amber-800/20">
-                        <i class="ph-fill ph-lightning text-xl text-boo-accent"></i>
+            {# KPI: Проведено уроков ── #}
+            <div class="bg-zinc-900 border border-white/5 border-t-white/10 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                        <i class="ph-fill ph-lightning text-lg text-amber-400"></i>
                     </div>
                     {% if completed_lessons_delta_7d is defined %}
-                    <span class="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg border border-amber-100 dark:border-amber-800/30">+{{ completed_lessons_delta_7d }} за неделю</span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20">+{{ completed_lessons_delta_7d }} за неделю</span>
                     {% endif %}
                 </div>
                 <div>
-                    <div class="text-4xl font-black tracking-tight text-primary dark:text-white">{{ completed_lessons }}</div>
-                    <div class="text-[11px] font-bold text-muted dark:text-dark-muted uppercase tracking-wider mt-1">проведённых уроков</div>
+                    <div class="text-3xl font-bold tracking-tight text-white">{{ completed_lessons }}</div>
+                    <div class="text-xs font-bold text-zinc-400 uppercase tracking-wider mt-1">проведённых уроков</div>
                 </div>
             </div>
         </div>
@@ -163,18 +186,18 @@
     {# ── Tutors (for students) ── #}
     {% if my_tutors %}
     <div>
-        <p class="hero-eyebrow mb-2">мой преподаватель{% if my_tutors|length > 1 %}и{% endif %}</p>
+        <p class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">мой преподаватель{% if my_tutors|length > 1 %}и{% endif %}</p>
         <div class="flex flex-wrap gap-3">
             {% for tutor in my_tutors %}
-            <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="tactile-card flex items-center gap-3 no-underline" style="padding:0.85rem 1.15rem;border-radius:16px;color:inherit;">
+            <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="bg-zinc-900 border border-white/5 border-t-white/10 rounded-2xl p-4 shadow-xl flex items-center gap-3 no-underline" style="color:inherit;">
                 <div class="student-avatar" style="width:40px;height:40px;border-radius:12px;font-size:0.85rem;">
                     {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="">{% else %}{{ tutor.username[0]|upper }}{% endif %}
                 </div>
                 <div class="min-w-0">
-                    <div class="font-extrabold text-sm leading-snug" style="color:#0F172A;">
+                    <div class="font-extrabold text-sm leading-snug text-white">
                         {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}{{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}{% else %}{{ tutor.username }}{% endif %}
                     </div>
-                    <div class="text-xs text-muted mt-0.5 font-semibold">{{ tutor.get_role_display() }}</div>
+                    <div class="text-xs text-zinc-400 mt-0.5 font-semibold">{{ tutor.get_role_display() }}</div>
                 </div>
             </a>
             {% endfor %}
@@ -184,29 +207,29 @@
 
     {# ── FILTERS (Segmented + Search) ── #}
     <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div class="bg-slate-200/50 dark:bg-white/5 p-1.5 rounded-xl border border-slate-200 dark:border-white/[0.08] inline-flex w-full md:w-auto">
+        <div class="bg-zinc-900 p-1.5 rounded-xl border border-white/5 inline-flex w-full md:w-auto overflow-x-auto hide-scroll">
             <a href="{{ url_for('main.dashboard', search=search_query, show_archive='false', student_scope='regular') }}"
-               class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if not show_archive and student_scope == 'regular' and not category_filter %}bg-surface text-primary shadow-sm dark:bg-white/10 dark:text-white border border-slate-200/50 dark:border-white/10{% else %}text-muted hover:text-primary dark:text-dark-muted dark:hover:text-white{% endif %}">
+               class="flex-1 md:flex-none px-4 py-1.5 rounded-lg font-bold text-xs transition-colors whitespace-nowrap {% if not show_archive and student_scope == 'regular' and not category_filter %}bg-zinc-800 text-white shadow-sm border border-white/10{% else %}text-zinc-400 hover:text-white{% endif %}">
                 Все ({{ regular_students_count }})
             </a>
             <a href="{{ url_for('main.dashboard', search=search_query, show_archive='false', student_scope='regular', category='ЕГЭ') }}"
-               class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if student_scope == 'regular' and category_filter == 'ЕГЭ' %}bg-surface text-primary shadow-sm dark:bg-white/10 dark:text-white border border-slate-200/50 dark:border-white/10{% else %}text-muted hover:text-primary dark:text-dark-muted dark:hover:text-white{% endif %}">
+               class="flex-1 md:flex-none px-4 py-1.5 rounded-lg font-bold text-xs transition-colors whitespace-nowrap {% if student_scope == 'regular' and category_filter == 'ЕГЭ' %}bg-zinc-800 text-white shadow-sm border border-white/10{% else %}text-zinc-400 hover:text-white{% endif %}">
                 ЕГЭ ({{ ege_students }})
             </a>
             <a href="{{ url_for('main.dashboard', search=search_query, show_archive='false', student_scope='regular', category='ОГЭ') }}"
-               class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if student_scope == 'regular' and category_filter == 'ОГЭ' %}bg-surface text-primary shadow-sm dark:bg-white/10 dark:text-white border border-slate-200/50 dark:border-white/10{% else %}text-muted hover:text-primary dark:text-dark-muted dark:hover:text-white{% endif %}">
+               class="flex-1 md:flex-none px-4 py-1.5 rounded-lg font-bold text-xs transition-colors whitespace-nowrap {% if student_scope == 'regular' and category_filter == 'ОГЭ' %}bg-zinc-800 text-white shadow-sm border border-white/10{% else %}text-zinc-400 hover:text-white{% endif %}">
                 ОГЭ ({{ oge_students }})
             </a>
             <a href="{{ url_for('main.dashboard', search=search_query, show_archive='false', student_scope='test') }}"
-               class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if not show_archive and student_scope == 'test' %}bg-surface text-primary shadow-sm dark:bg-white/10 dark:text-white border border-slate-200/50 dark:border-white/10{% else %}text-muted hover:text-primary dark:text-dark-muted dark:hover:text-white{% endif %}">
+               class="flex-1 md:flex-none px-4 py-1.5 rounded-lg font-bold text-xs transition-colors whitespace-nowrap {% if not show_archive and student_scope == 'test' %}bg-zinc-800 text-white shadow-sm border border-white/10{% else %}text-zinc-400 hover:text-white{% endif %}">
                 Тестовые ({{ test_students_count }})
             </a>
             <a href="{{ url_for('main.dashboard', search=search_query, show_archive='false', student_scope='demo') }}"
-               class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if not show_archive and student_scope == 'demo' %}bg-surface text-primary shadow-sm dark:bg-white/10 dark:text-white border border-slate-200/50 dark:border-white/10{% else %}text-muted hover:text-primary dark:text-dark-muted dark:hover:text-white{% endif %}">
+               class="flex-1 md:flex-none px-4 py-1.5 rounded-lg font-bold text-xs transition-colors whitespace-nowrap {% if not show_archive and student_scope == 'demo' %}bg-zinc-800 text-white shadow-sm border border-white/10{% else %}text-zinc-400 hover:text-white{% endif %}">
                 Демо ({{ demo_students_count }})
             </a>
             <a href="{{ url_for('main.dashboard', search=search_query, show_archive='true', student_scope='regular') }}"
-               class="flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors {% if show_archive %}bg-surface text-primary shadow-sm dark:bg-white/10 dark:text-white border border-slate-200/50 dark:border-white/10{% else %}text-muted hover:text-primary dark:text-dark-muted dark:hover:text-white{% endif %}">
+               class="flex-1 md:flex-none px-4 py-1.5 rounded-lg font-bold text-xs transition-colors whitespace-nowrap {% if show_archive %}bg-zinc-800 text-white shadow-sm border border-white/10{% else %}text-zinc-400 hover:text-white{% endif %}">
                 Архив ({{ archived_students_count }})
             </a>
         </div>
@@ -215,10 +238,10 @@
             <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
             <input type="hidden" name="student_scope" value="{{ student_scope }}">
             {% if category_filter and student_scope == 'regular' %}<input type="hidden" name="category" value="{{ category_filter }}">{% endif %}
-            <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-muted"></i>
+            <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"></i>
             <input type="text" name="search" value="{{ search_query }}" placeholder="Поиск ученика (Ctrl+F)"
-                   class="w-full bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.08] rounded-xl pl-11 pr-12 py-2.5 text-sm font-medium text-primary dark:text-white focus:outline-none focus:border-boo-primary focus:ring-1 focus:ring-boo-primary/20 transition-all shadow-sm dark:shadow-glass-dark">
-            <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-boo-primary transition-colors p-1 bg-transparent border-none cursor-pointer" title="Фильтры">
+                   class="w-full bg-zinc-900 border border-white/5 rounded-xl pl-11 pr-12 py-2 text-sm font-medium text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20 transition-all shadow-xl">
+            <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-purple-400 transition-colors p-1 bg-transparent border-none cursor-pointer" title="Фильтры">
                 <i class="ph-bold ph-faders text-lg"></i>
             </button>
         </form>
@@ -227,7 +250,7 @@
     {% if student_scope == 'demo' and demo_students_count > 0 and (current_user.is_creator() or current_user.is_admin()) %}
     <form method="POST" action="{{ url_for('students.delete_all_demo') }}" class="flex justify-end" data-no-ajax="1" onsubmit="return confirm('Удалить всех демо-учеников? Это действие нельзя отменить.');">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 text-sm font-extrabold transition-colors">
+        <button type="submit" class="h-9 px-4 py-2 text-sm rounded-xl border border-red-500/20 bg-red-500/10 text-red-300 font-extrabold transition-colors">
             Удалить всех демо
         </button>
     </form>
@@ -235,9 +258,9 @@
 
     {# ── STUDENTS GRID ── #}
     {% if students %}
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {% for student in students %}
-        <div class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %} {% if student.has_overdue_hw is defined and student.has_overdue_hw %}student-card--alert{% endif %}"
+        <div class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %} {% if student.has_overdue_hw is defined and student.has_overdue_hw %}student-card--alert{% endif %} p-4 bg-zinc-900 border border-white/5 border-t-white/10 rounded-2xl shadow-xl"
              data-student-id="{{ student.student_id }}"
              x-data="{ open: false }"
              :style="open ? 'z-index: 80;' : ''"
@@ -246,7 +269,7 @@
             <div class="flex justify-between items-center mb-3">
                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="flex items-center gap-3 no-underline" style="color:inherit;">
                     <div class="relative">
-                        <div class="w-11 h-11 rounded-xl overflow-hidden shrink-0 flex items-center justify-center bg-accent-soft text-accent border border-slate-200 dark:border-white/[0.06] {% if show_archive %}grayscale opacity-50{% endif %}">
+                        <div class="w-10 h-8 rounded-xl overflow-hidden shrink-0 flex items-center justify-center bg-zinc-950 text-white border border-white/5 {% if show_archive %}grayscale opacity-50{% endif %}">
                             {% if student.user and student.user.avatar_url %}
                                 <img src="{{ student.user.avatar_url }}" alt="" class="w-full h-full object-cover">
                             {% else %}
@@ -255,46 +278,46 @@
                         </div>
                         {% if not show_archive %}
                             {% if student.user %}
-                            <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-zinc-900 shrink-0 transition-colors duration-300
-                                        {{ 'bg-green-500' if student.user.is_online_now() else 'bg-slate-400' }}"
+                            <div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-900 shrink-0 transition-colors duration-300
+                                        {{ 'bg-green-500' if student.user.is_online_now() else 'bg-zinc-650' }}"
                                  data-presence-user-id="{{ student.user.id }}"
-                                 title="{{ 'В сети' if student.user.is_online_now() else 'Не в сети' }}"></div>
+                                  title="{{ 'В сети' if student.user.is_online_now() else 'Не в сети' }}"></div>
                             {% else %}
-                            <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-zinc-900 bg-cyan-500 shrink-0"
+                            <div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-900 bg-cyan-500 shrink-0"
                                  title="Нет привязанного аккаунта"></div>
                             {% endif %}
                         {% endif %}
                     </div>
                     <div>
-                        <h3 class="student-name text-sm font-extrabold text-primary dark:text-white leading-tight m-0">{{ student.name }}{% if show_archive %} <span class="opacity-60 text-xs">(архив)</span>{% endif %}</h3>
-                        <div class="flex items-center gap-1 mt-0.5 text-[10px] font-bold text-muted dark:text-dark-muted font-mono leading-none">
+                        <h3 class="student-name text-sm font-extrabold text-white leading-tight m-0">{{ student.name }}{% if show_archive %} <span class="opacity-60 text-xs">(архив)</span>{% endif %}</h3>
+                        <div class="flex items-center gap-1 mt-0.5 text-xs font-bold text-zinc-400 font-mono leading-none">
                             {% if student.platform_id %}
                             <span>ID: {{ student.platform_id }}</span>
                             {% endif %}
                             {% if student.platform_id and (student.category or student.school_class) %}
-                            <span class="text-slate-300 dark:text-zinc-700 font-sans">•</span>
+                            <span class="text-zinc-700 font-sans">•</span>
                             {% endif %}
                             {% if student.category %}
-                            <span class="{% if student.category == 'ЕГЭ' %}text-[#06B6D4] dark:text-[#22D3EE]{% else %}text-boo-primary dark:text-[#A78BFA]{% endif %}">{{ student.category }}</span>
+                            <span class="{% if student.category == 'ЕГЭ' %}text-cyan-400{% else %}text-purple-400{% endif %}">{{ student.category }}</span>
                             {% endif %}
                             {% if student.school_class %}
-                            <span class="text-slate-300 dark:text-zinc-700 font-sans">•</span>
+                            <span class="text-zinc-700 font-sans">•</span>
                             <span>{{ student.school_class }} кл</span>
                             {% endif %}
                         </div>
                         {% set tg_status = student_tg_status.get(student.student_id) if student_tg_status is defined else none %}
-                        <div class="mt-1.5">
+                        <div class="mt-1">
                             {% if tg_status and tg_status.state == 'linked' %}
-                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-100 dark:border-cyan-500/20 text-[9px] font-extrabold uppercase tracking-wide">
-                                <i class="ph-fill ph-telegram-logo text-[11px]"></i> {{ tg_status.label }}
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-xs font-bold uppercase tracking-wider">
+                                <i class="ph-fill ph-telegram-logo text-sm"></i> {{ tg_status.label }}
                             </span>
                             {% elif tg_status and tg_status.state == 'pending' %}
-                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-100 dark:border-amber-500/20 text-[9px] font-extrabold uppercase tracking-wide">
-                                <i class="ph-fill ph-telegram-logo text-[11px]"></i> {{ tg_status.label }}
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold uppercase tracking-wider">
+                                <i class="ph-fill ph-telegram-logo text-sm"></i> {{ tg_status.label }}
                             </span>
                             {% else %}
-                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/[0.06] text-[9px] font-extrabold uppercase tracking-wide">
-                                <i class="ph-fill ph-telegram-logo text-[11px]"></i> TG нет
+                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/5 text-zinc-400 border border-white/5 text-xs font-bold uppercase tracking-wider">
+                                <i class="ph-fill ph-telegram-logo text-sm"></i> TG нет
                             </span>
                             {% endif %}
                         </div>
@@ -302,43 +325,43 @@
                 </a>
                 <div class="flex items-center gap-1.5">
                     {% if student.has_overdue_hw is defined and student.has_overdue_hw %}
-                    <div class="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 flex items-center justify-center border border-red-100/50 dark:border-red-500/20" title="Просрочено ДЗ">
-                        <i class="ph-fill ph-warning text-base"></i>
+                    <div class="w-6 h-6 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center border border-red-500/20" title="Просрочено ДЗ">
+                        <i class="ph-fill ph-warning text-sm"></i>
                     </div>
                     {% endif %}
 
                     <div class="relative">
                         <button type="button"
-                                class="w-8 h-8 bg-surface dark:bg-white/5 border border-slate-200 dark:border-white/[0.06] text-muted dark:text-dark-muted rounded-lg hover:text-primary dark:hover:text-white hover:bg-surface-alt dark:hover:bg-white/10 transition-colors flex justify-center items-center"
+                                class="w-8 h-8 bg-zinc-950 border border-white/5 text-zinc-400 rounded-lg hover:text-white hover:bg-zinc-800 transition-colors flex justify-center items-center"
                                 @click.prevent.stop="open = !open"
                                 aria-label="Действия">
                             <i class="ph-bold ph-dots-three text-lg"></i>
                         </button>
                         <div x-cloak x-show="open" x-transition
-                             class="absolute right-0 mt-2 w-56 bg-surface dark:bg-dark-inner border border-slate-200 dark:border-white/[0.06] rounded-2xl shadow-lg p-1"
+                             class="absolute right-0 mt-2 w-56 bg-zinc-900 border border-white/5 border-t-white/10 rounded-2xl shadow-2xl p-1"
                              style="z-index: 90;">
                             <a class="dock-mega-link" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
-                                <i class="ph-bold ph-house text-base text-muted"></i> Профиль
+                                <i class="ph-bold ph-house text-base text-zinc-400"></i> Профиль
                             </a>
                             <a class="dock-mega-link" href="{{ url_for('students.student_info', student_id=student.student_id) }}">
-                                <i class="ph-bold ph-file-text text-base text-muted"></i> Инфо
+                                <i class="ph-bold ph-file-text text-base text-zinc-400"></i> Инфо
                             </a>
                             <a class="dock-mega-link" href="{{ url_for('students.student_analytics', student_id=student.student_id) }}">
-                                <i class="ph-bold ph-chart-line-up text-base text-muted"></i> Статистика
+                                <i class="ph-bold ph-chart-line-up text-base text-zinc-400"></i> Статистика
                             </a>
                             {% if current_user.is_creator() or current_user.is_admin() %}
-                            <div class="my-1 border-t border-slate-100 dark:border-white/[0.06]"></div>
+                            <div class="my-1 border-t border-white/5"></div>
                             <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" class="m-0">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="next" value="{{ request.full_path }}">
                                 <button type="submit" class="dock-mega-link w-full text-left bg-transparent border-none">
-                                    <i class="ph-bold ph-archive text-base text-muted"></i> {% if show_archive %}Восстановить{% else %}В архив{% endif %}
+                                    <i class="ph-bold ph-archive text-base text-zinc-400"></i> {% if show_archive %}Восстановить{% else %}В архив{% endif %}
                                 </button>
                             </form>
                             <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" class="m-0">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="next" value="{{ request.full_path }}">
-                                <button type="submit" class="dock-mega-link w-full text-left bg-transparent border-none text-red-600 hover:text-red-700">
+                                <button type="submit" class="dock-mega-link w-full text-left bg-transparent border-none text-red-400">
                                     <i class="ph-bold ph-trash text-base"></i> Удалить пользователя
                                 </button>
                             </form>
@@ -351,36 +374,36 @@
             {# Progress section #}
             <div class="mt-2">
                 {% if student.target_score %}
-                <div class="bg-surface-alt dark:bg-dark-inner rounded-2xl p-3 border border-slate-200/40 dark:border-white/[0.04]">
-                    <div class="flex justify-between items-center mb-1.5">
-                        <span class="text-[10px] font-extrabold text-slate-500 dark:text-dark-muted uppercase tracking-wider">
+                <div class="bg-zinc-950 rounded-xl p-3 border border-white/5">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-md uppercase tracking-wider text-zinc-400">
                             {% if student.category == 'ОГЭ' %}Подготовка{% else %}База знаний{% endif %}
                         </span>
                         {% if student.diagnostic_level %}
-                        <span class="text-xs font-black text-primary dark:text-white leading-none">{{ student.diagnostic_level }}%</span>
+                        <span class="text-xs font-black text-white leading-none">{{ student.diagnostic_level }}%</span>
                         {% endif %}
                     </div>
                     {% if student.diagnostic_level %}
-                    <div class="h-1.5 w-full bg-slate-200 dark:bg-zinc-800 rounded-full overflow-hidden mb-2">
-                        <div class="h-full bg-[#06B6D4] dark:bg-[#22D3EE] rounded-full" style="width:{{ student.diagnostic_level }}%"></div>
+                    <div class="h-1 w-full bg-zinc-800 rounded-full overflow-hidden mb-2">
+                        <div class="h-full bg-cyan-500 rounded-full" style="width:{{ student.diagnostic_level }}%"></div>
                     </div>
                     {% endif %}
-                    <div class="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-dark-muted leading-none">
-                        <i class="ph-fill ph-target text-[#06B6D4] dark:text-[#22D3EE] text-sm"></i>
-                        Цель: <span class="text-slate-800 dark:text-white font-extrabold">{{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</span>
+                    <div class="flex items-center gap-1 text-xs font-bold text-zinc-400 leading-none">
+                        <i class="ph-fill ph-target text-cyan-400 text-sm"></i>
+                        Цель: <span class="text-white font-extrabold">{{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</span>
                     </div>
                 </div>
                 {% elif student.goal_text %}
-                <div class="bg-surface-alt dark:bg-dark-inner rounded-2xl p-3 border border-slate-200/40 dark:border-white/[0.04]">
-                    <div class="text-[10px] font-extrabold text-slate-500 dark:text-dark-muted uppercase tracking-wider mb-1">Цель:</div>
-                    <div class="text-xs font-bold text-slate-800 dark:text-white leading-relaxed">{{ student.goal_text }}</div>
+                <div class="bg-zinc-950 rounded-xl p-3 border border-white/5">
+                    <div class="text-xs font-extrabold text-zinc-400 uppercase tracking-wider mb-1">Цель:</div>
+                    <div class="text-xs font-bold text-white leading-relaxed">{{ student.goal_text }}</div>
                 </div>
                 {% elif student.description %}
-                <div class="bg-surface-alt dark:bg-dark-inner rounded-2xl p-3 border border-slate-200/40 dark:border-white/[0.04]">
-                    <div class="text-xs text-slate-500 dark:text-dark-muted leading-relaxed italic">"{{ student.description[:100] }}{% if student.description|length > 100 %}…{% endif %}"</div>
+                <div class="bg-zinc-950 rounded-xl p-3 border border-white/5">
+                    <div class="text-xs text-zinc-400 leading-relaxed italic">"{{ student.description[:100] }}{% if student.description|length > 100 %}…{% endif %}"</div>
                 </div>
                 {% else %}
-                <div class="border border-dashed border-slate-200 dark:border-white/[0.06] rounded-2xl py-3 text-center text-xs text-slate-400 dark:text-zinc-600 font-medium">
+                <div class="border border-dashed border-white/10 rounded-xl py-3 text-center text-xs text-zinc-500 font-medium">
                     Нет данных
                 </div>
                 {% endif %}
@@ -396,7 +419,7 @@
         {% else %}
         <span class="pagination-btn disabled">‹ Назад</span>
         {% endif %}
-        <span class="text-sm font-bold text-muted">{{ pagination.page }} / {{ pagination.pages }}</span>
+        <span class="text-sm font-bold text-zinc-400">{{ pagination.page }} / {{ pagination.pages }}</span>
         {% if pagination.has_next %}
         <a href="{{ url_for('main.dashboard', page=pagination.next_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">Вперёд ›</a>
         {% else %}
@@ -406,9 +429,9 @@
     {% endif %}
 
     {% else %}
-    <div class="tactile-card" style="border-radius:28px;">
+    <div class="bg-zinc-900 border border-white/5 border-t-white/10 rounded-2xl p-5 shadow-xl">
         <div class="empty-state">
-            <div class="text-5xl mb-4 opacity-30">
+            <div class="text-3xl mb-3 opacity-30">
                 <i class="ph-fill ph-{% if show_archive %}archive{% else %}users-three{% endif %}"></i>
             </div>
             <h3 class="empty-state-title">{% if show_archive %}Архив пуст{% else %}Пока нет учеников{% endif %}</h3>
@@ -453,7 +476,7 @@
                             : !!d.online;
                         document.querySelectorAll('[data-presence-user-id="' + userId + '"]').forEach(function (el) {
                             el.classList.toggle('bg-green-500', online);
-                            el.classList.toggle('bg-slate-400', !online);
+                            el.classList.toggle('bg-zinc-650', !online);
                             el.classList.toggle('bg-cyan-500', false);
                             el.title = online ? 'В сети' : 'Не в сети';
                         });

@@ -14,7 +14,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="glass-panel">
+<section class="glass-panel w-full">
     <div>
         <p class="hero-eyebrow">пропущенные задания</p>
         <h1 class="hero-title">{{ ui_icon('action.minus', 'sm', decorative=true) }}Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
@@ -51,7 +51,7 @@
 <div>
     {% for task in tasks %}
     <section class="glass-panel task-card" data-task-id="{{ task.task_id }}">
-        <div class="flex justify-between items-center mb-4 pb-4 border-b border-stroke flex-wrap gap-4">
+        <div class="flex justify-between items-center mb-3 pb-4 border-b border-stroke flex-wrap gap-4">
             <label class="flex items-center gap-2 cursor-pointer flex-1">
                 <input type="checkbox" class="task-checkbox w-5 h-5 cursor-pointer accent-accent" value="{{ task.task_id }}" id="task-{{ task.task_id }}">
                 <div class="flex items-center gap-2">
@@ -63,13 +63,13 @@
             <span class="neo-button outline sm cursor-default">⊘ ПРОПУЩЕНО</span>
         </div>
 
-        <div class="task-content mb-6">
+        <div class="task-content mb-3">
             {{ task.content_html | prepare_task_content_html | normalize_task_content_assets(task.attached_files, task.source_url) | sanitize_html }}
         </div>
 
         {% if task.attached_files %}
-        <div class="bg-bg-surface-alt border border-stroke rounded-card p-6 mb-6">
-            <h4 class="text-text-primary mb-4 font-semibold text-sm uppercase tracking-wide">{{ ui_icon('action.image', 'sm') }} Прикрепленные файлы</h4>
+        <div class="bg-bg-surface-alt border border-stroke rounded-card p-6 mb-3">
+            <h4 class="text-text-primary mb-3 font-semibold text-sm uppercase tracking-wide">{{ ui_icon('action.image', 'sm') }} Прикрепленные файлы</h4>
             <ul class="list-none p-0 m-0 flex flex-wrap gap-3">
                 {% set files = task.attached_files | from_json %}
                 {% for file in files %}
@@ -104,7 +104,7 @@
         </div>
         {% endif %}
 
-        <div class="flex gap-2 flex-wrap mt-4">
+        <div class="flex gap-2 flex-wrap mt-3">
             <button class="neo-button accent" data-task-id="{{ task.task_id }}" data-action="accept">{{ ui_icon('action.check', 'sm') }} Принять (удалить из пропущенных)</button>
             <button class="neo-button danger" data-task-id="{{ task.task_id }}" data-action="blacklist">{{ ui_icon('action.close', 'sm') }} В черный список</button>
         </div>

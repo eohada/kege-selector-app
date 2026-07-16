@@ -3,12 +3,22 @@
 {% block title %}BooStudy - QA Command Center{% endblock %}
 {% block body_class %}layout-chief-tester{% endblock %}
 
+
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .max-h-560px { max-height: 560px; }
+    .text-250px { font-size: 250px; }
+    .w-340px { width: 340px; }
+    .z-110 { z-index: 110; }
+    .shadow-0-8px-24px--4px-rgba79-70-229-028 { box-shadow: 0 8px 24px -4px rgba(79,70,229,0.28); }
+    .shadow-0-8px-24px--4px-rgba15-23-42-005 { box-shadow: 0 8px 24px -4px rgba(15,23,42,0.05); }
+</style>
 {% block content %}
-<div class="w-full max-w-[1400px] mx-auto h-full">
+<div class="h-full w-full">
     <div id="tab-dashboard" class="tab-content active flex-col gap-6">
-        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 relative overflow-hidden">
+        <div class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
             <div class="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
-                <i class="ph-fill ph-shield-check text-[250px] text-indigo-600"></i>
+                <i class="ph-fill ph-shield-check text-250px text-indigo-600"></i>
             </div>
             <div class="relative z-10">
                 <div class="flex items-center gap-3 mb-3">
@@ -17,108 +27,108 @@
                     </span>
                     <span class="text-xs font-bold text-muted font-mono">v. 2.4.1 (Stable)</span>
                 </div>
-                <h1 class="text-4xl font-black text-primary tracking-tight mb-2">Контроль качества</h1>
+                <h1 class="text-lg font-bold text-primary tracking-tight mb-2">Контроль качества</h1>
                 <p class="text-muted font-medium text-lg">Сводка по багам, тестам и стабильности платформы за последние 24 часа.</p>
             </div>
 
-            <button type="button" onclick="openBugModal()" class="relative z-10 shrink-0 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex justify-center items-center gap-2 shadow-[0_8px_24px_-4px_rgba(79,70,229,0.28)] border-b-[3px] border-b-indigo-900 active:translate-y-[2px] active:border-b-0 active:shadow-none">
+            <button type="button" onclick="openBugModal()" class="relative z-10 shrink-0 px-4 py-2 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex justify-center items-center gap-2 shadow-0-8px-24px--4px-rgba79-70-229-028 border-b-2 border-b-indigo-900 active:translate-y-[2px] active:border-b-0 active:shadow-none">
                 <i class="ph-bold ph-bug text-xl"></i> Зарепортить баг
             </button>
         </div>
 
         <div class="flex flex-col lg:flex-row gap-6">
-            <div class="w-full lg:w-1/3 bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col">
-                <h3 class="text-xs font-extrabold text-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+            <div class="w-full lg:w-1/3 bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6 flex flex-col">
+                <h3 class="text-xs font-extrabold text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                     <i class="ph-fill ph-magic-wand text-indigo-500 text-lg"></i> Быстрые пресеты
                 </h3>
                 <div class="space-y-3 flex-1 h-64 overflow-y-auto pr-2 hide-scroll">
                     <button onclick="runPreset('/qa/manipulate/generate_debtor')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
+                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
                             <i class="ph-bold ph-user-plus text-lg"></i>
                         </div>
                         <div>
                             <div class="font-bold text-primary text-sm">Сгенерировать должника</div>
-                            <div class="text-[11px] font-medium text-muted">Юзер с 3+ просроченными ДЗ</div>
+                            <div class="text-small font-medium text-muted">Юзер с 3+ просроченными ДЗ</div>
                         </div>
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/overwhelm_reviews')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
+                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none flex items-center justify-center text-muted group-hover:text-indigo-600">
                             <i class="ph-bold ph-tray-arrow-down text-lg"></i>
                         </div>
                         <div>
                             <div class="font-bold text-primary text-sm">Завалить проверками</div>
-                            <div class="text-[11px] font-medium text-muted">20 работ в очередь на ревью</div>
+                            <div class="text-small font-medium text-muted">20 работ в очередь на ревью</div>
                         </div>
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/break_schedule')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
+                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
                             <i class="ph-bold ph-calendar-x text-lg"></i>
                         </div>
                         <div>
                             <div class="font-bold text-primary text-sm">Сломать расписание</div>
-                            <div class="text-[11px] font-medium text-muted">Коллизия слотов уроков</div>
+                            <div class="text-small font-medium text-muted">Коллизия слотов уроков</div>
                         </div>
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/god_mode_30d')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-slate-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-accent">
+                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-accent">
                             <i class="ph-bold ph-crown text-lg"></i>
                         </div>
                         <div>
                             <div class="font-bold text-primary text-sm">Выдать God Mode</div>
-                            <div class="text-[11px] font-medium text-muted">Апгрейд тарифа на 30 дней</div>
+                            <div class="text-small font-medium text-muted">Апгрейд тарифа на 30 дней</div>
                         </div>
                     </button>
 
                     <button onclick="runPreset('/qa/manipulate/tabula_rasa')" class="w-full p-3 bg-surface-alt hover:bg-surface-alt border border-red-200 rounded-xl flex items-center gap-3 transition-colors group text-left" type="button">
-                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
+                        <div class="w-10 h-10 rounded-2xl bg-surface shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none flex items-center justify-center text-muted group-hover:text-boo-coral">
                             <i class="ph-bold ph-trash text-lg"></i>
                         </div>
                         <div>
                             <div class="font-bold text-boo-coral text-sm">Очистить тестовые данные</div>
-                            <div class="text-[11px] font-medium text-muted">Удаляет всех фейков из БД</div>
+                            <div class="text-small font-medium text-muted">Удаляет всех фейков из БД</div>
                         </div>
                     </button>
                 </div>
             </div>
 
             <div class="w-full lg:w-2/3 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div class="bg-surface-alt rounded-[24px] border border-slate-200 p-5 flex flex-col justify-between">
+                <div class="bg-surface-alt rounded-xl border border-slate-200 p-5 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-2">
-                        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Открыто багов</div>
+                        <div class="text-tiny font-extrabold text-muted uppercase tracking-widest">Открыто багов</div>
                         <i class="ph-fill ph-bug text-muted"></i>
                     </div>
-                    <div class="text-3xl font-black text-primary">{{ stats.bugs_open }}</div>
+                    <div class="text-2xl font-bold text-primary">{{ stats.bugs_open }}</div>
                 </div>
-                <div class="bg-red-50/50 rounded-[24px] border border-red-200 p-5 flex flex-col justify-between">
+                <div class="bg-red-50/50 rounded-xl border border-red-200 p-5 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-2">
-                        <div class="text-[10px] font-extrabold text-boo-coral uppercase tracking-widest">Критичные</div>
+                        <div class="text-tiny font-extrabold text-boo-coral uppercase tracking-widest">Критичные</div>
                         <i class="ph-fill ph-warning text-boo-coral animate-pulse"></i>
                     </div>
-                    <div class="text-3xl font-black text-primary">{{ stats.critical }}</div>
+                    <div class="text-2xl font-bold text-primary">{{ stats.critical }}</div>
                 </div>
-                <div class="bg-purple-50 rounded-[24px] border border-purple-200 p-5 flex flex-col justify-between">
+                <div class="bg-purple-50 rounded-xl border border-purple-200 p-5 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-2">
-                        <div class="text-[10px] font-extrabold text-boo-primary uppercase tracking-widest">QA Review</div>
+                        <div class="text-tiny font-extrabold text-boo-primary uppercase tracking-widest">QA Review</div>
                         <i class="ph-fill ph-git-pull-request text-boo-primary"></i>
                     </div>
-                    <div class="text-3xl font-black text-primary">{{ stats.review }}</div>
+                    <div class="text-2xl font-bold text-primary">{{ stats.review }}</div>
                 </div>
-                <div class="bg-green-50 rounded-[24px] border border-green-200 p-5 flex flex-col justify-between">
+                <div class="bg-green-50 rounded-xl border border-green-200 p-5 flex flex-col justify-between">
                     <div class="flex justify-between items-start mb-2">
-                        <div class="text-[10px] font-extrabold text-green-600 uppercase tracking-widest">Закрыто (7д)</div>
+                        <div class="text-tiny font-extrabold text-green-600 uppercase tracking-widest">Закрыто (7д)</div>
                         <i class="ph-fill ph-check-circle text-green-500"></i>
                     </div>
-                    <div class="text-3xl font-black text-primary">{{ stats.bugs_done_7d }}</div>
+                    <div class="text-2xl font-bold text-primary">{{ stats.bugs_done_7d }}</div>
                 </div>
             </div>
         </div>
 
-        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 flex-1">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-black text-primary">Последняя активность</h3>
+        <div class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6 flex-1">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-base font-bold text-primary">Последняя активность</h3>
             </div>
             <div class="space-y-3">
                 {% for e in activity[:8] %}
@@ -129,10 +139,10 @@
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
                             <span class="font-bold text-primary text-sm truncate">{{ e.title }}</span>
-                            <span class="px-2 py-0.5 bg-red-100 text-boo-coral text-[10px] font-extrabold rounded uppercase">{{ e.tag }}</span>
+                            <span class="px-2 py-0.5 bg-red-100 text-boo-coral text-tiny font-extrabold rounded uppercase">{{ e.tag }}</span>
                         </div>
                         <div class="text-xs font-medium text-muted flex items-center gap-2">
-                            <span class="font-mono text-[10px] bg-slate-200 px-1 rounded">{{ e.code }}</span>
+                            <span class="font-mono text-tiny bg-slate-200 px-1 rounded">{{ e.code }}</span>
                             • Нашел: <span class="font-bold text-secondary">{{ e.reporter }}</span>
                         </div>
                     </div>
@@ -141,13 +151,13 @@
                     </div>
                 </div>
                 {% else %}
-                <div class="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-muted">Пока нет событий активности.</div>
+                <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-muted">Пока нет событий активности.</div>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
-            <h3 class="text-xl font-black text-primary mb-4">Процесс взаимодействия ролей</h3>
+        <div class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6">
+            <h3 class="text-base font-bold text-primary mb-3">Процесс взаимодействия ролей</h3>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div class="rounded-2xl border border-slate-200 bg-surface-alt p-4">
                     <div class="text-xs font-extrabold uppercase tracking-widest text-muted mb-2">Creator</div>
@@ -172,10 +182,10 @@
     </div>
 
     <div id="tab-tasks" class="tab-content flex-col h-full hidden">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-3xl font-black text-primary tracking-tight">Доска задач</h2>
+        <div class="flex justify-between items-center mb-3">
+            <h2 class="text-2xl font-bold text-primary tracking-tight">Доска задач</h2>
             <div class="flex gap-2">
-                <button class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-2" type="button" data-href="{{ url_for('qa.board', return_to=url_for('chief_tester.dashboard', tab='tasks')) }}" onclick="location.href=this.dataset.href">
+                <button class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-2" type="button" data-href="{{ url_for('qa_tester.board', return_to=url_for('chief_tester.dashboard', tab='tasks')) }}" onclick="location.href=this.dataset.href">
                     <i class="ph-bold ph-funnel"></i> Открыть full board
                 </button>
             </div>
@@ -191,26 +201,26 @@
                     </h3>
                 </div>
                 {% for t in task_columns[key][:20] %}
-                <div class="bg-surface p-4 rounded-[20px] border border-slate-200 border-b-4 border-b-slate-300 shadow-sm dark:shadow-none dark:shadow-none hover:shadow-tactile transition-all">
+                <div class="bg-surface p-4 rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-sm dark:shadow-none dark:shadow-none hover:shadow-tactile transition-all">
                     <div class="flex gap-2 mb-3">
-                        <span class="{{ t.priority_badge_cls }} px-2 py-0.5 rounded text-[10px] font-bold uppercase">{{ t.priority_badge_text }}</span>
+                        <span class="{{ t.priority_badge_cls }} px-2 py-0.5 rounded text-tiny font-bold uppercase">{{ t.priority_badge_text }}</span>
                     </div>
                     <h4 class="font-bold text-primary text-sm leading-tight mb-3">{{ t.title }}</h4>
                     <div class="flex justify-between items-center border-t border-slate-100 pt-3">
-                        <span class="font-mono text-[10px] text-muted">#B-{{ t.id }}</span>
+                        <span class="font-mono text-tiny text-muted">#B-{{ t.id }}</span>
                         {% if t.assignees %}
                         <div class="flex -space-x-1.5">
                             {% for a in t.assignees[:3] %}
-                            <div class="w-6 h-6 rounded-full bg-surface-alt border border-slate-200 text-[10px] font-bold text-secondary flex items-center justify-center" title="{{ a.username }}">{{ (a.username or '?')[0]|upper }}</div>
+                            <div class="w-6 h-6 rounded-full bg-surface-alt border border-slate-200 text-tiny font-bold text-secondary flex items-center justify-center" title="{{ a.username }}">{{ (a.username or '?')[0]|upper }}</div>
                             {% endfor %}
                         </div>
                         {% else %}
-                        <div class="w-6 h-6 rounded-full bg-surface-alt border border-slate-200 border-dashed flex items-center justify-center text-muted"><i class="ph-bold ph-user-plus text-[10px]"></i></div>
+                        <div class="w-6 h-6 rounded-full bg-surface-alt border border-slate-200 border-dashed flex items-center justify-center text-muted"><i class="ph-bold ph-user-plus text-tiny"></i></div>
                         {% endif %}
                     </div>
                 </div>
                 {% else %}
-                <div class="h-32 border-2 border-slate-200 border-dashed rounded-[20px] bg-slate-50/50 flex items-center justify-center text-muted font-bold text-sm">
+                <div class="h-32 border-2 border-slate-200 border-dashed rounded-2xl bg-slate-50/50 flex items-center justify-center text-muted font-bold text-sm">
                     Нет карточек
                 </div>
                 {% endfor %}
@@ -221,49 +231,49 @@
 
     <div id="tab-team" class="tab-content flex-col gap-6 hidden">
         {% if not (ct_scope and ct_scope.can_view_team) %}
-        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
-            <div class="text-2xl font-black text-primary">Ограниченный доступ</div>
+        <div class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6">
+            <div class="text-lg font-bold text-primary">Ограниченный доступ</div>
             <div class="mt-2 text-muted font-medium">Раздел “Команда” доступен только для creator/chief tester.</div>
         </div>
         {% else %}
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center mb-3">
             <div>
-                <h2 class="text-3xl font-black text-primary tracking-tight">QA Отдел</h2>
+                <h2 class="text-2xl font-bold text-primary tracking-tight">QA Отдел</h2>
                 <p class="text-muted font-medium">Управление доступом и распределение нагрузки на тестировщиков.</p>
             </div>
-            <button class="px-5 py-2.5 bg-surface border border-slate-200 text-secondary rounded-xl font-bold shadow-sm dark:shadow-none dark:shadow-none hover:bg-surface-alt transition-colors flex items-center gap-2" data-href="{{ url_for('qa.testers', return_to=url_for('chief_tester.dashboard', tab='team')) }}" onclick="location.href=this.dataset.href" type="button">
+            <button class="px-4 py-2.5 bg-surface border border-slate-200 text-secondary rounded-xl font-bold shadow-sm dark:shadow-none dark:shadow-none hover:bg-surface-alt transition-colors flex items-center gap-2" data-href="{{ url_for('qa.testers', return_to=url_for('chief_tester.dashboard', tab='team')) }}" onclick="location.href=this.dataset.href" type="button">
                 <i class="ph-bold ph-user-plus"></i> Управление
             </button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {% for row in workloads %}
-            <div class="bg-surface rounded-[28px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6 flex flex-col">
-                <div class="flex justify-between items-start mb-4">
+            <div class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6 flex flex-col">
+                <div class="flex justify-between items-start mb-3">
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none bg-surface-alt text-secondary font-black flex items-center justify-center">{{ row.user.username[0]|upper }}</div>
+                        <div class="w-12 h-9 rounded-xl border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none bg-surface-alt text-secondary font-black flex items-center justify-center">{{ row.user.username[0]|upper }}</div>
                         <div>
                             <h4 class="font-black text-primary leading-tight">{{ row.user.username }}</h4>
-                            <span class="text-[10px] font-extrabold text-indigo-500 uppercase tracking-widest">{{ (row.user.role or 'tester')|replace('_',' ') }}</span>
+                            <span class="text-tiny font-extrabold text-indigo-500 uppercase tracking-widest">{{ (row.user.role or 'tester')|replace('_',' ') }}</span>
                         </div>
                     </div>
                 </div>
-                <div class="bg-surface-alt rounded-xl p-3 border border-slate-100 mb-4">
+                <div class="bg-surface-alt rounded-xl p-3 border border-slate-100 mb-3">
                     <div class="text-xs font-bold text-muted mb-1">Зона ответственности</div>
                     <div class="font-bold text-primary text-sm">QA задачи платформы</div>
                 </div>
                 <div class="flex justify-between items-end border-t border-slate-100 pt-4 mt-auto">
                     <div>
-                        <div class="text-[10px] font-bold text-muted uppercase">В работе</div>
+                        <div class="text-tiny font-bold text-muted uppercase">В работе</div>
                         <div class="font-black text-primary">{{ row.in_work }} бага</div>
                     </div>
                     <div class="text-right">
-                        <div class="text-[10px] font-bold text-muted uppercase">Эффективность</div>
+                        <div class="text-tiny font-bold text-muted uppercase">Эффективность</div>
                         <div class="font-black {% if row.efficiency == 'Высокая' %}text-green-500{% elif row.efficiency == 'Средняя' %}text-boo-accent{% else %}text-boo-coral{% endif %}">{{ row.efficiency }}</div>
                     </div>
                 </div>
             </div>
             {% else %}
-            <div class="col-span-full rounded-2xl border border-dashed border-slate-300 p-8 text-center text-muted">Тестеры не найдены.</div>
+            <div class="col-span-full rounded-2xl border border-dashed border-slate-300 p-6 text-center text-muted">Тестеры не найдены.</div>
             {% endfor %}
         </div>
         {% endif %}
@@ -271,20 +281,20 @@
 
     <div id="tab-logs" class="tab-content flex-col gap-6 hidden">
         {% if not (ct_scope and ct_scope.can_view_logs) %}
-        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8">
-            <div class="text-2xl font-black text-primary">Ограниченный доступ</div>
+        <div class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6">
+            <div class="text-lg font-bold text-primary">Ограниченный доступ</div>
             <div class="mt-2 text-muted font-medium">Раздел “Логи приложения” доступен только для creator/chief tester.</div>
         </div>
         {% else %}
-        <div class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-2xl font-black text-primary tracking-tight">Логи приложения</h2>
+        <div class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-bold text-primary tracking-tight">Логи приложения</h2>
                 <div class="flex items-center gap-2">
                     <button type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm" onclick="attachSelectedLogsToBug()">Прикрепить к багу</button>
                     <button type="button" class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm" onclick="refreshLogs()">Обновить</button>
                 </div>
             </div>
-            <p class="text-muted text-sm mb-4">Формат: <span class="font-mono">кто</span> / <span class="font-mono">действие</span> / <span class="font-mono">страница</span> / <span class="font-mono">результат</span> / <span class="font-mono">время</span>.</p>
+            <p class="text-muted text-sm mb-3">Формат: <span class="font-mono">кто</span> / <span class="font-mono">действие</span> / <span class="font-mono">страница</span> / <span class="font-mono">результат</span> / <span class="font-mono">время</span>.</p>
             <div class="grid grid-cols-1 lg:grid-cols-5 gap-2 mb-3">
                 <input id="ctLogFilterQ" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Поиск (actor/action/url/request_id)" oninput="debouncedRefreshLogs()">
                 <input id="ctLogFilterRequestId" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="request_id" oninput="debouncedRefreshLogs()">
@@ -298,8 +308,8 @@
                 </select>
             </div>
             <div class="rounded-2xl border border-slate-200 overflow-hidden">
-                <div id="ctLogTable" class="max-h-[560px] overflow-auto">
-                    <div class="p-8 text-center text-muted font-medium">Загрузка логов...</div>
+                <div id="ctLogTable" class="max-h-560px overflow-auto">
+                    <div class="p-6 text-center text-muted font-medium">Загрузка логов...</div>
                 </div>
             </div>
             <div class="mt-3 text-xs text-muted" id="ctLogSelectionInfo">Выбрано логов: 0</div>
@@ -308,10 +318,10 @@
     </div>
 </div>
 
-<div id="ctBugModal" class="fixed inset-0 z-[110] hidden items-center justify-center bg-slate-900/50 px-4">
-    <div class="w-full max-w-xl rounded-2xl border border-slate-200 border-b-[4px] border-b-slate-300 bg-surface p-5 shadow-tactile">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-xl font-black text-primary">Новый баг-репорт</h3>
+<div id="ctBugModal" class="fixed inset-0 z-110 hidden items-center justify-center bg-slate-900/50 px-4">
+    <div class="w-full max-w-xl rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 bg-surface p-5 shadow-tactile">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-bold text-primary">Новый баг-репорт</h3>
             <button type="button" class="text-muted hover:text-primary" onclick="closeBugModal()"><i class="ph-bold ph-x text-xl"></i></button>
         </div>
         <form id="ctBugForm" class="space-y-3">
@@ -342,7 +352,7 @@
 
             <div class="rounded-xl border border-slate-200 bg-surface-alt p-3">
                 <div class="text-xs font-bold text-muted mb-2">Снапшот логов (tail):</div>
-                <pre id="ctBugLogsPreview" class="text-[11px] leading-4 max-h-28 overflow-auto text-secondary font-mono whitespace-pre-wrap">Загрузка...</pre>
+                <pre id="ctBugLogsPreview" class="text-small leading-4 max-h-28 overflow-auto text-secondary font-mono whitespace-pre-wrap">Загрузка...</pre>
             </div>
 
             <div class="flex gap-2 pt-2">
@@ -355,8 +365,8 @@
 {% endblock %}
 
 {% block body %}
-<div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-8 pointer-events-none flex justify-center">
-    <header class="w-full max-w-[1400px] bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
+<div class="fixed top-0 w-full z-50 pt-5 px-6 lg:px-6 pointer-events-none flex justify-center">
+    <header class="w-full bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-nav rounded-2xl px-4 py-2.5 flex items-center justify-between pointer-events-auto transition-all relative z-50">
         <div class="flex items-center gap-3 pl-2 cursor-pointer group">
             <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm dark:shadow-none dark:shadow-none group-hover:scale-105 transition-all">
                 <i class="ph-fill ph-radar text-2xl"></i>
@@ -365,33 +375,33 @@
         </div>
 
         <nav class="hidden md:flex items-center gap-1 bg-slate-100/60 p-1 rounded-xl border border-slate-200/50">
-            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-5 py-2 bg-surface text-indigo-600 shadow-sm dark:shadow-none dark:shadow-none border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-4 py-2 bg-surface text-indigo-600 shadow-sm dark:shadow-none dark:shadow-none border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
                 <i class="ph-bold ph-squares-four text-lg"></i> Дашборд
             </button>
-            <button onclick="switchTab('tasks')" id="nav-tasks" class="px-5 py-2 text-muted hover:text-primary hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative">
+            <button onclick="switchTab('tasks')" id="nav-tasks" class="px-4 py-2 text-muted hover:text-primary hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative">
                 <i class="ph-bold ph-bug text-lg"></i> Баг-трекер
                 <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-boo-coral rounded-full"></span>
             </button>
             {% if ct_scope and ct_scope.can_view_team %}
-            <button onclick="switchTab('team')" id="nav-team" class="px-5 py-2 text-muted hover:text-primary hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+            <button onclick="switchTab('team')" id="nav-team" class="px-4 py-2 text-muted hover:text-primary hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
                 <i class="ph-bold ph-users-three text-lg"></i> Команда
             </button>
             {% endif %}
             {% if ct_scope and ct_scope.can_view_logs %}
-            <button onclick="switchTab('logs')" id="nav-logs" class="px-5 py-2 text-muted hover:text-primary hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
+            <button onclick="switchTab('logs')" id="nav-logs" class="px-4 py-2 text-muted hover:text-primary hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2">
                 <i class="ph-bold ph-terminal-window text-lg"></i> Логи
             </button>
             {% endif %}
         </nav>
 
         <div class="flex items-center gap-3 pr-1">
-            <div class="hidden lg:flex items-center gap-2 bg-surface-alt px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-200 transition-colors group relative">
+            <div class="hidden lg:flex items-center gap-2 bg-surface-alt px-2 py-0.5 rounded-md border border-slate-200 hover:bg-slate-200 transition-colors group relative">
                 <i class="ph-fill ph-mask-happy text-muted group-hover:text-indigo-600 transition-colors"></i>
                 <form class="flex items-center gap-2" onsubmit="searchImpersonation(event)">
                     <input id="ctImpersonateQ" type="text" placeholder="Смотреть как..." class="w-36 bg-transparent outline-none text-xs font-bold text-muted" autocomplete="off">
                 </form>
                 <button type="button" class="text-muted text-xs" onclick="searchImpersonation()">Поиск</button>
-                <div id="ctImpersonateResults" class="hidden absolute top-11 right-0 w-[340px] max-h-80 overflow-auto rounded-xl border border-slate-200 border-b-[4px] border-b-slate-300 bg-surface shadow-tactile p-2 z-20"></div>
+                <div id="ctImpersonateResults" class="hidden absolute top-11 right-0 w-340px max-h-80 overflow-auto rounded-xl border border-slate-200 border-b-4 border-b-slate-300 bg-surface shadow-tactile p-2 z-20"></div>
             </div>
 
             {% if session.get('impersonator_id') %}
@@ -405,7 +415,7 @@
             <div class="flex items-center gap-2 pl-2">
                 <div class="text-right hidden sm:block">
                     <div class="text-xs font-black text-primary">{{ current_user.username }}</div>
-                    <div class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">QA Lead</div>
+                    <div class="text-tiny font-bold text-indigo-500 uppercase tracking-widest">QA Lead</div>
                 </div>
                 <div class="w-10 h-10 rounded-xl border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none bg-indigo-50 text-indigo-700 font-black flex items-center justify-center">{{ current_user.username[0]|upper }}</div>
             </div>
@@ -437,8 +447,8 @@ function updateTabUrl(tabId) {
 }
 
 function switchTab(tabId) {
-    const activeNavClass = 'px-5 py-2 bg-surface text-indigo-600 shadow-sm dark:shadow-none dark:shadow-none border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
-    const inactiveNavClass = 'px-5 py-2 text-muted hover:text-primary hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
+    const activeNavClass = 'px-4 py-2 bg-surface text-indigo-600 shadow-sm dark:shadow-none dark:shadow-none border border-slate-100 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
+    const inactiveNavClass = 'px-4 py-2 text-muted hover:text-primary hover:bg-white/80 rounded-lg font-bold text-sm transition-all flex items-center gap-2 relative';
 
     tabs.forEach(id => {
         const content = document.getElementById(`tab-${id}`);
@@ -645,9 +655,9 @@ async function searchImpersonation(ev) {
                 <input type="hidden" name="csrf_token" value="${getCsrf()}">
                 <div class="min-w-0">
                     <div class="text-xs font-bold text-primary truncate">${i.username} <span class="text-muted">#${i.id}</span></div>
-                    <div class="text-[11px] text-muted truncate">${i.role}${i.student_name ? ` • ${i.student_name}` : ''}</div>
+                    <div class="text-small text-muted truncate">${i.role}${i.student_name ? ` • ${i.student_name}` : ''}</div>
                 </div>
-                <button class="shrink-0 px-2 py-1 rounded-md border border-slate-200 text-[11px] font-bold text-secondary" type="submit">Войти как</button>
+                <button class="shrink-0 px-2 py-1 rounded-md border border-slate-200 text-small font-bold text-secondary" type="submit">Войти как</button>
             </form>
         `).join('');
         box.classList.remove('hidden');
@@ -840,25 +850,25 @@ window.refreshLogsCards = function refreshLogsCards() {
                                 <div class="flex items-center gap-2">
                                     <span class="font-mono text-xs text-muted truncate max-w-md">${pageText}</span>
                                 </div>
-                                <span class="text-[11px] font-bold text-muted">${timeOnly}</span>
+                                <span class="text-small font-bold text-muted">${timeOnly}</span>
                             </div>
                             <div class="flex items-center gap-3">
                                 <div class="flex items-center gap-1.5 bg-surface border border-slate-200 px-1.5 py-0.5 rounded-md shadow-sm dark:shadow-none dark:shadow-none">
-                                    <span class="text-[11px] font-bold text-secondary">${actorText}</span>
+                                    <span class="text-small font-bold text-secondary">${actorText}</span>
                                 </div>
                                 <span class="text-slate-300">•</span>
                                 <span class="text-xs font-medium text-primary">${actionText}</span>
                             </div>
                         </div>
                         <div class="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-end gap-2">
-                            <button onclick="navigator.clipboard.writeText('${reqId}')" class="px-2 py-1 bg-surface border border-slate-200 rounded-md text-[10px] font-mono text-muted hover:text-indigo-600 hover:border-indigo-200 shadow-sm dark:shadow-none dark:shadow-none transition-colors" title="Копировать Request ID">
+                            <button onclick="navigator.clipboard.writeText('${reqId}')" class="px-2 py-1 bg-surface border border-slate-200 rounded-md text-tiny font-mono text-muted hover:text-indigo-600 hover:border-indigo-200 shadow-sm dark:shadow-none dark:shadow-none transition-colors" title="Копировать Request ID">
                                 <i class="ph-bold ph-copy mr-1"></i> #${reqIdShort}
                             </button>
                         </div>
                     </div>`;
                 }).join('');
             } else {
-                container.innerHTML = '<div class="p-8 text-center text-muted font-medium">Логов пока нет</div>';
+                container.innerHTML = '<div class="p-6 text-center text-muted font-medium">Логов пока нет</div>';
             }
         })
         .catch(err => console.error("Ошибка загрузки логов:", err));

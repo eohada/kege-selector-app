@@ -232,18 +232,20 @@
 {% set active_page = 'admin' %}
 
 {% block content %}
-<section class="glass-panel">
-    <div class="flex justify-between items-center mb-8">
+<section class="glass-panel w-full">
+    <div class="flex justify-between items-center mb-5">
         <div class="flex items-center gap-4">
-            <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}" class="neo-button ghost">
-                ← К админ панели
+            <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+                ← На главную
             </a>
             <h1 class="m-0 flex items-center gap-2">
                 {{ ui_icon('action.settings', 'md', decorative=true) }}
-                Управление правами доступа
+                Панель управления
             </h1>
         </div>
     </div>
+
+    {% include 'admin/_admin_nav.html' %}
 
     <form method="POST" class="neo-form" id="permissionsForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -270,7 +272,7 @@
         <div id="permissionsContainer">
             {% for role in roles %}
             <div id="perms-{{ role }}" class="permissions-section {% if role == 'creator' %}role-creator-perms{% endif %}">
-                <div class="flex justify-between items-center mb-8">
+                <div class="flex justify-between items-center mb-3">
                     <h2 class="m-0" style="border-left: 4px solid var(--role-color, #7B5CFF); padding-left: 1rem;">
                         Настройка прав: <span class="text-text-primary">{{ role|upper }}</span>
                     </h2>
@@ -308,7 +310,7 @@
             {% endfor %}
         </div>
 
-        <div class="hero-actions hidden justify-center mt-8" style="border-top: 1px solid var(--color-stroke); padding-top: 1.5rem;" id="saveActions">
+        <div class="hero-actions hidden justify-center mt-3" style="border-top: 1px solid var(--color-stroke); padding-top: 1.5rem;" id="saveActions">
             <button type="submit" class="neo-button accent" style="min-width: 250px;">
                 {{ ui_icon('action.check', 'sm', decorative=true) }}
                 Сохранить изменения

@@ -3,400 +3,666 @@
 {% set active_page = 'students' %}
 
 {% block head_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Custom Styles for JIT Class Elimination -->
 <style>
-    .info-card { width: 95%; max-width: 1100px; margin-left: auto; margin-right: auto; }
-    .data-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px solid var(--color-stroke); }
-    .data-row:last-child { border-bottom: none; }
-    .data-label { color: var(--color-text-muted); font-size: 0.9rem; flex-shrink: 0; }
-    .data-value { text-align: right; color: var(--color-text-primary); word-break: break-word; }
-    .info-section { margin-bottom: 1.5rem; }
-    .info-section h3 { margin: 0 0 0.75rem 0; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
-    .profile-avatar-big { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.6rem; font-weight: 700; background: linear-gradient(135deg, #7B5CFF, #20C997); color: #fff; overflow: hidden; }
-    .profile-avatar-big img { width: 100%; height: 100%; object-fit: cover; }
-    .info-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
-    /* delete confirmations use the global confirm modal (static/confirm-modal.js) */
-    .tag--demo {
-        border-color: rgba(251, 191, 36, 0.45); color: rgba(251, 191, 36, 0.95); background: rgba(251, 191, 36, 0.08);
-        display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .55rem; border-radius: 999px; font-size: .85rem;
+    .min-h-160px { min-height: 160px; }
+    .min-h-120px { min-height: 120px; }
+</style>
+
+<style>
+    /* Анимации и градиенты для пламени стриков */
+    .streak-flame {
+        font-size: 1.5rem;
+        transition: all 0.3s ease;
+        display: inline-block;
     }
-    .lesson-control-grid {
-        display: grid;
-        gap: 0.75rem;
+    .streak-flame-0 { color: #f97316; } /* Orange */
+    .streak-flame-10 {
+        color: #f59e0b; /* Amber */
+        animation: streak-pulse 2s infinite alternate;
     }
-    .lesson-control-actions {
+    .streak-flame-30 {
+        color: #8b5cf6; /* Purple */
+        animation: streak-pulse 1.5s infinite alternate;
+    }
+    .streak-flame-60 {
+        color: #06b6d4; /* Cyan */
+        animation: streak-pulse 1.2s infinite alternate;
+    }
+    .streak-flame-90 {
+        color: #10b981; /* Emerald */
+        animation: streak-pulse 1s infinite alternate;
+    }
+    .streak-flame-120 {
+        color: #ec4899; /* Pink */
+        animation: streak-bounce-glow 1.2s infinite ease-in-out;
+    }
+    .streak-flame-150 {
+        color: #ef4444; /* Red */
+        animation: streak-bounce-glow 1.0s infinite ease-in-out;
+    }
+    .streak-flame-180 {
+        color: #d946ef; /* Fuchsia */
+        animation: streak-bounce-glow 0.8s infinite ease-in-out;
+    }
+    .streak-flame-210 {
+        color: #6366f1; /* Indigo */
+        animation: streak-super-fire 1s infinite linear;
+    }
+    .streak-flame-240 {
+        color: #e2e8f0; /* Platinum */
+        animation: streak-super-fire 0.8s infinite linear;
+    }
+    .streak-flame-270 {
+        color: #fbbf24; /* Gold legendary */
+        animation: streak-legendary 0.6s infinite ease-in-out;
+    }
+
+    @keyframes streak-pulse {
+        0% { transform: scale(1); filter: drop-shadow(0 0 2px currentColor); }
+        100% { transform: scale(1.15); filter: drop-shadow(0 0 8px currentColor); }
+    }
+    @keyframes streak-bounce-glow {
+        0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 2px currentColor); }
+        50% { transform: translateY(-4px) scale(1.1); filter: drop-shadow(0 0 10px currentColor); }
+    }
+    @keyframes streak-super-fire {
+        0% { transform: skewX(-3deg) scale(1); filter: drop-shadow(0 0 4px currentColor); }
+        50% { transform: skewX(3deg) scale(1.15); filter: drop-shadow(0 0 12px currentColor); }
+        100% { transform: skewX(-3deg) scale(1); filter: drop-shadow(0 0 4px currentColor); }
+    }
+    @keyframes streak-legendary {
+        0% { transform: translateY(0) rotate(-3deg) scale(1); filter: drop-shadow(0 0 8px #fbbf24); }
+        50% { transform: translateY(-6px) rotate(3deg) scale(1.2); filter: drop-shadow(0 0 20px #f59e0b); }
+        100% { transform: translateY(0) rotate(-3deg) scale(1); filter: drop-shadow(0 0 8px #fbbf24); }
+    }
+
+    /* Ачивки */
+    .ach-card {
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .ach-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    /* Light theme active achievement style */
+    .ach-unlocked {
+        background: #ffffff !important;
+        border-color: #cbd5e1 !important;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.05) !important;
+    }
+    
+    /* Dark theme active achievement style - WITH glowing borders and shadows */
+    [data-theme="dark"] .ach-unlocked {
+        background: rgba(255, 255, 255, 0.03) !important;
+        border-color: rgba(139, 92, 246, 0.35) !important;
+        box-shadow: 0 4px 20px rgba(139, 92, 246, 0.12) !important;
+    }
+
+    .ach-icon-streak.ach-unlocked { color: #f97316; background: rgba(249, 115, 22, 0.08); border-color: rgba(249, 115, 22, 0.2); }
+    .ach-icon-level.ach-unlocked { color: #8b5cf6; background: rgba(139, 92, 246, 0.08); border-color: rgba(139, 92, 246, 0.2); }
+    .ach-icon-tasks.ach-unlocked { color: #06b6d4; background: rgba(6, 182, 212, 0.08); border-color: rgba(6, 182, 212, 0.2); }
+    .ach-icon-ege.ach-unlocked { color: #10b981; background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.2); }
+    .ach-icon-secret.ach-unlocked { color: #fbbf24; background: rgba(251, 191, 36, 0.08); border-color: rgba(251, 191, 36, 0.2); }
+
+    .ach-card-streak.ach-unlocked { border-left: 4px solid #f97316 !important; }
+    .ach-card-level.ach-unlocked { border-left: 4px solid #8b5cf6 !important; }
+    .ach-card-tasks.ach-unlocked { border-left: 4px solid #06b6d4 !important; }
+    .ach-card-ege.ach-unlocked { border-left: 4px solid #10b981 !important; }
+    .ach-card-secret.ach-unlocked { border-left: 4px solid #fbbf24 !important; }
+
+    /* Custom category borders for dark theme unlocked achievements */
+    [data-theme="dark"] .ach-card-streak.ach-unlocked { border-color: rgba(249, 115, 22, 0.4) !important; border-left-width: 4px !important; }
+    [data-theme="dark"] .ach-card-level.ach-unlocked { border-color: rgba(139, 92, 246, 0.4) !important; border-left-width: 4px !important; }
+    [data-theme="dark"] .ach-card-tasks.ach-unlocked { border-color: rgba(6, 182, 212, 0.4) !important; border-left-width: 4px !important; }
+    [data-theme="dark"] .ach-card-ege.ach-unlocked { border-color: rgba(16, 185, 129, 0.4) !important; border-left-width: 4px !important; }
+    [data-theme="dark"] .ach-card-secret.ach-unlocked { border-color: rgba(251, 191, 36, 0.4) !important; border-left-width: 4px !important; }
+
+    /* Табличные данные */
+    .data-row {
         display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.6);
     }
-    .lesson-control-btn {
-        min-height: 44px;
-        padding: 0.75rem 1rem;
-        border-radius: 0.95rem;
-        font-weight: 800;
-        border: 1px solid rgba(148, 163, 184, 0.28);
-        background: rgba(248, 250, 252, 1);
-        color: rgb(51, 65, 85);
+    [data-theme="dark"] .data-row {
+        border-bottom-color: rgba(255, 255, 255, 0.05);
     }
-    .lesson-control-btn:hover {
-        background: rgba(241, 245, 249, 1);
+    .activity-placeholder {
+        background: linear-gradient(to right, #f1f5f9, #e2e8f0);
+        border-color: #cbd5e1;
     }
-    .lesson-control-btn--primary {
-        background: #1f2937;
-        color: #fff;
+    [data-theme="dark"] .activity-placeholder {
+        background: linear-gradient(to right, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01)) !important;
+        border-color: rgba(255, 255, 255, 0.06) !important;
     }
-    .lesson-control-btn--primary:hover {
-        background: #111827;
-    }
-    .dark .lesson-control-btn {
-        background: rgba(255, 255, 255, 0.06);
-        color: rgba(255, 255, 255, 0.92);
-        border-color: rgba(255, 255, 255, 0.08);
-    }
-    .dark .lesson-control-btn--primary {
-        background: #8b5cf6;
-    }
-    .dark .lesson-control-btn--primary:hover {
-        background: #7c3aed;
-    }
-    @media (max-width: 768px) {
-        .data-row { flex-direction: column; gap: 0.25rem; text-align: left; }
-        .data-value { text-align: left; }
+    .data-row:last-child {
+        border-bottom: none;
     }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="flex flex-col gap-6 pb-8 pt-6 w-full">
 
-        <div class="profile-card theme-student info-card mb-8">
-            <div class="profile-cover"></div>
-            <div class="profile-header">
-                <div class="profile-identity">
-                    <div class="profile-avatar-wrapper" style="width: 120px; height: 120px;">
-                        <div class="profile-avatar-big">
-                            {% if student_user and student_user.avatar_url %}
-                                <img src="{{ student_user.avatar_url }}" alt="Аватар">
-                            {% else %}
-                                {{ student.name[0]|upper }}
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="profile-info min-w-0">
-                        <div class="profile-role-badge">Профиль ученика</div>
-                        <h1 class="truncate">{{ student.name }}</h1>
-                        <div class="flex gap-2 flex-wrap mt-1">
-                            {% if student_user and student_user.is_demo_user %}
-                            <span class="tag--demo">Демо</span>
-                            {% endif %}
-                            {% if student.school_class %}<span class="status-badge status-info opacity-80">{{ student.school_class }} класс</span>{% endif %}
-                            {% if student.category %}<span class="status-badge status-info opacity-80">{{ student.category }}</span>{% endif %}
-                            {% if student.platform_id %}<span class="status-badge status-info opacity-75">ID: {{ student.platform_id }}</span>{% endif %}
-                        </div>
-                    </div>
+    <!-- КНОПКА НАЗАД -->
+    <div class="flex items-center justify-between w-full">
+        <a href="{{ url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-1.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white font-bold text-xs bg-surface dark:bg-zinc-800 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 transition-colors no-underline">
+            <i class="ph-bold ph-arrow-left"></i> Назад к ученикам
+        </a>
+    </div>
+
+    <!-- ВЕРХНИЙ РЯД СТАТИСТИКИ (4 БЛОКА, СИНХРОНИЗИРОВАНО С КОМНАТОЙ) -->
+    {% set streak = student.streak_days if student and student.streak_days else 0 %}
+    {% set current_level = student.level if student and student.level is not none else 1 %}
+    {% set current_xp = student.xp if student and student.xp is not none else 0 %}
+    {% set next_level_xp = get_xp_for_level(current_level + 1) %}
+    {% set current_level_xp = get_xp_for_level(current_level) %}
+    {% set level_progress_xp = current_xp - current_level_xp %}
+    {% set level_total_needed = next_level_xp - current_level_xp %}
+    {% set progress_percent = (level_progress_xp / level_total_needed * 100) if level_total_needed > 0 else 0 %}
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+        
+        <!-- Блок 1: Стрики -->
+        <div class="bg-surface dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-light p-6 flex flex-col justify-between shadow-sm min-h-120px">
+            <div class="flex justify-between items-center text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">
+                <span>Дней подряд</span>
+                {% if streak < 10 %}
+                    <i class="ph-fill ph-fire text-lg text-orange-500"></i>
+                {% else %}
+                    <i class="ph-fill ph-fire streak-flame streak-flame-270" title="Легендарный огонёк"></i>
+                {% endif %}
+            </div>
+            <div class="text-lg font-bold text-primary dark:text-white mt-3">{{ streak | pluralize_days }}</div>
+        </div>
+
+        <!-- Блок 2: Уровень (со шкалой опыта внутри блока) -->
+        <div class="bg-surface dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-light p-6 flex flex-col justify-between shadow-sm min-h-120px">
+            <div class="flex justify-between items-center text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">
+                <span>Уровень {{ current_level }}</span>
+                <i class="ph-fill ph-sparkles text-lg text-purple-500"></i>
+            </div>
+            <div class="mt-2 flex flex-col gap-1 w-full">
+                <div class="text-xs font-black text-primary dark:text-white truncate" title="{{ current_xp | get_rank_title }}">{{ current_xp | get_rank_title }}</div>
+                <!-- Компактная шкала опыта -->
+                <div class="w-full h-2 bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-zinc-750 mt-1 relative">
+                    <div class="h-full bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full" style="width: {{ progress_percent }}%;"></div>
                 </div>
-                <div class="hero-actions">
-                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button accent">
-                        <i class="fas fa-door-open ui-icon ui-icon--sm"></i> Комната ученика
-                    </a>
-                    {% if not current_user.is_student() and not current_user.is_parent() %}
-                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button outline">
-                        <i class="fas fa-pen ui-icon ui-icon--sm"></i> Редактировать
-                    </a>
-                    {% endif %}
-                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline">
-                        <i class="fas fa-chart-line ui-icon ui-icon--sm"></i> Статистика
-                    </a>
-                    <a href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}" class="neo-button ghost">
-                        <i class="fas fa-route ui-icon ui-icon--sm"></i> Траектория
-                    </a>
-                    {% if current_user.is_creator() or current_user.is_admin() %}
-                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" class="inline">
-                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                        <button type="submit" class="neo-button ghost text-text-muted">
-                            <i class="fas fa-archive ui-icon ui-icon--sm"></i> {% if student.is_active %}В архив{% else %}Восстановить{% endif %}
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" class="inline">
-                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                        <button type="submit" class="neo-button ghost" style="color: rgba(239, 68, 68, 0.85);">
-                            <i class="fas fa-trash ui-icon ui-icon--sm"></i> Удалить
-                        </button>
-                    </form>
-                    {% endif %}
+                <div class="text-micro font-bold text-muted dark:text-dark-muted flex justify-between items-center mt-1">
+                    <span>{{ current_xp }} XP</span>
+                    <span>до ур. {{ current_level + 1 }}: {{ next_level_xp - current_xp }}</span>
                 </div>
             </div>
+        </div>
 
-            <div style="padding: 0 2rem 2rem;">
-                <div class="info-section">
-                    <h3>Данные</h3>
-                    <div class="glass-panel p-4">
-                        <div class="data-row">
-                            <span class="data-label">ID на платформе</span>
-                            <span class="data-value">{% if student.platform_id %}{{ student.platform_id }}{% else %}—{% endif %}</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">Класс</span>
-                            <span class="data-value">{% if student.school_class %}{{ student.school_class }} класс{% else %}—{% endif %}</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">Категория</span>
-                            <span class="data-value">{% if student.category %}{{ student.category }}{% else %}—{% endif %}</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">Целевой балл</span>
-                            <span class="data-value">{% if student.target_score is not none %}{{ student.target_score }}{% else %}—{% endif %}</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">Сроки</span>
-                            <span class="data-value">{% if student.deadline %}{{ student.deadline }}{% else %}—{% endif %}</span>
-                        </div>
-                        {% if student.description %}
-                        <div class="data-row">
-                            <span class="data-label">Описание</span>
-                            <span class="data-value whitespace-pre-wrap">{{ student.description }}</span>
-                        </div>
-                        {% endif %}
-                        {% if (not current_user.is_student() and not current_user.is_parent()) and student.notes %}
-                        <div class="data-row">
-                            <span class="data-label">Заметки</span>
-                            <span class="data-value whitespace-pre-wrap">{{ student.notes }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="info-section">
-                    <h3>Контакты</h3>
-                    <div class="glass-panel p-4">
-                        <div class="data-row">
-                            <span class="data-label">Телефон</span>
-                            <span class="data-value">{% if student.phone %}{{ student.phone }}{% else %}—{% endif %}</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">Telegram</span>
-                            <span class="data-value">
-                                {% if student_profile and student_profile.telegram_chat_id %}
-                                    Бот привязан{% if student_profile.telegram_id %}: {{ student_profile.telegram_id }}{% endif %}
-                                {% elif student_profile and student_profile.telegram_id %}
-                                    {{ student_profile.telegram_id }} · бот не привязан
-                                {% elif student.telegram %}
-                                    {{ student.telegram }} · бот не привязан
-                                {% else %}
-                                    Не привязан
-                                {% endif %}
-                            </span>
-                        </div>
-                        {% if student_subscription and student_subscription.lessons_remaining is not none %}
-                        <div class="data-row">
-                            <span class="data-label">Уроки</span>
-                            <span class="data-value">
-                                <strong class="lessons-remaining-val">{{ student_subscription.lessons_remaining }}</strong>
-                            </span>
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                {% if current_user.is_parent() %}
-                <div class="info-section">
-                    <h3>Связь с ребёнком</h3>
-                    <div class="glass-panel p-4">
-                        <div class="data-row">
-                            <span class="data-label">Доступ</span>
-                            <span class="data-value">
-                                {% if parents_info %}
-                                    Родительский доступ активен
-                                {% else %}
-                                    Связь подтверждена
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">Профиль</span>
-                            <span class="data-value">
-                                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="text-boo-primary hover:underline">
-                                    Открыть комнату ученика
-                                </a>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if tutors_list %}
-                <div class="info-section">
-                    <h3>Преподаватель{% if tutors_list|length > 1 %}и{% endif %}</h3>
-                    <div class="glass-panel p-4">
-                        <div class="flex flex-wrap gap-3">
-                            {% for tutor in tutors_list %}
-                            <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="inline-flex items-center gap-2 px-3 py-2 bg-bg-surface-alt rounded-btn shadow-card no-underline text-inherit">
-                                <span class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 bg-bg-surface-alt flex items-center justify-center font-bold text-sm">
-                                    {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="" class="w-full h-full object-cover">{% else %}{{ tutor.username[0]|upper }}{% endif %}
-                                </span>
-                                <span class="font-semibold">
-                                    {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}{{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}{% else %}{{ tutor.username }}{% endif %}
-                                </span>
-                                <span class="text-text-muted text-sm">→ Профиль</span>
-                            </a>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if student_subscription %}
-                <div class="info-section">
-                    <h3>Доступ / подписка</h3>
-                    <div class="glass-panel p-4">
-                        {% if student_subscription.subscription and student_subscription.plan %}
-                            <div class="flex gap-2 flex-wrap items-center mb-2">
-                                <span class="status-badge status-info opacity-95">{{ student_subscription.label }}</span>
-                                <span class="status-badge status-info opacity-80">Тариф: <strong>{{ student_subscription.plan.title }}</strong></span>
-                                {% if student_subscription.ends_at_utc %}
-                                    <span class="status-badge status-info opacity-80">До: <strong>{{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</strong></span>
-                                {% endif %}
-                            </div>
-                            {% if student_subscription.lessons_remaining is not none %}
-                                <div class="flex flex-col gap-3 text-text-muted">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        Осталось уроков:
-                                        <strong class="lessons-remaining-val text-text-primary" style="font-size: 1.2rem;">{{ student_subscription.lessons_remaining }}</strong>
-                                    </div>
-                                    {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
-                                    <div class="lesson-control-grid">
-                                        <input id="lessons-remaining-value"
-                                               type="number"
-                                               min="0"
-                                               step="1"
-                                               value="{{ student_subscription.lessons_remaining }}"
-                                               placeholder="Новое количество уроков"
-                                               class="neo-input flex-1 min-w-0">
-                                        <input id="lessons-balance-reason"
-                                               type="text"
-                                               placeholder="Причина изменения баланса"
-                                               class="neo-input flex-1 min-w-0">
-                                        <div class="lesson-control-actions">
-                                            <button class="lesson-control-btn" onclick="setLessonsRemaining('{{ student.user_id }}', 0)" title="Обнулить">Обнулить</button>
-                                            <button class="lesson-control-btn lesson-control-btn--primary" onclick="setLessonsRemaining('{{ student.user_id }}', null)" title="Подтвердить">Подтвердить изменение</button>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            {% elif student_subscription.seconds_left is not none %}
-                                {% set days_left = (student_subscription.seconds_left // 86400) %}
-                                <div class="text-text-muted">Осталось: <strong class="text-text-primary">{{ days_left }} дн.</strong></div>
-                            {% endif %}
-                        {% elif student_subscription.status == 'expired' %}
-                            <div class="font-bold text-error">Подписка истекла</div>
-                            {% if student_subscription.ends_at_utc %}
-                                <div class="text-text-muted text-sm">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
-                            {% endif %}
-                        {% else %}
-                            <div class="text-text-muted">Тариф не задан</div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if student.goal_text %}
-                <div class="info-section">
-                    <h3>Цель</h3>
-                    <div class="glass-panel p-4">
-                        <p class="m-0 leading-relaxed whitespace-pre-wrap">{{ student.goal_text }}</p>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if parents_info %}
-                <div class="info-section">
-                    <h3>Родители</h3>
-                    <div class="glass-panel p-4">
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            <span class="status-badge status-info opacity-90">Родителей: {{ parents_info|length }}</span>
-                            {% if tutors_list %}<span class="status-badge status-info opacity-90">Преподавателей: {{ tutors_list|length }}</span>{% endif %}
-                            {% if current_user.is_parent() %}<span class="status-badge status-info opacity-90">Родительский просмотр</span>{% endif %}
-                        </div>
-                        {% for p in parents_info %}
-                        <div class="data-row">
-                            <span class="data-label">{{ p.name }}</span>
-                            <span class="data-value">
-                                {% if p.phone %}{{ p.phone }}{% endif %}
-                                {% if p.phone and p.telegram_id %} · {% endif %}
-                                {% if p.telegram_id %}{{ p.telegram_id }}{% endif %}
-                            </span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if current_user.is_parent() %}
-                <div class="info-section">
-                    <h3>Семейная навигация</h3>
-                    <div class="glass-panel p-4">
-                        <div class="lesson-control-grid">
-                            <a href="{{ url_for('parents.parent_dashboard') }}" class="lesson-control-btn lesson-control-btn--primary no-underline text-center">
-                                Открыть родительский кабинет
-                            </a>
-                            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="lesson-control-btn no-underline text-center">
-                                Перейти в комнату ученика
-                            </a>
-                        </div>
-                    </div>
-                </div>
+        <!-- Блок 3: Оставшиеся занятия -->
+        <div class="bg-surface dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-light p-6 flex flex-col justify-between shadow-sm min-h-120px">
+            <div class="flex justify-between items-center text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">
+                <span>Остаток занятий</span>
+                <i class="ph-bold ph-books text-lg text-cyan-500"></i>
+            </div>
+            <div class="text-lg font-bold text-primary dark:text-white mt-3">
+                {% if student_subscription and student_subscription.lessons_remaining is not none %}
+                    {{ student_subscription.lessons_remaining }} <span class="text-xs font-bold text-muted">занятий</span>
+                {% else %}
+                    —
                 {% endif %}
             </div>
         </div>
+
+        <!-- Блок 4: Целевой балл -->
+        <div class="bg-surface dark:bg-dark-card rounded-xl border border-slate-200 dark:border-dark-light p-6 flex flex-col justify-between shadow-sm min-h-120px">
+            <div class="flex justify-between items-center text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">
+                <span>Траектория</span>
+                <i class="ph-fill ph-target text-lg text-emerald-500"></i>
+            </div>
+            <div class="text-lg font-bold text-primary dark:text-white mt-3">
+                {% if student.target_score %}{{ student.target_score }} <span class="text-xs font-bold text-muted">баллов</span>{% else %}0 <span class="text-xs font-bold text-muted">баллов</span>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ОСНОВНОЙ СПЛИТ-ФЛЕКС ПОД ШАБЛОН КОМНАТЫ -->
+    <div class="flex flex-col lg:flex-row gap-6 items-start w-full">
+        
+        <!-- ЛЕВАЯ КОЛОНКА (Профиль, Действия, Telegram) -->
+        <div class="w-full lg:w-1/3 flex flex-col gap-6">
+            
+            <!-- КАРТОЧКА ГЕРОЯ (ПРОФИЛЬ) -->
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light shadow-sm p-6 flex flex-col gap-4 relative w-full overflow-hidden">
+                <div class="flex flex-col items-center text-center gap-4 min-w-0">
+                    <div class="relative w-28 h-28 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border-4 border-slate-200 dark:border-dark-avatar shadow-sm shrink-0">
+                        {% if student_user and student_user.avatar_url %}
+                        <img src="{{ student_user.avatar_url }}" alt="Avatar" class="w-full h-full object-cover">
+                        {% else %}
+                        <span class="w-full h-full flex items-center justify-center text-white text-lg font-bold bg-gradient-to-br from-purple-500 to-indigo-600">{{ (student.name or '—')[0]|upper }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex-1 min-w-0 w-full mt-2">
+                        <div class="flex flex-wrap items-center justify-center gap-1.5 mb-1.5">
+                            <span class="status-badge status-primary">Профиль ученика</span>
+                            {% if student_user and student_user.is_demo_user %}
+                            <span class="tag--demo">Демо</span>
+                            {% endif %}
+                            {% if student.school_class %}
+                            <span class="status-badge status-info opacity-80">{{ student.school_class }} класс</span>
+                            {% endif %}
+                        </div>
+
+                        <h1 class="text-xl sm:text-lg font-bold text-primary dark:text-white tracking-tight leading-tight truncate max-w-full" title="{{ student.name }}">{{ student.name }}</h1>
+
+                        <!-- Личные заметки / О себе -->
+                        {% if student_user and student_user.custom_status %}
+                        <p class="text-muted dark:text-dark-muted font-semibold text-sm italic mt-1.5 max-w-xl leading-relaxed">
+                            "{{ student_user.custom_status }}"
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- ДЕЙСТВИЯ (Ссылки и переходы) -->
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light shadow-sm p-6 flex flex-col gap-4">
+                <h3 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-link text-lg text-purple-500"></i> Действия и ссылки
+                </h3>
+                
+                <div class="flex flex-col gap-2">
+                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-zinc-800/20 border border-slate-200 dark:border-dark-light rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800/40 transition-all no-underline text-primary dark:text-white font-bold text-xs">
+                        <div class="flex items-center gap-2.5">
+                            <i class="ph-bold ph-door-open text-base text-purple-600 dark:text-purple-400"></i>
+                            <span>Комната ученика</span>
+                        </div>
+                        <i class="ph-bold ph-caret-right text-muted text-xs"></i>
+                    </a>
+                    
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
+                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-zinc-800/20 border border-slate-200 dark:border-dark-light rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800/40 transition-all no-underline text-primary dark:text-white font-bold text-xs">
+                        <div class="flex items-center gap-2.5">
+                            <i class="ph-bold ph-pencil text-base text-indigo-600 dark:text-indigo-400"></i>
+                            <span>Редактировать профиль</span>
+                        </div>
+                        <i class="ph-bold ph-caret-right text-muted text-xs"></i>
+                    </a>
+                    {% endif %}
+
+                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-zinc-800/20 border border-slate-200 dark:border-dark-light rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800/40 transition-all no-underline text-primary dark:text-white font-bold text-xs">
+                        <div class="flex items-center gap-2.5">
+                            <i class="ph-bold ph-chart-line-up text-base text-emerald-600 dark:text-emerald-400"></i>
+                            <span>Статистика ученика</span>
+                        </div>
+                        <i class="ph-bold ph-caret-right text-muted text-xs"></i>
+                    </a>
+
+                    <a href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}" class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-zinc-800/20 border border-slate-200 dark:border-dark-light rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800/40 transition-all no-underline text-primary dark:text-white font-bold text-xs">
+                        <div class="flex items-center gap-2.5">
+                            <i class="ph-bold ph-navigation-arrow text-base text-cyan-600 dark:text-cyan-400"></i>
+                            <span>Траектория / План</span>
+                        </div>
+                        <i class="ph-bold ph-caret-right text-muted text-xs"></i>
+                    </a>
+                </div>
+            </section>
+
+            <!-- КОНТАКТЫ И ТЕЛЕГРАМ -->
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light shadow-sm p-6 flex flex-col gap-4">
+                <h3 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-chats-teardrop text-lg text-cyan-500"></i> Контакты & Telegram
+                </h3>
+
+                <div class="flex flex-col">
+                    <div class="data-row">
+                        <span class="data-label">Телефон</span>
+                        <span class="data-value font-extrabold">{% if student.phone %}{{ student.phone }}{% else %}—{% endif %}</span>
+                    </div>
+                    <div class="data-row flex-col gap-1.5 items-stretch">
+                        <div class="flex justify-between items-center">
+                            <span class="data-label">Telegram привязка</span>
+                            <span class="text-xs font-bold">
+                                {% if student_profile and student_profile.telegram_chat_id %}
+                                    <span class="text-green-600 dark:text-green-400">Бот привязан</span>
+                                {% elif student_profile and student_profile.telegram_id %}
+                                    <span class="text-yellow-600 dark:text-yellow-400">Указан (не подтв.)</span>
+                                {% else %}
+                                    <span class="text-muted dark:text-dark-muted">Не привязан</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="text-small font-semibold text-primary dark:text-white bg-slate-50 dark:bg-zinc-800/10 border border-slate-200/50 dark:border-dark-light p-3 rounded-xl leading-normal">
+                            {% if student_profile and student_profile.telegram_id %}
+                                ID: {{ student_profile.telegram_id }}
+                            {% elif student.telegram %}
+                                Контакт: {{ student.telegram }}
+                            {% else %}
+                                Данные не заполнены. Ученик должен привязать бота BooStudy.
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if student_subscription and student_subscription.lessons_remaining is not none %}
+                    <div class="data-row flex-col gap-3 items-stretch mt-2 border-t border-slate-200/60 dark:border-dark-light pt-3">
+                        <div class="flex justify-between items-center">
+                            <span class="data-label">Остаток занятий</span>
+                            <span class="text-base font-black text-primary dark:text-white lessons-remaining-val">{{ student_subscription.lessons_remaining }}</span>
+                        </div>
+                        {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
+                        <div class="flex flex-col gap-2 bg-slate-100/50 dark:bg-zinc-800/10 border border-slate-200/50 dark:border-dark-light p-3 rounded-2xl">
+                            <input id="lessons-remaining-value" type="number" min="0" step="1" value="{{ student_subscription.lessons_remaining }}" placeholder="Кол-во уроков" class="neo-input w-full">
+                            <input id="lessons-balance-reason" type="text" placeholder="Причина изменения" class="neo-input w-full">
+                            <div class="flex gap-2">
+                                <button class="neo-button outline py-2 px-3 flex-1 text-xs" onclick="setLessonsRemaining('{{ student.user_id }}', 0)" title="Обнулить баланс">Обнулить</button>
+                                <button class="neo-button accent py-2 px-3 flex-1 text-xs" onclick="setLessonsRemaining('{{ student.user_id }}', null)" title="Подтвердить баланс">Изменить</button>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+
+        <!-- ПРАВАЯ КОЛОНКА: Ачивки, Активность, Данные, Семья -->
+        <div class="w-full lg:w-2/3 flex flex-col gap-6">
+            
+            <!-- ВИТРИНА ДОСТИЖЕНИЙ -->
+            {% set unlocked_keys = get_student_unlocked_achievement_keys(student.student_id) %}
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light shadow-sm p-6 lg:p-6 flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
+                        <i class="ph-fill ph-medal text-lg text-purple-600 dark:text-purple-400"></i> Витрина достижений
+                    </h2>
+                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-zinc-800 dark:text-dark-muted text-tiny font-extrabold uppercase tracking-wider">
+                        Раскрыто: {{ unlocked_keys | length }} / {{ ACHIEVEMENTS_REGISTRY | length }}
+                    </span>
+                </div>
+
+                <!-- Фильтр-табы -->
+                <div class="flex flex-wrap gap-1.5 mb-5 pb-2 border-b border-slate-200/50 dark:border-dark-avatar overflow-x-auto hide-scroll">
+                    <button onclick="filterAchievements('all', event)" class="ach-tab-btn active px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-zinc-850 text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-zinc-700 transition-all">Все</button>
+                    <button onclick="filterAchievements('streak', event)" class="ach-tab-btn px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-zinc-850 text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-zinc-700 transition-all">Стрики</button>
+                    <button onclick="filterAchievements('level', event)" class="ach-tab-btn px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-zinc-850 text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-zinc-700 transition-all">Уровни</button>
+                    <button onclick="filterAchievements('tasks', event)" class="ach-tab-btn px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-zinc-850 text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-zinc-700 transition-all">Задачи</button>
+                    <button onclick="filterAchievements('ege', event)" class="ach-tab-btn px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-zinc-850 text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-zinc-700 transition-all">ЕГЭ</button>
+                    <button onclick="filterAchievements('secret', event)" class="ach-tab-btn px-2 py-0.5 rounded-md border border-slate-200 dark:border-dark-light bg-slate-100/50 dark:bg-zinc-850 text-tiny font-bold text-muted dark:text-dark-muted hover:border-slate-300 dark:hover:border-zinc-700 transition-all">Секретные</button>
+                </div>
+
+                <!-- Скролл-контейнер с ачивками -->
+                <div id="achievements-wrapper" style="max-height: 220px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
+                    <div id="achievements-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 pr-1">
+                        {% for key, meta in ACHIEVEMENTS_REGISTRY.items() %}
+                            {% set has_it = key in unlocked_keys %}
+                            {% set is_secret = meta.category == 'secret' %}
+                            <div data-category="{{ meta.category }}" class="ach-card ach-card-{{ meta.category }} p-3.5 rounded-2xl border flex items-start gap-3 relative overflow-hidden
+                                {% if has_it %}
+                                    ach-unlocked shadow-sm
+                                {% else %}
+                                    bg-slate-100/40 dark:bg-zinc-900/10 border-slate-200/60 dark:border-dark-faint opacity-50 hover:opacity-75
+                                {% endif %}">
+                                
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ach-icon-{{ meta.category }}
+                                    {% if has_it %}
+                                        ach-unlocked
+                                    {% else %}
+                                        bg-slate-200/50 dark:bg-zinc-800/30 text-slate-400 border-slate-300/40 dark:border-dark-faint
+                                    {% endif %}">
+                                    {% if is_secret and not has_it %}
+                                        <i class="ph-fill ph-lock-key text-xl"></i>
+                                    {% else %}
+                                        <i class="ph-fill {{ meta.icon }} text-xl"></i>
+                                    {% endif %}
+                                </div>
+
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between gap-1.5 mb-0.5">
+                                        <span class="text-small font-black truncate {% if has_it %}text-slate-800 dark:text-white{% else %}text-slate-500 dark:text-slate-400{% endif %}">
+                                            {% if is_secret and not has_it %}
+                                                Секретное достижение
+                                            {% else %}
+                                                {{ meta.title }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    <p class="text-micro text-muted dark:text-dark-muted leading-relaxed">
+                                        {% if is_secret and not has_it %}
+                                            Условия получения скрыты...
+                                        {% else %}
+                                            {{ meta.desc }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Кнопка раскрытия/сворачивания -->
+                <button id="achievements-toggle-btn" onclick="toggleAchievementsExpand()" class="mt-3 w-full py-2.5 bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-dark-light hover:bg-slate-200 dark:hover:bg-zinc-700 text-muted dark:text-dark-muted rounded-xl text-tiny font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 z-10 relative">
+                    <i class="ph-bold ph-caret-double-down"></i> Показать все достижения
+                </button>
+            </section>
+
+            <!-- КАРТА АКТИВНОСТИ -->
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light shadow-sm p-6 lg:p-6 flex flex-col relative overflow-hidden opacity-95">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
+                        <i class="ph-fill ph-calendar-check text-lg"></i> Активность за месяц
+                    </h2>
+                    <span class="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-zinc-800 dark:text-dark-muted text-tiny font-extrabold uppercase tracking-wider">В активной разработке</span>
+                </div>
+
+                <div class="flex-1 flex items-center justify-center activity-placeholder border rounded-2xl p-6 min-h-160px text-muted dark:text-dark-muted">
+                    <div class="inline-flex items-center gap-2 font-bold text-xs cursor-not-allowed select-none">
+                        <i class="ph-bold ph-lock-key text-sm"></i> Активность в разработке
+                    </div>
+                </div>
+            </section>
+
+            <!-- ДАННЫЕ УЧЕНИКА -->
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light shadow-sm p-6 flex flex-col gap-4">
+                <h3 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-identification-card text-lg text-indigo-500"></i> Данные ученика
+                </h3>
+                
+                <div class="flex flex-col">
+                    <div class="data-row">
+                        <span class="data-label">ID на платформе</span>
+                        <span class="data-value font-extrabold">{% if student.platform_id %}{{ student.platform_id }}{% else %}—{% endif %}</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Класс</span>
+                        <span class="data-value font-extrabold">{% if student.school_class %}{{ student.school_class }} класс{% else %}—{% endif %}</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Категория</span>
+                        <span class="data-value font-extrabold">{% if student.category %}{{ student.category }}{% else %}—{% endif %}</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Целевой балл</span>
+                        <span class="data-value font-extrabold">{% if student.target_score is not none %}{{ student.target_score }}{% else %}—{% endif %}</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Сроки</span>
+                        <span class="data-value font-extrabold">{% if student.deadline %}{{ student.deadline }}{% else %}—{% endif %}</span>
+                    </div>
+                    {% if student.description %}
+                    <div class="data-row flex-col gap-1.5 items-stretch">
+                        <span class="data-label text-tiny uppercase font-bold tracking-wider">Описание</span>
+                        <span class="text-xs font-semibold text-primary dark:text-white bg-slate-50 dark:bg-zinc-850 border border-slate-200/50 dark:border-dark-light p-3 rounded-xl whitespace-pre-wrap leading-relaxed">{{ student.description }}</span>
+                    </div>
+                    {% endif %}
+                    {% if not current_user.is_student() and not current_user.is_parent() and student.notes %}
+                    <div class="data-row flex-col gap-1.5 items-stretch">
+                        <span class="data-label text-tiny uppercase font-bold tracking-wider">Заметки</span>
+                        <span class="text-xs font-semibold text-primary dark:text-white bg-slate-50 dark:bg-zinc-850 border border-slate-200/50 dark:border-dark-light p-3 rounded-xl whitespace-pre-wrap leading-relaxed">{{ student.notes }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- РОДИТЕЛИ И ПРЕПОДАВАТЕЛИ -->
+            {% if parents_info or tutors_list %}
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light shadow-sm p-6 flex flex-col gap-4">
+                <h3 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-users-three text-lg text-purple-500"></i> Семейные связи & Преподаватели
+                </h3>
+                
+                <div class="flex flex-col gap-3">
+                    {% if parents_info %}
+                        <div>
+                            <div class="text-micro font-black text-muted dark:text-dark-muted uppercase tracking-wider mb-1.5">Родители</div>
+                            <div class="flex flex-col gap-1.5">
+                                {% for p in parents_info %}
+                                <div class="flex justify-between items-center text-xs font-bold text-primary dark:text-white bg-slate-50 dark:bg-zinc-850 border border-slate-200/50 dark:border-dark-light px-3 py-2 rounded-xl">
+                                    <span>{{ p.name }}</span>
+                                    <span class="text-tiny text-muted">{{ p.phone or p.telegram_id or '—' }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if tutors_list %}
+                        <div>
+                            <div class="text-micro font-black text-muted dark:text-dark-muted uppercase tracking-wider mb-1.5 mt-1">Преподаватели</div>
+                            <div class="flex flex-col gap-2">
+                                {% for tutor in tutors_list %}
+                                <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="flex items-center gap-3 p-2 bg-slate-50 dark:bg-zinc-850 border border-slate-200/50 dark:border-dark-light rounded-2xl no-underline text-inherit hover:border-slate-300 dark:hover:border-zinc-700 transition-all">
+                                    <span class="w-8 h-8 rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-bold text-xs shrink-0">
+                                        {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="" class="w-full h-full object-cover">{% else %}{{ tutor.username[0]|upper }}{% endif %}
+                                    </span>
+                                    <span class="font-bold text-xs truncate flex-1 text-primary dark:text-white">
+                                        {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}{{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}{% else %}{{ tutor.username }}{% endif %}
+                                    </span>
+                                    <i class="ph-bold ph-caret-right text-muted text-xs"></i>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- ПОДПИСКА -->
+            {% if student_subscription %}
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light shadow-sm p-6 flex flex-col gap-3">
+                <h3 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-shield-check text-lg text-emerald-500"></i> Доступ & Подписка
+                </h3>
+
+                <div class="bg-slate-50 dark:bg-zinc-850 border border-slate-200/50 dark:border-dark-light p-4 rounded-2xl flex flex-col gap-2.5">
+                    {% if student_subscription.subscription and student_subscription.plan %}
+                        <div class="flex gap-1.5 flex-wrap">
+                            <span class="status-badge status-primary">{{ student_subscription.label }}</span>
+                            <span class="status-badge status-info">Тариф: <strong>{{ student_subscription.plan.title }}</strong></span>
+                        </div>
+                        {% if student_subscription.ends_at_utc %}
+                            <div class="text-xs font-bold text-primary dark:text-white">
+                                Активна до: <span class="text-boo-primary dark:text-purple-300">{{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</span>
+                            </div>
+                        {% endif %}
+                    {% elif student_subscription.status == 'expired' %}
+                        <div class="font-black text-xs text-red-500 flex items-center gap-1.5">
+                            <i class="ph-bold ph-warning-circle text-lg"></i> Подписка истекла
+                        </div>
+                        {% if student_subscription.ends_at_utc %}
+                            <div class="text-small font-bold text-muted">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-xs font-bold text-muted dark:text-dark-muted">Тарифный план не задан</div>
+                    {% endif %}
+                </div>
+            </section>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts_extra %}
-    <script>
-        async function setLessonsRemaining(userId, forcedValue) {
-            if (!userId || userId === 'None') return;
-            try {
-                const valueInput = document.getElementById('lessons-remaining-value');
-                const reasonInput = document.getElementById('lessons-balance-reason');
-                const rawValue = valueInput ? valueInput.value.trim() : '';
-                const reason = reasonInput ? reasonInput.value.trim() : '';
-                if (!reason) {
-                    if (window.toast) window.toast.error('Укажи причину изменения баланса');
-                    return;
-                }
-                if (forcedValue === null && rawValue === '') {
-                    if (window.toast) window.toast.error('Укажи новое количество уроков');
-                    return;
-                }
-                const setTo = forcedValue === null ? Number.parseInt(rawValue, 10) : Number.parseInt(forcedValue, 10);
-                if (!Number.isInteger(setTo) || setTo < 0) {
-                    if (window.toast) window.toast.error('Новое количество уроков должно быть целым числом не меньше нуля');
-                    return;
-                }
-                const url = `/api/user/${userId}/lessons-remaining`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
-                    body: JSON.stringify({ set_to: setTo, reason: reason })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        const countEls = document.querySelectorAll('.lessons-remaining-val');
-                        countEls.forEach(el => el.innerText = data.new_count);
-                        if (reasonInput) reasonInput.value = '';
-                        if (valueInput) valueInput.value = data.new_count;
-                        if (window.toast) window.toast.success('Количество уроков обновлено');
-                    } else {
-                        if (window.toast) window.toast.error(data.error || 'Ошибка');
-                    }
-                } else {
-                    const err = await response.json();
-                    if (window.toast) window.toast.error(err.error || 'Ошибка сети');
-                }
-            } catch (err) {
-                console.error(err);
-                if (window.toast) window.toast.error('Ошибка соединения');
-            }
+<script>
+    // Раскрытие / Сворачивание ачивок
+    function toggleAchievementsExpand() {
+        const wrapper = document.getElementById('achievements-wrapper');
+        const btn = document.getElementById('achievements-toggle-btn');
+        if (wrapper.style.maxHeight === '220px') {
+            wrapper.style.maxHeight = '800px';
+            btn.innerHTML = '<i class="ph-bold ph-caret-double-up"></i> Свернуть список';
+        } else {
+            wrapper.style.maxHeight = '220px';
+            btn.innerHTML = '<i class="ph-bold ph-caret-double-down"></i> Показать все достижения';
         }
-    </script>
+    }
+
+    // Фильтрация достижений
+    function filterAchievements(category, event) {
+        document.querySelectorAll('.ach-tab-btn').forEach(btn => btn.classList.remove('active'));
+        if (event) event.currentTarget.classList.add('active');
+
+        document.querySelectorAll('#achievements-container > div').forEach(card => {
+            const cardCat = card.getAttribute('data-category');
+            if (category === 'all' || cardCat === category) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    // Изменение остатка занятий
+    async function setLessonsRemaining(userId, forcedValue) {
+        if (!userId || userId === 'None') return;
+        try {
+            const valueInput = document.getElementById('lessons-remaining-value');
+            const reasonInput = document.getElementById('lessons-balance-reason');
+            const rawValue = valueInput ? valueInput.value.trim() : '';
+            const reason = reasonInput ? reasonInput.value.trim() : '';
+            
+            if (!reason) {
+                if (window.toast) window.toast.error('Укажи причину изменения баланса');
+                return;
+            }
+            if (forcedValue === null && rawValue === '') {
+                if (window.toast) window.toast.error('Укажи новое количество уроков');
+                return;
+            }
+            const setTo = forcedValue === null ? Number.parseInt(rawValue, 10) : Number.parseInt(forcedValue, 10);
+            if (!Number.isInteger(setTo) || setTo < 0) {
+                if (window.toast) window.toast.error('Количество уроков должно быть целым числом не меньше нуля');
+                return;
+            }
+            
+            const response = await fetch(`/api/user/${userId}/lessons-remaining`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content 
+                },
+                body: JSON.stringify({ set_to: setTo, reason: reason })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    document.querySelectorAll('.lessons-remaining-val').forEach(el => el.innerText = data.new_count);
+                    if (reasonInput) reasonInput.value = '';
+                    if (valueInput) valueInput.value = data.new_count;
+                    if (window.toast) window.toast.success('Количество уроков обновлено');
+                } else {
+                    if (window.toast) window.toast.error(data.error || 'Ошибка');
+                }
+            } else {
+                const err = await response.json();
+                if (window.toast) window.toast.error(err.error || 'Ошибка сети');
+            }
+        } catch (err) {
+            console.error(err);
+            if (window.toast) window.toast.error('Ошибка соединения');
+        }
+    }
+</script>
 {% endblock %}

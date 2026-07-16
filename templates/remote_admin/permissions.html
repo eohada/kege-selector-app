@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=2.4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20260708-v1">
     <style>
         .rbac-grid {
             display: grid;
@@ -100,7 +100,7 @@
 
         <main class="remote-main">
         <section class="glass-panel" style="max-width: 1400px; padding: 2rem;">
-            <div class="mb-8">
+            <div class="mb-3">
                 <h1 class="m-0">Права доступа (RBAC)</h1>
                 <p class="text-muted mt-2">
                     Окружение: <strong>{{ environment_name }}</strong>
@@ -132,7 +132,7 @@
                         <input type="hidden" name="role" id="selected-role">
                         
                         <div id="permissions-container" class="hidden">
-                            <div class="flex justify-between items-center mb-8">
+                            <div class="flex justify-between items-center mb-3">
                                 <h2 class="m-0">Права для роли: <span id="role-title" style="color: var(--accent-1);"></span></h2>
                                 <button type="submit" class="neo-button">Сохранить изменения</button>
                             </div>

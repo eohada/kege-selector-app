@@ -21,7 +21,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="glass-panel mb-5">
+<section class="glass-panel mb-5 w-full">
     <p class="hero-eyebrow">тренажёр</p>
     <h1 class="hero-title mb-1">Виртуальный помощник</h1>
     <div class="text-text-muted">
@@ -31,7 +31,7 @@
 
 {% if not trainer_url or not iframe_url %}
 <section class="glass-panel p-6">
-    <div class="font-black text-lg">Тренажёр не настроен</div>
+    <div class="font-bold text-sm">Тренажёр не настроен</div>
     <div class="text-text-muted mt-1.5">
         {% if config_error %}
             {{ config_error }}

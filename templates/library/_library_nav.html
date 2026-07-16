@@ -1,0 +1,17 @@
+{# Переключатель разделов библиотеки #}
+<div class="flex gap-2 overflow-x-auto hide-scroll pb-1" role="tablist" aria-label="Разделы библиотеки">
+    <a href="{{ url_for('library.materials_library') }}"
+       class="h-9 px-4 py-2 rounded-xl font-extrabold text-sm whitespace-nowrap no-underline transition-all duration-150 flex items-center gap-1.5 shrink-0 {% if active_library_tab == 'materials' %}bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300{% else %}bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60{% endif %}">
+        <i class="ph-bold ph-books text-base"></i> Материалы
+    </a>
+    <a href="{{ url_for('library.lesson_templates') }}"
+       class="h-9 px-4 py-2 rounded-xl font-extrabold text-sm whitespace-nowrap no-underline transition-all duration-150 flex items-center gap-1.5 shrink-0 {% if active_library_tab == 'templates' %}bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300{% else %}bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60{% endif %}">
+        <i class="ph-bold ph-layout text-base"></i> Шаблоны уроков
+    </a>
+    {% if has_permission(current_user, 'theory.manage') %}
+    <a href="{{ url_for('theory.manage_list') }}"
+       class="h-9 px-4 py-2 rounded-xl font-extrabold text-sm whitespace-nowrap no-underline transition-all duration-150 flex items-center gap-1.5 shrink-0 {% if active_library_tab == 'theory' %}bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300{% else %}bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60{% endif %}">
+        <i class="ph-bold ph-book-open text-base"></i> Теория
+    </a>
+    {% endif %}
+</div>

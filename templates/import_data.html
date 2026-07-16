@@ -4,14 +4,14 @@
 {% set active_page = 'dashboard' %}
 
 {% block content %}
-<section class="glass-panel mb-6">
+<section class="glass-panel mb-3 w-full">
     <div>
         <p class="hero-eyebrow">импорт данных</p>
         <h1 class="hero-title">{{ ui_icon('action.import', 'md', decorative=true) }}Импорт данных</h1>
     </div>
 </section>
 
-<section class="glass-panel mb-6" style="border-left: 4px solid #FF6B6B;">
+<section class="glass-panel mb-3" style="border-left: 4px solid #FF6B6B;">
     <div class="p-4 bg-error-soft rounded-btn text-error" style="border-left: 3px solid #FF6B6B;">
         <strong class="block mb-2">{{ ui_icon('action.warning', 'sm') }} Внимание!</strong>
         <p class="m-0 text-text-primary">Импорт добавит новые записи в базу данных. Существующие ученики с такими же именем и ID платформы будут пропущены.</p>
@@ -20,7 +20,7 @@
 
 <section class="glass-panel">
     <form method="POST" enctype="multipart/form-data" data-validate>
-        <div class="neo-field mb-6">
+        <div class="neo-field mb-3">
             <label class="neo-label" for="file">Выберите JSON файл для импорта</label>
             <input type="file"
                    id="file"

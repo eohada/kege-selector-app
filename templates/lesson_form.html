@@ -416,7 +416,7 @@
 
 {% block content %}
     {% if active_lesson %}
-    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+    <div class="now-playing-pill w-full" onclick="toggleLessonMenu()">
         {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
@@ -454,7 +454,7 @@
     </script>
     {% endif %}
 
-    <div class="lf-container flex flex-col gap-5 pb-12">
+    <div class="lf-container flex flex-col gap-5 pb-8">
         <!-- ══════ Hero Section ══════ -->
         <div class="lf-hero">
             <div class="lf-hero-inner">
@@ -630,7 +630,7 @@
 
         <!-- ══════ Tasks Preview (edit mode only) ══════ -->
         {% if not is_new %}
-        <div class="w-full flex flex-col gap-5 mt-4">
+        <div class="w-full flex flex-col gap-5 mt-3">
             <p class="text-slate-400 text-xs leading-relaxed max-w-2xl px-1">
                 Задачи к уроку ученик выполняет на странице занятия (вкладки ДЗ / Классная работа / Проверочная).
                 Либо выдайте тот же набор как <strong>работу с дедлайном</strong> — тогда она появится у ученика в разделе «Задания».
@@ -645,13 +645,13 @@
                         </div>
                         <div class="flex gap-2 items-center">
                             <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}"
-                               class="lf-btn-secondary text-[11px] py-1.5 px-3"
+                               class="lf-btn-secondary text-small py-1.5 px-3"
                                title="Создаст отдельную работу с дедлайном; ученик увидит её в разделе «Задания»">
                                 <i class="ph-bold ph-pencil-line text-sm"></i> Дедлайн
                             </a>
                             <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}"
-                               class="lf-btn-secondary text-[11px] py-1.5 px-3">
-                                Открыть урок <i class="ph-bold ph-arrow-right text-[10px]"></i>
+                               class="lf-btn-secondary text-small py-1.5 px-3">
+                                Открыть урок <i class="ph-bold ph-arrow-right text-tiny"></i>
                             </a>
                         </div>
                     </div>
@@ -700,13 +700,13 @@
                         </div>
                         <div class="flex gap-2 items-center">
                             <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='classwork') }}"
-                               class="lf-btn-secondary text-[11px] py-1.5 px-3"
+                               class="lf-btn-secondary text-small py-1.5 px-3"
                                title="Создаст отдельную работу с дедлайном">
                                 <i class="ph-bold ph-pencil-line text-sm"></i> Дедлайн
                             </a>
                             <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}"
-                               class="lf-btn-secondary text-[11px] py-1.5 px-3">
-                                Открыть урок <i class="ph-bold ph-arrow-right text-[10px]"></i>
+                               class="lf-btn-secondary text-small py-1.5 px-3">
+                                Открыть урок <i class="ph-bold ph-arrow-right text-tiny"></i>
                             </a>
                         </div>
                     </div>

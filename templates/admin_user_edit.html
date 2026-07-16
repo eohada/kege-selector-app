@@ -3,9 +3,25 @@
 
 {% set active_page = 'admin' %}
 
+
+<!-- Custom Styles for 2-column layout -->
+<style>
+    .max-h-200px { max-height: 200px; }
+    .admin-edit-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 1.5rem;
+        align-items: start;
+    }
+    @media (max-width: 1024px) {
+        .admin-edit-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 {% block content %}
-<section class="glass-panel max-w-[900px] mx-auto">
-    <div class="flex items-center gap-4 mb-6">
+<section class="glass-panel w-full">
+    <div class="flex items-center gap-4 mb-3">
         <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost">
             ← К списку пользователей
         </a>
@@ -15,8 +31,10 @@
     <form id="admin-user-edit-form" method="POST" action="{% if user %}{{ url_for('admin.admin_user_edit', user_id=user.id) }}{% else %}{{ url_for('admin.admin_user_new') }}{% endif %}" class="neo-form" data-no-ajax>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <div class="glass-panel mb-6" style="padding: 1.5rem;">
-            <h2 class="mb-4 text-lg">Основная информация</h2>
+        <div class="admin-edit-grid">
+            <div class="admin-edit-col">
+                <div class="glass-panel mb-3" style="padding: 1.5rem;">
+            <h2 class="mb-3 text-lg">Основная информация</h2>
 
             <div class="neo-field">
                 <label class="neo-label" for="username">Имя пользователя *</label>
@@ -55,8 +73,8 @@
             </div>
         </div>
 
-        <div class="glass-panel mb-6" style="padding: 1.5rem;">
-            <h2 class="mb-4 text-lg">Профиль</h2>
+        <div class="glass-panel mb-3" style="padding: 1.5rem;">
+            <h2 class="mb-3 text-lg">Профиль</h2>
 
             <div class="neo-field">
                 <label class="neo-label" for="first_name">Имя</label>
@@ -96,17 +114,19 @@
                 </select>
             </div>
         </div>
+        </div>
 
-        {% include '_user_permissions_form.html' %}
+        <div class="admin-edit-col">
+            {% include '_user_permissions_form.html' %}
 
-        {% if user %}
+            {% if user %}
 
         {% if user.is_student() or user.is_parent() %}
-        <div class="glass-panel mb-6" style="padding: 1.5rem;">
-            <h2 class="mb-4 text-lg">Семейные связи</h2>
+        <div class="glass-panel mb-3" style="padding: 1.5rem;">
+            <h2 class="mb-3 text-lg">Семейные связи</h2>
 
             {% if user.is_student() and all_parents %}
-            <div class="mb-6 p-4 bg-bg-app rounded-card">
+            <div class="mb-3 p-4 bg-bg-app rounded-card">
                 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; align-items: end;">
                     <div class="neo-field">
                         <label class="neo-label" for="new_parent_id">Добавить родителя</label>
@@ -128,7 +148,7 @@
                 </div>
             </div>
             {% elif user.is_parent() and all_students %}
-            <div class="mb-6 p-4 bg-bg-app rounded-card">
+            <div class="mb-3 p-4 bg-bg-app rounded-card">
                 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; align-items: end;">
                     <div class="neo-field">
                         <label class="neo-label" for="new_student_id">Добавить ученика</label>
@@ -152,7 +172,7 @@
             {% endif %}
 
             {% if family_ties %}
-            <div class="grid gap-3 mb-4">
+            <div class="grid gap-3 mb-3">
                 {% for tie in family_ties %}
                 <div class="flex justify-between items-center p-4 bg-bg-surface-alt rounded-card shadow-card">
                     <div>
@@ -187,17 +207,17 @@
                 {% endfor %}
             </div>
             {% else %}
-            <p class="text-text-muted mb-4">Нет семейных связей</p>
+            <p class="text-text-muted mb-3">Нет семейных связей</p>
             {% endif %}
         </div>
         {% endif %}
 
         {% if user.is_student() or user.is_tutor() %}
-        <div class="glass-panel mb-6" style="padding: 1.5rem;">
-            <h2 class="mb-4 text-lg">Учебные контракты</h2>
+        <div class="glass-panel mb-3" style="padding: 1.5rem;">
+            <h2 class="mb-3 text-lg">Учебные контракты</h2>
 
             {% if user.is_student() and all_tutors %}
-            <div class="mb-6 p-4 bg-bg-app rounded-card">
+            <div class="mb-3 p-4 bg-bg-app rounded-card">
                 <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 1rem; align-items: end;">
                     <div class="neo-field">
                         <label class="neo-label" for="new_tutor_id">Добавить преподавателя</label>
@@ -223,7 +243,7 @@
                 </div>
             </div>
             {% elif user.is_tutor() and all_students %}
-            <div class="mb-6 p-4 bg-bg-app rounded-card">
+            <div class="mb-3 p-4 bg-bg-app rounded-card">
                 <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 1rem; align-items: end;">
                     <div class="neo-field">
                         <label class="neo-label" for="new_enrollment_student_id">Добавить ученика</label>
@@ -251,7 +271,7 @@
             {% endif %}
 
             {% if enrollments %}
-            <div class="grid gap-3 mb-4">
+            <div class="grid gap-3 mb-3">
                 {% for enrollment in enrollments %}
                 <div class="flex justify-between items-center p-4 bg-bg-surface-alt rounded-card shadow-card">
                     <div>
@@ -275,19 +295,19 @@
                 {% endfor %}
             </div>
             {% else %}
-            <p class="text-text-muted mb-4">Нет учебных контрактов</p>
+            <p class="text-text-muted mb-3">Нет учебных контрактов</p>
             {% endif %}
         </div>
         {% endif %}
         {% else %}
 
-            <div class="mb-6 p-4 bg-bg-app rounded-card">
-                <p class="mb-4 text-text-muted text-sm">Выберите связи, которые нужно создать вместе с пользователем (можно выбрать несколько):</p>
+            <div class="mb-3 p-4 bg-bg-app rounded-card">
+                <p class="mb-3 text-text-muted text-sm">Выберите связи, которые нужно создать вместе с пользователем (можно выбрать несколько):</p>
                 <div id="family-ties-container" class="hidden">
                     {% if all_parents %}
-                    <div class="neo-field mb-4">
+                    <div class="neo-field mb-3">
                         <label class="neo-label">Родители (для ученика)</label>
-                        <div class="max-h-[200px] overflow-y-auto border border-stroke rounded-btn p-2">
+                        <div class="max-h-200px overflow-y-auto border border-stroke rounded-btn p-2">
                             {% for parent in all_parents %}
                             <label class="flex items-center gap-2 p-2 cursor-pointer">
                                 <input type="checkbox" name="parent_ids" value="{{ parent.id }}" class="parent-checkbox">
@@ -303,9 +323,9 @@
                     </div>
                     {% endif %}
                     {% if all_students %}
-                    <div class="neo-field mb-4">
+                    <div class="neo-field mb-3">
                         <label class="neo-label">Ученики (для родителя)</label>
-                        <div class="max-h-[200px] overflow-y-auto border border-stroke rounded-btn p-2">
+                        <div class="max-h-200px overflow-y-auto border border-stroke rounded-btn p-2">
                             {% for student in all_students %}
                             <label class="flex items-center gap-2 p-2 cursor-pointer">
                                 <input type="checkbox" name="student_ids" value="{{ student.id }}" class="student-checkbox">
@@ -323,7 +343,7 @@
                 </div>
                 <div id="enrollments-container" class="hidden">
                     {% if all_tutors %}
-                    <div class="neo-field mb-4">
+                    <div class="neo-field mb-3">
                         <label class="neo-label">Преподаватели (для ученика)</label>
                         <div id="tutors-list" class="grid gap-3">
                             <div class="tutor-item p-4 bg-bg-surface-alt rounded-card shadow-card">
@@ -356,7 +376,7 @@
                     </div>
                     {% endif %}
                     {% if all_students %}
-                    <div class="neo-field mb-4">
+                    <div class="neo-field mb-3">
                         <label class="neo-label">Ученики (для преподавателя)</label>
                         <div id="students-list" class="grid gap-3">
                             <div class="student-item p-4 bg-bg-surface-alt rounded-card shadow-card">
@@ -390,7 +410,9 @@
                     {% endif %}
                 </div>
             </div>
-        {% endif %}
+            {% endif %}
+        </div>
+        </div>
 
         <div class="hero-actions">
             <button type="submit" class="neo-button accent">

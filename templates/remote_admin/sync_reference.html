@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=2.4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20260708-v1">
     <script>
         (function(){
             try {
@@ -27,21 +27,21 @@
         <section class="glass-panel" style="max-width: 600px; padding: 2rem;">
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-            <div class="flash-messages mb-6">
+            <div class="flash-messages mb-3">
                 {% for category, msg in messages %}
                 <div class="flash flash-{{ category }}" role="alert" style="padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; {% if category == 'error' or category == 'danger' %}background: rgba(220,53,69,0.15); color: var(--danger, #dc3545); border: 1px solid rgba(220,53,69,0.3);{% else %}background: rgba(40,167,69,0.15); color: var(--success, #28a745); border: 1px solid rgba(40,167,69,0.3);{% endif %}">{{ msg }}</div>
                 {% endfor %}
             </div>
             {% endif %}
             {% endwith %}
-            <div class="mb-8">
+            <div class="mb-3">
                 <h1 class="m-0">Синхронизация эталонов</h1>
                 <p class="text-muted mt-2">
                     Окружение: <strong>{{ environment_name }}</strong>
                 </p>
             </div>
 
-            <p class="mb-6">
+            <p class="mb-3">
                 Синхронизация подтягивает все эталонные прототипы (1–27) из папки <code>data/reference_prototypes</code> в банк заданий. Каждый JSON (easy/medium/hard) создаёт или обновляет задания в БД. Для 19–21 один файл с <code>series_task_numbers</code> создаёт три задания.
             </p>
 
@@ -52,7 +52,7 @@
                 </button>
             </form>
 
-            <p class="mt-8 text-sm text-muted">
+            <p class="mt-3 text-sm text-muted">
                 После нажатия страница перезагрузится — появится сообщение об успехе или ошибке. Убедитесь, что на сервере есть папка <code>data/reference_prototypes</code> с JSON для task_01 … task_27.
             </p>
         </section>

@@ -5,6 +5,18 @@
 {% block body_attrs %}data-cinema-scene="analytics"{% endblock %}
 
 {% block head_css %}
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .w-800px { width: 800px; }
+    .bg-EEF2FF-60 { background-color: #EEF2FF]/60; }
+    .shadow-0-8px-24px--4px-rgba139-92-246-028 { box-shadow: 0 8px 24px -4px rgba(139,92,246,0.28); }
+    html[data-theme="dark"] .dark-text-C4B5FD { color: #C4B5FD; }
+    .h-360px { height: 360px; }
+    .h-800px { height: 800px; }
+    .text-200px { font-size: 200px; }
+    .h-520px { height: 520px; }
+</style>
+
 <style>
   .stats-tab-content { display: none; }
   .stats-tab-content.active { display: flex; }
@@ -28,45 +40,45 @@
 {% endblock %}
 
 {% block content %}
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-8">
+<div class="flex flex-col gap-6 w-full">
 
   <!-- ШАПКА И ТАБЫ -->
-  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark relative overflow-hidden">
-    <i class="ph-bold ph-chart-bar absolute -right-10 -bottom-10 text-[200px] text-slate-50 dark:text-white/[0.06] pointer-events-none"></i>
+  <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-6 bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark relative overflow-hidden">
+    <i class="ph-bold ph-chart-bar absolute -right-10 -bottom-10 text-200px text-slate-50 dark:text-white/[0.06] pointer-events-none"></i>
     <div class="relative z-10">
       <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="flex items-center gap-3 text-muted font-bold text-sm mb-3 hover:text-boo-primary cursor-pointer w-fit transition-colors no-underline">
         <i class="ph-bold ph-arrow-left"></i> В профиль
       </a>
       {% if current_user.is_student() and student.user_id == current_user.id %}
-      <h1 class="text-4xl font-black text-primary dark:text-white tracking-tight mb-2">Твоя аналитика</h1>
+      <h1 class="text-lg font-bold text-primary dark:text-white tracking-tight mb-2">Твоя аналитика</h1>
       <p class="text-muted dark:text-dark-muted font-medium text-lg">Следи за прогрессом и находи слабые места. Цифры не врут.</p>
       {% else %}
-      <h1 class="text-4xl font-black text-primary dark:text-white tracking-tight mb-2">Аналитика ученика: {{ student.name }}</h1>
+      <h1 class="text-lg font-bold text-primary dark:text-white tracking-tight mb-2">Аналитика ученика: {{ student.name }}</h1>
       <p class="text-muted dark:text-dark-muted font-medium text-lg">Прогресс ученика и точки роста по всем ключевым метрикам.</p>
       {% endif %}
     </div>
 
-    <div class="relative z-10 bg-slate-100/80 dark:bg-dark-inner/60 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50 dark:border-white/[0.08]">
-      <button id="btn-skills" data-tab="skills" onclick="switchStatsTab('skills', this)" class="stats-tab px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 dark:bg-white/10 dark:text-white dark:border-white/[0.08] flex items-center gap-2 whitespace-nowrap transition-all">
+    <div class="relative z-10 bg-slate-100/80 dark:bg-dark-inner/60 p-1.5 rounded-xl flex overflow-x-auto border border-slate-200/50 dark:border-dark-avatar">
+      <button id="btn-skills" data-tab="skills" onclick="switchStatsTab('skills', this)" class="stats-tab px-6 py-2.5 bg-surface text-primary rounded-lg font-bold text-sm shadow-sm dark:shadow-none border border-slate-200/50 dark:bg-white/10 dark:text-white dark:border-dark-avatar flex items-center gap-2 whitespace-nowrap transition-all">
         Навыки и Темы
       </button>
       <button id="btn-exam" data-tab="exam" onclick="switchStatsTab('exam', this)" class="stats-tab px-6 py-2.5 text-muted dark:text-dark-muted hover:text-primary dark:hover:text-white rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2">
-        Аналитика ЕГЭ <span class="bg-purple-100 text-boo-primary dark:bg-purple-500/15 dark:text-purple-300 px-2 py-0.5 rounded-md text-[10px] uppercase tracking-widest border border-purple-200/50 dark:border-purple-500/25">Прогноз</span>
+        Аналитика ЕГЭ <span class="bg-purple-100 text-boo-primary dark:bg-purple-500/15 dark:text-purple-300 px-2 py-0.5 rounded-md text-tiny uppercase tracking-widest border border-purple-200/50 dark:border-purple-500/25">Прогноз</span>
       </button>
     </div>
   </div>
 
   <!-- ВКЛАДКА 1: НАВЫКИ -->
-  <div id="tab-skills" class="stats-tab-content active flex-col gap-8">
+  <div id="tab-skills" class="stats-tab-content active flex-col gap-6">
 
     <!-- Метрики -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
-        <div class="flex justify-between items-start mb-4">
+      <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-start mb-3">
           <div class="text-xs font-bold text-muted uppercase tracking-widest">Выполнение работ</div>
           <i class="ph-fill ph-checks text-xl text-boo-cyan"></i>
         </div>
-        <div class="text-4xl font-black text-primary dark:text-white">
+        <div class="text-lg font-bold text-primary dark:text-white">
           {{ metrics.current_gpa }}%
         </div>
         {% if metrics.delta != 0 %}
@@ -76,37 +88,37 @@
         {% endif %}
       </div>
 
-      <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
-        <div class="flex justify-between items-start mb-4">
+      <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-start mb-3">
           <div class="text-xs font-bold text-muted uppercase tracking-widest">GPA по ДЗ</div>
           <i class="ph-fill ph-star text-xl text-boo-accent"></i>
         </div>
-        <div class="text-4xl font-black text-primary dark:text-white">{{ gpa_by_type.homework }}%</div>
+        <div class="text-lg font-bold text-primary dark:text-white">{{ gpa_by_type.homework }}%</div>
       </div>
 
-      <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
-        <div class="flex justify-between items-start mb-4">
+      <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-start mb-3">
           <div class="text-xs font-bold text-muted uppercase tracking-widest">GPA по пробникам</div>
           <i class="ph-fill ph-exam text-xl text-boo-primary"></i>
         </div>
-        <div class="text-4xl font-black text-primary dark:text-white">{{ gpa_by_type.exam }}%</div>
+        <div class="text-lg font-bold text-primary dark:text-white">{{ gpa_by_type.exam }}%</div>
       </div>
 
-      <div class="bg-surface dark:bg-dark-card rounded-[28px] p-6 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
-        <div class="flex justify-between items-start mb-4">
+      <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col justify-between hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-start mb-3">
           <div class="text-xs font-bold text-muted uppercase tracking-widest">Проведено уроков</div>
           <i class="ph-fill ph-video-camera text-xl text-muted"></i>
         </div>
-        <div class="text-4xl font-black text-primary dark:text-white">{{ metrics.completed_lessons }}</div>
+        <div class="text-lg font-bold text-primary dark:text-white">{{ metrics.completed_lessons }}</div>
         <div class="text-xs font-bold text-muted mt-2">из {{ metrics.total_lessons }}</div>
       </div>
     </div>
 
     <!-- Графики -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col">
-        <div class="mb-6">
-          <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Динамика успеваемости</h3>
+      <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col">
+        <div class="mb-3">
+          <h3 class="text-lg font-bold text-primary dark:text-white mb-1">Динамика успеваемости</h3>
           <p class="text-sm font-medium text-muted">Изменение процента выполнения работ по месяцам</p>
         </div>
         <div class="relative h-64">
@@ -114,16 +126,16 @@
         </div>
       </div>
 
-      <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col">
-        <div class="mb-6">
-          <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Карта навыков</h3>
+      <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col">
+        <div class="mb-3">
+          <h3 class="text-lg font-bold text-primary dark:text-white mb-1">Карта навыков</h3>
           <p class="text-sm font-medium text-muted">Оценка на основе твоих ответов</p>
         </div>
         <div class="relative h-64">
           <canvas id="skillsChart"></canvas>
         </div>
         {% if hide_skills_radar %}
-        <div class="mt-4 text-sm font-medium text-muted">
+        <div class="mt-3 text-sm font-medium text-muted">
           Недостаточно данных для карты навыков.
         </div>
         {% endif %}
@@ -131,19 +143,19 @@
     </div>
 
     <!-- Процент выполнения по номерам -->
-    <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
-      <div class="mb-6">
-        <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Процент выполнения по номерам</h3>
+    <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
+      <div class="mb-3">
+        <h3 class="text-lg font-bold text-primary dark:text-white mb-1">Процент выполнения по номерам</h3>
         <p class="text-sm font-medium text-muted">Готовность к каждому заданию</p>
       </div>
       {% if chart_data %}
-      <div class="relative h-[360px]">
+      <div class="relative h-360px">
         <canvas id="statisticsChart"></canvas>
       </div>
       {% else %}
-      <div class="w-full bg-slate-50/50 dark:bg-white/[0.03] rounded-[24px] border-2 border-slate-200 dark:border-white/[0.1] border-dashed p-12 text-center">
-        <div class="w-16 h-16 bg-surface dark:bg-dark-inner rounded-full flex items-center justify-center shadow-sm dark:shadow-none mx-auto mb-4 border border-slate-100 dark:border-white/10">
-          <i class="ph-fill ph-chart-line-up text-4xl text-slate-300 dark:text-white/25"></i>
+      <div class="w-full bg-slate-50/50 dark:bg-white/[0.03] rounded-xl border-2 border-slate-200 dark:border-white/[0.1] border-dashed p-5 text-center">
+        <div class="w-10 h-10 bg-surface dark:bg-dark-inner rounded-full flex items-center justify-center shadow-sm dark:shadow-none mx-auto mb-3 border border-slate-100 dark:border-white/10">
+          <i class="ph-fill ph-chart-line-up text-2xl text-slate-300 dark:text-white/25"></i>
         </div>
         <h4 class="text-lg font-bold text-primary dark:text-white mb-1">Пока нет данных</h4>
         <p class="text-sm font-medium text-muted">Выполни задания, чтобы увидеть статистику.</p>
@@ -153,10 +165,10 @@
 
     {% if chart_data and can_edit is defined and can_edit %}
     <!-- Ручное редактирование (для админа/тьютора) -->
-    <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
+    <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
       <div class="flex justify-between items-end gap-4 flex-wrap">
         <div>
-          <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Изменить статистику</h3>
+          <h3 class="text-lg font-bold text-primary dark:text-white mb-1">Изменить статистику</h3>
           <p class="text-sm font-medium text-muted">Режимы: добавить / установить / вычесть.</p>
         </div>
         <button type="button" id="resetAllStats" class="neo-button danger sm">
@@ -164,7 +176,7 @@
         </button>
       </div>
 
-      <div class="mt-6 bg-surface-alt dark:bg-dark-inner/50 rounded-2xl border border-slate-100 dark:border-white/[0.08] p-6">
+      <div class="mt-3 bg-surface-alt dark:bg-dark-inner/50 rounded-2xl border border-slate-100 dark:border-dark-avatar p-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div>
             <label class="block text-xs font-extrabold text-muted uppercase tracking-widest mb-3">Режим</label>
@@ -193,14 +205,14 @@
         </div>
       </div>
 
-      <div class="mt-6 grid gap-4">
+      <div class="mt-3 grid gap-4">
         {% for item in chart_data %}
         <div class="stat-edit-item bg-surface-alt dark:bg-dark-inner/80 rounded-2xl border border-slate-100 dark:border-white/10 p-5" data-task-number="{{ item.task_number }}">
           <div class="flex items-center justify-between gap-4 flex-wrap">
-            <div class="text-lg font-black text-primary dark:text-white">Задание №{{ item.task_number }}</div>
+            <div class="text-sm font-bold text-primary dark:text-white">Задание №{{ item.task_number }}</div>
             <div class="text-sm font-bold text-muted">Текущее: {{ item.correct }}/{{ item.total }} ({{ item.percent }}%)</div>
           </div>
-          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-bold text-muted mb-2">Правильно</label>
               <input type="number" min="0" step="1" class="stat-input-correct w-full bg-surface dark:bg-dark-inner border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-semibold text-secondary dark:text-white/90 shadow-inner-soft" value="0">
@@ -210,7 +222,7 @@
               <input type="number" min="0" step="1" class="stat-input-incorrect w-full bg-surface dark:bg-dark-inner border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm font-semibold text-secondary dark:text-white/90 shadow-inner-soft" value="0">
             </div>
           </div>
-          <div class="mt-4 flex justify-end gap-2">
+          <div class="mt-3 flex justify-end gap-2">
             <button type="button" class="stat-reset-btn neo-button outline sm" data-task-number="{{ item.task_number }}">Сбросить</button>
             <button type="button" class="stat-save-btn neo-button accent sm" data-task-number="{{ item.task_number }}">Сохранить</button>
           </div>
@@ -221,9 +233,9 @@
     {% endif %}
 
     {% if problem_topics %}
-    <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
-      <div class="mb-6">
-        <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Проблемные темы</h3>
+    <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
+      <div class="mb-3">
+        <h3 class="text-lg font-bold text-primary dark:text-white mb-1">Проблемные темы</h3>
         <p class="text-sm font-medium text-muted">Что требует внимания прямо сейчас.</p>
       </div>
       <div class="grid gap-4">
@@ -233,7 +245,7 @@
             <div class="font-extrabold text-primary dark:text-white truncate">{{ topic.name }}</div>
             <div class="text-sm font-bold text-muted mt-1">Средний результат: {{ topic.avg_score }}%</div>
           </div>
-          <a href="{{ url_for('task_generator.task_generator') }}?student_id={{ student.student_id }}" class="px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] dark:shadow-none border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
+          <a href="{{ url_for('task_generator.task_generator') }}?student_id={{ student.student_id }}" class="px-4 py-2.5 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-0-8px-24px--4px-rgba139-92-246-028 dark:shadow-none border-b-2 border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none text-sm no-underline">
             Создать отработку
           </a>
         </div>
@@ -245,45 +257,45 @@
   </div>
 
   <!-- ВКЛАДКА 2: АНАЛИТИКА -->
-  <div id="tab-exam" class="stats-tab-content flex-col gap-8">
+  <div id="tab-exam" class="stats-tab-content flex-col gap-6">
 
-    <div id="analytics-loading" class="bg-surface dark:bg-dark-card rounded-[32px] p-12 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark text-center">
-      <div class="w-14 h-14 mx-auto mb-4 rounded-full border-4 border-slate-200 dark:border-white/15 border-t-boo-primary animate-spin"></div>
+    <div id="analytics-loading" class="bg-surface dark:bg-dark-card rounded-2xl p-5 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark text-center">
+      <div class="w-10 h-10 mx-auto mb-3 rounded-full border-4 border-slate-200 dark:border-white/15 border-t-boo-primary animate-spin"></div>
       <div class="text-sm font-bold text-secondary dark:text-white/90">Загрузка аналитики…</div>
       <div class="text-sm font-medium text-muted dark:text-dark-muted mt-1">Собираем прогноз и рейтинги по темам.</div>
     </div>
 
-    <div id="analytics-error" class="bg-surface dark:bg-dark-card rounded-[32px] p-12 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark text-center" style="display:none;">
-      <div class="w-16 h-16 bg-orange-50 dark:bg-orange-500/15 rounded-full flex items-center justify-center shadow-sm dark:shadow-none mx-auto mb-4 border border-orange-100 dark:border-orange-500/30">
-        <i class="ph-fill ph-warning-circle text-4xl text-boo-accent"></i>
+    <div id="analytics-error" class="bg-surface dark:bg-dark-card rounded-2xl p-5 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark text-center" style="display:none;">
+      <div class="w-10 h-10 bg-orange-50 dark:bg-orange-500/15 rounded-full flex items-center justify-center shadow-sm dark:shadow-none mx-auto mb-3 border border-orange-100 dark:border-orange-500/30">
+        <i class="ph-fill ph-warning-circle text-2xl text-boo-accent"></i>
       </div>
-      <div class="text-lg font-black text-primary dark:text-white mb-2">Не удалось загрузить данные</div>
+      <div class="text-sm font-bold text-primary dark:text-white mb-2">Не удалось загрузить данные</div>
       <div class="text-sm font-medium text-muted max-w-xl mx-auto">
         Убедитесь, что ученик привязан к пользователю и есть проверенные работы.
       </div>
     </div>
 
-    <div id="analytics-content" class="flex flex-col gap-8" style="display:none;">
+    <div id="analytics-content" class="flex flex-col gap-6" style="display:none;">
 
       <!-- HERO ПРОГНОЗ -->
-      <div class="student-hero-gradient bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-[32px] p-10 border border-purple-400/50 dark:border-purple-500/20 border-b-[4px] border-b-purple-700 dark:border-b-0 shadow-tactile dark:shadow-neon-primary text-white flex flex-col justify-center items-center text-center relative overflow-hidden group">
+      <div class="student-hero-gradient bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-2xl p-6 border border-purple-400/50 dark:border-purple-500/20 border-b-4 border-b-purple-700 dark:border-b-0 shadow-tactile dark:shadow-neon-primary text-white flex flex-col justify-center items-center text-center relative overflow-hidden group">
         <div class="absolute inset-0 opacity-10 mix-blend-overlay"></div>
-        <div class="absolute top-[-50%] left-[-10%] w-[800px] h-[800px] bg-white/10 rounded-full blur-[100px] group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
+        <div class="absolute top-[-50%] left-[-10%] w-800px h-800px bg-white/10 rounded-full blur-[100px] group-hover:scale-110 transition-transform duration-700 pointer-events-none"></div>
 
         <div class="relative z-10 w-full max-w-2xl">
-          <span class="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 text-xs font-bold tracking-widest uppercase inline-block mb-6 shadow-sm dark:shadow-none dark:shadow-none">
+          <span class="bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 text-xs font-bold tracking-widest uppercase inline-block mb-3 shadow-sm dark:shadow-none dark:shadow-none">
             Прогноз балла на ЕГЭ
           </span>
 
-          <div class="flex items-center justify-center gap-4 mb-4">
-            <h2 class="text-8xl md:text-9xl font-black tracking-tighter drop-shadow-[0_8px_24px_rgba(15,23,42,0.12)]" id="analyticsPredictedPrimary">—</h2>
+          <div class="flex items-center justify-center gap-4 mb-3">
+            <h2 class="text-4xl md:text-4xl font-black tracking-tighter drop-shadow-[0_8px_24px_rgba(15,23,42,0.12)]" id="analyticsPredictedPrimary">—</h2>
             <div class="text-left">
-              <span class="text-3xl md:text-4xl font-bold text-purple-200 block">/ <span id="analyticsPredictedPrimaryMax">—</span></span>
+              <span class="text-3xl md:text-2xl font-bold text-purple-200 block">/ <span id="analyticsPredictedPrimaryMax">—</span></span>
               <span class="text-sm md:text-base font-semibold text-purple-200 uppercase tracking-widest">первичных</span>
             </div>
           </div>
 
-          <p class="text-xl md:text-2xl font-bold text-white mb-8 bg-white/10 inline-block px-6 py-2 rounded-2xl border border-white/20">
+          <p class="text-xl md:text-2xl font-bold text-white mb-3 bg-white/10 inline-block px-6 py-2 rounded-2xl border border-white/20">
             <span id="analyticsPredictedSecondary">—</span>
           </p>
 
@@ -298,21 +310,21 @@
         </div>
       </div>
 
-      <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
-          <div class="mb-6">
-            <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Рейтинги по узлам знаний</h3>
+      <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
+          <div class="mb-3">
+            <h3 class="text-lg font-bold text-primary dark:text-white mb-1">Рейтинги по узлам знаний</h3>
             <p class="text-sm font-medium text-muted">ELO-рейтинг по темам (800–2500, старт 1000).</p>
           </div>
 
           <!-- Подсказка для мобильных о горизонтальной прокрутке -->
-          <div class="md:hidden flex items-center gap-2 text-xs font-bold text-accent dark:text-[#C4B5FD] bg-[#EEF2FF]/60 dark:bg-purple-950/20 border border-slate-200/50 dark:border-purple-800/10 rounded-2xl px-4 py-2.5 mb-4 w-full">
+          <div class="md:hidden flex items-center gap-2 text-xs font-bold text-accent dark-text-C4B5FD bg-EEF2FF-60 dark:bg-purple-950/20 border border-slate-200/50 dark:border-purple-800/10 rounded-2xl px-4 py-2.5 mb-3 w-full">
             <i class="fas fa-hand-pointer animate-swipe"></i>
             <span>Листайте таблицу вправо, чтобы увидеть все колонки</span>
           </div>
 
           <div class="overflow-x-auto pb-2">
-            <div class="min-w-[800px]">
-              <div class="grid grid-cols-12 gap-4 px-6 py-3 border-b border-slate-200 dark:border-white/10 text-xs font-extrabold text-muted uppercase tracking-widest">
+            <div class="min-w-800px">
+              <div class="grid grid-cols-12 gap-4 px-4 py-2 border-b border-slate-200 dark:border-white/10 text-xs font-extrabold text-muted uppercase tracking-widest">
                 <div class="col-span-4">Тема (№ ЕГЭ)</div>
                 <div class="col-span-2">Код</div>
                 <div class="col-span-2">Рейтинг</div>
@@ -328,24 +340,24 @@
           </div>
       </div>
 
-      <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col">
-        <div class="mb-6">
-          <h3 class="text-2xl font-black text-primary dark:text-white mb-1">Радар навыков (КЕГЭ)</h3>
+      <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark flex flex-col">
+        <div class="mb-3">
+          <h3 class="text-lg font-bold text-primary dark:text-white mb-1">Радар навыков (КЕГЭ)</h3>
           <p class="text-sm font-medium text-muted">По осям — задания. Чем выше, тем сильнее тема.</p>
         </div>
-        <div class="relative h-[520px]">
+        <div class="relative h-520px">
           <canvas id="analyticsRadarChart"></canvas>
         </div>
       </div>
 
-      <div class="bg-surface dark:bg-dark-card rounded-[32px] p-8 border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
-        <div class="mb-6">
-          <h3 class="text-2xl font-black text-primary dark:text-white mb-1">История изменения рейтинга</h3>
+      <div class="bg-surface dark:bg-dark-card rounded-2xl p-6 border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark">
+        <div class="mb-3">
+          <h3 class="text-lg font-bold text-primary dark:text-white mb-1">История изменения рейтинга</h3>
           <p class="text-sm font-medium text-muted" id="analyticsHistoryDescription">Сложность, время, коэффициенты и дельта MMR по каждому действию.</p>
         </div>
 
         <!-- Подсказка для мобильных о горизонтальной прокрутке -->
-        <div class="md:hidden flex items-center gap-2 text-xs font-bold text-accent dark:text-[#C4B5FD] bg-[#EEF2FF]/60 dark:bg-purple-950/20 border border-slate-200/50 dark:border-purple-800/10 rounded-2xl px-4 py-2.5 mb-4 w-full">
+        <div class="md:hidden flex items-center gap-2 text-xs font-bold text-accent dark-text-C4B5FD bg-EEF2FF-60 dark:bg-purple-950/20 border border-slate-200/50 dark:border-purple-800/10 rounded-2xl px-4 py-2.5 mb-3 w-full">
           <i class="fas fa-hand-pointer animate-swipe"></i>
           <span>Листайте таблицу вправо, чтобы увидеть все колонки</span>
         </div>
@@ -381,7 +393,7 @@
         let analyticsRadarChartInstance = null;
         let analyticsDataLoaded = false;
 
-        const statsTabsDarkActive = ['dark:bg-white/10', 'dark:text-white', 'dark:border-white/[0.08]'];
+        const statsTabsDarkActive = ['dark:bg-white/10', 'dark:text-white', 'dark:border-dark-avatar'];
 
         function switchStatsTab(tabName, btn) {
             document.querySelectorAll('.stats-tab-content').forEach(c => c.classList.remove('active'));
@@ -521,16 +533,16 @@
                             var pts = n.exam_points != null ? n.exam_points : 1;
                             var streak = n.streak_days != null ? n.streak_days : 0;
                             var rematchBadge = (n.rematch_pending && n.rematch_pending > 0)
-                                ? (' <span class="inline-flex items-center gap-1 bg-purple-50 dark:bg-purple-500/15 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-500/30 text-[10px] font-bold text-purple-700 dark:text-purple-300">Реванш: ' + n.rematch_pending + '</span>')
+                                ? (' <span class="inline-flex items-center gap-1 bg-purple-50 dark:bg-purple-500/15 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-500/30 text-tiny font-bold text-purple-700 dark:text-purple-300">Реванш: ' + n.rematch_pending + '</span>')
                                 : '';
                             var cm = (typeof n.calibration_multiplier === 'number') ? n.calibration_multiplier : 1;
                             var cr = (typeof n.calibration_remaining === 'number') ? n.calibration_remaining : 0;
                             var calibrationText = 'x' + cm + ' (' + cr + ' до конца)';
                             var calibrationControl = '';
                             if (!IS_SELF_STUDENT_ANALYTICS && n.task_number != null) {
-                                calibrationControl = ' <button type="button" class="analytics-reset-calibration-btn inline-flex items-center px-2 py-0.5 rounded border border-purple-200 dark:border-purple-500/35 bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 text-[10px] font-bold" data-task-number="' + n.task_number + '">Чистая</button>';
+                                calibrationControl = ' <button type="button" class="analytics-reset-calibration-btn inline-flex items-center px-2 py-0.5 rounded border border-purple-200 dark:border-purple-500/35 bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 text-tiny font-bold" data-task-number="' + n.task_number + '">Чистая</button>';
                             }
-                            return '<tr class="border-b border-slate-100 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"><td class="px-6 py-4 font-extrabold text-primary dark:text-white text-sm">' + name + num + rematchBadge + '</td><td class="px-6 py-4"><span class="bg-surface-alt dark:bg-dark-inner text-muted font-mono text-xs px-2 py-1 rounded-md border border-slate-200 dark:border-white/10">' + code + '</span></td><td class="px-6 py-4 font-black text-boo-primary">' + rating + '</td><td class="px-6 py-4 text-center font-black text-secondary dark:text-white/90">' + pts + '</td><td class="px-6 py-4 text-xs font-bold text-slate-700 dark:text-dark-muted">' + calibrationText + calibrationControl + '</td><td class="px-6 py-4 text-right">' + (streak ? ('<span class="inline-flex items-center gap-1.5 bg-orange-50 dark:bg-orange-500/15 px-2.5 py-1 rounded-lg border border-orange-100 dark:border-orange-500/30 text-xs font-bold text-orange-600 dark:text-orange-300"><i class="ph-fill ph-fire"></i> ' + streak + ' подряд</span>') : '<span class="text-muted font-bold text-xs">-</span>') + '</td></tr>';
+                            return '<tr class="border-b border-slate-100 dark:border-dark-avatar hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"><td class="px-4 py-2 font-extrabold text-primary dark:text-white text-sm">' + name + num + rematchBadge + '</td><td class="px-4 py-2"><span class="bg-surface-alt dark:bg-dark-inner text-muted font-mono text-xs px-2 py-1 rounded-md border border-slate-200 dark:border-white/10">' + code + '</span></td><td class="px-4 py-2 font-black text-boo-primary">' + rating + '</td><td class="px-4 py-2 text-center font-black text-secondary dark:text-white/90">' + pts + '</td><td class="px-4 py-2 text-xs font-bold text-slate-700 dark:text-dark-muted">' + calibrationText + calibrationControl + '</td><td class="px-4 py-2 text-right">' + (streak ? ('<span class="inline-flex items-center gap-1.5 bg-orange-50 dark:bg-orange-500/15 px-2.5 py-1 rounded-lg border border-orange-100 dark:border-orange-500/30 text-xs font-bold text-orange-600 dark:text-orange-300"><i class="ph-fill ph-fire"></i> ' + streak + ' подряд</span>') : '<span class="text-muted font-bold text-xs">-</span>') + '</td></tr>';
                         }).join('');
                     }
                     if (!IS_SELF_STUDENT_ANALYTICS && tbody) {
@@ -581,7 +593,7 @@
                         var hb = document.getElementById('analyticsHistoryBody');
                         if (!hb) return;
                         if (!hd.success || !Array.isArray(hd.history) || hd.history.length === 0) {
-                          hb.innerHTML = '<tr><td colspan="' + historyColspan + '" class="px-4 py-6 text-sm font-medium text-muted text-center">Пока нет данных по истории рейтинга.</td></tr>';
+                          hb.innerHTML = '<tr><td colspan="' + historyColspan + '" class="px-4 py-3 text-sm font-medium text-muted text-center">Пока нет данных по истории рейтинга.</td></tr>';
                           return;
                         }
                         hb.innerHTML = hd.history.slice(0, 80).map(function(row) {
@@ -594,8 +606,8 @@
                           var delta = (row.mmr_delta != null ? (row.mmr_delta >= 0 ? '+' : '') + row.mmr_delta : '—');
                           var deltaCls = (row.mmr_delta != null && row.mmr_delta >= 0) ? 'text-green-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400';
                           var mmrSrc = row.teacher_adjusted
-                            ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-200 dark:bg-amber-950/45 dark:text-amber-100 dark:border-amber-800/80 shrink-0">вручную</span>'
-                            : '<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-white/12 shrink-0">авто</span>';
+                            ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-micro font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-200 dark:bg-amber-950/45 dark:text-amber-100 dark:border-amber-800/80 shrink-0">вручную</span>'
+                            : '<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-micro font-black uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-white/12 shrink-0">авто</span>';
                           var deltaCell = '<div class="flex flex-wrap items-center justify-end gap-1.5"><span class="font-black ' + deltaCls + '">' + delta + '</span>' + mmrSrc + '</div>';
                           var exp = '<button type="button" class="history-expand-btn mr-2 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 dark:border-white/15 bg-surface-alt dark:bg-dark-inner text-xs font-bold text-secondary dark:text-white/80" aria-expanded="false" title="Подробнее">▸</button>';
                           var u = row.urls || {};
@@ -614,11 +626,11 @@
                           if (row.mode) metaBits.push('Режим: ' + historyEsc(row.mode));
                           var commentBlock = row.rating_comment ? ('<p class="mt-2 text-xs text-muted"><span class="font-bold text-secondary dark:text-white/80">Комментарий:</span> ' + historyEsc(row.rating_comment) + '</p>') : '';
                           var detailInner = '<div class="flex flex-wrap gap-2">' + links.join('') + '</div><p class="mt-2 text-xs text-muted">' + metaBits.map(historyEsc).join(' · ') + '</p>' + commentBlock;
-                          var detailRow = '<tr class="history-detail hidden border-b border-slate-100 dark:border-white/[0.08] bg-slate-50/80 dark:bg-white/[0.03]"><td colspan="' + historyColspan + '" class="px-4 py-3 text-sm">' + detailInner + '</td></tr>';
+                          var detailRow = '<tr class="history-detail hidden border-b border-slate-100 dark:border-dark-avatar bg-slate-50/80 dark:bg-white/[0.03]"><td colspan="' + historyColspan + '" class="px-4 py-3 text-sm">' + detailInner + '</td></tr>';
                           if (isStudentView) {
-                            return '<tr class="history-main border-b border-slate-100 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]"><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + exp + '<span>' + dt + '</span></td><td class="px-4 py-3 text-sm font-bold text-primary dark:text-white">' + tn + '</td><td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded border border-slate-200 dark:border-white/10 bg-surface-alt dark:bg-dark-inner font-bold text-secondary dark:text-white/90">' + diff + '</span></td><td class="px-4 py-3 text-sm">' + ok + '</td><td class="px-4 py-3 text-sm text-right">' + deltaCell + '</td></tr>' + detailRow;
+                            return '<tr class="history-main border-b border-slate-100 dark:border-dark-avatar hover:bg-slate-50 dark:hover:bg-white/[0.04]"><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + exp + '<span>' + dt + '</span></td><td class="px-4 py-3 text-sm font-bold text-primary dark:text-white">' + tn + '</td><td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded border border-slate-200 dark:border-white/10 bg-surface-alt dark:bg-dark-inner font-bold text-secondary dark:text-white/90">' + diff + '</span></td><td class="px-4 py-3 text-sm">' + ok + '</td><td class="px-4 py-3 text-sm text-right">' + deltaCell + '</td></tr>' + detailRow;
                           }
-                          return '<tr class="history-main border-b border-slate-100 dark:border-white/[0.08] hover:bg-slate-50 dark:hover:bg-white/[0.04]"><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + exp + '<span>' + dt + '</span></td><td class="px-4 py-3 text-sm font-bold text-primary dark:text-white">' + tn + '</td><td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded border border-slate-200 dark:border-white/10 bg-surface-alt dark:bg-dark-inner font-bold text-secondary dark:text-white/90">' + diff + '</span></td><td class="px-4 py-3 text-sm">' + ok + '</td><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + tsec + '</td><td class="px-4 py-3 text-xs text-muted">' + coeff + '</td><td class="px-4 py-3 text-sm text-right">' + deltaCell + '</td></tr>' + detailRow;
+                          return '<tr class="history-main border-b border-slate-100 dark:border-dark-avatar hover:bg-slate-50 dark:hover:bg-white/[0.04]"><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + exp + '<span>' + dt + '</span></td><td class="px-4 py-3 text-sm font-bold text-primary dark:text-white">' + tn + '</td><td class="px-4 py-3 text-sm"><span class="px-2 py-0.5 rounded border border-slate-200 dark:border-white/10 bg-surface-alt dark:bg-dark-inner font-bold text-secondary dark:text-white/90">' + diff + '</span></td><td class="px-4 py-3 text-sm">' + ok + '</td><td class="px-4 py-3 text-sm text-secondary dark:text-dark-muted">' + tsec + '</td><td class="px-4 py-3 text-xs text-muted">' + coeff + '</td><td class="px-4 py-3 text-sm text-right">' + deltaCell + '</td></tr>' + detailRow;
                         }).join('');
                         hb.onclick = function(e) {
                           var btn = e.target.closest('.history-expand-btn');

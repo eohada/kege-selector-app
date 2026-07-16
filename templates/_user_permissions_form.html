@@ -1,16 +1,16 @@
 {% if current_user.is_creator() and user %}
-                <div class="glass-panel mb-8 p-6">
-                    <div class="flex justify-between items-center mb-4">
+                <div class="glass-panel mb-3 p-6">
+                    <div class="flex justify-between items-center mb-3">
                         <h2 class="text-lg">Индивидуальные права доступа</h2>
                         <button type="button" class="neo-button ghost small" onclick="togglePermissions()">Показать/Скрыть</button>
                     </div>
                     
                     <div id="permissions-container" class="hidden">
-                        <p class="text-muted text-sm mb-4">
+                        <p class="text-muted text-sm mb-3">
                             Здесь можно переопределить права, назначенные ролью. Если галочка "Переопределить" не стоит, используется настройка роли.
                         </p>
                         
-                        <div class="grid gap-8">
+                        <div class="grid gap-6">
                             {% for cat_key, cat_name in permission_categories.items() %}
                             <div class="permission-category">
                                 <h3 class="mb-2 pb-1 text-base" style="color: var(--accent-primary); border-bottom: 1px solid var(--color-stroke);">{{ cat_name }}</h3>

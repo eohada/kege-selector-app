@@ -17,8 +17,8 @@
 {% endblock %}
 
 {% block content %}
-        <section class="glass-panel mb-8">
-            <div class="flex items-center gap-4 mb-4">
+        <section class="glass-panel mb-3 w-full">
+            <div class="flex items-center gap-4 mb-3">
                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">
                     ← К профилю
                 </a>
@@ -37,13 +37,13 @@
                 </div>
             </div>
 
-            <div class="statistics-chart-wrap mt-8">
+            <div class="statistics-chart-wrap mt-3">
                 <canvas id="statisticsChart" style="max-height: 420px;"></canvas>
             </div>
 
-            <div class="mt-8 pt-8 border-t border-stroke">
-                <h3 class="mb-4" style="font-size: 1.1em;">Легенда цветов:</h3>
-                <div class="flex gap-8 flex-wrap">
+            <div class="mt-3 pt-8 border-t border-stroke">
+                <h3 class="mb-3" style="font-size: 1.1em;">Легенда цветов:</h3>
+                <div class="flex gap-6 flex-wrap">
                     <div class="flex items-center gap-2">
                         <div style="width: 20px; height: 20px; background: #ef4444; border-radius: 4px;"></div>
                         <span>0-40% (требует внимания)</span>
@@ -57,7 +57,7 @@
                         <span>80-100% (отлично)</span>
                     </div>
                 </div>
-                <p class="mt-4 text-text-muted text-sm">
+                <p class="mt-3 text-text-muted text-sm">
                     <strong>Примечание:</strong> Проверочные работы учитываются с весом ×2 (одно неправильно выполненное = два неправильно выполненных).
                 </p>
             </div>
@@ -71,12 +71,12 @@
                 </div>
             </div>
 
-            <p class="mt-4 text-text-muted text-sm">
+            <p class="mt-3 text-text-muted text-sm">
                 Вы можете вручную добавить количество правильно или неправильно решенных заданий для каждого номера.
                 Эти значения будут добавлены к автоматической статистике и сохранятся при дальнейших обновлениях.
             </p>
 
-            <div class="mt-8">
+            <div class="mt-3">
                 <div id="statisticsEditor" class="grid gap-4">
                     {% for item in chart_data %}
                     <div class="stat-edit-item" data-task-number="{{ item.task_number }}">

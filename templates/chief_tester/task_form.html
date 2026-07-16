@@ -3,7 +3,7 @@
 {% block title %}Chief Tester · {% if task %}Edit{% else %}New{% endif %} Task{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4 px-4">
+<div class="container-fluid mt-3 w-full">
   {% set ct_title = task and ('Задача #' ~ task.id) or 'Новая задача' %}
   {% include 'chief_tester/_nav.html' %}
 
@@ -12,12 +12,12 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <div class="neo-label">Заголовок</div>
-      <input name="title" class="neo-input mb-4" value="{{ form.title or '' }}" required>
+      <input name="title" class="neo-input mb-3" value="{{ form.title or '' }}" required>
 
       <div class="neo-label">Описание</div>
-      <textarea name="description" class="neo-input mb-4" rows="4" placeholder="шаги/контекст…">{{ form.description or '' }}</textarea>
+      <textarea name="description" class="neo-input mb-3" rows="4" placeholder="шаги/контекст…">{{ form.description or '' }}</textarea>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
         <div>
           <div class="neo-label">Статус</div>
           <select name="status" class="neo-input">
@@ -40,7 +40,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
         <div>
           <div class="neo-label">Дедлайн</div>
           <input type="datetime-local" name="deadline" class="neo-input" value="{{ form.deadline or '' }}">
@@ -54,7 +54,7 @@
 
       <div class="neo-label">Исполнители</div>
       {% set selected = form.assignee_ids if form.assignee_ids is defined else [] %}
-      <div class="neo-card p-3 mb-4" style="background: rgba(0,0,0,0.15);">
+      <div class="neo-card p-3 mb-3" style="background: rgba(0,0,0,0.15);">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
           {% for u in testers %}
             {% set checked = (u.id in selected) %}

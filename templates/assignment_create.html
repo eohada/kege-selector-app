@@ -2,6 +2,13 @@
 {% block title %}Создать работу · URep{% endblock %}
 
 {% block head_css %}
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .max-h-min56vh-620px { max-height: min(56vh,620px); }
+    .max-h-340px { max-height: 340px; }
+    .text-15px { font-size: 15px; }
+</style>
+
 <style>
     #assignmentCreateWizard.wizard-container { max-width: 1400px; margin: 0 auto; padding: 0 1rem 2rem; }
     /* Только display — не opacity: иначе при конфликте с глобальными стилями шаги остаются невидимыми */
@@ -92,20 +99,20 @@
 {% set active_page = 'assignments' %}
 
 {% block content %}
-<div class="flex-1 overflow-y-auto pt-6 pb-16 px-6 lg:px-8 w-full max-w-[1600px] mx-auto">
+<div class="flex-1 overflow-y-auto pt-6 pb-16">
   <div id="assignmentCreateWizard" class="wizard-container w-full">
     <script type="application/json" id="group-members-json">{{ (group_members_map or {})|tojson }}</script>
-    <div class="flex flex-col items-center mb-8">
-      <div class="flex items-center bg-white/80 backdrop-blur-md rounded-[20px] border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none p-1.5 mb-6">
-        <button type="button" onclick="goToStep(1)" id="stepIndicator1" class="flex items-center gap-2.5 px-4 py-2 rounded-xl font-bold text-sm transition-all">
+    <div class="flex flex-col items-center mb-3">
+      <div class="flex items-center bg-white/80 backdrop-blur-md rounded-2xl border border-slate-200 shadow-sm dark:shadow-none dark:shadow-none p-1.5 mb-3 overflow-x-auto max-w-full wizard-steps">
+        <button type="button" onclick="goToStep(1)" id="stepIndicator1" class="flex items-center gap-2.5 px-2 py-0.5 rounded-md font-bold text-sm transition-all">
           <div id="stepBadge1" class="w-6 h-6 rounded-full flex items-center justify-center text-xs">1</div> Ученики
         </button>
         <div class="w-8 h-px bg-slate-200 mx-1"></div>
-        <button type="button" onclick="goToStep(2)" id="stepIndicator2" class="flex items-center gap-2.5 px-4 py-2 rounded-xl font-bold text-sm transition-all">
+        <button type="button" onclick="goToStep(2)" id="stepIndicator2" class="flex items-center gap-2.5 px-2 py-0.5 rounded-md font-bold text-sm transition-all">
           <div id="stepBadge2" class="w-6 h-6 rounded-full flex items-center justify-center text-xs">2</div> Задания
         </button>
         <div class="w-8 h-px bg-slate-200 mx-1"></div>
-        <button type="button" onclick="goToStep(3)" id="stepIndicator3" class="flex items-center gap-2.5 px-4 py-2 rounded-xl font-bold text-sm transition-all">
+        <button type="button" onclick="goToStep(3)" id="stepIndicator3" class="flex items-center gap-2.5 px-2 py-0.5 rounded-md font-bold text-sm transition-all">
           <div id="stepBadge3" class="w-6 h-6 rounded-full flex items-center justify-center text-xs">3</div> Настройки
         </button>
       </div>
@@ -124,13 +131,13 @@
     </div>
 
     <div id="stepContent1" class="ac-step ac-step-active">
-      <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
-        <h2 class="text-3xl md:text-4xl font-black text-primary mb-2 tracking-tight">1. Кому выдаем?</h2>
-        <p class="text-muted font-medium text-base mb-6">Выберите учеников из списка, назначьте группе или выберите всех сразу.</p>
+      <section class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6 md:p-6 relative overflow-hidden">
+        <h2 class="text-3xl md:text-lg font-bold text-primary mb-2 tracking-tight">1. Кому выдаем?</h2>
+        <p class="text-muted font-medium text-base mb-3">Выберите учеников из списка, назначьте группе или выберите всех сразу.</p>
 
         {% if available_groups %}
-        <div class="mb-4">
-          <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 mb-2 block">Быстрый выбор по группе</label>
+        <div class="mb-3">
+          <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1 mb-2 block">Быстрый выбор по группе</label>
           <select id="ca_group_select" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" onchange="handleGroupSelect(this.value)">
             <option value="">— Выбрать вручную —</option>
             <option value="all">Все ученики</option>
@@ -148,8 +155,8 @@
           {% endfor %}
         </select>
 
-        <div class="bg-slate-50/50 border border-slate-200 rounded-[24px] overflow-hidden mb-8">
-          <div id="recipientCards" class="student-list max-h-[340px] overflow-y-auto p-3 space-y-1.5">
+        <div class="bg-slate-50/50 border border-slate-200 rounded-xl overflow-hidden mb-3">
+          <div id="recipientCards" class="student-list max-h-340px overflow-y-auto p-3 space-y-1.5">
             {% for st in (recipient_options or []) %}
               {% set _sel = (default_recipient_ids and st.student_id in default_recipient_ids) %}
               <label class="flex items-center gap-4 p-3 rounded-xl bg-surface border border-slate-200 cursor-pointer hover:border-purple-200 hover:shadow-sm dark:shadow-none dark:shadow-none transition-all group relative recipient-card" data-student-id="{{ st.student_id }}">
@@ -169,7 +176,7 @@
                 <div class="recipient-selection-ring"></div>
               </label>
             {% else %}
-              <div class="text-center py-10 px-4 text-muted font-medium text-sm">
+              <div class="text-center py-3 px-4 text-muted font-medium text-sm">
                 Список учеников пуст. Добавьте учеников в кабинете или проверьте права доступа — без привязанных учеников работу не назначить.
               </div>
             {% endfor %}
@@ -189,47 +196,47 @@
     </div>
 
     <div id="stepContent2" class="ac-step">
-      <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
-        <h2 class="text-3xl md:text-4xl font-black text-primary mb-2 tracking-tight">2. Откуда берем задания?</h2>
-        <p class="text-muted font-medium text-base mb-8">Выберите наиболее удобный способ формирования пула задач.</p>
+      <section class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6 md:p-6 relative overflow-hidden">
+        <h2 class="text-3xl md:text-lg font-bold text-primary mb-2 tracking-tight">2. Откуда берем задания?</h2>
+        <p class="text-muted font-medium text-base mb-3">Выберите наиболее удобный способ формирования пула задач.</p>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-          <button type="button" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left {% if source == 'manual' %}active-manual{% endif %}" onclick="setSource('manual')">
-            <div class="w-12 h-12 rounded-xl bg-purple-100 text-boo-primary flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-keyboard"></i></div>
-            <h3 class="text-lg font-black text-primary mb-1">Ввести ID вручную</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-3">
+          <button type="button" class="source-card h-full border-2 border-slate-200 rounded-xl p-6 transition-all bg-surface text-left {% if source == 'manual' %}active-manual{% endif %}" onclick="setSource('manual')">
+            <div class="w-12 h-9 rounded-xl bg-purple-100 text-boo-primary flex items-center justify-center text-xl mb-3"><i class="ph-bold ph-keyboard"></i></div>
+            <h3 class="text-sm font-bold text-primary mb-1">Ввести ID вручную</h3>
             <p class="text-xs font-medium text-muted">Если номера задач уже известны.</p>
           </button>
-          <a id="generatorLink" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left no-underline {% if source == 'generator' and not probnik_mode %}active-generator{% endif %}" href="#">
-            <div class="w-12 h-12 rounded-xl bg-cyan-100 text-cyan-600 flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-magic-wand"></i></div>
-            <h3 class="text-lg font-black text-primary mb-1">Генератор</h3>
+          <a id="generatorLink" class="source-card h-full border-2 border-slate-200 rounded-xl p-6 transition-all bg-surface text-left no-underline {% if source == 'generator' and not probnik_mode %}active-generator{% endif %}" href="#">
+            <div class="w-12 h-9 rounded-xl bg-cyan-100 text-cyan-600 flex items-center justify-center text-xl mb-3"><i class="ph-bold ph-magic-wand"></i></div>
+            <h3 class="text-sm font-bold text-primary mb-1">Генератор</h3>
             <p class="text-xs font-medium text-muted">Подобрать новые задачи (анти-повтор включен).</p>
           </a>
-          <button type="button" class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left {% if source == 'template' %}active-template{% endif %}" onclick="setSource('template')">
-            <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-500 flex items-center justify-center text-xl mb-4"><i class="ph-bold ph-squares-four"></i></div>
-            <h3 class="text-lg font-black text-primary mb-1">Из шаблона</h3>
+          <button type="button" class="source-card h-full border-2 border-slate-200 rounded-xl p-6 transition-all bg-surface text-left {% if source == 'template' %}active-template{% endif %}" onclick="setSource('template')">
+            <div class="w-12 h-9 rounded-xl bg-orange-100 text-orange-500 flex items-center justify-center text-xl mb-3"><i class="ph-bold ph-squares-four"></i></div>
+            <h3 class="text-sm font-bold text-primary mb-1">Из шаблона</h3>
             <p class="text-xs font-medium text-muted">Готовые варианты или тематические наборы.</p>
           </button>
-          <div class="source-card h-full border-2 border-slate-200 rounded-[24px] p-6 transition-all bg-surface text-left flex flex-col {% if probnik_mode %}active-probnik{% endif %}">
-            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-4 border" style="background-color:#d1fae5;color:#047857;border-color:#6ee7b7;"><i class="ph-bold ph-scroll"></i></div>
-            <h3 class="text-lg font-black text-primary mb-1">Быстрый пробник</h3>
+          <div class="source-card h-full border-2 border-slate-200 rounded-xl p-6 transition-all bg-surface text-left flex flex-col {% if probnik_mode %}active-probnik{% endif %}">
+            <div class="w-12 h-9 rounded-xl flex items-center justify-center text-xl mb-3 border" style="background-color:#d1fae5;color:#047857;border-color:#6ee7b7;"><i class="ph-bold ph-scroll"></i></div>
+            <h3 class="text-sm font-bold text-primary mb-1">Быстрый пробник</h3>
             <p class="text-xs font-medium text-muted mb-3">По одному активному заданию на каждый номер 1–27 выбранного курса (тройка 19–21 — один текст).</p>
             {% if courses_for_probnik and courses_for_probnik|length > 0 %}
-            <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest mb-1 block">Курс / экзамен</label>
+            <label class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-1 block">Курс / экзамен</label>
             <select id="probnikCourseSelect" class="w-full bg-surface border border-slate-200 rounded-xl px-3 py-2.5 font-bold text-secondary text-xs focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 mb-3">
               {% for c in courses_for_probnik %}
               <option value="{{ c.id }}" {% if default_probnik_course_id and c.id == default_probnik_course_id %}selected{% endif %}>{{ c.title }}</option>
               {% endfor %}
             </select>
             {% endif %}
-            <button type="button" class="mt-auto w-full px-4 py-3 rounded-xl font-bold text-sm transition-opacity hover:opacity-95 border-b-[3px] active:translate-y-[1px] active:border-b-0" style="background-color:#059669;color:#fff;border-bottom-color:#047857;" onclick="startProbnikBuild()">
+            <button type="button" class="mt-auto w-full px-4 py-3 rounded-xl font-bold text-sm transition-opacity hover:opacity-95 border-b-2 active:translate-y-[1px] active:border-b-0" style="background-color:#059669;color:#fff;border-bottom-color:#047857;" onclick="startProbnikBuild()">
               Собрать пробник
             </button>
           </div>
         </div>
 
-        <div id="sourceOptions" class="bg-slate-50/80 border border-slate-200 rounded-[24px] p-6 lg:p-8 mb-8 shadow-inner-soft">
+        <div id="sourceOptions" class="bg-slate-50/80 border border-slate-200 rounded-xl p-6 lg:p-6 mb-3 shadow-inner-soft">
           {% if source == 'template' %}
-            <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 mb-3 block">Выберите шаблон из библиотеки</label>
+            <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1 mb-3 block">Выберите шаблон из библиотеки</label>
             <select class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3.5 font-bold text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" onchange="pickTemplate(this.value)">
               <option value="">— выбрать шаблон —</option>
               {% for tpl in (templates or []) %}
@@ -237,8 +244,8 @@
               {% endfor %}
             </select>
           {% else %}
-            <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1 mb-3 block">Введите ID через запятую или пробел</label>
-            <textarea id="manualTaskIds" rows="4" class="w-full bg-surface border border-slate-200 rounded-xl p-4 font-mono text-primary text-[15px] focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-sm dark:shadow-none dark:shadow-none resize-y" placeholder="Пример: 123, 456, 789...">{% if source == 'manual' and task_ids %}{{ task_ids|join(', ') }}{% endif %}</textarea>
+            <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1 mb-3 block">Введите ID через запятую или пробел</label>
+            <textarea id="manualTaskIds" rows="4" class="w-full bg-surface border border-slate-200 rounded-xl p-4 font-mono text-primary text-15px focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all shadow-sm dark:shadow-none dark:shadow-none resize-y" placeholder="Пример: 123, 456, 789...">{% if source == 'manual' and task_ids %}{{ task_ids|join(', ') }}{% endif %}</textarea>
           {% endif %}
         </div>
 
@@ -254,36 +261,36 @@
     </div>
 
     <div id="stepContent3" class="ac-step">
-      <section class="bg-surface rounded-[32px] border border-slate-200 border-b-[4px] border-b-slate-300 shadow-tactile p-8 md:p-12 relative overflow-hidden">
-        <h2 class="text-3xl md:text-4xl font-black text-primary mb-2 tracking-tight">3. Финальные настройки</h2>
-        <p class="text-muted font-medium text-base mb-8">Проверьте список задач и установите срок сдачи.</p>
+      <section class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6 md:p-6 relative overflow-hidden">
+        <h2 class="text-3xl md:text-lg font-bold text-primary mb-2 tracking-tight">3. Финальные настройки</h2>
+        <p class="text-muted font-medium text-base mb-3">Проверьте список задач и установите срок сдачи.</p>
 
-        <div class="mb-8">
+        <div class="mb-3">
           <div class="flex flex-wrap items-end justify-between gap-3 mb-3 ml-1">
-            <h3 class="text-[10px] font-extrabold text-muted uppercase tracking-widest m-0">Состав работы</h3>
+            <h3 class="text-tiny font-extrabold text-muted uppercase tracking-widest m-0">Состав работы</h3>
             <p class="text-xs text-muted font-medium m-0 max-w-xl">Всё в одном месте: прочитали условие → стрелками подобрали вариант → при необходимости сменили ID, перешли в базу или удалили карточку.</p>
           </div>
           <div class="inline-flex items-center gap-3 text-xs font-bold text-secondary mb-3 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50">
             <span>Стрелки в случайном режиме</span>
-            <button id="variantRandomToggleBtn" type="button" aria-pressed="false" onclick="toggleVariantRandom()" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors">
+            <button id="variantRandomToggleBtn" type="button" aria-pressed="false" onclick="toggleVariantRandom()" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-small font-black transition-colors">
               <span class="inline-block w-2 h-2 rounded-full" id="variantRandomDot"></span>
               <span id="variantRandomText">ВЫКЛ</span>
             </button>
           </div>
-          <div id="taskOrderEditor" class="space-y-3 max-h-[min(56vh,620px)] overflow-y-auto pr-1 mb-4">
+          <div id="taskOrderEditor" class="space-y-3 max-h-min56vh-620px overflow-y-auto pr-1 mb-3">
             {% if not tasks %}
-            <div class="text-sm text-muted font-medium px-2 py-4 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>
+            <div class="text-sm text-muted font-medium px-2 py-3 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>
             {% endif %}
             {% for t in tasks %}
             <div class="task-order-row task-mini-item bg-surface-alt border border-slate-200 rounded-xl">
               <div class="task-mini-header flex flex-wrap justify-between items-center gap-2 px-4 py-3 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('active')">
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="task-idx text-xs font-black text-muted w-7 shrink-0">{{ loop.index }}.</span>
-                  <span class="text-[11px] font-bold text-muted shrink-0">ID</span>
-                  <input type="number" min="1" step="1" class="task-id-editor w-[96px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-sm font-bold text-primary text-center" value="{{ t.task_id }}" data-initial="{{ t.task_id }}" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">
-                  <span class="text-[11px] font-bold text-muted shrink-0" data-role="task-number">№{{ t.task_number }}</span>
+                  <span class="text-small font-bold text-muted shrink-0">ID</span>
+                  <input type="number" min="1" step="1" class="task-id-editor w-24 shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-sm font-bold text-primary text-center" value="{{ t.task_id }}" data-initial="{{ t.task_id }}" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">
+                  <span class="text-small font-bold text-muted shrink-0" data-role="task-number">№{{ t.task_number }}</span>
                   {% if t.source_url %}
-                  <a class="text-[10px] font-bold text-muted uppercase tracking-widest hover:text-boo-primary no-underline" data-role="source-link" href="{{ t.source_url }}" target="_blank" onclick="event.stopPropagation()">Источник</a>
+                  <a class="text-tiny font-bold text-muted uppercase tracking-widest hover:text-boo-primary no-underline" data-role="source-link" href="{{ t.source_url }}" target="_blank" onclick="event.stopPropagation()">Источник</a>
                   {% endif %}
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
@@ -295,27 +302,27 @@
                   </div>
                   {% endif %}
                   {% if bank_course_id_for_links %}
-                  <a class="text-[10px] font-black text-boo-primary uppercase tracking-wider no-underline hover:underline px-2 py-1 rounded-lg border border-purple-100 bg-purple-50" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1, exam_course_id=bank_course_id_for_links) }}" onclick="event.stopPropagation()">База</a>
+                  <a class="text-tiny font-black text-boo-primary uppercase tracking-wider no-underline hover:underline px-2 py-1 rounded-lg border border-purple-100 bg-purple-50" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1, exam_course_id=bank_course_id_for_links) }}" onclick="event.stopPropagation()">База</a>
                   {% else %}
-                  <a class="text-[10px] font-black text-boo-primary uppercase tracking-wider no-underline hover:underline px-2 py-1 rounded-lg border border-purple-100 bg-purple-50" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1) }}" onclick="event.stopPropagation()">База</a>
+                  <a class="text-tiny font-black text-boo-primary uppercase tracking-wider no-underline hover:underline px-2 py-1 rounded-lg border border-purple-100 bg-purple-50" target="_blank" rel="noopener" href="{{ url_for('task_generator.task_generator', bank_task_id=t.task_id, bank_open=1) }}" onclick="event.stopPropagation()">База</a>
                   {% endif %}
-                  <button type="button" class="text-[10px] font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="event.stopPropagation(); removeTaskRow(this)">Удалить</button>
+                  <button type="button" class="text-tiny font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="event.stopPropagation(); removeTaskRow(this)">Удалить</button>
                   <i class="ph-bold ph-caret-down text-muted"></i>
                 </div>
               </div>
               <div class="task-mini-body px-4 py-3 border-t border-slate-200 text-sm text-secondary bg-surface space-y-3">
-                <div class="flex flex-wrap gap-2 text-[11px] font-bold" data-role="badges">
+                <div class="flex flex-wrap gap-2 text-small font-bold" data-role="badges">
                   {% if t.difficulty_level == 1 %}<span class="px-2 py-0.5 rounded-lg bg-green-50 text-green-800 border border-green-100">Сложность: лёгкая</span>
                   {% elif t.difficulty_level == 3 %}<span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-800 border border-rose-100">Сложность: высокая</span>
                   {% else %}<span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">Сложность: {% if t.difficulty_level == 2 %}средняя{% else %}не указана{% endif %}</span>{% endif %}
                   {% if t.kege_tier_label_ru %}<span class="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-100">КЕГЭ: {{ t.kege_tier_label_ru }}</span>{% endif %}
                   {% if t.bank_origin %}<span class="px-2 py-0.5 rounded-lg bg-surface border border-slate-200 text-muted uppercase tracking-wider">Происхождение: {{ t.bank_origin }}</span>{% endif %}
-                  {% if t.source_prototype %}<span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-100 font-mono text-[10px] truncate max-w-[220px]" title="{{ t.source_prototype }}">Прототип: {{ t.source_prototype }}</span>{% endif %}
+                  {% if t.source_prototype %}<span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-100 font-mono text-tiny truncate max-w-xs" title="{{ t.source_prototype }}">Прототип: {{ t.source_prototype }}</span>{% endif %}
                 </div>
                 {% set _files = (t.attached_files|from_json if t.attached_files else []) %}
                 {% if _files and _files|length > 0 %}
                 <div class="space-y-2" data-role="attachments-block">
-                  <div class="text-[11px] font-bold text-muted uppercase tracking-wider">Вложения</div>
+                  <div class="text-small font-bold text-muted uppercase tracking-wider">Вложения</div>
                   <div class="flex flex-wrap gap-2" data-role="attachments">
                     {% for f in _files %}
                     {% set _url = (f.url or f.path or '') %}
@@ -330,7 +337,7 @@
                 </div>
                 {% else %}
                 <div class="space-y-2 hidden" data-role="attachments-block">
-                  <div class="text-[11px] font-bold text-muted uppercase tracking-wider">Вложения</div>
+                  <div class="text-small font-bold text-muted uppercase tracking-wider">Вложения</div>
                   <div class="flex flex-wrap gap-2" data-role="attachments"></div>
                 </div>
                 {% endif %}
@@ -339,17 +346,17 @@
             </div>
             {% endfor %}
           </div>
-          <button type="button" class="mb-4 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-bold text-muted hover:text-boo-primary hover:border-boo-primary hover:bg-purple-50/50 transition-colors w-full sm:w-auto" onclick="addEmptyTaskRow()">+ Добавить задание (ID)</button>
+          <button type="button" class="mb-3 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 text-sm font-bold text-muted hover:text-boo-primary hover:border-boo-primary hover:bg-purple-50/50 transition-colors w-full sm:w-auto" onclick="addEmptyTaskRow()">+ Добавить задание (ID)</button>
         </div>
 
         <form id="ca_form">
           <div class="space-y-6">
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Название работы <span class="text-red-500">*</span></label>
+              <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1">Название работы <span class="text-red-500">*</span></label>
               <input id="ca_title" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" required>
             </div>
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Тип</label>
+              <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1">Тип</label>
               <select id="ca_type" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all">
                 <option value="homework">Домашняя работа</option>
                 <option value="classwork">Классная работа</option>
@@ -358,20 +365,20 @@
               </select>
             </div>
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Описание / Комментарий для ученика</label>
+              <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1">Описание / Комментарий для ученика</label>
               <textarea id="ca_description" rows="3" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-medium text-secondary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all resize-y"></textarea>
             </div>
             <div class="space-y-1.5">
-              <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Срок сдачи (дедлайн) <span class="text-red-500">*</span></label>
+              <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1">Срок сдачи (дедлайн) <span class="text-red-500">*</span></label>
               <input id="ca_deadline" type="datetime-local" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all" required>
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Время (мин)</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1">Время (мин)</label>
                 <input id="ca_time_limit" type="number" min="5" max="480" placeholder="Нет" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all text-center">
               </div>
               <div class="space-y-1.5">
-                <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Попытки</label>
+                <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1">Попытки</label>
                 <input id="ca_max_attempts" type="number" value="1" min="1" max="20" class="w-full bg-surface border border-slate-200 rounded-xl px-4 py-3 font-bold text-primary text-sm focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 transition-all text-center">
               </div>
             </div>
@@ -385,7 +392,7 @@
           </div>
         </form>
 
-        <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-8 mt-8 border-t border-slate-100">
+        <div class="flex flex-col-reverse sm:flex-row justify-between items-center gap-4 pt-8 mt-3 border-t border-slate-100">
           <button type="button" class="w-full sm:w-auto text-muted hover:text-primary font-bold text-sm transition-colors flex items-center justify-center gap-1.5 px-4 py-2" onclick="goToStep(2)">
             <i class="ph-bold ph-arrow-left"></i> К выбору задач
           </button>
@@ -415,11 +422,11 @@
                 if (!btn || !dot || !txt) return;
                 btn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
                 if (enabled) {
-                    btn.className = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors bg-emerald-50 text-emerald-700 border-emerald-300';
+                    btn.className = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-small font-black transition-colors bg-emerald-50 text-emerald-700 border-emerald-300';
                     dot.className = 'inline-block w-2 h-2 rounded-full bg-emerald-500';
                     txt.textContent = 'ВКЛ';
                 } else {
-                    btn.className = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-black transition-colors bg-slate-100 text-slate-600 border-slate-300';
+                    btn.className = 'inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-small font-black transition-colors bg-slate-100 text-slate-600 border-slate-300';
                     dot.className = 'inline-block w-2 h-2 rounded-full bg-slate-400';
                     txt.textContent = 'ВЫКЛ';
                 }
@@ -458,15 +465,15 @@
                     const badge = document.getElementById(`stepBadge${i}`);
                     if (!btn || !badge) continue;
                     if (i === currentStep) {
-                        btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl bg-purple-50 text-boo-primary font-bold text-sm transition-all';
+                        btn.className = 'flex items-center gap-2.5 px-2 py-0.5 rounded-md bg-purple-50 text-boo-primary font-bold text-sm transition-all';
                         badge.className = 'w-6 h-6 rounded-full bg-boo-primary text-white flex items-center justify-center text-xs';
                         badge.textContent = String(i);
                     } else if (i < currentStep) {
-                        btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-secondary hover:bg-surface-alt font-bold text-sm transition-all';
+                        btn.className = 'flex items-center gap-2.5 px-2 py-0.5 rounded-md text-secondary hover:bg-surface-alt font-bold text-sm transition-all';
                         badge.className = 'w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs';
                         badge.innerHTML = '<i class="ph-bold ph-check"></i>';
                     } else {
-                        btn.className = 'flex items-center gap-2.5 px-4 py-2 rounded-xl text-muted hover:bg-surface-alt font-bold text-sm transition-all';
+                        btn.className = 'flex items-center gap-2.5 px-2 py-0.5 rounded-md text-muted hover:bg-surface-alt font-bold text-sm transition-all';
                         badge.className = 'w-6 h-6 rounded-full bg-surface-alt text-muted flex items-center justify-center text-xs';
                         badge.textContent = String(i);
                     }
@@ -640,7 +647,7 @@
                 if (row) row.remove();
                 const box = document.getElementById('taskOrderEditor');
                 if (box && !box.querySelector('.task-order-row')) {
-                    box.innerHTML = '<div class="text-sm text-muted font-medium px-2 py-4 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>';
+                    box.innerHTML = '<div class="text-sm text-muted font-medium px-2 py-3 text-center border border-dashed border-slate-200 rounded-xl">Нет заданий — вернитесь к шагу 2 или нажмите «+ Добавить задание».</div>';
                 }
                 renumberTaskRows();
                 syncTaskIdsFromEditor();
@@ -658,12 +665,12 @@
                     '<div class="task-mini-header flex flex-wrap justify-between items-center gap-2 px-4 py-3">' +
                     '<div class="flex flex-wrap items-center gap-2">' +
                     '<span class="task-idx text-xs font-black text-muted w-7 shrink-0">' + n + '.</span>' +
-                    '<span class="text-[11px] font-bold text-muted shrink-0">ID</span>' +
-                    '<input type="number" min="1" step="1" class="task-id-editor w-[96px] shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-sm font-bold text-primary text-center" value="" placeholder="id" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">' +
-                    '<span class="text-[11px] font-bold text-muted shrink-0">№—</span>' +
+                    '<span class="text-small font-bold text-muted shrink-0">ID</span>' +
+                    '<input type="number" min="1" step="1" class="task-id-editor w-24 shrink-0 bg-surface border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-sm font-bold text-primary text-center" value="" placeholder="id" onchange="syncTaskIdsFromEditor()" onblur="syncTaskIdsFromEditor()">' +
+                    '<span class="text-small font-bold text-muted shrink-0">№—</span>' +
                     '</div>' +
                     '<div class="flex flex-wrap items-center gap-2">' +
-                    '<button type="button" class="text-[10px] font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="removeTaskRow(this)">Удалить</button>' +
+                    '<button type="button" class="text-tiny font-black text-red-600 uppercase tracking-wider px-2 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100" onclick="removeTaskRow(this)">Удалить</button>' +
                     '</div></div>' +
                     '<div class="task-mini-body active px-4 py-3 border-t border-slate-200 text-sm text-muted bg-surface">После ввода ID нажмите «Обновить по ID», чтобы подтянуть условие и метаданные.</div>';
                 box.appendChild(wrap);
@@ -712,7 +719,7 @@
                     out.push('<span class="px-2 py-0.5 rounded-lg bg-surface border border-slate-200 text-muted uppercase tracking-wider">Происхождение: ' + escapeHtml(task.bank_origin) + '</span>');
                 }
                 if (task.source_prototype) {
-                    out.push('<span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-100 font-mono text-[10px] truncate max-w-[220px]" title="' + escapeHtml(task.source_prototype) + '">Прототип: ' + escapeHtml(task.source_prototype) + '</span>');
+                    out.push('<span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-100 font-mono text-tiny truncate max-w-xs" title="' + escapeHtml(task.source_prototype) + '">Прототип: ' + escapeHtml(task.source_prototype) + '</span>');
                 }
                 return out.join('');
             }

@@ -38,7 +38,7 @@
 {% set active_page = 'notifications' %}
 
 {% block content %}
-<section class="glass-panel mb-5">
+<section class="glass-panel mb-5 w-full">
     <div class="flex justify-between items-start gap-4 flex-wrap">
         <div>
             <p class="hero-eyebrow">коммуникации</p>
@@ -81,7 +81,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="empty-state py-10">
+    <div class="empty-state py-3">
         <p>Пока нет уведомлений.</p>
     </div>
     {% endif %}

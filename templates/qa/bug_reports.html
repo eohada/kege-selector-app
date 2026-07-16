@@ -5,6 +5,11 @@
 {% block title %}Баг-репорты · QA{% endblock %}
 
 {% block head_css %}
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .max-h-150px { max-height: 150px; }
+</style>
+
 <style>
     .reports-list { max-width: 900px; }
     .report-card { background: var(--surface-1); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; box-shadow: var(--shadow-card); }
@@ -21,8 +26,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4 px-4">
-    <div class="flex justify-between items-center mb-8 pb-4">
+<div class="container-fluid mt-3 w-full">
+    <div class="flex justify-between items-center mb-3 pb-4">
         <div>
             <div class="text-xs text-muted uppercase tracking-widest">QA</div>
             <h1 class="text-2xl font-bold">Баг-репорты</h1>
@@ -32,7 +37,7 @@
             <a href="{{ return_to }}" class="neo-button ghost">← Вернуться в QA кабинет</a>
             {% endif %}
             <a href="{{ url_for('qa.bug_report', return_to=return_to) }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать баг-репорт</a>
-            <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Канбан</a>
+            <a href="{{ url_for('qa_tester.board') }}" class="neo-button ghost">Канбан</a>
         </div>
     </div>
 
@@ -54,7 +59,7 @@
             {% set _scr = r.screenshot_path.replace('static/', '') %}
             <div class="mb-3">
                 <a href="{{ url_for('static', filename=_scr) }}" target="_blank" rel="noopener">
-                    <img src="{{ url_for('static', filename=_scr) }}" alt="Скриншот" class="max-w-[200px] max-h-[150px] rounded-btn" loading="lazy" onerror="this.style.display='none'">
+                    <img src="{{ url_for('static', filename=_scr) }}" alt="Скриншот" class="max-w-xs max-h-150px rounded-btn" loading="lazy" onerror="this.style.display='none'">
                 </a>
             </div>
             {% endif %}
@@ -82,7 +87,7 @@
             {% endif %}
         </div>
         {% else %}
-        <div class="text-center p-12 text-muted">Баг-репортов пока нет. <a href="{{ url_for('qa.bug_report') }}" class="text-accent">Создать</a></div>
+        <div class="text-center p-5 text-muted">Баг-репортов пока нет. <a href="{{ url_for('qa.bug_report') }}" class="text-accent">Создать</a></div>
         {% endfor %}
     </div>
 </div>

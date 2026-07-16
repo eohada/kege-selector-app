@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     {% include '_boo_select_head.html' %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20260708-v1">
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -30,7 +30,7 @@
         <main class="remote-main">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        <div class="flash-messages mb-4" style="max-width: 900px;">
+        <div class="flash-messages mb-3" style="max-width: 900px;">
             {% for category, msg in messages %}
             <div class="flash flash-{{ category }}" role="alert" style="padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; {% if category == 'error' or category == 'danger' %}background: rgba(220,53,69,0.15); color: var(--danger, #dc3545);{% else %}background: rgba(40,167,69,0.15); color: var(--success, #28a745);{% endif %}">{{ msg }}</div>
             {% endfor %}
@@ -38,7 +38,7 @@
         {% endif %}
         {% endwith %}
         <section class="glass-panel" style="max-width: 900px; padding: 2rem;">
-            <div class="mb-6">
+            <div class="mb-3">
                 <h1 class="m-0">{% if user %}Редактирование пользователя{% else %}Создание пользователя{% endif %}</h1>
                 <p class="text-muted mt-2">
                     Окружение: <strong>{{ environment_name }}</strong>
@@ -48,8 +48,8 @@
             <form id="remote-admin-user-edit-form" method="POST" action="{% if user %}{{ url_for('remote_admin.user_edit', user_id=user.id) }}{% else %}{{ url_for('remote_admin.user_new') }}{% endif %}" class="neo-form" data-no-ajax>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                <div class="glass-panel mb-8 p-6">
-                    <h2 class="mb-4 text-lg">Основная информация</h2>
+                <div class="glass-panel mb-3 p-6">
+                    <h2 class="mb-3 text-lg">Основная информация</h2>
                     
                     <div class="neo-field">
                         <label class="neo-label" for="username">Логин (имя для входа) *</label>
@@ -103,8 +103,8 @@
                         <span id="numeric_id_availability" class="username-availability" aria-live="polite"></span>
                     </div>
 
-                    <div class="glass-panel mt-6 p-6 hidden" id="connections_panel" style="background: rgba(0,0,0,0.2);">
-                        <h3 class="mb-4 text-base" style="color: var(--accent-primary);">Связи и привязки</h3>
+                    <div class="glass-panel mt-3 p-6 hidden" id="connections_panel" style="background: rgba(0,0,0,0.2);">
+                        <h3 class="mb-3 text-base" style="color: var(--accent-primary);">Связи и привязки</h3>
 
                         <div id="student_connections" style="display: none;">
                             <div class="neo-field">

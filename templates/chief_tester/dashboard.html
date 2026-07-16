@@ -3,7 +3,7 @@
 {% block title %}Chief Tester · Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4 px-4">
+<div class="container-fluid mt-3 w-full">
   {% set ct_title = 'Дашборд' %}
   {% include 'chief_tester/_nav.html' %}
 
@@ -30,7 +30,7 @@
     </div>
   </div>
 
-  <div class="mt-6 flex gap-3 flex-wrap">
+  <div class="mt-3 flex gap-3 flex-wrap">
     <a href="{{ url_for('chief_tester.task_new') }}" class="neo-button accent">➕ Новая задача</a>
     <a href="{{ url_for('chief_tester.tasks_list') }}" class="neo-button ghost">📋 Список задач</a>
     <a href="{{ url_for('chief_tester.testers') }}" class="neo-button ghost">👥 Управление тестерами</a>

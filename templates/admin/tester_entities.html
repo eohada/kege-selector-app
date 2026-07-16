@@ -4,30 +4,32 @@
 {% set active_page = 'admin' %}
 
 {% block content %}
-<section class="glass-panel">
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}" class="neo-button ghost">
-                ← К админ панели
+<section class="glass-panel w-full">
+    <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-4">
+            <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+                ← На главную
             </a>
+            <h1 class="m-0">Панель управления</h1>
         </div>
         {% if is_production and sandbox_base_url %}
-        <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}#sandbox" class="neo-button accent">
+        <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}#sandbox" class="neo-button accent" style="text-decoration: none;">
             {{ ui_icon('action.plus', 'sm', decorative=true) }}Создать в sandbox
         </a>
         {% else %}
-        <a href="{{ url_for('admin.admin_tester_entities_create') }}" class="neo-button accent">
+        <a href="{{ url_for('admin.admin_tester_entities_create') }}" class="neo-button accent" style="text-decoration: none;">
             {{ ui_icon('action.plus', 'sm', decorative=true) }}Создать тестировщика
         </a>
         {% endif %}
     </div>
-    <h1 class="mb-4">Управление тестировщиками</h1>
-    <p class="text-text-muted mb-4">
+
+    {% include 'admin/_admin_nav.html' %}
+    <p class="text-text-muted mb-3">
         Управление записями <code>Tester</code> (tester entities). Это отдельная сущность от <code>User</code> (логин/пароль).
     </p>
 
     {% if anonymous_count and anonymous_count > 0 %}
-    <div class="p-4 bg-error-soft rounded-card mb-6">
+    <div class="p-4 bg-error-soft rounded-card mb-3">
         <div class="flex items-center justify-between gap-4">
             <div>
                 <div class="font-bold text-text-primary mb-1">
@@ -51,6 +53,7 @@
     {% endif %}
 
     {% if testers %}
+    <div class="table-responsive">
     <table class="testers-table">
         <thead>
             <tr>
@@ -129,9 +132,10 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
     {% else %}
-    <div class="text-center py-12 text-text-muted">
-        <p class="text-lg mb-4">Тестировщики не найдены</p>
+    <div class="text-center py-3 text-text-muted">
+        <p class="text-lg mb-3">Тестировщики не найдены</p>
         <p>Создайте первого тестировщика, нажав кнопку «Создать тестировщика» выше.</p>
     </div>
     {% endif %}

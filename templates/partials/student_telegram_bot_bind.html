@@ -1,9 +1,9 @@
 {# Требуется переменная tg_bind_suffix: уникальный идентификатор без пробелов, напр. studentRoom, upStudent #}
-<section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8" aria-labelledby="tg-widget-title-{{ tg_bind_suffix }}">
-    <h3 id="tg-widget-title-{{ tg_bind_suffix }}" class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+<section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6" aria-labelledby="tg-widget-title-{{ tg_bind_suffix }}">
+    <h3 id="tg-widget-title-{{ tg_bind_suffix }}" class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-2">
         <i class="ph-fill ph-telegram-logo text-lg text-cyan-500"></i> Telegram бот
     </h3>
-    <p class="text-sm text-muted dark:text-dark-muted font-medium mb-4 leading-relaxed">
+    <p class="text-sm text-muted dark:text-dark-muted font-medium mb-3 leading-relaxed">
         Привяжите Telegram, чтобы получать уведомления о уроках, проверке работ и сообщениях — так же, как в основном профиле на платформе.
     </p>
     <div id="tg-status--{{ tg_bind_suffix }}">
@@ -42,13 +42,13 @@
                 '<input type="checkbox" id="tg-notifications-toggle--' + SUF + '" ' + (data.notifications_enabled ? 'checked' : '') +
                 ' onchange="' + nsRef + '.toggleNotifications(this.checked)">' +
                 '<span>Получать уведомления</span></label>' +
-                '<button type="button" class="px-4 py-2 rounded-xl text-sm font-bold border border-slate-200 dark:border-white/[0.12] text-secondary dark:text-white hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors" onclick="' + nsRef + '.unlink()">Отвязать</button>' +
+                '<button type="button" class="px-2 py-0.5 rounded-md text-sm font-bold border border-slate-200 dark:border-white/[0.12] text-secondary dark:text-white hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors" onclick="' + nsRef + '.unlink()">Отвязать</button>' +
                 '</div></div>';
         } else {
             container.innerHTML =
                 '<div class="text-sm text-muted dark:text-dark-muted mb-3">Нажмите кнопку ниже — появится ссылка на бота и команда <code class="text-xs font-mono bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded">/link</code> с кодом.</div>' +
                 '<div id="tg-link-area--' + SUF + '">' +
-                '<button type="button" class="px-5 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-bold text-sm transition-colors shadow-sm inline-flex items-center gap-2" onclick="' + nsRef + '.generateCode()">Привязать Telegram</button>' +
+                '<button type="button" class="px-4 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-bold text-sm transition-colors shadow-sm inline-flex items-center gap-2" onclick="' + nsRef + '.generateCode()">Привязать Telegram</button>' +
                 '</div>';
         }
     }
@@ -82,7 +82,7 @@
                 var botHref = data.deep_link || (data.bot_username ? 'https://t.me/' + data.bot_username : 'https://t.me/boostudy_bot');
                 var botLabel = data.bot_username ? ('@' + data.bot_username) : '@boostudy_bot';
                 var deepBtn = data.deep_link
-                    ? '<a class="inline-flex items-center justify-center px-5 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-bold text-sm transition-colors shadow-sm no-underline mb-3" href="' + data.deep_link + '" target="_blank" rel="noopener">Открыть бота и привязать</a>'
+                    ? '<a class="inline-flex items-center justify-center px-4 py-3 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-bold text-sm transition-colors shadow-sm no-underline mb-3" href="' + data.deep_link + '" target="_blank" rel="noopener">Открыть бота и привязать</a>'
                     : '';
                 var method1 = data.deep_link
                     ? '<div class="text-muted dark:text-dark-muted mb-2"><span class="font-bold text-primary dark:text-white">Способ 1.</span> Нажмите кнопку — откроется ' + botLabel + ' с автоматической привязкой:</div>' + deepBtn
@@ -96,7 +96,7 @@
                     '<code class="flex-1 min-w-[12rem] bg-white dark:bg-dark-inner px-3 py-2 rounded-xl text-base font-bold tracking-wide border border-slate-200 dark:border-white/[0.1]">/link ' + data.code + '</code>' +
                     '<button type="button" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-white/[0.12] font-bold text-sm hover:bg-slate-100 dark:hover:bg-white/10" onclick="' + nsRef + '.copyCode()" title="Скопировать">Копировать</button></div>' +
                     '<div class="text-xs text-amber-700 dark:text-amber-400/90 font-medium">Ссылка и код действительны 15 минут.</div></div>' +
-                    '<button type="button" class="mt-3 px-4 py-2 rounded-xl text-sm font-bold text-muted dark:text-dark-muted border border-slate-200 dark:border-white/[0.12] hover:bg-slate-50 dark:hover:bg-white/[0.06]" onclick="' + nsRef + '.loadStatus()">← Назад</button>';
+                    '<button type="button" class="mt-3 px-2 py-0.5 rounded-md text-sm font-bold text-muted dark:text-dark-muted border border-slate-200 dark:border-white/[0.12] hover:bg-slate-50 dark:hover:bg-white/[0.06]" onclick="' + nsRef + '.loadStatus()">← Назад</button>';
             })
             .catch(function () {
                 area.innerHTML = '<div class="text-sm text-red-600 dark:text-red-400">Ошибка соединения</div>';

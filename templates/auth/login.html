@@ -3,16 +3,16 @@
 {% block title %}Вход в систему · BooStudy{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md">
+<div class="w-full mx-auto" style="max-width: 480px;">
     <section class="glass-panel">
-        <div class="text-center mb-8">
+        <div class="text-center mb-3">
             <p class="hero-eyebrow">авторизация</p>
             <h1 class="hero-title">Вход в систему</h1>
             <p class="hero-subtitle">Введите ключ и пароль для доступа к платформе</p>
         </div>
 
         {% if form and form.errors %}
-        <div class="alert alert-danger mb-6">
+        <div class="alert alert-danger mb-3">
             <strong>Ошибки:</strong>
             <ul class="mt-2 ml-6 list-disc">
             {% for field_name, error_list in form.errors.items() %}
@@ -37,7 +37,10 @@
             </div>
 
             <div class="neo-field">
-                {{ form.password.label(class='neo-label') }}
+                <div class="flex justify-between items-center mb-1">
+                    {{ form.password.label(class='neo-label m-0') }}
+                    <a href="{{ url_for('auth.forgot_password') }}" class="text-xs text-boo-primary hover:underline font-bold" style="text-decoration:none;">Забыли пароль?</a>
+                </div>
                 {{ form.password(class='neo-input', placeholder='Введите пароль') }}
                 {% if form.password.errors %}
                 <div class="text-error text-sm mt-1 font-medium">{{ form.password.errors[0] }}</div>
@@ -49,7 +52,9 @@
             </div>
 
             <div class="mt-5 pt-5 border-t border-stroke text-center">
-                <p class="text-muted mb-3">Нет аккаунта? Попробуйте демо — без регистрации.</p>
+                <p class="text-muted mb-3">Нет аккаунта? Зарегистрируйтесь на платформе.</p>
+                <a href="{{ url_for('auth.register') }}" class="neo-button ghost w-full justify-center mb-3">Создать аккаунт</a>
+                <p class="text-muted mb-3">Или попробуйте демо без регистрации:</p>
                 <a href="{{ (config.DEMO_BASE_URL + '/demo') if config.DEMO_BASE_URL else url_for('auth.demo_choose') }}" class="neo-button ghost w-full justify-center">Попробовать демо</a>
             </div>
         </form>
@@ -60,6 +65,6 @@
         {% endif %}
     </section>
 
-    <p class="text-center mt-8 text-muted">Платформа для управления учебным процессом</p>
+    <p class="text-center mt-3 text-muted">Платформа для управления учебным процессом</p>
 </div>
 {% endblock %}

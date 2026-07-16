@@ -4,19 +4,29 @@
 {% set active_page = 'groups' %}
 {% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
+
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .active-scale-098:active { transform: scale(0.98); }
+    .bg-length-16px { background-color: length:16px; }
+    .hover-shadow-0-6px-16px-rgba139-92-246-015:hover { box-shadow: 0 6px 16px rgba(139,92,246,0.15); }
+    .bg-urldata-image-svgxmlcharsetutf-8-3Csvg { background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg; }
+    .bg-right-12px-center { background-color: right 12px center; }
+    .shadow-0-4px-12px-rgba139-92-246-008 { box-shadow: 0 4px 12px rgba(139,92,246,0.08); }
+</style>
 {% block content %}
-<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6 pb-6">
-    <section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-[32px] p-8 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden">
+<div class="flex flex-col gap-6 pb-6 w-full">
+    <section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-2xl p-6 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-boo-primary/10 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
-        <p class="text-[10px] font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+        <p class="text-tiny font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
             <i class="ph-fill ph-users-four text-sm"></i> группы
         </p>
-        <h1 class="text-3xl font-black text-primary dark:text-white tracking-tight">
+        <h1 class="text-2xl font-bold text-primary dark:text-white tracking-tight">
             {% if is_new %}Создать новую группу{% else %}Редактировать группу{% endif %}
         </h1>
     </section>
 
-    <div class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] rounded-[28px] p-6 lg:p-8 shadow-sm dark:shadow-glass-dark mb-6">
+    <div class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light rounded-2xl p-6 lg:p-6 shadow-sm dark:shadow-glass-dark mb-3">
         <form method="POST" action="{% if is_new %}{{ url_for('groups.group_new') }}{% else %}{{ url_for('groups.group_edit', group_id=group.group_id) }}{% endif %}" data-no-ajax="1" class="space-y-6">
             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
             {% if form and form.errors %}
@@ -33,32 +43,32 @@
             {% endif %}
             
             <div class="space-y-1.5">
-                <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Название *</label>
-                <input type="text" name="title" required value="{{ group.title if group else '' }}" placeholder="Например: 10А (информатика)" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm">
+                <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Название *</label>
+                <input type="text" name="title" required value="{{ group.title if group else '' }}" placeholder="Например: 10А (информатика)" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm">
             </div>
 
             <div class="space-y-1.5">
-                <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Предмет</label>
-                <input type="text" name="subject" value="{{ group.subject if group else '' }}" placeholder="INFORMATICS_EGE_2026" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm">
+                <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Предмет</label>
+                <input type="text" name="subject" value="{{ group.subject if group else '' }}" placeholder="INFORMATICS_EGE_2026" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm">
             </div>
 
             <div class="space-y-1.5">
-                <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Статус</label>
+                <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Статус</label>
                 {% set st = (group.status if group else 'active') %}
-                <select name="status" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-200 focus:outline-none focus:border-boo-primary cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat">
+                <select name="status" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-200 focus:outline-none focus:border-boo-primary cursor-pointer appearance-none bg-urldata-image-svgxmlcharsetutf-8-3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-length-16px bg-right-12px-center bg-no-repeat">
                     <option value="active" {% if st == 'active' %}selected{% endif %}>active</option>
                     <option value="archived" {% if st == 'archived' %}selected{% endif %}>archived</option>
                 </select>
             </div>
 
             <div class="space-y-1.5">
-                <label class="text-[11px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Описание</label>
-                <textarea rows="4" name="description" placeholder="Для кого группа, цели, примечания..." class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm resize-y">{{ group.description if group and group.description else '' }}</textarea>
+                <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Описание</label>
+                <textarea rows="4" name="description" placeholder="Для кого группа, цели, примечания..." class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm resize-y">{{ group.description if group and group.description else '' }}</textarea>
             </div>
 
             <div class="flex gap-4 justify-end">
-                <a href="{% if is_new %}{{ url_for('groups.groups_list') }}{% else %}{{ url_for('groups.group_view', group_id=group.group_id) }}{% endif %}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center no-underline">Отмена</a>
-                <button type="submit" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)]">
+                <a href="{% if is_new %}{{ url_for('groups.groups_list') }}{% else %}{{ url_for('groups.group_view', group_id=group.group_id) }}{% endif %}" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center no-underline">Отмена</a>
+                <button type="submit" class="h-9 px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-008 hover-shadow-0-6px-16px-rgba139-92-246-015">
                     {% if is_new %}Создать{% else %}Сохранить{% endif %}
                 </button>
             </div>

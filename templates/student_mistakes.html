@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}Работа над ошибками · BooStudy{% endblock %}
+
+{% block content %}
+<section class="glass-panel mb-5 w-full">
+    <p class="hero-eyebrow">тренажер</p>
+    <h1 class="hero-title mb-1">Работа над ошибками</h1>
+    <div style="color: var(--text-muted);">Здесь собраны все задачи из домашних заданий, в которых вы допустили ошибки. Исправьте их!</div>
+</section>
+
+{% if mistakes %}
+<div class="grid gap-6" style="grid-template-columns: 1fr;">
+    {% for ans in mistakes %}
+    {% set task = ans.assignment_task.task %}
+    <div class="glass-panel p-6" id="mistake-card-{{ ans.answer_id }}">
+        <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
+            <span class="px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-bold text-xs">
+                Задача №{{ task.task_number }} (Задание #{{ ans.submission.assignment_id }})
+            </span>
+            <span class="text-xs text-muted">Макс. балл: {{ ans.assignment_task.max_score or 1 }}</span>
+        </div>
+
+        <div class="task-content mb-3 prose dark:prose-invert max-w-none text-zinc-950 dark:text-zinc-50">
+            {{ task.content_html | safe }}
+        </div>
+
+        {% if task.attached_files %}
+        <div class="mb-3">
+            <p class="text-xs font-bold text-muted mb-2">Файлы к задаче:</p>
+            <div class="flex gap-2 flex-wrap">
+                {% for f in task.attached_files.split(',') %}
+                <a href="{{ url_for('static', filename='uploads/' ~ f.strip()) }}" class="neo-button outline sm" target="_blank">
+                    <i class="ph ph-file"></i> {{ f.strip() }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="p-4 bg-surface-alt dark:bg-dark-inner/40 rounded-xl border border-stroke mb-3">
+            <p class="text-xs text-muted mb-1">Ваш прошлый ответ:</p>
+            <p class="font-mono text-sm text-red-500 font-semibold">{{ ans.value or 'Пусто' }}</p>
+        </div>
+
+        <form class="mistake-retry-form" data-answer-id="{{ ans.answer_id }}">
+            <div class="flex gap-3 flex-wrap">
+                <input class="neo-input" style="flex: 1; min-width: 200px;" name="new_answer" placeholder="Введите ваш новый ответ" required>
+                <button type="submit" class="neo-button accent">Проверить</button>
+            </div>
+            <div class="result-message mt-3 text-sm font-semibold hidden"></div>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="glass-panel text-center py-16">
+    <div class="text-3xl mb-3">🎉</div>
+    <h2>Нет нерешенных ошибок!</h2>
+    <p class="text-muted mt-2">Вы великолепны, все задачи решены верно!</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.querySelectorAll('.mistake-retry-form').forEach(form => {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const ansId = this.getAttribute('data-answer-id');
+            const newAnswer = this.querySelector('input[name="new_answer"]').value;
+            const msgDiv = this.querySelector('.result-message');
+            const submitBtn = this.querySelector('button[type="submit"]');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Проверка...';
+
+            try {
+                const response = await fetch(`/student/mistakes/${ansId}/retry`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}'
+                    },
+                    body: JSON.stringify({ new_answer: newAnswer })
+                });
+
+                const data = await response.json();
+                msgDiv.classList.remove('hidden', 'text-red-500', 'text-emerald-500');
+                
+                if (data.success) {
+                    msgDiv.classList.add('text-emerald-500');
+                    msgDiv.textContent = data.message;
+                    setTimeout(() => {
+                        document.getElementById(`mistake-card-${ansId}`).remove();
+                        if (document.querySelectorAll('[id^="mistake-card-"]').length === 0) {
+                            location.reload();
+                        }
+                    }, 1500);
+                } else {
+                    msgDiv.classList.add('text-red-500');
+                    msgDiv.textContent = data.message;
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Проверить';
+                }
+            } catch (err) {
+                console.error(err);
+                msgDiv.classList.remove('hidden');
+                msgDiv.classList.add('text-red-500');
+                msgDiv.textContent = 'Ошибка связи с сервером.';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Проверить';
+            }
+        });
+    });
+</script>
+{% endblock %}

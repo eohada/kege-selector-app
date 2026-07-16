@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     {% include '_boo_select_head.html' %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=3.3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20260708-v1">
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -29,7 +29,7 @@
 
         <main class="remote-main">
         <section class="glass-panel" style="max-width: 1000px; padding: 2rem;">
-            <div class="mb-6">
+            <div class="mb-3">
                 <h1 class="m-0">🎒 Быстрое создание пака</h1>
                 <p class="text-muted mt-2">
                     Создание ученика + родителя + назначение тарифа за один шаг
@@ -45,7 +45,7 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
 
                     <div class="glass-panel p-6" style="border: 2px solid var(--accent-primary);">
-                        <h2 class="mb-4 text-lg" style="color: var(--accent-primary);">
+                        <h2 class="mb-3 text-lg" style="color: var(--accent-primary);">
                             👨‍🎓 Ученик
                         </h2>
                         
@@ -102,7 +102,7 @@
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
 
                         <div class="glass-panel p-6" style="border: 2px solid var(--warning);">
-                            <h2 class="mb-4 text-lg" style="color: var(--warning);">
+                            <h2 class="mb-3 text-lg" style="color: var(--warning);">
                                 👨‍👩‍👧 Родитель
                                 <label class="float-right text-sm font-normal">
                                     <input type="checkbox" id="create_parent" name="create_parent" checked 
@@ -128,7 +128,7 @@
                         </div>
 
                         <div class="glass-panel p-6" style="border: 2px solid var(--success);">
-                            <h2 class="mb-4 text-lg" style="color: var(--success);">
+                            <h2 class="mb-3 text-lg" style="color: var(--success);">
                                 💳 Тариф
                                 <label class="float-right text-sm font-normal">
                                     <input type="checkbox" id="assign_tariff" name="assign_tariff" checked
@@ -163,9 +163,9 @@
                     </div>
                 </div>
 
-                <div class="glass-panel mt-8 p-6" style="background: rgba(255,255,255,0.03);">
-                    <h2 class="mb-4 text-lg">🔐 Учетные данные для входа</h2>
-                    <p class="text-muted mb-4">
+                <div class="glass-panel mt-3 p-6" style="background: rgba(255,255,255,0.03);">
+                    <h2 class="mb-3 text-lg">🔐 Учетные данные для входа</h2>
+                    <p class="text-muted mb-3">
                         Логин и пароль генерируются автоматически. После создания вы сможете скопировать их для отправки.
                     </p>
                     
@@ -193,7 +193,7 @@
                     </div>
                 </div>
 
-                <div class="flex gap-4 justify-end mt-8">
+                <div class="flex gap-4 justify-end mt-3">
                     <a href="{{ url_for('remote_admin.users_list') }}" class="neo-button outline">Отмена</a>
                     <button type="submit" class="neo-button accent" style="padding: 0.75rem 2rem;">
                         🚀 Создать пак
@@ -201,12 +201,12 @@
                 </div>
             </form>
 
-            <div id="result-panel" class="glass-panel mt-8 p-6 hidden" style="border: 2px solid var(--success);">
-                <h2 class="mb-4" style="color: var(--success);">✅ Пак успешно создан!</h2>
+            <div id="result-panel" class="glass-panel mt-3 p-6 hidden" style="border: 2px solid var(--success);">
+                <h2 class="mb-3" style="color: var(--success);">✅ Пак успешно создан!</h2>
                 
                 <div id="result-content"></div>
                 
-                <div class="mt-4">
+                <div class="mt-3">
                     <button type="button" class="neo-button" onclick="copyCredentials()">
                         📋 Скопировать данные для входа
                     </button>

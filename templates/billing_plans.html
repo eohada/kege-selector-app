@@ -4,22 +4,41 @@
 {% set active_page = 'billing' %}
 {% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
+{% block head_css %}
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .hover-scale-102:hover { transform: scale(1.02); }
+</style>
+
+<style>
+    .tv-decor-circle-1 {
+        bottom: -50px;
+    }
+    .tv-purple-shadow {
+        box-shadow: 0 8px 24px -4px rgba(139,92,246,0.28);
+    }
+    .tv-border-bottom-3 {
+        border-bottom-width: 3px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6 -mt-2 mb-2">
-    <div class="bg-gradient-to-br from-[#EEF2FF] to-[#F5F3FF] rounded-[32px] p-8 border border-indigo-100 shadow-sm dark:shadow-none dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-end gap-8">
+<div class="flex flex-col gap-6 pb-8 pt-6 w-full">
+    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100 shadow-sm dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-end gap-6">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute right-60 bottom-[-50px] w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute right-60 tv-decor-circle-1 w-60 h-60 bg-purple-200/40 rounded-full blur-2xl pointer-events-none"></div>
         <div class="relative z-10 max-w-3xl">
-            <div class="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+            <div class="text-tiny font-extrabold text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
                 <i class="ph-fill ph-credit-card"></i> Биллинг и доступ
             </div>
-            <h1 class="text-4xl font-black text-primary tracking-tight mb-3">Тарифы платформы</h1>
+            <h1 class="text-lg font-bold text-primary tracking-tight mb-3">Тарифы платформы</h1>
             <p class="text-muted font-medium text-sm leading-relaxed max-w-xl">
                 Создавайте тарифные планы, группируйте их и управляйте доступом учеников к урокам и тренажёру. Ниже — мастер подбора и администрирование.
             </p>
         </div>
-        <div class="relative z-10 bg-white/60 backdrop-blur-md p-1.5 rounded-xl flex border border-white shadow-sm dark:shadow-none dark:shadow-none shrink-0 w-full md:w-auto gap-1">
-            <a href="{{ url_for('billing.billing_plans') }}" class="flex-1 md:flex-none px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm shadow-[0_8px_24px_-4px_rgba(139,92,246,0.28)] border-b-[3px] border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none flex justify-center items-center gap-2 whitespace-nowrap no-underline">
+        <div class="relative z-10 bg-white/60 backdrop-blur-md p-1.5 rounded-xl flex border border-white shadow-sm dark:shadow-none shrink-0 w-full md:w-auto gap-1">
+            <a href="{{ url_for('billing.billing_plans') }}" class="flex-1 md:flex-none px-6 py-2.5 bg-boo-primary text-white rounded-xl font-bold text-sm tv-purple-shadow tv-border-bottom-3 border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none flex justify-center items-center gap-2 whitespace-nowrap no-underline">
                 <i class="ph-bold ph-list-dashes text-lg"></i> База тарифов
             </a>
             <a href="{{ url_for('billing.billing_subscriptions') }}" class="flex-1 md:flex-none px-6 py-2.5 text-muted hover:text-primary rounded-lg font-bold text-sm transition-all whitespace-nowrap flex justify-center items-center gap-2 no-underline hover:bg-white/80">
@@ -30,6 +49,7 @@
 </div>
 
 {# ── 3-Step Tariff Wizard ── #}
+<div class="w-full px-4 sm:px-6">
 <section class="glass-panel" style="margin-bottom: 1.25rem; padding: 2rem;" x-data="{
     step: 1,
     goal: '',
@@ -52,7 +72,7 @@
 }">
 
     {# Step Indicators #}
-    <div class="flex items-center justify-center gap-2 mb-8">
+    <div class="flex items-center justify-center gap-2 mb-3">
         <template x-for="s in [1,2,3]">
             <div class="flex items-center gap-2">
                 <div :class="step >= s ? 'bg-accent text-white' : 'bg-bg-surface-alt text-text-muted'"
@@ -66,19 +86,19 @@
 
     {# ── Step 1: Choose Goal ── #}
     <div x-show="step === 1" x-transition>
-        <h2 class="text-2xl font-bold text-center mb-6">Выберите цель</h2>
+        <h2 class="text-2xl font-bold text-center mb-3">Выберите цель</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
             <div @click="goal = 'oge'; step = 2"
                  :class="goal === 'oge' ? 'ring-2 ring-accent shadow-accent' : ''"
-                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
-                <div class="text-4xl mb-3">📝</div>
+                 class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
+                <div class="text-2xl mb-3">📝</div>
                 <div class="text-xl font-bold">ОГЭ</div>
                 <div class="text-text-muted text-sm mt-2">Основной государственный экзамен · 9 класс</div>
             </div>
             <div @click="goal = 'ege'; step = 2"
                  :class="goal === 'ege' ? 'ring-2 ring-accent shadow-accent' : ''"
-                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
-                <div class="text-4xl mb-3">🎓</div>
+                 class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
+                <div class="text-2xl mb-3">🎓</div>
                 <div class="text-xl font-bold">ЕГЭ</div>
                 <div class="text-text-muted text-sm mt-2">Единый государственный экзамен · 11 класс</div>
             </div>
@@ -87,11 +107,11 @@
 
     {# ── Step 2: Choose Format ── #}
     <div x-show="step === 2" x-transition>
-        <h2 class="text-2xl font-bold text-center mb-6">Выберите формат</h2>
+        <h2 class="text-2xl font-bold text-center mb-3">Выберите формат</h2>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <div @click="format = 'solo'; step = 3"
                  :class="format === 'solo' ? 'ring-2 ring-accent shadow-accent' : ''"
-                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                 class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
                 <div class="text-3xl mb-3">🧑‍💻</div>
                 <div class="text-lg font-bold">Solo</div>
                 <div class="text-text-muted text-sm mt-2">Самостоятельная подготовка с доступом к тренажёру и материалам</div>
@@ -99,7 +119,7 @@
             </div>
             <div @click="format = 'mentor'; step = 3"
                  :class="format === 'mentor' ? 'ring-2 ring-accent shadow-accent' : ''"
-                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                 class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
                 <div class="text-3xl mb-3">👨‍🏫</div>
                 <div class="text-lg font-bold">Mentor</div>
                 <div class="text-text-muted text-sm mt-2">Занятия с преподавателем + тренажёр + разбор заданий</div>
@@ -107,58 +127,58 @@
             </div>
             <div @click="format = 'godmode'; step = 3"
                  :class="format === 'godmode' ? 'ring-2 ring-accent shadow-accent' : ''"
-                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                 class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
                 <div class="text-3xl mb-3">⚡</div>
                 <div class="text-lg font-bold">God Mode</div>
                 <div class="text-text-muted text-sm mt-2">Полный доступ: наставник + тренажёр + приоритетная проверка</div>
                 <div class="text-accent font-bold mt-3">от 9 990 ₽</div>
             </div>
         </div>
-        <div class="flex justify-center mt-8">
+        <div class="flex justify-center mt-3">
             <button @click="step--" class="neo-button ghost">← Назад</button>
         </div>
     </div>
 
     {# ── Step 3: Choose Plan ── #}
     <div x-show="step === 3" x-transition>
-        <h2 class="text-2xl font-bold text-center mb-6">Выберите пакет</h2>
+        <h2 class="text-2xl font-bold text-center mb-3">Выберите пакет</h2>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <div @click="plan = 'junior'"
                  :class="plan === 'junior' ? 'ring-2 ring-accent shadow-accent' : ''"
-                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                 class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
                 <div class="text-lg font-bold">Junior</div>
                 <div class="text-text-muted text-sm mt-2">4 урока · базовый набор</div>
-                <div class="text-3xl font-bold mt-4">2 490 ₽</div>
+                <div class="text-3xl font-bold mt-3">2 490 ₽</div>
                 <div class="text-text-muted text-sm mt-1">623 ₽ / урок</div>
             </div>
             <div @click="plan = 'middle'"
                  :class="plan === 'middle' ? 'ring-2 ring-accent shadow-accent' : 'shadow-accent-glow'"
-                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center relative">
+                 class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center relative">
                 <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-xs font-bold px-3 py-1 rounded-full">Оптимальный</span>
                 <div class="text-lg font-bold">Middle</div>
                 <div class="text-text-muted text-sm mt-2">8 уроков · расширенный набор</div>
-                <div class="text-3xl font-bold mt-4">4 990 ₽</div>
+                <div class="text-3xl font-bold mt-3">4 990 ₽</div>
                 <div class="text-text-muted text-sm mt-1">624 ₽ / урок</div>
             </div>
             <div @click="plan = 'advanced'"
                  :class="plan === 'advanced' ? 'ring-2 ring-accent shadow-accent' : ''"
-                 class="rounded-card-lg shadow-card p-8 cursor-pointer transition-all hover:scale-[1.02] bg-bg-surface text-center">
+                 class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
                 <div class="text-lg font-bold">Advanced</div>
                 <div class="text-text-muted text-sm mt-2">16 уроков · полный курс</div>
-                <div class="text-3xl font-bold mt-4">9 990 ₽</div>
+                <div class="text-3xl font-bold mt-3">9 990 ₽</div>
                 <div class="text-text-muted text-sm mt-1">624 ₽ / урок</div>
             </div>
         </div>
-        <div class="flex justify-center mt-8">
+        <div class="flex justify-center mt-3">
             <button @click="step--" class="neo-button ghost">← Назад</button>
         </div>
     </div>
 
     {# ── Summary Card ── #}
-    <div x-show="allSelected()" x-transition class="mt-8">
-        <div class="rounded-card-lg shadow-card p-8 max-w-xl mx-auto bg-bg-surface">
-            <h3 class="text-xl font-bold mb-4 text-center">Ваш выбор</h3>
-            <div class="space-y-3 mb-6">
+    <div x-show="allSelected()" x-transition class="mt-3">
+        <div class="rounded-2xl shadow-card p-6 max-w-xl mx-auto bg-bg-surface">
+            <h3 class="text-xl font-bold mb-3 text-center">Ваш выбор</h3>
+            <div class="space-y-3 mb-3">
                 <div class="flex items-center gap-2">
                     <span class="text-accent">✓</span>
                     <span>Экзамен: <strong x-text="goalLabel()"></strong></span>
@@ -180,7 +200,7 @@
                     <span>Персональная статистика</span>
                 </div>
             </div>
-            <div class="text-center mb-6">
+            <div class="text-center mb-3">
                 <div class="text-text-muted text-sm">Итого</div>
                 <div class="text-3xl font-bold" x-text="planPrice() + ' ₽'"></div>
             </div>
@@ -188,7 +208,7 @@
                 type="button"
                 :disabled="!allSelected()"
                 @click="window.location.href='{{ url_for('billing.billing_subscriptions') }}'"
-                class="neo-button accent w-full py-4 text-lg disabled:opacity-60 disabled:cursor-not-allowed">
+                class="neo-button accent w-full py-2 text-lg disabled:opacity-60 disabled:cursor-not-allowed">
                 Оплатить
             </button>
         </div>
@@ -436,5 +456,6 @@
             {% endif %}
         </div>
     </section>
+</div>
 </div>
 {% endblock %}

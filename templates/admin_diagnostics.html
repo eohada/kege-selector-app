@@ -4,22 +4,22 @@
 {% set active_page = 'admin' %}
 
 {% block content %}
-<section class="glass-panel mb-6">
-    <div class="flex items-center gap-4 mb-4">
-        <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}" class="neo-button ghost">
-            ← К админ-панели
+<section class="glass-panel mb-3 w-full">
+    <div class="flex items-center gap-4 mb-5">
+        <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+            ← На главную
         </a>
+        <h1 class="m-0">Панель управления</h1>
     </div>
-    <p class="hero-eyebrow">диагностика</p>
-    <h1 class="hero-title">{{ ui_icon('action.search', 'md', decorative=true) }} Диагностика окружения</h1>
-    <p class="hero-subtitle">Эта страница помогает выявить различия между production и sandbox окружениями</p>
+
+    {% include 'admin/_admin_nav.html' %}
 </section>
 
 {% if current_user and (current_user.is_admin() or current_user.is_creator()) %}
-<section class="glass-panel mb-6">
+<section class="glass-panel mb-3">
     <p class="hero-eyebrow">сервис</p>
     <h2 class="text-lg font-extrabold m-0 mb-3">Экспорт / Импорт / Бэкап</h2>
-    <p class="text-sm text-text-muted m-0 mb-4">Сервисные операции вынесены из дашборда сюда, чтобы не засорять рабочий экран.</p>
+    <p class="text-sm text-text-muted m-0 mb-3">Сервисные операции вынесены из дашборда сюда, чтобы не засорять рабочий экран.</p>
     <div class="flex flex-wrap gap-3">
         <a href="{{ url_for('main.export_data') }}" class="neo-button accent">
             {{ ui_icon('action.export', 'sm', decorative=true) }} Экспорт данных
@@ -35,8 +35,8 @@
 {% endif %}
 
 {% if diagnostics_data.errors %}
-<section class="glass-panel mb-6" style="border-left: 3px solid #FF6B6B;">
-    <h2 class="text-error mb-4">{{ ui_icon('action.close', 'sm', decorative=true) }}Обнаружены ошибки:</h2>
+<section class="glass-panel mb-3" style="border-left: 3px solid #FF6B6B;">
+    <h2 class="text-error mb-3">{{ ui_icon('action.close', 'sm', decorative=true) }}Обнаружены ошибки:</h2>
     <ul class="m-0 pl-6">
         {% for error in diagnostics_data.errors %}
         <li class="text-error mb-2">{{ error }}</li>
@@ -45,9 +45,9 @@
 </section>
 {% endif %}
 
-<div class="grid gap-6 mb-6" style="grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
+<div class="grid gap-6 mb-3" style="grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
     <section class="glass-panel">
-        <h2 class="mb-6 text-text-primary">{{ ui_icon('action.admin', 'sm', decorative=true) }} Окружение</h2>
+        <h2 class="mb-3 text-text-primary">{{ ui_icon('action.admin', 'sm', decorative=true) }} Окружение</h2>
         <div class="flex flex-col gap-4">
             <div>
                 <div class="text-sm text-text-muted mb-1">ENVIRONMENT</div>
@@ -65,7 +65,7 @@
     </section>
 
     <section class="glass-panel">
-        <h2 class="mb-6 text-text-primary">{{ ui_icon('action.backup', 'sm') }} База данных</h2>
+        <h2 class="mb-3 text-text-primary">{{ ui_icon('action.backup', 'sm') }} База данных</h2>
         <div class="flex flex-col gap-4">
             <div>
                 <div class="text-sm text-text-muted mb-1">Тип БД</div>
@@ -124,26 +124,26 @@
     </section>
 </div>
 
-<div class="grid gap-6 mb-6" style="grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
+<div class="grid gap-6 mb-3" style="grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));">
     <section class="glass-panel">
-        <h2 class="mb-6 text-text-primary">{{ ui_icon('nav.stats', 'sm', decorative=true) }} Данные в БД</h2>
+        <h2 class="mb-3 text-text-primary">{{ ui_icon('nav.stats', 'sm', decorative=true) }} Данные в БД</h2>
         {% if diagnostics_data.database.data_counts %}
         <div class="grid grid-cols-2 gap-4">
             <div class="p-4 bg-bg-surface-alt rounded-card shadow-card">
                 <div class="text-sm text-text-muted mb-2">Учеников</div>
-                <div class="text-4xl font-bold text-accent">{{ diagnostics_data.database.data_counts.students }}</div>
+                <div class="text-2xl font-bold text-accent">{{ diagnostics_data.database.data_counts.students }}</div>
             </div>
             <div class="p-4 bg-bg-surface-alt rounded-card shadow-card">
                 <div class="text-sm text-text-muted mb-2">Уроков</div>
-                <div class="text-4xl font-bold text-accent">{{ diagnostics_data.database.data_counts.lessons }}</div>
+                <div class="text-2xl font-bold text-accent">{{ diagnostics_data.database.data_counts.lessons }}</div>
             </div>
             <div class="p-4 bg-bg-surface-alt rounded-card shadow-card">
                 <div class="text-sm text-text-muted mb-2">Пользователей</div>
-                <div class="text-4xl font-bold text-accent">{{ diagnostics_data.database.data_counts.users }}</div>
+                <div class="text-2xl font-bold text-accent">{{ diagnostics_data.database.data_counts.users }}</div>
             </div>
             <div class="p-4 bg-bg-surface-alt rounded-card shadow-card">
                 <div class="text-sm text-text-muted mb-2">Заданий</div>
-                <div class="text-4xl font-bold text-accent">{{ diagnostics_data.database.data_counts.tasks }}</div>
+                <div class="text-2xl font-bold text-accent">{{ diagnostics_data.database.data_counts.tasks }}</div>
             </div>
         </div>
         {% else %}
@@ -154,7 +154,7 @@
     </section>
 
     <section class="glass-panel">
-        <h2 class="mb-6 text-text-primary">⚙️ Приложение</h2>
+        <h2 class="mb-3 text-text-primary">⚙️ Приложение</h2>
         <div class="flex flex-col gap-4">
             <div>
                 <div class="text-sm text-text-muted mb-1">SECRET_KEY</div>
@@ -182,8 +182,8 @@
 </div>
 
 {% if diagnostics_data.database.tables %}
-<section class="glass-panel mb-6">
-    <h2 class="mb-6 text-text-primary">{{ ui_icon('action.copy', 'sm') }} Таблицы в БД</h2>
+<section class="glass-panel mb-3">
+    <h2 class="mb-3 text-text-primary">{{ ui_icon('action.copy', 'sm') }} Таблицы в БД</h2>
     <div class="flex flex-wrap gap-2">
         {% for table in diagnostics_data.database.tables %}
         <span class="px-4 py-2 bg-bg-surface-alt rounded-btn shadow-card text-sm">{{ table }}</span>
@@ -192,8 +192,8 @@
 </section>
 {% endif %}
 
-<section class="glass-panel mb-6">
-    <h2 class="mb-4 text-text-primary">Как использовать эту информацию:</h2>
+<section class="glass-panel mb-3">
+    <h2 class="mb-3 text-text-primary">Как использовать эту информацию:</h2>
     <ol class="m-0 pl-6" style="line-height: 1.8;">
         <li>Откройте эту страницу в <strong>production</strong> и скопируйте данные</li>
         <li>Откройте эту страницу в <strong>sandbox</strong> и сравните</li>

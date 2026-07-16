@@ -100,7 +100,7 @@
     {% set mode_text = 'Общий генератор' %}
 {% endif %}
 
-<section class="glass-panel generator-hero">
+<section class="glass-panel generator-hero w-full">
     <div>
         <p class="hero-eyebrow">генератор заданий</p>
         <h1 class="hero-title">Один поток. Одна задача. Максимум фокуса.</h1>
@@ -170,7 +170,7 @@
 
 <div class="gen-premium-shell">
     <section class="glass-panel generator-panel gen-start-card">
-        <div class="flex justify-between items-start mb-6">
+        <div class="flex justify-between items-start mb-3">
             <div>
                 <h2>Запуск</h2>
                 <p class="hint m-0">Выбери номер задания и нажми старт.</p>
@@ -203,11 +203,11 @@
                 Подсказка: кнопки можно прожимать с клавиатуры — <span class="gen-kbd">A</span>/<span class="gen-kbd">S</span>/<span class="gen-kbd">B</span>.
             </div>
         </form>
-        <div class="generator-reset mt-6">
+        <div class="generator-reset mt-3">
             <details>
                 <summary class="cursor-pointer font-bold">Расширенные действия</summary>
-                <div class="mt-4">
-                    <div class="generator-links mb-4">
+                <div class="mt-3">
+                    <div class="generator-links mb-3">
                         <a href="{{ url_for('assignments.assignments_accepted', assignment_type=assignment_type) }}" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Принятые</a>
                         {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
                         <button type="button" id="genCreateWorkBtn" class="neo-button outline"><span id="genCreateWorkBtnText">📝 Создать работу</span></button>
@@ -230,7 +230,7 @@
                     </form>
                     <form method="POST"
                           action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
-                          class="generator-form-grid mt-4">
+                          class="generator-form-grid mt-3">
                         {{ search_form.hidden_tag() }}
                         <input type="hidden" name="lesson_id" value="{{ lesson_id or '' }}">
                         <div class="neo-field">

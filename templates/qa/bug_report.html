@@ -5,10 +5,10 @@
 {% block title %}Баг-репорт · QA{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4 px-4" style="max-width: 640px;">
+<div class="container-fluid mt-3 w-full" style="max-width: 640px;">
     <div class="glass-panel p-4">
-        <h2 class="mb-4 text-primary">Создать баг-репорт</h2>
-        <p class="mb-4 text-muted text-sm">Страница и пользователь будут сохранены в задаче для воспроизведения.</p>
+        <h2 class="mb-3 text-primary">Создать баг-репорт</h2>
+        <p class="mb-3 text-muted text-sm">Страница и пользователь будут сохранены в задаче для воспроизведения.</p>
         <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="context_url" value="{{ context_url }}">
@@ -25,9 +25,9 @@
             {% if context_url %}
             <p class="mb-3 text-sm text-muted">URL: {{ context_url[:80] }}{% if context_url|length > 80 %}…{% endif %}</p>
             {% endif %}
-            <div class="flex gap-4 mt-6">
+            <div class="flex gap-4 mt-3">
                 <button type="submit" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать</button>
-                <a href="{{ return_to or url_for('qa.board') }}" class="neo-button ghost">Отмена</a>
+                <a href="{{ return_to or url_for('qa_tester.board') }}" class="neo-button ghost">Отмена</a>
             </div>
         </form>
     </div>

@@ -4,35 +4,35 @@
 {% set active_page = 'admin' %}
 
 {% block content %}
-<section class="glass-panel mb-6">
-    <div class="flex items-center gap-4 mb-4">
-        <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}" class="neo-button ghost">
-            ← К админ-панели
+<section class="glass-panel mb-3 w-full">
+    <div class="flex items-center gap-4 mb-5">
+        <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+            ← На главную
         </a>
+        <h1 class="m-0">Панель управления</h1>
     </div>
-    <p class="hero-eyebrow">управление темами</p>
-    <h1 class="hero-title">{{ ui_icon('nav.stats', 'md', decorative=true) }}Темы заданий</h1>
-    <p class="hero-subtitle">Управление темами для аналитики навыков учеников</p>
+
+    {% include 'admin/_admin_nav.html' %}
 </section>
 
-<section class="glass-panel mb-6">
+<section class="glass-panel mb-3">
     <div class="panel-head">
         <div>
             <p class="eyebrow">создание</p>
             <h2>Создать новую тему</h2>
         </div>
     </div>
-    <form id="createTopicForm" class="mt-6">
+    <form id="createTopicForm" class="mt-3">
         <div class="neo-field">
             <label class="neo-label" for="topic-name">Название темы *</label>
             <input id="topic-name" name="name" class="neo-input" placeholder="Например: Логарифмы, Дроби, Пунктуация" required>
             <small class="text-text-muted text-sm mt-1">Название должно быть уникальным</small>
         </div>
-        <div class="neo-field mt-4">
+        <div class="neo-field mt-3">
             <label class="neo-label" for="topic-description">Описание (необязательно)</label>
             <textarea id="topic-description" name="description" class="neo-input" rows="3" placeholder="Краткое описание темы"></textarea>
         </div>
-        <div class="mt-6">
+        <div class="mt-3">
             <button type="submit" class="neo-button accent">Создать тему</button>
         </div>
     </form>
@@ -47,7 +47,8 @@
     </div>
 
     {% if topics_stats %}
-    <div class="mt-6">
+    <div class="mt-3">
+    <div class="table-responsive">
         <table class="audit-table">
             <thead>
                 <tr>
@@ -81,8 +82,9 @@
             </tbody>
         </table>
     </div>
+    </div>
     {% else %}
-    <div class="text-center py-12 text-text-muted">
+    <div class="text-center py-3 text-text-muted">
         <p>Темы еще не созданы. Создайте первую тему выше.</p>
     </div>
     {% endif %}

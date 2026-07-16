@@ -3,10 +3,10 @@
 {% set active_page = 'reminders' %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-8">
+<div class="space-y-5 w-full">
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-black text-primary tracking-tight">Напоминания</h1>
+            <h1 class="text-lg font-bold text-primary tracking-tight">Напоминания</h1>
             <p class="text-sm text-muted mt-1">Личные напоминания. Уведомления в Telegram настраиваются отдельно.</p>
         </div>
         <div class="flex gap-2 text-sm font-semibold">
@@ -21,7 +21,7 @@
         </div>
     </div>
 
-    <section class="bg-surface rounded-[24px] border border-slate-200 p-6 shadow-tactile space-y-4">
+    <section class="bg-surface rounded-xl border border-slate-200 p-6 shadow-tactile space-y-4">
         <h2 class="text-lg font-bold text-primary">Новое напоминание</h2>
         <form method="post" action="{{ url_for('reminders.reminder_create') }}" class="space-y-3">
             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
@@ -44,7 +44,7 @@
         {% if reminders_data %}
             {% for item in reminders_data %}
                 {% set r = item.reminder %}
-                <article class="bg-surface rounded-[20px] border border-slate-200 p-5 {% if r.is_completed %}opacity-60{% endif %} {% if r.is_overdue() %}border-l-4 border-l-red-500{% endif %}">
+                <article class="bg-surface rounded-2xl border border-slate-200 p-5 {% if r.is_completed %}opacity-60{% endif %} {% if r.is_overdue() %}border-l-4 border-l-red-500{% endif %}">
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                         <div class="min-w-0">
                             <h3 class="font-bold text-primary {% if r.is_completed %}line-through{% endif %}">{{ r.title }}</h3>
@@ -78,7 +78,7 @@
                 </article>
             {% endfor %}
         {% else %}
-            <p class="text-center text-muted py-12 text-sm">Пока нет напоминаний.</p>
+            <p class="text-center text-muted py-3 text-sm">Пока нет напоминаний.</p>
         {% endif %}
     </div>
 </div>

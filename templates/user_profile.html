@@ -11,29 +11,43 @@ layout-teacher bg-boo-bg text-boo-textMain
 {% endblock %}
 
 {% block head_css %}
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .min-h-80px { min-height: 80px; }
+    .border-6px { border-color: 6px; }
+    .shadow-0-8px-24px--4px-rgba15-23-42-018 { box-shadow: 0 8px 24px -4px rgba(15,23,42,0.18); }
+    .max-h-100px { max-height: 100px; }
+    .max-w-1760px { max-width: 1760px; }
+    .border-4px { border-color: 4px; }
+    .bg-DCE1EA { background-color: #DCE1EA; }
+    .max-h-85vh { max-height: 85vh; }
+    .shadow-0-12px-28px--8px-rgba15-23-42-035 { box-shadow: 0 12px 28px -8px rgba(15,23,42,0.35); }
+    .hover-scale-102:hover { transform: scale(1.02); }
+</style>
+
 <style>
     @media (max-width: 768px) {
-        .px-8, .sm\:px-12, .p-8 { padding-left: 1rem !important; padding-right: 1rem !important; }
+        .px-6, .sm\:px-6, .p-6 { padding-left: 1rem !important; padding-right: 1rem !important; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-{% set profile_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile else 'Europe/Moscow') %}
-<div class="w-full max-w-[1760px] mx-auto flex flex-col gap-6 pb-12 pt-6 px-4 sm:px-6 lg:px-8">
+{% set profile_tz = profile_tz | default('Europe/Moscow', true) %}
+<div class="w-full flex flex-col gap-6 pb-8 pt-6">
     
     <!-- Кнопка Назад -->
     <div class="flex items-center justify-between">
-        <a href="{{ request.referrer or url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary transition-colors bg-white/70 dark:bg-white/5 px-4 py-2 rounded-xl backdrop-blur-sm border border-slate-200/50 dark:border-white/[0.06] shadow-sm dark:shadow-none no-underline">
+        <a href="{{ request.referrer or url_for('main.dashboard') }}" class="w-fit inline-flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary transition-colors bg-white/70 dark:bg-white/5 px-2 py-0.5 rounded-md backdrop-blur-sm border border-slate-200/50 dark:border-dark-light shadow-sm dark:shadow-none no-underline">
             <i class="ph-bold ph-arrow-left"></i> Вернуться в панель
         </a>
     </div>
 
     <!-- HERO-БЛОК (Шапка профиля с баннером и аватаром) -->
-    <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden relative">
+    <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden relative">
         <!-- Обложка/Баннер -->
         {% set tutor_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
-        <div class="w-full h-56 sm:h-72 bg-[#DCE1EA] dark:bg-slate-900 relative overflow-hidden group flex items-center justify-center">
+        <div class="w-full h-56 sm:h-72 bg-DCE1EA dark:bg-slate-900 relative overflow-hidden group flex items-center justify-center">
             {% if tutor_cover %}
             <div class="absolute inset-0 z-10 overflow-hidden">
                 <img src="{{ tutor_cover }}" alt="Cover" class="w-full h-full object-cover opacity-90 transition-transform duration-700 ease-out will-change-transform transform-gpu group-hover:scale-105" style="transform-origin:center center;">
@@ -49,30 +63,30 @@ layout-teacher bg-boo-bg text-boo-textMain
         </div>
 
         <!-- Информация о преподавателе -->
-        <div class="px-8 sm:px-12 pb-8 relative bg-surface dark:bg-dark-card">
+        <div class="px-6 sm:px-6 pb-8 relative bg-surface dark:bg-dark-card">
             <div class="-mt-14 sm:-mt-16 flex flex-col md:flex-row md:justify-between md:items-end gap-6 relative z-30">
                 <div class="flex flex-col sm:flex-row items-center sm:items-end gap-5 min-w-0">
-                    <div class="relative w-36 h-36 sm:w-44 sm:h-44 rounded-[32px] bg-slate-900 dark:bg-dark-inner flex items-center justify-center overflow-hidden border-[6px] border-white dark:border-dark-card shadow-[0_12px_28px_-8px_rgba(15,23,42,0.35)] shrink-0 z-30">
+                    <div class="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl bg-slate-900 dark:bg-dark-inner flex items-center justify-center overflow-hidden border-6px border-white dark:border-dark-card shadow-0-12px-28px--8px-rgba15-23-42-035 shrink-0 z-30">
                         {% if current_user.avatar_url %}
                         <div class="profile-avatar-wrapper w-full h-full rounded-[26px] overflow-hidden profile-avatar-clickable" data-avatar-url="{{ current_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0">
                             <img src="{{ current_user.avatar_url }}" alt="Avatar" class="w-full h-full object-cover rounded-[26px]">
                         </div>
                         {% else %}
-                        <span class="w-full h-full flex items-center justify-center text-white text-4xl font-black">{{ current_user.username[0].upper() }}</span>
+                        <span class="w-full h-full flex items-center justify-center text-white text-lg font-bold">{{ current_user.username[0].upper() }}</span>
                         {% endif %}
-                        <div class="absolute bottom-2 right-2 w-8 h-8 bg-green-500 rounded-full border-[4px] border-white dark:border-dark-card shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] flex items-center justify-center">
+                        <div class="absolute bottom-2 right-2 w-8 h-8 bg-green-500 rounded-full border-4px border-white dark:border-dark-card shadow-0-8px-24px--4px-rgba15-23-42-018 flex items-center justify-center">
                             <div class="w-2.5 h-2.5 bg-surface dark:bg-dark-card rounded-full animate-pulse"></div>
                         </div>
                     </div>
                     <div class="flex flex-col items-center sm:items-start text-center sm:text-left min-w-0 pb-1">
                         <div class="flex items-center gap-3">
-                            <h1 class="text-3xl sm:text-4xl md:text-5xl font-black text-primary dark:text-white tracking-tight leading-normal py-1">{{ current_user.username }}</h1>
+                            <h1 class="text-3xl sm:text-2xl md:text-2xl font-bold text-primary dark:text-white tracking-tight leading-normal py-1">{{ current_user.username }}</h1>
                             <i class="ph-fill ph-check-circle text-boo-primary text-2xl" title="Верифицированный аккаунт"></i>
                         </div>
                         <p class="text-muted dark:text-dark-muted font-medium text-lg italic mt-1">"{{ current_user.custom_status or 'Учись учиться!' }}"</p>
-                        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-4">
+                        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-3">
                             {% for role_name in current_user.get_roles_display() %}
-                            <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white/10 dark:to-white/5 text-white dark:text-dark-muted text-xs font-extrabold rounded-xl shadow-[0_8px_24px_-4px_rgba(15,23,42,0.18)] border border-slate-700 dark:border-white/[0.08] flex items-center gap-1.5 uppercase tracking-wider">
+                            <span class="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white/10 dark:to-white/5 text-white dark:text-dark-muted text-xs font-extrabold rounded-xl shadow-0-8px-24px--4px-rgba15-23-42-018 border border-slate-700 dark:border-dark-avatar flex items-center gap-1.5 uppercase tracking-wider">
                                 <i class="ph-fill ph-crown text-boo-accent text-base"></i> {{ role_name }}
                             </span>
                             {% endfor %}
@@ -80,7 +94,7 @@ layout-teacher bg-boo-bg text-boo-textMain
                     </div>
                 </div>
                 <div class="shrink-0 md:mb-2 flex w-full md:w-auto justify-center">
-                    <button class="w-full md:w-auto px-7 py-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] text-sm" type="button" onclick="openEditProfileModal()">
+                    <button class="w-full md:w-auto px-7 py-3 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] text-sm" type="button" onclick="openEditProfileModal()">
                         <i class="ph-bold ph-pencil-simple text-xl"></i> Редактировать профиль
                     </button>
                 </div>
@@ -94,38 +108,38 @@ layout-teacher bg-boo-bg text-boo-textMain
         <!-- ЛЕВАЯ КОЛОНКА -->
         <div class="flex flex-col gap-6">
             <!-- Учетная запись -->
-            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
-                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-6 flex items-center gap-2">
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                     <i class="ph-fill ph-user-circle-gear text-xl"></i> Учетная запись
                 </h2>
                 
                 {% if current_user.about_me %}
-                <div class="mb-6 pb-6 border-b border-slate-100 dark:border-white/[0.08]">
-                    <div class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-2">О себе</div>
-                    <p class="text-sm text-secondary dark:text-dark-muted font-medium leading-relaxed bg-surface-alt dark:bg-dark-inner/40 p-4 rounded-[20px] border border-slate-100 dark:border-white/[0.08] min-h-[80px] whitespace-pre-wrap">{{ current_user.about_me }}</p>
+                <div class="mb-3 pb-6 border-b border-slate-100 dark:border-dark-avatar">
+                    <div class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-2">О себе</div>
+                    <p class="text-sm text-secondary dark:text-dark-muted font-medium leading-relaxed bg-surface-alt dark:bg-dark-inner/40 p-4 rounded-2xl border border-slate-100 dark:border-dark-avatar min-h-80px whitespace-pre-wrap">{{ current_user.about_me }}</p>
                 </div>
                 {% endif %}
 
                 <div class="flex flex-col gap-1">
-                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-dark-light">
                         <span class="text-sm font-bold text-muted dark:text-dark-muted">ID аккаунта</span>
                         <span class="text-sm font-black text-white bg-slate-900 px-3 py-1 rounded-lg border border-slate-700">#{{ current_user.numeric_id or current_user.id }}</span>
                     </div>
-                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-dark-light">
                         <span class="text-sm font-bold text-muted dark:text-dark-muted">Логин</span>
                         <span class="text-sm font-bold text-primary dark:text-white">@{{ current_user.username }}</span>
                     </div>
-                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                    <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-dark-light">
                         <span class="text-sm font-bold text-muted dark:text-dark-muted">Регистрация</span>
                         <span class="text-sm font-bold text-primary dark:text-white">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span>
                     </div>
-                <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-dark-light">
                     <span class="text-sm font-bold text-muted dark:text-dark-muted">Активность</span>
                     <span class="text-sm font-bold text-primary dark:text-white local-time" data-timestamp="{{ current_user.last_login.isoformat() if current_user.last_login else '' }}">
                         {{ current_user.last_login.strftime('%d.%m.%Y %H:%M') if current_user.last_login else '—' }}
                     </span>
                 </div>
-                <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-white/[0.06]">
+                <div class="flex justify-between items-center py-3.5 border-b border-slate-100 dark:border-dark-light">
                     <span class="text-sm font-bold text-muted dark:text-dark-muted">Часовой пояс</span>
                     <button type="button" id="profile-tz-open" class="text-sm font-bold text-boo-primary hover:underline text-right">
                         {{ profile_tz }}
@@ -143,29 +157,29 @@ layout-teacher bg-boo-bg text-boo-textMain
             </section>
 
             {% if current_user.is_parent() %}
-            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
-                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                     <i class="ph-fill ph-baby text-xl"></i> Мои дети
                 </h2>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                    <div class="px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-surface-alt dark:bg-dark-inner/40">
-                        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Всего</div>
-                        <div class="text-2xl font-black text-primary dark:text-white">{{ parent_children_count or 0 }}</div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                    <div class="px-4 py-3 rounded-2xl border border-slate-200 dark:border-dark-avatar bg-surface-alt dark:bg-dark-inner/40">
+                        <div class="text-tiny font-extrabold text-muted uppercase tracking-widest">Всего</div>
+                        <div class="text-lg font-bold text-primary dark:text-white">{{ parent_children_count or 0 }}</div>
                     </div>
-                    <div class="px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-surface-alt dark:bg-dark-inner/40">
-                        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Подтверждено</div>
-                        <div class="text-2xl font-black text-primary dark:text-white">{{ parent_children_confirmed_count or 0 }}</div>
+                    <div class="px-4 py-3 rounded-2xl border border-slate-200 dark:border-dark-avatar bg-surface-alt dark:bg-dark-inner/40">
+                        <div class="text-tiny font-extrabold text-muted uppercase tracking-widest">Подтверждено</div>
+                        <div class="text-lg font-bold text-primary dark:text-white">{{ parent_children_confirmed_count or 0 }}</div>
                     </div>
-                    <div class="px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-surface-alt dark:bg-dark-inner/40">
-                        <div class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Ожидают</div>
-                        <div class="text-2xl font-black text-primary dark:text-white">{{ (parent_children_count or 0) - (parent_children_confirmed_count or 0) }}</div>
+                    <div class="px-4 py-3 rounded-2xl border border-slate-200 dark:border-dark-avatar bg-surface-alt dark:bg-dark-inner/40">
+                        <div class="text-tiny font-extrabold text-muted uppercase tracking-widest">Ожидают</div>
+                        <div class="text-lg font-bold text-primary dark:text-white">{{ (parent_children_count or 0) - (parent_children_confirmed_count or 0) }}</div>
                     </div>
                 </div>
                 {% if parent_children %}
                 <div class="flex flex-col gap-3">
                     {% for child in parent_children %}
                     <a href="{{ url_for('students.student_profile', student_id=child.student.student_id) if child.student else url_for('students.student_info', student_id=child.user.id) }}"
-                       class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-surface-alt dark:bg-dark-inner/40 no-underline text-inherit">
+                       class="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-slate-200 dark:border-dark-avatar bg-surface-alt dark:bg-dark-inner/40 no-underline text-inherit">
                         <div class="min-w-0">
                             <div class="font-bold text-primary dark:text-white truncate">
                                 {% if child.user.profile and (child.user.profile.first_name or child.user.profile.last_name) %}
@@ -189,7 +203,7 @@ layout-teacher bg-boo-bg text-boo-textMain
             {% endif %}
 
             <!-- Часовой пояс -->
-            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8" id="user-timezone-panel">
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6" id="user-timezone-panel">
                 <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-2 flex items-center gap-2">
                     <i class="ph-fill ph-clock text-xl"></i> Часовой пояс
                 </h2>
@@ -199,7 +213,7 @@ layout-teacher bg-boo-bg text-boo-textMain
 
                 <div class="space-y-4">
                     <div class="space-y-1.5">
-                        <label class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-iana-input">Пояс</label>
+                        <label class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1" for="tz-iana-input">Пояс</label>
                         <select id="tz-iana-input" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white focus:outline-none focus:border-boo-primary transition-all">
                             <option value="Europe/Moscow" data-label="Москва">Москва</option>
                             <option value="Asia/Tomsk" data-label="Томск">Томск</option>
@@ -215,7 +229,7 @@ layout-teacher bg-boo-bg text-boo-textMain
 
                     <div class="space-y-1.5">
                         <div class="flex items-center justify-between gap-3">
-                            <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest ml-1">Сейчас в выбранном поясе</span>
+                            <span class="text-tiny font-extrabold text-muted uppercase tracking-widest ml-1">Сейчас в выбранном поясе</span>
                             <button type="button" id="tz-now-btn" class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.12] text-xs font-bold text-boo-primary hover:bg-surface-alt dark:hover:bg-white/[0.06]">Какая у меня сейчас дата и время</button>
                         </div>
                         <div id="tz-now-preview" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">
@@ -223,7 +237,7 @@ layout-teacher bg-boo-bg text-boo-textMain
                         </div>
                     </div>
 
-                    <button type="button" id="tz-save-btn" class="w-full py-3.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold rounded-xl border border-purple-200 dark:border-purple-800 shadow-sm transition-colors text-sm flex items-center justify-center gap-2">
+                    <button type="button" id="tz-save-btn" class="w-full py-2.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold rounded-xl border border-purple-200 dark:border-purple-800 shadow-sm transition-colors text-sm flex items-center justify-center gap-2">
                         <i class="ph-bold ph-floppy-disk text-lg"></i> Сохранить настройки
                     </button>
                     <p id="tz-save-msg" class="text-xs text-green-600 dark:text-green-400 text-center font-semibold" style="display: none;"></p>
@@ -234,65 +248,65 @@ layout-teacher bg-boo-bg text-boo-textMain
         <!-- ПРАВАЯ КОЛОНКА -->
         <div class="flex flex-col gap-6">
             <!-- Быстрые действия -->
-            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
-                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-6 flex items-center gap-2">
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                     <i class="ph-fill ph-grid text-xl"></i> Панель управления
                 </h2>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {% if has_permission(current_user, 'tools.schedule') or has_permission(current_user, 'schedule.view') %}
-                    <a href="{{ url_for('schedule.schedule') }}" class="py-4 px-4 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-purple-200 dark:border-purple-800/80 hover:scale-[1.02] transition-all no-underline">
+                    <a href="{{ url_for('schedule.schedule') }}" class="py-3 px-4 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-purple-200 dark:border-purple-800/80 hover-scale-102 transition-all no-underline">
                         <i class="ph-bold ph-calendar-blank text-2xl text-purple-500"></i>
                         <span>Расписание</span>
                     </a>
                     {% endif %}
                     
-                    <a href="{{ url_for('students.students_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                    <a href="{{ url_for('students.students_list') }}" class="py-3 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover-scale-102 transition-all no-underline">
                         <i class="ph-bold ph-users-three text-2xl text-boo-primary"></i>
                         <span>{{ 'Дети' if current_user.is_parent() else 'Ученики' }}</span>
                     </a>
 
                     {% if has_permission(current_user, 'assignment.view') %}
-                    <a href="{{ url_for('assignments.assignments_list') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                    <a href="{{ url_for('assignments.assignments_list') }}" class="py-3 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover-scale-102 transition-all no-underline">
                         <i class="ph-bold ph-tray text-2xl text-boo-primary"></i>
                         <span>Работы</span>
                     </a>
                     {% endif %}
 
                     {% if has_permission(current_user, 'assignment.grade') %}
-                    <a href="{{ url_for('lessons.review_queue') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                    <a href="{{ url_for('lessons.review_queue') }}" class="py-3 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover-scale-102 transition-all no-underline">
                         <i class="ph-bold ph-check-square-offset text-2xl text-boo-primary"></i>
                         <span>Проверка</span>
                     </a>
                     {% endif %}
 
                     {% if has_permission(current_user, 'lesson.edit') %}
-                    <a href="{{ url_for('library.materials_library') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                    <a href="{{ url_for('library.materials_library') }}" class="py-3 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover-scale-102 transition-all no-underline">
                         <i class="ph-bold ph-books text-2xl text-boo-primary"></i>
                         <span>Библиотека</span>
                     </a>
                     {% endif %}
 
                     {% if has_permission(current_user, 'trainer.use') %}
-                    <a href="{{ url_for('trainer.trainer_embed') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                    <a href="{{ url_for('trainer.trainer_embed') }}" class="py-3 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover-scale-102 transition-all no-underline">
                         <i class="ph-bold ph-game-controller text-2xl text-boo-primary"></i>
                         <span>Тренажёр</span>
                     </a>
                     {% endif %}
 
                     {% if has_permission(current_user, 'billing.manage') %}
-                    <a href="{{ url_for('billing.billing_plans') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                    <a href="{{ url_for('billing.billing_plans') }}" class="py-3 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover-scale-102 transition-all no-underline">
                         <i class="ph-bold ph-wallet text-2xl text-boo-primary"></i>
                         <span>Тарифы</span>
                     </a>
-                    <a href="{{ url_for('billing.billing_subscriptions') }}" class="py-4 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover:scale-[1.02] transition-all no-underline">
+                    <a href="{{ url_for('billing.billing_subscriptions') }}" class="py-3 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover-scale-102 transition-all no-underline">
                         <i class="ph-bold ph-credit-card text-2xl text-boo-primary"></i>
                         <span>Подписки</span>
                     </a>
                     {% endif %}
 
                     {% if (current_user.is_admin() or current_user.is_creator()) and config.ADMIN_URL %}
-                    <a href="{{ config.ADMIN_URL }}" target="_blank" rel="noopener" class="py-4 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-boo-coral rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-red-200 dark:border-red-900 hover:scale-[1.02] transition-all no-underline">
+                    <a href="{{ config.ADMIN_URL }}" target="_blank" rel="noopener" class="py-3 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-boo-coral rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-red-200 dark:border-red-900 hover-scale-102 transition-all no-underline">
                         <i class="ph-bold ph-shield text-2xl text-boo-coral"></i>
                         <span>Админка</span>
                     </a>
@@ -301,12 +315,12 @@ layout-teacher bg-boo-bg text-boo-textMain
             </section>
 
             <!-- Telegram уведомления -->
-            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8" id="telegram-notifications-block">
-                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6" id="telegram-notifications-block">
+                <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                     <i class="ph-fill ph-telegram-logo text-xl text-blue-500"></i> Telegram уведомления
                 </h2>
                 
-                <div id="telegram-status-content" class="bg-surface-alt dark:bg-dark-inner/40 border border-slate-200/50 dark:border-white/[0.08] p-6 rounded-2xl">
+                <div id="telegram-status-content" class="bg-surface-alt dark:bg-dark-inner/40 border border-slate-200/50 dark:border-dark-avatar p-6 rounded-2xl">
                     <div class="text-sm text-muted dark:text-dark-muted animate-pulse">Загрузка статуса привязки...</div>
                 </div>
             </section>
@@ -317,11 +331,11 @@ layout-teacher bg-boo-bg text-boo-textMain
             {% set ics_tz_param = ('tomsk' if tz_name == 'Asia/Tomsk' else 'moscow') %}
             <div id="ics-config" style="display:none" data-tz="{{ ics_tz_param }}" data-regenerate-url="{{ url_for('schedule.schedule_regenerate_ics_token') }}" data-token="{{ current_user.schedule_ics_token or '' }}"></div>
             
-            <section class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
+            <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6">
                 <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-2">
                     <i class="ph-bold ph-calendar-plus text-xl text-boo-primary"></i> Синхронизация календаря
                 </h2>
-                <p class="text-sm text-muted dark:text-dark-muted leading-relaxed mb-6">
+                <p class="text-sm text-muted dark:text-dark-muted leading-relaxed mb-3">
                     Приватная ссылка для внешних календарей (.ics). Позволяет видеть расписание в Google Calendar / Apple Calendar.
                 </p>
 
@@ -329,10 +343,10 @@ layout-teacher bg-boo-bg text-boo-textMain
                     <input class="flex-1 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-mono text-sm text-primary dark:text-white js-ics-input" readonly value="">
                     
                     <div class="flex gap-2 shrink-0">
-                        <button class="flex-1 sm:flex-none px-5 py-3 bg-boo-primary hover:bg-boo-primaryHover text-white font-bold rounded-xl shadow-sm transition-colors text-sm" type="button" onclick="copyIcsLink()">
+                        <button class="flex-1 sm:flex-none px-4 py-3 bg-boo-primary hover:bg-boo-primaryHover text-white font-bold rounded-xl shadow-sm transition-colors text-sm" type="button" onclick="copyIcsLink()">
                             Копировать
                         </button>
-                        <button class="flex-1 sm:flex-none px-5 py-3 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white font-bold rounded-xl border border-slate-200 dark:border-white/[0.1] shadow-sm transition-colors text-sm" type="button" onclick="regenerateIcsToken()">
+                        <button class="flex-1 sm:flex-none px-4 py-3 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white font-bold rounded-xl border border-slate-200 dark:border-white/[0.1] shadow-sm transition-colors text-sm" type="button" onclick="regenerateIcsToken()">
                             Обновить
                         </button>
                     </div>
@@ -344,9 +358,9 @@ layout-teacher bg-boo-bg text-boo-textMain
             {% endif %}
 
             <!-- Выход из аккаунта -->
-            <form method="POST" action="{{ url_for('auth.logout') }}" class="mt-4">
+            <form method="POST" action="{{ url_for('auth.logout') }}" class="mt-3">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="w-full py-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-boo-coral rounded-2xl font-bold flex justify-center items-center gap-2 border border-red-200 dark:border-red-900 shadow-sm transition-all text-sm">
+                <button type="submit" class="w-full py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-boo-coral rounded-2xl font-bold flex justify-center items-center gap-2 border border-red-200 dark:border-red-900 shadow-sm transition-all text-sm">
                     <i class="ph-bold ph-sign-out text-xl"></i> Выйти из аккаунта
                 </button>
             </form>
@@ -380,7 +394,7 @@ layout-teacher bg-boo-bg text-boo-textMain
                         {% endif %}
                         <div class="flex-1 space-y-1">
                             <input type="file" id="avatar_file" name="avatar_file" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-2.5 text-sm file:hidden text-muted cursor-pointer" accept="image/*">
-                            <p class="text-[10px] text-muted dark:text-dark-muted">JPG, PNG, GIF или WEBP, до 5MB</p>
+                            <p class="text-tiny text-muted dark:text-dark-muted">JPG, PNG, GIF или WEBP, до 5MB</p>
                         </div>
                     </div>
                 </div>
@@ -391,13 +405,13 @@ layout-teacher bg-boo-bg text-boo-textMain
                     <div class="space-y-3">
                         {% set current_cover = current_user.cover_url or (current_user.profile.cover_url if current_user.profile else none) %}
                         {% if current_cover %}
-                        <img id="cover_preview" src="{{ current_cover }}" alt="Текущий баннер" class="w-full max-h-[100px] object-cover rounded-xl border border-slate-200 dark:border-white/[0.1]">
+                        <img id="cover_preview" src="{{ current_cover }}" alt="Текущий баннер" class="w-full max-h-100px object-cover rounded-xl border border-slate-200 dark:border-white/[0.1]">
                         {% else %}
-                        <img id="cover_preview" src="" alt="Превью" class="w-full max-h-[100px] object-cover rounded-xl border border-slate-200 dark:border-white/[0.1] hidden">
+                        <img id="cover_preview" src="" alt="Превью" class="w-full max-h-100px object-cover rounded-xl border border-slate-200 dark:border-white/[0.1] hidden">
                         {% endif %}
                         <div class="space-y-1">
                             <input type="file" id="cover_file" name="cover_file" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-2.5 text-sm file:hidden text-muted cursor-pointer" accept="image/*">
-                            <p class="text-[10px] text-muted dark:text-dark-muted">GIF, JPG, PNG или WEBP, до 8MB</p>
+                            <p class="text-tiny text-muted dark:text-dark-muted">GIF, JPG, PNG или WEBP, до 8MB</p>
                         </div>
                     </div>
                 </div>
@@ -428,7 +442,7 @@ layout-teacher bg-boo-bg text-boo-textMain
                         <option value="UTC" {% if profile_tz == 'UTC' %}selected{% endif %}>UTC</option>
                     </select>
                     <div class="mt-2 flex items-center justify-between gap-3">
-                        <span class="text-[10px] font-extrabold text-muted uppercase tracking-widest">Сейчас в выбранном поясе</span>
+                        <span class="text-tiny font-extrabold text-muted uppercase tracking-widest">Сейчас в выбранном поясе</span>
                         <button type="button" id="profile-tz-now-btn" class="text-xs font-bold text-boo-primary">Какая у меня сейчас дата и время</button>
                     </div>
                     <div id="profile-tz-preview" class="mt-2 w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-sm text-primary dark:text-white">—</div>
@@ -440,7 +454,7 @@ layout-teacher bg-boo-bg text-boo-textMain
                     <input type="text" id="telegram_link" name="telegram_link" class="w-full bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.12] rounded-xl px-4 py-3 font-bold text-primary dark:text-white text-sm focus:outline-none focus:border-boo-primary transition-all" value="{{ current_user.telegram_link or '' }}" placeholder="https://t.me/...">
                 </div>
             </div>
-            <div class="modal-footer flex gap-3 pt-4 border-t border-slate-100 dark:border-white/[0.08]">
+            <div class="modal-footer flex gap-3 pt-4 border-t border-slate-100 dark:border-dark-avatar">
                 <button type="button" class="flex-1 py-3 bg-surface-alt dark:bg-dark-inner text-muted dark:text-dark-muted border border-slate-200 dark:border-white/[0.12] rounded-xl font-bold hover:bg-surface-alt transition-colors text-sm" onclick="closeEditProfileModal()">Отмена</button>
                 <button type="submit" class="flex-1 py-3 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all shadow-sm text-sm">Сохранить</button>
             </div>
@@ -451,7 +465,7 @@ layout-teacher bg-boo-bg text-boo-textMain
 <!-- МОДАЛЬНОЕ ОКНО АВАТАРА -->
 <div class="modal-overlay avatar-modal-overlay" id="avatarModal" onclick="closeAvatarModal(event)" style="z-index: 10001;">
     <div class="modal modal-avatar-wrap" onclick="event.stopPropagation()">
-        <img id="avatarModalImg" src="" alt="Аватар в полном размере" class="max-w-full max-h-[85vh] rounded-2xl">
+        <img id="avatarModalImg" src="" alt="Аватар в полном размере" class="max-w-full max-h-85vh rounded-2xl">
     </div>
 </div>
 <style>
@@ -719,7 +733,7 @@ layout-teacher bg-boo-bg text-boo-textMain
                         <i class="ph-bold ph-check-circle text-lg"></i>
                         <span>Telegram бот успешно подключен</span>
                     </div>
-                    <div class="flex flex-wrap items-center gap-4 border-t border-slate-100 dark:border-white/[0.08] pt-4">
+                    <div class="flex flex-wrap items-center gap-4 border-t border-slate-100 dark:border-dark-avatar pt-4">
                         <label class="flex items-center gap-2.5 cursor-pointer select-none">
                             <input type="checkbox" id="tg-notifications-toggle" class="w-4 h-4 text-boo-primary border-slate-300 dark:border-white/[0.1] rounded focus:ring-purple-500" ${data.notifications_enabled ? 'checked' : ''} onchange="toggleTelegramNotifications(this.checked)">
                             <span class="text-sm font-semibold text-secondary dark:text-dark-muted">Получать уведомления в боте</span>
@@ -734,7 +748,7 @@ layout-teacher bg-boo-bg text-boo-textMain
                         Подключите Telegram бота, чтобы мгновенно получать уведомления о запланированных уроках, сдаче домашних работ и сообщениях от учеников.
                     </p>
                     <div id="telegram-link-area">
-                        <button class="px-5 py-3 bg-boo-primary hover:bg-boo-primaryHover text-white font-bold rounded-xl shadow-sm text-sm" onclick="generateTelegramCode()">Подключить Telegram</button>
+                        <button class="px-4 py-3 bg-boo-primary hover:bg-boo-primaryHover text-white font-bold rounded-xl shadow-sm text-sm" onclick="generateTelegramCode()">Подключить Telegram</button>
                     </div>
                 </div>`;
         }
@@ -755,14 +769,14 @@ layout-teacher bg-boo-bg text-boo-textMain
                 const botHref = data.deep_link || (data.bot_username ? 'https://t.me/' + data.bot_username : 'https://t.me/boostudy_bot');
                 const botLabel = data.bot_username ? ('@' + data.bot_username) : '@boostudy_bot';
                 const deepBtn = data.deep_link
-                    ? `<a class="px-5 py-3 bg-boo-primary hover:bg-boo-primaryHover text-white font-bold rounded-xl shadow-sm text-sm text-center no-underline inline-block mb-3 transition-colors" href="${data.deep_link}" target="_blank" rel="noopener">Открыть бота и привязать</a>`
+                    ? `<a class="px-4 py-3 bg-boo-primary hover:bg-boo-primaryHover text-white font-bold rounded-xl shadow-sm text-sm text-center no-underline inline-block mb-3 transition-colors" href="${data.deep_link}" target="_blank" rel="noopener">Открыть бота и привязать</a>`
                     : '';
                 area.innerHTML = `
                     <div class="bg-surface dark:bg-dark-inner p-5 rounded-2xl border border-slate-200 dark:border-white/[0.1] space-y-4">
                         <div class="text-xs font-bold text-secondary dark:text-white uppercase tracking-wider">Вариант 1. Быстрое подключение</div>
                         <div>${deepBtn}</div>
                         
-                        <div class="text-xs font-bold text-secondary dark:text-white uppercase tracking-wider border-t border-slate-100 dark:border-white/[0.08] pt-4">Вариант 2. Ручное подключение</div>
+                        <div class="text-xs font-bold text-secondary dark:text-white uppercase tracking-wider border-t border-slate-100 dark:border-dark-avatar pt-4">Вариант 2. Ручное подключение</div>
                         <p class="text-xs text-muted dark:text-dark-muted leading-relaxed">
                             Откройте бота <a href="${botHref}" target="_blank" class="text-boo-primary font-bold hover:underline">${botLabel}</a> и отправьте ему сообщение:
                         </p>
@@ -772,11 +786,11 @@ layout-teacher bg-boo-bg text-boo-textMain
                                 <i class="ph-bold ph-copy"></i>
                             </button>
                         </div>
-                        <div class="text-[10px] text-boo-coral font-bold mt-2">
+                        <div class="text-tiny text-boo-coral font-bold mt-2">
                             Ссылка и код действительны в течение 15 минут.
                         </div>
                     </div>
-                    <button class="px-4 py-2 bg-surface hover:bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.1] text-secondary dark:text-white font-bold rounded-xl transition-colors text-xs mt-4" onclick="loadTelegramStatus()">← Назад</button>`;
+                    <button class="px-4 py-2 bg-surface hover:bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-white/[0.1] text-secondary dark:text-white font-bold rounded-xl transition-colors text-xs mt-3" onclick="loadTelegramStatus()">← Назад</button>`;
             } else {
                 area.innerHTML = `<div class="text-boo-coral text-sm font-semibold">Ошибка: ${data.error}</div>`;
             }

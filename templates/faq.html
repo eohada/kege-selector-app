@@ -2,6 +2,11 @@
 {% block title %}База знаний · BooStudy{% endblock %}
 
 {% block head_css %}
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .hover-scale-1005:hover { transform: scale(1.005); }
+</style>
+
 <style>
     /* Modern height transition using CSS Grid fractional rows */
     .faq-grid-wrapper {
@@ -28,16 +33,16 @@
 {% set active_page = 'faq' %}
 
 {% block content %}
-<div class="max-w-[1400px] mx-auto space-y-8 animate-fade-in py-6">
+<div class="space-y-5 animate-fade-in py-3 w-full">
     
     <!-- Header Banner -->
-    <div class="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-violet-600/10 via-cyan-500/5 to-transparent dark:from-purple-950/20 dark:via-cyan-950/10 dark:to-transparent border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-violet-500/20 dark:border-b-0 p-8 sm:p-10 shadow-tactile dark:shadow-glass-dark">
-        <div class="absolute -right-10 -top-10 w-40 h-40 bg-cyan-500/10 dark:bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600/10 via-cyan-500/5 to-transparent dark:from-purple-950/20 dark:via-cyan-950/10 dark:to-transparent border border-slate-200 dark:border-dark-light border-b-4 border-b-violet-500/20 dark:border-b-0 p-6 sm:p-6 shadow-tactile dark:shadow-glass-dark">
+        <div class="absolute -right-10 -top-6 w-40 h-40 bg-cyan-500/10 dark:bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
         <div class="relative z-10 space-y-4">
             <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-800 dark:bg-purple-950/50 dark:text-purple-300">
                 <i class="ph ph-book-open"></i> Справочный центр
             </span>
-            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            <h1 class="text-3xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                 📚 База знаний BooStudy
             </h1>
             <p class="text-slate-600 dark:text-zinc-400 max-w-2xl text-base">
@@ -47,13 +52,13 @@
     </div>
 
     <!-- Search & Navigation Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         
         <!-- Left: Sidebar Quick Nav & Search -->
         <div class="lg:col-span-1 space-y-6 lg:sticky lg:top-24">
             
             <!-- Real-time Filter Search Input -->
-            <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 p-4 shadow-tactile dark:shadow-glass-dark">
+            <div class="rounded-xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 p-4 shadow-tactile dark:shadow-glass-dark">
                 <label class="block text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Быстрый поиск</label>
                 <div class="relative">
                     <input type="text" id="faqSearchInput" oninput="filterFaq()" 
@@ -66,41 +71,41 @@
             </div>
 
             <!-- Categories Card (Navigation) -->
-            <div class="rounded-[24px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 p-5 shadow-tactile dark:shadow-glass-dark space-y-4">
-                <h3 class="font-bold text-slate-900 dark:text-white pb-2 border-b border-slate-100 dark:border-white/[0.06] flex items-center gap-2 text-sm">
+            <div class="rounded-xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 p-5 shadow-tactile dark:shadow-glass-dark space-y-4">
+                <h3 class="font-bold text-slate-900 dark:text-white pb-2 border-b border-slate-100 dark:border-dark-light flex items-center gap-2 text-sm">
                     <i class="ph ph-list text-violet-500"></i> Разделы справки
                 </h3>
                 
                 <div class="flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 pb-2 lg:pb-0 hide-scroll">
-                    <a href="#getting-started" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                    <a href="#getting-started" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-dark-faint bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
                         <i class="ph ph-rocket-launch text-violet-500 text-lg"></i>
                         <span>Начало работы</span>
                     </a>
-                    <a href="#lessons" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                    <a href="#lessons" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-dark-faint bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
                         <i class="ph ph-book-open text-violet-500 text-lg"></i>
                         <span>Уроки</span>
                     </a>
-                    <a href="#homework" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                    <a href="#homework" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-dark-faint bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
                         <i class="ph ph-note-pencil text-violet-500 text-lg"></i>
                         <span>Домашние задания</span>
                     </a>
-                    <a href="#trainer" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                    <a href="#trainer" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-dark-faint bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
                         <i class="ph ph-brain text-violet-500 text-lg"></i>
                         <span>Тренажёр</span>
                     </a>
-                    <a href="#schedule" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                    <a href="#schedule" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-dark-faint bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
                         <i class="ph ph-calendar text-violet-500 text-lg"></i>
                         <span>Расписание</span>
                     </a>
-                    <a href="#notifications" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                    <a href="#notifications" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-dark-faint bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
                         <i class="ph ph-bell text-violet-500 text-lg"></i>
                         <span>Уведомления</span>
                     </a>
-                    <a href="#parents" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                    <a href="#parents" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-dark-faint bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
                         <i class="ph ph-users-three text-violet-500 text-lg"></i>
                         <span>Для родителей</span>
                     </a>
-                    <a href="#support" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-white/[0.04] bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
+                    <a href="#support" class="faq-nav-card flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-100 dark:border-dark-faint bg-slate-50 dark:bg-zinc-900 hover:bg-violet-500/5 dark:hover:bg-purple-950/20 text-slate-700 dark:text-zinc-300 font-bold transition-all text-sm shrink-0 lg:shrink">
                         <i class="ph ph-chat-circle-dots text-violet-500 text-lg"></i>
                         <span>Поддержка</span>
                     </a>
@@ -109,23 +114,23 @@
         </div>
 
         <!-- Right: FAQ Accordions Grid -->
-        <div class="lg:col-span-3 space-y-10">
+        <div class="lg:col-span-3 space-y-6">
             
             <!-- Category Section: Getting Started -->
             <section id="getting-started" class="faq-section-block space-y-4">
-                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-dark-light">
                     <i class="ph ph-rocket-launch text-violet-500"></i>🚀 Начало работы
                 </h2>
                 
                 <div class="space-y-3">
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как войти на платформу?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Для входа на платформу используйте логин и пароль, которые вам предоставил преподаватель или администратор.</p>
                                     <ol class="list-decimal pl-5 space-y-1.5">
                                         <li>Перейдите на страницу входа</li>
@@ -141,28 +146,28 @@
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Что делать, если забыл пароль?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Если вы забыли пароль, свяжитесь с преподавателем или напишите в Telegram‑бот @boostudy_bot — администратор сбросит пароль и выдаст новый.</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как подключить Telegram-уведомления?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Чтобы получать уведомления в Telegram:</p>
                                     <ol class="list-decimal pl-5 space-y-1.5">
                                         <li>Перейдите в ваш профиль (иконка аватара → Профиль)</li>
@@ -180,19 +185,19 @@
 
             <!-- Category Section: Lessons -->
             <section id="lessons" class="faq-section-block space-y-4">
-                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-dark-light">
                     <i class="ph ph-book-open text-violet-500"></i>📖 Уроки
                 </h2>
                 
                 <div class="space-y-3">
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как попасть на урок?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Есть несколько способов попасть на урок:</p>
                                     <ul class="list-disc pl-5 space-y-1.5">
                                         <li><strong>Из профиля:</strong> На главной странице вашего профиля отображаются ближайшие уроки — нажмите на нужный</li>
@@ -204,14 +209,14 @@
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Что находится в классной комнате?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Классная комната — это рабочее пространство урока. Внутри есть вкладки:</p>
                                     <ul class="list-disc pl-5 space-y-1.5">
                                         <li><strong>Конспект</strong> — материалы урока</li>
@@ -227,14 +232,14 @@
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как работать с интерактивной доской?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Интерактивная доска (Miro) позволяет вам и преподавателю работать вместе в реальном времени.</p>
                                     <ul class="list-disc pl-5 space-y-1.5">
                                         <li>Используйте инструменты Miro для рисования, текста и стикеров</li>
@@ -251,19 +256,19 @@
 
             <!-- Category Section: Homework -->
             <section id="homework" class="faq-section-block space-y-4">
-                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-dark-light">
                     <i class="ph ph-note-pencil text-violet-500"></i>📝 Домашние задания
                 </h2>
                 
                 <div class="space-y-3">
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как сдать домашнее задание?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Чтобы сдать домашнее задание:</p>
                                     <ol class="list-decimal pl-5 space-y-1.5">
                                         <li>Откройте урок и перейдите на вкладку "Домашнее задание"</li>
@@ -277,14 +282,14 @@
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Какие статусы бывают у задания?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 border-t border-slate-100 dark:border-dark-faint">
                                     <ul class="space-y-2">
                                         <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-400"></span> <strong>Не начато</strong> — вы ещё не приступали к заданию</li>
                                         <li class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-500"></span> <strong>На проверке</strong> — ответ отправлен, ждёт проверки</li>
@@ -296,14 +301,14 @@
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Можно ли пересдать задание?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Да! Если преподаватель вернул задание на доработку (статус "На доработку"), вы можете:</p>
                                     <ol class="list-decimal pl-5 space-y-1.5">
                                         <li>Прочитать комментарий преподавателя</li>
@@ -320,19 +325,19 @@
 
             <!-- Category Section: Trainer -->
             <section id="trainer" class="faq-section-block space-y-4">
-                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-dark-light">
                     <i class="ph ph-brain text-violet-500"></i>🧠 Тренажёр
                 </h2>
                 
                 <div class="space-y-3">
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Что такое тренажёр?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Тренажёр — это раздел для самостоятельной практики задач. Он доступен, если включён в ваш тариф/доступ.</p>
                                     <ul class="list-disc pl-5 space-y-1.5">
                                         <li>Выбирайте номер задания, который хотите отработать</li>
@@ -344,14 +349,14 @@
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как пользоваться тренажёром?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <ol class="list-decimal pl-5 space-y-1.5">
                                         <li>Перейдите в раздел "Тренажёр" в главном меню</li>
                                         <li>Выберите номер задания ЕГЭ (1-27)</li>
@@ -369,19 +374,19 @@
 
             <!-- Category Section: Schedule -->
             <section id="schedule" class="faq-section-block space-y-4">
-                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-dark-light">
                     <i class="ph ph-calendar text-violet-500"></i>📅 Расписание
                 </h2>
                 
                 <div class="space-y-3">
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Где посмотреть расписание уроков?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Расписание доступно в разделе "Расписание" в верхнем навигационном меню.</p>
                                     <p>Там вы увидите:</p>
                                     <ul class="list-disc pl-5 space-y-1.5">
@@ -395,14 +400,14 @@
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как перенести урок?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Если нужно перенести урок, свяжитесь с преподавателем удобным способом (чат, Telegram или другой контакт, который вам дали). Преподаватель согласует новое время и перенесёт урок в системе.</p>
                                 </div>
                             </div>
@@ -413,19 +418,19 @@
 
             <!-- Category Section: Notifications -->
             <section id="notifications" class="faq-section-block space-y-4">
-                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-dark-light">
                     <i class="ph ph-bell text-violet-500"></i>🔔 Уведомления
                 </h2>
                 
                 <div class="space-y-3">
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Какие уведомления я буду получать?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Набор уведомлений зависит от ваших настроек. Обычно доступны:</p>
                                     <ul class="list-disc pl-5 space-y-1.5">
                                         <li>📅 Обновления по расписанию уроков</li>
@@ -441,14 +446,14 @@
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как настроить уведомления?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>После привязки Telegram‑бота @boostudy_bot вы можете настроить, какие уведомления получать:</p>
                                     <ol class="list-decimal pl-5 space-y-1.5">
                                         <li>Откройте бота @boostudy_bot в Telegram</li>
@@ -464,19 +469,19 @@
 
             <!-- Category Section: Parents -->
             <section id="parents" class="faq-section-block space-y-4">
-                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-dark-light">
                     <i class="ph ph-users-three text-violet-500"></i>👨‍👩‍👧 Для родителей
                 </h2>
                 
                 <div class="space-y-3">
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как отслеживать успеваемость ребёнка?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>В родительском кабинете в разделе "Мои дети" вам доступны следующие возможности:</p>
                                     <ul class="list-disc pl-5 space-y-1.5">
                                         <li>Просмотр расписания будущих уроков и тем занятий</li>
@@ -489,28 +494,28 @@
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как связаться с преподавателем?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Вы можете связаться с преподавателем напрямую через Telegram (ссылка или контакт обычно выдается при начале обучения) или через внутренний чат на платформе (если в кабинете ребенка открыта классная комната).</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Как работает оплата?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Оплата производится за пакеты занятий. После каждого проведённого урока баланс списывается на 1. Вы получите предупреждение в ЛК и Telegram, когда уроков останется мало, чтобы своевременно продлить обучение.</p>
                                 </div>
                             </div>
@@ -521,19 +526,19 @@
 
             <!-- Category Section: Support -->
             <section id="support" class="faq-section-block space-y-4">
-                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-dark-light">
                     <i class="ph ph-chat-circle-dots text-violet-500"></i>💬 Поддержка
                 </h2>
                 
                 <div class="space-y-3">
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>У меня техническая проблема, куда обратиться?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-2 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>При возникновении сбоев (не грузится страница, не нажимается кнопка):</p>
                                     <ol class="list-decimal pl-5 space-y-1">
                                         <li>Напишите в Telegram‑бот поддержки @boostudy_bot.</li>
@@ -545,14 +550,14 @@
                         </div>
                     </div>
 
-                    <div class="faq-item group rounded-[20px] bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover:scale-[1.005]">
+                    <div class="faq-item group rounded-2xl bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark overflow-hidden transition-all hover-scale-1005">
                         <div class="faq-question flex items-center justify-between p-5 cursor-pointer font-bold text-slate-900 dark:text-white select-none group-hover:text-violet-500 transition-colors" onclick="toggleFaq(this)">
                             <span>Платформа работает медленно, что делать?</span>
                             <i class="ph ph-caret-down text-lg text-slate-400 group-hover:text-violet-500 transition-all"></i>
                         </div>
                         <div class="faq-grid-wrapper">
                             <div class="faq-inner-content">
-                                <div class="px-5 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-white/[0.04]">
+                                <div class="px-4 pb-5 pt-1 text-sm text-slate-600 dark:text-zinc-400 space-y-3 leading-relaxed border-t border-slate-100 dark:border-dark-faint">
                                     <p>Попробуйте выполнить базовые действия:</p>
                                     <ol class="list-decimal pl-5 space-y-1.5">
                                         <li>Обновите страницу принудительно (Ctrl + F5 или Cmd + Shift + R)</li>

@@ -4,7 +4,7 @@
 {% set active_page = 'billing' %}
 
 {% block content %}
-<section class="glass-panel" style="margin-bottom: 1.25rem;">
+<section class="glass-panel w-full" style="margin-bottom: 1.25rem;">
     <p class="hero-eyebrow">биллинг</p>
     <h1 class="hero-title" style="margin-bottom:.25rem;">Подписки</h1>
     <div style="color: var(--text-muted);">Выдача доступа вручную (без платежного провайдера).</div>
@@ -18,7 +18,7 @@
     <section class="glass-panel">
         <div class="panel-head"><div><p class="eyebrow">создать</p><h2>Новая подписка</h2></div></div>
         <form method="GET" action="{{ url_for('billing.billing_subscriptions') }}" style="margin-top: .75rem; display:flex; gap:.6rem; flex-wrap: wrap; align-items: center;">
-            <input class="neo-input" name="q" value="{{ q or '' }}" placeholder="Поиск по логину…" style="min-width: 280px;">
+            <input class="neo-input mobile-search-input" name="q" value="{{ q or '' }}" placeholder="Поиск по логину…" style="flex: 1 1 100%; min-width: 0;">
             <button class="neo-button outline sm" type="submit">Найти</button>
             <a class="neo-button ghost sm" href="{{ url_for('billing.billing_subscriptions', plan_id=preselect_plan_id) }}" style="text-decoration:none;">Сброс</a>
         </form>
@@ -58,7 +58,7 @@
                     {% endif %}
                 </select>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem; margin-top:.75rem;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem; margin-top:.75rem;" class="mobile-stack-grid">
                 <div class="neo-field">
                     <label class="neo-label">Уроков</label>
                     <input class="neo-input" name="lessons" type="number" min="1" placeholder="напр. 8">

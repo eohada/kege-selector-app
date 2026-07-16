@@ -4,8 +4,8 @@
 {% set active_page = 'admin' %}
 
 {% block content %}
-<section class="glass-panel max-w-[800px] mx-auto">
-    <h1 class="mb-4">Редактировать тестировщика</h1>
+<section class="glass-panel w-full">
+    <h1 class="mb-3">Редактировать тестировщика</h1>
 
     <form method="POST" class="flex flex-col gap-6">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -41,7 +41,7 @@
             <input type="text" value="{{ tester.ip_address or '-' }}" disabled class="neo-input bg-bg-app">
         </div>
 
-        <div class="flex gap-4 mt-4">
+        <div class="flex gap-4 mt-3">
             <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }} Сохранить</button>
             <a href="{{ url_for('admin.admin_testers') }}" class="neo-button ghost">{{ ui_icon('action.close', 'sm', decorative=true) }}Отмена</a>
         </div>

@@ -4,18 +4,24 @@
 {% block html_attrs %}data-student-dashboard="1"{% endblock %}
 {% block body_attrs %}data-cinema-scene="dashboard"{% endblock %}
 
+
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    html[data-theme="dark"] .dark-shadow-0-0-22px-rgba249-115-22-012 { box-shadow: 0 0 22px rgba(249,115,22,0.12); }
+    .shadow-inset-0-2px-10px-rgba255-255-255-005 { box-shadow: inset 0 2px 10px rgba(255,255,255,0.05); }
+    html[data-theme="dark"] .dark-hover-shadow-0-0-28px-rgba249-115-22-018:hover { box-shadow: 0 0 28px rgba(249,115,22,0.18); }
+    .min-h-300px { min-height: 300px; }
+</style>
 {% block content %}
 {% if request.args.get('cinema_scene') %}
-<div id="cinema-instant-cover" class="cinema-instant-cover"></div>
+<div class="cinema-instant-cover w-full"></div>
 {% endif %}
 
-<div class="w-full max-w-[1400px] mx-auto flex flex-col gap-6">
-
-
+<div class="w-full flex flex-col gap-6 pb-8 pt-6 px-4 sm:px-6">
 
     {% if not student %}
-    <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8">
-        <h1 class="text-3xl font-black text-primary dark:text-white tracking-tight mb-2">Дашборд</h1>
+    <div class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6">
+        <h1 class="text-2xl font-bold text-primary dark:text-white tracking-tight mb-2">Дашборд</h1>
         <p class="text-muted dark:text-dark-muted font-medium">Профиль ученика не найден.</p>
     </div>
     {% else %}
@@ -24,7 +30,7 @@
     <div class="flex flex-wrap gap-2">
         {% for enrollment in enrollments %}
         <a href="?course_id={{ enrollment.course_id }}"
-           class="px-4 py-2 rounded-xl text-sm font-bold border transition-all {% if selected_course_id == enrollment.course_id %}bg-surface text-boo-primary border-white/10 shadow-glass-dark dark:bg-white/10 dark:text-white dark:border-white/[0.08]{% else %}bg-slate-100/70 text-muted hover:bg-white/70 hover:text-primary border-slate-200/40 dark:bg-white/5 dark:text-dark-muted dark:border-white/[0.08] dark:hover:bg-white/10 dark:hover:text-white{% endif %}">
+           class="px-2 py-0.5 rounded-md text-sm font-bold border transition-all {% if selected_course_id == enrollment.course_id %}bg-surface text-boo-primary border-white/10 shadow-glass-dark dark:bg-white/10 dark:text-white dark:border-dark-avatar{% else %}bg-slate-100/70 text-muted hover:bg-white/70 hover:text-primary border-slate-200/40 dark:bg-white/5 dark:text-dark-muted dark:border-dark-avatar dark:hover:bg-white/10 dark:hover:text-white{% endif %}">
             {{ enrollment.course.title if enrollment.course else ('Курс #' ~ enrollment.course_id) }}
         </a>
         {% endfor %}
@@ -35,27 +41,27 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- HERO: ТРАЕКТОРИЯ И ПРОГРЕСС -->
-        <div class="lg:col-span-2 student-hero-gradient bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-[32px] border border-purple-400/50 border-b-[4px] border-b-purple-700 dark:border-b-0 dark:border-purple-500/20 shadow-tactile dark:shadow-neon-primary p-8 lg:p-10 flex flex-col justify-between relative overflow-hidden group text-white">
+        <div class="lg:col-span-2 student-hero-gradient bg-gradient-to-br from-[#8E70FF] to-[#6A4CE5] rounded-2xl border border-purple-400/50 border-b-4 border-b-purple-700 dark:border-b-0 dark:border-purple-500/20 shadow-tactile dark:shadow-neon-primary p-6 lg:p-6 flex flex-col justify-between relative overflow-hidden group text-white">
             <div class="absolute top-[-20%] right-[-10%] w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700 pointer-events-none dark:opacity-40"></div>
 
-            <div class="relative z-10 flex flex-col sm:flex-row justify-between items-start mb-8 sm:mb-10 gap-4">
+            <div class="relative z-10 flex flex-col sm:flex-row justify-between items-start mb-3 sm:mb-3 gap-4">
                 <div>
-                    <div class="flex items-center gap-2 mb-4">
+                    <div class="flex items-center gap-2 mb-3">
                         <i class="ph-fill ph-student text-boo-primary dark:text-boo-primary text-xl"></i>
                         <span class="text-xs font-bold text-purple-200 dark:text-purple-300 uppercase tracking-widest">{{ student.name }}</span>
                     </div>
-                    <h1 class="text-4xl sm:text-5xl font-black tracking-tight mb-2 leading-tight text-white">Твой путь к цели</h1>
+                    <h1 class="text-2xl sm:text-2xl font-bold tracking-tight mb-2 leading-tight text-white">Твой путь к цели</h1>
                     <p class="text-purple-100 dark:text-purple-300/80 font-medium text-lg">
                         {% if student.deadline %}{{ student.deadline }}{% else %}До экзамена — дней. Идем по плану!{% endif %}
                     </p>
                 </div>
 
-                <div class="flex items-center bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-2xl p-2 sm:p-2 border border-white/20 dark:border-white/10 shadow-[inset_0_2px_10px_rgba(255,255,255,0.05)] shrink-0">
-                    <div class="bg-purple-500/20 text-purple-100 dark:text-purple-300 font-black text-2xl w-14 h-14 rounded-xl flex items-center justify-center border border-purple-300/40 dark:border-purple-500/30">
+                <div class="flex items-center bg-white/10 dark:bg-white/5 backdrop-blur-md rounded-2xl p-2 sm:p-2 border border-white/20 dark:border-white/10 shadow-inset-0-2px-10px-rgba255-255-255-005 shrink-0">
+                    <div class="bg-purple-500/20 text-purple-100 dark:text-purple-300 font-bold text-lg w-10 h-10 rounded-xl flex items-center justify-center border border-purple-300/40 dark:border-purple-500/30">
                         {{ student.target_score if student.target_score is not none else '—' }}
                     </div>
                     <div class="px-4">
-                        <div class="text-[10px] font-extrabold text-purple-200 dark:text-purple-300/70 uppercase tracking-widest mb-0.5">Траектория</div>
+                        <div class="text-tiny font-extrabold text-purple-200 dark:text-purple-300/70 uppercase tracking-widest mb-0.5">Траектория</div>
                         <div class="text-sm font-bold text-white leading-none">Целевой балл</div>
                     </div>
                 </div>
@@ -65,7 +71,7 @@
             <div class="relative z-10 w-full">
                 <div class="flex justify-between items-end mb-3">
                     <span class="font-bold text-white text-sm">Общий прогресс выполнения</span>
-                    <span class="text-3xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] dark:drop-shadow-none">{{ pct }}%</span>
+                    <span class="text-2xl font-bold text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] dark:drop-shadow-none">{{ pct }}%</span>
                 </div>
 
                 <div class="w-full h-4 bg-black/40 dark:bg-black/40 rounded-full overflow-hidden mb-3 border border-white/5 shadow-inner">
@@ -74,38 +80,42 @@
                     </div>
                 </div>
 
-                <div class="flex justify-between text-[10px] font-extrabold text-purple-200 dark:text-purple-300/70 uppercase tracking-widest">
+                <div class="flex justify-between text-tiny font-extrabold text-purple-200 dark:text-purple-300/70 uppercase tracking-widest">
                     <span>Начало</span>
                     <span>Финиш</span>
                 </div>
             </div>
 
-            <div class="relative z-10 mt-8 flex flex-wrap gap-3">
+            <div class="relative z-10 mt-3 flex flex-wrap gap-3">
                 <a href="{{ url_for('notifications.notifications_list') }}"
-                   class="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-purple-100 dark:text-purple-300 rounded-xl text-xs font-bold border border-white/10 dark:border-white/5 transition-colors inline-flex items-center gap-2 no-underline">
+                   class="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-purple-100 dark:text-purple-300 rounded-xl text-xs font-bold border border-white/10 dark:border-white/5 transition-colors inline-flex items-center gap-2 no-underline">
                     <i class="ph-bold ph-bell"></i> Уведомления{% if unread_notifications %} ({{ unread_notifications }}){% endif %}
                 </a>
                 <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
-                   class="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-purple-100 dark:text-purple-300 rounded-xl text-xs font-bold border border-white/10 dark:border-white/5 transition-colors inline-flex items-center gap-2 no-underline">
+                   class="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-purple-100 dark:text-purple-300 rounded-xl text-xs font-bold border border-white/10 dark:border-white/5 transition-colors inline-flex items-center gap-2 no-underline">
                     <i class="ph-bold ph-chart-line-up"></i> Аналитика
+                </a>
+                <a href="{{ url_for('main.student_mistakes') }}"
+                   class="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-100 dark:text-red-300 rounded-xl text-xs font-bold border border-red-500/20 transition-colors inline-flex items-center gap-2 no-underline">
+                    <i class="ph-bold ph-warning-circle"></i> Работа над ошибками
                 </a>
             </div>
         </div>
 
         <!-- РИСКИ / СЛАБЫЕ ТЕМЫ -->
-        <div class="bg-orange-50/50 dark:bg-orange-500/5 rounded-[32px] border border-orange-200/60 dark:border-orange-500/20 border-b-[4px] border-b-orange-300 dark:border-b-0 shadow-tactile dark:shadow-[0_0_22px_rgba(249,115,22,0.12)] p-8 flex flex-col group transition-all hover:bg-orange-50/80 dark:hover:bg-orange-500/10 hover:shadow-tactile-hover dark:hover:shadow-[0_0_28px_rgba(249,115,22,0.18)]">
+        <div class="bg-orange-50/50 dark:bg-orange-500/5 rounded-2xl border border-orange-200/60 dark:border-orange-500/20 border-b-4 border-b-orange-300 dark:border-b-0 shadow-tactile dark-shadow-0-0-22px-rgba249-115-22-012 p-6 flex flex-col group transition-all hover:bg-orange-50/80 dark:hover:bg-orange-500/10 hover:shadow-tactile-hover dark-hover-shadow-0-0-28px-rgba249-115-22-018">
             <div class="flex-1">
-                <div class="flex items-center gap-2 mb-6">
+                <div class="flex items-center gap-2 mb-3">
                     <i class="ph-fill ph-warning-circle text-orange-600 dark:text-orange-500 text-lg"></i>
-                    <h3 class="font-extrabold text-orange-600 dark:text-orange-500 text-[10px] uppercase tracking-widest">Зона риска</h3>
+                    <h3 class="font-extrabold text-orange-600 dark:text-orange-500 text-tiny uppercase tracking-widest">Зона риска</h3>
                 </div>
 
-                <h4 class="text-2xl font-black text-primary dark:text-white mb-2 leading-tight">Слабые темы</h4>
+                <h4 class="text-lg font-bold text-primary dark:text-white mb-2 leading-tight">Слабые темы</h4>
 
                 {% if problem_topics and problem_topics|length > 0 %}
-                <div class="mt-6 space-y-3">
+                <div class="mt-3 space-y-3">
                     {% for t in problem_topics[:4] %}
-                    <div class="bg-white/70 dark:bg-white/5 rounded-2xl border border-orange-100/70 dark:border-white/[0.06] p-3 flex items-center justify-between">
+                    <div class="bg-white/70 dark:bg-white/5 rounded-2xl border border-orange-100/70 dark:border-dark-light p-3 flex items-center justify-between">
                         <div class="min-w-0">
                             <div class="text-sm font-extrabold text-primary dark:text-white truncate">{{ t.name }}</div>
                             <div class="text-xs font-bold text-muted">средний результат</div>
@@ -115,11 +125,11 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <div class="mt-10 flex flex-col items-center justify-center text-center">
-                    <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center shadow-inner mb-6 border border-white/5">
-                        <i class="ph-fill ph-ghost text-3xl text-orange-400/80 dark:text-orange-500/50"></i>
+                <div class="mt-3 flex flex-col items-center justify-center text-center">
+                    <div class="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center shadow-inner mb-3 border border-white/5">
+                        <i class="ph-fill ph-ghost text-xl text-orange-400/80 dark:text-orange-500/50"></i>
                     </div>
-                    <p class="text-muted dark:text-dark-muted font-medium text-sm leading-relaxed mb-6 px-2">
+                    <p class="text-muted dark:text-dark-muted font-medium text-sm leading-relaxed mb-3 px-2">
                         Пока недостаточно данных для анализа. Решай больше тестов, чтобы система выявила твои слабые места.
                     </p>
                 </div>
@@ -127,7 +137,7 @@
             </div>
 
             <a href="{{ url_for('trainer.trainer_v2') if has_permission(current_user,'trainer.use') else url_for('assignments.submissions_list') }}"
-               class="mt-auto w-full py-3 bg-transparent text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/30 rounded-xl font-bold hover:bg-orange-100 dark:hover:bg-orange-500/10 transition-all flex justify-center items-center gap-2 text-sm no-underline">
+               class="mt-auto w-full py-2 bg-transparent text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/30 rounded-xl font-bold hover:bg-orange-100 dark:hover:bg-orange-500/10 transition-all flex justify-center items-center gap-2 text-sm no-underline">
                 <i class="ph-bold ph-magic-wand text-lg"></i> Подобрать тест
             </a>
         </div>
@@ -135,41 +145,41 @@
 
     <!-- БЫСТРАЯ СТАТИСТИКА -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div class="bg-surface dark:bg-dark-card rounded-[28px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col justify-between hover:-translate-y-1 dark:hover:bg-white/5 transition-all group cursor-pointer relative">
+        <div class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col justify-between hover:-translate-y-1 dark:hover:bg-white/5 transition-all group cursor-pointer relative">
             <i class="ph-bold ph-arrow-up-right absolute top-6 right-6 text-slate-300 dark:text-dark-muted group-hover:text-white transition-colors"></i>
-            <div class="flex justify-between items-start mb-4">
-                <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center border border-blue-100 dark:border-blue-500/20 group-hover:scale-110 transition-transform">
+            <div class="flex justify-between items-start mb-3">
+                <div class="w-12 h-9 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center border border-blue-100 dark:border-blue-500/20 group-hover:scale-110 transition-transform">
                     <i class="ph-fill ph-video-camera text-2xl"></i>
                 </div>
             </div>
             <div>
-                <div class="text-4xl font-black text-primary dark:text-white tracking-tight">{{ total_lessons if total_lessons is defined else '—' }}</div>
+                <div class="text-lg font-bold text-primary dark:text-white tracking-tight">{{ total_lessons if total_lessons is defined else '—' }}</div>
                 <div class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mt-1">Всего занятий</div>
             </div>
         </div>
 
-        <div class="bg-surface dark:bg-dark-card rounded-[28px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col justify-between hover:-translate-y-1 dark:hover:bg-white/5 transition-all group cursor-pointer relative">
+        <div class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col justify-between hover:-translate-y-1 dark:hover:bg-white/5 transition-all group cursor-pointer relative">
             <i class="ph-bold ph-arrow-up-right absolute top-6 right-6 text-slate-300 dark:text-dark-muted group-hover:text-white transition-colors"></i>
-            <div class="flex justify-between items-start mb-4">
-                <div class="w-12 h-12 rounded-xl bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 flex items-center justify-center border border-green-100 dark:border-green-500/20 group-hover:scale-110 transition-transform">
+            <div class="flex justify-between items-start mb-3">
+                <div class="w-12 h-9 rounded-xl bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 flex items-center justify-center border border-green-100 dark:border-green-500/20 group-hover:scale-110 transition-transform">
                     <i class="ph-fill ph-check-square-offset text-2xl"></i>
                 </div>
             </div>
             <div>
-                <div class="text-4xl font-black text-primary dark:text-white tracking-tight">{{ completed_tasks if completed_tasks is defined else 0 }}</div>
+                <div class="text-lg font-bold text-primary dark:text-white tracking-tight">{{ completed_tasks if completed_tasks is defined else 0 }}</div>
                 <div class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mt-1">Выполнено заданий</div>
             </div>
         </div>
 
-        <div class="bg-surface dark:bg-dark-card rounded-[28px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col justify-between hover:-translate-y-1 dark:hover:bg-white/5 transition-all group cursor-pointer relative">
+        <div class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col justify-between hover:-translate-y-1 dark:hover:bg-white/5 transition-all group cursor-pointer relative">
             <i class="ph-bold ph-arrow-up-right absolute top-6 right-6 text-slate-300 dark:text-dark-muted group-hover:text-white transition-colors"></i>
-            <div class="flex justify-between items-start mb-4">
-                <div class="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-500/10 text-boo-primary flex items-center justify-center border border-purple-100 dark:border-purple-500/20 group-hover:scale-110 transition-transform">
+            <div class="flex justify-between items-start mb-3">
+                <div class="w-12 h-9 rounded-xl bg-purple-50 dark:bg-purple-500/10 text-boo-primary flex items-center justify-center border border-purple-100 dark:border-purple-500/20 group-hover:scale-110 transition-transform">
                     <i class="ph-fill ph-star text-2xl"></i>
                 </div>
             </div>
             <div>
-                <div class="text-4xl font-black {% if avg_score is defined and avg_score is not none and avg_score != '—' %}text-primary dark:text-white{% else %}text-slate-300{% endif %} tracking-tight">
+                <div class="text-lg font-bold {% if avg_score is defined and avg_score is not none and avg_score != '—' %}text-primary dark:text-white{% else %}text-slate-300{% endif %} tracking-tight">
                     {{ avg_score if avg_score is defined else '—' }}
                 </div>
                 <div class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mt-1">Средний балл (GPA)</div>
@@ -180,9 +190,9 @@
     <!-- АКТИВНЫЕ ДЕЙСТВИЯ И ЖУРНАЛ -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col h-full min-h-[300px]">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-2xl font-black text-primary dark:text-white">Активные работы</h3>
+        <div class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col h-full min-h-300px">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-bold text-primary dark:text-white">Активные работы</h3>
                 <a href="{{ url_for('assignments.submissions_list') }}" class="text-xs font-bold text-boo-primary hover:text-white dark:hover:text-white transition-colors flex items-center gap-1 no-underline">
                     Все <i class="ph-bold ph-arrow-right"></i>
                 </a>
@@ -201,7 +211,7 @@
                             {% if s.assignment and s.assignment.deadline %}Дедлайн: {{ s.assignment.deadline.strftime('%d.%m.%Y %H:%M') }}{% else %}Без дедлайна{% endif %}
                         </div>
                     </div>
-                    <span class="px-2.5 py-1 bg-white/5 text-muted dark:text-dark-muted text-[10px] font-extrabold uppercase tracking-widest rounded border border-white/5 whitespace-nowrap shrink-0">
+                    <span class="px-2.5 py-1 bg-white/5 text-muted dark:text-dark-muted text-micro font-extrabold uppercase tracking-widest rounded border border-white/5 whitespace-nowrap shrink-0">
                         {{ s.status }}
                     </span>
                 </a>
@@ -209,9 +219,9 @@
                 {% endfor %}
             </div>
             {% else %}
-            <div class="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-slate-100 dark:border-white/10 border-dashed rounded-[24px] bg-slate-50/50 dark:bg-white/5">
-                <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center border border-white/5 mb-4">
-                    <i class="ph-fill ph-check-circle text-4xl text-green-400"></i>
+            <div class="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-slate-100 dark:border-white/10 border-dashed rounded-xl bg-slate-50/50 dark:bg-white/5">
+                <div class="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center border border-white/5 mb-3">
+                    <i class="ph-fill ph-check-circle text-2xl text-green-400"></i>
                 </div>
                 <h4 class="text-lg font-bold text-primary dark:text-white mb-1">Всё сдано!</h4>
                 <p class="text-sm text-muted dark:text-dark-muted font-medium">Нет активных работ. Можно отдохнуть или порешать тренажёр.</p>
@@ -219,9 +229,9 @@
             {% endif %}
         </div>
 
-        <div class="bg-surface dark:bg-dark-card rounded-[32px] border border-slate-200 dark:border-white/[0.06] border-b-[4px] border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-8 flex flex-col h-full min-h-[300px]">
-            <div class="flex justify-between items-center mb-8">
-                <h3 class="text-2xl font-black text-primary dark:text-white">Последние оценки</h3>
+        <div class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col h-full min-h-300px">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-bold text-primary dark:text-white">Последние оценки</h3>
                 <a href="{{ url_for('students.student_gradebook', student_id=student.student_id) }}" class="text-xs font-bold text-boo-primary hover:text-white dark:hover:text-white transition-colors flex items-center gap-1 no-underline">
                     Все <i class="ph-bold ph-arrow-right"></i>
                 </a>
@@ -245,9 +255,9 @@
                 {% endfor %}
             </div>
             {% else %}
-            <div class="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-slate-100 dark:border-white/10 border-dashed rounded-[24px] bg-slate-50/50 dark:bg-white/5">
-                <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center border border-white/5 mb-4">
-                    <i class="ph-fill ph-notebook text-4xl text-slate-300 dark:text-dark-muted"></i>
+            <div class="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-slate-100 dark:border-white/10 border-dashed rounded-xl bg-slate-50/50 dark:bg-white/5">
+                <div class="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center border border-white/5 mb-3">
+                    <i class="ph-fill ph-notebook text-2xl text-slate-300 dark:text-dark-muted"></i>
                 </div>
                 <h4 class="text-lg font-bold text-primary dark:text-white mb-1">Пока пусто</h4>
                 <p class="text-sm text-muted dark:text-dark-muted font-medium">Здесь появятся оценки после первых проверенных работ.</p>

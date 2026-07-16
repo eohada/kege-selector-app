@@ -1,0 +1,233 @@
+<style>
+    /* ==========================================================================
+       Унифицированная дизайн-система для админ-панели (Antigravity Design Engine)
+       ========================================================================== */
+
+    /* Горизонтальный прокручиваемый навигатор вкладок */
+    .admin-nav-scroll {
+        display: flex;
+        gap: 0.6rem;
+        margin-bottom: 2rem;
+        padding-bottom: 0.8rem;
+        border-bottom: 1px solid var(--color-stroke);
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+    .admin-nav-scroll::-webkit-scrollbar {
+        height: 4px;
+    }
+    .admin-nav-scroll::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .admin-nav-scroll::-webkit-scrollbar-thumb {
+        background: var(--color-accent-soft, #7B5CFF33);
+        border-radius: 10px;
+    }
+    .admin-nav-scroll .neo-button {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        text-decoration: none;
+        font-size: 0.88rem;
+        padding: 0.5rem 1rem;
+    }
+
+    /* Унификация карточек статистики */
+    .stats-grid, .audit-stats {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+        gap: 1rem !important;
+        margin-bottom: 2rem !important;
+    }
+    .stat-card, .audit-stat-card {
+        background: var(--color-bg-surface-alt) !important;
+        border: 1px solid var(--color-stroke) !important;
+        border-radius: 16px !important;
+        padding: 1.2rem !important;
+        box-shadow: 0 4px 15px rgba(123, 92, 255, 0.02) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: flex-start !important;
+        transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease !important;
+    }
+    .stat-card:hover, .audit-stat-card:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 24px rgba(123, 92, 255, 0.08) !important;
+        border-color: var(--color-accent-soft, #7B5CFF55) !important;
+    }
+    .stat-card .text-2xl, .audit-stat-value {
+        font-size: 1.75rem !important;
+        font-weight: 800 !important;
+        color: var(--color-text-primary) !important;
+        line-height: 1.1 !important;
+    }
+    .stat-card .text-sm, .audit-stat-label {
+        font-size: 0.82rem !important;
+        color: var(--color-text-muted) !important;
+        margin-top: 0.35rem !important;
+        font-weight: 500 !important;
+    }
+
+    /* Унификация панелей фильтрации / инструментов */
+    .filters-grid, .audit-filters, .filter-section, .graph-toolbar {
+        background: var(--color-bg-surface-alt) !important;
+        border: 1px solid var(--color-stroke) !important;
+        border-radius: 20px !important;
+        padding: 1.5rem !important;
+        margin-bottom: 2rem !important;
+        box-shadow: 0 4px 20px rgba(123, 92, 255, 0.03) !important;
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+        gap: 1.25rem !important;
+        align-items: flex-end !important;
+    }
+    .filters-actions, .audit-filters .flex, .graph-toolbar > :last-child {
+        grid-column: 1 / -1 !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        gap: 0.75rem !important;
+        margin-top: 0.5rem !important;
+    }
+
+    /* Стилизация полей ввода внутри фильтров */
+    .neo-field {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+        width: 100% !important;
+    }
+    .neo-label {
+        font-size: 0.82rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        color: var(--color-text-muted) !important;
+    }
+    .neo-input, .neo-select, .neo-textarea, select, input[type="text"], input[type="datetime-local"], textarea {
+        width: 100% !important;
+        background: var(--color-bg-app, #f9fafb) !important;
+        border: 1px solid var(--color-stroke, #e5e7eb) !important;
+        border-radius: 10px !important;
+        color: var(--color-text-primary) !important;
+        padding: 0.65rem 1rem !important;
+        font-size: 0.9rem !important;
+        outline: none !important;
+        transition: border-color 0.2s, box-shadow 0.2s !important;
+    }
+    .neo-input:focus, .neo-select:focus, select:focus, input[type="text"]:focus {
+        border-color: var(--color-accent, #7B5CFF) !important;
+        box-shadow: 0 0 0 3px var(--color-accent-soft, #7B5CFF15) !important;
+    }
+
+    /* Унификация таблиц (скролл — только через .table-responsive) */
+    table.users-table, table.testers-table, table.audit-table, table.admin-table, table.topics-table {
+        width: 100% !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        background: var(--color-bg-surface-alt) !important;
+        border: 1px solid var(--color-stroke) !important;
+        border-radius: 20px !important;
+        box-shadow: 0 4px 20px rgba(123, 92, 255, 0.03) !important;
+        margin-bottom: 0 !important;
+    }
+
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 2rem;
+        border-radius: 20px;
+    }
+    table th {
+        background: var(--color-accent-soft, #7B5CFF0f) !important;
+        color: var(--color-text-primary) !important;
+        font-weight: 700 !important;
+        padding: 1.1rem 1.25rem !important;
+        border-bottom: 1px solid var(--color-stroke) !important;
+        text-transform: uppercase !important;
+        font-size: 0.8rem !important;
+        letter-spacing: 0.05em !important;
+        text-align: left;
+    }
+    table td {
+        padding: 1rem 1.25rem !important;
+        border-bottom: 1px solid var(--color-stroke) !important;
+        color: var(--color-text-secondary) !important;
+        font-size: 0.9rem !important;
+        vertical-align: middle !important;
+    }
+    table tr:last-child td {
+        border-bottom: none !important;
+    }
+    table tr:hover td {
+        background: rgba(123, 92, 255, 0.02) !important;
+        color: var(--color-text-primary) !important;
+    }
+
+    /* Унификация плиток прав (ролей) на странице управления правами */
+    .role-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+        gap: 1.25rem !important;
+        margin-bottom: 2.5rem !important;
+    }
+    .role-card {
+        background: var(--color-bg-surface-alt) !important;
+        border: 1px solid var(--color-stroke) !important;
+        border-radius: 18px !important;
+        padding: 1.5rem 1rem !important;
+        box-shadow: 0 4px 15px rgba(123, 92, 255, 0.02) !important;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        cursor: pointer !important;
+    }
+    .role-card:hover {
+        transform: translateY(-4px) !important;
+        border-color: var(--color-accent) !important;
+        box-shadow: 0 10px 25px rgba(123, 92, 255, 0.08) !important;
+    }
+    .role-card.active {
+        background: var(--color-bg-surface) !important;
+        border-color: var(--color-accent) !important;
+        box-shadow: 0 12px 30px rgba(123, 92, 255, 0.15) !important;
+    }
+</style>
+
+<div class="admin-nav-scroll">
+    <a href="{{ url_for('admin.admin_users') }}" class="neo-button {% if request.endpoint == 'admin.admin_users' %}accent{% else %}ghost{% endif %}">
+        <i class="ph-bold ph-users text-base"></i> Пользователи
+    </a>
+    <a href="{{ url_for('admin.admin_permissions') }}" class="neo-button {% if request.endpoint == 'admin.admin_permissions' %}accent{% else %}ghost{% endif %}">
+        <i class="ph-bold ph-key text-base"></i> Права доступа
+    </a>
+    <a href="{{ url_for('admin.admin_audit') }}" class="neo-button {% if request.endpoint == 'admin.admin_audit' %}accent{% else %}ghost{% endif %}">
+        <i class="ph-bold ph-scroll text-base"></i> Логи аудита
+    </a>
+    <a href="{{ url_for('admin.admin_testers') }}" class="neo-button {% if request.endpoint == 'admin.admin_testers' %}accent{% else %}ghost{% endif %}">
+        <i class="ph-bold ph-shield-check text-base"></i> Тестировщики
+    </a>
+    <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button {% if request.endpoint == 'admin.admin_tester_entities' or request.endpoint == 'admin.admin_tester_entities_create' or request.endpoint == 'admin.admin_tester_entities_edit' %}accent{% else %}ghost{% endif %}">
+        <i class="ph-bold ph-game-controller text-base"></i> Тренажеры
+    </a>
+    <a href="{{ url_for('admin.admin_topics') }}" class="neo-button {% if request.endpoint == 'admin.admin_topics' %}accent{% else %}ghost{% endif %}">
+        <i class="ph-bold ph-folders text-base"></i> Темы задач
+    </a>
+    <a href="{{ url_for('admin.admin_task_formator') }}" class="neo-button {% if request.endpoint == 'admin.admin_task_formator' %}accent{% else %}ghost{% endif %}">
+        <i class="ph-bold ph-pencil-line text-base"></i> Формирователь
+    </a>
+    <a href="{{ url_for('admin.maintenance_page') }}" class="neo-button {% if request.endpoint == 'admin.maintenance_page' %}accent{% else %}ghost{% endif %}">
+        <i class="ph-bold ph-warning-circle text-base"></i> Обслуживание
+    </a>
+    <a href="{{ url_for('admin.diagnostics') }}" class="neo-button {% if request.endpoint == 'admin.diagnostics' %}accent{% else %}ghost{% endif %}">
+        <i class="ph-bold ph-activity text-base"></i> Диагностика
+    </a>
+    <a href="{{ url_for('admin.debug_export') }}" class="neo-button {% if request.endpoint == 'admin.debug_export' %}accent{% else %}ghost{% endif %}">
+        <i class="ph-bold ph-export text-base"></i> Экспорт
+    </a>
+</div>

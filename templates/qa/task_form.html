@@ -14,9 +14,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid w-full">
     <div class="form-container">
-        <h2 class="mb-4 text-primary">Создать стратегическую задачу</h2>
+        <h2 class="mb-3 text-primary">Создать стратегическую задачу</h2>
         <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
@@ -44,9 +44,9 @@
                 </select>
             </div>
             {% endif %}
-            <div class="flex gap-4 mt-8">
+            <div class="flex gap-4 mt-3">
                 <button type="submit" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать задачу</button>
-                <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Отмена</a>
+                <a href="{{ url_for('qa_tester.board') }}" class="neo-button ghost">Отмена</a>
             </div>
         </form>
     </div>

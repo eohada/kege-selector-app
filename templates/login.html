@@ -3,16 +3,16 @@
 {% block title %}Вход в систему · BooStudy{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-md">
+<div class="w-full">
     <section class="glass-panel">
-        <div class="text-center mb-8">
+        <div class="text-center mb-3">
             <p class="hero-eyebrow">авторизация</p>
             <h1 class="hero-title">Вход в систему</h1>
             <p class="hero-subtitle">Введите ключ и пароль для доступа к платформе</p>
         </div>
 
         {% if form and form.errors %}
-        <div class="alert alert-danger mb-6">
+        <div class="alert alert-danger mb-3">
             <strong>Ошибки:</strong>
             <ul class="mt-2 ml-6 list-disc">
             {% for field_name, error_list in form.errors.items() %}
@@ -55,6 +55,6 @@
         {% endif %}
     </section>
 
-    <p class="text-center mt-8 text-muted">Платформа для управления учебным процессом</p>
+    <p class="text-center mt-3 text-muted">Платформа для управления учебным процессом</p>
 </div>
 {% endblock %}

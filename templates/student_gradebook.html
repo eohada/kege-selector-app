@@ -18,7 +18,7 @@
 {% endblock %}
 
 {% block content %}
-    <section class="glass-panel mb-5">
+    <section class="glass-panel mb-5 w-full">
       <div class="flex justify-between items-start gap-4 flex-wrap">
         <div>
           <p class="hero-eyebrow">оценивание</p>
@@ -43,7 +43,7 @@
         </div>
 
         {% if entries and entries|length > 0 %}
-          <div class="grid gap-4 mt-4" style="grid-template-columns: 1fr;">
+          <div class="grid gap-4 mt-3" style="grid-template-columns: 1fr;">
             {% set kind_labels = {'manual': 'Ручная', 'lesson': 'Урок', 'assignment': 'Работа'} %}
             {% set category_labels = {'homework': 'ДЗ', 'classwork': 'КР', 'exam': 'Проверочная', 'test': 'Тест'} %}
             {% for e in entries %}
@@ -139,7 +139,7 @@
                           <label class="neo-label">Комментарий</label>
                           <textarea class="neo-input" name="comment" rows="3">{{ e.comment or '' }}</textarea>
                         </div>
-                        <div class="flex gap-2 mt-4 flex-wrap">
+                        <div class="flex gap-2 mt-3 flex-wrap">
                           <button type="submit" class="neo-button accent">Сохранить</button>
                         </div>
                       </form>
@@ -154,7 +154,7 @@
             {% endfor %}
           </div>
         {% else %}
-          <div class="empty-state px-4 py-10">
+          <div class="empty-state px-4 py-3">
             <p>Записей пока нет.</p>
           </div>
         {% endif %}
@@ -169,7 +169,7 @@
         </div>
 
         {% if can_edit %}
-          <form method="POST" action="{{ url_for('students.student_gradebook_create', student_id=student.student_id) }}" data-no-ajax="1" class="mt-4">
+          <form method="POST" action="{{ url_for('students.student_gradebook_create', student_id=student.student_id) }}" data-no-ajax="1" class="mt-3">
             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
             <div class="neo-field">
               <label class="neo-label">Тип</label>
@@ -238,12 +238,12 @@
               <div class="mini mt-1">Если выбрано — лучше ставить тип `assignment`.</div>
             </div>
 
-            <div class="mt-4">
+            <div class="mt-3">
               <button type="submit" class="neo-button accent w-full">Добавить</button>
             </div>
           </form>
         {% else %}
-          <div class="p-4 rounded-card border border-stroke bg-bg-surface-alt mt-4">
+          <div class="p-4 rounded-card border border-stroke bg-bg-surface-alt mt-3">
             <div class="mini">Редактирование журнала доступно только преподавателю/админу.</div>
           </div>
         {% endif %}

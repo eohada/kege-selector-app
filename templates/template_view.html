@@ -4,35 +4,42 @@
 {% set active_page = 'templates' %}
 {% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
+
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .shadow-0-4px-12px-rgba139-92-246-008 { box-shadow: 0 4px 12px rgba(139,92,246,0.08); }
+    .active-scale-098:active { transform: scale(0.98); }
+    .hover-shadow-0-6px-16px-rgba139-92-246-015:hover { box-shadow: 0 6px 16px rgba(139,92,246,0.15); }
+</style>
 {% block content %}
-<div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6 pb-6">
-    <section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] rounded-[28px] p-8 shadow-sm dark:shadow-glass-dark">
-        <div class="flex items-center gap-4 mb-6">
-            <a href="{{ url_for('templates.templates_list') }}" class="h-9 px-4 py-1.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-xs transition-all duration-150 active:scale-[0.98] no-underline flex items-center justify-center gap-1.5">
+<div class="flex flex-col gap-6 pb-6 w-full">
+    <section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light rounded-2xl p-6 shadow-sm dark:shadow-glass-dark">
+        <div class="flex items-center gap-4 mb-3">
+            <a href="{{ url_for('templates.templates_list') }}" class="h-9 px-4 py-1.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-xs transition-all duration-150 active-scale-098 no-underline flex items-center justify-center gap-1.5">
                 <i class="ph-bold ph-arrow-left text-sm"></i> К библиотеке
             </a>
         </div>
         <div class="flex flex-col md:flex-row justify-between items-start gap-6">
             <div class="flex-1">
-                <p class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <p class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
                     Просмотр шаблона
                 </p>
-                <h1 class="text-3xl font-black text-primary dark:text-white tracking-tight leading-tight">{{ template.name }}</h1>
+                <h1 class="text-2xl font-bold text-primary dark:text-white tracking-tight leading-tight">{{ template.name }}</h1>
                 {% if template.description %}
                 <p class="text-sm text-muted dark:text-dark-muted font-medium mt-3 leading-relaxed max-w-3xl">{{ template.description }}</p>
                 {% endif %}
             </div>
             <div class="flex items-center gap-3 shrink-0">
-                <a href="{{ url_for('assignments.assignment_create', source='template', template_id=template.template_id, assignment_type=(template.template_type or 'homework')) }}" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] no-underline">
+                <a href="{{ url_for('assignments.assignment_create', source='template', template_id=template.template_id, assignment_type=(template.template_type or 'homework')) }}" class="h-9 px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-008 hover-shadow-0-6px-16px-rgba139-92-246-015 no-underline">
                     <i class="ph-bold ph-file-text text-base"></i> Создать работу
                 </a>
-                <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="h-11 px-5 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
+                <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
                     <i class="ph-bold ph-pencil-simple text-base"></i> Редактировать
                 </a>
             </div>
         </div>
         
-        <div class="flex flex-wrap gap-2.5 mt-6 pt-6 border-t border-slate-100 dark:border-white/[0.06]">
+        <div class="flex flex-wrap gap-2.5 mt-3 pt-6 border-t border-slate-100 dark:border-dark-light">
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-white/[0.06] text-secondary dark:text-slate-200 rounded-xl text-xs font-bold">
                 {% if template.template_type == 'homework' %}{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Домашнее задание
                 {% elif template.template_type == 'classwork' %}{{ ui_icon('action.school', 'sm', decorative=true) }} Классная работа
@@ -50,7 +57,7 @@
             {% elif template.category == 'ПРОГРАММИРОВАНИЕ' %}
                 {% set tag_color = 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300' %}
             {% endif %}
-            <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold {{ tag_color }}">{{ template.category }}</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold {{ tag_color }}">{{ template.category }}</span>
             {% endif %}
             <span class="inline-flex items-center px-3 py-1.5 bg-slate-100 dark:bg-white/[0.06] text-muted dark:text-dark-muted rounded-xl text-xs font-bold">
                 {{ template_tasks|length }} заданий
@@ -59,19 +66,19 @@
     </section>
 
     {% if template_tasks %}
-    <section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] rounded-[28px] p-6 lg:p-8 shadow-sm dark:shadow-glass-dark">
-        <div class="border-b border-slate-100 dark:border-white/[0.06] pb-4 mb-6">
-            <p class="text-[10px] font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Задания в шаблоне</p>
-            <h2 class="text-2xl font-black text-primary dark:text-white mt-1">Список заданий ({{ template_tasks|length }})</h2>
+    <section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light rounded-2xl p-6 lg:p-6 shadow-sm dark:shadow-glass-dark">
+        <div class="border-b border-slate-100 dark:border-dark-light pb-4 mb-3">
+            <p class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Задания в шаблоне</p>
+            <h2 class="text-lg font-bold text-primary dark:text-white mt-1">Список заданий ({{ template_tasks|length }})</h2>
         </div>
 
         <div class="flex flex-col gap-6">
             {% for template_task in template_tasks %}
             {% set task = template_task.task %}
-            <div class="bg-surface-alt dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] rounded-[24px] p-6">
-                <div class="flex justify-between items-start border-b border-slate-100 dark:border-white/[0.04] pb-4 mb-4">
+            <div class="bg-surface-alt dark:bg-white/[0.02] border border-slate-200/80 dark:border-dark-light rounded-xl p-6">
+                <div class="flex justify-between items-start border-b border-slate-100 dark:border-dark-faint pb-4 mb-3">
                     <div>
-                        <div class="text-xl font-black text-boo-primary dark:text-purple-300 tracking-tight">
+                        <div class="text-base font-bold text-boo-primary dark:text-purple-300 tracking-tight">
                             Задание {{ task.task_number }}
                         </div>
                         {% if task.site_task_id %}
@@ -100,12 +107,12 @@
         </div>
     </section>
     {% else %}
-    <section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-white/[0.06] rounded-[28px] p-12 shadow-sm dark:shadow-glass-dark">
-        <div class="py-8 text-center flex flex-col items-center justify-center">
-            <div class="text-5xl text-muted dark:text-dark-muted mb-4"><i class="ph-bold ph-tray"></i></div>
-            <h3 class="text-lg font-black text-secondary dark:text-white mb-2">Нет заданий</h3>
-            <p class="text-sm text-muted dark:text-dark-muted mb-6 max-w-md">Добавьте задания в шаблон через генератор, чтобы использовать их в работе.</p>
-            <a href="{{ url_for('task_generator.task_generator') }}?template_id={{ template.template_id }}" class="h-11 px-5 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active:scale-[0.98] select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(139,92,246,0.08)] hover:shadow-[0_6px_16px_rgba(139,92,246,0.15)] no-underline">
+    <section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light rounded-2xl p-5 shadow-sm dark:shadow-glass-dark">
+        <div class="py-3 text-center flex flex-col items-center justify-center">
+            <div class="text-xl text-muted dark:text-dark-muted mb-3"><i class="ph-bold ph-tray"></i></div>
+            <h3 class="text-sm font-bold text-secondary dark:text-white mb-2">Нет заданий</h3>
+            <p class="text-sm text-muted dark:text-dark-muted mb-3 max-w-md">Добавьте задания в шаблон через генератор, чтобы использовать их в работе.</p>
+            <a href="{{ url_for('task_generator.task_generator') }}?template_id={{ template.template_id }}" class="h-9 px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-008 hover-shadow-0-6px-16px-rgba139-92-246-015 no-underline">
                 <i class="ph-bold ph-dice text-base"></i> Добавить задания
             </a>
         </div>

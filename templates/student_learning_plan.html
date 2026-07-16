@@ -23,7 +23,7 @@
 {% endblock %}
 
 {% block content %}
-    <section class="glass-panel mb-5">
+    <section class="glass-panel mb-5 w-full">
       <div class="flex justify-between items-start gap-4 flex-wrap">
         <div>
           <p class="hero-eyebrow">учебный план</p>
@@ -41,9 +41,16 @@
       </div>
     </section>
 
+    <!-- View Switcher Toggle -->
+    <div class="flex gap-2 mb-3 bg-surface-alt dark:bg-dark-inner/40 p-1.5 rounded-xl w-fit border border-stroke">
+        <button class="neo-button sm accent" id="view-list-btn" onclick="switchView('list')">Список</button>
+        <button class="neo-button sm ghost" id="view-map-btn" onclick="switchView('map')">Карта обучения</button>
+    </div>
+
     <div class="plan-grid">
       <section class="glass-panel">
-        <div class="panel-head">
+        <div id="plan-list-view">
+          <div class="panel-head">
           <div>
             <p class="eyebrow">пункты</p>
             <h2>Что делаем дальше</h2>
@@ -51,7 +58,7 @@
         </div>
 
         {% if items %}
-          <div class="grid gap-4 mt-4" style="grid-template-columns: 1fr;">
+          <div class="grid gap-4 mt-3" style="grid-template-columns: 1fr;">
             {% for it in items %}
             <div class="plan-item">
               <div class="flex justify-between items-start gap-3 flex-wrap">
@@ -130,7 +137,7 @@
                       <label class="neo-label">Заметки</label>
                       <textarea class="neo-input" name="notes" rows="3">{{ it.notes or '' }}</textarea>
                     </div>
-                    <div class="flex gap-2 mt-4 flex-wrap">
+                    <div class="flex gap-2 mt-3 flex-wrap">
                       <button type="submit" class="neo-button accent">Сохранить</button>
                     </div>
                   </form>
@@ -144,12 +151,130 @@
             </div>
             {% endfor %}
           </div>
-        {% else %}
-          <div class="empty-state px-4 py-10">
-            <p>Пока нет пунктов траектории.</p>
-          </div>
         {% endif %}
-      </section>
+        </div> <!-- End of plan-list-view -->
+
+        <!-- Interactive Map View -->
+        <div id="plan-map-view" class="hidden">
+          <div class="panel-head mb-3 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p class="eyebrow">карта обучения</p>
+              <h2>Интерактивный Roadmap</h2>
+            </div>
+            {% if can_edit %}
+            <div class="flex gap-2 items-center flex-wrap" id="map-toolbar">
+              <span class="text-xs text-muted font-semibold">Режим:</span>
+              <button id="mode-drag-btn" class="neo-button sm accent" onclick="setMode('drag')">
+                <i class="ph-bold ph-arrows-four"></i> Перемещение
+              </button>
+              <button id="mode-connect-btn" class="neo-button sm ghost" onclick="setMode('connect')">
+                <i class="ph-bold ph-link"></i> Связь
+              </button>
+              <button class="neo-button sm ghost text-red-500" onclick="clearSelectedEdge()" id="delete-edge-btn" style="display:none;">
+                <i class="ph-bold ph-trash"></i> Удалить связь
+              </button>
+            </div>
+            {% endif %}
+          </div>
+
+          {% if items %}
+            <!-- Map Canvas -->
+            <!-- Mini controls -->
+            <div class="flex gap-2 mb-2 items-center">
+              <button onclick="mapZoom(0.15)" class="neo-button sm ghost" title="Приблизить"><i class="ph-bold ph-plus"></i></button>
+              <button onclick="mapZoom(-0.15)" class="neo-button sm ghost" title="Отдалить"><i class="ph-bold ph-minus"></i></button>
+              <button onclick="mapResetView()" class="neo-button sm ghost" title="По центру"><i class="ph-bold ph-arrows-in"></i> Сброс</button>
+              <span class="text-xs text-muted ml-1">Скролл — масштаб &nbsp;·&nbsp; Alt+тяни — перемещение карты</span>
+            </div>
+            <div id="map-canvas-wrapper" style="position:relative; width:100%; height:660px; background: radial-gradient(circle at 30% 30%, rgba(139,92,246,0.04) 0%, transparent 60%), radial-gradient(circle at 70% 70%, rgba(34,211,238,0.03) 0%, transparent 60%); border-radius:20px; border: 1px solid var(--color-stroke); overflow:hidden;">
+              <!-- Inner transform layer -->
+              <div id="map-inner" style="position:absolute; top:0; left:0; width:2400px; height:2000px; transform-origin:0 0; will-change:transform;">
+                <!-- SVG for arrows -->
+                <svg id="map-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                      <polygon points="0 0, 10 3.5, 0 7" fill="#8B5CF6" opacity="0.85"/>
+                    </marker>
+                    <marker id="arrowhead-selected" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                      <polygon points="0 0, 10 3.5, 0 7" fill="#EC4899"/>
+                    </marker>
+                  </defs>
+                  <!-- edges drawn by JS -->
+                </svg>
+
+                <!-- Nodes -->
+                {% for it in items %}
+                {% set status = it.status or 'planned' %}
+                {% set node_x = it.x if it.x is not none else (60 + loop.index0 % 4 * 230) %}
+                {% set node_y = it.y if it.y is not none else (60 + (loop.index0 // 4) * 190) %}
+                <div class="map-node"
+                     data-id="{{ it.item_id }}"
+                     data-parent="{{ it.parent_id or '' }}"
+                     data-status="{{ status }}"
+                     data-title="{{ it.title | e }}"
+                     data-topic="{{ it.topic.name if it.topic else '' }}"
+                     data-notes="{{ (it.notes or '') | e }}"
+                     data-coords-url="{{ url_for('students.student_learning_plan_item_coords', student_id=student.student_id, item_id=it.item_id) }}"
+                     style="position:absolute; left:{{ node_x }}px; top:{{ node_y }}px; width:190px; user-select:none; z-index:10;"
+                     onclick="handleNodeClick(event, this)">
+                  <div class="map-node-inner status-{{ status }}">
+                    <div class="map-node-icon">
+                      {% if status == 'done' %}<i class="ph-bold ph-check-circle text-emerald-400"></i>
+                      {% elif status == 'in_progress' %}<i class="ph-bold ph-play-circle text-purple-400"></i>
+                      {% elif status == 'failed' %}<i class="ph-bold ph-x-circle text-red-400"></i>
+                      {% else %}<i class="ph-bold ph-lock text-zinc-400"></i>{% endif %}
+                    </div>
+                    <p class="map-node-title">{{ it.title }}</p>
+                    {% if it.topic %}<p class="map-node-sub">{{ it.topic.name }}</p>{% endif %}
+                  </div>
+                  {% if can_edit %}
+                  <div class="map-node-connect-handle" title="Тянуть отсюда к другому узлу для связи">
+                    <i class="ph-bold ph-arrow-down text-purple-400"></i>
+                  </div>
+                  {% endif %}
+                </div>
+                {% endfor %}
+
+                <!-- Floating connecting line while dragging edge -->
+                <svg id="connecting-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;display:none; overflow:visible;">
+                  <defs>
+                    <marker id="arrowhead-conn" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                      <polygon points="0 0, 10 3.5, 0 7" fill="#8B5CF6"/>
+                    </marker>
+                  </defs>
+                  <line id="connecting-line" x1="0" y1="0" x2="0" y2="0" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrowhead-conn)"/>
+                </svg>
+              </div><!-- /map-inner -->
+            </div>
+            <!-- popup rendered OUTSIDE canvas so overflow:hidden doesn't clip it -->
+
+          {% else %}
+            <div class="text-center py-16 text-muted">
+              <i class="ph-bold ph-map-trifold text-2xl mb-3 block opacity-30"></i>
+              <p>Пока нет пунктов траектории.<br>Добавьте их в списке.</p>
+            </div>
+          {% endif %}
+          </div><!-- /plan-map-view -->
+        </section>
+
+        <!-- Popup: position:fixed so it escapes overflow:hidden on the canvas -->
+        <div id="node-popup" style="display:none; position:fixed; z-index:9000; min-width:240px; max-width:300px; pointer-events:auto;"
+             onclick="event.stopPropagation()">
+          <div style="background:var(--color-bg-surface); border:1.5px solid var(--color-stroke); border-radius:18px; padding:16px 18px; box-shadow:0 12px 48px rgba(0,0,0,0.22);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:10px;">
+              <h3 id="popup-title" style="font-size:14px; font-weight:800; line-height:1.3; margin:0; color:var(--color-text-primary);"></h3>
+              <button onclick="closePopup()" style="background:none;border:none;cursor:pointer;padding:4px 6px;color:var(--color-text-muted);flex-shrink:0;font-size:18px;line-height:1;">&times;</button>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+              <span id="popup-status" class="badge"></span>
+              <span id="popup-topic" class="badge" style="display:none; color:var(--color-text-muted);"></span>
+            </div>
+            <div style="background:var(--color-bg-surface-alt); border-radius:10px; padding:10px 12px; border:1px solid var(--color-stroke);">
+              <p style="font-size:11px; font-weight:700; color:var(--color-text-muted); margin:0 0 4px;">Заметки / Цели:</p>
+              <p id="popup-notes" style="font-size:12px; color:var(--color-text-primary); white-space:pre-line; line-height:1.5; margin:0;"></p>
+            </div>
+          </div>
+        </div>
 
       <aside class="glass-panel">
         <div class="panel-head">
@@ -160,7 +285,7 @@
         </div>
 
         {% if can_edit %}
-          <form method="POST" action="{{ url_for('students.student_learning_plan_item_create', student_id=student.student_id) }}" data-no-ajax="1" class="mt-4">
+          <form method="POST" action="{{ url_for('students.student_learning_plan_item_create', student_id=student.student_id) }}" data-no-ajax="1" class="mt-3">
             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
             <div class="neo-field">
               <label class="neo-label">Название *</label>
@@ -207,34 +332,459 @@
               <label class="neo-label">Заметки</label>
               <textarea class="neo-input" name="notes" rows="4" placeholder="Критерии успеха, ссылки, типичные ошибки..."></textarea>
             </div>
-            <div class="mt-4">
+            <div class="mt-3">
               <button type="submit" class="neo-button accent w-full">Добавить</button>
             </div>
           </form>
         {% else %}
-          <div class="plan-card mt-4">
+          <div class="plan-card mt-3">
             <div class="mini">Редактирование доступно только преподавателю/админу.</div>
           </div>
         {% endif %}
       </aside>
-    </div>
 {% endblock %}
 
 {% block scripts_extra %}
+<style>
+  .map-node { transition: filter 0.15s; }
+  .map-node:hover .map-node-inner { box-shadow: 0 0 0 2px #8B5CF6, 0 8px 32px rgba(139,92,246,0.25); }
+  .map-node-inner {
+    padding: 12px 14px; border-radius: 16px; border: 1.5px solid var(--color-stroke);
+    background: var(--color-bg-surface); cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  .map-node-inner.status-done { border-color: rgba(52,211,153,0.5); background: rgba(52,211,153,0.05); }
+  .map-node-inner.status-in_progress { border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.06); animation: pulse-glow 2s ease-in-out infinite; }
+  .map-node-inner.status-failed { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.05); }
+  .map-node.node-selected .map-node-inner { box-shadow: 0 0 0 3px #EC4899 !important; }
+  @keyframes pulse-glow { 0%,100% { box-shadow: 0 4px 16px rgba(0,0,0,0.08); } 50% { box-shadow: 0 4px 24px rgba(139,92,246,0.35); } }
+  .map-node-icon { font-size: 20px; line-height: 1; margin-bottom: 6px; }
+  .map-node-title { font-size: 12px; font-weight: 800; color: var(--color-text-primary); line-height: 1.3; margin: 0; }
+  .map-node-sub { font-size: 10px; color: var(--color-text-muted); margin-top: 3px; }
+  .map-node-connect-handle {
+    position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
+    width: 22px; height: 22px; border-radius: 50%; background: var(--color-bg-surface);
+    border: 1.5px solid rgba(139,92,246,0.5); display: flex; align-items:center; justify-content:center;
+    cursor: crosshair; opacity: 0; transition: opacity 0.2s; z-index: 20;
+    font-size: 11px;
+  }
+  .map-node:hover .map-node-connect-handle { opacity: 1; }
+  .map-edge { cursor: pointer; stroke: #8B5CF6; stroke-width: 2; fill: none; opacity: 0.75; transition: stroke 0.2s, opacity 0.2s; }
+  .map-edge:hover { stroke: #EC4899; opacity: 1; stroke-width: 2.5; }
+  .map-edge.selected { stroke: #EC4899; opacity: 1; stroke-width: 2.5; }
+  #map-canvas-wrapper.mode-connect { cursor: crosshair; }
+  #map-canvas-wrapper.mode-drag { cursor: grab; }
+  #map-canvas-wrapper.mode-drag.dragging { cursor: grabbing; }
+</style>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('form').forEach(function(form) {
-        if (form.classList.contains('danger-btn') || form.classList.contains('no-protect')) return;
-        form.addEventListener('submit', function() {
-            var btn = form.querySelector('button[type="submit"], input[type="submit"]');
-            if (btn && !btn.disabled) {
-                btn.disabled = true;
-                btn.dataset.originalText = btn.textContent;
-                btn.textContent = 'Сохранение...';
-                setTimeout(function() { btn.disabled = false; btn.textContent = btn.dataset.originalText; }, 8000);
-            }
-        });
+(function() {
+  'use strict';
+
+  const canEdit = {{ 'true' if can_edit else 'false' }};
+  const studentId = {{ student.student_id }};
+  const csrfToken = document.querySelector('[name="csrf_token"]')?.value || '';
+
+  // ─── PAN / ZOOM STATE ────────────────────────────────────────────────────
+  let panX = 0, panY = 0, scale = 1;
+  let isPanning = false;
+  let panStartX = 0, panStartY = 0;
+
+  function applyTransform() {
+    const inner = document.getElementById('map-inner');
+    if (inner) inner.style.transform = `translate(${panX}px,${panY}px) scale(${scale})`;
+    drawEdges();
+  }
+
+  window.mapZoom = function(delta) {
+    scale = Math.max(0.3, Math.min(2.5, scale + delta));
+    applyTransform();
+  };
+
+  window.mapResetView = function() {
+    panX = 0; panY = 0; scale = 1;
+    applyTransform();
+  };
+
+  let mode = 'drag'; // 'drag' | 'connect'
+  let draggingNode = null;
+  let dragOffX = 0, dragOffY = 0;
+  let dragHasMoved = false;
+  let mouseDownX = 0, mouseDownY = 0;
+  // connectingFrom = the node we START from (this node becomes the PARENT)
+  // connectingTo   = the node we DROP ON  (this node becomes the CHILD)
+  let connectingFrom = null;
+  let selectedEdge = null;
+
+  const svg = document.getElementById('map-svg');
+  const wrapper = document.getElementById('map-canvas-wrapper');
+  const inner = document.getElementById('map-inner');
+  const connSvg = document.getElementById('connecting-svg');
+  const connLine = document.getElementById('connecting-line');
+  const deleteBtn = document.getElementById('delete-edge-btn');
+
+  if (!svg || !inner) return; // no items
+
+  // ── Node registry ──────────────────────────────────────────────────────────
+  const nodes = {};
+  document.querySelectorAll('.map-node').forEach(n => { nodes[n.dataset.id] = n; });
+
+  // ── Coordinate helpers ──────────────────────────────────────────────────────
+  // Convert wrapper-relative client coords to map-inner canvas coords
+  function clientToCanvas(cx, cy) {
+    const rect = wrapper.getBoundingClientRect();
+    return {
+      x: (cx - rect.left - panX) / scale,
+      y: (cy - rect.top  - panY) / scale,
+    };
+  }
+
+  function getNodeBottom(node) {
+    return {
+      x: parseInt(node.style.left) + node.offsetWidth / 2,
+      y: parseInt(node.style.top)  + node.offsetHeight + 4,
+    };
+  }
+
+  function getNodeTop(node) {
+    return {
+      x: parseInt(node.style.left) + node.offsetWidth / 2,
+      y: parseInt(node.style.top)  - 4,
+    };
+  }
+
+  // ── Draw edges ──────────────────────────────────────────────────────────────
+  function drawEdges() {
+    svg.querySelectorAll('.map-edge-group').forEach(e => e.remove());
+
+    // Edge: parent → child (arrow points TO child)
+    document.querySelectorAll('.map-node').forEach(child => {
+      const parentId = child.dataset.parent;
+      if (!parentId || !nodes[parentId]) return;
+      const parent = nodes[parentId];
+
+      const from = getNodeBottom(parent); // FROM parent bottom
+      const to   = getNodeTop(child);     // TO   child top
+
+      const dy = Math.max(40, Math.abs(to.y - from.y) * 0.5);
+      const d  = `M ${from.x} ${from.y} C ${from.x} ${from.y + dy}, ${to.x} ${to.y - dy}, ${to.x} ${to.y}`;
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'map-edge-group');
+      g.dataset.from = parent.dataset.id;
+      g.dataset.to   = child.dataset.id;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('class', 'map-edge');
+      path.setAttribute('marker-end', 'url(#arrowhead)');
+
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      hit.setAttribute('d', d);
+      hit.setAttribute('stroke', 'transparent');
+      hit.setAttribute('stroke-width', '16');
+      hit.setAttribute('fill', 'none');
+      hit.style.cursor = 'pointer';
+      hit.style.pointerEvents = 'stroke';
+      hit.addEventListener('click', ev => {
+        if (!canEdit) return;
+        ev.stopPropagation();
+        selectEdge(g, child.dataset.id);
+      });
+
+      g.appendChild(path);
+      g.appendChild(hit);
+      svg.appendChild(g);
     });
-});
+
+    svg.style.pointerEvents = 'none';
+    svg.querySelectorAll('.map-edge-group path:last-child').forEach(p => p.style.pointerEvents = 'stroke');
+  }
+
+  function selectEdge(group, childId) {
+    svg.querySelectorAll('.map-edge').forEach(e => e.classList.remove('selected'));
+    selectedEdge = null;
+    if (deleteBtn) deleteBtn.style.display = 'none';
+
+    if (group) {
+      group.querySelector('.map-edge').classList.add('selected');
+      selectedEdge = { group, childId };
+      if (deleteBtn) deleteBtn.style.display = 'flex';
+    }
+  }
+
+  window.clearSelectedEdge = function() {
+    if (!selectedEdge) return;
+    const childNode = nodes[selectedEdge.childId];
+    if (!childNode) return;
+    childNode.dataset.parent = '';
+    saveEdge(selectedEdge.childId, null);
+    drawEdges();
+    selectEdge(null);
+  };
+
+  // ── Persist helpers ─────────────────────────────────────────────────────────
+  function saveEdge(childId, parentId) {
+    fetch(`/student/${studentId}/plan/items/${childId}/parent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ parent_id: parentId || null })
+    });
+  }
+
+  function saveCoords(nodeEl) {
+    const url = nodeEl.dataset.coordsUrl;
+    if (!url) return;
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ x: parseInt(nodeEl.style.left), y: parseInt(nodeEl.style.top) })
+    });
+  }
+
+  // ── Mode switching ──────────────────────────────────────────────────────────
+  window.setMode = function(m) {
+    mode = m;
+    const dragBtn = document.getElementById('mode-drag-btn');
+    const connBtn = document.getElementById('mode-connect-btn');
+    if (dragBtn) dragBtn.className = m === 'drag'    ? 'neo-button sm accent' : 'neo-button sm ghost';
+    if (connBtn) connBtn.className = m === 'connect' ? 'neo-button sm accent' : 'neo-button sm ghost';
+    wrapper.style.cursor = m === 'connect' ? 'crosshair' : 'grab';
+  };
+  setMode('drag');
+
+  // ── NODE DRAG ───────────────────────────────────────────────────────────────
+  document.querySelectorAll('.map-node').forEach(node => {
+    node.addEventListener('mousedown', e => {
+      if (e.target.closest('.map-node-connect-handle')) return; // handle deals with this
+      e.preventDefault();
+      e.stopPropagation(); // don't trigger pan
+      draggingNode   = node;
+      dragHasMoved   = false;
+      mouseDownX     = e.clientX;
+      mouseDownY     = e.clientY;
+      // offset from node top-left in canvas coords
+      const cv       = clientToCanvas(e.clientX, e.clientY);
+      dragOffX       = cv.x - parseInt(node.style.left);
+      dragOffY       = cv.y - parseInt(node.style.top);
+      node.style.zIndex = 100;
+    });
+  });
+
+  // ── CONNECT HANDLE ──────────────────────────────────────────────────────────
+  // Dragging FROM the handle ▼ at the bottom of node A TO node B:
+  //   → A becomes parent, B becomes child
+  document.querySelectorAll('.map-node-connect-handle').forEach(handle => {
+    handle.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      connectingFrom = handle.closest('.map-node'); // this will be the PARENT
+      connSvg.style.display = 'block';
+      const from = getNodeBottom(connectingFrom);
+      connLine.setAttribute('x1', from.x);
+      connLine.setAttribute('y1', from.y);
+      connLine.setAttribute('x2', from.x);
+      connLine.setAttribute('y2', from.y);
+    });
+  });
+
+  // Drop on a node = make connectingFrom the PARENT, drop target the CHILD
+  // Use a flag to ensure only ONE node handles the drop (prevents double-fire from nested elements)
+  let connectHandled = false;
+  document.querySelectorAll('.map-node').forEach(node => {
+    node.addEventListener('mouseup', e => {
+      if (!connectingFrom) return;
+      if (connectHandled) return; // already handled by a child element
+      connectHandled = true;
+      e.stopPropagation();
+
+      connSvg.style.display = 'none';
+      const target = node;
+
+      if (target !== connectingFrom) {
+        // target = CHILD, connectingFrom = PARENT
+        target.dataset.parent = connectingFrom.dataset.id;
+        if (canEdit) saveEdge(target.dataset.id, connectingFrom.dataset.id);
+        drawEdges();
+      }
+      connectingFrom = null;
+      // reset flag after a tick
+      setTimeout(() => { connectHandled = false; }, 0);
+    });
+  });
+
+  // ── PAN (Alt+drag on wrapper, or middle-mouse) ──────────────────────────────
+  let panStartMouseX = 0, panStartMouseY = 0, panStartPanX = 0, panStartPanY = 0;
+
+  wrapper.addEventListener('mousedown', e => {
+    if (e.button === 1 || e.altKey) {
+      e.preventDefault();
+      isPanning    = true;
+      panStartMouseX = e.clientX;
+      panStartMouseY = e.clientY;
+      panStartPanX   = panX;
+      panStartPanY   = panY;
+      wrapper.style.cursor = 'grabbing';
+    }
+  });
+
+  // ── MOUSE MOVE (drag node / pan / connect line) ──────────────────────────────
+  document.addEventListener('mousemove', e => {
+    // Node drag
+    if (draggingNode) {
+      if (!dragHasMoved && Math.abs(e.clientX - mouseDownX) + Math.abs(e.clientY - mouseDownY) > 4) {
+        dragHasMoved = true;
+      }
+      const cv = clientToCanvas(e.clientX, e.clientY);
+      let x = cv.x - dragOffX;
+      let y = cv.y - dragOffY;
+      x = Math.max(0, x);
+      y = Math.max(0, y);
+      draggingNode.style.left = x + 'px';
+      draggingNode.style.top  = y + 'px';
+      drawEdges();
+    }
+
+    // Pan
+    if (isPanning) {
+      panX = panStartPanX + (e.clientX - panStartMouseX);
+      panY = panStartPanY + (e.clientY - panStartMouseY);
+      applyTransform();
+    }
+
+    // Connect line follows mouse (in canvas coords)
+    if (connectingFrom) {
+      const cv = clientToCanvas(e.clientX, e.clientY);
+      const from = getNodeBottom(connectingFrom);
+      connLine.setAttribute('x1', from.x);
+      connLine.setAttribute('y1', from.y);
+      connLine.setAttribute('x2', cv.x);
+      connLine.setAttribute('y2', cv.y);
+    }
+  });
+
+  document.addEventListener('mouseup', e => {
+    if (draggingNode) {
+      draggingNode.style.zIndex = 10;
+      if (canEdit && dragHasMoved) saveCoords(draggingNode);
+      draggingNode = null;
+    }
+    if (isPanning) {
+      isPanning = false;
+      wrapper.style.cursor = mode === 'connect' ? 'crosshair' : 'grab';
+    }
+    if (connectingFrom) {
+      // Released outside any node — cancel connection
+      connSvg.style.display = 'none';
+      connectingFrom = null;
+    }
+  });
+
+  // ── SCROLL TO ZOOM ──────────────────────────────────────────────────────────
+  wrapper.addEventListener('wheel', e => {
+    e.preventDefault();
+    const delta  = e.deltaY > 0 ? -0.08 : 0.08;
+    const rect   = wrapper.getBoundingClientRect();
+    const mx     = e.clientX - rect.left;
+    const my     = e.clientY - rect.top;
+    const newScale = Math.max(0.25, Math.min(2.5, scale + delta));
+    panX = mx - (mx - panX) * (newScale / scale);
+    panY = my - (my - panY) * (newScale / scale);
+    scale = newScale;
+    applyTransform();
+  }, { passive: false });
+
+  // ── NODE CLICK → popup (position:fixed, no overlay) ─────────────────────────
+  window.handleNodeClick = function(e, node) {
+    if (e.target.closest('.map-node-connect-handle')) return;
+    if (dragHasMoved) return;
+    e.stopPropagation(); // prevent bubbling to document close-listener
+
+    const popup = document.getElementById('node-popup');
+    document.getElementById('popup-title').textContent = node.dataset.title;
+    const statusEl  = document.getElementById('popup-status');
+    const statusMap = { done: 'b-done', in_progress: 'b-in_progress', failed: 'b-failed', planned: 'b-planned' };
+    const labels    = { done: '✓ Пройдено', in_progress: '⏳ В процессе', failed: '✗ Провалено', planned: '○ Запланировано' };
+    statusEl.className   = 'badge ' + (statusMap[node.dataset.status] || 'b-planned');
+    statusEl.textContent = labels[node.dataset.status] || node.dataset.status;
+    const topicEl = document.getElementById('popup-topic');
+    if (node.dataset.topic) { topicEl.textContent = node.dataset.topic; topicEl.style.display = 'inline-flex'; }
+    else { topicEl.style.display = 'none'; }
+    document.getElementById('popup-notes').textContent = node.dataset.notes || 'Нет описания.';
+
+    // Position popup using viewport coordinates (works with position:fixed)
+    const rect = node.getBoundingClientRect();
+    const popW = 300;
+    const popH = 200;
+    const vW   = window.innerWidth;
+    const vH   = window.innerHeight;
+    // Try to place right of node; clamp to viewport
+    let px = rect.right + 12;
+    let py = rect.top;
+    if (px + popW > vW - 8) px = rect.left - popW - 12; // flip left
+    if (px < 8) px = 8;
+    if (py + popH > vH - 8) py = vH - popH - 8;
+    if (py < 8) py = 8;
+
+    popup.style.left    = px + 'px';
+    popup.style.top     = py + 'px';
+    popup.style.display = 'block';
+
+    // Close on next outside click (added after current event cycle)
+    setTimeout(() => {
+      document.addEventListener('click', function onOutside(ev) {
+        if (!ev.target.closest('#node-popup')) {
+          closePopup();
+          document.removeEventListener('click', onOutside);
+        }
+      });
+    }, 0);
+  };
+
+  window.closePopup = function() {
+    document.getElementById('node-popup').style.display = 'none';
+  };
+
+  // Escape key closes popup
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closePopup();
+  });
+
+
+  // ── View switcher ───────────────────────────────────────────────────────────
+  window.switchView = function(viewType) {
+    const listView = document.getElementById('plan-list-view');
+    const mapView  = document.getElementById('plan-map-view');
+    const listBtn  = document.getElementById('view-list-btn');
+    const mapBtn   = document.getElementById('view-map-btn');
+    if (viewType === 'list') {
+      listView.classList.remove('hidden'); mapView.classList.add('hidden');
+      listBtn.className = 'neo-button sm accent'; mapBtn.className = 'neo-button sm ghost';
+    } else {
+      listView.classList.add('hidden'); mapView.classList.remove('hidden');
+      listBtn.className = 'neo-button sm ghost'; mapBtn.className = 'neo-button sm accent';
+      setTimeout(drawEdges, 80);
+    }
+  };
+
+  // ── Init ────────────────────────────────────────────────────────────────────
+  setTimeout(drawEdges, 120);
+
+  // Form submit protection
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('form').forEach(function(form) {
+      if (form.classList.contains('danger-btn') || form.classList.contains('no-protect')) return;
+      form.addEventListener('submit', function() {
+        var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+        if (btn && !btn.disabled) {
+          btn.disabled = true;
+          btn.dataset.originalText = btn.textContent;
+          btn.textContent = 'Сохранение...';
+          setTimeout(function() { btn.disabled = false; btn.textContent = btn.dataset.originalText; }, 8000);
+        }
+      });
+    });
+  });
+})();
 </script>
 {% endblock %}

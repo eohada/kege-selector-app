@@ -4,6 +4,16 @@
 
 {% set active_page = active_page | default('review_queue') %}
 {% block head_css %}
+<!-- Custom Styles for JIT Class Elimination -->
+<style>
+    .bg-length-16px { background-color: length:16px; }
+    .bg-F59E0B { background-color: #F59E0B; }
+    .bg-urldata-image-svgxmlcharsetutf-8-3Csvg { background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg; }
+    .bg-right-12px-center { background-color: right 12px center; }
+    .shadow-0-8px-24px--4px-rgba15-23-42-005 { box-shadow: 0 8px 24px -4px rgba(15,23,42,0.05); }
+    .hover-scale-102:hover { transform: scale(1.02); }
+</style>
+
 <style>
 @media (max-width: 768px) {
     .review-filters-actions { width: 100%; flex-wrap: wrap; }
@@ -13,13 +23,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="w-full max-w-[1400px] mx-auto space-y-8">
+<div class="space-y-5 w-full">
     <!-- Header Section -->
     <div class="flex flex-col lg:flex-row gap-6 items-stretch">
         <!-- Title Card -->
-        <div class="lg:w-1/3 flex flex-col justify-center bg-surface dark:bg-dark-card border border-slate-200 dark:border-zinc-800 p-6 rounded-[28px] border-b-[4px] border-b-slate-300 dark:border-b-zinc-700 shadow-tactile relative overflow-hidden">
+        <div class="lg:w-1/3 flex flex-col justify-center bg-surface dark:bg-dark-card border border-slate-200 dark:border-zinc-800 p-6 rounded-2xl border-b-4 border-b-slate-300 dark:border-b-zinc-700 shadow-tactile relative overflow-hidden">
             <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-boo-primary/5 rounded-full blur-2xl pointer-events-none"></div>
-            <h1 class="text-3xl font-black text-primary tracking-tight mb-2">Журнал проверок</h1>
+            <h1 class="text-2xl font-bold text-primary tracking-tight mb-2">Журнал проверок</h1>
             <p class="text-muted font-medium text-sm leading-relaxed">
                 Ученики ждут вашего фидбека. Очередь обновляется в реальном времени.
             </p>
@@ -29,24 +39,24 @@
         <div class="lg:w-2/3 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <!-- Submitted (Ждут оценки) -->
             <a href="{{ url_for('lessons.review_queue', status='submitted', source=source, assignment_type=assignment_type, student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="block rounded-[28px] p-5 border transition-all duration-300 hover:scale-[1.02] relative overflow-hidden group no-underline shadow-tactile
+               class="block rounded-2xl p-5 border transition-all duration-300 hover-scale-102 relative overflow-hidden group no-underline shadow-tactile
                {% if status == 'submitted' %}
-               bg-surface dark:bg-dark-card border-boo-primary dark:border-purple-600 border-b-[4px] border-b-boo-primaryHover dark:border-b-purple-700 text-primary
+               bg-surface dark:bg-dark-card border-boo-primary dark:border-purple-600 border-b-4 border-b-boo-primaryHover dark:border-b-purple-700 text-primary
                {% else %}
-               bg-surface dark:bg-dark-card border-slate-200 dark:border-zinc-800 border-b-[4px] border-b-slate-300 dark:border-b-zinc-700 text-secondary dark:text-zinc-400
+               bg-surface dark:bg-dark-card border-slate-200 dark:border-zinc-800 border-b-4 border-b-slate-300 dark:border-b-zinc-700 text-secondary dark:text-zinc-400
                {% endif %}">
                 <div class="absolute right-0 top-0 w-36 h-36 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="text-xs font-bold {% if status == 'submitted' %}text-boo-primary dark:text-purple-400{% else %}text-muted{% endif %} mb-1 uppercase tracking-wider">Ждут оценки</div>
-                        <div class="text-3xl font-black flex items-center gap-2 text-primary dark:text-dark-text">
+                        <div class="text-2xl font-bold flex items-center gap-2 text-primary dark:text-dark-text">
                             {{ (status_counts.submitted if status_counts else 0) }}
                             {% if status_counts and status_counts.submitted > 0 %}
-                            <span class="w-2 h-2 bg-[#F59E0B] rounded-full animate-pulse mt-1"></span>
+                            <span class="w-2 h-2 bg-F59E0B rounded-full animate-pulse mt-1"></span>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center border {% if status == 'submitted' %}bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-900/50 text-boo-primary dark:text-purple-400{% else %}bg-slate-50 dark:bg-zinc-800/50 border-slate-100 dark:border-zinc-700/50 text-muted{% endif %}">
+                    <div class="w-12 h-9 rounded-2xl flex items-center justify-center border {% if status == 'submitted' %}bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-900/50 text-boo-primary dark:text-purple-400{% else %}bg-slate-50 dark:bg-zinc-800/50 border-slate-100 dark:border-zinc-700/50 text-muted{% endif %}">
                         <i class="ph-fill ph-tray text-2xl"></i>
                     </div>
                 </div>
@@ -54,21 +64,21 @@
             
             <!-- Returned (На доработке) -->
             <a href="{{ url_for('lessons.review_queue', status='returned', source=source, assignment_type=assignment_type, student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="block rounded-[28px] p-5 border transition-all duration-300 hover:scale-[1.02] relative overflow-hidden group no-underline shadow-tactile
+               class="block rounded-2xl p-5 border transition-all duration-300 hover-scale-102 relative overflow-hidden group no-underline shadow-tactile
                {% if status == 'returned' %}
-               bg-surface dark:bg-dark-card border-boo-coral dark:border-red-600 border-b-[4px] border-b-red-700 text-primary
+               bg-surface dark:bg-dark-card border-boo-coral dark:border-red-600 border-b-4 border-b-red-700 text-primary
                {% else %}
-               bg-surface dark:bg-dark-card border-slate-200 dark:border-zinc-800 border-b-[4px] border-b-slate-300 dark:border-b-zinc-700 text-secondary dark:text-zinc-400
+               bg-surface dark:bg-dark-card border-slate-200 dark:border-zinc-800 border-b-4 border-b-slate-300 dark:border-b-zinc-700 text-secondary dark:text-zinc-400
                {% endif %}">
                 <div class="absolute right-0 top-0 w-36 h-36 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="text-xs font-bold {% if status == 'returned' %}text-boo-coral{% else %}text-muted{% endif %} mb-1 uppercase tracking-wider">На доработке</div>
-                        <div class="text-3xl font-black text-primary dark:text-dark-text">
+                        <div class="text-2xl font-bold text-primary dark:text-dark-text">
                             {{ (status_counts.returned if status_counts else 0) }}
                         </div>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center border {% if status == 'returned' %}bg-rose-50 dark:bg-red-950/30 border-rose-200 dark:border-red-900/50 text-boo-coral{% else %}bg-slate-50 dark:bg-zinc-800/50 border-slate-100 dark:border-zinc-700/50 text-muted{% endif %}">
+                    <div class="w-12 h-9 rounded-2xl flex items-center justify-center border {% if status == 'returned' %}bg-rose-50 dark:bg-red-950/30 border-rose-200 dark:border-red-900/50 text-boo-coral{% else %}bg-slate-50 dark:bg-zinc-800/50 border-slate-100 dark:border-zinc-700/50 text-muted{% endif %}">
                         <i class="ph-fill ph-arrow-u-up-left text-2xl"></i>
                     </div>
                 </div>
@@ -76,21 +86,21 @@
 
             <!-- Graded (Проверено) -->
             <a href="{{ url_for('lessons.review_queue', status='graded', source=source, assignment_type=assignment_type, student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="block rounded-[28px] p-5 border transition-all duration-300 hover:scale-[1.02] relative overflow-hidden group no-underline shadow-tactile
+               class="block rounded-2xl p-5 border transition-all duration-300 hover-scale-102 relative overflow-hidden group no-underline shadow-tactile
                {% if status == 'graded' %}
-               bg-surface dark:bg-dark-card border-emerald-500 dark:border-emerald-600 border-b-[4px] border-b-emerald-700 text-primary
+               bg-surface dark:bg-dark-card border-emerald-500 dark:border-emerald-600 border-b-4 border-b-emerald-700 text-primary
                {% else %}
-               bg-surface dark:bg-dark-card border-slate-200 dark:border-zinc-800 border-b-[4px] border-b-slate-300 dark:border-b-zinc-700 text-secondary dark:text-zinc-400
+               bg-surface dark:bg-dark-card border-slate-200 dark:border-zinc-800 border-b-4 border-b-slate-300 dark:border-b-zinc-700 text-secondary dark:text-zinc-400
                {% endif %}">
                 <div class="absolute right-0 top-0 w-36 h-36 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="text-xs font-bold {% if status == 'graded' %}text-emerald-500{% else %}text-muted{% endif %} mb-1 uppercase tracking-wider">Проверено</div>
-                        <div class="text-3xl font-black text-primary dark:text-dark-text">
+                        <div class="text-2xl font-bold text-primary dark:text-dark-text">
                             {{ (status_counts.graded if status_counts else 0) }}
                         </div>
                     </div>
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center border {% if status == 'graded' %}bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-emerald-500{% else %}bg-slate-50 dark:bg-zinc-800/50 border-slate-100 dark:border-zinc-700/50 text-muted{% endif %}">
+                    <div class="w-12 h-9 rounded-2xl flex items-center justify-center border {% if status == 'graded' %}bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-emerald-500{% else %}bg-slate-50 dark:bg-zinc-800/50 border-slate-100 dark:border-zinc-700/50 text-muted{% endif %}">
                         <i class="ph-fill ph-checks text-2xl"></i>
                     </div>
                 </div>
@@ -99,7 +109,7 @@
     </div>
 
     <!-- Filters Form -->
-    <form method="GET" class="bg-surface dark:bg-dark-card rounded-[24px] p-4 border border-slate-200 dark:border-zinc-800 border-b-[4px] border-b-slate-300 dark:border-b-zinc-700 shadow-tactile flex flex-col md:flex-row gap-4 items-center justify-between">
+    <form method="GET" class="bg-surface dark:bg-dark-card rounded-xl p-4 border border-slate-200 dark:border-zinc-800 border-b-4 border-b-slate-300 dark:border-b-zinc-700 shadow-tactile flex flex-col md:flex-row gap-4 items-center justify-between">
         {% if lesson_id %}<input type="hidden" name="lesson_id" value="{{ lesson_id }}">{% endif %}
         {% if assignment_id %}<input type="hidden" name="assignment_id" value="{{ assignment_id }}">{% endif %}
         <input type="hidden" name="status" value="{{ status }}">
@@ -108,30 +118,30 @@
         <div class="bg-slate-100/80 dark:bg-zinc-800/40 p-1.5 rounded-xl flex w-full md:w-auto overflow-x-auto hide-scroll border border-slate-200/50 dark:border-zinc-700/50 items-center">
             {% set tc = tab_counts | default({'all': 0, 'homework': 0, 'classwork': 0, 'exam': 0}) %}
             <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="px-4 py-2 flex items-center gap-1.5 {% if not assignment_type %}bg-surface dark:bg-zinc-800 text-primary shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
+               class="px-4 py-2 flex items-center gap-1.5 {% if not assignment_type %}bg-surface dark:bg-zinc-800 text-primary shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
                 Все
-                <span class="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold {% if not assignment_type %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
+                <span class="px-1.5 py-0.5 rounded-md text-tiny font-extrabold {% if not assignment_type %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
                     {{ tc.all }}
                 </span>
             </a>
             <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='homework', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="px-4 py-2 flex items-center gap-1.5 {% if assignment_type == 'homework' %}bg-surface dark:bg-zinc-800 text-primary shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
+               class="px-4 py-2 flex items-center gap-1.5 {% if assignment_type == 'homework' %}bg-surface dark:bg-zinc-800 text-primary shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
                 Домашки
-                <span class="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold {% if assignment_type == 'homework' %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
+                <span class="px-1.5 py-0.5 rounded-md text-tiny font-extrabold {% if assignment_type == 'homework' %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
                     {{ tc.homework }}
                 </span>
             </a>
             <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='classwork', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="px-4 py-2 flex items-center gap-1.5 {% if assignment_type == 'classwork' %}bg-surface dark:bg-zinc-800 text-primary shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
+               class="px-4 py-2 flex items-center gap-1.5 {% if assignment_type == 'classwork' %}bg-surface dark:bg-zinc-800 text-primary shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
                 Классная работа
-                <span class="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold {% if assignment_type == 'classwork' %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
+                <span class="px-1.5 py-0.5 rounded-md text-tiny font-extrabold {% if assignment_type == 'classwork' %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
                     {{ tc.classwork }}
                 </span>
             </a>
             <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='exam', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
-               class="px-4 py-2 flex items-center gap-1.5 {% if assignment_type == 'exam' %}bg-surface dark:bg-zinc-800 text-primary shadow-[0_8px_24px_-4px_rgba(15,23,42,0.05)] dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
+               class="px-4 py-2 flex items-center gap-1.5 {% if assignment_type == 'exam' %}bg-surface dark:bg-zinc-800 text-primary shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
                 Тесты
-                <span class="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold {% if assignment_type == 'exam' %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
+                <span class="px-1.5 py-0.5 rounded-md text-tiny font-extrabold {% if assignment_type == 'exam' %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
                     {{ tc.exam }}
                 </span>
             </a>
@@ -147,25 +157,25 @@
             </div>
             
             <!-- Source dropdown -->
-            <select name="source" class="no-tomselect h-10 pl-4 pr-10 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 text-muted rounded-xl font-bold text-xs hover:bg-surface dark:hover:bg-zinc-800 transition-colors shrink-0 focus:outline-none focus:border-boo-primary appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat cursor-pointer">
+            <select name="source" class="no-tomselect h-10 pl-4 pr-10 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 text-muted rounded-xl font-bold text-xs hover:bg-surface dark:hover:bg-zinc-800 transition-colors shrink-0 focus:outline-none focus:border-boo-primary appearance-none bg-urldata-image-svgxmlcharsetutf-8-3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-length-16px bg-right-12px-center bg-no-repeat cursor-pointer">
                 <option value="all" {% if source == 'all' %}selected{% endif %} class="bg-surface dark:bg-zinc-800 text-primary dark:text-dark-text">Все источники</option>
                 <option value="lessons" {% if source == 'lessons' %}selected{% endif %} class="bg-surface dark:bg-zinc-800 text-primary dark:text-dark-text">Классная комната</option>
                 <option value="assignments" {% if source == 'assignments' %}selected{% endif %} class="bg-surface dark:bg-zinc-800 text-primary dark:text-dark-text">Экзамены/Работы</option>
             </select>
             
             <!-- Actions buttons -->
-            <button type="submit" class="h-10 px-5 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 text-muted hover:text-primary rounded-xl font-bold text-xs hover:bg-surface dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2 shrink-0">
+            <button type="submit" class="h-10 px-4 bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 text-muted hover:text-primary rounded-xl font-bold text-xs hover:bg-surface dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2 shrink-0">
                 <i class="ph-bold ph-faders text-sm"></i> Применить
             </button>
-            <a href="{{ url_for('lessons.review_queue') }}" class="h-10 px-5 bg-surface dark:bg-dark-card border border-slate-200 dark:border-zinc-800 text-muted rounded-xl font-bold text-xs hover:text-primary hover:bg-surface-alt dark:hover:bg-dark-inner transition-colors flex items-center justify-center gap-2 shrink-0 no-underline">
+            <a href="{{ url_for('lessons.review_queue') }}" class="h-10 px-4 bg-surface dark:bg-dark-card border border-slate-200 dark:border-zinc-800 text-muted rounded-xl font-bold text-xs hover:text-primary hover:bg-surface-alt dark:hover:bg-dark-inner transition-colors flex items-center justify-center gap-2 shrink-0 no-underline">
                 <i class="ph-bold ph-rotate-ccw text-sm"></i> Сброс
             </a>
         </div>
     </form>
 
     <!-- Main List Grid -->
-    <div class="mb-4">
-        <h3 class="text-xl font-extrabold text-primary mb-4 flex items-center gap-2">
+    <div class="mb-3">
+        <h3 class="text-xl font-extrabold text-primary mb-3 flex items-center gap-2">
             <i class="ph-fill ph-clock-countdown text-boo-accent"></i> 
             {% if status == 'submitted' %}Требуют вашей оценки
             {% elif status == 'returned' %}Находятся на доработке у учеников
@@ -184,21 +194,21 @@
                     {% for sub in (card.submissions or []) %}
                         {% set ns.rendered = ns.rendered + 1 %}
                         {% set is_late = (sub.is_late if sub.is_late is defined else false) %}
-                        <div class="{% if is_late %}bg-gradient-to-b from-[#FFF5F5] to-white dark:from-red-950/10 dark:to-dark-card border-red-200 dark:border-red-900/50 border-b-boo-coral{% else %}bg-surface dark:bg-dark-card border-slate-200 dark:border-zinc-800 border-b-slate-300 dark:border-b-zinc-700{% endif %} rounded-[28px] border border-b-[4px] shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
+                        <div class="{% if is_late %}bg-gradient-to-b from-[#FFF5F5] to-white dark:from-red-950/10 dark:to-dark-card border-red-200 dark:border-red-900/50 border-b-boo-coral{% else %}bg-surface dark:bg-dark-card border-slate-200 dark:border-zinc-800 border-b-slate-300 dark:border-b-zinc-700{% endif %} rounded-2xl border border-b-4 shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
                             
                             <!-- Late status indicator badge -->
                             {% if is_late %}
-                            <div class="absolute -top-3 left-6 bg-boo-coral text-white text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm border border-red-400/20 animate-pulse">
+                            <div class="absolute -top-3 left-6 bg-boo-coral text-white text-tiny font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-sm border border-red-400/20 animate-pulse">
                                 Просрочено
                             </div>
                             {% endif %}
                             
                             <div class="p-6 flex-1">
-                                <div class="flex justify-between items-start mb-4">
+                                <div class="flex justify-between items-start mb-3">
                                     <!-- Assignment Type Badge -->
                                     <div class="flex items-center gap-1.5 bg-cyan-50 dark:bg-cyan-950/20 text-cyan-700 dark:text-cyan-400 px-2.5 py-1 rounded-lg border border-cyan-100/50 dark:border-cyan-900/30">
                                         <span class="w-1.5 h-1.5 rounded-full bg-boo-cyan"></span>
-                                        <span class="text-[9px] font-extrabold uppercase tracking-wider">
+                                        <span class="text-micro font-extrabold uppercase tracking-wider">
                                             {% if a.assignment_type == 'homework' %}ДЗ
                                             {% elif a.assignment_type == 'classwork' %}КР
                                             {% elif a.assignment_type == 'exam' %}Проверочная
@@ -214,7 +224,7 @@
                                     </span>
                                 </div>
                                 
-                                <h4 class="text-lg font-black text-primary leading-tight mb-2">
+                                <h4 class="text-sm font-bold text-primary leading-tight mb-2">
                                     {{ a.title if a and a.title else ('Сдача #' ~ sub.submission_id) }}
                                 </h4>
                                 <p class="text-sm text-muted dark:text-zinc-400 font-medium mb-5 line-clamp-2">
@@ -264,14 +274,14 @@
                     {% if tasks|length > 0 %}
                         {% set ns.rendered = ns.rendered + 1 %}
                         {% set first_task = tasks[0] %}
-                        <div class="bg-surface dark:bg-dark-card border-slate-200 dark:border-zinc-800 border-b-slate-300 dark:border-b-zinc-700 rounded-[28px] border border-b-[4px] shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
+                        <div class="bg-surface dark:bg-dark-card border-slate-200 dark:border-zinc-800 border-b-slate-300 dark:border-b-zinc-700 rounded-2xl border border-b-4 shadow-tactile hover:-translate-y-1 hover:shadow-tactile-hover transition-all duration-300 flex flex-col relative group">
                             
                             <div class="p-6 flex-1">
-                                <div class="flex justify-between items-start mb-4">
+                                <div class="flex justify-between items-start mb-3">
                                     <!-- Lesson Type Badge -->
                                     <div class="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-400 px-2.5 py-1 rounded-lg border border-purple-100/50 dark:border-purple-900/30">
                                         <span class="w-1.5 h-1.5 rounded-full bg-boo-primary"></span>
-                                        <span class="text-[9px] font-extrabold uppercase tracking-wider">
+                                        <span class="text-micro font-extrabold uppercase tracking-wider">
                                             {% if first_task.assignment_type == 'classwork' %}Классная
                                             {% elif first_task.assignment_type == 'exam' %}Проверочная
                                             {% else %}Домашка
@@ -285,22 +295,22 @@
                                     </span>
                                 </div>
                                 
-                                <h4 class="text-lg font-black text-primary leading-tight mb-2">
+                                <h4 class="text-sm font-bold text-primary leading-tight mb-2">
                                     Урок #{{ lesson.lesson_id }}
                                 </h4>
-                                <p class="text-sm text-muted dark:text-zinc-400 font-medium mb-4 line-clamp-2">
+                                <p class="text-sm text-muted dark:text-zinc-400 font-medium mb-3 line-clamp-2">
                                     {{ lesson.topic if lesson and lesson.topic else 'Классная комната' }}
                                 </p>
 
                                 <!-- Submitted tasks badges inside -->
                                 <div class="mb-5 space-y-2">
-                                    <div class="text-[10px] font-bold text-muted dark:text-zinc-500 uppercase tracking-wider">Сдано задач ({{ tasks|length }}):</div>
+                                    <div class="text-tiny font-bold text-muted dark:text-zinc-500 uppercase tracking-wider">Сдано задач ({{ tasks|length }}):</div>
                                     <div class="flex flex-wrap gap-1.5">
                                         {% for lt in tasks %}
                                             {% set tnum = lt.task.task_number if lt.task and lt.task.task_number else None %}
                                             <a href="{{ url_for('lessons.review_lesson_task', lesson_task_id=lt.lesson_task_id) }}" 
                                                class="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-alt dark:bg-dark-inner hover:bg-slate-200 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 hover:text-primary rounded-lg text-xs font-bold transition-all no-underline shadow-sm">
-                                                <i class="ph-bold ph-file-text text-[10px]"></i>
+                                                <i class="ph-bold ph-file-text text-tiny"></i>
                                                 {% if tnum %}Задание {{ tnum }}{% else %}Задача #{{ lt.lesson_task_id }}{% endif %}
                                             </a>
                                         {% endfor %}
@@ -355,11 +365,11 @@
 
         <!-- Empty state layout -->
         {% if ns.rendered == 0 %}
-            <div class="mt-12 bg-surface dark:bg-dark-card rounded-[24px] border border-slate-200 dark:border-zinc-800 border-b-[4px] border-b-slate-300 dark:border-b-zinc-700 shadow-tactile p-10 text-center">
-                <div class="w-14 h-14 rounded-2xl bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 mx-auto flex items-center justify-center text-muted dark:text-zinc-500">
+            <div class="mt-8 bg-surface dark:bg-dark-card rounded-xl border border-slate-200 dark:border-zinc-800 border-b-4 border-b-slate-300 dark:border-b-zinc-700 shadow-tactile p-6 text-center">
+                <div class="w-10 h-10 rounded-2xl bg-surface-alt dark:bg-dark-inner border border-slate-200 dark:border-zinc-800 mx-auto flex items-center justify-center text-muted dark:text-zinc-500">
                     <i class="ph-bold ph-check-circle text-2xl"></i>
                 </div>
-                <div class="text-xl font-black text-primary mt-4">Очередь пуста</div>
+                <div class="text-base font-bold text-primary mt-3">Очередь пуста</div>
                 <div class="text-muted dark:text-zinc-400 font-medium mt-1">Всё проверено, можно выдохнуть.</div>
             </div>
         {% endif %}

@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% block title %}Рабочее место Тестировщика — BooStudy{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style="padding-top: 8rem; padding-bottom: 3rem; position: relative; z-index: 1;">
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 2rem;">
+        <div>
+            <h1 style="font-size: 1.875rem; font-weight: 800; color: var(--color-text-primary); margin: 0;">Тест-кейсы</h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0.35rem 0 0;">Выбери тест, пройди шаги и вынеси вердикт.</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <select id="areaFilter" onchange="filterTests()"
+                style="padding: 0.5rem 0.875rem; border-radius: 10px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-weight: 700; font-size: 0.875rem; outline: none; cursor: pointer;">
+                <option value="all">Все зоны ({{ tests_by_area|length }})</option>
+                {% for area in tests_by_area.keys() %}
+                <option value="{{ loop.index }}">{{ area }}</option>
+                {% endfor %}
+            </select>
+            <a href="{{ url_for('qa_tester.history') }}"
+                style="background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); padding: 0.5rem 1.125rem; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem;">
+                <i class="ph-bold ph-clock-counter-clockwise"></i> Мои репорты
+            </a>
+            <a href="/qa/ad-hoc"
+                style="background: var(--color-accent); color: white; padding: 0.5rem 1.125rem; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem;">
+                <i class="ph-bold ph-bug"></i> Спонтанный баг
+            </a>
+        </div>
+    </div>
+
+    <!-- Вкладки -->
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 2rem; padding-bottom: 1rem; overflow-x: auto; border-bottom: 1px solid var(--color-stroke);">
+        <button onclick="switchTab('attention')" id="tab-attention"
+            style="padding: 0.5rem 1.25rem; border-radius: 12px; font-weight: 700; font-size: 0.875rem; white-space: nowrap; cursor: pointer; border: 1px solid rgba(168,85,247,0.3); background: rgba(168,85,247,0.1); color: #a855f7; transition: all 0.2s;">
+            <i class="ph-bold ph-warning" style="margin-right: 0.25rem;"></i> Требуют внимания ({{ retest_test_ids|length }})
+        </button>
+        <button onclick="switchTab('new')" id="tab-new"
+            style="padding: 0.5rem 1.25rem; border-radius: 12px; font-weight: 700; font-size: 0.875rem; white-space: nowrap; cursor: pointer; border: 1px solid var(--color-stroke); background: var(--color-bg-surface-alt); color: var(--color-text-primary); opacity: 0.5; transition: all 0.2s;">
+            <i class="ph-bold ph-sparkle" style="margin-right: 0.25rem;"></i> Новые тесты
+        </button>
+        <button onclick="switchTab('done')" id="tab-done"
+            style="padding: 0.5rem 1.25rem; border-radius: 12px; font-weight: 700; font-size: 0.875rem; white-space: nowrap; cursor: pointer; border: 1px solid rgba(16,185,129,0.3); background: rgba(16,185,129,0.1); color: #10b981; opacity: 0.5; transition: all 0.2s;">
+            <i class="ph-bold ph-check" style="margin-right: 0.25rem;"></i> Завершенные ({{ passed_test_ids|length }})
+        </button>
+    </div>
+
+    <!-- Toast -->
+    <div id="toastContainer" style="position: fixed; top: 6rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem;"></div>
+
+    <!-- Секции по зонам -->
+    <div style="display: flex; flex-direction: column; gap: 2.5rem; position: relative; z-index: 1;">
+        {% for area, area_tests in tests_by_area.items() %}
+        <div class="qa-area-section" data-area-idx="{{ loop.index }}">
+
+            <!-- Заголовок зоны с кнопкой Bulk Pass -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 0.625rem; border-bottom: 1px solid var(--color-stroke);">
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <h2 style="font-size: 1.125rem; font-weight: 800; color: var(--color-text-primary); margin: 0;">{{ area }}</h2>
+                    {% set progress = area_progress[area] %}
+                    {% if progress %}
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted);">{{ progress.done }}/{{ progress.total }}</span>
+                        <div style="width: 80px; height: 6px; background: var(--color-bg-surface-alt); border-radius: 999px; overflow: hidden; border: 1px solid var(--color-stroke);">
+                            <div style="height: 100%; width: {{ progress.pct }}%; background: var(--color-accent); border-radius: 999px; transition: width 0.4s;"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Bulk Pass кнопка -->
+                {% set area_new_tests = area_tests | selectattr('id', 'in', passed_test_ids) | list %}
+                <button
+                    data-bulk-area="{{ loop.index }}"
+                    onclick="bulkPassArea(this, {{ loop.index }})"
+                    style="display: none; padding: 0.375rem 0.875rem; border-radius: 8px; background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.3); font-size: 0.75rem; font-weight: 800; cursor: pointer; gap: 0.35rem; align-items: center; transition: all 0.2s; white-space: nowrap;"
+                    class="bulk-pass-btn">
+                    <i class="ph-bold ph-check-circle"></i> Отметить все как успешно
+                </button>
+            </div>
+
+            <!-- Карточки тестов -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.125rem;">
+                {% for test in area_tests %}
+                {% set is_adhoc = test.__class__.__name__ == 'QAReport' %}
+                
+                {% if is_adhoc %}
+                    {% set is_passed = test.status == 'resolved' %}
+                    {% set is_retest = test.status == 'retest' %}
+                    {% set is_bug = test.status in ['pending', 'in_progress'] %}
+                    {% set tab_status = 'attention' if is_retest else ('done' if is_passed else 'new') %}
+                    {% set href = url_for('qa_tester.edit_report', report_id=test.id) %}
+                    {% set t_title = test.description[:50] + '...' if test.description else 'Без описания' %}
+                    {% set t_desc = 'Спонтанный баг' %}
+                    {% set t_steps = 0 %}
+                    {% set t_role = 'Ad-hoc' %}
+                    {% set t_id = '' %}
+                {% else %}
+                    {% set is_passed = test.id in passed_test_ids and test.id not in retest_test_ids %}
+                    {% set is_bug = test.id in bug_test_ids and test.id not in retest_test_ids %}
+                    {% set is_retest = test.id in retest_test_ids %}
+                    {% set tab_status = 'done' if is_passed else ('attention' if is_retest else 'new') %}
+                    {% set href = url_for('qa_tester.execute_test', test_id=test.id) %}
+                    {% set t_title = test.title %}
+                    {% set t_desc = test.expected_result %}
+                    {% set t_steps = test.steps|length %}
+                    {% set t_role = test.role or '—' %}
+                    {% set t_id = test.id %}
+                {% endif %}
+
+                <a href="{{ href }}"
+                   data-tab="{{ tab_status }}"
+                   data-area-idx="{{ loop.index }}"
+                   data-test-id="{{ t_id }}"
+                   class="qa-test-card"
+                   style="display: block; padding: 1.25rem; border-radius: 14px; text-decoration: none; position: relative; z-index: 1; background: var(--color-bg-surface); transition: all 0.15s;
+                       border: 2px solid {% if is_retest %}#a855f7{% elif is_bug %}rgba(59,130,246,0.4){% elif is_passed %}rgba(16,185,129,0.3){% else %}var(--color-stroke){% endif %};">
+
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.625rem; flex-wrap: wrap; gap: 0.375rem;">
+                        <span style="background: var(--color-bg-surface-alt); color: var(--color-text-muted); border: 1px solid var(--color-stroke); border-radius: 6px; padding: 0.175rem 0.5rem; font-size: 0.7rem; font-weight: 700;">
+                            {{ t_role }}
+                        </span>
+                        {% if is_retest %}
+                        <span style="background: #a855f7; color: white; border-radius: 6px; padding: 0.175rem 0.5rem; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
+                            <i class="ph-bold ph-arrow-counter-clockwise"></i> Ретест
+                        </span>
+                        {% elif is_bug %}
+                        <span style="background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; padding: 0.175rem 0.5rem; font-size: 0.7rem; font-weight: 700;">
+                            <i class="ph-bold ph-bug"></i> Баг отправлен
+                        </span>
+                        {% elif is_passed %}
+                        <span style="background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.25); border-radius: 6px; padding: 0.175rem 0.5rem; font-size: 0.7rem; font-weight: 700;">
+                            <i class="ph-bold ph-check"></i> Сдано
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <h3 style="font-size: 1rem; font-weight: 700; color: var(--color-text-primary); margin: 0 0 0.375rem; line-height: 1.4; {% if is_passed and not is_retest %}opacity: 0.55;{% endif %}">{{ t_title }}</h3>
+                    <p style="font-size: 0.825rem; color: var(--color-text-muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 0 0 0.875rem; {% if is_passed and not is_retest %}opacity: 0.55;{% endif %}">{{ t_desc }}</p>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.625rem; border-top: 1px dashed var(--color-stroke);">
+                        <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);">{% if t_steps %}{{ t_steps }} шагов{% else %}Без шагов{% endif %}</span>
+                        <span style="font-size: 0.825rem; font-weight: 700; color: var(--color-accent);">Пройти <i class="ph-bold ph-arrow-right"></i></span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; border-radius: 16px; background: var(--color-bg-surface); border: 1px solid var(--color-stroke);">
+            <i class="ph-bold ph-check-circle" style="font-size: 3rem; color: #10b981; display: block; margin-bottom: 1rem;"></i>
+            <h3 style="font-size: 1.125rem; font-weight: 700; color: var(--color-text-primary); margin: 0;">База тест-кейсов пуста</h3>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+let currentTab = urlParams.get('tab') || 'attention';
+
+function showToast(message, type = 'success') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    const ok = type === 'success';
+    t.style.cssText = `padding:0.875rem 1.125rem;border-radius:12px;font-size:0.875rem;font-weight:700;display:flex;align-items:center;gap:0.625rem;transform:translateX(120%);transition:transform 0.3s;background:var(--color-bg-surface);color:${ok?'#10b981':'#f43f5e'};border:1px solid ${ok?'rgba(16,185,129,0.3)':'rgba(244,63,94,0.3)'};box-shadow:0 8px 24px rgba(0,0,0,0.2);max-width:320px;`;
+    t.innerHTML = `<i class="ph-fill ${ok?'ph-check-circle':'ph-warning-circle'}" style="font-size:1.25rem;flex-shrink:0;"></i>${message}`;
+    c.appendChild(t);
+    requestAnimationFrame(() => { t.style.transform = 'translateX(0)'; });
+    setTimeout(() => { t.style.transform = 'translateX(120%)'; setTimeout(()=>t.remove(),350); }, 3500);
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    ['attention','new','done'].forEach(t => {
+        const btn = document.getElementById('tab-' + t);
+        if(t === tab) {
+            btn.style.opacity = '1';
+            btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
+        } else {
+            btn.style.opacity = '0.5';
+            btn.style.boxShadow = 'none';
+        }
+    });
+    applyFilters();
+}
+
+function filterTests() { applyFilters(); }
+
+function applyFilters() {
+    const selectedAreaIdx = document.getElementById('areaFilter').value;
+    const sections = document.querySelectorAll('.qa-area-section');
+
+    sections.forEach(sec => {
+        const areaIdx = sec.getAttribute('data-area-idx');
+        const isAreaMatch = (selectedAreaIdx === 'all' || selectedAreaIdx === areaIdx);
+        let hasVisible = false;
+        let hasNewCards = false;
+
+        const cards = sec.querySelectorAll('.qa-test-card');
+        cards.forEach(card => {
+            const tabStatus = card.getAttribute('data-tab');
+            const show = isAreaMatch && (tabStatus === currentTab || currentTab === 'all');
+            card.style.display = show ? 'block' : 'none';
+            if (show) hasVisible = true;
+            if (tabStatus === 'new') hasNewCards = true;
+        });
+
+        sec.style.display = hasVisible ? 'block' : 'none';
+
+        // Показываем Bulk Pass только на вкладке "new" если есть новые карточки
+        const bulkBtn = sec.querySelector('.bulk-pass-btn');
+        if (bulkBtn) {
+            bulkBtn.style.display = (currentTab === 'new' && hasNewCards && isAreaMatch) ? 'inline-flex' : 'none';
+        }
+    });
+}
+
+async function bulkPassArea(btn, areaIdx) {
+    const section = document.querySelector(`.qa-area-section[data-area-idx="${areaIdx}"]`);
+    if (!section) return;
+
+    const testIds = [];
+    section.querySelectorAll('.qa-test-card[data-tab="new"]').forEach(card => {
+        const tid = card.getAttribute('data-test-id');
+        if (tid) testIds.push(parseInt(tid));
+    });
+
+    if (!testIds.length) { showToast('Нет новых тестов в этой зоне', 'error'); return; }
+
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;"></i> Отправка...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch("{{ url_for('qa_tester.bulk_pass') }}", {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ test_ids: testIds })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`Отмечено как успешно: ${data.passed} тестов`);
+            setTimeout(() => { window.location.href = "{{ url_for('qa_tester.index') }}?tab=done"; }, 1500);
+        } else {
+            showToast(data.error || 'Ошибка', 'error');
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+        }
+    } catch(e) {
+        showToast('Сетевая ошибка', 'error');
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    {% if retest_test_ids|length == 0 %}
+        switchTab('new');
+    {% else %}
+        switchTab('attention');
+    {% endif %}
+});
+
+// Для анимации кнопки bulk-pass
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .qa-test-card:hover { background: var(--color-bg-surface-alt) !important; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+    .bulk-pass-btn:hover { background: rgba(16,185,129,0.2) !important; }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

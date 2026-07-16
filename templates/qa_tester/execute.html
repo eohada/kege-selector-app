@@ -1,0 +1,536 @@
+{% extends "base.html" %}
+{% block title %}
+    {% if test %}Прохождение: {{ test.title }}{% else %}Спонтанный баг{% endif %} — BooStudy
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style="padding-top: 8rem; padding-bottom: 3rem; position: relative; z-index: 1;">
+
+    <a href="{{ url_for('qa_tester.index') }}" style="color: var(--color-text-muted); text-decoration: none; font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; margin-bottom: 1.5rem;">
+        <i class="ph-bold ph-arrow-left" style="margin-right: 0.35rem;"></i> Назад к списку тестов
+    </a>
+
+    <!-- Статус баннер -->
+    {% if existing_report %}
+    <div style="
+        margin-bottom: 1.5rem; padding: 1.25rem 1.5rem; border-radius: 16px;
+        display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;
+        {% if existing_report.status == 'retest' %}background: rgba(168,85,247,0.1); border: 2px solid rgba(168,85,247,0.4);
+        {% elif existing_report.status == 'resolved' or existing_report.verdict == 'success' %}background: rgba(16,185,129,0.1); border: 2px solid rgba(16,185,129,0.4);
+        {% elif existing_report.status == 'in_progress' %}background: rgba(59,130,246,0.1); border: 2px solid rgba(59,130,246,0.4);
+        {% else %}background: rgba(245,158,11,0.1); border: 2px solid rgba(245,158,11,0.4);{% endif %}
+    ">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="width: 2.75rem; height: 2.75rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; background: var(--color-bg-surface);
+                {% if existing_report.status == 'retest' %}color: #a855f7;
+                {% elif existing_report.status == 'resolved' %}color: #10b981;
+                {% elif existing_report.status == 'in_progress' %}color: #3b82f6;
+                {% else %}color: #f59e0b;{% endif %}">
+                {% if existing_report.status == 'retest' %}<i class="ph-bold ph-arrow-counter-clockwise"></i>
+                {% elif existing_report.status == 'resolved' %}<i class="ph-bold ph-check-circle"></i>
+                {% elif existing_report.status == 'in_progress' %}<i class="ph-bold ph-wrench"></i>
+                {% else %}<i class="ph-bold ph-paper-plane-tilt"></i>{% endif %}
+            </div>
+            <div>
+                <div style="font-weight: 800; font-size: 1rem; color: var(--color-text-primary); letter-spacing: 0.02em;">
+                    {% if existing_report.status == 'retest' %}АДМИН ВЕРНУЛ НА РЕТЕСТ
+                    {% elif existing_report.status == 'resolved' %}ТЕСТ УСПЕШНО ЗАКРЫТ
+                    {% elif existing_report.status == 'in_progress' %}РАЗРАБОТЧИК ЧИНИТ БАГ
+                    {% else %}БАГ ОЖИДАЕТ ПРОВЕРКИ{% endif %}
+                </div>
+                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.2rem;">
+                    Вердикт:
+                    <strong style="color: var(--color-text-primary);">
+                        {% if existing_report.verdict == 'success' %}Успешно
+                        {% elif existing_report.verdict == 'minor' %}Минорный баг
+                        {% elif existing_report.verdict == 'critical' %}Критичный баг
+                        {% else %}—{% endif %}
+                    </strong>
+                    &nbsp;·&nbsp; {{ existing_report.created_at.strftime('%d.%m.%Y %H:%M') }}
+                </div>
+            </div>
+        </div>
+
+        {% if existing_report.status == 'retest' and admin_comment %}
+        <div style="background: var(--color-bg-surface); border: 1px solid rgba(168,85,247,0.3); border-radius: 12px; padding: 0.875rem 1.25rem; max-width: 480px; flex-shrink: 0;">
+            <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #a855f7; margin-bottom: 0.4rem;">
+                <i class="ph-bold ph-chat-circle-text"></i> Комментарий разработчика:
+            </div>
+            <div style="font-size: 0.875rem; font-style: italic; color: var(--color-text-primary);">"{{ admin_comment }}"</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Основной контейнер -->
+    <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 16px; overflow: hidden;">
+
+        <!-- Шапка -->
+        <div style="padding: 1.75rem 2rem; border-bottom: 1px solid var(--color-stroke); background: var(--color-bg-surface-alt);">
+            {% if test %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
+                <span style="background: rgba(99,102,241,0.1); color: #6366f1; border: 1px solid rgba(99,102,241,0.25); border-radius: 8px; padding: 0.25rem 0.625rem; font-size: 0.75rem; font-weight: 700;">
+                    {{ test.area }}
+                </span>
+                {% if test.role %}
+                <span style="background: var(--color-bg-surface); color: var(--color-text-muted); border: 1px solid var(--color-stroke); border-radius: 8px; padding: 0.25rem 0.625rem; font-size: 0.75rem; font-weight: 600;">
+                    Роль: {{ test.role }}
+                </span>
+                {% endif %}
+            </div>
+            <h1 style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin: 0;">{{ test.title }}</h1>
+            {% else %}
+            <span style="background: rgba(251,113,133,0.1); color: #fb7185; border: 1px solid rgba(251,113,133,0.25); border-radius: 8px; padding: 0.25rem 0.625rem; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.75rem; display: inline-block;">Ad-hoc</span>
+            <h1 style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin: 0.5rem 0 0.25rem;">Репорт спонтанного бага</h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0;">Опишите баг, который вы нашли случайно, вне рамок тест-кейсов.</p>
+            {% endif %}
+        </div>
+
+        <!-- Двухколоночный layout -->
+        <div style="display: flex; gap: 0; min-height: 500px;">
+
+            <!-- ЛЕВАЯ КОЛОНКА: Шаги + история -->
+            <div style="flex: 1.2; padding: 2rem; border-right: 1px solid var(--color-stroke); min-width: 0;">
+            {% if test %}
+                <h3 style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin: 0 0 1rem;">
+                    <i class="ph-bold ph-list-checks"></i> Шаги для воспроизведения
+                </h3>
+                <p style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0 0 1rem;">
+                    {% if not is_readonly %}Отмечайте пройденные шаги. Снимите галочку там, где возникла ошибка.{% else %}Шаги в режиме просмотра.{% endif %}
+                </p>
+
+                <div id="stepsContainer" style="display: flex; flex-direction: column; gap: 0.625rem; {% if is_readonly %}opacity: 0.65; pointer-events: none;{% endif %}">
+                    {% set prev_failed = existing_report.failed_steps if existing_report and existing_report.failed_steps is not none else [] %}
+                    {% for step in test.steps %}
+                    <label style="display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.875rem 1rem; border-radius: 10px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); cursor: {% if is_readonly %}default{% else %}pointer{% endif %}; transition: background 0.15s;" class="qa-step-label">
+                        <input type="checkbox"
+                            value="{{ loop.index0 }}"
+                            class="qa-step-checkbox"
+                            style="width: 1.125rem; height: 1.125rem; margin-top: 0.15rem; flex-shrink: 0; accent-color: var(--color-accent); border: 1px solid var(--color-stroke);"
+                            {% if not existing_report or loop.index0 not in prev_failed %}checked{% endif %}
+                            {% if is_readonly %}disabled{% endif %}>
+                        <span style="font-size: 0.9375rem; line-height: 1.5; color: var(--color-text-primary);">{{ step }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <!-- Ожидаемый результат -->
+                {% if test.expected_result %}
+                <div style="margin-top: 1.5rem; padding: 1rem 1.25rem; border-radius: 10px; background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.2);">
+                    <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #6366f1; margin-bottom: 0.5rem;">
+                        <i class="ph-bold ph-target"></i> Ожидаемый результат
+                    </div>
+                    <p style="font-size: 0.9375rem; line-height: 1.6; color: var(--color-text-primary); margin: 0;">{{ test.expected_result }}</p>
+                </div>
+                {% endif %}
+            {% else %}
+                {% if existing_report %}
+                <h3 style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin: 0 0 1rem;">
+                    <i class="ph-bold ph-note-pencil"></i> Исходное описание бага
+                </h3>
+                <div style="padding: 1rem 1.25rem; border-radius: 10px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); font-size: 0.9rem; color: var(--color-text-primary); line-height: 1.6; white-space: pre-wrap;">{{ existing_report.description }}</div>
+                
+                {% if existing_report.attachments %}
+                <div style="margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    {% for att in existing_report.attachments %}
+                    <a href="{{ att.url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border-radius: 8px; background: rgba(99,102,241,0.08); color: #6366f1; border: 1px solid rgba(99,102,241,0.25); text-decoration: none; font-size: 0.8rem; font-weight: 700;">
+                        <i class="ph-bold {% if att.type == 'video' %}ph-video-camera{% else %}ph-image{% endif %}"></i>
+                        {{ 'Видео' if att.type == 'video' else 'Скриншот' }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endif %}
+            {% endif %}
+
+                <!-- История переписки -->
+                {% if history and history|length > 0 %}
+                <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--color-stroke);">
+                    <h3 style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin: 0 0 1rem;">
+                        <i class="ph-bold ph-chat-dots"></i> История переписки ({{ history|length }})
+                    </h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 440px; overflow-y: auto; padding-right: 0.5rem;">
+                        {% for item in history %}
+                        {% set is_admin_msg = item.new_status in ['retest', 'rejected', 'in_progress'] %}
+                        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+                            <!-- Аватар -->
+                            <div style="width: 2rem; height: 2rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9rem;
+                                {% if is_admin_msg %}background: rgba(99,102,241,0.15); color: #6366f1; border: 2px solid rgba(99,102,241,0.3);
+                                {% else %}background: rgba(16,185,129,0.1); color: #10b981; border: 2px solid rgba(16,185,129,0.25);{% endif %}">
+                                <i class="ph-bold {% if is_admin_msg %}ph-wrench{% else %}ph-bug{% endif %}"></i>
+                            </div>
+                            <!-- Пузырь -->
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                    <span style="font-weight: 800; font-size: 0.8rem; color: {% if is_admin_msg %}#6366f1{% else %}#10b981{% endif %};">{{ item.author.username if item.author else 'Система' }}</span>
+                                    <time style="font-size: 0.7rem; color: var(--color-text-muted);">{{ item.created_at.strftime('%d.%m %H:%M') }}</time>
+                                </div>
+                                <div style="font-size: 0.7rem; color: var(--color-text-muted); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;">
+                                    <span style="text-decoration: line-through; opacity: 0.55;">{{ item.old_status or '—' }}</span>
+                                    <i class="ph-bold ph-arrow-right" style="font-size: 0.55rem;"></i>
+                                    <span style="font-weight: 800; color: var(--color-accent);">{{ item.new_status }}</span>
+                                </div>
+                                {% if item.comment %}
+                                <div style="padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 0.845rem; color: var(--color-text-primary); line-height: 1.55;
+                                    {% if is_admin_msg %}background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);
+                                    {% else %}background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke);{% endif %}">
+                                    {{ item.comment }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+
+            <!-- ПРАВАЯ КОЛОНКА: Форма вердикта -->
+            <div style="flex: 1; padding: 2rem; min-width: 0; display: flex; flex-direction: column; gap: 1.5rem;">
+
+                <!-- Если readonly — показываем описание -->
+                {% if is_readonly and existing_report %}
+                <div>
+                    <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: 0.625rem;">Ваш репорт</div>
+                    <div style="padding: 1rem 1.25rem; border-radius: 10px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); font-size: 0.9rem; color: var(--color-text-primary); line-height: 1.6; white-space: pre-wrap;">{{ existing_report.description or '(нет описания)' }}</div>
+                    {% if existing_report.screen_size %}
+                    <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--color-text-muted);">
+                        <i class="ph-bold ph-monitor"></i> {{ existing_report.screen_size }}
+                    </div>
+                    {% endif %}
+                    {% if existing_report.attachments %}
+                    <div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        {% for att in existing_report.attachments %}
+                        <a href="{{ att.url }}" target="_blank" style="display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border-radius: 8px; background: rgba(99,102,241,0.08); color: #6366f1; border: 1px solid rgba(99,102,241,0.25); text-decoration: none; font-size: 0.8rem; font-weight: 700;">
+                            <i class="ph-bold {% if att.type == 'video' %}ph-video-camera{% else %}ph-image{% endif %}"></i>
+                            {{ 'Видео' if att.type == 'video' else 'Скриншот' }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- ФОРМА (активна только если не readonly) -->
+                <form action="{{ url_for('qa_tester.submit_test', test_id=test.id) if test else url_for('qa_tester.ad_hoc_bug') }}"
+                      method="POST" id="qaForm"
+                      style="display: flex; flex-direction: column; gap: 1.25rem; {% if is_readonly %}opacity: 0.5; pointer-events: none;{% endif %}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="completed_steps" id="completedStepsInput" value="[]">
+                    <input type="hidden" name="attachments_json" id="attachmentsJsonInput" value="[]">
+                    <input type="hidden" name="logs_json" id="logsJsonInput" value="[]">
+                    <input type="hidden" name="page_url" id="pageUrlInput" value="">
+                    <input type="hidden" name="screen_size" id="screenSizeInput" value="">
+
+                    {% if not test %}
+                    <div>
+                        <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.4rem;">Зона</label>
+                        <input type="text" name="area" required placeholder="Например: Библиотека"
+                            style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; background: var(--color-bg-surface); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-size: 0.9rem; outline: none; box-sizing: border-box;">
+                    </div>
+                    {% endif %}
+
+                    <!-- Вердикт -->
+                    <div>
+                        <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: 0.75rem;">Итоговый вердикт</div>
+                        <div style="display: grid; grid-template-columns: repeat({% if test %}3{% else %}2{% endif %}, 1fr); gap: 0.625rem;">
+                            {% if test %}
+                            <label style="cursor: pointer;">
+                                <input type="radio" name="verdict" value="success" class="peer sr-only qa-verdict-radio"
+                                    onchange="onVerdictChange(false)"
+                                    {% if not existing_report or existing_report.verdict == 'success' %}checked{% endif %}>
+                                <div class="qa-verdict-card" data-verdict="success" style="padding: 0.875rem 0.5rem; border-radius: 10px; border: 2px solid var(--color-stroke); background: var(--color-bg-surface); text-align: center; transition: all 0.15s; cursor: pointer;">
+                                    <i class="ph-fill ph-check-circle" style="font-size: 1.75rem; color: #10b981; display: block; margin-bottom: 0.35rem;"></i>
+                                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--color-text-primary);">Всё успешно</div>
+                                    <div style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.2rem;">Работает как ожидалось</div>
+                                </div>
+                            </label>
+                            {% endif %}
+                            <label style="cursor: pointer;">
+                                <input type="radio" name="verdict" value="minor" class="peer sr-only qa-verdict-radio"
+                                    onchange="onVerdictChange(true)"
+                                    {% if not test or (existing_report and existing_report.verdict == 'minor') %}checked{% endif %}>
+                                <div class="qa-verdict-card" data-verdict="minor" style="padding: 0.875rem 0.5rem; border-radius: 10px; border: 2px solid var(--color-stroke); background: var(--color-bg-surface); text-align: center; transition: all 0.15s; cursor: pointer;">
+                                    <i class="ph-fill ph-warning-circle" style="font-size: 1.75rem; color: #f59e0b; display: block; margin-bottom: 0.35rem;"></i>
+                                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--color-text-primary);">Минорный</div>
+                                    <div style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.2rem;">Дизайн, неудобно</div>
+                                </div>
+                            </label>
+                            <label style="cursor: pointer;">
+                                <input type="radio" name="verdict" value="critical" class="peer sr-only qa-verdict-radio"
+                                    onchange="onVerdictChange(true)"
+                                    {% if existing_report and existing_report.verdict == 'critical' %}checked{% endif %}>
+                                <div class="qa-verdict-card" data-verdict="critical" style="padding: 0.875rem 0.5rem; border-radius: 10px; border: 2px solid var(--color-stroke); background: var(--color-bg-surface); text-align: center; transition: all 0.15s; cursor: pointer;">
+                                    <i class="ph-fill ph-x-circle" style="font-size: 1.75rem; color: #f43f5e; display: block; margin-bottom: 0.35rem;"></i>
+                                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--color-text-primary);">Критичный</div>
+                                    <div style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.2rem;">Краш, сломана логика</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Описание / Фактический результат -->
+                    <div id="descriptionSection" style="{% if test and not existing_report %}display:none;{% endif %}">
+                        <label style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.5rem;">
+                            <span style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-primary);">Фактический результат</span>
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--color-accent);"><i class="ph-bold ph-image"></i> Ctrl+V = скриншот</span>
+                        </label>
+                        <div style="position: relative;">
+                            <textarea id="qaDescription" name="description" rows="5"
+                                placeholder="Что пошло не так? Опишите подробно. Ctrl+V — вставить скриншот..."
+                                style="width: 100%; padding: 0.875rem 1rem; border-radius: 10px; background: var(--color-bg-surface); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-size: 0.9rem; resize: vertical; outline: none; box-sizing: border-box; line-height: 1.6;">{{ existing_report.description if existing_report and existing_report.description else '' }}</textarea>
+                            <div id="uploadOverlay" style="display:none; position: absolute; inset: 0; background: rgba(0,0,0,0.5); border-radius: 10px; align-items: center; justify-content: center;">
+                                <div style="background: var(--color-bg-surface); color: var(--color-accent); border: 1px solid var(--color-stroke); border-radius: 8px; padding: 0.625rem 1rem; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="ph-bold ph-spinner" style="animation: spin 1s linear infinite;"></i> Загрузка...
+                                </div>
+                            </div>
+                        </div>
+                        <div id="attachmentBadges" style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+                    </div>
+
+                    <!-- Комментарий тестировщика при ретесте -->
+                    {% if existing_report and existing_report.status == 'retest' %}
+                    <div>
+                        <label style="display: block; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #a855f7; margin-bottom: 0.5rem;">
+                            <i class="ph-bold ph-chat-circle"></i> Комментарий для разработчика
+                        </label>
+                        <textarea name="tester_comment" rows="3"
+                            placeholder="Опишите что проверили при ретесте..."
+                            style="width: 100%; padding: 0.875rem 1rem; border-radius: 10px; background: rgba(168,85,247,0.05); border: 1px solid rgba(168,85,247,0.3); color: var(--color-text-primary); font-size: 0.9rem; resize: vertical; outline: none; box-sizing: border-box;"></textarea>
+                    </div>
+                    {% endif %}
+
+                    <!-- Системные логи (спойлер) -->
+                    <details style="border: 1px solid var(--color-stroke); border-radius: 10px; overflow: hidden;">
+                        <summary style="padding: 0.75rem 1rem; cursor: pointer; background: var(--color-bg-surface-alt); font-size: 0.8rem; font-weight: 700; color: var(--color-text-muted); list-style: none; display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="ph-bold ph-terminal"></i> Системные логи
+                            <span id="logsCountBadge" style="background: rgba(99,102,241,0.1); color: #6366f1; border-radius: 999px; padding: 0 0.5rem; font-size: 0.7rem; font-weight: 800; display: none;"></span>
+                        </summary>
+                        <div style="padding: 0.875rem 1rem; background: rgba(0,0,0,0.15);">
+                            <div style="font-size: 0.7rem; color: var(--color-text-muted); margin-bottom: 0.5rem;">Консольные ошибки и сетевые сбои собираются автоматически. Добавьте HAR-фрагменты вручную если нужно.</div>
+                            <textarea id="logsTextarea" rows="4" placeholder="HAR-фрагменты, консоль, сетевые ошибки..."
+                                style="width: 100%; padding: 0.625rem 0.875rem; border-radius: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-size: 0.8rem; font-family: monospace; resize: vertical; outline: none; box-sizing: border-box;"></textarea>
+                        </div>
+                    </details>
+
+                    <!-- Кнопка отправки -->
+                    <div style="padding-top: 0.5rem; border-top: 1px solid var(--color-stroke);">
+                        <button type="submit" id="submitBtn"
+                            style="width: 100%; padding: 0.875rem 1rem; background: var(--color-accent); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: opacity 0.2s;">
+                            <i class="ph-bold ph-paper-plane-tilt"></i>
+                            {% if existing_report %}Обновить репорт{% else %}Отправить репорт{% endif %}
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast контейнер -->
+<div id="toastContainer" style="position: fixed; top: 6rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem;"></div>
+
+<style>
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.qa-step-label:hover:not([style*="pointer-events: none"]) { background: rgba(0,0,0,0.08) !important; }
+</style>
+
+<script>
+const IS_READONLY = {{ 'true' if is_readonly else 'false' }};
+const HAS_TEST = {{ 'true' if test else 'false' }};
+let _attachments = [];
+let _logs = [];
+
+// Toast
+function showToast(message, type = 'success') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    const isOk = type === 'success';
+    t.style.cssText = `padding: 0.875rem 1.125rem; border-radius: 12px; font-size: 0.875rem; font-weight: 700; display: flex; align-items: center; gap: 0.625rem; transform: translateX(120%); transition: transform 0.3s ease; background: var(--color-bg-surface); color: ${isOk ? '#10b981' : '#f43f5e'}; border: 1px solid ${isOk ? 'rgba(16,185,129,0.3)' : 'rgba(244,63,94,0.3)'}; box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-width: 320px;`;
+    t.innerHTML = `<i class="ph-fill ${isOk ? 'ph-check-circle' : 'ph-warning-circle'}" style="font-size:1.25rem;flex-shrink:0;"></i>${message}`;
+    c.appendChild(t);
+    requestAnimationFrame(() => { t.style.transform = 'translateX(0)'; });
+    setTimeout(() => {
+        t.style.transform = 'translateX(120%)';
+        setTimeout(() => t.remove(), 350);
+    }, 3500);
+}
+
+// Вердикт подсветка
+function updateVerdictCards() {
+    const selected = document.querySelector('.qa-verdict-radio:checked');
+    if (!selected) return;
+    const v = selected.value;
+    const colors = { success: '#10b981', minor: '#f59e0b', critical: '#f43f5e' };
+    document.querySelectorAll('.qa-verdict-card').forEach(card => {
+        const cv = card.dataset.verdict;
+        if (cv === v) {
+            card.style.borderColor = colors[cv];
+            card.style.background = `rgba(${cv === 'success' ? '16,185,129' : cv === 'minor' ? '245,158,11' : '244,63,94'},0.06)`;
+            card.style.transform = 'scale(1.03)';
+        } else {
+            card.style.borderColor = 'var(--color-stroke)';
+            card.style.background = 'var(--color-bg-surface)';
+            card.style.transform = '';
+        }
+    });
+}
+
+function onVerdictChange(needsDescription) {
+    const sec = document.getElementById('descriptionSection');
+    if (sec) {
+        sec.style.display = needsDescription ? 'block' : 'none';
+        const ta = document.getElementById('qaDescription');
+        if (ta) ta.required = needsDescription;
+    }
+    updateVerdictCards();
+}
+
+// Инициализируем подсветку на старте
+document.addEventListener('DOMContentLoaded', () => {
+    updateVerdictCards();
+    // Если ad-hoc или minority — показываем поле описания
+    {% if not test %}
+    onVerdictChange(true);
+    {% endif %}
+
+    // Заполняем служебные поля
+    document.getElementById('pageUrlInput').value = window.location.href;
+    document.getElementById('screenSizeInput').value = window.innerWidth + 'x' + window.innerHeight;
+});
+
+// Клик по радиокнопке через карточку
+document.querySelectorAll('.qa-verdict-card').forEach(card => {
+    card.addEventListener('click', () => {
+        const label = card.closest('label');
+        if (label) {
+            const inp = label.querySelector('input[type=radio]');
+            if (inp) {
+                inp.checked = true;
+                inp.dispatchEvent(new Event('change'));
+            }
+        }
+    });
+});
+
+// Paste скриншот
+const descTA = document.getElementById('qaDescription');
+if (descTA) {
+    descTA.addEventListener('paste', function(e) {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let idx in items) {
+            const item = items[idx];
+            if (item.kind === 'file' && item.type.includes('image')) {
+                e.preventDefault();
+                uploadScreenshot(item.getAsFile());
+                break;
+            }
+        }
+    });
+}
+
+async function uploadScreenshot(file) {
+    const overlay = document.getElementById('uploadOverlay');
+    overlay.style.display = 'flex';
+    const fd = new FormData();
+    fd.append('image', file);
+    fd.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+    try {
+        const res = await fetch("{{ url_for('qa_tester.upload_screenshot') }}", { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.success) {
+            _attachments.push({ url: data.url, type: 'image', filename: data.filename });
+            document.getElementById('attachmentsJsonInput').value = JSON.stringify(_attachments);
+            const badge = document.createElement('a');
+            badge.href = data.url; badge.target = '_blank';
+            badge.style.cssText = 'display:inline-flex;align-items:center;gap:0.375rem;padding:0.375rem 0.75rem;border-radius:8px;background:rgba(99,102,241,0.08);color:#6366f1;border:1px solid rgba(99,102,241,0.25);text-decoration:none;font-size:0.8rem;font-weight:700;';
+            badge.innerHTML = '<i class="ph-bold ph-image"></i> Скриншот';
+            document.getElementById('attachmentBadges').appendChild(badge);
+            showToast('Скриншот загружен!');
+        } else { showToast(data.error || 'Ошибка загрузки', 'error'); }
+    } catch(e) { showToast('Сетевая ошибка', 'error'); }
+    finally { overlay.style.display = 'none'; }
+}
+
+// Сбор логов из textarea
+function collectLogsFromTextarea() {
+    const ta = document.getElementById('logsTextarea');
+    if (ta && ta.value.trim()) {
+        const manual = ta.value.trim().split('\n').filter(Boolean).map(l => '[manual] ' + l);
+        return manual;
+    }
+    return [];
+}
+
+// Обновляем счётчик логов
+function updateLogsCount(arr) {
+    const badge = document.getElementById('logsCountBadge');
+    if (!badge) return;
+    if (arr.length > 0) {
+        badge.textContent = arr.length;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+// AJAX отправка формы
+const form = document.getElementById('qaForm');
+if (form && !IS_READONLY) {
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // Собираем failed_steps (снятые галочки)
+        const checkboxes = document.querySelectorAll('.qa-step-checkbox');
+        const failedSteps = [];
+        checkboxes.forEach(cb => { if (!cb.checked) failedSteps.push(parseInt(cb.value)); });
+        document.getElementById('completedStepsInput').value = JSON.stringify(failedSteps);
+
+        // Собираем логи
+        const allLogs = [..._logs, ...collectLogsFromTextarea()];
+        document.getElementById('logsJsonInput').value = JSON.stringify(allLogs);
+        updateLogsCount(allLogs);
+
+        // Обновляем screen_size на момент отправки
+        document.getElementById('screenSizeInput').value = window.innerWidth + 'x' + window.innerHeight;
+
+        const btn = document.getElementById('submitBtn');
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;"></i> Отправка...';
+        btn.style.opacity = '0.7';
+        btn.disabled = true;
+
+        if (btn.hasAttribute('data-submitted')) return;
+        btn.setAttribute('data-submitted', 'true');
+        try {
+            const fd = new FormData(this);
+            const res = await fetch(this.action, {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const result = await res.json();
+            if (result.success) {
+                showToast('Данные успешно отправлены!');
+                const tab = result.tab || (result.verdict === 'success' ? 'done' : 'new');
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('qa_tester.index') }}?tab=" + tab;
+                }, 1500);
+            } else {
+                showToast(result.error || 'Произошла ошибка', 'error');
+                btn.innerHTML = origHtml;
+                btn.style.opacity = '1';
+                btn.disabled = false;
+            }
+        } catch(err) {
+            showToast('Ошибка сети при отправке', 'error');
+            btn.innerHTML = origHtml;
+            btn.style.opacity = '1';
+            btn.disabled = false;
+        }
+    });
+}
+</script>
+{% endblock %}

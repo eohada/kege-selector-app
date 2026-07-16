@@ -861,7 +861,7 @@
 {% endblock %}
 
 {% block content %}
-        <div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6">
+        <div class="flex flex-col gap-6 w-full">
 
         <div class="flex items-center">
             <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="lesson-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline">
@@ -1287,7 +1287,7 @@
                     <div class="task-content">
                         {{ render_task_content(lt19.task, false, 'task-content') }}
                         {% if lt19.task.starter_code %}
-                        <div class="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50/80 dark:bg-slate-900/30">
+                        <div class="mt-3 p-4 rounded-xl border border-slate-200 bg-slate-50/80 dark:bg-slate-900/30">
                             <div class="text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
                             <pre class="m-0 text-sm font-mono whitespace-pre-wrap text-primary">{{ lt19.task.starter_code }}</pre>
                         </div>
@@ -1423,7 +1423,7 @@
                     <div class="task-content">
                         {{ render_task_content(hw_task.task, false, 'task-content') }}
                         {% if hw_task.task.starter_code %}
-                        <div class="mt-4 p-4 rounded-xl border border-slate-200 bg-slate-50/80 dark:bg-slate-900/30">
+                        <div class="mt-3 p-4 rounded-xl border border-slate-200 bg-slate-50/80 dark:bg-slate-900/30">
                             <div class="text-xs font-extrabold text-muted uppercase tracking-widest mb-2">Код к заданию</div>
                             <pre class="m-0 text-sm font-mono whitespace-pre-wrap text-primary">{{ hw_task.task.starter_code }}</pre>
                         </div>
