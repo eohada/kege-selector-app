@@ -5,7 +5,7 @@ from flask import render_template, request, jsonify, flash, redirect, url_for, c
 from flask_login import login_required, current_user
 from core.db_models import db, QATestCase, QAReport, QAReportHistory
 from app.auth.rbac_utils import require_role
-# # from . import qa_tester_bp
+# # from . import qa_bp
 
 QA_ROLES = ('tester', 'chief_tester', 'admin', 'creator', 'chief_admin')
 QA_AREAS = [
@@ -53,7 +53,7 @@ def _save_uploaded_file(file_obj, allowed_exts=None):
 # Страница тестировщика (список тестов)
 # ---------------------------------------------------------------------------
 
-@qa_tester_bp.route('/')
+@qa_bp.route('/')
 @login_required
 @qa_access_required
 def index():
@@ -120,7 +120,7 @@ def index():
     )
 
 
-@qa_tester_bp.route('/report/<int:report_id>/update', methods=['POST'])
+@qa_bp.route('/report/<int:report_id>/update', methods=['POST'])
 @login_required
 @qa_access_required
 def update_report(report_id):
@@ -187,7 +187,7 @@ def update_report(report_id):
     })
 
 
-@qa_tester_bp.route('/test/<int:test_id>')
+@qa_bp.route('/test/<int:test_id>')
 @login_required
 @qa_access_required
 def execute_test(test_id):
@@ -227,7 +227,7 @@ def execute_test(test_id):
     )
 
 
-@qa_tester_bp.route('/test/<int:test_id>/submit', methods=['POST'])
+@qa_bp.route('/test/<int:test_id>/submit', methods=['POST'])
 @login_required
 @qa_access_required
 def submit_test(test_id):
@@ -369,7 +369,7 @@ def submit_test(test_id):
 # Bulk Pass — массовое прохождение тестов как "успешно"
 # ---------------------------------------------------------------------------
 
-@qa_tester_bp.route('/bulk-pass', methods=['POST'])
+@qa_bp.route('/bulk-pass', methods=['POST'])
 @login_required
 @qa_access_required
 def bulk_pass():
@@ -432,7 +432,7 @@ def bulk_pass():
 # Ad-hoc баг (вне тест-кейсов)
 # ---------------------------------------------------------------------------
 
-@qa_tester_bp.route('/ad-hoc', methods=['GET', 'POST'])
+@qa_bp.route('/ad-hoc', methods=['GET', 'POST'])
 @login_required
 @qa_access_required
 def ad_hoc_bug():
@@ -486,7 +486,7 @@ def ad_hoc_bug():
     flash('Спонтанный баг зарегистрирован!', 'success')
     return redirect(url_for('qa_tester.index'))
 
-@qa_tester_bp.route('/report/<int:report_id>')
+@qa_bp.route('/report/<int:report_id>')
 @login_required
 @qa_access_required
 def edit_report(report_id):
@@ -532,7 +532,7 @@ def edit_report(report_id):
 # ---------------------------------------------------------------------------
 # История репортов тестировщика
 # ---------------------------------------------------------------------------
-@qa_tester_bp.route('/history')
+@qa_bp.route('/history')
 @login_required
 @qa_access_required
 def history():
@@ -545,7 +545,7 @@ def history():
 # API: Загрузка файлов (скриншоты, видео)
 # ---------------------------------------------------------------------------
 
-@qa_tester_bp.route('/upload', methods=['POST'])
+@qa_bp.route('/upload', methods=['POST'])
 @login_required
 @qa_access_required
 def upload_screenshot():
@@ -561,7 +561,7 @@ def upload_screenshot():
     return jsonify({'success': True, 'url': file_url, 'filename': filename, 'type': 'image'})
 
 
-@qa_tester_bp.route('/upload-video', methods=['POST'])
+@qa_bp.route('/upload-video', methods=['POST'])
 @login_required
 @qa_access_required
 def upload_video():
@@ -581,7 +581,7 @@ def upload_video():
 # API: Быстрый баг из виджета (AJAX, JSON)
 # ---------------------------------------------------------------------------
 
-@qa_tester_bp.route('/api/quick-bug', methods=['POST'])
+@qa_bp.route('/api/quick-bug', methods=['POST'])
 @login_required
 @qa_access_required
 def api_quick_bug():
