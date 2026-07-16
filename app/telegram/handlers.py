@@ -4262,21 +4262,12 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
                 await update.message.reply_text(f"Твой аккаунт уже привязан, {tester_info['name']}! Не нужно вводить ключ заново 😉")
             else:
                 msg_text = (
-                    f"🏢 ТВОЙ ЛИЧНЫЙ КАБИНЕТ QA 🏢
-
-"
-                    f"Привет, {tester_info['name']}! 👾
-"
-                    f"Твоя зона ответственности: 🎯 {tester_info['category']}
-
-"
-                    f"📊 Твоя статистика:
-"
-                    f"Всего отправлено багов: {total_reports}
-"
-                    f"Ждут твоего ретеста: {retest_reports}
-
-"
+                    f"🏢 ТВОЙ ЛИЧНЫЙ КАБИНЕТ QA 🏢\n\n"
+                    f"Привет, {tester_info['name']}! 👾\n"
+                    f"Твоя зона ответственности: 🎯 {tester_info['category']}\n\n"
+                    f"📊 Твоя статистика:\n"
+                    f"Всего отправлено багов: {total_reports}\n"
+                    f"Ждут твоего ретеста: {retest_reports}\n\n"
                     f"Чтобы зайти на платформу, просто открой BooStudy!"
                 )
                 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -4312,13 +4303,9 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
                 msg_text = (
-                    f"Привет, {tester_name}! 👾
-"
-                    f"Я — боевой бот QA-отдела BooStudy. Я создан, чтобы оперативно доставлять тебе уведомления о новых багах, ретестах и задачах, чтобы мы вместе делали платформу идеальной!
-
-"
-                    f"Твоя категория тестирования: 🎯 {tester_category}
-"
+                    f"Привет, {tester_name}! 👾\n"
+                    f"Я — боевой бот QA-отдела BooStudy. Я создан, чтобы оперативно доставлять тебе уведомления о новых багах, ретестах и задачах, чтобы мы вместе делали платформу идеальной!\n\n"
+                    f"Твоя категория тестирования: 🎯 {tester_category}\n"
                     f"Твой аккаунт успешно привязан. Нажми кнопку ниже, чтобы я убедился, что связь работает!"
                 )
                 
@@ -4372,13 +4359,9 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
                 msg_text = (
-                    f"Привет, {tester_name}! 👾
-"
-                    f"Я — боевой бот QA-отдела BooStudy. Я создан, чтобы оперативно доставлять тебе уведомления о новых багах, ретестах и задачах, чтобы мы вместе делали платформу идеальной!
-
-"
-                    f"Твоя категория тестирования: 🎯 {tester_category}
-"
+                    f"Привет, {tester_name}! 👾\n"
+                    f"Я — боевой бот QA-отдела BooStudy. Я создан, чтобы оперативно доставлять тебе уведомления о новых багах, ретестах и задачах, чтобы мы вместе делали платформу идеальной!\n\n"
+                    f"Твоя категория тестирования: 🎯 {tester_category}\n"
                     f"Твой аккаунт успешно привязан. Нажми кнопку ниже, чтобы я убедился, что связь работает!"
                 )
                 
@@ -4578,15 +4561,12 @@ async def _handle_ping_admin(update: Update, context: ContextTypes.DEFAULT_TYPE)
         
         user = User.query.get(user_id)
         if user:
-            await query.edit_message_text("Супер! Связь установлена 🚀
-Теперь сюда будут прилетать уведомления о багах из твоей зоны ответственности.")
+            await query.edit_message_text("Супер! Связь установлена 🚀\nТеперь сюда будут прилетать уведомления о багах из твоей зоны ответственности.")
             
             try:
                 msg = (
-                    f"🚨 QA ALERT!
-"
-                    f"Тестировщик @{tg_tag} ({tester_name}) успешно подключил уведомления и готов к работе!
-"
+                    f"🚨 QA ALERT!\n"
+                    f"Тестировщик @{tg_tag} ({tester_name}) успешно подключил уведомления и готов к работе!\n"
                     f"Категория: {tester_category}"
                 )
                 await context.bot.send_message(chat_id=ADMIN_TG_ID, text=msg)
