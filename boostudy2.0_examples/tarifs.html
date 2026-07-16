@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Премиальный тарифный план</title>
+    <!-- Используем современный шрифт Inter для чистоты и строгости -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Светлая тема */
+            --bg-color: #F8F9FA;
+            --text-main: #111418;
+            --text-muted: #6B7280;
+            --card-bg: #FFFFFF;
+            --card-border: #E5E7EB;
+            --card-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+            --card-shadow-hover: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+            --accent: #6366F1; /* Благородный индиго */
+            --accent-glow: rgba(99, 102, 241, 0.1);
+            --tag-hot-bg: #FEE2E2;
+            --tag-hot-text: #DC2626;
+            --tag-discount-bg: #E0E7FF;
+            --tag-discount-text: #4F46E5;
+            --promo-bg: #FFFFFF;
+            --promo-border: #E5E7EB;
+            --toggle-bg: #E5E7EB;
+            --toggle-active: #FFFFFF;
+            --toggle-text: #111418;
+        }
+
+        [data-theme="dark"] {
+            /* Темная тема */
+            --bg-color: #0A0A0C;
+            --text-main: #F9FAFB;
+            --text-muted: #9CA3AF;
+            --card-bg: #141518;
+            --card-border: #272A30;
+            --card-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+            --card-shadow-hover: 0 20px 40px -10px rgba(0, 0, 0, 0.8);
+            --accent: #818CF8;
+            --accent-glow: rgba(129, 140, 248, 0.15);
+            --tag-hot-bg: rgba(220, 38, 38, 0.15);
+            --tag-hot-text: #FCA5A5;
+            --tag-discount-bg: rgba(99, 102, 241, 0.15);
+            --tag-discount-text: #A5B4FC;
+            --promo-bg: #141518;
+            --promo-border: #272A30;
+            --toggle-bg: #272A30;
+            --toggle-active: #374151;
+            --toggle-text: #F9FAFB;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+            transition: background-color 0.4s ease, color 0.4s ease;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1040px;
+            width: 100%;
+        }
+
+        /* --- Header --- */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .header h1 {
+            font-size: 40px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }
+
+        .header p {
+            font-size: 16px;
+            color: var(--text-muted);
+            max-width: 500px;
+            margin: 0 auto 32px;
+            line-height: 1.5;
+        }
+
+        /* Индикатор прогресса (минималистичный) */
+        .progress {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .progress span {
+            display: block;
+            width: 32px;
+            height: 4px;
+            background-color: var(--card-border);
+            border-radius: 2px;
+            transition: background-color 0.3s ease;
+        }
+
+        .progress span.active {
+            background-color: var(--accent);
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 32px;
+        }
+
+        /* --- Cards Layout --- */
+        .cards-row-top {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .cards-row-bottom {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .cards-row-bottom .card {
+            flex: 0 1 calc(33.333% - 16px); /* Ширина как у верхних карточек */
+            min-width: 300px;
+        }
+
+        /* --- Card Styling --- */
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 32px;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 260px;
+            box-shadow: var(--card-shadow);
+            /* Плавная, дорогая анимация */
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), 
+                        box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+                        border-color 0.3s ease,
+                        background-color 0.4s ease;
+        }
+
+        /* Премиальная тактильность: мягкий подъем при наведении */
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--card-shadow-hover);
+            border-color: var(--accent);
+        }
+
+        /* Физический отклик: мягкое вдавливание при клике */
+        .card:active {
+            transform: translateY(1px) scale(0.98);
+            box-shadow: var(--card-shadow);
+        }
+
+        .card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent), var(--card-shadow-hover);
+            background-color: var(--accent-glow);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .tags-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+        }
+
+        .tag {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .tag-hot {
+            background-color: var(--tag-hot-bg);
+            color: var(--tag-hot-text);
+        }
+
+        .tag-discount {
+            background-color: var(--tag-discount-bg);
+            color: var(--tag-discount-text);
+        }
+
+        .card-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 32px;
+        }
+
+        .card-price-wrapper {
+            margin-top: auto;
+        }
+
+        .card-price {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .card-price span {
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* --- Promo Banner --- */
+        .promo-wrapper {
+            display: flex;
+            justify-content: center; /* Жесткое центрирование */
+            width: 100%;
+        }
+
+        .promo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background-color: var(--promo-bg);
+            border: 1px solid var(--promo-border);
+            padding: 16px 24px;
+            border-radius: 100px;
+            font-size: 14px;
+            color: var(--text-muted);
+            box-shadow: 0 4px 20px -10px rgba(0, 0, 0, 0.05);
+            transition: all 0.4s ease;
+        }
+
+        .promo span {
+            font-size: 16px;
+        }
+
+        /* --- Theme Toggle --- */
+        .theme-toggle {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            display: flex;
+            background-color: var(--toggle-bg);
+            padding: 4px;
+            border-radius: 30px;
+            cursor: pointer;
+            border: 1px solid var(--card-border);
+            transition: background-color 0.4s ease, border-color 0.4s ease;
+            z-index: 100;
+        }
+
+        .toggle-btn {
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn.active {
+            background-color: var(--toggle-active);
+            color: var(--toggle-text);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Адаптив для маленьких экранов */
+        @media (max-width: 960px) {
+            .cards-row-top {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .cards-row-bottom {
+                flex-wrap: wrap;
+            }
+            .cards-row-bottom .card {
+                flex: 1 1 calc(50% - 12px);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .cards-row-top {
+                grid-template-columns: 1fr;
+            }
+            .cards-row-bottom .card {
+                flex: 1 1 100%;
+            }
+            .promo {
+                border-radius: 24px;
+                text-align: center;
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header class="header">
+            <h1>Собери свой тариф</h1>
+            <p>Персонализированный план подготовки, который адаптируется под твои цели и темп.</p>
+            <div class="progress">
+                <span class="active"></span>
+                <span class="active"></span>
+                <span class="active"></span>
+                <span class="active"></span>
+                <span></span>
+            </div>
+        </header>
+
+        <h2 class="section-title">Выбери пакет уроков</h2>
+
+        <!-- Верхний ряд: 3 карточки -->
+        <div class="cards-row-top">
+            <div class="card selected" onclick="selectCard(this)">
+                <div>
+                    <div class="card-header">
+                        <div class="card-title">Junior</div>
+                    </div>
+                    <div class="card-desc">8 уроков по информатике<br>(1 мес / 8 ур)</div>
+                </div>
+                <div class="card-price-wrapper">
+                    <div class="card-price">15 200 <span>₽</span></div>
+                </div>
+            </div>
+
+            <div class="card" onclick="selectCard(this)">
+                <div>
+                    <div class="card-header">
+                        <div class="card-title">Middle</div>
+                    </div>
+                    <div class="card-desc">16 уроков<br>(2 мес / 16 ур)</div>
+                </div>
+                <div class="card-price-wrapper">
+                    <div class="card-price">28 800 <span>₽</span></div>
+                </div>
+            </div>
+
+            <div class="card" onclick="selectCard(this)">
+                <div>
+                    <div class="card-header">
+                        <div class="card-title">Advanced</div>
+                    </div>
+                    <div class="card-desc">24 урока<br>(3 мес / 24 ур)</div>
+                </div>
+                <div class="card-price-wrapper">
+                    <div class="card-price">40 800 <span>₽</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Нижний ряд: 2 карточки, выровнены по центру -->
+        <div class="cards-row-bottom">
+            <div class="card" onclick="selectCard(this)">
+                <div>
+                    <div class="card-header">
+                        <div class="card-title">Senior</div>
+                        <div class="tags-wrapper">
+                            <div class="tag tag-hot">HOT</div>
+                            <div class="tag tag-discount">Цена ниже*</div>
+                        </div>
+                    </div>
+                    <div class="card-desc">40 уроков.<br>(5 мес / 40 ур)</div>
+                </div>
+                <div class="card-price-wrapper">
+                    <div class="card-price">64 000 <span>₽</span></div>
+                </div>
+            </div>
+
+            <div class="card" onclick="selectCard(this)">
+                <div>
+                    <div class="card-header">
+                        <div class="card-title">Lead</div>
+                        <div class="tags-wrapper">
+                            <div class="tag tag-hot">HOT</div>
+                            <div class="tag tag-discount">Цена ниже*</div>
+                        </div>
+                    </div>
+                    <div class="card-desc">80 уроков.<br>(10 мес / 80 ур)</div>
+                </div>
+                <div class="card-price-wrapper">
+                    <div class="card-price">120 000 <span>₽</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок акции строго по центру -->
+        <div class="promo-wrapper">
+            <div class="promo">
+                <span>✨</span>
+                <strong>Акция:</strong> Специальные цены на пакеты 5 и 10 месяцев действуют до 31 июля 2026 года 23:59
+            </div>
+        </div>
+    </div>
+
+    <!-- Переключатель тем -->
+    <div class="theme-toggle">
+        <div class="toggle-btn active" id="btn-light" onclick="setTheme('light')">Светлая</div>
+        <div class="toggle-btn" id="btn-dark" onclick="setTheme('dark')">Тёмная</div>
+    </div>
+
+    <script>
+        // Логика выбора карточек
+        function selectCard(clickedCard) {
+            document.querySelectorAll('.card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            clickedCard.classList.add('selected');
+        }
+
+        // Логика смены темы
+        function setTheme(themeName) {
+            const btnLight = document.getElementById('btn-light');
+            const btnDark = document.getElementById('btn-dark');
+
+            if (themeName === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                btnDark.classList.add('active');
+                btnLight.classList.remove('active');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                btnLight.classList.add('active');
+                btnDark.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>

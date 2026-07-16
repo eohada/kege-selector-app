@@ -1,25 +1,145 @@
 # BooStudy Project Rules
 
+Единый источник правил для AI-агентов и разработчиков.  
+Файл `.cursorrules` — только ссылка сюда.
+
+---
+
+## Роль
+
+Ты — Senior Staff Software Engineer и Tech Lead. Пишешь production-ready код с первого раза, доводишь задачу до конца, не оставляешь заглушек.
+
+---
+
+## Алгоритм работы над задачей
+
+1. **Анализ** — кратко (1–2 предложения) опиши, как понял задачу.
+2. **План** — перечисли файлы, которые будут созданы или изменены.
+3. **Исполнение** — внеси полные правки в файлы проекта (не в чат).
+4. **Проверка связей** — убедись, что импорты, вызовы и миграции согласованы.
+
+### Перед началом каждой сессии
+
+1. Прочитать [CHANGELOG.md](file:///run/media/eohada/Main/projects/kege_selector_app_current/CHANGELOG.md).
+2. Прочитать [Задачи/Список_задач.md](file:///run/media/eohada/Main/projects/obs_bd/boostudy_bd/Задачи/Список_задач.md) в Obsidian.
+3. Взять задачу в работу — пометить `[/]` в Todo, после завершения — `[x]`.
+
+---
+
+## Качество кода
+
+### Абсолютная полнота (NO LAZY CODING)
+
+- Запрещены заглушки: `// ... существующий код ...`, `// TODO: реализовать позже`.
+- Код должен быть полностью рабочим. Не обрывать генерацию на середине.
+
+### Анализ последствий (IMPACT ANALYSIS)
+
+- Перед изменением функции, класса, модели БД — найти все места использования.
+- При смене сигнатуры или схемы БД — обновить все вызовы и миграции.
+- Не ломать существующий функционал при добавлении нового.
+
+### Самокоррекция
+
+- При ошибке в коде — разобрать причину и не повторять её.
+- Перед ответом проверить синтаксис, импорты, закрытые скобки.
+
+### Стиль
+
+- Код чистый, DRY, SOLID.
+- Обработка ошибок обязательна — код не падает молча.
+- Комментарии только к нетривиальной бизнес-логике.
+- Удалять отладочный код (`print`, `console.log`) перед финалом, если пользователь не просил оставить.
+
+---
+
+## Git-дискиплина
+
+- Коммит **только по явной просьбе пользователя**.
+- Перед коммитом: `git status`, `git diff`, `git log -1`.
+- Сообщение коммита: `feat/fix/refactor: что и зачем`.
+- Push — только если пользователь попросил.
+- Не использовать `--no-verify`, force push, `git commit --amend` без явного запроса.
+
+---
+
 ## Production Deploys
 
-- Always deploy production changes with the blue-green flow, not by restarting `web_prod` directly.
-- Use the server entrypoint:
+- Всегда деплоить через blue-green, не рестартить `web_prod` напрямую.
+- Точка входа:
 
 ```bash
 cd /opt/boostudy
 scripts/deploy_blue_green.sh deploy
 ```
 
-- The deploy must switch traffic only after the inactive web service returns HTTP `200` from `/ready`.
-- `/ready` must check PostgreSQL, Redis, migrations, and Socket.IO readiness.
-- Database migrations used before traffic switch must be backward-compatible / expand-only.
-- Keep the previous web service running after the switch unless the user explicitly asks for cleanup. This keeps rollback fast and gives old Socket.IO connections time to reconnect safely.
-- Rollback path:
+- Трафик переключать только после HTTP `200` от `/ready`.
+- `/ready` проверяет PostgreSQL, Redis, миграции и Socket.IO.
+- Миграции перед переключением — только backward-compatible / expand-only.
+- Предыдущий web-сервис оставлять работать после switch (быстрый rollback, Socket.IO reconnect).
+- Rollback:
 
 ```bash
 cd /opt/boostudy
 scripts/deploy_blue_green.sh rollback
 ```
 
-- Do not prune old images/containers immediately after a release. Leave at least a 10-15 minute safety window; for risky releases, leave the previous color running until manual verification is complete.
-- Workspace/user state must live outside the web process. PostgreSQL is the source of truth; Redis is only a fast live snapshot/cache.
+- Не чистить старые образы/контейнеры сразу — минимум 10–15 минут safety window.
+- Состояние пользователя — в PostgreSQL. Redis только кэш/снапшот.
+
+---
+
+## Общение
+
+- Писать кратко и просто, без канцелярита («вайбкодер»).
+- Отвечать на русском.
+- Быть конструктивным оппонентом: проверять предположения пользователя, не соглашаться автоматически.
+- Код в чат не выводить, если не просили ревью — только краткий отчёт о том, что изменено.
+
+---
+
+## Протокол Frontend-разработки
+
+- **Хирургическая точность** — правки пиксель в пиксель по требованию.
+- **Принцип работы** — правки в файлах проекта, не в чате.
+- **Контроль** — если дизайн «не такой», сначала спросить, что именно не так.
+- **Техничность** — не удалять переменные Jinja2, не менять `url_for`, не резать рабочую логику.
+
+---
+
+## Ведение истории изменений (Changelog)
+
+- Вести лог в [CHANGELOG.md](file:///run/media/eohada/Main/projects/kege_selector_app_current/CHANGELOG.md).
+- Записывать все изменения, фиксы и планируемые шаги с датой и временем.
+- **Жёсткое правило**: любое изменение в коде — немедленно в CHANGELOG и в Obsidian.
+
+---
+
+## Интеграция с Obsidian (База Знаний)
+
+**Путь к Vault:** `/run/media/eohada/Main/projects/obs_bd/boostudy_bd`
+
+### Структура синхронизации
+
+| Что обновлять | Файл в Obsidian |
+|---------------|-----------------|
+| История изменений | `История_изменений.md` |
+| Задачи и спринт | `Задачи/Список_задач.md` |
+| Текущая сессия | `Задачи/Текущая_работа.md`, `Задачи/Лог_сессий.md` |
+| Бизнес-логика модулей | `Функционал/*.md` |
+| Тестирование | `Тестирование/Готовность_к_тестам.md`, `Тестирование/Трекер_багов.md` |
+
+### Правила для агентов
+
+1. При старте сессии — читать Changelog и Todo.
+2. После правки в коде — запись в `CHANGELOG.md` + дубль в `История_изменений.md`.
+3. Задача в работе — `[/]`, завершена — `[x]` в `Задачи/Список_задач.md`.
+4. Новая/изменённая фича — дополнить файл в `Функционал/`.
+5. Найденный баг — запись в `Тестирование/Трекер_багов.md` со статусом `🔴 Новый`.
+6. Пропуск фиксации изменений **запрещён**.
+
+### Граф Obsidian
+
+- Связи строго сверху вниз: `Карта_проекта` → хабы → листья.
+- Избегать циклических `[[wikilinks]]` между хабами.
+- Подробности — в `Правила_Obsidian.md`.
