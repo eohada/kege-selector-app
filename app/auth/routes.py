@@ -20,7 +20,7 @@ from wtforms.validators import DataRequired
 from app.auth import auth_bp
 from app.limiter import limiter
 from datetime import timedelta
-from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course, ReferralCode, ReferralUsage
+from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course, ReferralCode, ReferralUsage, Enrollment, FamilyTie
 from app.notifications.service import notify_user
 from app.utils.subscription_access import get_effective_access_for_user
 from app.utils.course_tasks import get_task_numbers, get_max_score_for_task
@@ -800,6 +800,12 @@ def user_profile():
     parent_children_count = 0
     parent_children_confirmed_count = 0
     student_parents_count = 0
+    user_profile = getattr(current_user, 'profile', None)
+    profile_tz = (
+        getattr(current_user, 'timezone_iana', None)
+        or getattr(user_profile, 'timezone', None)
+        or 'Europe/Moscow'
+    )
     try:
         if current_user.is_student():
             linked_student = Student.query.filter_by(user_id=current_user.id).first()
@@ -837,6 +843,12 @@ def user_profile():
 
     if current_user.is_student():
         student_parents_count = len(student_parents)
+        if linked_student:
+            try:
+                from app.utils.achievement_service import check_and_grant_dynamic_achievements
+                check_and_grant_dynamic_achievements(linked_student)
+            except Exception as e:
+                logger.error(f"Error checking achievements on profile load: {e}")
 
     if current_user.is_student():
         return render_template(
@@ -844,6 +856,7 @@ def user_profile():
             linked_student=linked_student,
             recent_lessons=recent_lessons,
             lesson_counts=lesson_counts,
+            profile_tz=profile_tz,
         )
 
     if current_user.is_creator():
@@ -852,6 +865,7 @@ def user_profile():
             linked_student=linked_student,
             recent_lessons=recent_lessons,
             lesson_counts=lesson_counts,
+            profile_tz=profile_tz,
         )
 
     return render_template(
@@ -864,6 +878,7 @@ def user_profile():
         parent_children_count=parent_children_count,
         parent_children_confirmed_count=parent_children_confirmed_count,
         student_parents_count=student_parents_count,
+        profile_tz=profile_tz,
     )
 
 
@@ -1144,3 +1159,307 @@ def miro_oauth_callback():
     logger.info(f"Miro OAuth callback received with code: {code[:10]}...")
     flash('Miro авторизация успешна!', 'success')
     return redirect(url_for('main.dashboard'))
+
+
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    """Регистрация нового пользователя с поддержкой связей и рефералов"""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+
+    # Забираем параметры связей
+    tutor_id_param = request.args.get('tutor_id', type=int) or request.form.get('tutor_id', type=int)
+    invite_parent_to_param = request.args.get('invite_parent_to', type=int) or request.form.get('invite_parent_to', type=int)
+    ref_param = (request.args.get('ref', '') or request.form.get('ref', '')).strip()
+
+    tutor = None
+    invite_student = None
+    if tutor_id_param:
+        tutor = User.query.filter_by(id=tutor_id_param, role='tutor').first()
+    if invite_parent_to_param:
+        invite_student = Student.query.filter_by(user_id=invite_parent_to_param).first()
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password')
+        role = request.form.get('role', 'student').strip()
+
+        # Валидация
+        if not username or not email or not password:
+            return render_template('auth/register.html', error='Все поля обязательны для заполнения.', 
+                                   tutor=tutor, invite_student=invite_student, ref=ref_param,
+                                   username=username, email=email)
+
+        # Если регистрируется родитель по инвайту, жестко ставим роль parent
+        if invite_student:
+            role = 'parent'
+        # Если регистрируется ученик по инвайту препода, жестко ставим роль student
+        elif tutor:
+            role = 'student'
+
+        if role not in ('student', 'tutor', 'parent'):
+            role = 'student'
+
+        # Проверка уникальности
+        if User.query.filter_by(username=username).first():
+            return render_template('auth/register.html', error='Пользователь с таким логином уже существует.', 
+                                   tutor=tutor, invite_student=invite_student, ref=ref_param,
+                                   username=username, email=email)
+
+        if User.query.filter_by(email=email).first():
+            return render_template('auth/register.html', error='Пользователь с таким email уже существует.', 
+                                   tutor=tutor, invite_student=invite_student, ref=ref_param,
+                                   username=username, email=email)
+
+        try:
+            # Создаем пользователя
+            new_user = User(
+                username=username,
+                email=email,
+                password_hash=generate_password_hash(password),
+                role=role,
+                is_active=True
+            )
+            db.session.add(new_user)
+            db.session.flush()
+
+            # Добавляем роль в UserRole
+            db.session.add(UserRole(user_id=new_user.id, role=role))
+
+            # Создаем профиль
+            profile = UserProfile(
+                user_id=new_user.id,
+                first_name=username,
+                last_name=''
+            )
+            db.session.add(profile)
+
+            # Если ученик, создаем запись Student
+            student = None
+            if role == 'student':
+                student = Student(
+                    name=username,
+                    user_id=new_user.id,
+                    is_active=True,
+                    email=email
+                )
+                db.session.add(student)
+                db.session.flush()
+
+            # Обрабатываем реферальную ссылку
+            if ref_param:
+                referral_obj = ReferralCode.query.filter(
+                    func.upper(ReferralCode.code) == ref_param.upper(),
+                    ReferralCode.is_active.is_(True)
+                ).first()
+                if referral_obj:
+                    referral_obj.usage_count += 1
+                    db.session.add(ReferralUsage(referral_code_id=referral_obj.id, user_id=new_user.id))
+
+            # Автоматическая привязка к преподавателю
+            if tutor and role == 'student':
+                enrollment = Enrollment(
+                    tutor_id=tutor.id,
+                    student_id=new_user.id,
+                    subject='Информатика',
+                    status='active'
+                )
+                db.session.add(enrollment)
+
+            # Автоматическая привязка родителя к ребенку
+            if invite_student and role == 'parent':
+                family_tie = FamilyTie(
+                    parent_id=new_user.id,
+                    student_id=invite_student.user_id,
+                    access_level='full',
+                    is_confirmed=True
+                )
+                db.session.add(family_tie)
+
+            db.session.commit()
+
+            # Логируем вход и авторизуем пользователя
+            login_user(new_user, remember=True)
+            new_user.last_login = moscow_now()
+            db.session.commit()
+
+            audit_logger.log(
+                action='register',
+                entity='User',
+                entity_id=new_user.id,
+                status='success',
+                metadata={'username': username, 'role': role}
+            )
+
+            flash('Регистрация прошла успешно!', 'success')
+            return redirect(_redirect_after_login(new_user))
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error during registration: {e}", exc_info=True)
+            return render_template('auth/register.html', error=f'Ошибка при регистрации: {str(e)}', 
+                                   tutor=tutor, invite_student=invite_student, ref=ref_param,
+                                   username=username, email=email)
+
+    return render_template('auth/register.html', tutor=tutor, invite_student=invite_student, ref=ref_param)
+
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    import random
+    from flask import session, flash, redirect, url_for, request, render_template
+    from app.utils.email import send_email
+    if request.method == 'POST':
+        username_or_email = request.form.get('username_or_email', '').strip()
+        user = User.query.filter((User.username == username_or_email) | (User.email == username_or_email)).first()
+        if not user:
+            flash('Пользователь с таким логином или email не найден.', 'danger')
+            return redirect(url_for('auth.forgot_password'))
+        
+        # Генерируем 6-значный код подтверждения
+        code = f"{random.randint(100000, 999999)}"
+        session['reset_code'] = code
+        session['reset_user_id'] = user.id
+        
+        # Форматируем красивое HTML письмо
+        html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Восстановление пароля - BooStudy</title>
+    <style>
+        body {{
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #0a0a0c;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }}
+        .card {{
+            background-color: #121216;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }}
+        .logo {{
+            font-size: 24px;
+            font-weight: 800;
+            color: #00e0ff;
+            margin-bottom: 30px;
+            letter-spacing: -0.02em;
+        }}
+        h1 {{
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }}
+        p {{
+            font-size: 15px;
+            color: #8a8a93;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }}
+        .code-box {{
+            background-color: #1a1a20;
+            border: 1px dashed rgba(0, 224, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: 6px;
+            color: #00e0ff;
+            display: inline-block;
+            margin-bottom: 30px;
+        }}
+        .footer {{
+            margin-top: 40px;
+            font-size: 12px;
+            color: #4c4c52;
+            text-align: center;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="logo">BooStudy</div>
+            <h1>Восстановление пароля</h1>
+            <p>Привет, {user.username}!<br>Мы получили запрос на сброс пароля для твоего аккаунта. Используй этот код подтверждения на сайте, чтобы задать новый пароль:</p>
+            <div class="code-box">{code}</div>
+            <p style="margin-bottom: 0; font-size: 13px;">Если ты не отправлял этот запрос, просто проигнорируй это письмо.</p>
+        </div>
+        <div class="footer">
+            © 2026 BooStudy. Все права защищены.
+        </div>
+    </div>
+</body>
+</html>"""
+        
+        text_content = f"Привет, {user.username}! Код сброса пароля: {code}"
+        
+        # Отправляем email
+        email_sent = send_email(user.email or "user@example.com", "Восстановление пароля - BooStudy", html_content, text_content)
+        
+        # Для простоты локального тестирования пишем в консоль
+        print(f"\n[DEV MODE] КОД ВОССТАНОВЛЕНИЯ ПАРОЛЯ ДЛЯ {user.username}: {code}\n")
+        
+        if email_sent:
+            flash(f'[DEV MODE] Код сброса пароля: {code}', 'success')
+        else:
+            flash(f'[DEV MODE] Код сброса пароля: {code} (SMTP не настроен)', 'warning')
+            
+        return redirect(url_for('auth.reset_password_confirm'))
+        
+    return render_template('auth/forgot_password.html')
+
+
+@auth_bp.route('/reset-password-confirm', methods=['GET', 'POST'])
+def reset_password_confirm():
+    from flask import session, flash, redirect, url_for, request, render_template
+    from werkzeug.security import generate_password_hash
+    if request.method == 'POST':
+        input_code = request.form.get('reset_code', '').strip()
+        new_password = request.form.get('new_password', '').strip()
+        
+        saved_code = session.get('reset_code')
+        user_id = session.get('reset_user_id')
+        
+        if not saved_code or not user_id or input_code != saved_code:
+            flash('Неверный или устаревший код подтверждения.', 'danger')
+            return redirect(url_for('auth.reset_password_confirm'))
+            
+        user = User.query.get(user_id)
+        if user:
+            user.password_hash = generate_password_hash(new_password)
+            db.session.commit()
+            
+            # Очищаем сессию сброса
+            session.pop('reset_code', None)
+            session.pop('reset_user_id', None)
+            
+            flash('Пароль успешно изменен! Войдите с новым паролем.', 'success')
+            return redirect(url_for('auth.login'))
+        else:
+            flash('Пользователь не найден.', 'danger')
+            return redirect(url_for('auth.forgot_password'))
+            
+    return render_template('auth/reset_password_confirm.html')
+
+
+@auth_bp.route('/debug/last-email')
+def debug_last_email():
+    import os
+    from flask import abort, send_from_directory
+    debug_dir = os.path.join(os.getcwd(), 'debug_output')
+    if not os.path.exists(os.path.join(debug_dir, 'last_sent_email.html')):
+        abort(404, description="No email sent yet.")
+    return send_from_directory(debug_dir, 'last_sent_email.html')

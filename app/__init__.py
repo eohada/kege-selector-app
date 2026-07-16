@@ -357,6 +357,8 @@ def create_app(config_name=None):
     from app.students import students_bp
     from app.lessons import lessons_bp
     from app.admin import admin_bp
+    from app.admin.qa_management import qa_bp as qa_admin_bp
+    from app.qa import qa_tester_bp
     from app.task_generator import task_generator_bp
     from app.api import api_bp
     from app.schedule import schedule_bp
@@ -372,7 +374,7 @@ def create_app(config_name=None):
     from app.trainer import trainer_bp
     from app.uploads import uploads_bp
     from app.storage.routes import storage_bp
-    from app.qa.routes import qa_bp
+    from app.qa import qa_tester_bp
     from app.chief_tester import chief_tester_bp
     from app.theory import theory_bp
     from app.reminders import reminders_bp
@@ -388,6 +390,16 @@ def create_app(config_name=None):
     app.register_blueprint(students_bp)
     app.register_blueprint(lessons_bp)
     app.register_blueprint(admin_bp)
+    from app.qa import qa_tester_bp
+    
+    app.register_blueprint(qa_admin_bp)
+    app.register_blueprint(qa_tester_bp)
+
+    # CSRF exceptions for QA AJAX APIs
+    from app.qa.routes import api_quick_bug, upload_video, upload_screenshot
+    csrf.exempt(api_quick_bug)
+    csrf.exempt(upload_video)
+    csrf.exempt(upload_screenshot)
     app.register_blueprint(task_generator_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(schedule_bp)
@@ -403,7 +415,7 @@ def create_app(config_name=None):
     app.register_blueprint(trainer_bp)
     app.register_blueprint(uploads_bp)
     app.register_blueprint(storage_bp)
-    app.register_blueprint(qa_bp)
+    
     app.register_blueprint(chief_tester_bp)
     app.register_blueprint(theory_bp)
     app.register_blueprint(reminders_bp)
@@ -575,6 +587,14 @@ def create_app(config_name=None):
             except Exception:
                 tz_eff = 'Europe/Moscow'
         from app.utils.release_notes import build_release_notes_text, RELEASE_VERSION
+        
+        # Передаем список зон для QA-виджета
+        qa_widget_areas = [
+            'Авторизация и доступ', 'Биллинг и подписки', 'Админка', 
+            'Курсы и уроки', 'Генератор задач', 'Песочница (Sandbox)', 
+            'Telegram', 'Библиотека', 'Workspace', 'Мобильная версия', 'Общая'
+        ]
+
         return dict(
             current_student=student_data,
             has_permission=has_permission,
@@ -585,6 +605,7 @@ def create_app(config_name=None):
             user_timezone_iana=(getattr(current_user, 'timezone_iana', None) if current_user.is_authenticated else None),
             release_notes=build_release_notes_text(),
             release_version=RELEASE_VERSION,
+            qa_widget_areas=qa_widget_areas,
         )
     
     from app.admin.routes import (
@@ -976,5 +997,10 @@ def create_app(config_name=None):
         
         return redirect(auth_url)
     
+
+    # Register QA comment parser
+    from app.utils.markdown_helper import render_qa_comment
+    app.jinja_env.filters['render_qa_comment'] = render_qa_comment
+
     return app
 

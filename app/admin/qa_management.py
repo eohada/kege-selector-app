@@ -175,9 +175,7 @@ def update_report_status(report_id):
                 reporter = User.query.get(report.reporter_id)
                 if reporter and reporter.tg_id:
                     test_title = report.test_case.title if report.test_case else f"Репорт #{report.id}"
-                    send_tg_message(reporter.tg_id, f"🛠 БАГ ПОЧИНИЛИ!
-Админ исправил баг: {test_title}
-Зайди на платформу и сделай ретест, пожалуйста!")
+                    send_tg_message(reporter.tg_id, f"🛠 БАГ ПОЧИНИЛИ!\nАдмин исправил баг: {test_title}\nЗайди на платформу и сделай ретест, пожалуйста!")
 
             # Логируем в историю
             history = QAReportHistory(

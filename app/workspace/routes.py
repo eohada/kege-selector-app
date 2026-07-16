@@ -552,14 +552,21 @@ def upload_file():
     f.stream.seek(0, 2)
     size = f.stream.tell()
     f.stream.seek(0)
+    
+    # Check overall size across all files for this task
+    current_files = StudentWorkspaceFile.query.filter_by(
+        user_id=scope['owner_user_id'], task_id=task_id, context_type=scope['context_type'],
+        context_id=scope['context_id'],
+    ).all()
+    
+    total_size = sum(file.file_size for file in current_files if file.file_size) + size
+    if total_size > 50 * 1024 * 1024: # 50 MB total limit per task workspace
+        return jsonify({'success': False, 'error': 'Превышен общий лимит (50 МБ) для файлов задания'}), 400
+
     if size > MAX_WORKSPACE_FILE_SIZE:
         return jsonify({'success': False, 'error': 'Файл слишком большой (макс. 10 МБ)'}), 400
 
-    existing_count = StudentWorkspaceFile.query.filter_by(
-        user_id=scope['owner_user_id'], task_id=task_id, context_type=scope['context_type'],
-        context_id=scope['context_id'],
-    ).count()
-    if existing_count >= MAX_FILES_PER_TASK:
+    if len(current_files) >= MAX_FILES_PER_TASK:
         return jsonify({'success': False, 'error': f'Максимум {MAX_FILES_PER_TASK} файлов'}), 400
 
     safe_name = secure_filename(f.filename) or 'file'

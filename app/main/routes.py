@@ -27,6 +27,22 @@ base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__fil
 
 
 def _regular_student_filter():
+    from flask import session
+    from flask_login import current_user
+    is_qa = False
+    try:
+        is_qa = getattr(current_user, 'is_authenticated', False) and (
+            current_user.is_creator() or current_user.is_chief_tester() or 
+            current_user.is_admin() or getattr(current_user, 'role', '') in ['admin', 'creator'] or 
+            'impersonator_id' in session
+        )
+    except Exception:
+        pass
+
+    if is_qa:
+        return (
+            or_(Student.user_id.is_(None), User.id.is_(None), User.is_demo_user.is_(False)),
+        )
     return (
         or_(Student.user_id.is_(None), User.id.is_(None), User.is_demo_user.is_(False)),
         or_(Student.user_id.is_(None), User.id.is_(None), User.is_qa_pool.is_(False)),
@@ -71,6 +87,14 @@ def presence_ping():
         current_user.presence_activity_key = new_key
         current_user.presence_activity_text = new_text
         current_user.presence_updated_at = now
+        
+        if current_user.is_student():
+            try:
+                from app.utils.streak_service import update_student_streak_by_user_id
+                update_student_streak_by_user_id(current_user.id)
+            except Exception as e:
+                logger.error(f"Error updating streak on ping: {e}")
+
         db.session.commit()
 
         try:
@@ -1207,3 +1231,163 @@ def platform_bug_reports():
         flash('Доступ запрещен', 'error')
         return redirect(url_for('main.dashboard'))
     return render_template('platform_bug_reports.html', active_page='bug_reports')
+
+
+@main_bp.route('/api/student/<int:student_id>/debug-streak', methods=['POST'])
+@login_required
+def debug_streak(student_id):
+    """Временный API для изменения стрика ученика (для тестов)."""
+    from app.models import Student
+    student = Student.query.get_or_404(student_id)
+    payload = request.get_json(silent=True) or {}
+    
+    if 'streak_days' in payload:
+        try:
+            student.streak_days = int(payload['streak_days'])
+            if 'streak_frozen' in payload:
+                student.streak_frozen = bool(payload['streak_frozen'])
+            db.session.commit()
+            return jsonify({
+                'success': True, 
+                'streak_days': student.streak_days, 
+                'streak_frozen': student.streak_frozen
+            })
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Invalid streak value'}), 400
+            
+    return jsonify({'success': False, 'error': 'Missing streak_days'}), 400
+
+
+@main_bp.route('/api/student/<int:student_id>/debug-xp', methods=['POST'])
+@login_required
+def debug_xp(student_id):
+    """Временный API для изменения опыта (XP) ученика (для тестов)."""
+    from app.models import Student
+    from app.utils.xp_service import calculate_level_from_xp
+    student = Student.query.get_or_404(student_id)
+    payload = request.get_json(silent=True) or {}
+    
+    if 'xp' in payload:
+        try:
+            student.xp = max(0, int(payload['xp']))
+            student.level = calculate_level_from_xp(student.xp)
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'xp': student.xp,
+                'level': student.level
+            })
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Invalid XP value'}), 400
+            
+    return jsonify({'success': False, 'error': 'Missing xp'}), 400
+
+
+@main_bp.route('/api/student/<int:student_id>/debug-achievements', methods=['POST'])
+@login_required
+def debug_achievements(student_id):
+    """Временный API для выдачи/забора ачивок ученика (для тестов/Создателя)."""
+    from app.models import Student
+    from app.utils.achievement_service import grant_achievement, revoke_achievement
+    student = Student.query.get_or_404(student_id)
+    payload = request.get_json(silent=True) or {}
+    
+    key = payload.get('achievement_key')
+    action = payload.get('action')
+    
+    if not key:
+        return jsonify({'success': False, 'error': 'Missing achievement_key'}), 400
+        
+    if action == 'grant':
+        granted = grant_achievement(student, key, award_xp=True)
+        return jsonify({'success': True, 'action': 'grant', 'status': 'granted' if granted else 'already_had'})
+    elif action == 'revoke':
+        revoked = revoke_achievement(student, key)
+        return jsonify({'success': True, 'action': 'revoke', 'status': 'revoked' if revoked else 'did_not_have'})
+        
+    return jsonify({'success': False, 'error': 'Invalid action'}), 400
+
+
+@main_bp.route('/student/mistakes')
+@login_required
+def student_mistakes():
+    from app.models import Student, Answer, Submission
+    from flask import flash, redirect, url_for, render_template
+    
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        flash("Только ученики имеют доступ к работе над ошибками.", "warning")
+        return redirect(url_for('main.dashboard'))
+        
+    mistakes = Answer.query.join(Submission).filter(
+        Submission.student_id == student.student_id,
+        Answer.is_correct == False
+    ).all()
+    
+    return render_template('student_mistakes.html', student=student, mistakes=mistakes)
+
+
+@main_bp.route('/student/mistakes/<int:answer_id>/retry', methods=['POST'])
+@login_required
+def retry_mistake(answer_id):
+    from app.models import Student, Answer, Submission, db
+    from flask import request, jsonify
+    
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
+        
+    ans = Answer.query.get_or_404(answer_id)
+    if ans.submission.student_id != student.student_id:
+        return jsonify({'success': False, 'message': 'Доступ запрещен'}), 403
+        
+    data = request.get_json() or {}
+    new_answer_val = data.get('new_answer', '').strip()
+    
+    # Сравниваем ответ с эталонным
+    correct_ans = ans.assignment_task.answer_override or ans.assignment_task.task.answer
+    if correct_ans:
+        correct_ans = correct_ans.strip()
+        
+    if correct_ans and new_answer_val == correct_ans:
+        ans.is_correct = True
+        ans.value = new_answer_val
+        ans.score = ans.assignment_task.max_score or 1
+        
+        # Пересчитываем общий балл за работу
+        sub = ans.submission
+        all_answers = Answer.query.filter_by(submission_id=sub.submission_id).all()
+        
+        total_score = 0
+        max_score = 0
+        for a in all_answers:
+            score_to_add = ans.score if a.answer_id == ans.answer_id else (a.score or 0)
+            total_score += score_to_add
+            max_score += a.assignment_task.max_score or 1
+            
+        sub.total_score = total_score
+        sub.max_score = max_score
+        if max_score > 0:
+            sub.percentage = round((total_score / max_score) * 100, 2)
+            
+        try:
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Правильно! Ошибка исправлена!'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': f'Ошибка сохранения: {str(e)}'})
+    else:
+        return jsonify({'success': False, 'message': 'Ответ неверный. Попробуйте еще раз!'})
+
+
+@main_bp.route('/uploads/qa/<path:filename>')
+def serve_qa_upload(filename):
+    """Глобальная раздача скриншотов QA из папки uploads/qa."""
+    import os
+    from flask import send_from_directory, current_app
+    upload_dir = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'uploads'), 'qa')
+    if not os.path.isabs(upload_dir):
+        # Если путь относительный, строим от папки app
+        base_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        upload_dir = os.path.join(base_dir, upload_dir)
+    return send_from_directory(upload_dir, filename)

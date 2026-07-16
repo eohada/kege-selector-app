@@ -8,7 +8,7 @@ from flask import send_file, abort, current_app
 from flask_login import login_required, current_user
 
 from app.uploads import uploads_bp
-from app.models import MaterialAsset, Lesson, Student, User
+from app.models import MaterialAsset, Lesson, Student, User, LessonMaterialLink
 from app.auth.rbac_utils import check_access, get_user_scope
 
 logger = logging.getLogger(__name__)
@@ -112,12 +112,23 @@ def _can_access_lesson(lesson: Lesson) -> bool:
 
 @uploads_bp.route('/files/library/<int:asset_id>')
 @login_required
-@check_access('lesson.edit')
 def library_file(asset_id: int):
     """Защищённая выдача файлов из библиотеки материалов."""
     asset = MaterialAsset.query.get_or_404(asset_id)
 
-    if asset.owner_user_id != getattr(current_user, 'id', None):
+    # Владелец имеет доступ всегда
+    if asset.owner_user_id == getattr(current_user, 'id', None):
+        has_access = True
+    else:
+        # Проверяем, прикреплен ли ассет к уроку, к которому у пользователя есть доступ
+        links = LessonMaterialLink.query.filter_by(asset_id=asset.asset_id).all()
+        has_access = False
+        for link in links:
+            if link.lesson and _can_access_lesson(link.lesson):
+                has_access = True
+                break
+
+    if not has_access:
         abort(403)
 
     if not asset.storage_path:

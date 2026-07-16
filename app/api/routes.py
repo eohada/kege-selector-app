@@ -1115,7 +1115,10 @@ def api_internal_telegram_dispatch():
     try:
         from app.tasks.telegram_dispatch import telegram_notify_user_task
 
-        telegram_notify_user_task.delay(int(uid), text, kind)
+        telegram_notify_user_task.apply_async(
+            args=[int(uid), text, kind],
+            retry=False
+        )
         return jsonify({'success': True, 'queued': True})
     except Exception as e:
         logger.error('api_internal_telegram_dispatch: %s', e, exc_info=True)

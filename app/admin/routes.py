@@ -126,8 +126,7 @@ def _sandbox_internal_guard():
 
 def _remote_admin_redirect():
     """Редирект на удалённую админку (основная админка с платформы отключена)."""
-    url = (os.environ.get('ADMIN_URL') or '').strip().rstrip('/')
-    return redirect(url) if url else redirect(url_for('main.dashboard'))
+    return redirect(url_for('admin.admin_users'))
 
 
 _ADMIN_UI_GET_ENDPOINTS = {
@@ -141,26 +140,18 @@ _ADMIN_UI_GET_ENDPOINTS = {
 
 @admin_bp.before_request
 def _redirect_admin_ui_to_remote():
-    is_admin_env = os.environ.get('ENVIRONMENT') == 'admin' or (request.host or '').split(':')[0].lower().startswith('admin.')
-    if is_admin_env:
-        return None
-    if request.method != 'GET':
-        return None
-    if request.endpoint and request.endpoint in _ADMIN_UI_GET_ENDPOINTS:
-        url = (os.environ.get('ADMIN_URL') or '').strip().rstrip('/')
-        if url:
-            return redirect(url)
+    # Отключено перенаправление на удаленную админку, чтобы админка работала локально
     return None
 
 
 @admin_bp.route('/admin')
 @login_required
 def admin_panel():
-    """Редирект на удалённую админку (основная админка с платформы отключена)."""
+    """Перенаправление на локальное управление пользователями"""
     if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Администратор" или "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
-    return _remote_admin_redirect()
+    return redirect(url_for('admin.admin_users'))
 
 
 def _start_db_sync_job(prod_db_url: str, sandbox_db_url: str):
@@ -819,8 +810,7 @@ def admin_audit():
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
-    flash('Журнал аудита перенесён в «Удалённую админку» → «Логи действий».', 'info')
-    return redirect(url_for('remote_admin.audit_logs'))
+    pass
 
     try:
         try:

@@ -333,3 +333,163 @@ def billing_subscription_cancel(subscription_id: int):
         return redirect(url_for('billing.billing_subscriptions'))
     flash('Подписка отменена.', 'success')
     return redirect(url_for('billing.billing_subscriptions'))
+
+
+@billing_bp.route('/billing/plans/buy_simulate', methods=['POST'])
+@login_required
+def billing_plans_buy_simulate():
+    from datetime import datetime, timedelta
+    import re
+    from flask import request, redirect, url_for, flash
+    from flask_login import current_user
+    from app.models import PromoCode, PromoCodeUsage
+
+    goal = request.form.get('goal', 'ege')
+    fmt = request.form.get('format', 'solo')
+    volume = request.form.get('volume', 'Junior')
+    price_str = request.form.get('price', '15000')
+    promocode_str = (request.form.get('promocode') or '').strip().upper()
+
+    plan_title = f"{fmt.capitalize()} ({goal.upper()}) - {volume}"
+    
+    try:
+        # Ищем существующий тариф или создаем его
+        plan = TariffPlan.query.filter_by(title=plan_title).first()
+        if not plan:
+            # Извлекаем кол-во уроков из лейбла, например "Junior (8 уроков)" -> 8
+            lessons_match = re.search(r'(\d+)\s*урок', volume, re.IGNORECASE)
+            lessons_count = int(lessons_match.group(1)) if lessons_match else 8
+            if 'solo' in fmt.lower():
+                lessons_count = 0 # В solo уроков может не быть, это доступ к тренажеру
+
+            plan = TariffPlan(
+                title=plan_title,
+                description=f"Имитационный тариф для {goal.upper()} {fmt.capitalize()} ({volume})",
+                price_rub=int(price_str),
+                lessons_count=lessons_count,
+                allow_lessons=True,
+                allow_trainer=True,
+                is_active=True
+            )
+            db.session.add(plan)
+            db.session.commit()
+
+        # Применяем промокод
+        promocode = None
+        discount_percent = 0
+        discount_rub = 0
+        bonus_lessons = 0
+        bonus_days = 0
+        
+        if promocode_str:
+            promocode = PromoCode.query.filter_by(code=promocode_str).first()
+            if not promocode:
+                flash(f"Промокод '{promocode_str}' не существует.", "danger")
+                return redirect(url_for('billing.billing_plans_public'))
+            
+            if not promocode.is_active:
+                flash(f"Промокод '{promocode_str}' неактивен.", "danger")
+                return redirect(url_for('billing.billing_plans_public'))
+                
+            now = datetime.utcnow()
+            if promocode.starts_at and promocode.starts_at > now:
+                flash(f"Промокод '{promocode_str}' еще не действует.", "danger")
+                return redirect(url_for('billing.billing_plans_public'))
+                
+            if promocode.expires_at and promocode.expires_at < now:
+                flash(f"Срок действия промокода '{promocode_str}' истек.", "danger")
+                return redirect(url_for('billing.billing_plans_public'))
+                
+            if promocode.usage_limit is not None and promocode.usage_count >= promocode.usage_limit:
+                flash(f"Промокод '{promocode_str}' исчерпал лимит использований.", "danger")
+                return redirect(url_for('billing.billing_plans_public'))
+                
+            # Промокод валиден! Собираем бонусы
+            discount_percent = promocode.discount_percent or 0
+            discount_rub = promocode.discount_rub or 0
+            bonus_lessons = promocode.bonus_lessons or 0
+            bonus_days = promocode.bonus_days or 0
+
+        # Рассчитываем итоговую цену и параметры подписки
+        price_val = int(price_str)
+        if discount_percent:
+            price_val = int(price_val * (100 - discount_percent) / 100)
+        if discount_rub:
+            price_val = max(0, price_val - discount_rub)
+
+        subscription_days = 30 + bonus_days
+        total_lessons = plan.lessons_count + bonus_lessons
+
+        # Создаем подписку
+        sub = UserSubscription(
+            user_id=current_user.id,
+            plan_id=plan.plan_id,
+            status='active',
+            started_at=datetime.utcnow(),
+            ends_at=datetime.utcnow() + timedelta(days=subscription_days),
+            lessons_remaining=total_lessons,
+            note=f"Имитация покупки тарифа на сайте. Цена: {price_val} руб. (промокод: {promocode_str or 'нет'})"
+        )
+        db.session.add(sub)
+        db.session.commit()
+
+        # Логируем использование промокода
+        if promocode:
+            promocode.usage_count += 1
+            usage = PromoCodeUsage(
+                promocode_id=promocode.id,
+                user_id=current_user.id,
+                subscription_id=sub.subscription_id
+            )
+            db.session.add(usage)
+            db.session.commit()
+
+        msg = f"Оплата проведена успешно! Начислен тариф: {plan_title}. Доступно уроков: {total_lessons}"
+        if promocode_str:
+            msg += f" (применен промокод {promocode_str})"
+        flash(msg, "success")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error simulating purchase: {e}", exc_info=True)
+        flash(f"Ошибка при обработке платежа: {str(e)}", "danger")
+
+    return redirect(url_for('main.dashboard'))
+
+
+@billing_bp.route('/billing/promocode/check', methods=['POST'])
+@login_required
+def billing_promocode_check():
+    import datetime
+    from flask import request, jsonify
+    from app.models import PromoCode
+    
+    code_str = (request.json.get('code') or '').strip().upper()
+    if not code_str:
+        return jsonify({'success': False, 'message': 'Промокод не введен.'})
+        
+    promocode = PromoCode.query.filter_by(code=code_str).first()
+    if not promocode:
+        return jsonify({'success': False, 'message': 'Такого промокода не существует.'})
+        
+    if not promocode.is_active:
+        return jsonify({'success': False, 'message': 'Этот промокод неактивен.'})
+        
+    now = datetime.datetime.utcnow()
+    if promocode.starts_at and promocode.starts_at > now:
+        return jsonify({'success': False, 'message': 'Этот промокод еще не действует.'})
+        
+    if promocode.expires_at and promocode.expires_at < now:
+        return jsonify({'success': False, 'message': 'Срок действия промокода истек.'})
+        
+    if promocode.usage_limit is not None and promocode.usage_count >= promocode.usage_limit:
+        return jsonify({'success': False, 'message': 'Этот промокод уже использован максимальное количество раз.'})
+        
+    # Все ок! Возвращаем детали
+    return jsonify({
+        'success': True,
+        'code': promocode.code,
+        'discount_percent': promocode.discount_percent,
+        'discount_rub': promocode.discount_rub,
+        'bonus_lessons': promocode.bonus_lessons,
+        'bonus_days': promocode.bonus_days
+    })

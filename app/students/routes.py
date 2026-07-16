@@ -1110,6 +1110,7 @@ def student_learning_plan_item_create(student_id: int):
     topic_id = request.form.get('topic_id', type=int)
     course_module_id = request.form.get('course_module_id', type=int)
 
+    parent_id = request.form.get('parent_id', type=int)
     item = StudentLearningPlanItem(
         student_id=student.student_id,
         title=title,
@@ -1120,6 +1121,7 @@ def student_learning_plan_item_create(student_id: int):
         topic_id=topic_id or None,
         course_module_id=course_module_id or None,
         created_by_user_id=current_user.id,
+        parent_id=parent_id or None,
     )
     db.session.add(item)
     try:
@@ -1177,6 +1179,7 @@ def student_learning_plan_item_update(student_id: int, item_id: int):
     item.notes = (request.form.get('notes') or '').strip() or None
     item.topic_id = request.form.get('topic_id', type=int) or None
     item.course_module_id = request.form.get('course_module_id', type=int) or None
+    item.parent_id = request.form.get('parent_id', type=int) or None
 
     try:
         db.session.commit()
@@ -1238,6 +1241,57 @@ def student_learning_plan_item_delete(student_id: int, item_id: int):
         pass
     flash('Пункт траектории удалён.', 'success')
     return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
+
+
+@students_bp.route('/student/<int:student_id>/plan/items/<int:item_id>/coords', methods=['POST'])
+@login_required
+def student_learning_plan_item_coords(student_id: int, item_id: int):
+    student = _guard_student_access(student_id)
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    if current_user.is_student() or current_user.is_parent() or (not (has_permission(current_user, 'plan.edit') or is_tutor_actor)):
+        from flask import abort
+        abort(403)
+        
+    item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
+    data = request.get_json() or {}
+    item.x = data.get('x')
+    item.y = data.get('y')
+    try:
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@students_bp.route('/student/<int:student_id>/plan/items/<int:item_id>/parent', methods=['POST'])
+@login_required
+def student_learning_plan_item_parent(student_id: int, item_id: int):
+    """AJAX endpoint: save parent_id for map edge connections."""
+    student = _guard_student_access(student_id)
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    if current_user.is_student() or current_user.is_parent() or (not (has_permission(current_user, 'plan.edit') or is_tutor_actor)):
+        return jsonify({'success': False, 'error': 'forbidden'}), 403
+
+    item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
+    data = request.get_json() or {}
+    raw_parent = data.get('parent_id')
+    if raw_parent is None or raw_parent == '' or raw_parent == 0:
+        item.parent_id = None
+    else:
+        try:
+            pid = int(raw_parent)
+            # Validate parent belongs to same student
+            parent_item = StudentLearningPlanItem.query.filter_by(item_id=pid, student_id=student.student_id).first()
+            item.parent_id = parent_item.item_id if parent_item else None
+        except (ValueError, TypeError):
+            item.parent_id = None
+    try:
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @students_bp.route('/student/<int:student_id>/gradebook')

@@ -28,6 +28,7 @@ from app.telegram.user_notify import notify_user_by_id
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
 from app.utils.course_tasks import get_task_numbers
 from app.utils.jinja_filters import normalize_task_content_assets, normalize_task_content_urls
+from app.lessons.utils import normalize_answer_value
 from app.assignments.submission_lifecycle_service import (
     normalize_legacy_status,
     transition_submission_status,
@@ -1090,7 +1091,9 @@ def auto_grade_answer(answer, assignment_task):
         return None, None
 
     score_value = template.max_primary_score if template.max_primary_score is not None else assignment_task.max_score
-    if student_answer.lower() == correct_answer.lower():
+    normalized_student = normalize_answer_value(student_answer)
+    normalized_correct = normalize_answer_value(correct_answer)
+    if normalized_student == normalized_correct and normalized_correct != '':
         return True, score_value
     return False, 0
 
@@ -4088,7 +4091,7 @@ def submission_submit(submission_id):
             entity_id=submission_id,
             status='success',
             metadata={
-                'assignment_id': assignment.assignment_id,
+                'assignment_id': assignment_id,
                 'is_late': is_late,
                 'auto_graded': all_auto_graded
             }
