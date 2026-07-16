@@ -4226,6 +4226,123 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
         "test": {"name": "Тестовый Юзер", "category": "Тестовая зона"}
     }
 
+    with get_session() as session:
+        from sqlalchemy import text as sa_text
+        from core.db_models import QAReport, QATestCase
+        
+        # Проверяем, привязан ли уже этот chat_id к какому-то тестеру
+        existing_user = session.execute(
+            sa_text("SELECT id, username, tg_auth_key FROM \"Users\" WHERE tg_id = :chat_id LIMIT 1"),
+            {"chat_id": chat_id}
+        ).fetchone()
+
+        # Если уже в личном кабинете
+        if existing_user and existing_user.tg_auth_key in QA_TESTERS:
+            user_id = existing_user.id
+            tester_info = QA_TESTERS.get(existing_user.tg_auth_key, {"name": "Тестировщик", "category": "Общая"})
+            
+            # Подсчет статистики
+            total_reports = session.execute(
+                sa_text("SELECT COUNT(*) FROM \"QAReports\" WHERE reporter_id = :uid"),
+                {"uid": user_id}
+            ).scalar() or 0
+            
+            retest_reports = session.execute(
+                sa_text("SELECT COUNT(*) FROM \"QAReports\" WHERE reporter_id = :uid AND status = 'retest'"),
+                {"uid": user_id}
+            ).scalar() or 0
+            
+            untested_cases = session.execute(
+                sa_text("SELECT COUNT(*) FROM \"QATestCases\" WHERE area = :cat"),
+                {"cat": tester_info["category"]}
+            ).scalar() or 0
+            
+            # Если пишет ключ снова - предупреждаем, если что-то другое - показываем ЛК
+            if text_val in QA_TESTERS:
+                await update.message.reply_text(f"Твой аккаунт уже привязан, {tester_info['name']}! Не нужно вводить ключ заново 😉")
+            else:
+                msg_text = (
+                    f"🏢 ТВОЙ ЛИЧНЫЙ КАБИНЕТ QA 🏢
+
+"
+                    f"Привет, {tester_info['name']}! 👾
+"
+                    f"Твоя зона ответственности: 🎯 {tester_info['category']}
+
+"
+                    f"📊 Твоя статистика:
+"
+                    f"Всего отправлено багов: {total_reports}
+"
+                    f"Ждут твоего ретеста: {retest_reports}
+
+"
+                    f"Чтобы зайти на платформу, просто открой BooStudy!"
+                )
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                keyboard = [[InlineKeyboardButton("🔄 Обновить стату", callback_data=f"refresh_stats_{user_id}")]]
+                await update.message.reply_text(msg_text, reply_markup=InlineKeyboardMarkup(keyboard))
+            return
+
+        # Если не привязан, пытаемся привязать по ключу
+        if text_val in QA_TESTERS:
+            tester_info = QA_TESTERS[text_val]
+            tester_name = tester_info["name"]
+            tester_category = tester_info["category"]
+            
+            user_query = session.execute(
+                sa_text("SELECT id, username FROM \"Users\" WHERE tg_auth_key = :k LIMIT 1"),
+                {"k": text_val}
+            ).fetchone()
+            
+            if user_query:
+                user_id = user_query.id
+                username = user_query.username
+                tg_tag = update.effective_user.username or username
+                
+                session.execute(
+                    sa_text("UPDATE \"Users\" SET tg_id = :chat_id WHERE id = :uid"),
+                    {"chat_id": chat_id, "uid": user_id}
+                )
+                session.commit()
+                
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                callback_str = f"ping_admin_{user_id}_{tg_tag}"[:64]
+                keyboard = [[InlineKeyboardButton("✅ Я на связи и готов тестить", callback_data=callback_str)]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                msg_text = (
+                    f"Привет, {tester_name}! 👾
+"
+                    f"Я — боевой бот QA-отдела BooStudy. Я создан, чтобы оперативно доставлять тебе уведомления о новых багах, ретестах и задачах, чтобы мы вместе делали платформу идеальной!
+
+"
+                    f"Твоя категория тестирования: 🎯 {tester_category}
+"
+                    f"Твой аккаунт успешно привязан. Нажми кнопку ниже, чтобы я убедился, что связь работает!"
+                )
+                
+                context.user_data["qa_category"] = tester_category
+                context.user_data["qa_name"] = tester_name
+                
+                await update.message.reply_text(msg_text, reply_markup=reply_markup)
+                return
+    touch_telegram_activity(update.effective_chat.id)
+
+    chat_id = update.effective_chat.id
+    text_val = (update.message.text or "").strip()
+
+    QA_TESTERS = {
+        "QA_Misha_Auth_901": {"name": "Миша", "category": "Вход и деньги"},
+        "QA_Max_Admin_552": {"name": "Максим", "category": "Админка и управление"},
+        "QA_Vika_Mobile_883": {"name": "Вика", "category": "Мобильный инспектор"},
+        "QA_Alina_Lib_104": {"name": "Алина", "category": "Библиотека знаний"},
+        "QA_Roma_Tasks_775": {"name": "Рома", "category": "Задачи, домашка, генератор"},
+        "QA_David_Code_226": {"name": "Давид", "category": "Кодерская"},
+        "QA_Olya_Notif_447": {"name": "Оля", "category": "Тг, уведомления, родители"},
+        "test": {"name": "Тестовый Юзер", "category": "Тестовая зона"}
+    }
+
     if text_val in QA_TESTERS:
         tester_info = QA_TESTERS[text_val]
         tester_name = tester_info["name"]
@@ -4477,3 +4594,58 @@ async def _handle_ping_admin(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 import logging
                 logging.getLogger(__name__).error(f"Failed to send QA alert to admin: {e}")
 
+
+async def _handle_refresh_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    
+    parts = query.data.split('_')
+    if len(parts) >= 3:
+        user_id = parts[2]
+        
+        with get_session() as session:
+            from sqlalchemy import text as sa_text
+            user = session.execute(
+                sa_text("SELECT id, username, tg_auth_key FROM \"Users\" WHERE id = :uid LIMIT 1"),
+                {"uid": user_id}
+            ).fetchone()
+            
+            QA_TESTERS = {
+                "QA_Misha_Auth_901": {"name": "Миша", "category": "Вход и деньги"},
+                "QA_Max_Admin_552": {"name": "Максим", "category": "Админка и управление"},
+                "QA_Vika_Mobile_883": {"name": "Вика", "category": "Мобильный инспектор"},
+                "QA_Alina_Lib_104": {"name": "Алина", "category": "Библиотека знаний"},
+                "QA_Roma_Tasks_775": {"name": "Рома", "category": "Задачи, домашка, генератор"},
+                "QA_David_Code_226": {"name": "Давид", "category": "Кодерская"},
+                "QA_Olya_Notif_447": {"name": "Оля", "category": "Тг, уведомления, родители"},
+                "test": {"name": "Тестовый Юзер", "category": "Тестовая зона"}
+            }
+            
+            if user and user.tg_auth_key in QA_TESTERS:
+                tester_info = QA_TESTERS[user.tg_auth_key]
+                
+                total_reports = session.execute(
+                    sa_text("SELECT COUNT(*) FROM \"QAReports\" WHERE reporter_id = :uid"),
+                    {"uid": user_id}
+                ).scalar() or 0
+                
+                retest_reports = session.execute(
+                    sa_text("SELECT COUNT(*) FROM \"QAReports\" WHERE reporter_id = :uid AND status = 'retest'"),
+                    {"uid": user_id}
+                ).scalar() or 0
+                
+                msg_text = (
+                    f"🏢 ТВОЙ ЛИЧНЫЙ КАБИНЕТ QA 🏢\n\n"
+                    f"Привет, {tester_info['name']}! 👾\n"
+                    f"Твоя зона ответственности: 🎯 {tester_info['category']}\n\n"
+                    f"📊 Твоя статистика:\n"
+                    f"Всего отправлено багов: {total_reports}\n"
+                    f"Ждут твоего ретеста: {retest_reports}\n\n"
+                    f"Чтобы зайти на платформу, просто открой BooStudy!"
+                )
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                keyboard = [[InlineKeyboardButton("🔄 Обновить стату", callback_data=f"refresh_stats_{user_id}")]]
+                
+                # Избегаем ошибки NotModified, если статистика не изменилась
+                if query.message.text != msg_text:
+                    await query.edit_message_text(msg_text, reply_markup=InlineKeyboardMarkup(keyboard))
