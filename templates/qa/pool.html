@@ -68,7 +68,7 @@
             {% for e in enrollments %}
             <li>
                 <span>Ученик #{{ e.student_id }} ↔ Преподаватель #{{ e.tutor_id }} ({{ e.subject }})</span>
-                <form action="{{ url_for('qa.pool_enrollment_delete', enrollment_id=e.enrollment_id) }}" method="POST" class="inline">
+                <form action="{{ url_for('qa_tester.pool_enrollment_delete', enrollment_id=e.enrollment_id) }}" method="POST" class="inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="neo-button ghost sm">Удалить</button>
                 </form>
@@ -77,7 +77,7 @@
             <li class="text-muted">Нет привязок</li>
             {% endfor %}
         </ul>
-        <form action="{{ url_for('qa.pool_enrollment_add') }}" method="POST" class="add-tie-form">
+        <form action="{{ url_for('qa_tester.pool_enrollment_add') }}" method="POST" class="add-tie-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <select name="student_id" required>
                 <option value="">— Ученик —</option>
@@ -97,7 +97,7 @@
             {% for t in family_ties %}
             <li>
                 <span>Родитель #{{ t.parent_id }} ↔ Ученик #{{ t.student_id }}</span>
-                <form action="{{ url_for('qa.pool_family_tie_delete', tie_id=t.tie_id) }}" method="POST" class="inline">
+                <form action="{{ url_for('qa_tester.pool_family_tie_delete', tie_id=t.tie_id) }}" method="POST" class="inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="neo-button ghost sm">Удалить</button>
                 </form>
@@ -106,7 +106,7 @@
             <li class="text-muted">Нет привязок</li>
             {% endfor %}
         </ul>
-        <form action="{{ url_for('qa.pool_family_tie_add') }}" method="POST" class="add-tie-form">
+        <form action="{{ url_for('qa_tester.pool_family_tie_add') }}" method="POST" class="add-tie-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <select name="parent_id" required>
                 <option value="">— Родитель —</option>

@@ -36,7 +36,7 @@
             {% if return_to %}
             <a href="{{ return_to }}" class="neo-button ghost">← Вернуться в QA кабинет</a>
             {% endif %}
-            <a href="{{ url_for('qa.bug_report', return_to=return_to) }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать баг-репорт</a>
+            <a href="{{ url_for('qa_tester.bug_report', return_to=return_to) }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать баг-репорт</a>
             <a href="{{ url_for('chief_tester.dashboard') }}" class="neo-button ghost">Канбан</a>
         </div>
     </div>
@@ -45,7 +45,7 @@
         {% for r in reports %}
         <div class="report-card">
             <h4>
-                <a href="{{ url_for('qa.bug_report_detail', task_id=r.id, return_to=return_to) }}" class="no-underline" style="color: inherit;">
+                <a href="{{ url_for('qa_tester.bug_report_detail', task_id=r.id, return_to=return_to) }}" class="no-underline" style="color: inherit;">
                     #{{ r.id }} — {{ r.title }}
                 </a>
             </h4>
@@ -87,7 +87,7 @@
             {% endif %}
         </div>
         {% else %}
-        <div class="text-center p-5 text-muted">Баг-репортов пока нет. <a href="{{ url_for('qa.bug_report') }}" class="text-accent">Создать</a></div>
+        <div class="text-center p-5 text-muted">Баг-репортов пока нет. <a href="{{ url_for('qa_tester.bug_report') }}" class="text-accent">Создать</a></div>
         {% endfor %}
     </div>
 </div>

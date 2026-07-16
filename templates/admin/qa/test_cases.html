@@ -5,7 +5,7 @@
 <div class="max-w-5xl mx-auto py-8" style="padding-top: 8rem; padding-bottom: 3rem; position: relative; z-index: 1;">
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <a href="{{ url_for('qa_admin.dashboard') }}" class="text-sm mb-2 inline-flex items-center" style="color: var(--color-text-muted); text-decoration: none;">
+            <a href="{{ url_for('qa_tester.admin.dashboard') }}" class="text-sm mb-2 inline-flex items-center" style="color: var(--color-text-muted); text-decoration: none;">
                 <i class="ph-bold ph-arrow-left mr-1"></i> Назад в Control Room
             </a>
             <h1 class="text-2xl font-bold" style="color: var(--color-text-primary);">База тест-кейсов</h1>
@@ -62,7 +62,7 @@
         </div>
         
         <div class="p-6 overflow-y-auto">
-            <form id="testForm" method="POST" action="{{ url_for('qa_admin.manage_tests') }}">
+            <form id="testForm" method="POST" action="{{ url_for('qa_tester.admin.manage_tests') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" id="formAction" value="create">
                 <input type="hidden" name="test_id" id="testId" value="">

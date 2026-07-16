@@ -42,7 +42,7 @@
 
     <div class="glass-panel">
         <h3 class="mb-3 text-base font-semibold">Создать тестировщика</h3>
-        <form action="{{ url_for('qa.testers_create') }}" method="POST" class="create-form">
+        <form action="{{ url_for('qa_tester.testers_create') }}" method="POST" class="create-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="username" placeholder="Логин" required>
             <input type="password" name="password" placeholder="Пароль" required>

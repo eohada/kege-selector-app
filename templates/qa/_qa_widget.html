@@ -383,7 +383,7 @@
                 var fd = new FormData();
                 fd.append('image', blob, 'paste.png'); fd.append('csrf_token', getCsrf());
                 showStatus('success', 'Загрузка скриншота...');
-                uploadFile(fd, '{{ url_for("qa_tester.upload_screenshot") }}').then(function(res) {
+                uploadFile(fd, '{{ url_for("qa_tester.tester.upload_screenshot") }}').then(function(res) {
                     if (res.success) { attachments.push({url: res.url, type: 'image', filename: res.filename}); renderAttachments(); showStatus('success', 'Скриншот загружен'); }
                     else showStatus('error', res.error || 'Ошибка загрузки');
                 }).catch(function() { showStatus('error', 'Ошибка сети'); });
@@ -405,7 +405,7 @@
                 sheet.style.display = ''; backdrop.style.display = ''; fab.style.display = 'flex';
                 canvas.toBlob(function(blob) {
                     var fd = new FormData(); fd.append('image', blob, 'auto_screenshot.png'); fd.append('csrf_token', getCsrf());
-                    uploadFile(fd, '{{ url_for("qa_tester.upload_screenshot") }}').then(function(res) {
+                    uploadFile(fd, '{{ url_for("qa_tester.tester.upload_screenshot") }}').then(function(res) {
                         if (res.success) { attachments.push({url: res.url, type: 'image', filename: res.filename}); renderAttachments(); showStatus('success', 'Авто-скриншот сделан'); }
                         else showStatus('error', res.error || 'Ошибка загрузки');
                     }).catch(function() { showStatus('error', 'Ошибка сети'); });
@@ -436,7 +436,7 @@
                 var blob = new Blob(recordedChunks, { type: 'video/webm' });
                 var fd = new FormData(); fd.append('video', blob, 'screen_record.webm'); fd.append('csrf_token', getCsrf());
                 openSheet(); showStatus('success', 'Загрузка видео...');
-                uploadFile(fd, '{{ url_for("qa_tester.upload_video") }}').then(function(res) {
+                uploadFile(fd, '{{ url_for("qa_tester.tester.upload_video") }}').then(function(res) {
                     if (res.success) { attachments.push({url: res.url, type: 'video', filename: res.filename}); renderAttachments(); showStatus('success', 'Видео загружено'); }
                     else showStatus('error', res.error || 'Ошибка загрузки');
                 }).catch(function() { showStatus('error', 'Ошибка сети при загрузке видео'); });
@@ -466,7 +466,7 @@
         var netErrorsStr = _networkErrors.map(function(e) { return '[' + e.ts + '] ' + e.msg; });
         var consErrorsStr = _consoleErrors.map(function(e) { return '[' + e.ts + '] ' + e.msg; });
 
-        origFetch('{{ url_for("qa_tester.api_quick_bug") }}', {
+        origFetch('{{ url_for("qa_tester.tester.api_quick_bug") }}', {
             method: 'POST', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
             body: JSON.stringify({

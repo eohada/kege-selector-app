@@ -17,7 +17,7 @@
                 <option value="{{ loop.index }}">{{ area }}</option>
                 {% endfor %}
             </select>
-            <a href="{{ url_for('qa_tester.history') }}"
+            <a href="{{ url_for('qa_tester.tester.history') }}"
                 style="background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); padding: 0.5rem 1.125rem; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem;">
                 <i class="ph-bold ph-clock-counter-clockwise"></i> Мои репорты
             </a>
@@ -88,7 +88,7 @@
                     {% set is_retest = test.status == 'retest' %}
                     {% set is_bug = test.status in ['pending', 'in_progress'] %}
                     {% set tab_status = 'attention' if is_retest else ('done' if is_passed else 'new') %}
-                    {% set href = url_for('qa_tester.edit_report', report_id=test.id) %}
+                    {% set href = url_for('qa_tester.tester.edit_report', report_id=test.id) %}
                     {% set t_title = test.description[:50] + '...' if test.description else 'Без описания' %}
                     {% set t_desc = 'Спонтанный баг' %}
                     {% set t_steps = 0 %}
@@ -99,7 +99,7 @@
                     {% set is_bug = test.id in bug_test_ids and test.id not in retest_test_ids %}
                     {% set is_retest = test.id in retest_test_ids %}
                     {% set tab_status = 'done' if is_passed else ('attention' if is_retest else 'new') %}
-                    {% set href = url_for('qa_tester.execute_test', test_id=test.id) %}
+                    {% set href = url_for('qa_tester.tester.execute_test', test_id=test.id) %}
                     {% set t_title = test.title %}
                     {% set t_desc = test.expected_result %}
                     {% set t_steps = test.steps|length %}
@@ -232,7 +232,7 @@ async function bulkPassArea(btn, areaIdx) {
     btn.disabled = true;
 
     try {
-        const res = await fetch("{{ url_for('qa_tester.bulk_pass') }}", {
+        const res = await fetch("{{ url_for('qa_tester.tester.bulk_pass') }}", {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json', 
@@ -244,7 +244,7 @@ async function bulkPassArea(btn, areaIdx) {
         const data = await res.json();
         if (data.success) {
             showToast(`Отмечено как успешно: ${data.passed} тестов`);
-            setTimeout(() => { window.location.href = "{{ url_for('qa_tester.index') }}?tab=done"; }, 1500);
+            setTimeout(() => { window.location.href = "{{ url_for('qa_tester.tester.index') }}?tab=done"; }, 1500);
         } else {
             showToast(data.error || 'Ошибка', 'error');
             btn.innerHTML = origHtml;

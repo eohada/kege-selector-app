@@ -39,9 +39,9 @@
             {% if return_to %}
             <a href="{{ return_to }}" class="neo-button ghost">← Вернуться в QA кабинет</a>
             {% endif %}
-            <a href="{{ url_for('qa.bug_reports') }}" class="neo-button ghost">Баг-репорты</a>
+            <a href="{{ url_for('qa_tester.bug_reports') }}" class="neo-button ghost">Баг-репорты</a>
             {% if current_user.is_creator() %}
-            <a href="{{ url_for('qa.task_new') }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Новая задача</a>
+            <a href="{{ url_for('qa_tester.task_new') }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Новая задача</a>
             {% endif %}
         </div>
     </div>

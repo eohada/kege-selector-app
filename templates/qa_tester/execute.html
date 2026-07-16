@@ -6,7 +6,7 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style="padding-top: 8rem; padding-bottom: 3rem; position: relative; z-index: 1;">
 
-    <a href="{{ url_for('qa_tester.index') }}" style="color: var(--color-text-muted); text-decoration: none; font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; margin-bottom: 1.5rem;">
+    <a href="{{ url_for('qa_tester.tester.index') }}" style="color: var(--color-text-muted); text-decoration: none; font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; margin-bottom: 1.5rem;">
         <i class="ph-bold ph-arrow-left" style="margin-right: 0.35rem;"></i> Назад к списку тестов
     </a>
 
@@ -213,7 +213,7 @@
                 {% endif %}
 
                 <!-- ФОРМА (активна только если не readonly) -->
-                <form action="{{ url_for('qa_tester.submit_test', test_id=test.id) if test else url_for('qa_tester.ad_hoc_bug') }}"
+                <form action="{{ url_for('qa_tester.tester.submit_test', test_id=test.id) if test else url_for('qa_tester.tester.ad_hoc_bug') }}"
                       method="POST" id="qaForm"
                       style="display: flex; flex-direction: column; gap: 1.25rem; {% if is_readonly %}opacity: 0.5; pointer-events: none;{% endif %}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -438,7 +438,7 @@ async function uploadScreenshot(file) {
     fd.append('image', file);
     fd.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
     try {
-        const res = await fetch("{{ url_for('qa_tester.upload_screenshot') }}", { method: 'POST', body: fd });
+        const res = await fetch("{{ url_for('qa_tester.tester.upload_screenshot') }}", { method: 'POST', body: fd });
         const data = await res.json();
         if (data.success) {
             _attachments.push({ url: data.url, type: 'image', filename: data.filename });
@@ -516,7 +516,7 @@ if (form && !IS_READONLY) {
                 showToast('Данные успешно отправлены!');
                 const tab = result.tab || (result.verdict === 'success' ? 'done' : 'new');
                 setTimeout(() => {
-                    window.location.href = "{{ url_for('qa_tester.index') }}?tab=" + tab;
+                    window.location.href = "{{ url_for('qa_tester.tester.index') }}?tab=" + tab;
                 }, 1500);
             } else {
                 showToast(result.error || 'Произошла ошибка', 'error');
