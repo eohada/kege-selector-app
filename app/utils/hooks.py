@@ -306,9 +306,10 @@ def register_hooks(app):
             except Exception:
                 pass
 
+
     @app.before_request
     def check_maintenance_mode():
-        """Проверка режима технических работ в песочнице - ДО проверки авторизации"""
+        """Проверка режима технических работ - ДО проверки авторизации"""
         import os
         from flask import redirect, url_for
         from app.models import MaintenanceMode
@@ -320,129 +321,135 @@ def register_hooks(app):
         if request.path.startswith('/internal/remote-admin/'):
             return None
         
+        if _is_asset_request() or _is_lightweight_api_request():
+            return None
+
+        excluded_endpoints = [
+            'admin.maintenance_page', 
+            'admin.admin_panel', 
+            'admin.toggle_maintenance', 
+            'admin.update_maintenance_message',
+            'auth.login', 
+            'auth.logout',
+            'static'
+        ]
+        
+        if request.endpoint in excluded_endpoints:
+            logger.debug(f"Maintenance check: endpoint {request.endpoint} excluded from redirect")
+            return None
+
+        # Разрешаем администраторам и создателям доступ к сайту во время технических работ
+        if getattr(current_user, 'is_authenticated', False) and (getattr(current_user, 'is_admin', lambda: False)() or getattr(current_user, 'is_creator', lambda: False)()):
+            return None
+
         environment = os.environ.get('ENVIRONMENT', 'local')
         is_sandbox = environment == 'sandbox'
         
-        if _is_asset_request() or _is_lightweight_api_request():
-            return None
+        maintenance_enabled = False
+        maintenance_message = "Ведутся технические работы. Скоро вернемся!"
         
-        if is_sandbox:
-            excluded_endpoints = [
-                'admin.maintenance_page', 
-                'admin.admin_panel', 
-                'admin.toggle_maintenance', 
-                'admin.update_maintenance_message',
-                'auth.login', 
-                'auth.logout',
-                'static'
-            ]
-            
-            if request.endpoint in excluded_endpoints:
-                logger.debug(f"Maintenance check: endpoint {request.endpoint} excluded from redirect")
-                return None
-            
-            maintenance_enabled = False
-            maintenance_message = "Ведутся технические работы. Скоро вернемся!"
-            
-            maintenance_enabled_env = os.environ.get('MAINTENANCE_ENABLED', '').lower()
-            if maintenance_enabled_env in ('true', '1', 'yes', 'on'):
-                maintenance_enabled = True
-                logger.info(f"Maintenance mode from ENV: enabled=True (MAINTENANCE_ENABLED={maintenance_enabled_env})")
+        maintenance_enabled_env = os.environ.get('MAINTENANCE_ENABLED', '').lower()
+        if maintenance_enabled_env in ('true', '1', 'yes', 'on'):
+            maintenance_enabled = True
+            logger.info(f"Maintenance mode from ENV: enabled=True (MAINTENANCE_ENABLED={maintenance_enabled_env})")
+        elif is_sandbox:
+            production_url = os.environ.get('PRODUCTION_URL', '')
+            sync_from_production = os.environ.get('MAINTENANCE_SYNC_FROM_PRODUCTION', '').lower() in ('true', '1', 'yes', 'on')
+            now = datetime.utcnow()
+            should_refresh_remote = (
+                _last_maintenance_fetch is None or
+                (now - _last_maintenance_fetch) >= _maintenance_fetch_interval
+            )
+
+            if production_url and sync_from_production and should_refresh_remote:
+                try:
+                    import requests
+                    api_url = f"{production_url.rstrip('/')}/api/maintenance-status"
+                    logger.debug(f"Checking maintenance status from production API: {api_url}")
+                    response = requests.get(api_url, timeout=1.2, headers={'User-Agent': 'Sandbox-Maintenance-Checker/1.0'})
+                    
+                    if response.status_code == 200:
+                        try:
+                            data = response.json()
+                            maintenance_enabled = data.get('enabled', False)
+                            maintenance_message = data.get('message', maintenance_message)
+                            _cached_maintenance_enabled = maintenance_enabled
+                            _cached_maintenance_message = maintenance_message
+                            _last_maintenance_fetch = now
+                        except ValueError as json_error:
+                            raise Exception(f"Invalid JSON response: {json_error}")
+                    else:
+                        raise Exception(f"API returned {response.status_code}")
+                except Exception as e:
+                    logger.warning(f"Error checking production API: {e}, falling back to local DB")
+                    try:
+                        maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
+                        status = MaintenanceMode.get_status()
+                        maintenance_message = status.message
+                        _cached_maintenance_enabled = maintenance_enabled
+                        _cached_maintenance_message = maintenance_message
+                        _last_maintenance_fetch = now
+                    except Exception as db_error:
+                        maintenance_enabled = False
             else:
-                production_url = os.environ.get('PRODUCTION_URL', '')
-                sync_from_production = os.environ.get('MAINTENANCE_SYNC_FROM_PRODUCTION', '').lower() in ('true', '1', 'yes', 'on')
+                try:
+                    if should_refresh_remote:
+                        maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
+                        status = MaintenanceMode.get_status()
+                        maintenance_message = status.message
+                        _cached_maintenance_enabled = maintenance_enabled
+                        _cached_maintenance_message = maintenance_message
+                        _last_maintenance_fetch = now
+                    else:
+                        maintenance_enabled = _cached_maintenance_enabled
+                        maintenance_message = _cached_maintenance_message
+                except Exception:
+                    maintenance_enabled = _cached_maintenance_enabled
+                    maintenance_message = _cached_maintenance_message
+        else:
+            # Для production и local проверяем локальную БД
+            try:
                 now = datetime.utcnow()
-                should_refresh_remote = (
+                should_refresh_local = (
                     _last_maintenance_fetch is None or
                     (now - _last_maintenance_fetch) >= _maintenance_fetch_interval
                 )
-
-                # IMPORTANT: remote maintenance checks are disabled by default in sandbox/local
-                # because they can block every request for 5+ seconds on network timeouts.
-                if production_url and sync_from_production and should_refresh_remote:
-                    try:
-                        import requests
-                        api_url = f"{production_url.rstrip('/')}/api/maintenance-status"
-                        logger.debug(f"Checking maintenance status from production API: {api_url}")
-                        response = requests.get(api_url, timeout=1.2, headers={'User-Agent': 'Sandbox-Maintenance-Checker/1.0'})
-                        logger.debug(f"Production API response: status={response.status_code}, content-type={response.headers.get('Content-Type', 'unknown')}, content-preview={response.text[:200]}")
-                        
-                        if response.status_code == 200:
-                            try:
-                                data = response.json()
-                                maintenance_enabled = data.get('enabled', False)
-                                maintenance_message = data.get('message', maintenance_message)
-                                _cached_maintenance_enabled = maintenance_enabled
-                                _cached_maintenance_message = maintenance_message
-                                _last_maintenance_fetch = now
-                                logger.info(f"Maintenance mode from PRODUCTION API: enabled={maintenance_enabled}, message={maintenance_message[:50]}")
-                            except ValueError as json_error:
-                                logger.error(f"Failed to parse JSON from production API: {json_error}. Response text: {response.text[:500]}")
-                                raise Exception(f"Invalid JSON response: {json_error}")
-                        else:
-                            logger.warning(f"Production API returned status {response.status_code}, response: {response.text[:200]}")
-                            raise Exception(f"API returned {response.status_code}")
-                    except requests.exceptions.RequestException as req_error:
-                        logger.warning(f"Network error when requesting production API: {req_error}, проверяем локальную БД")
-                        try:
-                            maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
-                            status = MaintenanceMode.get_status()
-                            maintenance_message = status.message
-                            _cached_maintenance_enabled = maintenance_enabled
-                            _cached_maintenance_message = maintenance_message
-                            _last_maintenance_fetch = now
-                            logger.info(f"Maintenance mode from local DB (after API error): enabled={maintenance_enabled}")
-                        except Exception as db_error:
-                            logger.warning(f"Ошибка при проверке режима тех работ из БД: {db_error}")
-                            maintenance_enabled = False
-                    except Exception as e:
-                        logger.error(f"Ошибка при запросе к API продакшена: {e}, проверяем локальную БД", exc_info=True)
-                        try:
-                            maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
-                            status = MaintenanceMode.get_status()
-                            maintenance_message = status.message
-                            _cached_maintenance_enabled = maintenance_enabled
-                            _cached_maintenance_message = maintenance_message
-                            _last_maintenance_fetch = now
-                            logger.info(f"Maintenance mode from local DB (after error): enabled={maintenance_enabled}")
-                        except Exception as db_error:
-                            logger.warning(f"Ошибка при проверке режима тех работ из БД: {db_error}")
-                            maintenance_enabled = False
+                if should_refresh_local:
+                    maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
+                    status = MaintenanceMode.get_status()
+                    maintenance_message = status.message
+                    _cached_maintenance_enabled = maintenance_enabled
+                    _cached_maintenance_message = maintenance_message
+                    _last_maintenance_fetch = now
                 else:
-                    try:
-                        # For local/sandbox we always use local DB and cache the value shortly.
-                        # Also used when remote sync is disabled.
-                        if should_refresh_remote:
-                            maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
-                            status = MaintenanceMode.get_status()
-                            maintenance_message = status.message
-                            _cached_maintenance_enabled = maintenance_enabled
-                            _cached_maintenance_message = maintenance_message
-                            _last_maintenance_fetch = now
-                        else:
-                            maintenance_enabled = _cached_maintenance_enabled
-                            maintenance_message = _cached_maintenance_message
-                        logger.info(f"Maintenance mode from local DB/cache: enabled={maintenance_enabled}")
-                    except Exception as db_error:
-                        logger.warning(f"Ошибка при проверке режима тех работ из БД: {db_error}")
-                        maintenance_enabled = _cached_maintenance_enabled
-                        maintenance_message = _cached_maintenance_message
-            
-            logger.debug(
-                "Maintenance mode check: enabled=%s, endpoint=%s, path=%s",
-                maintenance_enabled, request.endpoint, request.path,
+                    maintenance_enabled = _cached_maintenance_enabled
+                    maintenance_message = _cached_maintenance_message
+            except Exception as db_error:
+                logger.warning(f"Ошибка при проверке режима тех работ из БД: {db_error}")
+                maintenance_enabled = _cached_maintenance_enabled
+                maintenance_message = _cached_maintenance_message
+
+        if maintenance_enabled:
+            logger.info(
+                "Maintenance mode enabled, redirecting from %s: %s",
+                request.path, maintenance_message[:50],
             )
             
-            if maintenance_enabled:
-                logger.info(
-                    "Maintenance mode enabled, redirecting from %s: %s",
-                    request.path, maintenance_message[:50],
+            # Если это AJAX/API запрос (например, Socket.IO или Fetch), возвращаем 503 или специальный JSON, чтобы клиент мог отреагировать.
+            from flask import current_app, json
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.path.startswith('/api/'):
+                return current_app.response_class(
+                    json.dumps({'error': 'maintenance', 'message': maintenance_message}),
+                    mimetype='application/json',
+                    status=503
                 )
-                return redirect(url_for('admin.maintenance_page', message=maintenance_message))
+                
+            return redirect(url_for('admin.maintenance_page', message=maintenance_message))
         
         return None
-    
+
     @app.before_request
+
     def track_user_presence():
         """Трекинг online-статуса и текущей активности пользователя."""
         try:
@@ -508,8 +515,8 @@ def register_hooks(app):
         if is_demo and request.path in ('/demo', '/demo/start'):
             return
 
-        excluded_endpoints = ('auth.login', 'auth.logout', 'static', 'main.favicon', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.readiness_check', 'main.landing', 'main.index', 'main.legal_offer', 'main.legal_privacy', 'main.faq', 'billing.billing_plans_public')
-        excluded_paths = ('/', '/landing', '/index', '/home', '/legal/offer', '/legal/privacy', '/faq', '/billing/plans/public', '/favicon.ico', '/ready')
+        excluded_endpoints = ('auth.login', 'auth.logout', 'auth.register', 'auth.forgot_password', 'auth.reset_password_confirm', 'auth.debug_last_email', 'static', 'main.favicon', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.readiness_check', 'main.landing', 'main.index', 'main.legal_offer', 'main.legal_privacy', 'main.faq', 'billing.billing_plans_public')
+        excluded_paths = ('/', '/landing', '/index', '/home', '/legal/offer', '/legal/privacy', '/faq', '/billing/plans/public', '/favicon.ico', '/ready', '/register', '/forgot-password', '/reset-password-confirm', '/debug/last-email')
         
         if (request.endpoint in excluded_endpoints or 
             request.path in excluded_paths or 

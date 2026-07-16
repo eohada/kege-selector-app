@@ -27,7 +27,7 @@ from core.db_models import (
     RecurringLessonSlot,
     TariffPlan, TariffGroup, UserSubscription, TrainerSession, TrainerLlmLog, UserConsent,
     Subject, KnowledgeNode, UserMastery, AnalyticsEvent, UserTaskMMR, RematchQueue,
-    ReferralCode, ReferralUsage,
+    ReferralCode, ReferralUsage, UserAchievement, PromoCode, PromoCodeUsage,
 )
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
@@ -451,6 +451,14 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create TaskSolutions table: {e}")
                     db.session.rollback()
+
+            if 'UserAchievements' not in table_names and 'userachievements' not in table_names:
+                try:
+                    UserAchievement.__table__.create(db.engine)
+                    logger.info("UserAchievements table created")
+                except Exception as e:
+                    logger.warning(f"Could not create UserAchievements table: {e}")
+                    db.session.rollback()
             else:
                 ts_table = _resolve_table_name(table_names, 'TaskSolutions')
                 if ts_table:
@@ -489,6 +497,34 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create StudentLearningPlanItems table: {e}")
                     db.session.rollback()
+            else:
+                plan_table = _resolve_table_name(table_names, 'StudentLearningPlanItems')
+                if plan_table:
+                    plan_columns = [col['name'] for col in inspector.get_columns(plan_table)]
+                    if 'x' not in plan_columns:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{plan_table}" ADD COLUMN x INTEGER'))
+                            db.session.commit()
+                            logger.info("Added column x to StudentLearningPlanItems")
+                        except Exception as e:
+                            db.session.rollback()
+                            logger.warning(f"Could not add column x: {e}")
+                    if 'y' not in plan_columns:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{plan_table}" ADD COLUMN y INTEGER'))
+                            db.session.commit()
+                            logger.info("Added column y to StudentLearningPlanItems")
+                        except Exception as e:
+                            db.session.rollback()
+                            logger.warning(f"Could not add column y: {e}")
+                    if 'parent_id' not in plan_columns:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{plan_table}" ADD COLUMN parent_id INTEGER REFERENCES "StudentLearningPlanItems"(item_id)'))
+                            db.session.commit()
+                            logger.info("Added column parent_id to StudentLearningPlanItems")
+                        except Exception as e:
+                            db.session.rollback()
+                            logger.warning(f"Could not add column parent_id: {e}")
 
             if 'StudentDiagnosticCheckpoints' not in table_names and 'studentdiagnosticcheckpoints' not in table_names:
                 try:
@@ -599,6 +635,22 @@ def ensure_schema_columns(app):
                     logger.info("ReferralUsage table created")
                 except Exception as e:
                     logger.warning(f"Could not create ReferralUsage table: {e}")
+                    db.session.rollback()
+
+            if 'PromoCodes' not in table_names and 'promocodes' not in table_names:
+                try:
+                    PromoCode.__table__.create(db.engine)
+                    logger.info("PromoCodes table created")
+                except Exception as e:
+                    logger.warning(f"Could not create PromoCodes table: {e}")
+                    db.session.rollback()
+
+            if 'PromoCodeUsage' not in table_names and 'promocodeusage' not in table_names:
+                try:
+                    PromoCodeUsage.__table__.create(db.engine)
+                    logger.info("PromoCodeUsage table created")
+                except Exception as e:
+                    logger.warning(f"Could not create PromoCodeUsage table: {e}")
                     db.session.rollback()
 
             if 'InviteLinks' not in table_names and 'invitelinks' not in table_names:
@@ -868,6 +920,54 @@ def ensure_schema_columns(app):
                 if 'user_id' not in student_columns:
                     db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN user_id INTEGER REFERENCES "Users"(id)'))
                     logger.info(f"Added user_id column to {students_table}")
+                
+                if 'streak_days' not in student_columns:
+                    try:
+                        alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN streak_days INTEGER DEFAULT 0 NOT NULL'
+                        db.session.execute(text(alter_query))
+                        logger.info(f"Added streak_days to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add streak_days: {e}")
+                        db.session.rollback()
+
+                if 'last_activity_date' not in student_columns:
+                    try:
+                        alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN last_activity_date DATE'
+                        db.session.execute(text(alter_query))
+                        logger.info(f"Added last_activity_date to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add last_activity_date: {e}")
+                        db.session.rollback()
+
+                if 'streak_frozen' not in student_columns:
+                    try:
+                        if is_postgres:
+                            alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN streak_frozen BOOLEAN DEFAULT FALSE NOT NULL'
+                        else:
+                            alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN streak_frozen INTEGER DEFAULT 0 NOT NULL'
+                        db.session.execute(text(alter_query))
+                        logger.info(f"Added streak_frozen to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add streak_frozen: {e}")
+                        db.session.rollback()
+
+                if 'xp' not in student_columns:
+                    try:
+                        alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN xp INTEGER DEFAULT 0 NOT NULL'
+                        db.session.execute(text(alter_query))
+                        logger.info(f"Added xp to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add xp: {e}")
+                        db.session.rollback()
+
+                if 'level' not in student_columns:
+                    try:
+                        alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN level INTEGER DEFAULT 1 NOT NULL'
+                        db.session.execute(text(alter_query))
+                        logger.info(f"Added level to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add level: {e}")
+                        db.session.rollback()
 
                 indexes = {idx['name'] for idx in inspector.get_indexes(students_table)}
                 if 'idx_students_category' not in indexes:
@@ -1955,6 +2055,9 @@ def ensure_schema_columns(app):
             # ===== Многокурсовая архитектура (ExamCourses, CourseTaskTemplates, etc.) =====
             _migrate_multi_course(app, inspector, table_names, is_postgres)
 
+            # ===== Сидирование промокодов =====
+            _seed_promo_codes(app)
+
             try:
                 db.session.commit()
                 logger.info("RBAC and Assignments migrations committed successfully")
@@ -2316,3 +2419,59 @@ def _make_safe_add_column(inspector, is_postgres):
             logger.warning(f"Could not add {col_name} to {table_name}: {e}")
             db.session.rollback()
     return _add_col
+
+
+def _seed_promo_codes(app):
+    """Создаёт тестовые промокоды для тестировщиков."""
+    from datetime import datetime, timedelta
+    try:
+        from app.models import PromoCode
+        
+        # Проверим, есть ли уже промокоды
+        if PromoCode.query.first():
+            return
+            
+        # 1. Рабочий промокод на скидку 20%
+        pc1 = PromoCode(
+            code="SALE20",
+            discount_percent=20,
+            is_active=True,
+            note="Скидка 20% на любой тариф"
+        )
+        # 2. Рабочий промокод на фиксированную скидку 3000 руб
+        pc2 = PromoCode(
+            code="BOO3000",
+            discount_rub=3000,
+            is_active=True,
+            note="Скидка 3000 рублей"
+        )
+        # 3. Рабочий промокод на +3 бонусных урока
+        pc3 = PromoCode(
+            code="BONUS3",
+            bonus_lessons=3,
+            is_active=True,
+            note="+3 бесплатных урока к тарифу"
+        )
+        # 4. Просроченный промокод
+        pc4 = PromoCode(
+            code="EXPIRED100",
+            discount_percent=100,
+            is_active=True,
+            expires_at=datetime.utcnow() - timedelta(days=2),
+            note="Просроченный промокод на 100%"
+        )
+        # 5. Отключенный промокод
+        pc5 = PromoCode(
+            code="DISABLED",
+            discount_percent=50,
+            is_active=False,
+            note="Неактивный промокод"
+        )
+        
+        db.session.add_all([pc1, pc2, pc3, pc4, pc5])
+        db.session.commit()
+        logger.info("Successfully seeded default promo codes: SALE20, BOO3000, BONUS3, EXPIRED100, DISABLED")
+    except Exception as e:
+        db.session.rollback()
+        logger.warning(f"Could not seed promo codes: {e}")
+

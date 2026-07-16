@@ -964,5 +964,16 @@ def init_jinja_filters(app):
     app.jinja_env.filters['convert_text_tables_to_html'] = convert_text_tables_to_html
     app.jinja_env.filters['normalize_task_plain_text_to_html'] = normalize_task_plain_text_to_html
     app.jinja_env.filters['normalize_task_attachments'] = normalize_task_attachments
+    from app.utils.streak_service import pluralize_days
+    app.jinja_env.filters['pluralize_days'] = pluralize_days
+    
+    from app.utils.xp_service import get_rank_title, get_xp_for_level
+    app.jinja_env.filters['get_rank_title'] = get_rank_title
+    app.jinja_env.globals['get_xp_for_level'] = get_xp_for_level
+    
+    from app.utils.achievement_service import ACHIEVEMENTS_REGISTRY, get_student_unlocked_achievement_keys
+    app.jinja_env.globals['ACHIEVEMENTS_REGISTRY'] = ACHIEVEMENTS_REGISTRY
+    app.jinja_env.globals['get_student_unlocked_achievement_keys'] = get_student_unlocked_achievement_keys
+
     app.jinja_env.globals["ui_icon"] = ui_icon
     app.jinja_env.globals["ui_icon_global"] = ui_icon
