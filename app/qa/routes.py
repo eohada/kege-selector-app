@@ -5,7 +5,8 @@ from flask import render_template, request, jsonify, flash, redirect, url_for, c
 from flask_login import login_required, current_user
 from core.db_models import db, QATestCase, QAReport, QAReportHistory
 from app.auth.rbac_utils import require_role
-# # from . import qa_bp
+from flask import Blueprint
+qa_bp = Blueprint("qa", __name__)
 
 QA_ROLES = ('tester', 'chief_tester', 'admin', 'creator', 'chief_admin')
 QA_AREAS = [
