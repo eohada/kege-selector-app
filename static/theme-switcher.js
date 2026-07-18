@@ -7,6 +7,8 @@
   const STORAGE_KEY = 'ui.themeMode';
   const THEMES = ['auto', 'dark', 'light'];
 
+  let isBooting = true;
+
   function getStoredTheme() {
     try {
       const v = localStorage.getItem(STORAGE_KEY);
@@ -27,19 +29,43 @@
   function applyTheme(mode) {
     const root = document.documentElement;
 
-    if (mode === 'dark') {
-      root.setAttribute('data-theme', 'dark');
-    } else if (mode === 'light') {
-      root.setAttribute('data-theme', 'light');
-    } else {
-      root.removeAttribute('data-theme');
+    const updateTheme = () => {
+      if (mode === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+      } else if (mode === 'light') {
+        root.setAttribute('data-theme', 'light');
+      } else {
+        root.removeAttribute('data-theme');
+      }
+      root.setAttribute('data-theme-mode', mode);
+      try {
+        window.dispatchEvent(new CustomEvent('boo:theme-changed', { detail: { mode: mode } }));
+        document.dispatchEvent(new CustomEvent('boo:theme-changed', { detail: { mode: mode } }));
+      } catch (e) {}
+    };
+
+    if (isBooting) {
+      updateTheme();
+      return;
     }
 
-    root.setAttribute('data-theme-mode', mode);
-    try {
-      window.dispatchEvent(new CustomEvent('boo:theme-changed', { detail: { mode: mode } }));
-      document.dispatchEvent(new CustomEvent('boo:theme-changed', { detail: { mode: mode } }));
-    } catch (e) {}
+    // Try view transition API for hardware-accelerated crossfade
+    if (document.startViewTransition) {
+      root.setAttribute('data-theme-transitioning', 'true');
+      const transition = document.startViewTransition(() => {
+        updateTheme();
+      });
+      transition.finished.finally(() => {
+        root.removeAttribute('data-theme-transitioning');
+      });
+    } else {
+      root.classList.add('theme-transitioning');
+      void root.offsetHeight; // Force reflow to register the transition before theme change
+      updateTheme();
+      setTimeout(() => {
+        root.classList.remove('theme-transitioning');
+      }, 350);
+    }
   }
 
   function updateToggles(mode) {
@@ -77,6 +103,7 @@
     applyTheme(mode);
     updateToggles(mode);
     initToggles();
+    isBooting = false;
   }
 
   if (document.readyState === 'loading') {

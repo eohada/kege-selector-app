@@ -168,8 +168,16 @@ class AuditLogger:
 
         if has_request_context():
             if current_user.is_authenticated:
-                user_id = current_user.id
-                user_name = current_user.username
+                try:
+                    user_id = current_user.id
+                    user_name = current_user.username
+                except Exception:
+                    try:
+                        uid_str = current_user.get_id()
+                        if uid_str:
+                            user_id = int(uid_str)
+                    except Exception:
+                        pass
             else:
                 tester_id = request.headers.get('X-Tester-UUID')
 

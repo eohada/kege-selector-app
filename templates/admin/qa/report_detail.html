@@ -7,7 +7,7 @@
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style="padding-top: 8rem; padding-bottom: 3rem; position: relative; z-index: 1;">
 
-    <a href="{{ url_for('qa_tester.admin.dashboard') }}" style="color: var(--color-text-muted); text-decoration: none; font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; margin-bottom: 1.5rem;">
+    <a href="{{ url_for('qa_admin.dashboard') }}" style="color: var(--color-text-muted); text-decoration: none; font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; margin-bottom: 1.5rem;">
         <i class="ph-bold ph-arrow-left" style="margin-right: 0.35rem;"></i> Назад в Control Room
     </a>
 
@@ -233,7 +233,7 @@
                 <div style="padding: 0.875rem 1.25rem; background: var(--color-bg-surface-alt); border-bottom: 1px solid var(--color-stroke);">
                     <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted);"><i class="ph-bold ph-arrow-bend-up-right"></i> Действие (смена статуса)</div>
                 </div>
-                <form action="{{ url_for('qa_tester.admin.update_report_status', report_id=report.id) }}" method="POST" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+                <form action="{{ url_for('qa_admin.update_report_status', report_id=report.id) }}" method="POST" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div>

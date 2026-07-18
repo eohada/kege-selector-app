@@ -13,4 +13,6 @@ from app.admin import family_management  # API endpoints для управлен
 from app.admin import enrollment_management  # API endpoints для управления учебными контрактами
 from app.admin import remote_admin_api  # Внутренние API для удаленной админки
 from app.admin import task_formator  # Формироватор банка заданий (фундамент)
+from app.admin.qa_management import qa_bp  # QA Control Room
+from app.admin.impersonate import admin_impersonate_bp  # Имперсонация
 

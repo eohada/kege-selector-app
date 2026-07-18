@@ -2,12 +2,12 @@
   navigation: none;
 }
 
-/* Disable default root transition to keep navigation header and sidebar stationary */
-::view-transition-group(root) {
+/* Disable default root transition to keep navigation header and sidebar stationary (except during theme change) */
+html:not([data-theme-transitioning]) ::view-transition-group(root) {
   animation: none !important;
 }
-::view-transition-old(root),
-::view-transition-new(root) {
+html:not([data-theme-transitioning]) ::view-transition-old(root),
+html:not([data-theme-transitioning]) ::view-transition-new(root) {
   animation: none !important;
   mix-blend-mode: normal !important;
 }

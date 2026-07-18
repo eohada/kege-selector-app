@@ -390,14 +390,15 @@ def create_app(config_name=None):
     app.register_blueprint(students_bp)
     app.register_blueprint(lessons_bp)
     app.register_blueprint(admin_bp)
+    from app.admin.impersonate import admin_impersonate_bp
+    app.register_blueprint(admin_impersonate_bp)
     from app.qa import qa_tester_bp
     
     app.register_blueprint(qa_admin_bp)
     app.register_blueprint(qa_tester_bp)
 
     # CSRF exceptions for QA AJAX APIs
-    from app.qa.routes import api_quick_bug, upload_video, upload_screenshot
-    csrf.exempt(api_quick_bug)
+    from app.qa.routes import upload_video, upload_screenshot
     csrf.exempt(upload_video)
     csrf.exempt(upload_screenshot)
     app.register_blueprint(task_generator_bp)

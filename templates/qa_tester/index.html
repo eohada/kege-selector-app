@@ -2,14 +2,86 @@
 {% block title %}Рабочее место Тестировщика — BooStudy{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style="padding-top: 8rem; padding-bottom: 3rem; position: relative; z-index: 1;">
+<style>
+@media (max-width: 768px) {
+  .qa-index-wrap {
+    padding-top: 5rem !important;
+    padding-bottom: 6rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  .qa-index-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+    margin-bottom: 1.25rem !important;
+  }
+  .qa-index-header h1 {
+    font-size: 1.375rem !important;
+  }
+  .qa-header-actions {
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+  }
+  .qa-header-actions select,
+  .qa-header-actions a {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    justify-content: center !important;
+  }
+  .qa-tabs {
+    gap: 0.375rem !important;
+    margin-bottom: 1.25rem !important;
+    padding-bottom: 0.75rem !important;
+    justify-content: flex-start !important; /* В мобильной версии скроллим аккуратно */
+  }
+  .qa-tabs button {
+    flex: 0 0 auto !important; /* Не растягиваем кнопки на весь экран, пусть скроллятся */
+    padding: 0.5rem 1rem !important;
+    font-size: 0.85rem !important;
+    white-space: normal !important;
+    text-align: center !important;
+    line-height: 1.3 !important;
+  }
+  .qa-area-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+  .qa-area-header .bulk-pass-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.75rem !important;
+  }
+  }
+  .qa-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+  .qa-test-card {
+    padding: 1rem !important;
+  }
+  .qa-area-section {
+    gap: 1.5rem !important;
+  }
+  .bulk-pass-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.5rem 1rem !important;
+    font-size: 0.8rem !important;
+  }
+}
+</style>
+<div class="qa-index-wrap max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style="padding-top: 8rem; padding-bottom: 3rem; position: relative; z-index: 1;">
 
-    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 2rem;">
+    <div class="qa-index-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 2rem;">
         <div>
             <h1 style="font-size: 1.875rem; font-weight: 800; color: var(--color-text-primary); margin: 0;">Тест-кейсы</h1>
             <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0.35rem 0 0;">Выбери тест, пройди шаги и вынеси вердикт.</p>
         </div>
-        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <div class="qa-header-actions" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <select id="areaFilter" onchange="filterTests()"
                 style="padding: 0.5rem 0.875rem; border-radius: 10px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-weight: 700; font-size: 0.875rem; outline: none; cursor: pointer;">
                 <option value="all">Все зоны ({{ tests_by_area|length }})</option>
@@ -17,19 +89,14 @@
                 <option value="{{ loop.index }}">{{ area }}</option>
                 {% endfor %}
             </select>
-            <a href="{{ url_for('qa_tester.tester.history') }}"
+            <a href="{{ url_for('qa_tester.history') }}"
                 style="background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); padding: 0.5rem 1.125rem; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem;">
                 <i class="ph-bold ph-clock-counter-clockwise"></i> Мои репорты
             </a>
-            <a href="/qa/ad-hoc"
-                style="background: var(--color-accent); color: white; padding: 0.5rem 1.125rem; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem;">
-                <i class="ph-bold ph-bug"></i> Спонтанный баг
-            </a>
-        </div>
     </div>
 
     <!-- Вкладки -->
-    <div style="display: flex; gap: 0.5rem; margin-bottom: 2rem; padding-bottom: 1rem; overflow-x: auto; border-bottom: 1px solid var(--color-stroke);">
+    <div class="qa-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 2rem; padding-bottom: 1rem; overflow-x: auto; border-bottom: 1px solid var(--color-stroke);">
         <button onclick="switchTab('attention')" id="tab-attention"
             style="padding: 0.5rem 1.25rem; border-radius: 12px; font-weight: 700; font-size: 0.875rem; white-space: nowrap; cursor: pointer; border: 1px solid rgba(168,85,247,0.3); background: rgba(168,85,247,0.1); color: #a855f7; transition: all 0.2s;">
             <i class="ph-bold ph-warning" style="margin-right: 0.25rem;"></i> Требуют внимания ({{ retest_test_ids|length }})
@@ -45,7 +112,12 @@
     </div>
 
     <!-- Toast -->
-    <div id="toastContainer" style="position: fixed; top: 6rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem;"></div>
+    <div id="toastContainer" style="position: fixed; top: 6rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 90vw;"></div>
+
+    <!-- Кнопка "Спонтанный баг" (Плавающая) -->
+    <a href="{{ url_for('qa_tester.bulk_pass') }}" class="mobile-fab" style="position: fixed; bottom: 2rem; right: 1.5rem; background: var(--color-bg-brand); color: white; width: 3.5rem; height: 3.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(168,85,247,0.4); z-index: 1000; transition: transform 0.2s;">
+        <i class="ph-bold ph-bug" style="font-size: 1.5rem;"></i>
+    </a>
 
     <!-- Секции по зонам -->
     <div style="display: flex; flex-direction: column; gap: 2.5rem; position: relative; z-index: 1;">
@@ -53,7 +125,7 @@
         <div class="qa-area-section" data-area-idx="{{ loop.index }}">
 
             <!-- Заголовок зоны с кнопкой Bulk Pass -->
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 0.625rem; border-bottom: 1px solid var(--color-stroke);">
+            <div class="qa-area-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 0.625rem; border-bottom: 1px solid var(--color-stroke);">
                 <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                     <h2 style="font-size: 1.125rem; font-weight: 800; color: var(--color-text-primary); margin: 0;">{{ area }}</h2>
                     {% set progress = area_progress[area] %}
@@ -79,7 +151,7 @@
             </div>
 
             <!-- Карточки тестов -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.125rem;">
+            <div class="qa-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.125rem;">
                 {% for test in area_tests %}
                 {% set is_adhoc = test.__class__.__name__ == 'QAReport' %}
                 
@@ -88,7 +160,7 @@
                     {% set is_retest = test.status == 'retest' %}
                     {% set is_bug = test.status in ['pending', 'in_progress'] %}
                     {% set tab_status = 'attention' if is_retest else ('done' if is_passed else 'new') %}
-                    {% set href = url_for('qa_tester.tester.edit_report', report_id=test.id) %}
+                    {% set href = url_for('qa_tester.edit_report', report_id=test.id) %}
                     {% set t_title = test.description[:50] + '...' if test.description else 'Без описания' %}
                     {% set t_desc = 'Спонтанный баг' %}
                     {% set t_steps = 0 %}
@@ -99,7 +171,7 @@
                     {% set is_bug = test.id in bug_test_ids and test.id not in retest_test_ids %}
                     {% set is_retest = test.id in retest_test_ids %}
                     {% set tab_status = 'done' if is_passed else ('attention' if is_retest else 'new') %}
-                    {% set href = url_for('qa_tester.tester.execute_test', test_id=test.id) %}
+                    {% set href = url_for('qa_tester.execute_test', test_id=test.id) %}
                     {% set t_title = test.title %}
                     {% set t_desc = test.expected_result %}
                     {% set t_steps = test.steps|length %}
@@ -155,8 +227,8 @@
 </div>
 
 <script>
-const urlParams = new URLSearchParams(window.location.search);
-let currentTab = urlParams.get('tab') || 'attention';
+window.urlParams = new URLSearchParams(window.location.search);
+window.currentTab = window.urlParams.get('tab') || 'attention';
 
 function showToast(message, type = 'success') {
     const c = document.getElementById('toastContainer');
@@ -170,7 +242,7 @@ function showToast(message, type = 'success') {
 }
 
 function switchTab(tab) {
-    currentTab = tab;
+    window.currentTab = tab;
     ['attention','new','done'].forEach(t => {
         const btn = document.getElementById('tab-' + t);
         if(t === tab) {
@@ -199,7 +271,7 @@ function applyFilters() {
         const cards = sec.querySelectorAll('.qa-test-card');
         cards.forEach(card => {
             const tabStatus = card.getAttribute('data-tab');
-            const show = isAreaMatch && (tabStatus === currentTab || currentTab === 'all');
+            const show = isAreaMatch && (tabStatus === window.currentTab || window.currentTab === 'all');
             card.style.display = show ? 'block' : 'none';
             if (show) hasVisible = true;
             if (tabStatus === 'new') hasNewCards = true;
@@ -210,7 +282,7 @@ function applyFilters() {
         // Показываем Bulk Pass только на вкладке "new" если есть новые карточки
         const bulkBtn = sec.querySelector('.bulk-pass-btn');
         if (bulkBtn) {
-            bulkBtn.style.display = (currentTab === 'new' && hasNewCards && isAreaMatch) ? 'inline-flex' : 'none';
+            bulkBtn.style.display = (window.currentTab === 'new' && hasNewCards && isAreaMatch) ? 'inline-flex' : 'none';
         }
     });
 }
@@ -232,7 +304,7 @@ async function bulkPassArea(btn, areaIdx) {
     btn.disabled = true;
 
     try {
-        const res = await fetch("{{ url_for('qa_tester.tester.bulk_pass') }}", {
+        const res = await fetch("{{ url_for('qa_tester.bulk_pass') }}", {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json', 
@@ -244,7 +316,7 @@ async function bulkPassArea(btn, areaIdx) {
         const data = await res.json();
         if (data.success) {
             showToast(`Отмечено как успешно: ${data.passed} тестов`);
-            setTimeout(() => { window.location.href = "{{ url_for('qa_tester.tester.index') }}?tab=done"; }, 1500);
+            setTimeout(() => { window.location.href = "{{ url_for('qa_tester.index') }}?tab=done"; }, 1500);
         } else {
             showToast(data.error || 'Ошибка', 'error');
             btn.innerHTML = origHtml;

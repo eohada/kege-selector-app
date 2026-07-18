@@ -38,6 +38,6 @@ if __name__ == '__main__':
     logger.info('Запуск приложения')
     socketio = getattr(app, 'socketio', None)
     if socketio:
-        socketio.run(app, debug=True, host='127.0.0.1', port=5000)
+        socketio.run(app, debug=True, host='127.0.0.1', port=5000, allow_unsafe_werkzeug=True)
     else:
         app.run(debug=True, host='127.0.0.1', port=5000)

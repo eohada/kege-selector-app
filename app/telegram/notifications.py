@@ -40,7 +40,9 @@ def _tg_post(method: str, payload: dict, timeout: int = 10) -> Optional[dict]:
     opener = urllib.request.build_opener()
     proxy = telegram_proxy_parts()
     if proxy:
-        opener.add_handler(urllib.request.ProxyHandler({'http': proxy['url'], 'https': proxy['url']}))
+        proxy_url = str(proxy.get('url', ''))
+        if proxy_url:
+            opener.add_handler(urllib.request.ProxyHandler({'http': proxy_url, 'https': proxy_url}))
     try:
         with opener.open(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode('utf-8'))
@@ -61,6 +63,9 @@ def send_telegram_message(
     disable_web_page_preview: bool = True,
 ) -> Optional[dict]:
     """Send a text message."""
+    from app.telegram.config import TELEGRAM_MOCK_MODE
+    import os
+
     payload: dict = {
         'chat_id': chat_id,
         'text': text_body,
@@ -70,6 +75,21 @@ def send_telegram_message(
         payload['parse_mode'] = parse_mode
     if reply_markup:
         payload['reply_markup'] = reply_markup
+        
+    if TELEGRAM_MOCK_MODE or os.environ.get('TELEGRAM_MOCK_MODE') == '1':
+        # В режиме мока просто логируем в файл
+        log_file = os.path.join(os.getcwd(), 'logs', 'telegram_mock.log')
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(f"--- MOCK TELEGRAM MESSAGE ---\n")
+            f.write(f"To Chat ID: {chat_id}\n")
+            f.write(f"Message:\n{text_body}\n")
+            if reply_markup:
+                f.write(f"Keyboard: {json.dumps(reply_markup, ensure_ascii=False)}\n")
+            f.write("-" * 30 + "\n\n")
+        logger.info(f"MOCK TELEGRAM: message 'sent' to {chat_id}")
+        return {'ok': True, 'result': {'message_id': 999999}}
+        
     return _tg_post('sendMessage', payload)
 
 

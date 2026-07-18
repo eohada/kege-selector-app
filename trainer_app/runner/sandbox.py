@@ -238,26 +238,36 @@ sys.stderr = sys.__stderr__
 print(json.dumps({'ok': True, 'results': out}, ensure_ascii=False))
 """
 
+    p = None
     try:
-        p = subprocess.run(
+        p = subprocess.Popen(
             [sys.executable, '-I', '-S', '-c', child, code_b64, json.dumps(allow_imports, ensure_ascii=False), str(out_limit)],
-            input=tests_json,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            capture_output=True,
-            timeout=float(timeout_seconds),
         )
-    except subprocess.TimeoutExpired:
-        return {'ok': False, 'error': 'timeout', 'details': f'Timeout > {timeout_seconds}s'}
+        try:
+            stdout_data, stderr_data = p.communicate(input=tests_json, timeout=float(timeout_seconds))
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait()
+            return {'ok': False, 'error': 'timeout', 'details': f'Превышено время выполнения ({timeout_seconds}с). Код выполнялся слишком долго или ушел в бесконечный цикл.'}
     except Exception as e:
         return {'ok': False, 'error': 'runner_error', 'details': str(e)}
 
-    raw = (p.stdout or '').strip()
+    raw = (stdout_data or '').strip()
+    stderr_raw = (stderr_data or '').strip()
+    
     if not raw:
-        return {'ok': False, 'error': 'no_output', 'details': (p.stderr or '').strip()}
+        return {'ok': False, 'error': 'no_output', 'details': stderr_raw[:2000]}
     try:
         return json.loads(raw)
     except Exception:
-        return {'ok': False, 'error': 'bad_output', 'details': raw[:2000], 'stderr': (p.stderr or '').strip()[:2000]}
+        # Check if the output limit was exceeded during execution
+        if 'output_limit_exceeded' in stderr_raw:
+            return {'ok': False, 'error': 'output_limit_exceeded', 'details': 'Превышен лимит вывода в консоль. Убедитесь, что вы не выводите слишком много данных или не попали в бесконечный цикл.', 'stderr': stderr_raw[:2000]}
+        return {'ok': False, 'error': 'bad_output', 'details': raw[:2000], 'stderr': stderr_raw[:2000]}
 
 
 def run_python_program(*, code: str, stdin: str = '', timeout_seconds: float = 2.0) -> dict[str, Any]:
@@ -364,24 +374,33 @@ print(json.dumps({
 }, ensure_ascii=False))
 """
 
+    p = None
     try:
-        p = subprocess.run(
+        p = subprocess.Popen(
             [sys.executable, '-I', '-S', '-c', child, code_b64, json.dumps(allow_imports, ensure_ascii=False), str(out_limit)],
-            input=stdin,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            capture_output=True,
-            timeout=float(timeout_seconds),
         )
-    except subprocess.TimeoutExpired:
-        return {'ok': False, 'error': 'timeout', 'details': f'Timeout > {timeout_seconds}s'}
+        try:
+            stdout_data, stderr_data = p.communicate(input=stdin, timeout=float(timeout_seconds))
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait()
+            return {'ok': False, 'error': 'timeout', 'details': f'Превышено время выполнения ({timeout_seconds}с). Код выполнялся слишком долго или ушел в бесконечный цикл.'}
     except Exception as e:
         return {'ok': False, 'error': 'runner_error', 'details': str(e)}
 
-    raw = (p.stdout or '').strip()
+    raw = (stdout_data or '').strip()
+    stderr_raw = (stderr_data or '').strip()
+    
     if not raw:
-        return {'ok': False, 'error': 'no_output', 'details': (p.stderr or '').strip()[:2000]}
+        return {'ok': False, 'error': 'no_output', 'details': stderr_raw[:2000]}
     try:
         return json.loads(raw)
     except Exception:
-        return {'ok': False, 'error': 'bad_output', 'details': raw[:2000], 'stderr': (p.stderr or '').strip()[:2000]}
+        if 'output_limit_exceeded' in stderr_raw:
+            return {'ok': False, 'error': 'output_limit_exceeded', 'details': 'Превышен лимит вывода в консоль. Убедитесь, что вы не выводите слишком много данных или не попали в бесконечный цикл.', 'stderr': stderr_raw[:2000]}
+        return {'ok': False, 'error': 'bad_output', 'details': raw[:2000], 'stderr': stderr_raw[:2000]}
 

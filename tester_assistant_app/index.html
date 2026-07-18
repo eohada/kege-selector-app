@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ассистент Тестировщика — BooStudy</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #27272a;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #e4e4e7;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 antialiased min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold">
+          B
+        </div>
+        <div>
+          <h1 class="font-bold text-sm md:text-base leading-none">BooStudy QA</h1>
+          <span class="text-xs text-zinc-500">Панель тестировщика</span>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <!-- Theme Toggle -->
+        <button id="theme-toggle" class="p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400" title="Сменить тему">
+          <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+          <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+        </button>
+
+        <button id="logout-btn" class="hidden flex items-center space-x-1 px-3 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 text-xs font-medium transition-colors">
+          <span>Выйти</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6 flex flex-col justify-center">
+    
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="max-w-md w-full mx-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 md:p-8 shadow-sm">
+      <div class="text-center mb-6">
+        <h2 class="text-2xl font-bold tracking-tight">Добро пожаловать</h2>
+        <p class="text-sm text-zinc-500 mt-1">Введите ваш уникальный ключ для получения чек-листа</p>
+      </div>
+
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium uppercase tracking-wider text-zinc-500 mb-1.5">
+            Ключ доступа
+          </label>
+          <input
+            id="auth-key"
+            type="text"
+            placeholder="Например: TEST-2026"
+            class="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-emerald-500 outline-none text-center font-mono tracking-widest text-lg uppercase transition-all"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
+        >
+          Загрузить задания
+        </button>
+      </form>
+
+      <div class="mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800 text-center">
+        <p class="text-xs text-zinc-400">
+          Для демо-входа можно ввести любой текст или ключ <code class="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-emerald-600 font-mono">TEST-2026</code>
+        </p>
+      </div>
+    </div>
+
+    <!-- DASHBOARD SCREEN -->
+    <div id="dashboard-screen" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+      
+      <!-- Left Side: Lists -->
+      <div id="left-panel" class="col-span-12 lg:col-span-5 space-y-4">
+        <!-- Tabs -->
+        <div class="flex p-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg">
+          <button id="tab-available" class="flex-1 py-2 text-xs md:text-sm font-medium rounded-md transition-all bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-50">
+            Доступные тесты (<span id="count-available">0</span>)
+          </button>
+          <button id="tab-review" class="flex-1 py-2 text-xs md:text-sm font-medium rounded-md transition-all text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50">
+            На ревью (<span id="count-review">0</span>)
+          </button>
+        </div>
+
+        <!-- Tests List Container -->
+        <div id="tests-list" class="space-y-3">
+          <!-- Dynamic test items go here -->
+        </div>
+      </div>
+
+      <!-- Right Side: Detailed View -->
+      <div id="right-panel" class="col-span-12 lg:col-span-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 md:p-6 shadow-sm space-y-6 hidden lg:block">
+        <!-- Default Placeholder -->
+        <div id="details-placeholder" class="h-[400px] flex items-center justify-center text-center p-6 text-zinc-400">
+          <div>
+            <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-3 opacity-60"></i>
+            <p class="text-sm">Выберите тест из списка слева, чтобы посмотреть сценарий проверки</p>
+          </div>
+        </div>
+
+        <!-- Actual Test Details (Hidden by default) -->
+        <div id="details-content" class="hidden space-y-6">
+          <!-- Back button for mobile -->
+          <div class="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
+            <button id="back-to-list" class="lg:hidden flex items-center space-x-1 text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              <span>Назад к списку</span>
+            </button>
+            <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Карточка Теста</span>
+          </div>
+
+          <!-- Title and Area -->
+          <div>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <span id="detail-area" class="text-xs font-semibold px-2.5 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"></span>
+              <span id="detail-review-badge" class="hidden text-xs font-bold px-2.5 py-1 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20"></span>
+            </div>
+            <h2 id="detail-title" class="text-lg md:text-xl font-bold tracking-tight leading-snug"></h2>
+          </div>
+
+          <!-- Role Alert Box -->
+          <div class="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 rounded-lg">
+            <p class="text-xs text-amber-800 dark:text-amber-300 font-semibold mb-1">⚠️ ВНИМАНИЕ: Требуемая роль на платформе</p>
+            <p class="text-sm">
+              Перед началом теста зайдите в профиль/админку и убедитесь, что у вас выставлена роль: 
+              <strong id="detail-role" class="bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded text-amber-900 dark:text-amber-100"></strong>
+            </p>
+          </div>
+
+          <!-- Steps & Expected -->
+          <div class="space-y-4">
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">Шаги воспроизведения (Steps)</h4>
+              <ol id="detail-steps" class="list-decimal list-inside space-y-1.5 text-sm pl-1 text-zinc-600 dark:text-zinc-300"></ol>
+            </div>
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Ожидаемый результат (Expected)</h4>
+              <p id="detail-expected" class="text-sm text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800"></p>
+            </div>
+          </div>
+
+          <!-- History Logs (for Review items) -->
+          <div id="detail-history-section" class="hidden space-y-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-500">История переписки и багов</h4>
+            <div id="detail-history-list" class="space-y-3 max-h-48 overflow-y-auto pr-1"></div>
+          </div>
+
+          <!-- Verdict Buttons (3 buttons) -->
+          <div class="pt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-500">Вынести вердикт</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button id="verdict-ok" class="flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs md:text-sm transition-all shadow-sm">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                <span>Все отлично</span>
+              </button>
+              <button id="verdict-minor" class="flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg border border-amber-500 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 font-semibold text-xs md:text-sm transition-all">
+                <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                <span>Мелкие баги</span>
+              </button>
+              <button id="verdict-critical" class="flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg border border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-semibold text-xs md:text-sm transition-all">
+                <i data-lucide="x-circle" class="w-4 h-4"></i>
+                <span>Крит. ошибка</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Dynamic Bug Report Form -->
+          <form id="bug-report-form" class="hidden pt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Описание найденной проблемы</label>
+              <textarea id="bug-comment" rows="3" placeholder="Опишите баг..." class="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-emerald-500 outline-none text-sm" required></textarea>
+            </div>
+
+            <!-- Upload Area -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Вложения (Скриншоты, видео)</label>
+              <div id="drop-zone" class="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg p-6 text-center cursor-pointer transition-all hover:bg-zinc-50 dark:hover:bg-zinc-950/30">
+                <i data-lucide="upload-cloud" class="w-8 h-8 text-zinc-400 mx-auto mb-2"></i>
+                <p class="text-sm font-semibold">Нажмите для выбора файла</p>
+                <input type="file" id="file-input" class="hidden" multiple accept="image/*,video/*">
+              </div>
+              
+              <!-- Selected Files list -->
+              <div id="selected-files-list" class="mt-3 space-y-1.5"></div>
+
+              <!-- Hint that it uploads automatically -->
+              <div id="gdrive-section" class="hidden bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 rounded-lg p-3 mt-3">
+                <p class="text-xs font-bold text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
+                  <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-emerald-500"></i>
+                  <span>Вложение будет загружено на Google Диск при отправке отчета.</span>
+                </p>
+              </div>
+
+              <!-- GDrive Link Result -->
+              <div id="gdrive-link-box" class="hidden p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg text-xs mt-2 flex items-start gap-2">
+                <i data-lucide="link" class="w-4 h-4 text-emerald-500 mt-0.5"></i>
+                <div>
+                  <p class="font-semibold text-emerald-600 dark:text-emerald-400">Загружено в облако!</p>
+                  <a href="#" id="gdrive-link-url" target="_blank" class="text-zinc-500 hover:underline break-all mt-1 block"></a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit report buttons -->
+            <div class="pt-2 flex justify-end space-x-2">
+              <button type="button" id="cancel-report-btn" class="px-4 py-2 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-semibold hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                Отмена
+              </button>
+              <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm">
+                Отправить отчет
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN SCREEN -->
+    <div id="admin-screen" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+      <!-- Left Side: Submitted Reports -->
+      <div id="admin-left-panel" class="col-span-12 lg:col-span-5 space-y-4">
+        <div class="flex bg-zinc-100 dark:bg-zinc-950 p-1 rounded-xl">
+          <button id="admin-tab-bugs" type="button" class="flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-50">
+            Ошибки (<span id="admin-count-bugs">0</span>)
+          </button>
+          <button id="admin-tab-verified" type="button" class="flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50">
+            Проверено (<span id="admin-count-verified">0</span>)
+          </button>
+        </div>
+        <div id="admin-reports-list" class="space-y-3">
+          <!-- Dynamic report items go here -->
+        </div>
+      </div>
+
+      <!-- Right Side: Report Review and Resolve -->
+      <div id="admin-right-panel" class="col-span-12 lg:col-span-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 md:p-6 shadow-sm space-y-6 hidden lg:block">
+        <!-- Default Placeholder -->
+        <div id="admin-placeholder" class="h-[400px] flex items-center justify-center text-center p-6 text-zinc-400">
+          <div>
+            <i data-lucide="shield-alert" class="w-12 h-12 mx-auto mb-3 opacity-60"></i>
+            <p class="text-sm">Выберите отчет тестировщика слева для анализа бага</p>
+          </div>
+        </div>
+
+        <!-- Actual Report Details -->
+        <div id="admin-report-content" class="hidden space-y-6">
+          <div class="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800">
+            <button id="admin-back-to-list" class="lg:hidden flex items-center space-x-1 text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              <span>Назад к списку</span>
+            </button>
+            <span class="text-xs font-bold text-red-600 uppercase tracking-wider">Отчет об ошибке</span>
+          </div>
+
+          <div>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <span id="admin-report-area" class="text-xs font-semibold px-2.5 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"></span>
+              <span id="admin-report-verdict" class="text-xs font-bold px-2.5 py-1 rounded"></span>
+            </div>
+            <h2 id="admin-report-title" class="text-lg md:text-xl font-bold tracking-tight leading-snug"></h2>
+          </div>
+
+          <div class="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+            <p class="text-xs text-zinc-400 font-semibold mb-1">Комментарий тестировщика:</p>
+            <p id="admin-report-comment" class="text-sm italic"></p>
+          </div>
+
+        <!-- Attachment section -->
+          <div id="admin-report-file-section" class="hidden space-y-2">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-zinc-500">Вложение:</h4>
+            <div class="flex items-center gap-3">
+              <a id="admin-report-file-link" href="#" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold text-emerald-600 hover:underline">
+                <i data-lucide="external-link" class="w-4 h-4"></i>
+                <span>Открыть скриншот / видео на Google Диске</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Resolve form -->
+          <form id="admin-resolve-form" class="pt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Комментарий к исправлению</label>
+              <textarea id="admin-resolve-comment" rows="3" placeholder="Опишите, как исправлена ошибка..." class="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-950 focus:ring-2 focus:ring-emerald-500 outline-none text-sm" required></textarea>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+              <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm">
+                Отметить как исправленное (Вернуть на ревью)
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="hidden fixed bottom-4 right-4 z-50 p-3 rounded-lg border shadow-lg text-xs font-semibold flex items-center space-x-2 animate-in fade-in slide-in-from-bottom-2 bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+    <i data-lucide="check-circle" class="w-4 h-4"></i>
+    <span id="toast-text"></span>
+  </div>
+
+  <footer class="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 py-4 text-center mt-8">
+    <p class="text-xs text-zinc-400">
+      &copy; 2026 BooStudy Platform &bull; Панель контроля качества
+    </p>
+  </footer>
+
+  <script>
+    // --- Fallback Mock Data in case Server is Offline ---
+    const OFFLINE_FALLBACK = {
+      available: [
+        {
+          id: "t1",
+          title: "Регистрация нового ученика с некорректной почтой",
+          area: "Регистрация и Профили",
+          role: "Гость (Без авторизации)",
+          steps: [
+            "Открыть главную страницу платформы.",
+            "Нажать на кнопку 'Зарегистрироваться'.",
+            "В поле Email ввести некорректное значение (например, 'test@@mail..ru').",
+            "Заполнить пароль и имя валидными значениями.",
+            "Нажать 'Создать аккаунт'."
+          ],
+          expected: "Кнопка отправки блокируется, либо под полем Email всплывает понятная ошибка валидации. Регистрация не должна проходить."
+        },
+        {
+          id: "t2",
+          title: "Покупка премиум-тарифа через тестовую карту",
+          area: "Тарифы и Оплата",
+          role: "Ученик (Без подписки)",
+          steps: [
+            "Войти в личный кабинет ученика.",
+            "Перейти на вкладку 'Тарифы'.",
+            "Выбрать тариф 'Максимум' на 1 месяц, нажать 'Купить'.",
+            "В окне оплаты ввести номер тестовой карты (4242 4242 4242 4242) и любой срок действия.",
+            "Подтвердить платеж."
+          ],
+          expected: "Платеж проходит успешно, пользователя редиректит в ЛК, статус подписки мгновенно меняется на 'Активен'."
+        },
+        {
+          id: "t3",
+          title: "Создание тестового ученика админом",
+          area: "Админка и Управление",
+          role: "Главный Администратор",
+          steps: [
+            "Авторизоваться под учетной записью администратора.",
+            "Перейти в раздел '/admin/users'.",
+            "Нажать кнопку 'Добавить пользователя'.",
+            "Заполнить ФИО, Email, выбрать роль 'Ученик' и нажать 'Создать'."
+          ],
+          expected: "Новый пользователь появляется в списке, на его почту уходит авто-письмо с временным паролем."
+        },
+        {
+          id: "t4",
+          title: "Проверка адаптивности конспекта урока",
+          area: "Мобильный инспектор",
+          role: "Ученик (Любой)",
+          steps: [
+            "Открыть платформу с мобильного телефона.",
+            "Перейти в раздел 'Курсы' -> 'Введение в программирование'.",
+            "Открыть первый урок с теорией.",
+            "Проскроллить страницу до конца."
+          ],
+          expected: "Все формулы, картинки и блоки кода помещаются по ширине экрана смартфона. Нет горизонтальной прокрутки всего сайта."
+        },
+        {
+          id: "t5",
+          title: "Бесконечный цикл в Песочнице",
+          area: "Кодерская (Песочница)",
+          role: "Ученик (Любой)",
+          steps: [
+            "Открыть раздел 'Песочница кода'.",
+            "Вставить бесконечный цикл.",
+            "Нажать кнопку 'Запустить код'."
+          ],
+          expected: "Интерпретатор не вешает браузер намертво. Через 5 секунд выполнение принудительно обрывается по таймауту."
+        }
+      ],
+      review: [
+        {
+          id: "r1",
+          title: "Применение промокода со 100% скидкой",
+          area: "Тарифы и Оплата",
+          role: "Ученик (Без подписки)",
+          iteration: 2,
+          steps: [
+            "Открыть страницу оплаты тарифа.",
+            "Ввести промокод 'FREE-STUDY-2026' и нажать 'Применить'."
+          ],
+          expected: "Сумма к оплате должна стать 0 рублей, кнопка 'Оплатить карту' меняется на 'Активировать бесплатно'.",
+          history: [
+            {
+              author: "Тестировщик (Итерация 1)",
+              type: "Критическая ошибка",
+              comment: "При вводе промокода на 100% скидку сумма становится 0 руб, но кнопка 'Оплатить карту' все равно требует ввода платежных данных и выдает ошибку API."
+            },
+            {
+              author: "Разработчик (Исправлено)",
+              comment: "Исправил логику отображения кнопки. При нулевой сумме форма оплаты больше не запрашивает карту и проводит транзакцию как бесплатную активацию."
+            }
+          ]
+        }
+      ]
+    };
+
+    // State
+    let availableTests = [];
+    let reviewTests = [];
+    let adminReports = [];
+    let selectedReport = null;
+    let isAdmin = false;
+    let isLoggedIn = false;
+    let adminActiveTab = 'bugs'; // 'bugs' | 'verified'
+
+    let activeTab = 'available'; // 'available' | 'review'
+    let selectedTest = null;
+    let tempAttachedFiles = [];
+    let currentVerdict = null; // 'minor' | 'critical'
+
+    // DOM Elements
+    const loginScreen = document.getElementById('login-screen');
+    const dashboardScreen = document.getElementById('dashboard-screen');
+    const adminScreen = document.getElementById('admin-screen');
+    const loginForm = document.getElementById('login-form');
+    const authKeyInput = document.getElementById('auth-key');
+    const logoutBtn = document.getElementById('logout-btn');
+    const themeToggle = document.getElementById('theme-toggle');
+
+    const tabAvailable = document.getElementById('tab-available');
+    const tabReview = document.getElementById('tab-review');
+    const countAvailable = document.getElementById('count-available');
+    const countReview = document.getElementById('count-review');
+    const testsList = document.getElementById('tests-list');
+
+    const rightPanel = document.getElementById('right-panel');
+    const detailsPlaceholder = document.getElementById('details-placeholder');
+    const detailsContent = document.getElementById('details-content');
+    const backToListBtn = document.getElementById('back-to-list');
+
+    const detailArea = document.getElementById('detail-area');
+    const detailReviewBadge = document.getElementById('detail-review-badge');
+    const detailTitle = document.getElementById('detail-title');
+    const detailRole = document.getElementById('detail-role');
+    const detailSteps = document.getElementById('detail-steps');
+    const detailExpected = document.getElementById('detail-expected');
+    const detailHistorySection = document.getElementById('detail-history-section');
+    const detailHistoryList = document.getElementById('detail-history-list');
+
+    const verdictOk = document.getElementById('verdict-ok');
+    const verdictMinor = document.getElementById('verdict-minor');
+    const verdictCritical = document.getElementById('verdict-critical');
+
+    const bugReportForm = document.getElementById('bug-report-form');
+    const bugComment = document.getElementById('bug-comment');
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const selectedFilesList = document.getElementById('selected-files-list');
+    const gdriveSection = document.getElementById('gdrive-section');
+    const gdriveLinkBox = document.getElementById('gdrive-link-box');
+    const gdriveLinkUrl = document.getElementById('gdrive-link-url');
+    const cancelReportBtn = document.getElementById('cancel-report-btn');
+
+    // Admin DOM Elements
+    const adminTabBugs = document.getElementById('admin-tab-bugs');
+    const adminTabVerified = document.getElementById('admin-tab-verified');
+    const adminCountBugs = document.getElementById('admin-count-bugs');
+    const adminCountVerified = document.getElementById('admin-count-verified');
+    const adminReportsList = document.getElementById('admin-reports-list');
+    const adminRightPanel = document.getElementById('admin-right-panel');
+    const adminPlaceholder = document.getElementById('admin-placeholder');
+    const adminReportContent = document.getElementById('admin-report-content');
+    const adminBackToList = document.getElementById('admin-back-to-list');
+    
+    const adminReportArea = document.getElementById('admin-report-area');
+    const adminReportVerdict = document.getElementById('admin-report-verdict');
+    const adminReportTitle = document.getElementById('admin-report-title');
+    const adminReportComment = document.getElementById('admin-report-comment');
+    const adminReportFileSection = document.getElementById('admin-report-file-section');
+    const adminReportFileLink = document.getElementById('admin-report-file-link');
+    const adminResolveForm = document.getElementById('admin-resolve-form');
+    const adminResolveComment = document.getElementById('admin-resolve-comment');
+
+    const toast = document.getElementById('toast');
+    const toastText = document.getElementById('toast-text');
+
+    // Synth Audio Notification Sound (Web Audio API)
+    function playNotificationSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5 Tone
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.35);
+      } catch (e) {
+        console.warn("Audio Context blocked or unsupported:", e);
+      }
+    }
+
+    // Toast Alert
+    function showToast(message, type = 'success') {
+      toastText.textContent = message;
+      toast.classList.remove('hidden');
+      if (type === 'error') {
+        toast.className = "fixed bottom-4 right-4 z-50 p-3 rounded-lg border shadow-lg text-xs font-semibold flex items-center space-x-2 animate-in fade-in bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400";
+      } else {
+        toast.className = "fixed bottom-4 right-4 z-50 p-3 rounded-lg border shadow-lg text-xs font-semibold flex items-center space-x-2 animate-in fade-in bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400";
+      }
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // Load Tests from Server
+    async function loadTestsFromServer(silent = false) {
+      try {
+        const response = await fetch('http://127.0.0.1:5050/api/tests');
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+        const newAvailable = data.available || [];
+        const newReview = data.review || [];
+
+        if (silent && newReview.length > reviewTests.length) {
+          showToast("Задача вернулась от разработчика на ревью!");
+          playNotificationSound();
+        }
+
+        availableTests = newAvailable;
+        reviewTests = newReview;
+      } catch (err) {
+        console.warn("Бэкенд недоступен, работаем в автономном режиме");
+        if (!silent) {
+          availableTests = OFFLINE_FALLBACK.available;
+          reviewTests = OFFLINE_FALLBACK.review;
+        }
+      }
+      renderLists();
+    }
+
+    // Load Reports from Server (for Admin)
+    async function loadReportsFromServer(silent = false) {
+      try {
+        const response = await fetch('http://127.0.0.1:5050/api/reports');
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+
+        if (silent && data.length > adminReports.length) {
+          showToast("Получен новый баг-репорт от тестировщика!");
+          playNotificationSound();
+        }
+
+        adminReports = data;
+      } catch (err) {
+        if (!silent) showToast("Не удалось загрузить отчеты с сервера", "error");
+      }
+      renderAdminDashboard();
+    }
+
+    // Toggle Theme
+    themeToggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      if (window.lucide) window.lucide.createIcons();
+    });
+
+    // Helper: Apply Login State
+    function applyLogin(key) {
+      isLoggedIn = true;
+      localStorage.setItem('booStudyQAKey', key);
+      loginScreen.classList.add('hidden');
+      logoutBtn.classList.remove('hidden');
+
+      if (key === 'ADMIN-2026') {
+        isAdmin = true;
+        adminScreen.classList.remove('hidden');
+        dashboardScreen.classList.add('hidden');
+        showToast("Вход в панель администратора выполнен!");
+        loadReportsFromServer(false);
+      } else {
+        isAdmin = false;
+        dashboardScreen.classList.remove('hidden');
+        adminScreen.classList.add('hidden');
+        showToast("Задания для тестирования загружены!");
+        loadTestsFromServer(false);
+      }
+    }
+
+    // Login Form Submit
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const key = authKeyInput.value.trim().toUpperCase();
+      applyLogin(key);
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', () => {
+      isLoggedIn = false;
+      localStorage.removeItem('booStudyQAKey');
+      loginScreen.classList.remove('hidden');
+      dashboardScreen.classList.add('hidden');
+      adminScreen.classList.add('hidden');
+      logoutBtn.classList.add('hidden');
+      selectedTest = null;
+      selectedReport = null;
+      hideDetails();
+      hideAdminDetails();
+    });
+
+    // Switch Tabs
+    tabAvailable.addEventListener('click', () => {
+      activeTab = 'available';
+      tabAvailable.className = "flex-1 py-2 text-xs md:text-sm font-medium rounded-md transition-all bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-50";
+      tabReview.className = "flex-1 py-2 text-xs md:text-sm font-medium rounded-md transition-all text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50";
+      selectedTest = null;
+      hideDetails();
+      renderLists();
+    });
+
+    tabReview.addEventListener('click', () => {
+      activeTab = 'review';
+      tabReview.className = "flex-1 py-2 text-xs md:text-sm font-medium rounded-md transition-all bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-50";
+      tabAvailable.className = "flex-1 py-2 text-xs md:text-sm font-medium rounded-md transition-all text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50";
+      selectedTest = null;
+      hideDetails();
+      renderLists();
+    });
+
+    // Back to list (Mobile layout toggle)
+    backToListBtn.addEventListener('click', () => {
+      selectedTest = null;
+      hideDetails();
+      document.getElementById('left-panel').classList.remove('hidden');
+    });
+
+    adminBackToList.addEventListener('click', () => {
+      selectedReport = null;
+      hideAdminDetails();
+      document.getElementById('admin-left-panel').classList.remove('hidden');
+    });
+
+    // Render Lists for Tester
+    function renderLists() {
+      countAvailable.textContent = availableTests.length;
+      countReview.textContent = reviewTests.length;
+      testsList.innerHTML = '';
+
+      const activeList = activeTab === 'available' ? availableTests : reviewTests;
+
+      if (activeList.length === 0) {
+        testsList.innerHTML = `
+          <div class="text-center py-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
+            <p class="text-zinc-400 text-sm">Список пуст 🥳</p>
+          </div>
+        `;
+        return;
+      }
+
+      activeList.forEach((test) => {
+        const item = document.createElement('div');
+        item.className = `p-4 border rounded-xl cursor-pointer transition-all bg-white dark:bg-zinc-900/50 hover:border-emerald-500/50 ${
+          selectedTest?.id === test.id
+            ? "border-emerald-600 ring-1 ring-emerald-600 dark:bg-zinc-900"
+            : "border-zinc-200 dark:border-zinc-800"
+        }`;
+        
+        item.innerHTML = `
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+              ${test.area}
+            </span>
+            ${test.iteration ? `
+              <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900">
+                Ревью: Итерация ${test.iteration}
+              </span>
+            ` : ''}
+          </div>
+          <h3 class="font-bold text-sm md:text-base leading-snug mb-1 text-zinc-950 dark:text-zinc-50">${test.title}</h3>
+          <div class="flex items-center space-x-1.5 mt-2 text-xs text-zinc-500">
+            <span class="font-medium">Роль:</span>
+            <span class="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded font-bold">${test.role}</span>
+          </div>
+        `;
+
+        item.addEventListener('click', () => {
+          selectTest(test);
+        });
+
+        testsList.appendChild(item);
+      });
+    }
+
+    // Select Test details card
+    function selectTest(test) {
+      selectedTest = test;
+      renderLists();
+
+      if (window.innerWidth < 1024) {
+        document.getElementById('left-panel').classList.add('hidden');
+      }
+
+      rightPanel.classList.remove('hidden');
+      detailsPlaceholder.classList.add('hidden');
+      detailsContent.classList.remove('hidden');
+
+      detailArea.textContent = `Раздел: ${test.area}`;
+      detailTitle.textContent = test.title;
+      detailRole.textContent = test.role;
+      detailExpected.textContent = test.expected;
+
+      if (test.iteration) {
+        detailReviewBadge.textContent = `Ревью: Итерация ${test.iteration}`;
+        detailReviewBadge.classList.remove('hidden');
+      } else {
+        detailReviewBadge.classList.add('hidden');
+      }
+
+      detailSteps.innerHTML = '';
+      test.steps.forEach(step => {
+        const li = document.createElement('li');
+        li.textContent = step;
+        detailSteps.appendChild(li);
+      });
+
+      if (test.history && test.history.length > 0) {
+        detailHistorySection.classList.remove('hidden');
+        detailHistoryList.innerHTML = '';
+        test.history.forEach(hist => {
+          const div = document.createElement('div');
+          div.className = `p-3 rounded-lg text-xs border ${
+            hist.type ? "bg-red-500/5 dark:bg-red-500/10 border-red-500/20" : "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20"
+          }`;
+          div.innerHTML = `
+            <div class="flex justify-between font-bold mb-1">
+              <span>${hist.author}</span>
+              ${hist.type ? `<span class="text-red-500">${hist.type}</span>` : ''}
+            </div>
+            <p class="italic text-zinc-600 dark:text-zinc-300">"${hist.comment}"</p>
+            <div class="flex flex-wrap gap-2">
+              ${hist.gdrives && hist.gdrives.length > 0 ? 
+                hist.gdrives.map((link, idx) => `
+                  <a href="${link}" target="_blank" class="mt-1.5 inline-flex items-center gap-1 text-emerald-500 hover:underline">
+                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                    <span>Скриншот ${idx + 1}</span>
+                  </a>
+                `).join('') :
+                (hist.gdrive ? `
+                  <a href="${hist.gdrive}" target="_blank" class="mt-1.5 inline-flex items-center gap-1 text-emerald-500 hover:underline">
+                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                    <span>Открыть скриншот</span>
+                  </a>
+                ` : '')
+              }
+            </div>
+          `;
+          detailHistoryList.appendChild(div);
+        });
+      } else {
+        detailHistorySection.classList.add('hidden');
+      }
+
+      bugReportForm.classList.add('hidden');
+      currentVerdict = null;
+      verdictMinor.className = "flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg border border-amber-500 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 font-semibold text-xs md:text-sm transition-all";
+      verdictCritical.className = "flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg border border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-semibold text-xs md:text-sm transition-all";
+      tempAttachedFiles = [];
+      renderAttachedFiles();
+      gdriveLinkBox.classList.add('hidden');
+
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function hideDetails() {
+      detailsPlaceholder.classList.remove('hidden');
+      detailsContent.classList.add('hidden');
+      if (window.innerWidth < 1024) {
+        rightPanel.classList.add('hidden');
+      }
+    }
+
+    // Verdict Button Click events
+    verdictOk.addEventListener('click', async () => {
+      try {
+        await fetch('http://127.0.0.1:5050/api/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            test_id: selectedTest.id,
+            test_title: selectedTest.title,
+            area: selectedTest.area,
+            comment: "Проверено успешно, ошибок не обнаружено",
+            verdict: "success",
+            timestamp: new Date().toISOString()
+          })
+        });
+      } catch (err) {}
+
+      showToast("Тест успешно пройден и закрыт!");
+      selectedTest = null;
+      hideDetails();
+      loadTestsFromServer();
+      if (window.innerWidth < 1024) {
+        document.getElementById('left-panel').classList.remove('hidden');
+      }
+    });
+
+    verdictMinor.addEventListener('click', () => {
+      currentVerdict = 'minor';
+      verdictMinor.className = "flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg bg-amber-500 border border-amber-600 text-white font-semibold text-xs md:text-sm transition-all";
+      verdictCritical.className = "flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg border border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-semibold text-xs md:text-sm transition-all";
+      bugReportForm.classList.remove('hidden');
+      bugComment.value = '';
+    });
+
+    verdictCritical.addEventListener('click', () => {
+      currentVerdict = 'critical';
+      verdictCritical.className = "flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg bg-red-600 border border-red-700 text-white font-semibold text-xs md:text-sm transition-all";
+      verdictMinor.className = "flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg border border-amber-500 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 font-semibold text-xs md:text-sm transition-all";
+      bugReportForm.classList.remove('hidden');
+      bugComment.value = '';
+    });
+
+    cancelReportBtn.addEventListener('click', () => {
+      bugReportForm.classList.add('hidden');
+      currentVerdict = null;
+      verdictMinor.className = "flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg border border-amber-500 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 font-semibold text-xs md:text-sm transition-all";
+      verdictCritical.className = "flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg border border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-semibold text-xs md:text-sm transition-all";
+    });
+
+    // File Upload handling
+    dropZone.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        Array.from(e.target.files).forEach(f => tempAttachedFiles.push(f));
+        renderAttachedFiles();
+      }
+    });
+
+    function renderAttachedFiles() {
+      selectedFilesList.innerHTML = '';
+      if (tempAttachedFiles.length === 0) {
+        gdriveSection.classList.add('hidden');
+        return;
+      }
+
+      gdriveSection.classList.remove('hidden');
+      tempAttachedFiles.forEach((file, idx) => {
+        const div = document.createElement('div');
+        div.className = "flex items-center justify-between p-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 rounded-lg text-xs";
+        div.innerHTML = `
+          <div class="flex items-center space-x-2 truncate">
+            <i data-lucide="file" class="w-3.5 h-3.5 text-zinc-400"></i>
+            <span class="truncate font-medium">${file.name}</span>
+            <span class="text-zinc-400">(${(file.size / 1024).toFixed(1)} KB)</span>
+          </div>
+          <button type="button" class="text-red-500 hover:text-red-700 p-1 delete-file-btn">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        `;
+        div.querySelector('.delete-file-btn').addEventListener('click', () => {
+          tempAttachedFiles.splice(idx, 1);
+          renderAttachedFiles();
+        });
+        selectedFilesList.appendChild(div);
+      });
+
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    // Form Submit (with automatic Google Drive uploading of all files)
+    bugReportForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!bugComment.value.trim()) return;
+
+      const submitBtn = bugReportForm.querySelector('button[type="submit"]');
+      const originalBtnText = submitBtn.innerHTML;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `
+        <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-1"></span>
+        <span>Отправка...</span>
+      `;
+
+      let gdriveLinks = [];
+
+      // Auto-upload sequentially if files are attached
+      if (tempAttachedFiles.length > 0) {
+        let count = 1;
+        for (const file of tempAttachedFiles) {
+          submitBtn.innerHTML = `
+            <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-1"></span>
+            <span>Загрузка файла ${count} из ${tempAttachedFiles.length}...</span>
+          `;
+          
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('test_id', selectedTest ? selectedTest.id : 'test');
+
+          try {
+            const response = await fetch('http://127.0.0.1:5050/api/upload-to-drive', {
+              method: 'POST',
+              body: formData
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              gdriveLinks.push(data.link);
+            } else {
+              console.warn("Ошибка загрузки файла на Google Диск");
+            }
+          } catch (err) {
+            console.error("Не удалось подключиться к диску", err);
+          }
+          count++;
+        }
+      }
+
+      submitBtn.innerHTML = `
+        <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-1"></span>
+        <span>Сохранение отчета...</span>
+      `;
+
+      const reportData = {
+        test_id: selectedTest.id,
+        test_title: selectedTest.title,
+        area: selectedTest.area,
+        comment: bugComment.value,
+        verdict: currentVerdict,
+        gdrive_link: gdriveLinks[0] || null, // fallback
+        gdrive_links: gdriveLinks,
+        timestamp: new Date().toISOString()
+      };
+
+      try {
+        await fetch('http://127.0.0.1:5050/api/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reportData)
+        });
+      } catch (err) {
+        console.warn("Не удалось отправить отчет на сервер", err);
+      }
+
+      showToast("Баг-репорт успешно отправлен разработчику!");
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+
+      selectedTest = null;
+      hideDetails();
+      loadTestsFromServer();
+      if (window.innerWidth < 1024) {
+        document.getElementById('left-panel').classList.remove('hidden');
+      }
+    });
+
+    // --- Admin Dashboard logic ---
+    adminTabBugs.addEventListener('click', () => {
+      adminActiveTab = 'bugs';
+      adminTabBugs.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-50";
+      adminTabVerified.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50";
+      selectedReport = null;
+      hideAdminDetails();
+      renderAdminDashboard();
+    });
+
+    adminTabVerified.addEventListener('click', () => {
+      adminActiveTab = 'verified';
+      adminTabVerified.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-50";
+      adminTabBugs.className = "flex-1 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50";
+      selectedReport = null;
+      hideAdminDetails();
+      renderAdminDashboard();
+    });
+
+    function renderAdminDashboard() {
+      // Split reports into bugs and verified
+      const bugsList = adminReports.filter(r => r.verdict === 'critical' || r.verdict === 'minor');
+      const verifiedList = adminReports.filter(r => r.verdict === 'success');
+
+      adminCountBugs.textContent = bugsList.length;
+      adminCountVerified.textContent = verifiedList.length;
+      adminReportsList.innerHTML = '';
+
+      const activeList = adminActiveTab === 'bugs' ? bugsList : verifiedList;
+
+      if (activeList.length === 0) {
+        adminReportsList.innerHTML = `
+          <div class="text-center py-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
+            <p class="text-zinc-400 text-sm">
+              ${adminActiveTab === 'bugs' ? 'Нет активных отчетов об ошибках 🎉' : 'Нет проверенных заданий 📝'}
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      activeList.forEach(report => {
+        const item = document.createElement('div');
+        item.className = `p-4 border rounded-xl cursor-pointer transition-all bg-white dark:bg-zinc-900/50 hover:border-emerald-500/50 ${
+          selectedReport?.id === report.id
+            ? "border-emerald-600 ring-1 ring-emerald-600 dark:bg-zinc-900"
+            : "border-zinc-200 dark:border-zinc-800"
+        }`;
+
+        let badgeClass = '';
+        let badgeText = '';
+
+        if (report.verdict === 'critical') {
+          badgeClass = 'bg-red-500/10 text-red-600 border-red-500/20';
+          badgeText = 'Крит. ошибка';
+        } else if (report.verdict === 'minor') {
+          badgeClass = 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+          badgeText = 'Мелкие баги';
+        } else {
+          badgeClass = 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+          badgeText = 'Проверено';
+        }
+
+        item.innerHTML = `
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+              ${report.area}
+            </span>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full border ${badgeClass}">
+              ${badgeText}
+            </span>
+          </div>
+          <h3 class="font-bold text-sm md:text-base leading-snug mb-1 text-zinc-950 dark:text-zinc-50">${report.test_title}</h3>
+          <p class="text-xs text-zinc-400 mt-1 truncate">Отзыв: "${report.comment}"</p>
+        `;
+
+        item.addEventListener('click', () => {
+          selectReport(report);
+        });
+
+        adminReportsList.appendChild(item);
+      });
+    }
+
+    function selectReport(report) {
+      selectedReport = report;
+      renderAdminDashboard();
+
+      if (window.innerWidth < 1024) {
+        document.getElementById('admin-left-panel').classList.add('hidden');
+      }
+
+      adminRightPanel.classList.remove('hidden');
+      adminPlaceholder.classList.add('hidden');
+      adminReportContent.classList.remove('hidden');
+
+      adminReportArea.textContent = `Раздел: ${report.area}`;
+      
+      if (report.verdict === 'critical') {
+        adminReportVerdict.textContent = 'Крит. ошибка';
+        adminReportVerdict.className = "text-xs font-bold px-2.5 py-1 rounded bg-red-600 text-white";
+      } else if (report.verdict === 'minor') {
+        adminReportVerdict.textContent = 'Мелкие баги';
+        adminReportVerdict.className = "text-xs font-bold px-2.5 py-1 rounded bg-amber-500 text-white";
+      } else {
+        adminReportVerdict.textContent = 'Проверено успешно';
+        adminReportVerdict.className = "text-xs font-bold px-2.5 py-1 rounded bg-emerald-600 text-white";
+      }
+
+      adminReportTitle.textContent = report.test_title;
+      adminReportComment.textContent = report.comment;
+
+      const fileLinkContainer = adminReportFileSection.querySelector('.flex');
+      fileLinkContainer.innerHTML = '';
+
+      if (report.gdrive_links && report.gdrive_links.length > 0) {
+        adminReportFileSection.classList.remove('hidden');
+        report.gdrive_links.forEach((link, idx) => {
+          const a = document.createElement('a');
+          a.href = link;
+          a.target = '_blank';
+          a.className = "inline-flex items-center gap-1.5 px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold text-emerald-600 hover:underline";
+          a.innerHTML = `<i data-lucide="external-link" class="w-4 h-4"></i> <span>Скриншот ${idx + 1}</span>`;
+          fileLinkContainer.appendChild(a);
+        });
+      } else if (report.gdrive_link) {
+        adminReportFileSection.classList.remove('hidden');
+        const a = document.createElement('a');
+        a.href = report.gdrive_link;
+        a.target = '_blank';
+        a.className = "inline-flex items-center gap-1.5 px-3 py-2 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold text-emerald-600 hover:underline";
+        a.innerHTML = `<i data-lucide="external-link" class="w-4 h-4"></i> <span>Скриншот</span>`;
+        fileLinkContainer.appendChild(a);
+      } else {
+        adminReportFileSection.classList.add('hidden');
+      }
+
+      // Hide resolve form for verified reports
+      if (report.verdict === 'success') {
+        adminResolveForm.classList.add('hidden');
+      } else {
+        adminResolveForm.classList.remove('hidden');
+      }
+
+      adminResolveComment.value = '';
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function hideAdminDetails() {
+      adminPlaceholder.classList.remove('hidden');
+      adminReportContent.classList.add('hidden');
+      if (window.innerWidth < 1024) {
+        adminRightPanel.classList.add('hidden');
+      }
+    }
+
+    // Admin Resolve Report Form Submit
+    adminResolveForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!selectedReport || !adminResolveComment.value.trim()) return;
+
+      try {
+        const response = await fetch(`http://127.0.0.1:5050/api/reports/${selectedReport.id}/resolve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ comment: adminResolveComment.value })
+        });
+
+        if (!response.ok) throw new Error();
+        
+        showToast("Отчет решен и отправлен обратно на ревью!");
+        selectedReport = null;
+        hideAdminDetails();
+        loadReportsFromServer();
+        if (window.innerWidth < 1024) {
+          document.getElementById('admin-left-panel').classList.remove('hidden');
+        }
+      } catch (err) {
+        showToast("Не удалось решить отчет", "error");
+      }
+    });
+
+    // Init and Polling
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) window.lucide.createIcons();
+
+      // Auto-login from LocalStorage
+      const savedKey = localStorage.getItem('booStudyQAKey');
+      if (savedKey) {
+        applyLogin(savedKey);
+      }
+
+      // Check backend updates every 5 seconds
+      setInterval(() => {
+        if (!isLoggedIn) return;
+        if (isAdmin) {
+          loadReportsFromServer(true);
+        } else {
+          loadTestsFromServer(true);
+        }
+      }, 5000);
+    });
+  </script>
+</body>
+</html>

@@ -113,7 +113,10 @@ def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None,
         if link_url:
             telegram_lines.extend(['', str(link_url)])
         telegram_text = '\n'.join(telegram_lines)
-        telegram_notify_user_task.delay(int(user_id), telegram_text, kind)
+        telegram_notify_user_task.apply_async(
+            args=[int(user_id), telegram_text, kind],
+            retry=False
+        )
     except Exception as e:
         logger.warning('Could not enqueue Telegram mirror for notification user_id=%s kind=%s: %s', user_id, kind, e)
 

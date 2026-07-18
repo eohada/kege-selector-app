@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 @admin_bp.route('/admin/diagnostics')
 @login_required
+@require_admin
 def diagnostics():
     """Страница диагностики конфигурации"""
     from flask import current_app
@@ -26,12 +27,14 @@ def diagnostics():
 
 @admin_bp.route('/admin/diagnostics/api')
 @login_required
+@require_admin
 def diagnostics_api():
     """API endpoint для получения диагностической информации"""
     from flask import current_app
     with current_app.app_context():
         diagnostics_data = get_diagnostics_data()
     return jsonify(diagnostics_data)
+
 
 @admin_bp.route('/admin/diagnostics/test')
 @login_required

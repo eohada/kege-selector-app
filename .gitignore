@@ -136,3 +136,13 @@ tailwindcss*.exe
 
 # Tailwind output — track boostudy.css, ignore source maps
 static/dist/*.map
+
+# Playwright / release audit artifacts
+playwright-report/
+test-results/
+docs/qa/release_audit_report.md
+tailwindcss
+tester_assistant_app/dist/
+tester_assistant_app/google_creds.json
+tester_assistant_app/token.json
+tester_assistant_app/client_secrets.json

@@ -13,6 +13,9 @@ BOOTSTRAP_CREATOR_CHAT_ID = int((os.environ.get('BOOTSTRAP_CREATOR_CHAT_ID') or 
 BOOTSTRAP_CREATOR_USERNAME = (os.environ.get('BOOTSTRAP_CREATOR_USERNAME') or 'eohada').strip().lstrip('@').lower()
 BOOTSTRAP_CREATOR_DISPLAY_NAME = (os.environ.get('BOOTSTRAP_CREATOR_DISPLAY_NAME') or 'Eohada').strip()
 
+# Режим тестирования (Mock) для QA-инженеров
+TELEGRAM_MOCK_MODE = (os.environ.get('TELEGRAM_MOCK_MODE') or '').strip().lower() in ('1', 'true', 'yes', 'on')
+
 
 def telegram_proxy_parts() -> dict[str, object] | None:
     raw = TELEGRAM_PROXY_URL.strip()

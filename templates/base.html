@@ -166,7 +166,7 @@
 
         {% set _is_qa_role = current_user.role in ['tester', 'chief_tester', 'admin', 'creator', 'chief_admin'] %}
         {% if _is_qa_role %}
-            {% include 'qa/_qa_widget.html' %}
+            <!-- QA Widget deprecated -->
         {% endif %}
 
         {% if session.get('impersonator_id') is not none %}

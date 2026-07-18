@@ -1,0 +1,7 @@
+model_list:
+  - model_name: claude-opus-4-8
+    litellm_params:
+      model: openai/gemini-3.1-pro
+      api_base: "http://127.0.0.1:8045/v1"
+      api_key: "sk-2eac2f5c80684a65b06df4e154de038b"
+      drop_params: true
