@@ -1,3 +1,13 @@
+## [2026-08-09 00:55:00] - ⚡ ОПТИМИЗАЦИЯ DOCKER И ВЫНОС HEAVY DEPENDENCIES (EASYOCR / PYTORCH) (v8.46.1)
+
+- **📦 Изоляция тяжелых зависимостей (EasyOCR, PyTorch)**:
+  - Проведен анализ использования библиотеки `easyocr` и `torch`. Выявлено, что ни веб-сервер (`web_prod`, `web_admin`, `web_sandbox`), ни фоновые воркеры `celery` не используют OCR в основном приложении.
+  - Удален `--extra-index-url https://download.pytorch.org/whl/cpu` и `easyocr` из основного `requirements.txt`.
+  - Размер собираемого Docker-образа уменьшен более чем на **5 ГБ** (устранены пакеты `nvidia/cu12`, CUDA blobs и зависания `pip` при сетевых проблемах с PyTorch CPU whl).
+- **🛠️ Выделенный `requirements-ocr.txt`**:
+  - Создан файл `requirements-ocr.txt` со строгой утилитарной спецификацией CPU-only версии PyTorch (`--extra-index-url https://download.pytorch.org/whl/cpu`, `torch>=2.0.0`, `torchvision>=0.15.0`, `easyocr>=1.7.0`) для разработки и офлайн-скриптов генерации решений (`scripts/generate_solutions_for_all_tasks.py`).
+  - Оптимизирован `Dockerfile` для быстрой и чистой сборки продакшн-контейнеров.
+
 ## [2026-08-08 21:30:00] - 🚀 РЕЖИМ ПОДГОТОВКИ (LAUNCH MODE) ДЛЯ ВРЕМЕННОЙ ИЗОЛЯЦИИ ФУНКЦИОНАЛА ПЛАТФОРМЫ (v8.46.0)
 
 - **⚙️ Системный переключатель Режима Подготовки (Launch Mode)**:

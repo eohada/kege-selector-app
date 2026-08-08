@@ -1,0 +1,6 @@
+# Дополнительные зависимости для OCR (извлечение текста с картинок в scripts/)
+# Установка CPU-only версии PyTorch для работы EasyOCR без тяжеловесных NVIDIA/CUDA пакетов.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+torchvision>=0.15.0
+easyocr>=1.7.0

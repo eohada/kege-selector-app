@@ -12,15 +12,15 @@
 
 ## 1. Зависимости
 
-Все нужные пакеты в `requirements.txt`:
+Основные пакеты приложения в `requirements.txt`. Дополнительные зависимости для OCR (EasyOCR) вынесены в `requirements-ocr.txt`:
 
-- **GigaChat** — `gigachat>=0.1.38`
-- **EasyOCR** — `easyocr>=1.7.0` (для извлечения текста с картинок)
+- **GigaChat** — `gigachat>=0.1.38` (в `requirements.txt`)
+- **EasyOCR** — `easyocr>=1.7.0` (в `requirements-ocr.txt`, устанавливает CPU-only PyTorch)
 
-После деплоя на хост выполните:
+Для работы OCR выполните:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-ocr.txt
 ```
 
 ## 2. Переменные окружения

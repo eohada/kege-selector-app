@@ -19,10 +19,8 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.txt .
 
-# Заставляем pip игнорировать сломанный IPv6
-# Качаем пакеты через зеркало Aliyun (в обход проблемных европейских узлов)
-RUN pip install --default-timeout=1000 --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com -r requirements.txt
-RUN pip install gunicorn psycopg2-binary
+# Установка основных веб-зависимостей без PyTorch/CUDA
+RUN pip install --default-timeout=100 --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com -r requirements.txt
 
 COPY . .
 
